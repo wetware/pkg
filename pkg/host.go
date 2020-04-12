@@ -44,7 +44,6 @@ type Host struct {
 }
 
 // New Host
-// TODO:  Options, e.g. for the repo path or whatever
 func New(opt ...Option) (*Host, error) {
 	var h = new(Host)
 	/*
