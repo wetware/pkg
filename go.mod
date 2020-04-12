@@ -7,7 +7,10 @@ require (
 	github.com/ipfs/go-ipfs-config v0.4.0
 	github.com/ipfs/interface-go-ipfs-core v0.2.6
 	github.com/libp2p/go-libp2p-core v0.5.1
+	github.com/lthibault/log v0.0.0-20190513014217-f549b3a28a20
+	github.com/lthibault/service v0.0.0-20200326151332-fc6dfc09b578
 	github.com/pkg/errors v0.9.1
+	github.com/sirupsen/logrus v1.4.2
 	github.com/urfave/cli/v2 v2.2.0
-	go.uber.org/fx v1.12.0
+	go.uber.org/fx v1.12.0 // indirect
 )

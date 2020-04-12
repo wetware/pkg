@@ -1,5 +1,4 @@
-// Package boot contains dependencies for injection via https://go.uber.org/fx
-package boot
+package ww
 
 import (
 	"context"
@@ -7,98 +6,103 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/pkg/errors"
-	"go.uber.org/fx"
-
 	config "github.com/ipfs/go-ipfs-config"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/ipfs/go-ipfs/core/node/libp2p"
-	"github.com/ipfs/go-ipfs/plugin/loader" // This package is needed so that all the preloaded plugins are loaded automatically
+	"github.com/ipfs/go-ipfs/plugin/loader"
 	"github.com/ipfs/go-ipfs/repo"
 	"github.com/ipfs/go-ipfs/repo/fsrepo"
+	"github.com/libp2p/go-libp2p-core/network"
+	"github.com/pkg/errors"
 
-	ww "github.com/lthibault/wetware/pkg"
+	service "github.com/lthibault/service/pkg"
 )
 
-// Env encapsulates runtime state
-type Env interface {
-	String(string) string
-}
-
-// Provide dependency
-func Provide(env Env) fx.Option {
-	return fx.Provide(
-		newContext,
-		newRepo(env),
-		newIPFSNode,
-		newHost,
-	)
-}
-
-/*
-	Constructors
-*/
-
-func newContext(lx fx.Lifecycle) context.Context {
+func provideContext(r *Runtime) service.Service {
 	ctx, cancel := context.WithCancel(context.Background())
-
-	lx.Append(fx.Hook{
-		OnStop: func(context.Context) error {
+	return service.Hook{
+		OnStart: func() error {
+			r.ctx = ctx
+			return nil
+		},
+		OnStop: func() error {
 			cancel()
 			return nil
 		},
-	})
-
-	return ctx
-}
-
-func newRepo(env Env) func(context.Context) (repo.Repo, error) {
-	return func(ctx context.Context) (_ repo.Repo, err error) {
-		switch path := env.String("repo"); path {
-		case "":
-			if path, err = ioutil.TempDir("", "ww-*"); err != nil {
-				return nil, errors.Wrap(err, "tempdir")
-			}
-
-			return mkOrLoadRepo(ctx, path)
-		case "auto":
-			if path, err = config.PathRoot(); err != nil { // default repo path from IPFS config
-				return nil, err // shouldn't be possible
-			}
-
-			return loadRepo(path)
-		default:
-			return mkOrLoadRepo(ctx, path)
-		}
 	}
 }
 
-func newIPFSNode(ctx context.Context, repo repo.Repo) (*core.IpfsNode, error) {
-	return core.NewNode(ctx, &core.BuildCfg{
-		Online:  true,
-		Routing: libp2p.DHTOption,
-		Repo:    repo,
-	})
-}
-
-func newHost(lx fx.Lifecycle, node *core.IpfsNode) (ww.Host, error) {
-	h, err := ww.New(node)
-	if err != nil {
-		return nil, err
-	}
-
-	lx.Append(fx.Hook{
-		OnStop: func(context.Context) error {
-			return h.Close()
+func provideRepo(r *Runtime) service.Service {
+	return service.Hook{
+		OnStart: func() (err error) {
+			r.repo, err = newRepo(r.ctx, r.repoPath)
+			return
 		},
-	})
+	}
+}
 
-	return h, nil
+func provideIPFSNode(r *Runtime) service.Service {
+	return service.Hook{
+		OnStart: func() (err error) {
+			r.log.Trace("starting IPFS node")
+
+			r.node, err = core.NewNode(r.ctx, &core.BuildCfg{
+				Online:  true,
+				Routing: libp2p.DHTOption,
+				Repo:    r.repo,
+			})
+			return
+		},
+		OnStop: func() error {
+			r.log.Trace("stopping IPFS node")
+			return r.node.Close()
+		},
+	}
+}
+
+func provideStreamHandlers(r *Runtime) service.Service {
+	return service.Hook{
+		OnStart: func() error {
+			r.log.Trace("registering stream handlers")
+
+			r.node.PeerHost.SetStreamHandler("test", func(s network.Stream) {
+				r.log.
+					WithField("proto", "test").
+					WithField("stat", s.Stat()).
+					Info("stream handled")
+
+				s.Reset()
+			})
+
+			return nil
+		},
+	}
 }
 
 /*
 	helper functions
 */
+
+func newRepo(ctx context.Context, path string) (repo.Repo, error) {
+	switch path {
+	case "":
+		path, err := ioutil.TempDir("", "ww-*")
+		if err != nil {
+			return nil, errors.Wrap(err, "tempdir")
+		}
+
+		return mkOrLoadRepo(ctx, path)
+	case "auto":
+		path, err := config.PathRoot() // default repo path from IPFS config
+		if err != nil {
+			return nil, err // shouldn't be possible
+		}
+
+		return loadRepo(path)
+	default:
+		return mkOrLoadRepo(ctx, path)
+	}
+}
 
 func mkOrLoadRepo(ctx context.Context, path string) (repo.Repo, error) {
 	if err := os.MkdirAll(path, 0770); os.IsExist(err) {

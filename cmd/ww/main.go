@@ -1,11 +1,11 @@
 package main
 
 import (
-	"log"
 	"os"
 
 	"github.com/urfave/cli/v2"
 
+	log "github.com/lthibault/log/pkg"
 	"github.com/lthibault/wetware/internal/cmd/start"
 )
 
@@ -20,6 +20,6 @@ func main() {
 	}
 
 	if err := app.Run(os.Args); err != nil {
-		log.Fatal(err)
+		log.New().Fatal(err)
 	}
 }
