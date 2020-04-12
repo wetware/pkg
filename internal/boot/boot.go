@@ -4,6 +4,7 @@ package boot
 import (
 	"context"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -21,15 +22,14 @@ import (
 
 // Env encapsulates runtime state
 type Env interface {
-	// GlobalString(string) string
-	// ...
+	String(string) string
 }
 
 // Provide dependency
-func Provide(Env) fx.Option {
+func Provide(env Env) fx.Option {
 	return fx.Provide(
 		newContext,
-		newRepo,
+		newRepo(env),
 		newIPFSNode,
 		newHost,
 	)
@@ -52,30 +52,33 @@ func newContext(lx fx.Lifecycle) context.Context {
 	return ctx
 }
 
-func newRepo(ctx context.Context) (repo.Repo, error) {
-	// setupPlugins must be called before creating a repo in order to load "preloaded"
-	// (= built-in) plugins.
-	if err := setupPlugins(""); err != nil {
-		return nil, err
-	}
+func newRepo(env Env) func(context.Context) (repo.Repo, error) {
+	return func(ctx context.Context) (_ repo.Repo, err error) {
+		switch path := env.String("repo"); path {
+		case "":
+			if path, err = ioutil.TempDir("", "ww-*"); err != nil {
+				return nil, errors.Wrap(err, "tempdir")
+			}
 
-	repoPath, err := createTempRepo(ctx)
-	if err != nil {
-		return nil, err
-	}
+			return mkOrLoadRepo(ctx, path)
+		case "auto":
+			if path, err = config.PathRoot(); err != nil { // default repo path from IPFS config
+				return nil, err // shouldn't be possible
+			}
 
-	return fsrepo.Open(repoPath)
+			return loadRepo(path)
+		default:
+			return mkOrLoadRepo(ctx, path)
+		}
+	}
 }
 
 func newIPFSNode(ctx context.Context, repo repo.Repo) (*core.IpfsNode, error) {
-	nodeOptions := &core.BuildCfg{
+	return core.NewNode(ctx, &core.BuildCfg{
 		Online:  true,
-		Routing: libp2p.DHTOption, // This option sets the node to be a full DHT node (both fetching and storing DHT Records)
-		// Routing: libp2p.DHTClientOption, // This option sets the node to be a client DHT node (only fetching records)
-		Repo: repo,
-	}
-
-	return core.NewNode(ctx, nodeOptions)
+		Routing: libp2p.DHTOption,
+		Repo:    repo,
+	})
 }
 
 func newHost(lx fx.Lifecycle, node *core.IpfsNode) (ww.Host, error) {
@@ -97,42 +100,58 @@ func newHost(lx fx.Lifecycle, node *core.IpfsNode) (ww.Host, error) {
 	helper functions
 */
 
-func setupPlugins(externalPluginsPath string) error {
-	// Load any external plugins if available on externalPluginsPath
-	plugins, err := loader.NewPluginLoader(filepath.Join(externalPluginsPath, "plugins"))
+func mkOrLoadRepo(ctx context.Context, path string) (repo.Repo, error) {
+	if err := os.MkdirAll(path, 0770); os.IsExist(err) {
+		return loadRepo(path)
+	}
+
+	return mkRepo(path)
+}
+
+func loadRepo(path string) (repo.Repo, error) {
+	if err := setupPlugins(path); err != nil {
+		return nil, errors.Wrap(err, "setup plugins")
+	}
+
+	return fsrepo.Open(path)
+}
+
+func mkRepo(path string) (repo.Repo, error) {
+	if err := setupPlugins(""); err != nil {
+		return nil, errors.Wrap(err, "setup plugins")
+	}
+
+	// Create a config with default options and a 2048 bit key
+	cfg, err := config.Init(ioutil.Discard, 2048) // TODO:  this should either be configurable or a const
 	if err != nil {
-		return errors.Wrap(err, "error loading plugins")
+		return nil, errors.Wrap(err, "new config")
+	}
+
+	// Create the repo with the config
+	if err = fsrepo.Init(path, cfg); err != nil {
+		return nil, errors.Wrap(err, "fsrepo init")
+	}
+
+	return fsrepo.Open(path)
+}
+
+// setupPlugins must be called before creating a repo in order to load
+// preloaded (= built-in) plugins.
+func setupPlugins(path string) error {
+	// Load any external plugins if available on path
+	plugins, err := loader.NewPluginLoader(filepath.Join(path, "plugins"))
+	if err != nil {
+		return errors.Wrap(err, "load plugins")
 	}
 
 	// Load preloaded and external plugins
 	if err := plugins.Initialize(); err != nil {
-		return errors.Wrap(err, "error initializing plugins")
+		return errors.Wrap(err, "init plugins")
 	}
 
 	if err := plugins.Inject(); err != nil {
-		return errors.Wrap(err, "error initializing plugins")
+		return errors.Wrap(err, "inject plugins")
 	}
 
 	return nil
-}
-
-func createTempRepo(ctx context.Context) (string, error) {
-	repoPath, err := ioutil.TempDir("", "ipfs-shell")
-	if err != nil {
-		return "", errors.Wrap(err, "failed to get temp dir")
-	}
-
-	// Create a config with default options and a 2048 bit key
-	cfg, err := config.Init(ioutil.Discard, 2048)
-	if err != nil {
-		return "", err
-	}
-
-	// Create the repo with the config
-	err = fsrepo.Init(repoPath, cfg)
-	if err != nil {
-		return "", errors.Wrap(err, "failed to init ephemeral node")
-	}
-
-	return repoPath, nil
 }

@@ -14,6 +14,7 @@ func main() {
 		Commands: []*cli.Command{{
 			Name:   "start",
 			Usage:  "start a host process",
+			Flags:  start.Flags(),
 			Action: start.Run(),
 		}},
 	}
