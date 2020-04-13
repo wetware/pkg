@@ -4,18 +4,18 @@ import (
 	"context"
 	"io/ioutil"
 	"os"
-	"path/filepath"
+
+	service "github.com/lthibault/service/pkg"
 
 	config "github.com/ipfs/go-ipfs-config"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/ipfs/go-ipfs/core/node/libp2p"
-	"github.com/ipfs/go-ipfs/plugin/loader"
 	"github.com/ipfs/go-ipfs/repo"
 	"github.com/ipfs/go-ipfs/repo/fsrepo"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/pkg/errors"
 
-	service "github.com/lthibault/service/pkg"
+	repoutil "github.com/lthibault/wetware/internal/util/repo"
 )
 
 func provideContext(r *Runtime) service.Service {
@@ -113,7 +113,7 @@ func mkOrLoadRepo(ctx context.Context, path string) (repo.Repo, error) {
 }
 
 func loadRepo(path string) (repo.Repo, error) {
-	if err := setupPlugins(path); err != nil {
+	if err := repoutil.SetupPlugins(path); err != nil {
 		return nil, errors.Wrap(err, "setup plugins")
 	}
 
@@ -121,41 +121,10 @@ func loadRepo(path string) (repo.Repo, error) {
 }
 
 func mkRepo(path string) (repo.Repo, error) {
-	if err := setupPlugins(""); err != nil {
-		return nil, errors.Wrap(err, "setup plugins")
-	}
-
-	// Create a config with default options and a 2048 bit key
-	cfg, err := config.Init(ioutil.Discard, 2048) // TODO:  this should either be configurable or a const
-	if err != nil {
-		return nil, errors.Wrap(err, "new config")
-	}
-
-	// Create the repo with the config
-	if err = fsrepo.Init(path, cfg); err != nil {
-		return nil, errors.Wrap(err, "fsrepo init")
+	// SetupPlugins is called by InitRepo, so no need to call it again.
+	if err := repoutil.InitRepo(path); err != nil {
+		return nil, errors.Wrap(err, "init")
 	}
 
 	return fsrepo.Open(path)
-}
-
-// setupPlugins must be called before creating a repo in order to load
-// preloaded (= built-in) plugins.
-func setupPlugins(path string) error {
-	// Load any external plugins if available on path
-	plugins, err := loader.NewPluginLoader(filepath.Join(path, "plugins"))
-	if err != nil {
-		return errors.Wrap(err, "load plugins")
-	}
-
-	// Load preloaded and external plugins
-	if err := plugins.Initialize(); err != nil {
-		return errors.Wrap(err, "init plugins")
-	}
-
-	if err := plugins.Inject(); err != nil {
-		return errors.Wrap(err, "inject plugins")
-	}
-
-	return nil
 }
