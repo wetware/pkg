@@ -23,6 +23,8 @@ func InitRepo(path string, opt ...Option) (err error) {
 		if spec.Config, err = config.Init(spec.Printer, spec.KeySize); err != nil {
 			return errors.Wrap(err, "create config")
 		}
+
+		setConfig(spec.Config)
 	}
 
 	// Create the repo with the config
@@ -48,4 +50,21 @@ func SetupPlugins(path string) error {
 	}
 
 	return nil
+}
+
+func setConfig(cfg *config.Config) {
+	// // https://github.com/ipfs/go-ipfs/blob/master/docs/experimental-features.md#ipfs-filestore
+	// cfg.Experimental.FilestoreEnabled = true
+	// // https://github.com/ipfs/go-ipfs/blob/master/docs/experimental-features.md#ipfs-urlstore
+	// cfg.Experimental.UrlstoreEnabled = true
+	// // https://github.com/ipfs/go-ipfs/blob/master/docs/experimental-features.md#directory-sharding--hamt
+	// cfg.Experimental.ShardingEnabled = true
+	// // https://github.com/ipfs/go-ipfs/blob/master/docs/experimental-features.md#ipfs-p2p
+	// cfg.Experimental.Libp2pStreamMounting = true
+	// // https://github.com/ipfs/go-ipfs/blob/master/docs/experimental-features.md#p2p-http-proxy
+	// cfg.Experimental.P2pHttpProxy = true
+	// // https://github.com/ipfs/go-ipfs/blob/master/docs/experimental-features.md#quic
+	// cfg.Experimental.QUIC = true
+	// // https://github.com/ipfs/go-ipfs/blob/master/docs/experimental-features.md#strategic-providing
+	// cfg.Experimental.StrategicProviding = true
 }

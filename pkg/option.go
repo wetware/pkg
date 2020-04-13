@@ -1,6 +1,10 @@
 package ww
 
-import log "github.com/lthibault/log/pkg"
+import (
+	"time"
+
+	log "github.com/lthibault/log/pkg"
+)
 
 // Option type for Host
 type Option func(*Runtime) error
@@ -13,8 +17,34 @@ func WithLogger(logger log.Logger) Option {
 	}
 }
 
+// WithTempNode configures the underlying IFPS node as a short-lived peer, disabling
+// some expensive background processes that improve performance in the long run
+func WithTempNode() Option {
+	return func(r *Runtime) (err error) {
+		r.tempNode = true
+		return
+	}
+}
+
+// WithNamespace sets the cluster's namespace
+func WithNamespace(ns string) Option {
+	return func(r *Runtime) (err error) {
+		r.ns = ns
+		return
+	}
+}
+
+func withTTL(ttl time.Duration) Option {
+	return func(r *Runtime) (err error) {
+		r.ttl = ttl
+		return
+	}
+}
+
 func withDefault(opt []Option) []Option {
 	return append([]Option{
 		WithLogger(log.New(log.OptLevel(log.FatalLevel))),
+		WithNamespace("ww"),
+		withTTL(time.Second * 6),
 	}, opt...)
 }

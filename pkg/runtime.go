@@ -2,10 +2,12 @@ package ww
 
 import (
 	"context"
+	"time"
 
 	"github.com/ipfs/go-ipfs/core"
-	"github.com/ipfs/go-ipfs/core/coreapi"
 	"github.com/ipfs/go-ipfs/repo"
+	iface "github.com/ipfs/interface-go-ipfs-core"
+	"github.com/libp2p/go-libp2p-core/event"
 	log "github.com/lthibault/log/pkg"
 	service "github.com/lthibault/service/pkg"
 	"github.com/pkg/errors"
@@ -20,7 +22,16 @@ type Runtime struct {
 	/********************
 	*	static config	*
 	*********************/
-	repoPath string
+	ns, repoPath string
+	ttl          time.Duration
+
+	// Permanent nodes add a layer of caching for block storage (using bloom-filters) on
+	// top of the standard ARC cache.  Setting `tempNode` to `true` disables the bloom
+	// filter cache, apparently reducing memory consumption.
+	//
+	// The trade-off is that bloom-filter cacheing improves cache latency after an
+	// initial warm-up period.
+	tempNode bool
 
 	/********************
 	*	runtime state	*
@@ -28,8 +39,11 @@ type Runtime struct {
 	log log.Logger
 	ctx context.Context
 
+	fs [256]*filter
+
 	repo repo.Repo
 	node *core.IpfsNode
+	api  iface.CoreAPI
 }
 
 func (r *Runtime) setOptions(opt []Option) (err error) {
@@ -58,7 +72,7 @@ func (r *Runtime) Verify() error {
 	return nil
 }
 
-// Bind performs dependency injection on the Host and sets the host's root service.
+// Bind a Host to the runtime.
 func (r *Runtime) Bind(h *Host) {
 	/*
 	 *	A host's root service is a tree of (start, stop) functions that are called
@@ -69,40 +83,67 @@ func (r *Runtime) Bind(h *Host) {
 		 * Provide dependencies to the Runtime *
 		 ***************************************/
 		provideContext(r),
-		provideRepo(r),
-		provideIPFSNode(r),
-		provideStreamHandlers(r),
-
-		/********************************
-		 * Manage background goroutines *
-		 ********************************/
-		//  runHeartbeat(),
+		provideIPFS(r),
+		provideCluster(r),
 
 		/*************************************
 		 * Inject dependencies into the Host *
 		 *************************************/
-		inject(r, h), // inject dependencies & start background processes
+		inject(r, h),
+
+		/*******************************
+		 * Start the Host's event loop *
+		 *******************************/
+		runEventLoop(r.ctx, h),
 	}
 }
 
+func provideContext(r *Runtime) service.Service {
+	ctx, cancel := context.WithCancel(context.Background())
+	return service.Hook{
+		OnStart: func() error {
+			r.ctx = ctx
+			return nil
+		},
+		OnStop: func() error {
+			cancel()
+			return nil
+		},
+	}
+}
+
+// inject dependencies from a runtime into a host
 func inject(r *Runtime, h *Host) service.Service {
 	return service.Hook{
 		OnStart: func() (err error) {
-			r.log.Debug("starting host")
+			r.log = r.log.WithFields(log.F{
+				"id":    r.node.PeerHost.ID(),
+				"addrs": r.node.PeerHost.Addrs(),
+			})
 
-			// inject dependencies into host
 			h.log = r.log
 			h.host = r.node.PeerHost
-
-			if h.CoreAPI, err = coreapi.NewCoreAPI(r.node); err != nil {
-				return
-			}
+			h.CoreAPI = r.api
 
 			return
 		},
-		OnStop: func() (err error) {
-			r.log.Debug("shuting down host")
+	}
+}
+
+func runEventLoop(ctx context.Context, h *Host) service.Service {
+	var sub event.Subscription
+	return service.Hook{
+		OnStart: func() (err error) {
+			if sub, err = h.EventBus().Subscribe([]interface{}{
+				new(EvtHeartbeat),
+				// new(Event),
+			}); err == nil {
+				go h.loop(sub)
+			}
 			return
+		},
+		OnStop: func() error {
+			return sub.Close()
 		},
 	}
 }

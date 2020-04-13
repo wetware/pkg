@@ -11,6 +11,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/protocol"
 	log "github.com/lthibault/log/pkg"
 	service "github.com/lthibault/service/pkg"
+	"github.com/multiformats/go-multiaddr"
 )
 
 // StreamAPI .
@@ -69,6 +70,26 @@ func New(opt ...Option) (*Host, error) {
 	return h, nil
 }
 
+// Log returns a structured logger whose fields identify the host.
+func (h Host) Log() log.Logger {
+	return h.log
+}
+
+// ID of the Host
+func (h Host) ID() peer.ID {
+	return h.host.ID()
+}
+
+// Addrs on which the host is reachable
+func (h Host) Addrs() []multiaddr.Multiaddr {
+	return h.host.Addrs()
+}
+
+// Ls returns a list of known peers in the cluster
+func (h Host) Ls() peer.IDSlice {
+	return h.host.Peerstore().Peers()
+}
+
 // Start the Host's network connections and start its runtime processes.
 func (h Host) Start() error {
 	return h.root.Start()
@@ -87,4 +108,17 @@ func (h Host) Stream() StreamAPI {
 // EventBus API
 func (h Host) EventBus() event.Bus {
 	return h.host.EventBus()
+}
+
+func (h Host) loop(sub event.Subscription) {
+	for v := range sub.Out() {
+		switch event := v.(type) {
+		case EvtHeartbeat:
+			h.log.WithField("event", event).
+				Trace("got heartbeat")
+
+			h.host.Peerstore().
+				AddAddrs(event.ID, event.Addrs, event.TTL)
+		}
+	}
 }

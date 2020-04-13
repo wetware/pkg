@@ -5,30 +5,22 @@ import (
 	"io/ioutil"
 	"os"
 
-	service "github.com/lthibault/service/pkg"
-
 	config "github.com/ipfs/go-ipfs-config"
 	"github.com/ipfs/go-ipfs/core"
+	"github.com/ipfs/go-ipfs/core/coreapi"
 	"github.com/ipfs/go-ipfs/core/node/libp2p"
 	"github.com/ipfs/go-ipfs/repo"
 	"github.com/ipfs/go-ipfs/repo/fsrepo"
-	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/pkg/errors"
-
+	service "github.com/lthibault/service/pkg"
 	repoutil "github.com/lthibault/wetware/internal/util/repo"
+	"github.com/pkg/errors"
 )
 
-func provideContext(r *Runtime) service.Service {
-	ctx, cancel := context.WithCancel(context.Background())
-	return service.Hook{
-		OnStart: func() error {
-			r.ctx = ctx
-			return nil
-		},
-		OnStop: func() error {
-			cancel()
-			return nil
-		},
+func provideIPFS(r *Runtime) service.Service {
+	return service.Array{
+		provideRepo(r),
+		provideIPFSNode(r),
+		provideCoreAPI(r),
 	}
 }
 
@@ -44,43 +36,36 @@ func provideRepo(r *Runtime) service.Service {
 func provideIPFSNode(r *Runtime) service.Service {
 	return service.Hook{
 		OnStart: func() (err error) {
-			r.log.Trace("starting IPFS node")
-
 			r.node, err = core.NewNode(r.ctx, &core.BuildCfg{
-				Online:  true,
-				Routing: libp2p.DHTOption,
-				Repo:    r.repo,
+				Online:    true,
+				Routing:   libp2p.DHTOption,
+				Permanent: !r.tempNode,
+				Repo:      r.repo,
+				ExtraOpts: map[string]bool{
+					"pubsub": true,
+					// "ipnsps": false,
+					// "mplex":  false,
+				},
 			})
 			return
 		},
 		OnStop: func() error {
-			r.log.Trace("stopping IPFS node")
 			return r.node.Close()
 		},
 	}
 }
 
-func provideStreamHandlers(r *Runtime) service.Service {
+func provideCoreAPI(r *Runtime) service.Service {
 	return service.Hook{
-		OnStart: func() error {
-			r.log.Trace("registering stream handlers")
-
-			r.node.PeerHost.SetStreamHandler("test", func(s network.Stream) {
-				r.log.
-					WithField("proto", "test").
-					WithField("stat", s.Stat()).
-					Info("stream handled")
-
-				s.Reset()
-			})
-
-			return nil
+		OnStart: func() (err error) {
+			r.api, err = coreapi.NewCoreAPI(r.node)
+			return
 		},
 	}
 }
 
 /*
-	helper functions
+	repo helper functions
 */
 
 func newRepo(ctx context.Context, path string) (repo.Repo, error) {

@@ -1,7 +1,10 @@
 package start
 
 import (
-	log "github.com/lthibault/log/pkg"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 
@@ -47,24 +50,26 @@ func Flags() []cli.Flag {
 // Run the `start` command
 func Run() cli.ActionFunc {
 	return func(c *cli.Context) (err error) {
-		log := logutil.New(c)
-
 		var h *ww.Host
-		if h, err = ww.New(ww.WithLogger(log)); err != nil {
+		if h, err = ww.New(ww.WithLogger(logutil.New(c))); err != nil {
 			return err
 		}
 
 		if err = h.Start(); err != nil {
 			return errors.Wrap(err, "start host")
 		}
-		defer stop(log, h)
 
-		return errors.New("NOT IMPLEMENTED")
+		return wait(h)
 	}
 }
 
-func stop(log log.Logger, h *ww.Host) {
-	if err := h.Close(); err != nil {
-		log.WithError(err).Fatal("error encountered during host shutdown")
-	}
+func wait(h *ww.Host) error {
+	h.Log().Info("host started")
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+	<-c
+
+	h.Log().Warn("host shutting down")
+	return h.Close()
 }
