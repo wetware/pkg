@@ -2,7 +2,6 @@ package ww
 
 import (
 	"context"
-	"sync"
 
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/ipfs/go-ipfs/core/coreapi"
@@ -61,13 +60,29 @@ func (r *Runtime) Verify() error {
 
 // Bind performs dependency injection on the Host and sets the host's root service.
 func (r *Runtime) Bind(h *Host) {
-	h.root = &rootService{Service: service.Array{
+	/*
+	 *	A host's root service is a tree of (start, stop) functions that are called
+	 *	recursively.  Calling h.root.Start/Stop effectively starts/stops the Host.
+	 */
+	h.root = service.Array{
+		/***************************************
+		 * Provide dependencies to the Runtime *
+		 ***************************************/
 		provideContext(r),
 		provideRepo(r),
 		provideIPFSNode(r),
 		provideStreamHandlers(r),
+
+		/********************************
+		 * Manage background goroutines *
+		 ********************************/
+		//  runHeartbeat(),
+
+		/*************************************
+		 * Inject dependencies into the Host *
+		 *************************************/
 		inject(r, h), // inject dependencies & start background processes
-	}}
+	}
 }
 
 func inject(r *Runtime, h *Host) service.Service {
@@ -90,18 +105,4 @@ func inject(r *Runtime, h *Host) service.Service {
 			return
 		},
 	}
-}
-
-type rootService struct {
-	sync.Once
-	err error
-	service.Service
-}
-
-func (c *rootService) Stop() error {
-	c.Once.Do(func() {
-		c.err = c.Service.Stop()
-	})
-
-	return c.err
 }
