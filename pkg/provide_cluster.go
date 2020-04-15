@@ -50,7 +50,7 @@ func provideHeartbeat(r *Runtime) service.Service {
 
 func filtloop(r *Runtime) service.Service {
 	for i := range r.fs {
-		r.fs[i] = newFilter(r.ttl * 3)
+		r.fs[i] = newFilter(r.ttl)
 	}
 
 	cq := make(chan struct{})
@@ -94,10 +94,21 @@ func publoop(r *Runtime) service.Service {
 	var cancel context.CancelFunc
 	return service.Hook{
 		OnStart: func() error {
-			// Hosts tend to be started in batches, which causes heartbeat storms.  We add a
-			// small ammount of jitter to smooth things out.
-			ticker = jitterbug.New(time.Second*2, jitterbug.Uniform{
-				Min:    time.Millisecond * 1500,
+			// Hosts tend to be started in batches, which causes heartbeat storms.  We
+			// add a small ammount of jitter to smooth things out.  The jitter is
+			// calculated by sampling from a uniform distribution between .25 * TTL and
+			// .5 * TTL.  The TTL corresponds to 2.6 heartbeats, on average.
+			//
+			// With default TTL settings, a heartbeat is emitted every 2250ms, on
+			// average.  This tolerance is optimized for the widest possible variety of
+			// execution settings, and should notably perform well on high-latency
+			// networks, including 3G.
+			//
+			// Clusters operating in low-latency settings such as datacenters may wish
+			// to reduce the TTL.  Doing so will increase the cluster's responsiveness
+			// at the expense of an O(n) increase in bandwidth consumption.
+			ticker = jitterbug.New(r.ttl/2, jitterbug.Uniform{
+				Min:    r.ttl / 4,
 				Source: rand.New(randutil.FromPeer(r.node.PeerHost.ID())),
 			})
 

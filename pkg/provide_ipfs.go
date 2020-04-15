@@ -8,7 +8,6 @@ import (
 	config "github.com/ipfs/go-ipfs-config"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/ipfs/go-ipfs/core/coreapi"
-	"github.com/ipfs/go-ipfs/core/node/libp2p"
 	"github.com/ipfs/go-ipfs/repo"
 	"github.com/ipfs/go-ipfs/repo/fsrepo"
 	service "github.com/lthibault/service/pkg"
@@ -27,7 +26,11 @@ func provideIPFS(r *Runtime) service.Service {
 func provideRepo(r *Runtime) service.Service {
 	return service.Hook{
 		OnStart: func() (err error) {
-			r.repo, err = newRepo(r.ctx, r.repoPath)
+			// Repo may have been set by passing a non-nil core.BuildCfg to the
+			// withBuildConfig option.
+			if !r.buildCfg.NilRepo && r.buildCfg.Repo == nil {
+				r.buildCfg.Repo, err = newRepo(r.ctx, r.repoPath)
+			}
 			return
 		},
 	}
@@ -36,17 +39,7 @@ func provideRepo(r *Runtime) service.Service {
 func provideIPFSNode(r *Runtime) service.Service {
 	return service.Hook{
 		OnStart: func() (err error) {
-			r.node, err = core.NewNode(r.ctx, &core.BuildCfg{
-				Online:    true,
-				Routing:   libp2p.DHTOption,
-				Permanent: !r.tempNode,
-				Repo:      r.repo,
-				ExtraOpts: map[string]bool{
-					"pubsub": true,
-					// "ipnsps": false,
-					// "mplex":  false,
-				},
-			})
+			r.node, err = core.NewNode(r.ctx, &r.buildCfg)
 			return
 		},
 		OnStop: func() error {

@@ -7,6 +7,7 @@ import (
 
 	log "github.com/lthibault/log/pkg"
 
+	"github.com/lthibault/wetware/internal/cmd/client"
 	"github.com/lthibault/wetware/internal/cmd/repo"
 	"github.com/lthibault/wetware/internal/cmd/start"
 )
@@ -22,6 +23,11 @@ func main() {
 			Name:        "repo",
 			Usage:       "repository utils",
 			Subcommands: repo.Commands(),
+		}, {
+			Name:        "client",
+			Usage:       "interact with a live cluster",
+			Before:      client.Init(),
+			Subcommands: client.Commands(),
 		}},
 	}
 

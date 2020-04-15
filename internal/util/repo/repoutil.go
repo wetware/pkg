@@ -53,6 +53,14 @@ func SetupPlugins(path string) error {
 }
 
 func setConfig(cfg *config.Config) {
+	// Gateway seems to be disabled by default.  If this turns out to be wrong, try
+	// uncommenting the lines below.
+	/*
+		cfg.Gateway = config.Gateway{}
+		cfg.Addresses.API = nil
+		cfg.Addresses.Gateway = nil
+	*/
+
 	// // https://github.com/ipfs/go-ipfs/blob/master/docs/experimental-features.md#ipfs-filestore
 	// cfg.Experimental.FilestoreEnabled = true
 	// // https://github.com/ipfs/go-ipfs/blob/master/docs/experimental-features.md#ipfs-urlstore
