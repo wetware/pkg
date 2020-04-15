@@ -10,6 +10,7 @@ import (
 	"github.com/ipfs/go-ipfs/core/coreapi"
 	"github.com/ipfs/go-ipfs/repo"
 	"github.com/ipfs/go-ipfs/repo/fsrepo"
+	log "github.com/lthibault/log/pkg"
 	service "github.com/lthibault/service/pkg"
 	repoutil "github.com/lthibault/wetware/internal/util/repo"
 	"github.com/pkg/errors"
@@ -29,7 +30,7 @@ func provideRepo(r *Runtime) service.Service {
 			// Repo may have been set by passing a non-nil core.BuildCfg to the
 			// withBuildConfig option.
 			if !r.buildCfg.NilRepo && r.buildCfg.Repo == nil {
-				r.buildCfg.Repo, err = newRepo(r.ctx, r.repoPath)
+				r.buildCfg.Repo, err = newRepo(r.ctx, r.log, r.repoPath)
 			}
 			return
 		},
@@ -61,33 +62,32 @@ func provideCoreAPI(r *Runtime) service.Service {
 	repo helper functions
 */
 
-func newRepo(ctx context.Context, path string) (repo.Repo, error) {
+func newRepo(ctx context.Context, log log.Logger, path string) (_ repo.Repo, err error) {
 	switch path {
 	case "":
-		path, err := ioutil.TempDir("", "ww-*")
-		if err != nil {
+		if path, err = ioutil.TempDir("", "ww-*"); err != nil {
 			return nil, errors.Wrap(err, "tempdir")
 		}
 
-		return mkOrLoadRepo(ctx, path)
+		log.WithField("path", path).Debug("creating temporary repo")
+		return mkRepo(path)
 	case "auto":
-		path, err := config.PathRoot() // default repo path from IPFS config
-		if err != nil {
+		// Use default repo path from IPFS config
+		if path, err = config.PathRoot(); err != nil {
 			return nil, err // shouldn't be possible
 		}
 
+		log.WithField("path", path).Debug("using default IPFS path")
 		return loadRepo(path)
 	default:
-		return mkOrLoadRepo(ctx, path)
-	}
-}
+		if err := os.MkdirAll(path, 0770); os.IsExist(err) {
+			log.WithField("path", path).Debug("loading repo")
+			return loadRepo(path)
+		}
 
-func mkOrLoadRepo(ctx context.Context, path string) (repo.Repo, error) {
-	if err := os.MkdirAll(path, 0770); os.IsExist(err) {
-		return loadRepo(path)
+		log.WithField("path", path).Debug("creating repo")
+		return mkRepo(path)
 	}
-
-	return mkRepo(path)
 }
 
 func loadRepo(path string) (repo.Repo, error) {
