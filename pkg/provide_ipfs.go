@@ -24,31 +24,26 @@ import (
 	repoutil "github.com/lthibault/wetware/internal/util/repo"
 )
 
-// profile is a factory function for a BuildCfg
-type profile func(*Runtime) (*core.BuildCfg, error)
-
 func provideIPFS(r *Runtime) service.Service {
 	return service.Array{
-		provideBuildConfig(r),
 		provideIPFSNode(r),
 		provideCoreAPI(r),
 	}
 }
 
-func provideBuildConfig(r *Runtime) service.Service {
-	return service.Hook{
-		OnStart: func() (err error) {
-			r.buildCfg, err = r.newBuildCfg(r)
-			return
-		},
-	}
-}
-
 func provideIPFSNode(r *Runtime) service.Service {
 	return service.Hook{
-		OnStart: func() (err error) {
-			r.node, err = core.NewNode(r.ctx, r.buildCfg)
-			return
+		OnStart: func() error {
+			cfg, err := newBuildCfg(r)
+			if err != nil {
+				return errors.Wrap(err, "build config")
+			}
+
+			if r.node, err = core.NewNode(r.ctx, cfg); err != nil {
+				return errors.Wrap(err, "create node")
+			}
+
+			return nil
 		},
 		OnStop: func() error {
 			return r.node.Close()
@@ -69,7 +64,7 @@ func provideCoreAPI(r *Runtime) service.Service {
 	build config helper functions
 */
 
-func defaultProfile(r *Runtime) (*core.BuildCfg, error) {
+func newBuildCfg(r *Runtime) (*core.BuildCfg, error) {
 	repo, err := newRepo(r.ctx, r.log, r.repoPath)
 	if err != nil {
 		return nil, err
@@ -79,25 +74,6 @@ func defaultProfile(r *Runtime) (*core.BuildCfg, error) {
 		Online:    true,
 		Permanent: true,
 		Routing:   libp2p.DHTOption,
-		ExtraOpts: map[string]bool{
-			"pubsub": true,
-			// "ipnsps": false,
-			// "mplex":  false,
-		},
-		Repo: repo,
-	}, nil
-}
-
-func clientProfile(r *Runtime) (*core.BuildCfg, error) {
-	repo, err := newClientRepo(r.log)
-	if err != nil {
-		return nil, err
-	}
-
-	return &core.BuildCfg{
-		Online:    true,
-		Permanent: false,
-		Routing:   libp2p.DHTClientOption,
 		ExtraOpts: map[string]bool{
 			"pubsub": true,
 			// "ipnsps": false,

@@ -25,9 +25,6 @@ type Runtime struct {
 	ns, repoPath string
 	ttl          time.Duration
 
-	newBuildCfg profile
-	buildCfg    *core.BuildCfg
-
 	/********************
 	*	runtime state	*
 	*********************/
@@ -40,8 +37,14 @@ type Runtime struct {
 	api  iface.CoreAPI
 }
 
-func (r *Runtime) setOptions(opt []Option) error {
-	return applyOpt(r, withDefault(opt)...)
+func (r *Runtime) setOptions(opt []Option) (err error) {
+	for _, f := range withDefault(opt) {
+		if err = f(r); err != nil {
+			break
+		}
+	}
+
+	return
 }
 
 // Verify configuration.  Returns a descriptive error if a constraint is violated.
@@ -49,7 +52,6 @@ func (r *Runtime) Verify() (err error) {
 	for _, validate := range []func() error{
 		func() error { return assertNotNil(r.log, "logger must be set") },
 		func() error { return assertNotEmpty(r.ns, "namespace must be specified") },
-		func() error { return assertNotNil(r.newBuildCfg, "newBuildCfg must be set") },
 	} {
 		if err = validate(); err != nil {
 			break
