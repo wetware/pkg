@@ -53,6 +53,22 @@ func SetupPlugins(path string) error {
 }
 
 func setConfig(cfg *config.Config) {
+	// Remove default bootstrap nodes.
+	//
+	// TODO:  provide facilities for users to specify bootstrap nodes.
+	// 		  See:  https://github.com/ipfs/go-ipfs/blob/ce78064335c9923abb6540dc7a3cd512672a62bc/docs/experimental-features.md
+	cfg.Bootstrap = nil
+
+	// Default values are really huge (600 & 900, respectively).  Cut this down to
+	// something more reasonable.
+	//
+	// TODO:  investigate whether this causes issues.  Check the following:
+	//
+	//			- Connection churn (frequent calls to `BasicConnMgr.trim` ?)
+	// 			- Are pubsub conns protected?
+	cfg.Swarm.ConnMgr.LowWater = 32
+	cfg.Swarm.ConnMgr.HighWater = 128
+
 	// Gateway seems to be disabled by default.  If this turns out to be wrong, try
 	// uncommenting the lines below.
 	/*
@@ -60,19 +76,4 @@ func setConfig(cfg *config.Config) {
 		cfg.Addresses.API = nil
 		cfg.Addresses.Gateway = nil
 	*/
-
-	// // https://github.com/ipfs/go-ipfs/blob/master/docs/experimental-features.md#ipfs-filestore
-	// cfg.Experimental.FilestoreEnabled = true
-	// // https://github.com/ipfs/go-ipfs/blob/master/docs/experimental-features.md#ipfs-urlstore
-	// cfg.Experimental.UrlstoreEnabled = true
-	// // https://github.com/ipfs/go-ipfs/blob/master/docs/experimental-features.md#directory-sharding--hamt
-	// cfg.Experimental.ShardingEnabled = true
-	// // https://github.com/ipfs/go-ipfs/blob/master/docs/experimental-features.md#ipfs-p2p
-	// cfg.Experimental.Libp2pStreamMounting = true
-	// // https://github.com/ipfs/go-ipfs/blob/master/docs/experimental-features.md#p2p-http-proxy
-	// cfg.Experimental.P2pHttpProxy = true
-	// // https://github.com/ipfs/go-ipfs/blob/master/docs/experimental-features.md#quic
-	// cfg.Experimental.QUIC = true
-	// // https://github.com/ipfs/go-ipfs/blob/master/docs/experimental-features.md#strategic-providing
-	// cfg.Experimental.StrategicProviding = true
 }
