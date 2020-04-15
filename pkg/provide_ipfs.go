@@ -2,36 +2,43 @@ package ww
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"io/ioutil"
 	"os"
 
+	log "github.com/lthibault/log/pkg"
+	service "github.com/lthibault/service/pkg"
+	"github.com/pkg/errors"
+
+	"github.com/ipfs/go-datastore"
 	config "github.com/ipfs/go-ipfs-config"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/ipfs/go-ipfs/core/coreapi"
+	"github.com/ipfs/go-ipfs/core/node/libp2p"
 	"github.com/ipfs/go-ipfs/repo"
 	"github.com/ipfs/go-ipfs/repo/fsrepo"
-	log "github.com/lthibault/log/pkg"
-	service "github.com/lthibault/service/pkg"
+	"github.com/libp2p/go-libp2p-core/crypto"
+	peer "github.com/libp2p/go-libp2p-core/peer"
+
 	repoutil "github.com/lthibault/wetware/internal/util/repo"
-	"github.com/pkg/errors"
 )
+
+// profile is a factory function for a BuildCfg
+type profile func(*Runtime) (*core.BuildCfg, error)
 
 func provideIPFS(r *Runtime) service.Service {
 	return service.Array{
-		provideRepo(r),
+		provideBuildConfig(r),
 		provideIPFSNode(r),
 		provideCoreAPI(r),
 	}
 }
 
-func provideRepo(r *Runtime) service.Service {
+func provideBuildConfig(r *Runtime) service.Service {
 	return service.Hook{
 		OnStart: func() (err error) {
-			// Repo may have been set by passing a non-nil core.BuildCfg to the
-			// withBuildConfig option.
-			if !r.buildCfg.NilRepo && r.buildCfg.Repo == nil {
-				r.buildCfg.Repo, err = newRepo(r.ctx, r.log, r.repoPath)
-			}
+			r.buildCfg, err = r.newBuildCfg(r)
 			return
 		},
 	}
@@ -40,7 +47,7 @@ func provideRepo(r *Runtime) service.Service {
 func provideIPFSNode(r *Runtime) service.Service {
 	return service.Hook{
 		OnStart: func() (err error) {
-			r.node, err = core.NewNode(r.ctx, &r.buildCfg)
+			r.node, err = core.NewNode(r.ctx, r.buildCfg)
 			return
 		},
 		OnStop: func() error {
@@ -56,6 +63,48 @@ func provideCoreAPI(r *Runtime) service.Service {
 			return
 		},
 	}
+}
+
+/*
+	build config helper functions
+*/
+
+func defaultProfile(r *Runtime) (*core.BuildCfg, error) {
+	repo, err := newRepo(r.ctx, r.log, r.repoPath)
+	if err != nil {
+		return nil, err
+	}
+
+	return &core.BuildCfg{
+		Online:    true,
+		Permanent: true,
+		Routing:   libp2p.DHTOption,
+		ExtraOpts: map[string]bool{
+			"pubsub": true,
+			// "ipnsps": false,
+			// "mplex":  false,
+		},
+		Repo: repo,
+	}, nil
+}
+
+func clientProfile(r *Runtime) (*core.BuildCfg, error) {
+	repo, err := newClientRepo(r.log)
+	if err != nil {
+		return nil, err
+	}
+
+	return &core.BuildCfg{
+		Online:    true,
+		Permanent: false,
+		Routing:   libp2p.DHTClientOption,
+		ExtraOpts: map[string]bool{
+			"pubsub": true,
+			// "ipnsps": false,
+			// "mplex":  false,
+		},
+		Repo: repo,
+	}, nil
 }
 
 /*
@@ -88,6 +137,38 @@ func newRepo(ctx context.Context, log log.Logger, path string) (_ repo.Repo, err
 		log.WithField("path", path).Debug("creating repo")
 		return mkRepo(path)
 	}
+}
+
+func newClientRepo(log log.Logger) (repo.Repo, error) {
+	var c config.Config
+	priv, pub, err := crypto.GenerateKeyPairWithReader(crypto.RSA, 2048, rand.Reader)
+	if err != nil {
+		return nil, err
+	}
+
+	pid, err := peer.IDFromPublicKey(pub)
+	if err != nil {
+		return nil, err
+	}
+
+	privkeyb, err := priv.Bytes()
+	if err != nil {
+		return nil, err
+	}
+
+	c.Identity.PeerID = pid.Pretty()
+	c.Identity.PrivKey = base64.StdEncoding.EncodeToString(privkeyb)
+
+	// TODO:  we don't want peers to try to connect with a client.  Client isn't listening...
+	// c.Discovery.MDNS.Enabled = true
+	// c.Discovery.MDNS.Interval = "10s"
+
+	c.Routing.Type = "dht"
+
+	return &repo.Mock{
+		D: datastore.NewNullDatastore(),
+		C: c,
+	}, nil
 }
 
 func loadRepo(path string) (repo.Repo, error) {

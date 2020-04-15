@@ -34,8 +34,12 @@ func InitRepo(path string, opt ...Option) (err error) {
 // SetupPlugins must be called before loading a repo in order to load preloaded
 // (= built-in) plugins.
 func SetupPlugins(path string) error {
+	if path != "" {
+		path = filepath.Join(path, "plugins")
+	}
+
 	// Load any external plugins if available on path
-	plugins, err := loader.NewPluginLoader(filepath.Join(path, "plugins"))
+	plugins, err := loader.NewPluginLoader(path)
 	if err != nil {
 		return errors.Wrap(err, "load plugins")
 	}
@@ -53,6 +57,13 @@ func SetupPlugins(path string) error {
 }
 
 func setConfig(cfg *config.Config) {
+	/***********************************************************************************
+	 *																				   *
+	 *	Full documentation available at:											   *
+	 *	https://github.com/ipfs/go-ipfs/blob/master/docs/config.md#table-of-contents   *
+	 *																				   *
+	 ***********************************************************************************/
+
 	// Remove default bootstrap nodes.
 	//
 	// TODO:  provide facilities for users to specify bootstrap nodes.

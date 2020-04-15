@@ -2,7 +2,6 @@ package ww
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	log "github.com/lthibault/log/pkg"
@@ -25,9 +24,9 @@ type Runtime struct {
 	*********************/
 	ns, repoPath string
 	ttl          time.Duration
-	clientMode   bool
 
-	buildCfg core.BuildCfg
+	newBuildCfg profile
+	buildCfg    *core.BuildCfg
 
 	/********************
 	*	runtime state	*
@@ -50,7 +49,7 @@ func (r *Runtime) Verify() (err error) {
 	for _, validate := range []func() error{
 		func() error { return assertNotNil(r.log, "logger must be set") },
 		func() error { return assertNotEmpty(r.ns, "namespace must be specified") },
-		validateBuildConfig(r),
+		func() error { return assertNotNil(r.newBuildCfg, "newBuildCfg must be set") },
 	} {
 		if err = validate(); err != nil {
 			break
@@ -138,80 +137,6 @@ func runEventLoop(ctx context.Context, h *Host) service.Service {
 /*
 	Validation helpers
 */
-
-func validateBuildConfig(r *Runtime) func() error {
-	return func() (err error) {
-		for _, verify := range []func() error{
-			func() error {
-				return assertNotNil(r.buildCfg, "build config must be set")
-			},
-			func() error {
-				return assertTrue(r.buildCfg.Online, "networking must be enabled")
-			},
-			verifyClientMode(r),
-		} {
-			if err = verify(); err != nil {
-				break
-			}
-		}
-
-		return
-	}
-}
-
-func verifyClientMode(r *Runtime) func() error {
-	return func() (err error) {
-		if !r.clientMode {
-			return
-		}
-
-		for _, verify := range []func() error{
-			func() error {
-				return assertFalse(r.buildCfg.Permanent, "client nodes must be temporary")
-			},
-			func() error {
-				return assertTrue(r.buildCfg.NilRepo, "client nodes must have a NilRepo")
-			},
-			func() error {
-				// N.B.:  this is different than r.buildCfg.NilRepo.  If NilRepo == true
-				//		  but r.buildCfg.Repo != nil, then the `Repo` value will end up
-				//		  being used.
-				return assertNil(r.buildCfg.Repo, "client nodes cannot declare a repo")
-			},
-			func() error {
-				// N.B.:  this is an incomplete check.  We can't evaluate equality
-				// 		  between function types in Go, so the best we can do is ensure
-				// 		  that _something_ (hopefully `libp2p.DHTClientOption`) was set.
-				return assertNotNil(r.buildCfg.Routing,
-					"client nodes must use libp2p.DHTClientOption")
-			},
-		} {
-			if err = verify(); err != nil {
-				break
-			}
-		}
-
-		return
-	}
-}
-
-func assertFalse(b bool, msgAndArgs ...interface{}) error {
-	return assertTrue(!b, "expected false, got true")
-}
-
-func assertTrue(b bool, msgAndArgs ...interface{}) error {
-	if !b {
-		return fmtErr("expected true, got false", msgAndArgs...)
-	}
-	return nil
-}
-
-func assertNil(obj interface{}, msgAndArgs ...interface{}) error {
-	if obj != nil {
-		return fmtErr(fmt.Sprintf("expected nil object, got %T", obj), msgAndArgs...)
-	}
-	return nil
-}
 
 func assertNotNil(obj interface{}, msgAndArgs ...interface{}) error {
 	if obj == nil {

@@ -3,8 +3,6 @@ package ww
 import (
 	"time"
 
-	"github.com/ipfs/go-ipfs/core"
-	"github.com/ipfs/go-ipfs/core/node/libp2p"
 	log "github.com/lthibault/log/pkg"
 )
 
@@ -19,20 +17,20 @@ func WithLogger(logger log.Logger) Option {
 	}
 }
 
-// WithTempNode configures the underlying IFPS node as a short-lived peer, disabling
-// some expensive background processes that improve performance in the long run
-func WithTempNode() Option {
-	return func(r *Runtime) (err error) {
-		// Permanent nodes add a layer of caching for block storage (using bloom-
-		// filters) on top of the standard ARC cache.  Disabling the bloom filter cache
-		// apparently reduces memory consumption.
-		//
-		// The trade-off is that bloom-filter cacheing improves cache latency after an
-		// initial warm-up period.
-		r.buildCfg.Permanent = false
-		return
-	}
-}
+// // WithTempNode configures the underlying IFPS node as a short-lived peer, disabling
+// // some expensive background processes that improve performance in the long run
+// func WithTempNode() Option {
+// 	return func(r *Runtime) (err error) {
+// 		// Permanent nodes add a layer of caching for block storage (using bloom-
+// 		// filters) on top of the standard ARC cache.  Disabling the bloom filter cache
+// 		// apparently reduces memory consumption.
+// 		//
+// 		// The trade-off is that bloom-filter cacheing improves cache latency after an
+// 		// initial warm-up period.
+// 		r.buildCfg.Permanent = false
+// 		return
+// 	}
+// }
 
 // WithNamespace sets the cluster's namespace
 func WithNamespace(ns string) Option {
@@ -42,15 +40,19 @@ func WithNamespace(ns string) Option {
 	}
 }
 
-// WithClientMode starts a Host in client-mode.  Client hosts do not store data or
+// WithClientProfile starts a Host in client-mode.  Client hosts do not store data or
 // otherwise participate in cluster activities, but can connect to a cluster.
-func WithClientMode() Option {
+func WithClientProfile() Option {
 	return func(r *Runtime) error {
-		r.clientMode = true
 		return applyOpt(r,
-			WithTempNode(),
-			withDHTClient(),
-			withNilRepo())
+			withProfile(clientProfile))
+	}
+}
+
+func withProfile(p profile) Option {
+	return func(r *Runtime) error {
+		r.newBuildCfg = p
+		return nil
 	}
 }
 
@@ -61,38 +63,12 @@ func withTTL(ttl time.Duration) Option {
 	}
 }
 
-func withBuildConfig(cfg *core.BuildCfg) Option {
-	if cfg == nil {
-		cfg = defaultBuildConfig()
-	}
-
-	return func(r *Runtime) (err error) {
-		r.buildCfg = *cfg
-		return
-	}
-}
-
-func withDHTClient() Option {
-	return func(r *Runtime) (err error) {
-		r.buildCfg.Routing = libp2p.DHTClientOption
-		return
-	}
-}
-
-func withNilRepo() Option {
-	return func(r *Runtime) (err error) {
-		r.buildCfg.Repo = nil // for good measure
-		r.buildCfg.NilRepo = true
-		return
-	}
-}
-
 func withDefault(opt []Option) []Option {
 	return append([]Option{
 		WithLogger(log.New(log.OptLevel(log.FatalLevel))),
 		WithNamespace("ww"),
 		withTTL(time.Second * 6),
-		withBuildConfig(nil),
+		withProfile(defaultProfile),
 	}, opt...)
 }
 
@@ -104,18 +80,4 @@ func applyOpt(r *Runtime, opt ...Option) (err error) {
 	}
 
 	return
-}
-
-func defaultBuildConfig() *core.BuildCfg {
-	// N.B.:  Repo will be set by `provideRepo`
-	return &core.BuildCfg{
-		Online:    true,
-		Routing:   libp2p.DHTOption,
-		Permanent: true,
-		ExtraOpts: map[string]bool{
-			"pubsub": true,
-			// "ipnsps": false,
-			// "mplex":  false,
-		},
-	}
 }

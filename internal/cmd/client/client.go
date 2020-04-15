@@ -14,7 +14,7 @@ func Init() cli.BeforeFunc {
 	return func(c *cli.Context) (err error) {
 		host, err = ww.New(
 			ww.WithLogger(logutil.New(c)),
-			ww.WithClientMode())
+			ww.WithClientProfile())
 		return
 	}
 }
