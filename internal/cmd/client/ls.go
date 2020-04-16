@@ -2,25 +2,12 @@ package client
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/urfave/cli/v2"
 )
 
 func lsFlags() []cli.Flag {
 	return []cli.Flag{}
-}
-
-func lsInit() cli.BeforeFunc {
-	return func(c *cli.Context) error {
-		return host.Start()
-	}
-}
-
-func lsShutdown() cli.AfterFunc {
-	return func(c *cli.Context) error {
-		return host.Close()
-	}
 }
 
 func lsAction() cli.ActionFunc {
@@ -34,11 +21,13 @@ func lsAction() cli.ActionFunc {
 			return errors.New("TODO:  implement Anchor.Walk")
 		}
 
-		for _, id := range host.Ls() {
-			fmt.Printf("/%s\n", id)
-		}
+		// for _, id := range host.Ls() {
+		// 	fmt.Printf("/%s\n", id)
+		// }
 
-		return nil
+		// return nil
+		return errors.New("NOT IMPLEMENTED")
+
 		// -- DEBUG
 
 		/* TODO:

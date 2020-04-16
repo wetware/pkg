@@ -21,29 +21,6 @@ func Flags() []cli.Flag {
 			Usage:   "path to IPFS repository",
 			EnvVars: []string{"WW_REPO"},
 		},
-		&cli.StringFlag{
-			Name:    "logfmt",
-			Aliases: []string{"f"},
-			Usage:   "text, json, none",
-			Value:   "text",
-			EnvVars: []string{"CASM_LOGFMT"},
-		},
-		&cli.StringFlag{
-			Name:    "loglvl",
-			Usage:   "trace, debug, info, warn, error, fatal",
-			Value:   "info",
-			EnvVars: []string{"CASM_LOGLVL"},
-		},
-
-		/************************
-		*	undocumented flags	*
-		*************************/
-		&cli.BoolFlag{
-			Name:    "prettyprint",
-			Aliases: []string{"pp"},
-			Usage:   "pretty-print JSON output",
-			Hidden:  true,
-		},
 	}
 }
 

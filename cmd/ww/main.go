@@ -15,6 +15,31 @@ import (
 
 func main() {
 	app := &cli.App{
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:    "logfmt",
+				Aliases: []string{"f"},
+				Usage:   "text, json, none",
+				Value:   "text",
+				EnvVars: []string{"CASM_LOGFMT"},
+			},
+			&cli.StringFlag{
+				Name:    "loglvl",
+				Usage:   "trace, debug, info, warn, error, fatal",
+				Value:   "info",
+				EnvVars: []string{"CASM_LOGLVL"},
+			},
+
+			/************************
+			*	undocumented flags	*
+			*************************/
+			&cli.BoolFlag{
+				Name:    "prettyprint",
+				Aliases: []string{"pp"},
+				Usage:   "pretty-print JSON output",
+				Hidden:  true,
+			},
+		},
 		Commands: []*cli.Command{{
 			Name:   "start",
 			Usage:  "start a host process",
@@ -27,6 +52,7 @@ func main() {
 		}, {
 			Name:        "client",
 			Usage:       "interact with a live cluster",
+			Flags:       client.Flags(),
 			Before:      client.Init(),
 			Subcommands: client.Commands(),
 		}, {

@@ -85,11 +85,6 @@ func (h Host) Addrs() []multiaddr.Multiaddr {
 	return h.host.Addrs()
 }
 
-// Ls returns a list of known peers in the cluster
-func (h Host) Ls() peer.IDSlice {
-	return h.host.Peerstore().Peers()
-}
-
 // Start the Host's network connections and start its runtime processes.
 func (h Host) Start() error {
 	return h.root.Start()
