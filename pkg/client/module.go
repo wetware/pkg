@@ -4,11 +4,12 @@ import (
 	"context"
 	"time"
 
-	host "github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 	"go.uber.org/fx"
 	"golang.org/x/sync/errgroup"
+
+	host "github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/peer"
 )
 
 func module(c *Client, d Discover, opt []Option) fx.Option {
@@ -44,19 +45,23 @@ func newCtx(lx fx.Lifecycle) context.Context {
 	return ctx
 }
 
-func join(ctx context.Context, host host.Host, d struct{ Discover }) error {
-	ps, err := d.DiscoverPeers(ctx)
-	if err != nil {
-		return errors.Wrap(err, "discover")
-	}
+func join(lx fx.Lifecycle, host host.Host, d struct{ Discover }) {
+	lx.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			ps, err := d.DiscoverPeers(ctx)
+			if err != nil {
+				return errors.Wrap(err, "discover")
+			}
 
-	// TODO:  change this to an at-least-one-succeeds group
-	var g errgroup.Group
-	for _, pinfo := range ps {
-		g.Go(connect(ctx, host, pinfo))
-	}
+			// TODO:  change this to an at-least-one-succeeds group
+			var g errgroup.Group
+			for _, pinfo := range ps {
+				g.Go(connect(ctx, host, pinfo))
+			}
 
-	return errors.Wrap(g.Wait(), "join")
+			return errors.Wrap(g.Wait(), "join")
+		},
+	})
 }
 
 func connect(ctx context.Context, host host.Host, pinfo peer.AddrInfo) func() error {
