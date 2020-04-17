@@ -5,7 +5,6 @@ import (
 
 	"go.uber.org/fx"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/libp2p/go-libp2p-core/event"
 	host "github.com/libp2p/go-libp2p-core/host"
 )
@@ -49,7 +48,7 @@ func (bus eventbus) loop() {
 		switch e := v.(type) {
 		case event.EvtPeerConnectednessChanged:
 			for _, conn := range bus.host.Network().ConnsToPeer(e.Peer) {
-				spew.Dump(conn.Stat().Extra) // DEBUG
+				panic(conn.Stat().Extra)
 			}
 		}
 	}

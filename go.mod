@@ -3,7 +3,6 @@ module github.com/lthibault/wetware
 go 1.14
 
 require (
-	github.com/davecgh/go-spew v1.1.1
 	github.com/ipfs/go-ipfs v0.5.0-rc1.0.20200411010526-5ecf44a88217
 	github.com/ipfs/go-ipfs-config v0.4.0
 	github.com/ipfs/interface-go-ipfs-core v0.2.6
