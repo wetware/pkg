@@ -8,6 +8,7 @@ import (
 	log "github.com/lthibault/log/pkg"
 
 	"github.com/lthibault/wetware/internal/cmd/client"
+	"github.com/lthibault/wetware/internal/cmd/discover"
 	"github.com/lthibault/wetware/internal/cmd/keygen"
 	"github.com/lthibault/wetware/internal/cmd/repo"
 	"github.com/lthibault/wetware/internal/cmd/start"
@@ -55,6 +56,7 @@ func main() {
 			Usage:       "interact with a live cluster",
 			Flags:       client.Flags(),
 			Before:      client.Init(),
+			After:       client.Shutdown(),
 			Subcommands: client.Commands(),
 		}, {
 			Name:        "keygen",
@@ -62,6 +64,12 @@ func main() {
 			Description: keygen.Description,
 			Flags:       keygen.Flags(),
 			Action:      keygen.Run(),
+		}, {
+			Name:   "discover",
+			Usage:  "discover peers on the network",
+			Flags:  discover.Flags(),
+			Before: discover.Init(),
+			Action: discover.Run(),
 		}},
 	}
 
