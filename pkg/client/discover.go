@@ -20,14 +20,14 @@ func init() {
 
 // Discover is an abstract strategy for ambient peer discovery.
 type Discover interface {
-	Discover(context.Context) ([]peer.AddrInfo, error)
+	DiscoverPeers(context.Context) ([]peer.AddrInfo, error)
 }
 
 // StaticAddrs for cluster discovery
 type StaticAddrs []multiaddr.Multiaddr
 
-// Discover peers.
-func (as StaticAddrs) Discover(context.Context) (ps []peer.AddrInfo, err error) {
+// DiscoverPeers converts the static addresses into AddrInfos
+func (as StaticAddrs) DiscoverPeers(context.Context) (ps []peer.AddrInfo, err error) {
 	return peer.AddrInfosFromP2pAddrs(as...)
 }
 
@@ -36,8 +36,8 @@ type MDNSDiscovery struct {
 	Interface *net.Interface
 }
 
-// Discover peers.
-func (d MDNSDiscovery) Discover(ctx context.Context) ([]peer.AddrInfo, error) {
+// DiscoverPeers queries MDNS.
+func (d MDNSDiscovery) DiscoverPeers(ctx context.Context) ([]peer.AddrInfo, error) {
 	entries := make(chan *mdns.ServiceEntry, 1)
 
 	if err := mdns.Query(&mdns.QueryParam{

@@ -111,21 +111,95 @@ func (p Heartbeat_Promise) Struct() (Heartbeat, error) {
 	return Heartbeat{s}, err
 }
 
-const schema_b3f8acfcffafd8e8 = "x\xda\x1c\xc81J\xc4@\x18\x86\xe1\xef\xfb'c\x9a" +
-	"\x18\x1c\x88\x8d A\x0f\xa0`i\x95B%\x82B\xfe" +
-	"\xca\xc2BF'`@$\xc49\x89\xe7\x10RXZ" +
-	"y\x0b\x8f \xd8Ym\xb10K\xb6z_\x9e\xbd\xab" +
-	"F\x9c}\x004\xb3;\xe9\xfe\xbb\xbd+\xdf\xff\xbe\xa0" +
-	"\x15\x99~\x7f\xe6\xb4\xfeX}\xc2J\x0e\xb8\xfd\x7fw" +
-	"\xb4\xf4p\x06\x93\x1f\x87\xd3\xe7\xdeO\x12\x1f{\x1fO" +
-	"\x9e\xfc\xf8:\x9e\xb7\xbd\x9f\xea-t\xa4\x16&\x032" +
-	"\x02\xee\xf2\x00\xd0\xc6Po\x84d\xc5\xc5\xae\x8f\x01\xbd" +
-	"0\xd4N\xe8\x84\x15\x05p\xb7g\x80\xb6\x86\x1a\x84f" +
-	"\x08, ,\xc0<\xc6\x17Z\x08-X\xfb\x10\xa67" +
-	"\x96`g\xc8]\xc8\xb2\x9b\x00\x00\x00\xff\xff\xbfV(" +
-	"^"
+type GoAway struct{ capnp.Struct }
+
+// GoAway_TypeID is the unique identifier for the type GoAway.
+const GoAway_TypeID = 0xabd2f19ecd2d1c43
+
+func NewGoAway(s *capnp.Segment) (GoAway, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return GoAway{st}, err
+}
+
+func NewRootGoAway(s *capnp.Segment) (GoAway, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return GoAway{st}, err
+}
+
+func ReadRootGoAway(msg *capnp.Message) (GoAway, error) {
+	root, err := msg.RootPtr()
+	return GoAway{root.Struct()}, err
+}
+
+func (s GoAway) String() string {
+	str, _ := text.Marshal(0xabd2f19ecd2d1c43, s.Struct)
+	return str
+}
+
+func (s GoAway) Id() (string, error) {
+	p, err := s.Struct.Ptr(0)
+	return p.Text(), err
+}
+
+func (s GoAway) HasId() bool {
+	p, err := s.Struct.Ptr(0)
+	return p.IsValid() || err != nil
+}
+
+func (s GoAway) IdBytes() ([]byte, error) {
+	p, err := s.Struct.Ptr(0)
+	return p.TextBytes(), err
+}
+
+func (s GoAway) SetId(v string) error {
+	return s.Struct.SetText(0, v)
+}
+
+// GoAway_List is a list of GoAway.
+type GoAway_List struct{ capnp.List }
+
+// NewGoAway creates a new list of GoAway.
+func NewGoAway_List(s *capnp.Segment, sz int32) (GoAway_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return GoAway_List{l}, err
+}
+
+func (s GoAway_List) At(i int) GoAway { return GoAway{s.List.Struct(i)} }
+
+func (s GoAway_List) Set(i int, v GoAway) error { return s.List.SetStruct(i, v.Struct) }
+
+func (s GoAway_List) String() string {
+	str, _ := text.MarshalList(0xabd2f19ecd2d1c43, s.List)
+	return str
+}
+
+// GoAway_Promise is a wrapper for a GoAway promised by a client call.
+type GoAway_Promise struct{ *capnp.Pipeline }
+
+func (p GoAway_Promise) Struct() (GoAway, error) {
+	s, err := p.Pipeline.Struct()
+	return GoAway{s}, err
+}
+
+const schema_b3f8acfcffafd8e8 = "x\xdat\x8e\xb1J\xf4@\x14\x85\xcf\xb9\x93\xf9\xf7/" +
+	"\xb2\x8b\x03S\x89\xb0`\xaf\x82\xa5\x8d\xbb\xa8\x98\x05\x17" +
+	"2\x95\x85\xd5h\"\x06Dc\x8c\x88\xaf\xe1\x03\xf8\x02" +
+	"\x0a[XXX\xf9\x006V\xe2\x13\x08VZY\x08" +
+	"#c!ZX\x9d\xcb\xe1\xe3\xbbgjw F\xdf" +
+	"\x00\xee\xbf\xfe\x17Vf\xe6\xee/^\x1f.a,\xc3" +
+	"\xf3\xe3$|\\\xbd_C\xb3\x03\x98\xe1\x93\x19\xc7\x1c" +
+	"-\x83a\xeb.\xdb\xec\x9d\xbf\xdc\xc2Y\xfe$%\x12" +
+	"\xd5\x9b9\x89y4\x01\x83\xaf\xab\x85\xbd\xd27\xd2n" +
+	"\x97\xbe\x9d\xdf\xf1\xf5A\xbd\xb4~8<U\xfe,'" +
+	"]\xa2\x12 !`\xba\xd3q\x85\xa2\xb3BU\x15L" +
+	"!L\xff2d\xa5o\xfa_E\x94\xa4\xdf\x92\xb5(" +
+	"\x19(\xba\x0d!i\x19\xbb\xd1,\xe0V\x15].4" +
+	"BK\x01\xccx\x11p\x99\xa2+~}\xeb\xb4\xed>" +
+	"5\x84\x1a\xec\xfb\xa2h\x8e\xd9\x03sEv!\xf1\xfc" +
+	"\x0c\x00\x00\xff\xff\x81\x9eF\xd4"
 
 func init() {
 	schemas.Register(schema_b3f8acfcffafd8e8,
+		0xabd2f19ecd2d1c43,
 		0xbbeb920e5748c15b)
 }

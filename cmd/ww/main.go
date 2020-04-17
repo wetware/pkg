@@ -44,6 +44,7 @@ func main() {
 			Name:   "start",
 			Usage:  "start a host process",
 			Flags:  start.Flags(),
+			Before: start.Init(),
 			Action: start.Run(),
 		}, {
 			Name:        "repo",

@@ -9,8 +9,26 @@ import (
 	"github.com/urfave/cli/v2"
 
 	logutil "github.com/lthibault/wetware/internal/util/log"
-	ww "github.com/lthibault/wetware/pkg"
+	"github.com/lthibault/wetware/pkg/host"
 )
+
+var (
+	peer  host.Host
+	close <-chan os.Signal
+)
+
+// Init the `start` command
+func Init() cli.BeforeFunc {
+	return func(c *cli.Context) error {
+		peer = host.New(host.WithLogger(logutil.New(c)))
+
+		ch := make(chan os.Signal, 1)
+		signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
+		close = ch
+
+		return nil
+	}
+}
 
 // Flags for the `start` command
 func Flags() []cli.Flag {
@@ -26,27 +44,19 @@ func Flags() []cli.Flag {
 
 // Run the `start` command
 func Run() cli.ActionFunc {
-	return func(c *cli.Context) (err error) {
-		var h *ww.Host
-		if h, err = ww.New(ww.WithLogger(logutil.New(c))); err != nil {
-			return err
-		}
-
-		if err = h.Start(); err != nil {
+	return func(c *cli.Context) error {
+		if err := peer.Start(); err != nil {
 			return errors.Wrap(err, "start host")
 		}
 
-		return wait(h)
+		peer.Log().Info("host started")
+		<-close
+		peer.Log().Warn("host shutting down")
+
+		if err := peer.Close(); err != nil {
+			return errors.Wrap(err, "stop host")
+		}
+
+		return nil
 	}
-}
-
-func wait(h *ww.Host) error {
-	h.Log().Info("host started")
-
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
-	<-c
-
-	h.Log().Warn("host shutting down")
-	return h.Close()
 }

@@ -25,8 +25,7 @@ func lsAction() cli.ActionFunc {
 		// 	fmt.Printf("/%s\n", id)
 		// }
 
-		// return nil
-		return errors.New("NOT IMPLEMENTED")
+		return nil
 
 		// -- DEBUG
 

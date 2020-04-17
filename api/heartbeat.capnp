@@ -9,3 +9,6 @@ struct Heartbeat {
 	addrs @2 :List(Data);
 }
 
+struct GoAway {
+	id @0 :Text;
+}

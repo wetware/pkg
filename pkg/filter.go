@@ -8,44 +8,73 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
-// filter identifies stale heartbeats.
-type filter struct {
+// Filter valid heartbeat messages from stales ones.
+type Filter interface {
+	// Upsert attempts to insert a peer's TTL and sequence number, updating any existing
+	// entries.  If Upsert returns false, the message should be discarded.
+	Upsert(peer.ID, uint64, time.Duration) bool
+
+	// Advance the filter to the specified time point.  This will expire any stale
+	// entries.
+	Advance(time.Time)
+}
+
+// ShardedFilter assigns peers to subfilters based on their peer.IDs in order to reduce
+// mutex contention.
+type ShardedFilter [256]HeapFilter
+
+// Upsert implements Filter.Upsert.
+func (f *ShardedFilter) Upsert(id peer.ID, seq uint64, ttl time.Duration) bool {
+	return f[shard(id)].Upsert(id, seq, ttl)
+}
+
+// Advance implements Filter.Advance.
+func (f *ShardedFilter) Advance(t time.Time) {
+	for i := range f {
+		f[i].Advance(t)
+	}
+}
+
+func shard(id peer.ID) int {
+	return int(id[len(id)-1])
+}
+
+// HeapFilter is an efficient Filter implementation that maintains a min-heap of TTLs.
+type HeapFilter struct {
+	o sync.Once
 	sync.Mutex
-	ttl  time.Duration
 	ps   map[peer.ID]*state
 	heap stateHeap
 }
 
-// newFilter .
-func newFilter(ttl time.Duration) *filter {
-	return &filter{
-		ps:   map[peer.ID]*state{},
-		heap: stateHeap{},
-	}
+func (f *HeapFilter) init() {
+	f.ps = map[peer.ID]*state{}
+	f.heap = stateHeap{}
 }
 
-// Upsert a sequence number for a given peer if it is not stale.  Returns false if the
-// sequence number, seq, is stale.
-func (f *filter) Upsert(id peer.ID, seq uint64) bool {
+// Upsert performance is roughly O(log n).
+func (f *HeapFilter) Upsert(id peer.ID, seq uint64, ttl time.Duration) bool {
+	f.o.Do(f.init)
 	f.Lock()
 	defer f.Unlock()
 
 	state, ok := f.ps[id]
 	if !ok {
-		f.insertState(id, seq)
+		f.insertState(id, seq, ttl)
 		return true
 	}
 
 	if seq > state.Seq {
-		f.updateState(state, seq)
+		f.updateState(state, seq, ttl)
 		return true
 	}
 
 	return false
 }
 
-// Advance the filter to the specified time point.  This will expire any stale entries.
-func (f *filter) Advance(t time.Time) {
+// Advance performance is O(n), where n is the number of expired entries.
+func (f *HeapFilter) Advance(t time.Time) {
+	f.o.Do(f.init)
 	f.Lock()
 	defer f.Unlock()
 
@@ -61,12 +90,12 @@ func (f *filter) Advance(t time.Time) {
 }
 
 // requires locking
-func (f *filter) insertState(id peer.ID, seq uint64) {
+func (f *HeapFilter) insertState(id peer.ID, seq uint64, ttl time.Duration) {
 	state := &state{
 		idx:      len(f.heap),
 		ID:       id,
 		Seq:      seq,
-		Deadline: time.Now().Add(f.ttl),
+		Deadline: time.Now().Add(ttl),
 	}
 
 	f.ps[id] = state
@@ -74,9 +103,9 @@ func (f *filter) insertState(id peer.ID, seq uint64) {
 }
 
 // requires locking
-func (f *filter) updateState(state *state, seq uint64) {
+func (f *HeapFilter) updateState(state *state, seq uint64, ttl time.Duration) {
 	state.Seq = seq
-	state.Deadline = time.Now().Add(f.ttl)
+	state.Deadline = time.Now().Add(ttl)
 	heap.Fix(&f.heap, state.idx) // O(log n)
 }
 

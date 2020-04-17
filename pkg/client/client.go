@@ -12,36 +12,21 @@ import (
 
 // Client interacts with live clusters.
 type Client struct {
-	host    host.Host
-	stopper interface{ Stop(context.Context) error }
+	host host.Host
+	app  interface{ Stop(context.Context) error }
 }
 
 // Dial into a cluster using the specified discovery strategy.  The context is used only
 // when dialing into the cluster.  To terminate the client connection, use the Close
 // method.
-func Dial(ctx context.Context, d Discover) (*Client, error) {
-	var host = new(hostWrapper)
-
-	app := fx.New(module(d, &host))
-	return &Client{
-		host:    host,
-		stopper: app,
-	}, errors.Wrap(app.Start(ctx), "dial")
+func Dial(ctx context.Context, d Discover, opt ...Option) (Client, error) {
+	var c Client
+	app := fx.New(module(&c, d, opt))
+	c.app = app
+	return c, errors.Wrap(app.Start(ctx), "dial")
 }
 
 // Close the client's cluster connections.
 func (c Client) Close() error {
-	return c.stopper.Stop(context.Background())
-}
-
-// `discover` must be a bootstrapper constructor.
-// `populate` be pointers.
-func module(d Discover, populate ...interface{}) fx.Option {
-	return fx.Options(
-		fx.NopLogger,
-		fx.Supply(d),
-		fx.Provide(newBaseContext),
-		fx.Provide(newHost),
-		fx.Populate(populate...),
-	)
+	return c.app.Stop(context.Background())
 }

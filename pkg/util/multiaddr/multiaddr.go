@@ -1,7 +1,9 @@
 // Package mautil contains utilities for transforming multiaddrs.
 package mautil
 
-import "github.com/multiformats/go-multiaddr"
+import (
+	"github.com/multiformats/go-multiaddr"
+)
 
 // NewMultiaddrs parses a slice of string-form multiaddrs.
 func NewMultiaddrs(addrs ...string) (ms []multiaddr.Multiaddr, err error) {
