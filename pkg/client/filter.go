@@ -1,4 +1,4 @@
-package ww
+package client
 
 import (
 	"container/heap"
@@ -8,8 +8,8 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
-// Filter valid heartbeat messages from stales ones.
-type Filter interface {
+// filter valid heartbeat messages from stales ones.
+type filter interface {
 	// Upsert attempts to insert a peer's TTL and sequence number, updating any existing
 	// entries.  If Upsert returns false, the message should be discarded.
 	Upsert(peer.ID, uint64, time.Duration) bool
@@ -19,17 +19,17 @@ type Filter interface {
 	Advance(time.Time)
 }
 
-// ShardedFilter assigns peers to subfilters based on their peer.IDs in order to reduce
+// shardedFilter assigns peers to subfilters based on their peer.IDs in order to reduce
 // mutex contention.
-type ShardedFilter [256]HeapFilter
+type shardedFilter [256]heapFilter
 
 // Upsert implements Filter.Upsert.
-func (f *ShardedFilter) Upsert(id peer.ID, seq uint64, ttl time.Duration) bool {
+func (f *shardedFilter) Upsert(id peer.ID, seq uint64, ttl time.Duration) bool {
 	return f[shard(id)].Upsert(id, seq, ttl)
 }
 
 // Advance implements Filter.Advance.
-func (f *ShardedFilter) Advance(t time.Time) {
+func (f *shardedFilter) Advance(t time.Time) {
 	for i := range f {
 		f[i].Advance(t)
 	}
@@ -39,21 +39,21 @@ func shard(id peer.ID) int {
 	return int(id[len(id)-1])
 }
 
-// HeapFilter is an efficient Filter implementation that maintains a min-heap of TTLs.
-type HeapFilter struct {
+// heapFilter is an efficient Filter implementation that maintains a min-heap of TTLs.
+type heapFilter struct {
 	o sync.Once
 	sync.Mutex
 	ps   map[peer.ID]*state
 	heap stateHeap
 }
 
-func (f *HeapFilter) init() {
+func (f *heapFilter) init() {
 	f.ps = map[peer.ID]*state{}
 	f.heap = stateHeap{}
 }
 
 // Upsert performance is roughly O(log n).
-func (f *HeapFilter) Upsert(id peer.ID, seq uint64, ttl time.Duration) bool {
+func (f *heapFilter) Upsert(id peer.ID, seq uint64, ttl time.Duration) bool {
 	f.o.Do(f.init)
 	f.Lock()
 	defer f.Unlock()
@@ -73,7 +73,7 @@ func (f *HeapFilter) Upsert(id peer.ID, seq uint64, ttl time.Duration) bool {
 }
 
 // Advance performance is O(n), where n is the number of expired entries.
-func (f *HeapFilter) Advance(t time.Time) {
+func (f *heapFilter) Advance(t time.Time) {
 	f.o.Do(f.init)
 	f.Lock()
 	defer f.Unlock()
@@ -90,7 +90,7 @@ func (f *HeapFilter) Advance(t time.Time) {
 }
 
 // requires locking
-func (f *HeapFilter) insertState(id peer.ID, seq uint64, ttl time.Duration) {
+func (f *heapFilter) insertState(id peer.ID, seq uint64, ttl time.Duration) {
 	state := &state{
 		idx:      len(f.heap),
 		ID:       id,
@@ -103,7 +103,7 @@ func (f *HeapFilter) insertState(id peer.ID, seq uint64, ttl time.Duration) {
 }
 
 // requires locking
-func (f *HeapFilter) updateState(state *state, seq uint64, ttl time.Duration) {
+func (f *heapFilter) updateState(state *state, seq uint64, ttl time.Duration) {
 	state.Seq = seq
 	state.Deadline = time.Now().Add(ttl)
 	heap.Fix(&f.heap, state.idx) // O(log n)

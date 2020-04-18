@@ -12,14 +12,6 @@ import (
 	iface "github.com/ipfs/interface-go-ipfs-core"
 )
 
-type hostParam struct {
-	fx.In
-
-	Cfg  *Config
-	Node *core.IpfsNode
-	API  iface.CoreAPI
-}
-
 func module(h *Host, opt []Option) fx.Option {
 	return fx.Options(
 		fx.NopLogger,
@@ -37,9 +29,17 @@ func module(h *Host, opt []Option) fx.Option {
 	)
 }
 
+type hostParam struct {
+	fx.In
+
+	Cfg  *Config
+	Node *core.IpfsNode
+	API  iface.CoreAPI
+}
+
 func newHost(ctx context.Context, lx fx.Lifecycle, p hostParam) Host {
 	for _, hook := range []fx.Hook{
-		eventloop(ctx, p.Node.PeerHost),
+		// eventloop(ctx, p.Node.PeerHost),
 		announce(ctx, p.Cfg, p.API.PubSub(), p.Node.PeerHost),
 	} {
 		lx.Append(hook)

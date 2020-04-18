@@ -1,13 +1,13 @@
 package ww
 
 import (
-	"errors"
 	"time"
 
 	capnp "zombiezen.com/go/capnproto2"
 
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multiaddr"
+	"github.com/pkg/errors"
 
 	"github.com/lthibault/wetware/internal/api"
 )
@@ -86,52 +86,100 @@ func (h Heartbeat) TTL() time.Duration {
 }
 
 // Addrs on which the peer is listening for connections.
-func (h Heartbeat) Addrs() ([]multiaddr.Multiaddr, error) {
+func (h Heartbeat) Addrs() capnp.DataList {
 	as, err := h.hb.Addrs()
 	if err != nil {
-		return nil, err
+		panic(err) // already validated
+	}
+
+	return as
+}
+
+func validateHeartbeat(hb api.Heartbeat) error {
+	if !hb.HasId() {
+		return errors.New("missing peer ID")
+	}
+
+	if !hb.HasAddrs() {
+		return errors.New("missing addrs")
+	}
+
+	as, err := hb.Addrs()
+	if err != nil {
+		return errors.Wrap(err, "addrs datalist")
 	}
 
 	var b []byte
-	addrs := make([]multiaddr.Multiaddr, as.Len())
 	for i := 0; i < as.Len(); i++ {
 		if b, err = as.At(i); err != nil {
-			break
+			return errors.Wrapf(err, "at datalist index %d", i)
 		}
 
-		if addrs[i], err = multiaddr.NewMultiaddrBytes(b); err != nil {
-			break
-		}
-	}
-
-	return addrs, err
-}
-
-// // ToEvent converts the heartbeat into a local event.
-// func (h Heartbeat) ToEvent() (EvtHeartbeat, error) {
-// 	addrs, err := h.Addrs()
-// 	return EvtHeartbeat{
-// 		ID:    h.ID(),
-// 		TTL:   h.TTL(),
-// 		Addrs: addrs,
-// 	}, err
-// }
-
-func validateHeartbeat(hb api.Heartbeat) error {
-	for _, test := range []struct {
-		Call func() bool
-		Err  string
-	}{{
-		Call: hb.HasId,
-		Err:  "missing peer ID",
-	}, {
-		Call: hb.HasAddrs,
-		Err:  "missing multiaddrs",
-	}} {
-		if !test.Call() {
-			return errors.New(test.Err)
+		if err = validateMultiaddrBytes(b); err != nil {
+			return errors.Wrapf(err, "invalid multiaddr at index %d", i)
 		}
 	}
 
 	return nil
+}
+
+/*
+	Lifted from multiaddr package.
+*/
+
+func validateMultiaddrBytes(b []byte) (err error) {
+	if len(b) == 0 {
+		return errors.New("empty multiaddr")
+	}
+	for len(b) > 0 {
+		code, n, err := multiaddr.ReadVarintCode(b)
+		if err != nil {
+			return err
+		}
+
+		b = b[n:]
+		p := multiaddr.ProtocolWithCode(code)
+		if p.Code == 0 {
+			return errors.Errorf("no protocol with code %d", code)
+		}
+
+		if p.Size == 0 {
+			continue
+		}
+
+		n, size, err := sizeForAddr(p, b)
+		if err != nil {
+			return err
+		}
+
+		b = b[n:]
+
+		if len(b) < size || size < 0 {
+			return errors.Errorf("invalid value for size %d", len(b))
+		}
+
+		err = p.Transcoder.ValidateBytes(b[:size])
+		if err != nil {
+			return err
+		}
+
+		b = b[size:]
+	}
+
+	return nil
+}
+
+func sizeForAddr(p multiaddr.Protocol, b []byte) (skip, size int, err error) {
+	switch {
+	case p.Size > 0:
+		return 0, (p.Size / 8), nil
+	case p.Size == 0:
+		return 0, 0, nil
+	default:
+		size, n, err := multiaddr.ReadVarintCode(b)
+		if err != nil {
+			return 0, 0, err
+		}
+		return n, size, nil
+	}
 }

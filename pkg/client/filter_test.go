@@ -1,4 +1,4 @@
-package ww
+package client
 
 import (
 	"testing"
@@ -23,7 +23,7 @@ func newID(s string) peer.ID {
 func TestHeapFilter(t *testing.T) {
 	const ttl = time.Second
 
-	var f HeapFilter
+	var f heapFilter
 	id := newID("foo")
 	t0 := time.Now()
 
