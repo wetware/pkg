@@ -40,15 +40,16 @@ func module(c *Client, d Discover, opt []Option) fx.Option {
 type clientParams struct {
 	fx.In
 
-	Ctx   context.Context
-	Cfg   *Config
-	Host  host.Host
-	Topic *pubsub.Topic
+	Ctx  context.Context
+	Cfg  *Config
+	Host host.Host
+	P    *struct{ *pubsub.PubSub }
+	T    *struct{ *pubsub.Topic }
 }
 
 func newClient(lx fx.Lifecycle, p clientParams) Client {
 	for _, hook := range []fx.Hook{
-		subloop(p.Ctx, p.Topic, p.Host.Peerstore()),
+		subloop(p.Ctx, p.Host, p.T),
 	} {
 		lx.Append(hook)
 	}
@@ -67,7 +68,7 @@ type hostParams struct {
 }
 
 func newHost(lx fx.Lifecycle, p hostParams) host.Host {
-	var h struct{ host.Host }
+	var h = new(struct{ host.Host })
 
 	lx.Append(fx.Hook{
 		OnStart: func(context.Context) (err error) {
@@ -83,7 +84,7 @@ func newHost(lx fx.Lifecycle, p hostParams) host.Host {
 		},
 	})
 
-	return &h
+	return h
 }
 
 func newDataStore() ds.Batching {
@@ -124,19 +125,19 @@ type pubsubParam struct {
 type pubsubOut struct {
 	fx.Out
 
-	PubSubWrapper *struct{ *pubsub.PubSub }
-	TopicWrapper  *struct{ *pubsub.Topic }
+	P *struct{ *pubsub.PubSub }
+	T *struct{ *pubsub.Topic }
 }
 
 func newPubsub(lx fx.Lifecycle, p pubsubParam) pubsubOut {
 	out := pubsubOut{
-		PubSubWrapper: new(struct{ *pubsub.PubSub }),
-		TopicWrapper:  new(struct{ *pubsub.Topic }),
+		P: new(struct{ *pubsub.PubSub }),
+		T: new(struct{ *pubsub.Topic }),
 	}
 
 	lx.Append(fx.Hook{
 		OnStart: func(context.Context) (err error) {
-			out.PubSubWrapper.PubSub, err = pubsub.NewGossipSub(p.Ctx, p.Host,
+			out.P.PubSub, err = pubsub.NewGossipSub(p.Ctx, p.Host,
 				pubsub.WithDiscovery(discovery.NewRoutingDiscovery(p.DHT)))
 			return
 		},
@@ -145,7 +146,7 @@ func newPubsub(lx fx.Lifecycle, p pubsubParam) pubsubOut {
 	lx.Append(fx.Hook{
 		OnStart: func(context.Context) error {
 
-			return out.PubSubWrapper.RegisterTopicValidator(p.Cfg.ns,
+			return out.P.RegisterTopicValidator(p.Cfg.ns,
 				newHeartbeatValidator(p.Ctx),
 				// Throttle validation.  This avoids unbounded resource consumption
 				// during message storms, and also acts as a simple smoothing function
@@ -156,7 +157,7 @@ func newPubsub(lx fx.Lifecycle, p pubsubParam) pubsubOut {
 
 	lx.Append(fx.Hook{
 		OnStart: func(context.Context) (err error) {
-			out.TopicWrapper.Topic, err = out.PubSubWrapper.Join(p.Cfg.ns)
+			out.T.Topic, err = out.P.Join(p.Cfg.ns)
 			return
 		},
 	})

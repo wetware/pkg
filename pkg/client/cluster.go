@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"time"
 
+	host "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -50,13 +51,13 @@ func newHeartbeatValidator(ctx context.Context) pubsub.Validator {
 	}
 }
 
-func subloop(ctx context.Context, t *pubsub.Topic, a peerstore.AddrBook) fx.Hook {
+func subloop(ctx context.Context, h host.Host, t *struct{ *pubsub.Topic }) fx.Hook {
 	var sub *pubsub.Subscription
 
 	return fx.Hook{
 		OnStart: func(context.Context) (err error) {
 			if sub, err = t.Subscribe(); err == nil {
-				go recvHeartbeats(ctx, sub, a)
+				go recvHeartbeats(ctx, sub, h.Peerstore())
 			}
 
 			return
