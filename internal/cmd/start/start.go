@@ -9,18 +9,18 @@ import (
 	"github.com/urfave/cli/v2"
 
 	logutil "github.com/lthibault/wetware/internal/util/log"
-	"github.com/lthibault/wetware/pkg/host"
+	"github.com/lthibault/wetware/pkg/server"
 )
 
 var (
-	peer  host.Host
+	peer  server.Host
 	close <-chan os.Signal
 )
 
 // Init the `start` command
 func Init() cli.BeforeFunc {
 	return func(c *cli.Context) error {
-		peer = host.New(host.WithLogger(logutil.New(c)))
+		peer = server.New(server.WithLogger(logutil.New(c)))
 
 		ch := make(chan os.Signal, 1)
 		signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)

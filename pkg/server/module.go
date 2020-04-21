@@ -1,4 +1,4 @@
-package host
+package server
 
 import (
 	"context"
@@ -21,8 +21,8 @@ func module(h *Host, opt []Option) fx.Option {
 			newConfig,
 			newRepository,
 			newBuildCfg,
-			core.NewNode,       // TODO:  check if Fx chokes on variadic args
-			coreapi.NewCoreAPI, // TODO:  check if Fx chokes on variadic args
+			core.NewNode,
+			coreapi.NewCoreAPI,
 			newHost,
 		),
 		fx.Populate(h),
@@ -39,7 +39,6 @@ type hostParam struct {
 
 func newHost(ctx context.Context, lx fx.Lifecycle, p hostParam) Host {
 	for _, hook := range []fx.Hook{
-		// eventloop(ctx, p.Node.PeerHost),
 		announce(ctx, p.Cfg, p.API.PubSub(), p.Node.PeerHost),
 	} {
 		lx.Append(hook)

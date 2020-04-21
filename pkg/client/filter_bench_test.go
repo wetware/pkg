@@ -17,12 +17,12 @@ const (
 var discardBool bool
 
 var (
-	peers [128]peer.ID
+	ps [128]peer.ID
 )
 
 func init() {
-	for i := range peers {
-		peers[i] = newID(randStr(56))
+	for i := range ps {
+		ps[i] = newID(randStr(56))
 	}
 
 }
@@ -64,7 +64,7 @@ type event struct {
 func eventStream(n int) []event {
 	es := make([]event, n)
 	for i := range es {
-		es[i].ID = peers[i%(len(peers)-1)]
+		es[i].ID = ps[i%(len(ps)-1)]
 		es[i].Seq = uint64(i)
 		es[i].TTL = time.Second * 10
 	}

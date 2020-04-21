@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	ww "github.com/lthibault/wetware/pkg"
 	"github.com/pkg/errors"
 	"go.uber.org/fx"
 	"golang.org/x/sync/errgroup"
@@ -55,6 +56,7 @@ func newClient(lx fx.Lifecycle, p clientParams) Client {
 	}
 
 	return Client{
+		log:  p.Cfg.Log(),
 		host: p.Host,
 	}
 }
@@ -76,7 +78,7 @@ func newHost(lx fx.Lifecycle, p hostParams) host.Host {
 				p.Cfg.maybePSK(),
 				p2p.Ping(false),
 				p2p.NoListenAddrs, // also disables relay
-				p2p.UserAgent("ww client"))
+				p2p.UserAgent(ww.ClientUAgent))
 			return
 		},
 		OnStop: func(context.Context) error {

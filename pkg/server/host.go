@@ -1,4 +1,4 @@
-package host
+package server
 
 import (
 	"context"
@@ -58,16 +58,3 @@ func (h Host) Start() error {
 func (h Host) Close() error {
 	return h.app.Stop(context.Background())
 }
-
-// func (h Host) loop(sub event.Subscription) {
-// 	for v := range sub.Out() {
-// 		switch event := v.(type) {
-// 		case ww.EvtHeartbeat:
-// 			h.log.WithField("event", event).
-// 				Trace("got heartbeat")
-
-// 			h.host.Peerstore().
-// 				AddAddrs(event.ID, event.Addrs, event.TTL)
-// 		}
-// 	}
-// }
