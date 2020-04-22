@@ -147,11 +147,7 @@ func newPubsub(lx fx.Lifecycle, p pubsubParam) pubsubOut {
 		OnStart: func(context.Context) error {
 
 			return out.P.RegisterTopicValidator(p.Cfg.ns,
-				newHeartbeatValidator(p.Ctx),
-				// Throttle validation.  This avoids unbounded resource consumption
-				// during message storms, and also acts as a simple smoothing function
-				// (effectively a token-bucket).
-				pubsub.WithValidatorConcurrency(32))
+				newHeartbeatValidator(p.Ctx))
 		},
 	})
 

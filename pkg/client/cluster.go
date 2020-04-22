@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"encoding/binary"
-	"time"
 
 	host "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -16,23 +15,7 @@ import (
 )
 
 func newHeartbeatValidator(ctx context.Context) pubsub.Validator {
-	var f shardedFilter
-
-	// Start a background task that periodically evict stale entries from the filter
-	// array.
-	go func() {
-		ticker := time.NewTicker(time.Millisecond * 200)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case t := <-ticker.C:
-				f.Advance(t)
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
+	f := newBasicFilter()
 
 	// Return a function that satisfies pubsub.Validator, using the above background
 	// task and filter array.
