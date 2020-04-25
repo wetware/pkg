@@ -8,6 +8,7 @@ import (
 	schemas "zombiezen.com/go/capnproto2/schemas"
 )
 
+// Heartbeat is a peer liveliness message that is broadcast over pubsub.
 type Heartbeat struct{ capnp.Struct }
 
 // Heartbeat_TypeID is the unique identifier for the type Heartbeat.
@@ -111,95 +112,26 @@ func (p Heartbeat_Promise) Struct() (Heartbeat, error) {
 	return Heartbeat{s}, err
 }
 
-type GoAway struct{ capnp.Struct }
-
-// GoAway_TypeID is the unique identifier for the type GoAway.
-const GoAway_TypeID = 0xabd2f19ecd2d1c43
-
-func NewGoAway(s *capnp.Segment) (GoAway, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return GoAway{st}, err
-}
-
-func NewRootGoAway(s *capnp.Segment) (GoAway, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return GoAway{st}, err
-}
-
-func ReadRootGoAway(msg *capnp.Message) (GoAway, error) {
-	root, err := msg.RootPtr()
-	return GoAway{root.Struct()}, err
-}
-
-func (s GoAway) String() string {
-	str, _ := text.Marshal(0xabd2f19ecd2d1c43, s.Struct)
-	return str
-}
-
-func (s GoAway) Id() (string, error) {
-	p, err := s.Struct.Ptr(0)
-	return p.Text(), err
-}
-
-func (s GoAway) HasId() bool {
-	p, err := s.Struct.Ptr(0)
-	return p.IsValid() || err != nil
-}
-
-func (s GoAway) IdBytes() ([]byte, error) {
-	p, err := s.Struct.Ptr(0)
-	return p.TextBytes(), err
-}
-
-func (s GoAway) SetId(v string) error {
-	return s.Struct.SetText(0, v)
-}
-
-// GoAway_List is a list of GoAway.
-type GoAway_List struct{ capnp.List }
-
-// NewGoAway creates a new list of GoAway.
-func NewGoAway_List(s *capnp.Segment, sz int32) (GoAway_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return GoAway_List{l}, err
-}
-
-func (s GoAway_List) At(i int) GoAway { return GoAway{s.List.Struct(i)} }
-
-func (s GoAway_List) Set(i int, v GoAway) error { return s.List.SetStruct(i, v.Struct) }
-
-func (s GoAway_List) String() string {
-	str, _ := text.MarshalList(0xabd2f19ecd2d1c43, s.List)
-	return str
-}
-
-// GoAway_Promise is a wrapper for a GoAway promised by a client call.
-type GoAway_Promise struct{ *capnp.Pipeline }
-
-func (p GoAway_Promise) Struct() (GoAway, error) {
-	s, err := p.Pipeline.Struct()
-	return GoAway{s}, err
-}
-
-const schema_b3f8acfcffafd8e8 = "x\xdat\x8e\xb1J\xf4@\x14\x85\xcf\xb9\x93\xf9\xf7/" +
-	"\xb2\x8b\x03S\x89\xb0`\xaf\x82\xa5\x8d\xbb\xa8\x98\x05\x17" +
-	"2\x95\x85\xd5h\"\x06Dc\x8c\x88\xaf\xe1\x03\xf8\x02" +
-	"\x0a[XXX\xf9\x006V\xe2\x13\x08VZY\x08" +
-	"#c!ZX\x9d\xcb\xe1\xe3\xbbgjw F\xdf" +
-	"\x00\xee\xbf\xfe\x17Vf\xe6\xee/^\x1f.a,\xc3" +
-	"\xf3\xe3$|\\\xbd_C\xb3\x03\x98\xe1\x93\x19\xc7\x1c" +
-	"-\x83a\xeb.\xdb\xec\x9d\xbf\xdc\xc2Y\xfe$%\x12" +
-	"\xd5\x9b9\x89y4\x01\x83\xaf\xab\x85\xbd\xd27\xd2n" +
-	"\x97\xbe\x9d\xdf\xf1\xf5A\xbd\xb4~8<U\xfe,'" +
-	"]\xa2\x12 !`\xba\xd3q\x85\xa2\xb3BU\x15L" +
-	"!L\xff2d\xa5o\xfa_E\x94\xa4\xdf\x92\xb5(" +
-	"\x19(\xba\x0d!i\x19\xbb\xd1,\xe0V\x15].4" +
-	"BK\x01\xccx\x11p\x99\xa2+~}\xeb\xb4\xed>" +
-	"5\x84\x1a\xec\xfb\xa2h\x8e\xd9\x03sEv!\xf1\xfc" +
-	"\x0c\x00\x00\xff\xff\x81\x9eF\xd4"
+const schema_b3f8acfcffafd8e8 = "x\xda\x1c\xca\xb1J\xebP\x1c\xc7\xf1\xdf\xef\x9f\xe4f" +
+	"\xc9-\xf7@\xefr\x97\x9c\xde\x07\xa8\xda\xd1\xa9\x82B" +
+	"\x05\x85\x9e\xa9\x83\xa0\x9c4\x07\x1b\xa8m\xc8I\xfb\x10" +
+	"\x8e\xfa\x00\xbe\x80\xd0\xc1Q\x1c\x1c|\x05\xf1\x11\x047" +
+	"'\x07!\x92n_\xbe|\xfeL\x86\xa2\xa2\x0b\xc0\x84" +
+	"\xd1\xaf\xe6\xecy4\xe9\xdc|<\xc2t\xc9\xe6\xfdm" +
+	"\xd3|\xdf\x7f= \x92\x18P\x7f?U/V\xbdT" +
+	"\xd9\x0d\xd8\xd8\xb2\xd8\x999[I\x9d9[\xf7\xa7\xb6" +
+	"\\\x94\xfb#g\xabt;\xc6\xa4\x09)\xcd\xf9\xed\x9d" +
+	"yz\xbd~\x81\x09\x85\x07\xbbd\x02\xecq MK" +
+	"[\x19\xd7\xba\xf0\xda\xea\xd2\xb9J\xcf\x8b\xb5\x9b\x17\x0b" +
+	"\xe7\xbd\xber\xde\xdbK\xa7\xeb\x99\xdd\x8a\xacZ\xda|" +
+	"j}\xad\x97kW\xe9r\x95f~\x95\xf5\x01\x93\x04" +
+	"!\x10\x12PG\xff\x003\x0chN\x84d\x97\xed;" +
+	"\xfe\x0f\x98\xc3\x80f,T\xc2.\x05P\xa7\x03\xc0\x8c" +
+	"\x02\x9a\\\x18\x149\x13\x08\x130\xae\xeb9#\x08#" +
+	"0\xb5y^yv\xc0q@\xfe\x86\xb4\xf9\x13\x00\x00" +
+	"\xff\xffn\xf0K\x17"
 
 func init() {
 	schemas.Register(schema_b3f8acfcffafd8e8,
-		0xabd2f19ecd2d1c43,
 		0xbbeb920e5748c15b)
 }

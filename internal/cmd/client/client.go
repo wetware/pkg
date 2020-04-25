@@ -10,6 +10,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	logutil "github.com/lthibault/wetware/internal/util/log"
+	"github.com/lthibault/wetware/pkg/boot"
 	mautil "github.com/lthibault/wetware/pkg/util/multiaddr"
 
 	"github.com/lthibault/wetware/pkg/client"
@@ -41,18 +42,18 @@ func Init() cli.BeforeFunc {
 	return func(c *cli.Context) (err error) {
 		log := logutil.New(c)
 
-		var d client.Discover
+		var b boot.Strategy
 		switch {
 		case c.StringSlice("join") != nil:
-			d, err = join(c)
+			b, err = join(c)
 		case c.String("discover") != "":
-			d, err = discover(c, log)
+			b, err = discoverPeers(c, log)
 		default:
 			err = errors.New("must specify either -join or -discover address")
 		}
 
 		if err == nil {
-			cluster, err = client.Dial(context.Background(), d,
+			cluster, err = client.Dial(context.Background(), b,
 				client.WithLogger(log))
 		}
 
@@ -78,11 +79,11 @@ func Commands() []*cli.Command {
 	}}
 }
 
-func join(c *cli.Context) (client.StaticAddrs, error) {
+func join(c *cli.Context) (boot.StaticAddrs, error) {
 	return mautil.NewMultiaddrs(c.StringSlice("join")...)
 }
 
-func discover(c *cli.Context, log log.Logger) (client.Discover, error) {
+func discoverPeers(c *cli.Context, log log.Logger) (boot.Strategy, error) {
 	proto, param, err := head(c.String("discover"))
 	if err != nil {
 		return nil, err
@@ -90,7 +91,7 @@ func discover(c *cli.Context, log log.Logger) (client.Discover, error) {
 
 	switch proto {
 	case "mdns":
-		switch mdns := new(client.MDNSDiscovery); param {
+		switch mdns := new(boot.MDNS); param {
 		case "":
 			log.Debug("using default multicast interface")
 			return mdns, nil

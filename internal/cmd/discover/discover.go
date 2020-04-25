@@ -6,26 +6,26 @@ import (
 	"net"
 	"time"
 
-	"github.com/lthibault/wetware/pkg/client"
+	"github.com/lthibault/wetware/pkg/boot"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 )
 
-var d client.Discover
+var b boot.Strategy
 
 // Init the discovery service
 func Init() cli.BeforeFunc {
 	return func(c *cli.Context) (err error) {
 		switch c.String("protocol") {
 		case "mdns":
-			mdns := new(client.MDNSDiscovery)
+			mdns := new(boot.MDNS)
 			if name := c.String("if"); name != "" {
 				if mdns.Interface, err = net.InterfaceByName(name); err != nil {
 					return errors.Wrap(err, "interface")
 				}
 			}
 
-			d = mdns
+			b = mdns
 		default:
 			err = errors.Errorf("unknown discovery protocol %s", c.String("protocol"))
 		}
@@ -69,7 +69,7 @@ func Run() cli.ActionFunc {
 		ctx, cancel := context.WithTimeout(context.Background(), c.Duration("timeout"))
 		defer cancel()
 
-		ps, err := d.DiscoverPeers(ctx)
+		ps, err := b.DiscoverPeers(ctx)
 		if err != nil {
 			return err
 		}

@@ -10,7 +10,6 @@ import (
 	"github.com/lthibault/wetware/internal/cmd/client"
 	"github.com/lthibault/wetware/internal/cmd/discover"
 	"github.com/lthibault/wetware/internal/cmd/keygen"
-	"github.com/lthibault/wetware/internal/cmd/repo"
 	"github.com/lthibault/wetware/internal/cmd/start"
 )
 
@@ -47,10 +46,6 @@ func main() {
 			Flags:  start.Flags(),
 			Before: start.Init(),
 			Action: start.Run(),
-		}, {
-			Name:        "repo",
-			Usage:       "create or configure hosts",
-			Subcommands: repo.Commands(),
 		}, {
 			Name:        "client",
 			Usage:       "interact with a live cluster",

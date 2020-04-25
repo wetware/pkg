@@ -3,7 +3,6 @@ package client
 import (
 	log "github.com/lthibault/log/pkg"
 
-	p2p "github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/pnet"
 )
 
@@ -47,14 +46,6 @@ func WithNamespace(ns string) Option {
 		c.ns = ns
 		return
 	}
-}
-
-func (cfg Config) maybePSK() p2p.Option {
-	if cfg.PSK == nil {
-		return p2p.ChainOptions()
-	}
-
-	return p2p.PrivateNetwork(cfg.PSK)
 }
 
 func withDefault(opt []Option) []Option {

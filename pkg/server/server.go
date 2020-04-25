@@ -6,7 +6,6 @@ import (
 	log "github.com/lthibault/log/pkg"
 	"go.uber.org/fx"
 
-	iface "github.com/ipfs/interface-go-ipfs-core"
 	host "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multiaddr"
@@ -15,7 +14,6 @@ import (
 // Host .
 type Host struct {
 	log  log.Logger
-	api  iface.CoreAPI
 	host host.Host
 
 	app interface {

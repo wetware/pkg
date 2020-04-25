@@ -4,13 +4,10 @@ import (
 	"context"
 	"time"
 
-	ww "github.com/lthibault/wetware/pkg"
-	"github.com/pkg/errors"
 	"go.uber.org/fx"
 	"golang.org/x/sync/errgroup"
 
 	ds "github.com/ipfs/go-datastore"
-	dsync "github.com/ipfs/go-datastore/sync"
 	p2p "github.com/libp2p/go-libp2p"
 	host "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -18,19 +15,23 @@ import (
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/pkg/errors"
+
+	hostutil "github.com/lthibault/wetware/internal/util/host"
+	ww "github.com/lthibault/wetware/pkg"
+	"github.com/lthibault/wetware/pkg/boot"
 )
 
-func module(c *Client, d Discover, opt []Option) fx.Option {
+func module(c *Client, s boot.Strategy, opt []Option) fx.Option {
 	return fx.Options(
 		fx.NopLogger,
-		fx.Supply(opt, struct{ Discover }{d}),
+		fx.Supply(opt, struct{ boot.Strategy }{s}),
 		fx.Provide(
 			newCtx,
 			newConfig,
 			newHost,
-			newDataStore,
-			newDHT,
 			newPubsub,
+			newDHT,
 			newClient,
 		),
 		fx.Invoke(join),
@@ -64,9 +65,8 @@ func newClient(lx fx.Lifecycle, p clientParams) Client {
 type hostParams struct {
 	fx.In
 
-	Ctx      context.Context
-	Cfg      *Config
-	Discover struct{ Discover }
+	Ctx context.Context
+	Cfg *Config
 }
 
 func newHost(lx fx.Lifecycle, p hostParams) host.Host {
@@ -75,7 +75,7 @@ func newHost(lx fx.Lifecycle, p hostParams) host.Host {
 	lx.Append(fx.Hook{
 		OnStart: func(context.Context) (err error) {
 			h.Host, err = p2p.New(p.Ctx,
-				p.Cfg.maybePSK(),
+				hostutil.MaybePrivate(p.Cfg.PSK),
 				p2p.Ping(false),
 				p2p.NoListenAddrs, // also disables relay
 				p2p.UserAgent(ww.ClientUAgent))
@@ -89,11 +89,6 @@ func newHost(lx fx.Lifecycle, p hostParams) host.Host {
 	return h
 }
 
-func newDataStore() ds.Batching {
-	// TODO:  replace this with a more efficient immutable map
-	return dsync.MutexWrap(ds.NewMapDatastore())
-}
-
 type dhtParams struct {
 	fx.In
 
@@ -102,7 +97,7 @@ type dhtParams struct {
 	Datastore ds.Batching
 }
 
-func newDHT(lx fx.Lifecycle, p dhtParams) routing.Routing {
+func newDHT(lx fx.Lifecycle, p dhtParams) routing.ContentRouting {
 	var r = new(struct{ *dht.IpfsDHT })
 
 	lx.Append(fx.Hook{
@@ -121,7 +116,7 @@ type pubsubParam struct {
 	Ctx  context.Context
 	Cfg  *Config
 	Host host.Host
-	DHT  routing.Routing
+	DHT  routing.ContentRouting
 }
 
 type pubsubOut struct {
@@ -163,10 +158,22 @@ func newPubsub(lx fx.Lifecycle, p pubsubParam) pubsubOut {
 	return out
 }
 
-func join(lx fx.Lifecycle, host host.Host, d struct{ Discover }) {
+func newCtx(lx fx.Lifecycle) context.Context {
+	ctx, cancel := context.WithCancel(context.Background())
+	lx.Append(fx.Hook{
+		OnStop: func(context.Context) error {
+			cancel()
+			return nil
+		},
+	})
+
+	return ctx
+}
+
+func join(lx fx.Lifecycle, host host.Host, b boot.Strategy) {
 	lx.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			ps, err := d.DiscoverPeers(ctx)
+			ps, err := b.DiscoverPeers(ctx)
 			if err != nil {
 				return errors.Wrap(err, "discover")
 			}
@@ -180,18 +187,6 @@ func join(lx fx.Lifecycle, host host.Host, d struct{ Discover }) {
 			return errors.Wrap(g.Wait(), "join")
 		},
 	})
-}
-
-func newCtx(lx fx.Lifecycle) context.Context {
-	ctx, cancel := context.WithCancel(context.Background())
-	lx.Append(fx.Hook{
-		OnStop: func(context.Context) error {
-			cancel()
-			return nil
-		},
-	})
-
-	return ctx
 }
 
 func connect(ctx context.Context, host host.Host, pinfo peer.AddrInfo) func() error {
