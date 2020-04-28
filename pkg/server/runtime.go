@@ -14,6 +14,7 @@ import (
 	"github.com/lthibault/jitterbug"
 	log "github.com/lthibault/log/pkg"
 	"github.com/multiformats/go-multiaddr"
+	"github.com/pkg/errors"
 	"go.uber.org/fx"
 	"golang.org/x/sync/errgroup"
 
@@ -54,8 +55,11 @@ type runtime struct {
 	BootProtocol boot.Protocol
 
 	Namespace string
-	TTL       time.Duration
-	Cluster   *struct{ *pubsub.Topic }
+	KMin      int `name:"kmin"`
+	KMax      int `name:"kmax"`
+
+	TTL     time.Duration
+	Cluster *struct{ *pubsub.Topic }
 }
 
 // run is intended to be invoked from an Fx application.  It starts background processes
@@ -95,21 +99,12 @@ func signalNetworkEvents(r runtime) fx.Hook {
 		host: r.Host,
 	}
 
-	callbacks := &network.NotifyBundle{
-		ConnectedF:    w.onConnected,
-		DisconnectedF: w.onDisconnected,
-
-		OpenedStreamF: w.onStreamOpened,
-		ClosedStreamF: w.onStreamOpened,
-	}
-
 	return fx.Hook{
 		OnStart: func(context.Context) error {
-			w.host.Network().Notify(callbacks)
 			return w.init()
 		},
 		OnStop: func(context.Context) error {
-			return w.connEvt.Close()
+			return w.Close()
 		},
 	}
 }
@@ -117,27 +112,53 @@ func signalNetworkEvents(r runtime) fx.Hook {
 type netEventWatcher struct {
 	log              log.Logger
 	host             host.Host
+	peerIdentified   event.Subscription
 	connEvt, strmEvt event.Emitter
 }
 
+func (w *netEventWatcher) Close() error {
+	w.connEvt.Close()
+	w.strmEvt.Close()
+	return w.peerIdentified.Close()
+}
+
 func (w *netEventWatcher) init() (err error) {
-	if w.connEvt, err = w.host.EventBus().Emitter(new(ww.EvtConnectionChanged)); err != nil {
+	w.host.Network().Notify(&network.NotifyBundle{
+		// NOTE:  can't use ConnectedF.  The Identify protocol will not have completed
+		// 		  and isClient will panic.
+		DisconnectedF: w.onDisconnected,
+
+		OpenedStreamF: w.onStreamOpened,
+		ClosedStreamF: w.onStreamOpened,
+	})
+
+	bus := w.host.EventBus()
+	if w.connEvt, err = bus.Emitter(new(ww.EvtConnectionChanged)); err != nil {
 		return
 	}
 
-	if w.connEvt, err = w.host.EventBus().Emitter(new(ww.EvtStreamChanged)); err != nil {
+	if w.strmEvt, err = bus.Emitter(new(ww.EvtStreamChanged)); err != nil {
 		return
+	}
+
+	if w.peerIdentified, err = bus.Subscribe(
+		new(event.EvtPeerIdentificationCompleted),
+	); err == nil {
+		go w.loop()
 	}
 
 	return
 }
 
-func (w netEventWatcher) onConnected(net network.Network, conn network.Conn) {
-	w.connEvt.Emit(ww.EvtConnectionChanged{
-		Peer:   conn.RemotePeer(),
-		Client: isClient(conn.RemotePeer(), w.host.Peerstore()),
-		State:  ww.ConnStateOpened,
-	})
+func (w *netEventWatcher) loop() {
+	for v := range w.peerIdentified.Out() {
+		ev := v.(event.EvtPeerIdentificationCompleted)
+		w.connEvt.Emit(ww.EvtConnectionChanged{
+			Peer:   ev.Peer,
+			Client: isClient(ev.Peer, w.host.Peerstore()),
+			State:  ww.ConnStateOpened,
+		})
+	}
 }
 
 func (w netEventWatcher) onDisconnected(net network.Network, conn network.Conn) {
@@ -166,6 +187,11 @@ func (w netEventWatcher) onStreamClosed(net network.Network, s network.Stream) {
 
 func signalNeighborhoodEvents(r runtime) fx.Hook {
 	var sub event.Subscription
+	var n = neighborhood{
+		kmin: r.KMin,
+		kmax: r.KMax,
+		m:    make(map[peer.ID]int),
+	}
 
 	return fx.Hook{
 		OnStart: func(context.Context) (err error) {
@@ -176,7 +202,7 @@ func signalNeighborhoodEvents(r runtime) fx.Hook {
 
 			var e event.Emitter
 			if e, err = bus.Emitter(new(ww.EvtNeighborhoodChanged)); err == nil {
-				go neighborhoodEventLoop(sub, e)
+				go neighborhoodEventLoop(sub, e, n)
 			}
 
 			return
@@ -187,13 +213,12 @@ func signalNeighborhoodEvents(r runtime) fx.Hook {
 	}
 }
 
-func neighborhoodEventLoop(sub event.Subscription, e event.Emitter) {
+func neighborhoodEventLoop(sub event.Subscription, e event.Emitter, n neighborhood) {
 	defer e.Close()
 
 	var (
 		fire bool
 		out  ww.EvtNeighborhoodChanged
-		n    neighborhood = make(map[peer.ID]int)
 	)
 
 	for v := range sub.Out() {
@@ -217,7 +242,7 @@ func neighborhoodEventLoop(sub event.Subscription, e event.Emitter) {
 				State: ev.State,
 				From:  out.To,
 				To:    n.Phase(),
-				N:     len(n),
+				N:     n.Len(),
 			}
 
 			e.Emit(out)
@@ -270,7 +295,9 @@ func connProtectorLoop(sub event.Subscription, cm connmgr.ConnManager) {
 
 type neighborhoodMaintainer struct {
 	log log.Logger
-	ns  string
+
+	ns         string
+	kmin, kmax int
 
 	host host.Host
 
@@ -284,6 +311,8 @@ func maintainNeighborhood(r runtime) fx.Hook {
 	m := neighborhoodMaintainer{
 		log:  r.Log,
 		ns:   r.Namespace,
+		kmin: r.KMin,
+		kmax: r.KMax,
 		host: r.Host,
 		b:    r.BootProtocol,
 		d:    r.DHT,
@@ -322,7 +351,7 @@ func (m *neighborhoodMaintainer) loop(ctx context.Context, sub event.Subscriptio
 			m.join(reqctx)
 		case ww.PhasePartial:
 			reqctx, cancel = context.WithCancel(ctx)
-			m.graft(reqctx, max((ww.LowWater-ev.N)/2, 1))
+			m.graft(reqctx, max((m.kmin-ev.N)/2, 1))
 		case ww.PhaseOverloaded:
 			// In-flight requests only become a liability when the host is overloaded.
 			//
@@ -516,22 +545,29 @@ func (sf *singleflight) Reset(key string) {
 	delete(sf.m, key)
 }
 
-type neighborhood map[peer.ID]int
+type neighborhood struct {
+	kmin, kmax int
+	m          map[peer.ID]int
+}
+
+func (n neighborhood) Len() int {
+	return len(n.m)
+}
 
 func (n neighborhood) Add(id peer.ID) (leased bool) {
-	i, ok := n[id]
+	i, ok := n.m[id]
 	if !ok {
 		leased = true
 	}
 
-	n[id] = i + 1
+	n.m[id] = i + 1
 	return
 }
 
 func (n neighborhood) Rm(id peer.ID) (evicted bool) {
 	// ok == false implies a client disconnected
-	if i, ok := n[id]; ok && i == 1 {
-		delete(n, id)
+	if i, ok := n.m[id]; ok && i == 1 {
+		delete(n.m, id)
 		evicted = true
 	}
 
@@ -539,14 +575,14 @@ func (n neighborhood) Rm(id peer.ID) (evicted bool) {
 }
 
 func (n neighborhood) Phase() ww.Phase {
-	switch k := len(n); {
+	switch k := len(n.m); {
 	case k < 0:
 		return ww.PhaseOrphaned
-	case k < ww.LowWater:
+	case k < n.kmin:
 		return ww.PhasePartial
-	case k < ww.HighWater:
+	case k < n.kmax:
 		return ww.PhaseComplete
-	case k >= ww.HighWater:
+	case k >= n.kmax:
 		return ww.PhaseOverloaded
 	default:
 		panic(fmt.Sprintf("invalid number of connections: %d", k))
@@ -554,12 +590,16 @@ func (n neighborhood) Phase() ww.Phase {
 }
 
 func isClient(p peer.ID, ps peerstore.PeerMetadata) bool {
-	v, err := ps.Get(p, uagentKey)
-	if err == nil {
+	switch v, err := ps.Get(p, uagentKey); err {
+	case nil:
 		return v.(string) == ww.ClientUAgent
+	case peerstore.ErrNotFound:
+		// This usually means isClient was called in network.Notifiee.Connected, before
+		// authentication by the IDService completed.
+		panic(errors.Wrap(err, "user agent not found"))
+	default:
+		panic(err)
 	}
-
-	panic(err)
 }
 
 func max(x, y int) int {

@@ -11,16 +11,6 @@ const (
 	// DefaultNamespace .
 	DefaultNamespace = "ww"
 
-	// LowWater is the minimum number of desired connections in a host's resting state.
-	// If a host has n < LowWater connections, it will periodically attempt to discover
-	// and connect to new peers.
-	LowWater = 8
-
-	// HighWater is the maximum number of desired connections in a host's resting state.
-	// If a host has n > HighWater connections, it will attempt to close connections
-	// until LowWater <= n <= HighWater.
-	HighWater = 32
-
 	// ClientUAgent is the user agent for a client connection.
 	ClientUAgent = "ww-client"
 )

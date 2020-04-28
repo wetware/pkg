@@ -13,16 +13,17 @@ import (
 	cm "github.com/libp2p/go-libp2p-core/connmgr"
 	host "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peerstore"
+	"github.com/libp2p/go-libp2p-core/pnet"
 	"github.com/libp2p/go-libp2p-core/routing"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/config"
+	"github.com/multiformats/go-multiaddr"
 
 	log "github.com/lthibault/log/pkg"
 	hostutil "github.com/lthibault/wetware/internal/util/host"
-	ww "github.com/lthibault/wetware/pkg"
 	"github.com/lthibault/wetware/pkg/boot"
 )
 
@@ -32,7 +33,7 @@ func module(h *Host, opt []Option) fx.Option {
 		fx.Supply(opt),
 		fx.Provide(
 			newCtx,
-			newConfig,
+			userConfig,
 			newConnMgr,
 			newDatastore,
 			newPeerstore,
@@ -141,8 +142,22 @@ func newDHT(lx fx.Lifecycle, p dhtParams) routing.ContentRouting {
 type peerParams struct {
 	fx.In
 
-	Ctx     context.Context
-	HostOpt []config.Option
+	Ctx       context.Context
+	PSK       pnet.PSK
+	Addrs     []multiaddr.Multiaddr
+	Peerstore peerstore.Peerstore
+	ConnMgr   cm.ConnManager
+}
+
+func (p peerParams) options() []config.Option {
+	return []config.Option{
+		p2p.DisableRelay(),
+		hostutil.MaybePrivate(p.PSK),
+		p2p.ListenAddrs(p.Addrs...),
+		p2p.UserAgent("ww-host"),
+		p2p.Peerstore(p.Peerstore),
+		p2p.ConnectionManager(p.ConnMgr),
+	}
 }
 
 func newPeer(lx fx.Lifecycle, p peerParams) host.Host {
@@ -150,7 +165,7 @@ func newPeer(lx fx.Lifecycle, p peerParams) host.Host {
 
 	lx.Append(fx.Hook{
 		OnStart: func(context.Context) (err error) {
-			h.Host, err = p2p.New(p.Ctx, p.HostOpt...)
+			h.Host, err = p2p.New(p.Ctx, p.options()...)
 
 			return
 		},
@@ -185,35 +200,38 @@ func newDatastore() datastore.Batching {
 	return dsync.MutexWrap(datastore.NewMapDatastore())
 }
 
-func newConnMgr() cm.ConnManager {
-	return connmgr.NewConnManager(
-		ww.LowWater,
-		ww.HighWater,
-		time.Second*10)
-}
-
-type configParams struct {
+type connMgrParams struct {
 	fx.In
 
-	Opt     []Option
-	PStore  peerstore.Peerstore
-	ConnMgr cm.ConnManager
+	LowWater  int `name:"kmin"`
+	HighWater int `name:"kmax"`
 }
 
-type configOutput struct {
+func newConnMgr(p connMgrParams) cm.ConnManager {
+	return connmgr.NewConnManager(p.LowWater, p.HighWater, time.Second*10)
+}
+
+type userConfigOut struct {
 	fx.Out
 
+	// Host-specific params
 	Log          log.Logger
-	Namespace    string
-	TTL          time.Duration
-	HostOpt      []config.Option
 	BootProtocol boot.Protocol
+	ListenAddrs  []multiaddr.Multiaddr
+
+	// Shared cluster params
+	Namespace string
+	Secret    pnet.PSK
+	TTL       time.Duration
+
+	KMin int `name:"kmin"` // min peer connections to maintain
+	KMax int `name:"kmax"` // max peer connections to maintain
 }
 
-func newConfig(p configParams) (out configOutput, err error) {
+func userConfig(opt []Option) (out userConfigOut, err error) {
 	var cfg Config
 
-	for _, f := range withDefault(p.Opt) {
+	for _, f := range withDefault(opt) {
 		if err = f(&cfg); err != nil {
 			return
 		}
@@ -221,17 +239,14 @@ func newConfig(p configParams) (out configOutput, err error) {
 
 	out.Log = cfg.log.WithField("ns", cfg.ns)
 	out.BootProtocol = cfg.boot
+	out.ListenAddrs = cfg.addrs
+
 	out.Namespace = cfg.ns
+	out.Secret = cfg.psk
 	out.TTL = cfg.ttl
 
-	out.HostOpt = []config.Option{
-		p2p.DisableRelay(),
-		hostutil.MaybePrivate(cfg.psk),
-		p2p.ListenAddrs(cfg.addrs...),
-		p2p.UserAgent("ww-host"),
-		p2p.Peerstore(p.PStore),
-		p2p.ConnectionManager(p.ConnMgr),
-	}
+	out.KMin = cfg.kmin
+	out.KMax = cfg.kmax
 
 	return
 }

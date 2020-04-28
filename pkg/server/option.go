@@ -17,8 +17,9 @@ type Option func(*Config) error
 type Config struct {
 	log log.Logger
 
-	ns  string
-	ttl time.Duration
+	ns         string
+	ttl        time.Duration
+	kmin, kmax int // min, max node cardinality
 
 	addrs []multiaddr.Multiaddr
 	psk   pnet.PSK
@@ -89,6 +90,14 @@ func withTTL(ttl time.Duration) Option {
 	}
 }
 
+func withCardinality(k, highwater int) Option {
+	return func(c *Config) (err error) {
+		c.kmin = k
+		c.kmax = highwater
+		return
+	}
+}
+
 /*
 	Utils
 */
@@ -103,5 +112,6 @@ func withDefault(opt []Option) []Option {
 		),
 		WithBootstrap(nil),
 		withTTL(time.Second * 6),
+		withCardinality(8, 32),
 	}, opt...)
 }
