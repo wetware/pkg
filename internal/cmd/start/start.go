@@ -20,7 +20,9 @@ var (
 // Init the `start` command
 func Init() cli.BeforeFunc {
 	return func(c *cli.Context) error {
-		peer = server.New(server.WithLogger(logutil.New(c)))
+		peer = server.New(
+			server.WithLogger(logutil.New(c)),
+			server.WithEventTrace(c.Bool("trace")))
 
 		ch := make(chan os.Signal, 1)
 		signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)

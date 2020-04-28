@@ -19,6 +19,11 @@ func WithLevel(c *cli.Context) (opt log.Option) {
 		opt = log.OptLevel(level)
 	}()
 
+	if c.Bool("trace") {
+		level = log.TraceLevel
+		return
+	}
+
 	if c.String("logfmt") == "none" {
 		return
 	}

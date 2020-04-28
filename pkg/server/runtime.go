@@ -13,7 +13,6 @@ import (
 
 	"github.com/lthibault/jitterbug"
 	log "github.com/lthibault/log/pkg"
-	"github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 	"go.uber.org/fx"
 	"golang.org/x/sync/errgroup"
@@ -26,6 +25,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/multiformats/go-multiaddr"
 
 	ww "github.com/lthibault/wetware/pkg"
 	"github.com/lthibault/wetware/pkg/boot"
@@ -46,8 +46,10 @@ type process func(runtime) fx.Hook
 type runtime struct {
 	fx.In
 
-	Log log.Logger
 	Ctx context.Context
+
+	Log         log.Logger
+	EnableTrace bool `name:"trace"`
 
 	Host         host.Host
 	ConnMgr      connmgr.ConnManager
@@ -66,6 +68,7 @@ type runtime struct {
 // for a given host.
 func run(lx fx.Lifecycle, r runtime) {
 	for _, proc := range []process{
+		maybeTrace,
 		bootstrap,
 		signalNetworkEvents,
 		signalNeighborhoodEvents,
@@ -116,7 +119,7 @@ type netEventWatcher struct {
 	connEvt, strmEvt event.Emitter
 }
 
-func (w *netEventWatcher) Close() error {
+func (w netEventWatcher) Close() error {
 	w.connEvt.Close()
 	w.strmEvt.Close()
 	return w.peerIdentified.Close()
@@ -586,6 +589,67 @@ func (n neighborhood) Phase() ww.Phase {
 		return ww.PhaseOverloaded
 	default:
 		panic(fmt.Sprintf("invalid number of connections: %d", k))
+	}
+}
+
+// log local events at Trace level.
+func maybeTrace(r runtime) fx.Hook {
+	if !r.EnableTrace {
+		return fx.Hook{}
+	}
+
+	var sub event.Subscription
+	return fx.Hook{
+		OnStart: func(context.Context) (err error) {
+			if sub, err = r.Host.EventBus().Subscribe([]interface{}{
+				new(event.EvtPeerIdentificationCompleted),
+				new(event.EvtPeerIdentificationFailed),
+				new(ww.EvtConnectionChanged),
+				new(ww.EvtStreamChanged),
+				new(ww.EvtNeighborhoodChanged),
+			}); err == nil {
+				go func() {
+					r.Log.Trace("event trace started")
+					defer r.Log.Trace("event trace finished")
+
+					for v := range sub.Out() {
+						switch ev := v.(type) {
+						case event.EvtPeerIdentificationCompleted:
+							r.Log.WithField("peer", ev.Peer).
+								Trace("peer identification completed")
+						case event.EvtPeerIdentificationFailed:
+							r.Log.WithError(ev.Reason).WithField("peer", ev.Peer).
+								Trace("peer identification failed")
+						case ww.EvtConnectionChanged:
+							r.Log.WithFields(log.F{
+								"peer":       ev.Peer,
+								"conn_state": ev.State,
+								"client":     ev.Client,
+							}).Trace("connection state changed")
+						case ww.EvtStreamChanged:
+							r.Log.WithFields(log.F{
+								"peer":         ev.Peer,
+								"stream_state": ev.State,
+								"proto":        ev.Stream.Protocol(),
+							}).Trace("stream state changed")
+						case ww.EvtNeighborhoodChanged:
+							r.Log.WithFields(log.F{
+								"peer":       ev.Peer,
+								"conn_state": ev.State,
+								"from":       ev.From,
+								"to":         ev.To,
+								"n":          ev.N,
+							}).Trace("neighborhood changed")
+						}
+					}
+				}()
+			}
+
+			return
+		},
+		OnStop: func(context.Context) error {
+			return sub.Close()
+		},
 	}
 }
 

@@ -214,16 +214,19 @@ func newConnMgr(p connMgrParams) cm.ConnManager {
 type userConfigOut struct {
 	fx.Out
 
-	// Host-specific params
-	Log          log.Logger
+	Log        log.Logger
+	EventTrace bool `name:"trace"`
+
+	// Network address and cluster joining
 	BootProtocol boot.Protocol
 	ListenAddrs  []multiaddr.Multiaddr
+	Secret       pnet.PSK
 
-	// Shared cluster params
+	// Pubsub params
 	Namespace string
-	Secret    pnet.PSK
 	TTL       time.Duration
 
+	// Neighborhood params
 	KMin int `name:"kmin"` // min peer connections to maintain
 	KMax int `name:"kmax"` // max peer connections to maintain
 }
@@ -238,6 +241,8 @@ func userConfig(opt []Option) (out userConfigOut, err error) {
 	}
 
 	out.Log = cfg.log.WithField("ns", cfg.ns)
+	out.EventTrace = cfg.trace
+
 	out.BootProtocol = cfg.boot
 	out.ListenAddrs = cfg.addrs
 

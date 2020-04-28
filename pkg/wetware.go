@@ -2,6 +2,7 @@ package ww
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/libp2p/go-libp2p-core/peer"
 	protocol "github.com/libp2p/go-libp2p-protocol"
@@ -67,6 +68,21 @@ const (
 	PhaseOverloaded
 )
 
+func (p Phase) String() string {
+	switch p {
+	case PhaseOrphaned:
+		return "orphaned"
+	case PhasePartial:
+		return "partial"
+	case PhaseComplete:
+		return "complete"
+	case PhaseOverloaded:
+		return "overloaded"
+	default:
+		return fmt.Sprintf("<invalid :: %d>", p)
+	}
+}
+
 // ConnState tags a connection as belonging to a client or server.
 type ConnState uint8
 
@@ -78,6 +94,17 @@ const (
 	ConnStateClosed
 )
 
+func (c ConnState) String() string {
+	switch c {
+	case ConnStateOpened:
+		return "opened"
+	case ConnStateClosed:
+		return "closed"
+	default:
+		return fmt.Sprintf("<invalid :: %d>", c)
+	}
+}
+
 // StreamState tags a stream state.
 type StreamState uint8
 
@@ -88,6 +115,17 @@ const (
 	// StreamStateClosed .
 	StreamStateClosed
 )
+
+func (s StreamState) String() string {
+	switch s {
+	case StreamStateOpened:
+		return "opened"
+	case StreamStateClosed:
+		return "closed"
+	default:
+		return fmt.Sprintf("<invalid :: %d>", s)
+	}
+}
 
 // Anchor .
 type Anchor interface {

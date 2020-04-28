@@ -15,7 +15,8 @@ type Option func(*Config) error
 
 // Config .
 type Config struct {
-	log log.Logger
+	log   log.Logger
+	trace bool
 
 	ns         string
 	ttl        time.Duration
@@ -35,6 +36,14 @@ type Config struct {
 func WithLogger(logger log.Logger) Option {
 	return func(c *Config) (err error) {
 		c.log = logger
+		return
+	}
+}
+
+// WithEventTrace controls the logging of events in the Host's internal bus.
+func WithEventTrace(trace bool) Option {
+	return func(c *Config) (err error) {
+		c.trace = trace
 		return
 	}
 }
@@ -105,6 +114,7 @@ func withCardinality(k, highwater int) Option {
 func withDefault(opt []Option) []Option {
 	return append([]Option{
 		WithLogger(log.New(log.OptLevel(log.FatalLevel))),
+		WithEventTrace(false),
 		WithNamespace(ww.DefaultNamespace),
 		WithListenAddrString(
 			"/ip4/127.0.0.1/tcp/0", // IPv4 loopback
