@@ -12,7 +12,6 @@ import (
 
 	log "github.com/lthibault/log/pkg"
 	ww "github.com/lthibault/wetware/pkg"
-	"github.com/lthibault/wetware/pkg/boot"
 )
 
 // Client interacts with live clusters.
@@ -25,9 +24,9 @@ type Client struct {
 // Dial into a cluster using the specified discovery strategy.  The context is used only
 // when dialing into the cluster.  To terminate the client connection, use the Close
 // method.
-func Dial(ctx context.Context, b boot.Strategy, opt ...Option) (Client, error) {
+func Dial(ctx context.Context, opt ...Option) (Client, error) {
 	var c Client
-	app := fx.New(module(&c, b, opt))
+	app := fx.New(module(&c, opt))
 	c.app = app
 	return c, errors.Wrap(app.Start(ctx), "dial")
 }

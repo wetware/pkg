@@ -6,7 +6,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/pnet"
 	log "github.com/lthibault/log/pkg"
 	ww "github.com/lthibault/wetware/pkg"
-	"github.com/lthibault/wetware/pkg/boot"
+	discover "github.com/lthibault/wetware/pkg/discover"
 	"github.com/multiformats/go-multiaddr"
 )
 
@@ -25,7 +25,7 @@ type Config struct {
 	addrs []multiaddr.Multiaddr
 	psk   pnet.PSK
 
-	boot boot.Protocol
+	boot discover.Protocol
 }
 
 /*
@@ -81,10 +81,10 @@ func WithListenAddr(addrs ...multiaddr.Multiaddr) Option {
 }
 
 // WithBootstrap sets the Host's bootstrap strategy.
-func WithBootstrap(p boot.Protocol) Option {
+func WithBootstrap(p discover.Protocol) Option {
 	return func(c *Config) (err error) {
 		if p == nil {
-			p = &boot.MDNS{Namespace: c.ns}
+			p = &discover.MDNS{Namespace: c.ns}
 		}
 
 		c.boot = p

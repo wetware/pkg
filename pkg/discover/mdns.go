@@ -1,4 +1,4 @@
-package boot
+package discover
 
 import (
 	"context"
@@ -29,7 +29,7 @@ type MDNS struct {
 
 // DiscoverPeers queries MDNS.
 func (d MDNS) DiscoverPeers(ctx context.Context) ([]peer.AddrInfo, error) {
-	// TODO:  implement boot.DiscoverOpt to set the desired number of boot peers.
+	// TODO:  implement discover.DiscoverOpt to set the desired number of boot peers.
 	//		  In many cases, it's helpful to get n == ww.LowWater bootstrap peers.
 
 	entries := make(chan *mdns.ServiceEntry, 1)

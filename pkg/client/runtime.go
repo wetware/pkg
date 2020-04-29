@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"encoding/binary"
 	"time"
 
 	"github.com/pkg/errors"
@@ -16,7 +15,7 @@ import (
 	"github.com/multiformats/go-multiaddr"
 
 	ww "github.com/lthibault/wetware/pkg"
-	"github.com/lthibault/wetware/pkg/boot"
+	discover "github.com/lthibault/wetware/pkg/discover"
 )
 
 var runtime = fx.Invoke(
@@ -24,22 +23,28 @@ var runtime = fx.Invoke(
 	join,
 )
 
-func subloop(ctx context.Context, h host.Host, t *pubsub.Topic) fx.Hook {
-	var sub *pubsub.Subscription
+type subloopConfig struct {
+	fx.In
 
-	return fx.Hook{
-		OnStart: func(context.Context) (err error) {
-			if sub, err = t.Subscribe(); err == nil {
-				go recvHeartbeats(ctx, sub, h.Peerstore())
-			}
+	Ctx   context.Context
+	Host  host.Host
+	Topic *pubsub.Topic
+}
 
-			return
-		},
+func subloop(lx fx.Lifecycle, cfg subloopConfig) error {
+	sub, err := cfg.Topic.Subscribe()
+	if err != nil {
+		return err
+	}
+	lx.Append(fx.Hook{
 		OnStop: func(context.Context) error {
 			sub.Cancel()
 			return nil
 		},
-	}
+	})
+
+	go recvHeartbeats(cfg.Ctx, sub, cfg.Host.Peerstore())
+	return nil
 }
 
 func recvHeartbeats(ctx context.Context, sub *pubsub.Subscription, a peerstore.AddrBook) {
@@ -66,23 +71,19 @@ func recvHeartbeats(ctx context.Context, sub *pubsub.Subscription, a peerstore.A
 	}
 }
 
-func join(lx fx.Lifecycle, host host.Host, b boot.Strategy) {
-	lx.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			ps, err := b.DiscoverPeers(ctx)
-			if err != nil {
-				return errors.Wrap(err, "discover")
-			}
+func join(ctx context.Context, host host.Host, d discover.Strategy) error {
+	ps, err := d.DiscoverPeers(ctx)
+	if err != nil {
+		return errors.Wrap(err, "discover")
+	}
 
-			// TODO:  change this to an at-least-one-succeeds group
-			var g errgroup.Group
-			for _, pinfo := range ps {
-				g.Go(connect(ctx, host, pinfo))
-			}
+	// TODO:  change this to an at-least-one-succeeds group
+	var g errgroup.Group
+	for _, pinfo := range ps {
+		g.Go(connect(ctx, host, pinfo))
+	}
 
-			return errors.Wrap(g.Wait(), "join")
-		},
-	})
+	return errors.Wrap(g.Wait(), "join")
 }
 
 func connect(ctx context.Context, host host.Host, pinfo peer.AddrInfo) func() error {
@@ -92,8 +93,4 @@ func connect(ctx context.Context, host host.Host, pinfo peer.AddrInfo) func() er
 
 		return host.Connect(ctx, pinfo)
 	}
-}
-
-func seqno(msg *pubsub.Message) uint64 {
-	return binary.BigEndian.Uint64(msg.GetSeqno())
 }

@@ -25,7 +25,7 @@ import (
 
 	log "github.com/lthibault/log/pkg"
 	hostutil "github.com/lthibault/wetware/internal/util/host"
-	"github.com/lthibault/wetware/pkg/boot"
+	discover "github.com/lthibault/wetware/pkg/discover"
 )
 
 func module(h *Host, opt []Option) fx.Option {
@@ -187,7 +187,7 @@ type userConfigOut struct {
 	EventTrace bool `name:"trace"`
 
 	// Network address and cluster joining
-	BootProtocol boot.Protocol
+	BootProtocol discover.Protocol
 	ListenAddrs  []multiaddr.Multiaddr
 	Secret       pnet.PSK
 

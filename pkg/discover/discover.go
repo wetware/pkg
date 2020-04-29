@@ -1,5 +1,5 @@
-// Package boot contains facilities for discovering bootstrap peers.
-package boot
+// Package discover contains facilities for joining active clusters.
+package discover
 
 import (
 	"context"
