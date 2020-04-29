@@ -18,11 +18,11 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/libp2p/go-libp2p-core/connmgr"
-	"github.com/libp2p/go-libp2p-core/discovery"
 	"github.com/libp2p/go-libp2p-core/event"
 	host "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
+	discovery "github.com/libp2p/go-libp2p-discovery"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/multiformats/go-multiaddr"
@@ -41,54 +41,39 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-type process func(runtime) fx.Hook
+var runtime = fx.Invoke(
+	maybeTrace,
+	bootstrap,
+	signalNetworkEvents,
+	signalNeighborhoodEvents,
+	protectConns,
+	maintainNeighborhood,
+	announcePresence,
+	listenAndServe, // this must come last
+)
 
-type runtime struct {
+func listenAndServe(host host.Host, addrs []multiaddr.Multiaddr) error {
+	return host.Network().Listen(addrs...) // fires event.EvtLocalAddressesUpdated
+}
+
+type bootstrapConfig struct {
 	fx.In
 
-	Ctx context.Context
-
-	Log         log.Logger
-	EnableTrace bool `name:"trace"`
-
-	Host         host.Host
-	ConnMgr      connmgr.ConnManager
-	DHT          routingDiscovery
-	BootProtocol boot.Protocol
-
-	Namespace string
-	KMin      int `name:"kmin"`
-	KMax      int `name:"kmax"`
-
-	TTL     time.Duration
-	Cluster *struct{ *pubsub.Topic }
+	Boot boot.Protocol
+	Host host.Host
 }
 
-// run is intended to be invoked from an Fx application.  It starts background processes
-// for a given host.
-func run(lx fx.Lifecycle, r runtime) {
-	for _, proc := range []process{
-		maybeTrace,
-		bootstrap,
-		signalNetworkEvents,
-		signalNeighborhoodEvents,
-		protectConns,
-		maintainNeighborhood,
-		announcePresence,
-	} {
-		lx.Append(proc(r))
-	}
-}
-
-func bootstrap(r runtime) fx.Hook {
-	return fx.Hook{
+func bootstrap(lx fx.Lifecycle, cfg bootstrapConfig) {
+	lx.Append(fx.Hook{
+		// N.B.:  any call to OnStart in a runtime function is guaranteed to run AFTER
+		// the host has begun listening for connections.
 		OnStart: func(context.Context) error {
-			return r.BootProtocol.Start(r.Host)
+			return cfg.Boot.Start(cfg.Host)
 		},
 		OnStop: func(context.Context) error {
-			return r.BootProtocol.Close()
+			return cfg.Boot.Close()
 		},
-	}
+	})
 }
 
 // signalNetworkEvents hooks into the host's network and emits events over event.Bus to
@@ -96,124 +81,119 @@ func bootstrap(r runtime) fx.Hook {
 //
 // HACK:  This is a short-term solution while we wait for libp2p to provide equivalent
 //		  functionality.
-func signalNetworkEvents(r runtime) fx.Hook {
-	w := netEventWatcher{
-		log:  r.Log,
-		host: r.Host,
+func signalNetworkEvents(lx fx.Lifecycle, host host.Host) error {
+	bus := host.EventBus()
+
+	connEvt, err := bus.Emitter(new(ww.EvtConnectionChanged))
+	if err != nil {
+		return err
 	}
 
-	return fx.Hook{
-		OnStart: func(context.Context) error {
-			return w.init()
-		},
-		OnStop: func(context.Context) error {
-			return w.Close()
-		},
+	strmEvt, err := bus.Emitter(new(ww.EvtStreamChanged))
+	if err != nil {
+		return err
 	}
-}
 
-type netEventWatcher struct {
-	log              log.Logger
-	host             host.Host
-	peerIdentified   event.Subscription
-	connEvt, strmEvt event.Emitter
-}
+	pidEvt, err := bus.Subscribe(new(event.EvtPeerIdentificationCompleted))
+	if err != nil {
+		return err
+	}
 
-func (w netEventWatcher) Close() error {
-	w.connEvt.Close()
-	w.strmEvt.Close()
-	return w.peerIdentified.Close()
-}
+	go func() {
+		for v := range pidEvt.Out() {
+			ev := v.(event.EvtPeerIdentificationCompleted)
+			connEvt.Emit(ww.EvtConnectionChanged{
+				Peer:   ev.Peer,
+				Client: isClient(ev.Peer, host.Peerstore()),
+				State:  ww.ConnStateOpened,
+			})
+		}
+	}()
 
-func (w *netEventWatcher) init() (err error) {
-	w.host.Network().Notify(&network.NotifyBundle{
-		// NOTE:  can't use ConnectedF.  The Identify protocol will not have completed
-		// 		  and isClient will panic.
-		DisconnectedF: w.onDisconnected,
+	host.Network().Notify(&network.NotifyBundle{
+		// NOTE:  can't use ConnectedF because the
+		//		  identity protocol will not have
+		// 		  completed, meaning isClient will panic.
+		DisconnectedF: onDisconnected(connEvt, host.Peerstore()),
 
-		OpenedStreamF: w.onStreamOpened,
-		ClosedStreamF: w.onStreamOpened,
+		OpenedStreamF: onStreamOpened(strmEvt),
+		ClosedStreamF: onStreamClosed(strmEvt),
 	})
 
-	bus := w.host.EventBus()
-	if w.connEvt, err = bus.Emitter(new(ww.EvtConnectionChanged)); err != nil {
-		return
-	}
+	lx.Append(fx.Hook{
+		OnStop: func(context.Context) error {
+			pidEvt.Close()
+			connEvt.Close()
+			strmEvt.Close()
+			return nil
+		},
+	})
 
-	if w.strmEvt, err = bus.Emitter(new(ww.EvtStreamChanged)); err != nil {
-		return
-	}
-
-	if w.peerIdentified, err = bus.Subscribe(
-		new(event.EvtPeerIdentificationCompleted),
-	); err == nil {
-		go w.loop()
-	}
-
-	return
+	return nil
 }
 
-func (w *netEventWatcher) loop() {
-	for v := range w.peerIdentified.Out() {
-		ev := v.(event.EvtPeerIdentificationCompleted)
-		w.connEvt.Emit(ww.EvtConnectionChanged{
-			Peer:   ev.Peer,
-			Client: isClient(ev.Peer, w.host.Peerstore()),
-			State:  ww.ConnStateOpened,
+func onDisconnected(e event.Emitter, m peerstore.PeerMetadata) func(network.Network, network.Conn) {
+	return func(net network.Network, conn network.Conn) {
+		e.Emit(ww.EvtConnectionChanged{
+			Peer:   conn.RemotePeer(),
+			Client: isClient(conn.RemotePeer(), m),
+			State:  ww.ConnStateClosed,
 		})
 	}
 }
 
-func (w netEventWatcher) onDisconnected(net network.Network, conn network.Conn) {
-	w.connEvt.Emit(ww.EvtConnectionChanged{
-		Peer:   conn.RemotePeer(),
-		Client: isClient(conn.RemotePeer(), w.host.Peerstore()),
-		State:  ww.ConnStateClosed,
-	})
-}
-
-func (w netEventWatcher) onStreamOpened(net network.Network, s network.Stream) {
-	w.strmEvt.Emit(ww.EvtStreamChanged{
-		Peer:   s.Conn().RemotePeer(),
-		Stream: s,
-		State:  ww.StreamStateOpened,
-	})
-}
-
-func (w netEventWatcher) onStreamClosed(net network.Network, s network.Stream) {
-	w.strmEvt.Emit(ww.EvtStreamChanged{
-		Peer:   s.Conn().RemotePeer(),
-		Stream: s,
-		State:  ww.StreamStateClosed,
-	})
-}
-
-func signalNeighborhoodEvents(r runtime) fx.Hook {
-	var sub event.Subscription
-	var n = neighborhood{
-		kmin: r.KMin,
-		kmax: r.KMax,
-		m:    make(map[peer.ID]int),
+func onStreamOpened(e event.Emitter) func(network.Network, network.Stream) {
+	return func(net network.Network, s network.Stream) {
+		e.Emit(ww.EvtStreamChanged{
+			Peer:   s.Conn().RemotePeer(),
+			Stream: s,
+			State:  ww.StreamStateOpened,
+		})
 	}
+}
 
-	return fx.Hook{
-		OnStart: func(context.Context) (err error) {
-			bus := r.Host.EventBus()
-			if sub, err = bus.Subscribe(new(ww.EvtConnectionChanged)); err != nil {
-				return
-			}
+func onStreamClosed(e event.Emitter) func(network.Network, network.Stream) {
+	return func(net network.Network, s network.Stream) {
+		e.Emit(ww.EvtStreamChanged{
+			Peer:   s.Conn().RemotePeer(),
+			Stream: s,
+			State:  ww.StreamStateClosed,
+		})
+	}
+}
 
-			var e event.Emitter
-			if e, err = bus.Emitter(new(ww.EvtNeighborhoodChanged)); err == nil {
-				go neighborhoodEventLoop(sub, e, n)
-			}
+type neighborhoodEvtConfig struct {
+	fx.In
 
-			return
-		},
+	KMin int `name:"kmin"`
+	KMax int `name:"kmax"`
+
+	Host host.Host
+}
+
+func signalNeighborhoodEvents(lx fx.Lifecycle, cfg neighborhoodEvtConfig) error {
+	var sub event.Subscription
+	var n = newNeighborhood(cfg.KMin, cfg.KMax)
+
+	bus := cfg.Host.EventBus()
+
+	sub, err := bus.Subscribe(new(ww.EvtConnectionChanged))
+	if err != nil {
+		return err
+	}
+	lx.Append(fx.Hook{
 		OnStop: func(context.Context) error {
 			return sub.Close()
 		},
+	})
+
+	e, err := bus.Emitter(new(ww.EvtNeighborhoodChanged))
+	if err != nil {
+		return err
 	}
+
+	go neighborhoodEventLoop(sub, e, n)
+	return nil
 }
 
 func neighborhoodEventLoop(sub event.Subscription, e event.Emitter, n neighborhood) {
@@ -253,24 +233,22 @@ func neighborhoodEventLoop(sub event.Subscription, e event.Emitter, n neighborho
 	}
 }
 
-func protectConns(r runtime) fx.Hook {
-	var sub event.Subscription
-
-	return fx.Hook{
-		OnStart: func(context.Context) (err error) {
-			if sub, err = r.Host.EventBus().Subscribe([]interface{}{
-				new(ww.EvtNeighborhoodChanged),
-				new(ww.EvtStreamChanged),
-			}); err == nil {
-				go connProtectorLoop(sub, r.ConnMgr)
-			}
-
-			return
-		},
+func protectConns(lx fx.Lifecycle, host host.Host, cm connmgr.ConnManager) error {
+	sub, err := host.EventBus().Subscribe([]interface{}{
+		new(ww.EvtNeighborhoodChanged),
+		new(ww.EvtStreamChanged),
+	})
+	if err != nil {
+		return err
+	}
+	lx.Append(fx.Hook{
 		OnStop: func(context.Context) error {
 			return sub.Close()
 		},
-	}
+	})
+
+	go connProtectorLoop(sub, cm)
+	return nil
 }
 
 func connProtectorLoop(sub event.Subscription, cm connmgr.ConnManager) {
@@ -296,6 +274,22 @@ func connProtectorLoop(sub event.Subscription, cm connmgr.ConnManager) {
 	}
 }
 
+type neighborhoodMaintainerConfig struct {
+	fx.In
+
+	Ctx context.Context
+	Log log.Logger
+
+	Host host.Host
+
+	Namespace string `name:"ns"`
+	KMin      int    `name:"kmin"`
+	KMax      int    `name:"kmax"`
+
+	Boot      boot.Protocol
+	Discovery discovery.Discovery
+}
+
 type neighborhoodMaintainer struct {
 	log log.Logger
 
@@ -309,32 +303,30 @@ type neighborhoodMaintainer struct {
 	d  discovery.Discoverer
 }
 
-func maintainNeighborhood(r runtime) fx.Hook {
-	var sub event.Subscription
-	m := neighborhoodMaintainer{
-		log:  r.Log,
-		ns:   r.Namespace,
-		kmin: r.KMin,
-		kmax: r.KMax,
-		host: r.Host,
-		b:    r.BootProtocol,
-		d:    r.DHT,
+func maintainNeighborhood(lx fx.Lifecycle, cfg neighborhoodMaintainerConfig) error {
+	sub, err := cfg.Host.EventBus().Subscribe(new(ww.EvtNeighborhoodChanged))
+	if err != nil {
+		return err
 	}
-
-	return fx.Hook{
-		OnStart: func(context.Context) (err error) {
-			if sub, err = m.host.EventBus().
-				Subscribe(new(ww.EvtNeighborhoodChanged)); err == nil {
-				go m.loop(r.Ctx, sub)
-			}
-
-			return
-		},
+	lx.Append(fx.Hook{
 		OnStop: func(context.Context) error {
 			return sub.Close()
 		},
+	})
+
+	m := neighborhoodMaintainer{
+		log:  cfg.Log,
+		ns:   cfg.Namespace,
+		kmin: cfg.KMin,
+		kmax: cfg.KMax,
+		host: cfg.Host,
+		b:    cfg.Boot,
+		d:    cfg.Discovery,
 	}
 
+	go m.loop(cfg.Ctx, sub)
+
+	return nil
 }
 
 func (m *neighborhoodMaintainer) loop(ctx context.Context, sub event.Subscription) {
@@ -439,6 +431,18 @@ func connect(ctx context.Context, host host.Host, pinfo peer.AddrInfo) func() er
 	}
 }
 
+type announcerConfig struct {
+	fx.In
+
+	Ctx context.Context
+	Log log.Logger
+
+	Host host.Host
+
+	TTL   time.Duration `name:"ttl"`
+	Topic *pubsub.Topic
+}
+
 type announcer struct {
 	log log.Logger
 
@@ -452,17 +456,20 @@ type announcer struct {
 	}
 }
 
-func announcePresence(r runtime) fx.Hook {
-	ctx, cancel := context.WithCancel(r.Ctx)
-	return fx.Hook{
-		OnStart: func(start context.Context) (err error) {
-			a := announcer{
-				log:  r.Log,
-				host: r.Host,
-				ttl:  r.TTL,
-				mesh: r.Cluster.Topic,
-			}
+func announcePresence(lx fx.Lifecycle, cfg announcerConfig) error {
+	ctx, cancel := context.WithCancel(cfg.Ctx)
 
+	a := announcer{
+		log:  cfg.Log,
+		host: cfg.Host,
+		ttl:  cfg.TTL,
+		mesh: cfg.Topic,
+	}
+
+	lx.Append(fx.Hook{
+		// N.B.:  any call to OnStart in a runtime function is guaranteed to run AFTER
+		// the host has begun listening for connections.
+		OnStart: func(start context.Context) (err error) {
 			if err = a.Announce(start); err == nil {
 				go a.loop(ctx)
 			}
@@ -473,7 +480,9 @@ func announcePresence(r runtime) fx.Hook {
 			cancel()
 			return nil
 		},
-	}
+	})
+
+	return nil
 }
 
 func (a announcer) Announce(ctx context.Context) error {
@@ -558,6 +567,14 @@ type neighborhood struct {
 	m          map[peer.ID]int
 }
 
+func newNeighborhood(kmin, kmax int) neighborhood {
+	return neighborhood{
+		kmin: kmin,
+		kmax: kmax,
+		m:    make(map[peer.ID]int),
+	}
+}
+
 func (n neighborhood) Len() int {
 	return len(n.m)
 }
@@ -597,65 +614,82 @@ func (n neighborhood) Phase() ww.Phase {
 	}
 }
 
+type traceConfig struct {
+	fx.In
+
+	Log         log.Logger
+	EnableTrace bool `name:"trace"`
+	Host        host.Host
+}
+
 // log local events at Trace level.
-func maybeTrace(r runtime) fx.Hook {
-	if !r.EnableTrace {
-		return fx.Hook{}
+func maybeTrace(lx fx.Lifecycle, cfg traceConfig) error {
+	if !cfg.EnableTrace {
+		return nil
 	}
 
-	var sub event.Subscription
-	return fx.Hook{
-		OnStart: func(context.Context) (err error) {
-			if sub, err = r.Host.EventBus().Subscribe([]interface{}{
-				new(event.EvtPeerIdentificationCompleted),
-				new(event.EvtPeerIdentificationFailed),
-				new(ww.EvtConnectionChanged),
-				new(ww.EvtStreamChanged),
-				new(ww.EvtNeighborhoodChanged),
-			}); err == nil {
-				go func() {
-					r.Log.Trace("event trace started")
-					defer r.Log.Trace("event trace finished")
-
-					for v := range sub.Out() {
-						switch ev := v.(type) {
-						case event.EvtPeerIdentificationCompleted:
-							r.Log.WithField("peer", ev.Peer).
-								Trace("peer identification completed")
-						case event.EvtPeerIdentificationFailed:
-							r.Log.WithError(ev.Reason).WithField("peer", ev.Peer).
-								Trace("peer identification failed")
-						case ww.EvtConnectionChanged:
-							r.Log.WithFields(log.F{
-								"peer":       ev.Peer,
-								"conn_state": ev.State,
-								"client":     ev.Client,
-							}).Trace("connection state changed")
-						case ww.EvtStreamChanged:
-							r.Log.WithFields(log.F{
-								"peer":         ev.Peer,
-								"stream_state": ev.State,
-								"proto":        ev.Stream.Protocol(),
-							}).Trace("stream state changed")
-						case ww.EvtNeighborhoodChanged:
-							r.Log.WithFields(log.F{
-								"peer":       ev.Peer,
-								"conn_state": ev.State,
-								"from":       ev.From,
-								"to":         ev.To,
-								"n":          ev.N,
-							}).Trace("neighborhood changed")
-						}
-					}
-				}()
-			}
-
-			return
-		},
+	sub, err := cfg.Host.EventBus().Subscribe([]interface{}{
+		new(event.EvtLocalAddressesUpdated),
+		new(event.EvtPeerIdentificationCompleted),
+		new(event.EvtPeerIdentificationFailed),
+		new(ww.EvtConnectionChanged),
+		new(ww.EvtStreamChanged),
+		new(ww.EvtNeighborhoodChanged),
+	})
+	if err != nil {
+		return err
+	}
+	lx.Append(fx.Hook{
 		OnStop: func(context.Context) error {
 			return sub.Close()
 		},
-	}
+	})
+
+	go func() {
+		tracer := cfg.Log.WithFields(log.F{
+			"id":    cfg.Host.ID(),
+			"addrs": cfg.Host.Addrs(),
+		})
+
+		tracer.Trace("event trace started")
+		defer tracer.Trace("event trace finished")
+
+		for v := range sub.Out() {
+			switch ev := v.(type) {
+			case event.EvtLocalAddressesUpdated:
+				tracer = tracer.WithField("addrs", cfg.Host.Addrs())
+				tracer.Trace("local addrs updated")
+			case event.EvtPeerIdentificationCompleted:
+				tracer.WithField("peer", ev.Peer).
+					Trace("peer identification completed")
+			case event.EvtPeerIdentificationFailed:
+				tracer.WithError(ev.Reason).WithField("peer", ev.Peer).
+					Trace("peer identification failed")
+			case ww.EvtConnectionChanged:
+				tracer.WithFields(log.F{
+					"peer":       ev.Peer,
+					"conn_state": ev.State,
+					"client":     ev.Client,
+				}).Trace("connection state changed")
+			case ww.EvtStreamChanged:
+				tracer.WithFields(log.F{
+					"peer":         ev.Peer,
+					"stream_state": ev.State,
+					"proto":        ev.Stream.Protocol(),
+				}).Trace("stream state changed")
+			case ww.EvtNeighborhoodChanged:
+				tracer.WithFields(log.F{
+					"peer":       ev.Peer,
+					"conn_state": ev.State,
+					"from":       ev.From,
+					"to":         ev.To,
+					"n":          ev.N,
+				}).Trace("neighborhood changed")
+			}
+		}
+	}()
+
+	return nil
 }
 
 func isClient(p peer.ID, ps peerstore.PeerMetadata) bool {

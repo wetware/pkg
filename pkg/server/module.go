@@ -20,6 +20,7 @@ import (
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/config"
+	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	"github.com/multiformats/go-multiaddr"
 
 	log "github.com/lthibault/log/pkg"
@@ -37,155 +38,123 @@ func module(h *Host, opt []Option) fx.Option {
 			newConnMgr,
 			newDatastore,
 			newPeerstore,
-			newPeer,
-			newDHT,
+			newRoutedHost,
 			newDiscovery,
 			newCluster,
-			newHost,
+			newServer,
 		),
 		fx.Populate(h),
-		fx.Invoke(run),
+		runtime,
 	)
 }
 
-type hostParam struct {
+type serverConfig struct {
 	fx.In
 
 	Log  log.Logger
 	Host host.Host
 }
 
-func newHost(p hostParam) Host {
+func newServer(cfg serverConfig) Host {
 	return Host{
-		log:  p.Log,
-		host: p.Host,
+		log:  cfg.Log,
+		host: cfg.Host,
 	}
 }
 
-type clusterParams struct {
+type clusterConfig struct {
 	fx.In
 
 	Ctx       context.Context
 	Host      host.Host
-	Discovery routingDiscovery
+	Discovery discovery.Discovery
 
-	Namespace string
-	TTL       time.Duration
+	Namespace string        `name:"ns"`
+	TTL       time.Duration `name:"ttl"`
 }
 
 type clusterOut struct {
 	fx.Out
 
-	PubSub *struct{ *pubsub.PubSub }
-	Topic  *struct{ *pubsub.Topic }
+	PubSub *pubsub.PubSub
+	Topic  *pubsub.Topic
 }
 
-func newCluster(lx fx.Lifecycle, p clusterParams) (out clusterOut) {
-	out.PubSub = new(struct{ *pubsub.PubSub })
-	out.Topic = new(struct{ *pubsub.Topic })
+func newCluster(lx fx.Lifecycle, cfg clusterConfig) (out clusterOut, err error) {
+	if out.PubSub, err = pubsub.NewGossipSub(
+		cfg.Ctx,
+		cfg.Host,
+		pubsub.WithDiscovery(cfg.Discovery),
+	); err == nil {
+		out.Topic, err = out.PubSub.Join(cfg.Namespace)
+	}
 
 	lx.Append(fx.Hook{
-		OnStart: func(context.Context) (err error) {
-			out.PubSub.PubSub, err = pubsub.NewGossipSub(
-				p.Ctx,
-				p.Host,
-				pubsub.WithDiscovery(p.Discovery),
-			)
-			return
-		},
-	})
-
-	lx.Append(fx.Hook{
-		OnStart: func(context.Context) (err error) {
-			out.Topic.Topic, err = out.PubSub.Join(p.Namespace)
-			return
+		OnStop: func(context.Context) error {
+			return out.Topic.Close()
 		},
 	})
 
 	return
 }
 
-func newDiscovery(lx fx.Lifecycle, r routing.ContentRouting) routingDiscovery {
-	var rd = new(struct{ *discovery.RoutingDiscovery })
-
-	lx.Append(fx.Hook{
-		OnStart: func(context.Context) error {
-			rd.RoutingDiscovery = discovery.NewRoutingDiscovery(r)
-			return nil
-		},
-	})
-
-	return rd
+func newDiscovery(r routing.Routing) discovery.Discovery {
+	return discovery.NewRoutingDiscovery(r)
 }
 
-type dhtParams struct {
-	fx.In
-
-	Ctx       context.Context
-	Host      host.Host
-	Datastore datastore.Batching
-}
-
-func newDHT(lx fx.Lifecycle, p dhtParams) routing.ContentRouting {
-	var r = new(struct{ *dht.IpfsDHT })
-
-	lx.Append(fx.Hook{
-		OnStart: func(context.Context) error {
-			r.IpfsDHT = dht.NewDHT(p.Ctx, p.Host, p.Datastore)
-			return nil
-		},
-	})
-
-	return r
-}
-
-type peerParams struct {
+type hostConfig struct {
 	fx.In
 
 	Ctx       context.Context
 	PSK       pnet.PSK
-	Addrs     []multiaddr.Multiaddr
 	Peerstore peerstore.Peerstore
 	ConnMgr   cm.ConnManager
+	Datastore datastore.Batching
 }
 
-func (p peerParams) options() []config.Option {
+func (cfg hostConfig) options() []config.Option {
 	return []config.Option{
 		p2p.DisableRelay(),
-		hostutil.MaybePrivate(p.PSK),
-		p2p.ListenAddrs(p.Addrs...),
+		hostutil.MaybePrivate(cfg.PSK),
+		p2p.NoListenAddrs, // defer listening until setup is complete
 		p2p.UserAgent("ww-host"),
-		p2p.Peerstore(p.Peerstore),
-		p2p.ConnectionManager(p.ConnMgr),
+		p2p.Peerstore(cfg.Peerstore),
+		p2p.ConnectionManager(cfg.ConnMgr),
 	}
 }
 
-func newPeer(lx fx.Lifecycle, p peerParams) host.Host {
-	var h = new(struct{ host.Host })
+type hostOut struct {
+	fx.Out
+
+	Host host.Host
+	DHT  routing.Routing
+}
+
+func newRoutedHost(lx fx.Lifecycle, cfg hostConfig) (out hostOut, err error) {
+	if out.Host, err = p2p.New(cfg.Ctx, cfg.options()...); err != nil {
+		return
+	}
 
 	lx.Append(fx.Hook{
-		OnStart: func(context.Context) (err error) {
-			h.Host, err = p2p.New(p.Ctx, p.options()...)
-
-			return
-		},
 		OnStop: func(context.Context) error {
-			return h.Close()
+			return out.Host.Close()
 		},
 	})
 
-	return h
+	out.DHT = dht.NewDHT(cfg.Ctx, out.Host, cfg.Datastore)
+	out.Host = routedhost.Wrap(out.Host, out.DHT)
+	return
 }
 
-type peerstoreParams struct {
+type peerstoreConfig struct {
 	fx.In
 
 	Ctx    context.Context
 	DStore datastore.Batching
 }
 
-func newPeerstore(p peerstoreParams) (peerstore.Peerstore, error) {
-	return pstoreds.NewPeerstore(p.Ctx, p.DStore, pstoreds.DefaultOpts())
+func newPeerstore(cfg peerstoreConfig) (peerstore.Peerstore, error) {
+	return pstoreds.NewPeerstore(cfg.Ctx, cfg.DStore, pstoreds.DefaultOpts())
 }
 
 func newDatastore() datastore.Batching {
@@ -200,15 +169,15 @@ func newDatastore() datastore.Batching {
 	return dsync.MutexWrap(datastore.NewMapDatastore())
 }
 
-type connMgrParams struct {
+type connManagerConfig struct {
 	fx.In
 
 	LowWater  int `name:"kmin"`
 	HighWater int `name:"kmax"`
 }
 
-func newConnMgr(p connMgrParams) cm.ConnManager {
-	return connmgr.NewConnManager(p.LowWater, p.HighWater, time.Second*10)
+func newConnMgr(cfg connManagerConfig) cm.ConnManager {
+	return connmgr.NewConnManager(cfg.LowWater, cfg.HighWater, time.Second*10)
 }
 
 type userConfigOut struct {
@@ -223,8 +192,8 @@ type userConfigOut struct {
 	Secret       pnet.PSK
 
 	// Pubsub params
-	Namespace string
-	TTL       time.Duration
+	Namespace string        `name:"ns"`
+	TTL       time.Duration `name:"ttl"`
 
 	// Neighborhood params
 	KMin int `name:"kmin"` // min peer connections to maintain
@@ -266,9 +235,4 @@ func newCtx(lx fx.Lifecycle) context.Context {
 	})
 
 	return ctx
-}
-
-type routingDiscovery interface {
-	discovery.Discovery
-	routing.ContentRouting
 }
