@@ -390,8 +390,13 @@ func (m *neighborhoodMaintainer) join(ctx context.Context) {
 			m.log.WithError(err).Debug("peer discovery failed")
 		}
 
+		self := m.host.ID()
 		var g errgroup.Group
 		for _, pinfo := range ps {
+			if pinfo.ID == self {
+				continue // got our own addr info; skip.
+			}
+
 			g.Go(connect(ctx, m.host, pinfo))
 		}
 
