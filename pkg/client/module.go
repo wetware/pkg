@@ -2,21 +2,22 @@ package client
 
 import (
 	"context"
-	"time"
 
 	"go.uber.org/fx"
-	"golang.org/x/sync/errgroup"
 
-	ds "github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore"
 	p2p "github.com/libp2p/go-libp2p"
 	host "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/pnet"
 	"github.com/libp2p/go-libp2p-core/routing"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/pkg/errors"
+	"github.com/libp2p/go-libp2p/config"
+	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 
+	log "github.com/lthibault/log/pkg"
 	hostutil "github.com/lthibault/wetware/internal/util/host"
 	ww "github.com/lthibault/wetware/pkg"
 	"github.com/lthibault/wetware/pkg/boot"
@@ -25,137 +26,114 @@ import (
 func module(c *Client, s boot.Strategy, opt []Option) fx.Option {
 	return fx.Options(
 		fx.NopLogger,
-		fx.Supply(opt, struct{ boot.Strategy }{s}),
+		fx.Supply(opt, struct {
+			fx.Out
+			boot.Strategy
+		}{Strategy: s}),
 		fx.Provide(
 			newCtx,
-			newConfig,
-			newHost,
+			userConfig,
+			newRoutedHost,
 			newPubsub,
-			newDHT,
 			newClient,
 		),
-		fx.Invoke(join),
 		fx.Populate(c),
+		runtime,
 	)
 }
 
-type clientParams struct {
-	fx.In
-
-	Ctx  context.Context
-	Cfg  *Config
-	Host host.Host
-	P    *struct{ *pubsub.PubSub }
-	T    *struct{ *pubsub.Topic }
-}
-
-func newClient(lx fx.Lifecycle, p clientParams) Client {
-	for _, hook := range []fx.Hook{
-		subloop(p.Ctx, p.Host, p.T),
-	} {
-		lx.Append(hook)
-	}
-
-	return Client{
-		log:  p.Cfg.Log(),
-		host: p.Host,
-	}
-}
-
-type hostParams struct {
+type clientConfig struct {
 	fx.In
 
 	Ctx context.Context
-	Cfg *Config
+	Log log.Logger
+
+	Host   host.Host
+	PubSub *pubsub.PubSub
+	Topic  *pubsub.Topic
 }
 
-func newHost(lx fx.Lifecycle, p hostParams) host.Host {
-	var h = new(struct{ host.Host })
+func newClient(lx fx.Lifecycle, cfg clientConfig) Client {
+	return Client{
+		log:  cfg.Log,
+		host: cfg.Host,
+	}
+}
+
+type hostConfig struct {
+	fx.In
+
+	Ctx       context.Context
+	Datastore datastore.Batching
+	Secret    pnet.PSK
+}
+
+func (cfg hostConfig) options() []config.Option {
+	return []config.Option{
+		hostutil.MaybePrivate(cfg.Secret),
+		p2p.Ping(false),
+		p2p.NoListenAddrs, // also disables relay
+		p2p.UserAgent(ww.ClientUAgent),
+	}
+}
+
+type hostOut struct {
+	fx.Out
+
+	Host host.Host
+	DHT  routing.Routing
+}
+
+func newRoutedHost(lx fx.Lifecycle, cfg hostConfig) (out hostOut, err error) {
+	if out.Host, err = p2p.New(cfg.Ctx, cfg.options()...); err != nil {
+		return
+	}
 
 	lx.Append(fx.Hook{
-		OnStart: func(context.Context) (err error) {
-			h.Host, err = p2p.New(p.Ctx,
-				hostutil.MaybePrivate(p.Cfg.PSK),
-				p2p.Ping(false),
-				p2p.NoListenAddrs, // also disables relay
-				p2p.UserAgent(ww.ClientUAgent))
-			return
-		},
 		OnStop: func(context.Context) error {
-			return h.Close()
+			return out.Host.Close()
 		},
 	})
 
-	return h
+	out.DHT = dht.NewDHTClient(cfg.Ctx, out.Host, cfg.Datastore)
+	out.Host = routedhost.Wrap(out.Host, out.DHT)
+	return
 }
 
-type dhtParams struct {
+type pubsubConfig struct {
 	fx.In
 
 	Ctx       context.Context
 	Host      host.Host
-	Datastore ds.Batching
-}
-
-func newDHT(lx fx.Lifecycle, p dhtParams) routing.ContentRouting {
-	var r = new(struct{ *dht.IpfsDHT })
-
-	lx.Append(fx.Hook{
-		OnStart: func(context.Context) error {
-			r.IpfsDHT = dht.NewDHTClient(p.Ctx, p.Host, p.Datastore)
-			return nil
-		},
-	})
-
-	return r
-}
-
-type pubsubParam struct {
-	fx.In
-
-	Ctx  context.Context
-	Cfg  *Config
-	Host host.Host
-	DHT  routing.ContentRouting
+	DHT       routing.Routing
+	Namespace string `name:"ns"`
 }
 
 type pubsubOut struct {
 	fx.Out
 
-	P *struct{ *pubsub.PubSub }
-	T *struct{ *pubsub.Topic }
+	PubSub *pubsub.PubSub
+	Topic  *pubsub.Topic
 }
 
-func newPubsub(lx fx.Lifecycle, p pubsubParam) pubsubOut {
-	out := pubsubOut{
-		P: new(struct{ *pubsub.PubSub }),
-		T: new(struct{ *pubsub.Topic }),
+func newPubsub(lx fx.Lifecycle, cfg pubsubConfig) (out pubsubOut, err error) {
+	if out.PubSub, err = pubsub.NewGossipSub(
+		cfg.Ctx,
+		cfg.Host,
+		pubsub.WithDiscovery(discovery.NewRoutingDiscovery(cfg.DHT)),
+	); err != nil {
+		return
 	}
 
-	lx.Append(fx.Hook{
-		OnStart: func(context.Context) (err error) {
-			out.P.PubSub, err = pubsub.NewGossipSub(p.Ctx, p.Host,
-				pubsub.WithDiscovery(discovery.NewRoutingDiscovery(p.DHT)))
-			return
-		},
-	})
+	if err = out.PubSub.RegisterTopicValidator(
+		cfg.Namespace,
+		newHeartbeatValidator(cfg.Ctx),
+	); err != nil {
+		return
+	}
 
-	lx.Append(fx.Hook{
-		OnStart: func(context.Context) error {
-
-			return out.P.RegisterTopicValidator(p.Cfg.ns,
-				newHeartbeatValidator(p.Ctx))
-		},
-	})
-
-	lx.Append(fx.Hook{
-		OnStart: func(context.Context) (err error) {
-			out.T.Topic, err = out.P.Join(p.Cfg.ns)
-			return
-		},
-	})
-
-	return out
+	out.Topic, err = out.PubSub.Join(cfg.Namespace)
+	return
 }
 
 func newCtx(lx fx.Lifecycle) context.Context {
@@ -170,30 +148,48 @@ func newCtx(lx fx.Lifecycle) context.Context {
 	return ctx
 }
 
-func join(lx fx.Lifecycle, host host.Host, b boot.Strategy) {
-	lx.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			ps, err := b.DiscoverPeers(ctx)
-			if err != nil {
-				return errors.Wrap(err, "discover")
-			}
+type userConfigOut struct {
+	fx.Out
 
-			// TODO:  change this to an at-least-one-succeeds group
-			var g errgroup.Group
-			for _, pinfo := range ps {
-				g.Go(connect(ctx, host, pinfo))
-			}
+	Log       log.Logger
+	Namespace string `name:"ns"`
+	Secret    pnet.PSK
 
-			return errors.Wrap(g.Wait(), "join")
-		},
-	})
+	Datastore datastore.Batching
 }
 
-func connect(ctx context.Context, host host.Host, pinfo peer.AddrInfo) func() error {
-	return func() error {
-		ctx, cancel := context.WithTimeout(ctx, time.Second*5)
-		defer cancel()
+func userConfig(opt []Option) (out userConfigOut, err error) {
+	cfg := new(Config)
+	for _, f := range withDefault(opt) {
+		if err = f(cfg); err != nil {
+			return
+		}
+	}
 
-		return host.Connect(ctx, pinfo)
+	out.Log = cfg.Log()
+	out.Namespace = cfg.ns
+	out.Secret = cfg.psk
+	out.Datastore = cfg.ds
+
+	return
+}
+
+func newHeartbeatValidator(ctx context.Context) pubsub.Validator {
+	f := newBasicFilter()
+
+	// Return a function that satisfies pubsub.Validator, using the above background
+	// task and filter array.
+	return func(_ context.Context, pid peer.ID, msg *pubsub.Message) bool {
+		hb, err := ww.UnmarshalHeartbeat(msg.GetData())
+		if err != nil {
+			return false // drop invalid message
+		}
+
+		if id := msg.GetFrom(); !f.Upsert(id, seqno(msg), hb.TTL()) {
+			return false // drop stale message
+		}
+
+		msg.ValidatorData = hb
+		return true
 	}
 }

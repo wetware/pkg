@@ -3,38 +3,28 @@ package client
 import (
 	"context"
 	"encoding/binary"
+	"time"
+
+	"github.com/pkg/errors"
+	"go.uber.org/fx"
+	"golang.org/x/sync/errgroup"
 
 	host "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/peerstore"
+	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/multiformats/go-multiaddr"
-	"go.uber.org/fx"
 
 	ww "github.com/lthibault/wetware/pkg"
+	"github.com/lthibault/wetware/pkg/boot"
 )
 
-func newHeartbeatValidator(ctx context.Context) pubsub.Validator {
-	f := newBasicFilter()
+var runtime = fx.Invoke(
+	subloop,
+	join,
+)
 
-	// Return a function that satisfies pubsub.Validator, using the above background
-	// task and filter array.
-	return func(_ context.Context, pid peer.ID, msg *pubsub.Message) bool {
-		hb, err := ww.UnmarshalHeartbeat(msg.GetData())
-		if err != nil {
-			return false // drop invalid message
-		}
-
-		if id := msg.GetFrom(); !f.Upsert(id, seqno(msg), hb.TTL()) {
-			return false // drop stale message
-		}
-
-		msg.ValidatorData = hb
-		return true
-	}
-}
-
-func subloop(ctx context.Context, h host.Host, t *struct{ *pubsub.Topic }) fx.Hook {
+func subloop(ctx context.Context, h host.Host, t *pubsub.Topic) fx.Hook {
 	var sub *pubsub.Subscription
 
 	return fx.Hook{
@@ -73,6 +63,34 @@ func recvHeartbeats(ctx context.Context, sub *pubsub.Subscription, a peerstore.A
 		// TODO:  default Peerstore GC is on the order of hours.  GC algoritm seems
 		// 		  inefficient.  We can probably do better with a heap-filter.
 		a.AddAddrs(hb.ID(), addrs, hb.TTL())
+	}
+}
+
+func join(lx fx.Lifecycle, host host.Host, b boot.Strategy) {
+	lx.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			ps, err := b.DiscoverPeers(ctx)
+			if err != nil {
+				return errors.Wrap(err, "discover")
+			}
+
+			// TODO:  change this to an at-least-one-succeeds group
+			var g errgroup.Group
+			for _, pinfo := range ps {
+				g.Go(connect(ctx, host, pinfo))
+			}
+
+			return errors.Wrap(g.Wait(), "join")
+		},
+	})
+}
+
+func connect(ctx context.Context, host host.Host, pinfo peer.AddrInfo) func() error {
+	return func() error {
+		ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+		defer cancel()
+
+		return host.Connect(ctx, pinfo)
 	}
 }
 

@@ -1,6 +1,8 @@
 package client
 
 import (
+	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/sync"
 	log "github.com/lthibault/log/pkg"
 
 	"github.com/libp2p/go-libp2p-core/pnet"
@@ -13,18 +15,8 @@ type Option func(*Config) error
 type Config struct {
 	log log.Logger
 	ns  string
-	PSK pnet.PSK
-}
-
-func newConfig(opt []Option) (*Config, error) {
-	cfg := new(Config)
-	for _, f := range withDefault(opt) {
-		if err := f(cfg); err != nil {
-			return nil, err
-		}
-	}
-
-	return cfg, nil
+	psk pnet.PSK
+	ds  datastore.Batching
 }
 
 // Log returns a logger with attached fields. Prefer this to using cfg.log directly.
@@ -48,9 +40,21 @@ func WithNamespace(ns string) Option {
 	}
 }
 
+func withDataStore(d datastore.Batching) Option {
+	if d == nil {
+		d = sync.MutexWrap(datastore.NewMapDatastore())
+	}
+
+	return func(c *Config) (err error) {
+		c.ds = d
+		return
+	}
+}
+
 func withDefault(opt []Option) []Option {
 	return append([]Option{
 		WithLogger(log.New(log.OptLevel(log.FatalLevel))),
 		WithNamespace("ww"),
+		withDataStore(nil),
 	}, opt...)
 }
