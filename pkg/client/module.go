@@ -2,7 +2,9 @@ package client
 
 import (
 	"context"
+	"encoding/binary"
 
+	log "github.com/lthibault/log/pkg"
 	"go.uber.org/fx"
 
 	"github.com/ipfs/go-datastore"
@@ -17,19 +19,15 @@ import (
 	"github.com/libp2p/go-libp2p/config"
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 
-	log "github.com/lthibault/log/pkg"
 	hostutil "github.com/lthibault/wetware/internal/util/host"
 	ww "github.com/lthibault/wetware/pkg"
-	"github.com/lthibault/wetware/pkg/boot"
+	"github.com/lthibault/wetware/pkg/discover"
 )
 
-func module(c *Client, s boot.Strategy, opt []Option) fx.Option {
+func module(c *Client, opt []Option) fx.Option {
 	return fx.Options(
 		fx.NopLogger,
-		fx.Supply(opt, struct {
-			fx.Out
-			boot.Strategy
-		}{Strategy: s}),
+		fx.Supply(opt),
 		fx.Provide(
 			newCtx,
 			userConfig,
@@ -156,6 +154,7 @@ type userConfigOut struct {
 	Secret    pnet.PSK
 
 	Datastore datastore.Batching
+	Discover  discover.Strategy
 }
 
 func userConfig(opt []Option) (out userConfigOut, err error) {
@@ -170,7 +169,7 @@ func userConfig(opt []Option) (out userConfigOut, err error) {
 	out.Namespace = cfg.ns
 	out.Secret = cfg.psk
 	out.Datastore = cfg.ds
-
+	out.Discover = cfg.d
 	return
 }
 
@@ -192,4 +191,8 @@ func newHeartbeatValidator(ctx context.Context) pubsub.Validator {
 		msg.ValidatorData = hb
 		return true
 	}
+}
+
+func seqno(msg *pubsub.Message) uint64 {
+	return binary.BigEndian.Uint64(msg.GetSeqno())
 }

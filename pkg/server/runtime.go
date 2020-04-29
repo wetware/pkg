@@ -28,7 +28,7 @@ import (
 	"github.com/multiformats/go-multiaddr"
 
 	ww "github.com/lthibault/wetware/pkg"
-	"github.com/lthibault/wetware/pkg/boot"
+	discover "github.com/lthibault/wetware/pkg/discover"
 	randutil "github.com/lthibault/wetware/pkg/util/rand"
 )
 
@@ -59,8 +59,8 @@ func listenAndServe(host host.Host, addrs []multiaddr.Multiaddr) error {
 type bootstrapConfig struct {
 	fx.In
 
-	Boot boot.Protocol
-	Host host.Host
+	Beacon discover.Protocol
+	Host   host.Host
 }
 
 func bootstrap(lx fx.Lifecycle, cfg bootstrapConfig) {
@@ -68,10 +68,10 @@ func bootstrap(lx fx.Lifecycle, cfg bootstrapConfig) {
 		// N.B.:  any call to OnStart in a runtime function is guaranteed to run AFTER
 		// the host has begun listening for connections.
 		OnStart: func(context.Context) error {
-			return cfg.Boot.Start(cfg.Host)
+			return cfg.Beacon.Start(cfg.Host)
 		},
 		OnStop: func(context.Context) error {
-			return cfg.Boot.Close()
+			return cfg.Beacon.Close()
 		},
 	})
 }
@@ -286,7 +286,7 @@ type neighborhoodMaintainerConfig struct {
 	KMin      int    `name:"kmin"`
 	KMax      int    `name:"kmax"`
 
-	Boot      boot.Protocol
+	Boot      discover.Protocol
 	Discovery discovery.Discovery
 }
 
@@ -299,7 +299,7 @@ type neighborhoodMaintainer struct {
 	host host.Host
 
 	sf singleflight
-	b  boot.Strategy
+	b  discover.Strategy
 	d  discovery.Discoverer
 }
 

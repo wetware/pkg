@@ -4,6 +4,7 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/sync"
 	log "github.com/lthibault/log/pkg"
+	discover "github.com/lthibault/wetware/pkg/discover"
 
 	"github.com/libp2p/go-libp2p-core/pnet"
 )
@@ -17,6 +18,7 @@ type Config struct {
 	ns  string
 	psk pnet.PSK
 	ds  datastore.Batching
+	d   discover.Strategy
 }
 
 // Log returns a logger with attached fields. Prefer this to using cfg.log directly.
@@ -40,6 +42,18 @@ func WithNamespace(ns string) Option {
 	}
 }
 
+// WithDiscover determines how the client will connect to a cluster.
+func WithDiscover(d discover.Strategy) Option {
+	return func(c *Config) (err error) {
+		if d == nil {
+			d = discover.MDNS{Namespace: c.ns}
+		}
+
+		c.d = d
+		return
+	}
+}
+
 func withDataStore(d datastore.Batching) Option {
 	if d == nil {
 		d = sync.MutexWrap(datastore.NewMapDatastore())
@@ -55,6 +69,7 @@ func withDefault(opt []Option) []Option {
 	return append([]Option{
 		WithLogger(log.New(log.OptLevel(log.FatalLevel))),
 		WithNamespace("ww"),
+		WithDiscover(nil),
 		withDataStore(nil),
 	}, opt...)
 }
