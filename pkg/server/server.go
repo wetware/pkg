@@ -3,19 +3,24 @@ package server
 import (
 	"context"
 
-	log "github.com/lthibault/log/pkg"
 	"go.uber.org/fx"
 
-	host "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multiaddr"
 )
 
 // Host .
 type Host struct {
-	log          log.Logger
-	host         host.Host
-	routingTable interface{ Contains(peer.ID) bool }
+	logProvider
+
+	core interface {
+		ID() peer.ID
+		Addrs() []multiaddr.Multiaddr
+	}
+
+	routingTable interface {
+		Contains(peer.ID) bool
+	}
 
 	app interface {
 		Start(context.Context) error
@@ -30,22 +35,14 @@ func New(opt ...Option) Host {
 	return h
 }
 
-// Log returns a structured logger whose fields identify the host.
-func (h Host) Log() log.Logger {
-	return h.log.WithFields(log.F{
-		"id":    h.ID(),
-		"addrs": h.Addrs(),
-	})
-}
-
 // ID of the Host
 func (h Host) ID() peer.ID {
-	return h.host.ID()
+	return h.core.ID()
 }
 
 // Addrs on which the host is reachable
 func (h Host) Addrs() []multiaddr.Multiaddr {
-	return h.host.Addrs()
+	return h.core.Addrs()
 }
 
 // Start the Host's network connections and start its runtime processes.

@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"go.uber.org/fx"
@@ -47,7 +48,7 @@ func module(h *Host, opt []Option) fx.Option {
 			newRoutedHost,
 			newDiscovery,
 			newPubSub,
-			newServer,
+			newWwHost,
 		),
 
 		/*********************************
@@ -75,7 +76,7 @@ func module(h *Host, opt []Option) fx.Option {
 	Constructors
 */
 
-type serverConfig struct {
+type wwHostConfig struct {
 	fx.In
 
 	Log    log.Logger
@@ -83,10 +84,23 @@ type serverConfig struct {
 	Filter filter
 }
 
-func newServer(cfg serverConfig) Host {
+func newWwHost(cfg wwHostConfig) Host {
+	var once sync.Once
+	var logger log.Logger
+	getLogger := logProviderFunc(func() log.Logger {
+		once.Do(func() {
+			logger = cfg.Log.WithFields(log.F{
+				"id":    cfg.Host.ID(),
+				"addrs": cfg.Host.Addrs()})
+		})
+		return logger
+	})
+
+	registerAPIHandlers(getLogger, cfg.Host, cfg.Filter)
+
 	return Host{
-		log:          cfg.Log,
-		host:         cfg.Host,
+		logProvider:  getLogger,
+		core:         cfg.Host,
 		routingTable: cfg.Filter,
 	}
 }
@@ -268,8 +282,8 @@ func newCtx(lx fx.Lifecycle) context.Context {
 
 func bootstrap(lx fx.Lifecycle, beacon discover.Protocol, host host.Host) {
 	lx.Append(fx.Hook{
-		// N.B.:  any call to OnStart in a runtime function is guaranteed to run AFTER
-		// the host has begun listening for connections.
+		// We must wait until the libp2p.Host is listening before
+		// advertising our listen addresses.
 		OnStart: func(context.Context) error {
 			return beacon.Start(host)
 		},
@@ -314,4 +328,14 @@ func connect(ctx context.Context, host host.Host, pinfo peer.AddrInfo) func() er
 // 			setup.
 type addrChangeSignaller interface {
 	SignalAddressChange()
+}
+
+type logProvider interface {
+	Log() log.Logger
+}
+
+type logProviderFunc func() log.Logger
+
+func (f logProviderFunc) Log() log.Logger {
+	return f()
 }

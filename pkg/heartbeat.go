@@ -13,7 +13,7 @@ import (
 
 // MarshalHeartbeat serializes a heartbeat message.
 func MarshalHeartbeat(h Heartbeat) ([]byte, error) {
-	return h.msg.MarshalPacked()
+	return h.hb.Segment().Message().MarshalPacked()
 }
 
 // UnmarshalHeartbeat reads a heartbeat message from bytes.
@@ -28,18 +28,17 @@ func UnmarshalHeartbeat(b []byte) (Heartbeat, error) {
 		return Heartbeat{}, err
 	}
 
-	return Heartbeat{msg: msg, hb: hb}, validateHeartbeat(hb)
+	return Heartbeat{hb: hb}, validateHeartbeat(hb)
 }
 
 // Heartbeat is a message that announces a host's liveliness in a cluster.
 type Heartbeat struct {
-	msg *capnp.Message
-	hb  api.Heartbeat
+	hb api.Heartbeat
 }
 
 // NewHeartbeat message.
 func NewHeartbeat(id peer.ID, ttl time.Duration) (Heartbeat, error) {
-	msg, seg, err := capnp.NewMessage(capnp.SingleSegment(make([]byte, 0, 64)))
+	_, seg, err := capnp.NewMessage(capnp.SingleSegment(make([]byte, 0, 64)))
 	if err != nil {
 		return Heartbeat{}, errors.Wrap(err, "new message")
 	}
@@ -55,7 +54,7 @@ func NewHeartbeat(id peer.ID, ttl time.Duration) (Heartbeat, error) {
 		return Heartbeat{}, errors.Wrap(err, "set id")
 	}
 
-	return Heartbeat{msg: msg, hb: hb}, nil
+	return Heartbeat{hb: hb}, nil
 }
 
 // ID of the peer that emitted the heartbeat.
