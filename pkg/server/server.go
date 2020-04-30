@@ -13,8 +13,9 @@ import (
 
 // Host .
 type Host struct {
-	log  log.Logger
-	host host.Host
+	log          log.Logger
+	host         host.Host
+	routingTable interface{ Contains(peer.ID) bool }
 
 	app interface {
 		Start(context.Context) error

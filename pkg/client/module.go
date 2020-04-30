@@ -2,10 +2,12 @@ package client
 
 import (
 	"context"
-	"encoding/binary"
+	"time"
 
 	log "github.com/lthibault/log/pkg"
+	"github.com/pkg/errors"
 	"go.uber.org/fx"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/ipfs/go-datastore"
 	p2p "github.com/libp2p/go-libp2p"
@@ -36,26 +38,41 @@ func module(c *Client, opt []Option) fx.Option {
 			newClient,
 		),
 		fx.Populate(c),
-		runtime,
+		fx.Invoke(join),
 	)
 }
 
 type clientConfig struct {
 	fx.In
 
-	Ctx context.Context
-	Log log.Logger
-
+	Log    log.Logger
 	Host   host.Host
 	PubSub *pubsub.PubSub
-	Topic  *pubsub.Topic
 }
 
 func newClient(lx fx.Lifecycle, cfg clientConfig) Client {
 	return Client{
 		log:  cfg.Log,
 		host: cfg.Host,
+		ps:   cfg.PubSub,
 	}
+}
+
+type pubsubConfig struct {
+	fx.In
+
+	Ctx  context.Context
+	Host host.Host
+	DHT  routing.Routing
+}
+
+func newPubsub(lx fx.Lifecycle, cfg pubsubConfig) (*pubsub.PubSub, error) {
+	return pubsub.NewGossipSub(
+		cfg.Ctx,
+		cfg.Host,
+		pubsub.WithDiscovery(discovery.NewRoutingDiscovery(cfg.DHT)),
+	)
+
 }
 
 type hostConfig struct {
@@ -98,42 +115,6 @@ func newRoutedHost(lx fx.Lifecycle, cfg hostConfig) (out hostOut, err error) {
 	return
 }
 
-type pubsubConfig struct {
-	fx.In
-
-	Ctx       context.Context
-	Host      host.Host
-	DHT       routing.Routing
-	Namespace string `name:"ns"`
-}
-
-type pubsubOut struct {
-	fx.Out
-
-	PubSub *pubsub.PubSub
-	Topic  *pubsub.Topic
-}
-
-func newPubsub(lx fx.Lifecycle, cfg pubsubConfig) (out pubsubOut, err error) {
-	if out.PubSub, err = pubsub.NewGossipSub(
-		cfg.Ctx,
-		cfg.Host,
-		pubsub.WithDiscovery(discovery.NewRoutingDiscovery(cfg.DHT)),
-	); err != nil {
-		return
-	}
-
-	if err = out.PubSub.RegisterTopicValidator(
-		cfg.Namespace,
-		newHeartbeatValidator(cfg.Ctx),
-	); err != nil {
-		return
-	}
-
-	out.Topic, err = out.PubSub.Join(cfg.Namespace)
-	return
-}
-
 func newCtx(lx fx.Lifecycle) context.Context {
 	ctx, cancel := context.WithCancel(context.Background())
 	lx.Append(fx.Hook{
@@ -173,26 +154,34 @@ func userConfig(opt []Option) (out userConfigOut, err error) {
 	return
 }
 
-func newHeartbeatValidator(ctx context.Context) pubsub.Validator {
-	f := newBasicFilter()
+/*
+	runtime functions (use fx.Invoke)
+*/
 
-	// Return a function that satisfies pubsub.Validator, using the above background
-	// task and filter array.
-	return func(_ context.Context, pid peer.ID, msg *pubsub.Message) bool {
-		hb, err := ww.UnmarshalHeartbeat(msg.GetData())
-		if err != nil {
-			return false // drop invalid message
-		}
-
-		if id := msg.GetFrom(); !f.Upsert(id, seqno(msg), hb.TTL()) {
-			return false // drop stale message
-		}
-
-		msg.ValidatorData = hb
-		return true
+func join(ctx context.Context, host host.Host, d discover.Strategy) error {
+	ps, err := d.DiscoverPeers(ctx)
+	if err != nil {
+		return errors.Wrap(err, "discover")
 	}
+
+	// TODO:  change this to an at-least-one-succeeds group
+	var g errgroup.Group
+	for _, pinfo := range ps {
+		g.Go(connect(ctx, host, pinfo))
+	}
+
+	return errors.Wrap(g.Wait(), "join")
 }
 
-func seqno(msg *pubsub.Message) uint64 {
-	return binary.BigEndian.Uint64(msg.GetSeqno())
+/*
+	Misc.
+*/
+
+func connect(ctx context.Context, host host.Host, pinfo peer.AddrInfo) func() error {
+	return func() error {
+		ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+		defer cancel()
+
+		return host.Connect(ctx, pinfo)
+	}
 }

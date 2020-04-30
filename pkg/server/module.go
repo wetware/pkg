@@ -12,6 +12,7 @@ import (
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	cm "github.com/libp2p/go-libp2p-core/connmgr"
 	host "github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/pnet"
 	"github.com/libp2p/go-libp2p-core/routing"
@@ -32,37 +33,65 @@ func module(h *Host, opt []Option) fx.Option {
 	return fx.Options(
 		fx.NopLogger,
 		fx.Supply(opt),
+
+		/**************************
+		 *  declare dependencies  *
+		 **************************/
 		fx.Provide(
 			newCtx,
 			userConfig,
+			newFilter,
 			newConnMgr,
 			newDatastore,
 			newPeerstore,
 			newRoutedHost,
 			newDiscovery,
-			newCluster,
+			newPubSub,
 			newServer,
 		),
+
+		/*********************************
+		 *  build public-facing structs  *
+		 *********************************/
 		fx.Populate(h),
-		runtime,
+
+		/******************************
+		 *  start runtime goroutines  *
+		 ******************************/
+		fx.Invoke(
+			tracer,
+			bootstrap,
+			eventloop,
+			connmanager,
+			routingtable,
+
+			// This MUST come last. Fires event.EvtLocalAddressesUpdated.
+			listenAndServe,
+		),
 	)
 }
+
+/*
+	Constructors
+*/
 
 type serverConfig struct {
 	fx.In
 
-	Log  log.Logger
-	Host host.Host
+	Log    log.Logger
+	Host   host.Host
+	Filter filter
 }
 
 func newServer(cfg serverConfig) Host {
 	return Host{
-		log:  cfg.Log,
-		host: cfg.Host,
+		log:          cfg.Log,
+		host:         cfg.Host,
+		routingTable: cfg.Filter,
 	}
 }
 
-type clusterConfig struct {
+type pubsubConfig struct {
 	fx.In
 
 	Ctx       context.Context
@@ -73,29 +102,18 @@ type clusterConfig struct {
 	TTL       time.Duration `name:"ttl"`
 }
 
-type clusterOut struct {
+type pubsubOut struct {
 	fx.Out
 
 	PubSub *pubsub.PubSub
-	Topic  *pubsub.Topic
 }
 
-func newCluster(lx fx.Lifecycle, cfg clusterConfig) (out clusterOut, err error) {
-	if out.PubSub, err = pubsub.NewGossipSub(
+func newPubSub(lx fx.Lifecycle, cfg pubsubConfig) (*pubsub.PubSub, error) {
+	return pubsub.NewGossipSub(
 		cfg.Ctx,
 		cfg.Host,
 		pubsub.WithDiscovery(cfg.Discovery),
-	); err == nil {
-		out.Topic, err = out.PubSub.Join(cfg.Namespace)
-	}
-
-	lx.Append(fx.Hook{
-		OnStop: func(context.Context) error {
-			return out.Topic.Close()
-		},
-	})
-
-	return
+	)
 }
 
 func newDiscovery(r routing.Routing) discovery.Discovery {
@@ -126,14 +144,17 @@ func (cfg hostConfig) options() []config.Option {
 type hostOut struct {
 	fx.Out
 
-	Host host.Host
-	DHT  routing.Routing
+	Host      host.Host
+	DHT       routing.Routing
+	Signaller addrChangeSignaller
 }
 
 func newRoutedHost(lx fx.Lifecycle, cfg hostConfig) (out hostOut, err error) {
 	if out.Host, err = p2p.New(cfg.Ctx, cfg.options()...); err != nil {
 		return
 	}
+
+	out.Signaller = out.Host.(addrChangeSignaller)
 
 	lx.Append(fx.Hook{
 		OnStop: func(context.Context) error {
@@ -178,6 +199,10 @@ type connManagerConfig struct {
 
 func newConnMgr(cfg connManagerConfig) cm.ConnManager {
 	return connmgr.NewConnManager(cfg.LowWater, cfg.HighWater, time.Second*10)
+}
+
+func newFilter() filter {
+	return newBasicFilter()
 }
 
 type userConfigOut struct {
@@ -235,4 +260,58 @@ func newCtx(lx fx.Lifecycle) context.Context {
 	})
 
 	return ctx
+}
+
+/*
+	Runtime processes (use fx.Invoke)
+*/
+
+func bootstrap(lx fx.Lifecycle, beacon discover.Protocol, host host.Host) {
+	lx.Append(fx.Hook{
+		// N.B.:  any call to OnStart in a runtime function is guaranteed to run AFTER
+		// the host has begun listening for connections.
+		OnStart: func(context.Context) error {
+			return beacon.Start(host)
+		},
+		OnStop: func(context.Context) error {
+			return beacon.Close()
+		},
+	})
+}
+
+type listenAndServeConfig struct {
+	fx.In
+
+	Host      host.Host
+	Addrs     []multiaddr.Multiaddr
+	Signaller addrChangeSignaller
+}
+
+func listenAndServe(cfg listenAndServeConfig) (err error) {
+	if err = cfg.Host.Network().Listen(cfg.Addrs...); err == nil {
+		// ensure the host fires event.EvtLocalAddressUpdated immediately.
+		cfg.Signaller.SignalAddressChange()
+	}
+
+	return
+}
+
+/*
+	Misc.
+*/
+
+func connect(ctx context.Context, host host.Host, pinfo peer.AddrInfo) func() error {
+	return func() error {
+		ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+		defer cancel()
+
+		return host.Connect(ctx, pinfo)
+	}
+}
+
+// WARNING: this interface is unstable and may removed from basichost.BasicHost in the
+// 		    future.  Hopefully this will only happen after they properly refactor Host
+// 			setup.
+type addrChangeSignaller interface {
+	SignalAddressChange()
 }

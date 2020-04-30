@@ -12,6 +12,4 @@ $Go.import("github.com/lthibault/wetware/internal/api");
 struct Heartbeat $Go.doc("Heartbeat is a peer liveliness message that is broadcast over pubsub.") {
 	id @0 :Text;
     ttl @1 :Int64;
-	addrs @2 :List(Data);
 }
-

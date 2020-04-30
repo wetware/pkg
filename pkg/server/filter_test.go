@@ -1,4 +1,4 @@
-package client
+package server
 
 import (
 	"testing"
@@ -20,17 +20,20 @@ func newID(s string) peer.ID {
 	return peer.ID(b58.Encode(hash([]byte(s))))
 }
 
-func TestFilter(t *testing.T) {
+func TestBasicFilter(t *testing.T) {
 	const ttl = time.Second
 
 	f := newBasicFilter()
 	id := newID("foo")
-	// t0 := time.Now()
 
 	t.Run("Upsert", func(t *testing.T) {
-		assert.True(t, f.Upsert(id, 1, ttl), "upserting new id should succeed")
-		assert.False(t, f.Upsert(id, 1, ttl), "upserting with same sequence number should fail")
-		assert.False(t, f.Upsert(id, 0, ttl), "upserting with smaller sequence number should fail")
-		assert.True(t, f.Upsert(id, 2, ttl), "upserting with bigger sequence number should succeed")
+		assert.True(t, f.Upsert(id, 1, ttl),
+			"upserting new id should succeed")
+		assert.False(t, f.Upsert(id, 1, ttl),
+			"upserting with same sequence number should fail")
+		assert.False(t, f.Upsert(id, 0, ttl),
+			"upserting with smaller sequence number should fail")
+		assert.True(t, f.Upsert(id, 2, ttl),
+			"upserting with bigger sequence number should succeed")
 	})
 }

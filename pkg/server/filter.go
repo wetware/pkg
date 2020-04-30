@@ -1,4 +1,4 @@
-package client
+package server
 
 import (
 	"sync"
@@ -8,8 +8,13 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
+type filter interface {
+	Upsert(peer.ID, uint64, time.Duration) bool
+	Contains(peer.ID) bool
+}
+
 type basicFilter struct {
-	sync.Mutex
+	sync.RWMutex
 	es map[peer.ID]*entry
 }
 
@@ -17,8 +22,15 @@ func newBasicFilter() *basicFilter {
 	return &basicFilter{es: make(map[peer.ID]*entry, 32)}
 }
 
-func (f *basicFilter) Upsert(id peer.ID, seq uint64, ttl time.Duration) (ok bool) {
+func (f *basicFilter) Contains(id peer.ID) (found bool) {
+	f.RLock()
+	defer f.RUnlock()
 
+	_, found = f.es[id]
+	return
+}
+
+func (f *basicFilter) Upsert(id peer.ID, seq uint64, ttl time.Duration) (ok bool) {
 	f.Lock()
 	var e *entry
 	if e, ok = f.es[id]; !ok {

@@ -1,4 +1,4 @@
-package client
+package server
 
 import (
 	"math/rand"
@@ -55,14 +55,14 @@ func BenchmarkBasicFilterUpsert(b *testing.B) {
 	wg.Wait()
 }
 
-type event struct {
+type evt struct {
 	ID  peer.ID
 	Seq uint64
 	TTL time.Duration
 }
 
-func eventStream(n int) []event {
-	es := make([]event, n)
+func eventStream(n int) []evt {
+	es := make([]evt, n)
 	for i := range es {
 		es[i].ID = ps[i%(len(ps)-1)]
 		es[i].Seq = uint64(i)

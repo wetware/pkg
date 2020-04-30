@@ -15,12 +15,12 @@ type Heartbeat struct{ capnp.Struct }
 const Heartbeat_TypeID = 0xbbeb920e5748c15b
 
 func NewHeartbeat(s *capnp.Segment) (Heartbeat, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2})
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
 	return Heartbeat{st}, err
 }
 
 func NewRootHeartbeat(s *capnp.Segment) (Heartbeat, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2})
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
 	return Heartbeat{st}, err
 }
 
@@ -61,37 +61,12 @@ func (s Heartbeat) SetTtl(v int64) {
 	s.Struct.SetUint64(0, uint64(v))
 }
 
-func (s Heartbeat) Addrs() (capnp.DataList, error) {
-	p, err := s.Struct.Ptr(1)
-	return capnp.DataList{List: p.List()}, err
-}
-
-func (s Heartbeat) HasAddrs() bool {
-	p, err := s.Struct.Ptr(1)
-	return p.IsValid() || err != nil
-}
-
-func (s Heartbeat) SetAddrs(v capnp.DataList) error {
-	return s.Struct.SetPtr(1, v.List.ToPtr())
-}
-
-// NewAddrs sets the addrs field to a newly
-// allocated capnp.DataList, preferring placement in s's segment.
-func (s Heartbeat) NewAddrs(n int32) (capnp.DataList, error) {
-	l, err := capnp.NewDataList(s.Struct.Segment(), n)
-	if err != nil {
-		return capnp.DataList{}, err
-	}
-	err = s.Struct.SetPtr(1, l.List.ToPtr())
-	return l, err
-}
-
 // Heartbeat_List is a list of Heartbeat.
 type Heartbeat_List struct{ capnp.List }
 
 // NewHeartbeat creates a new list of Heartbeat.
 func NewHeartbeat_List(s *capnp.Segment, sz int32) (Heartbeat_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2}, sz)
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1}, sz)
 	return Heartbeat_List{l}, err
 }
 
@@ -112,24 +87,22 @@ func (p Heartbeat_Promise) Struct() (Heartbeat, error) {
 	return Heartbeat{s}, err
 }
 
-const schema_b3f8acfcffafd8e8 = "x\xda\x1c\xca\xb1J\xebP\x1c\xc7\xf1\xdf\xef\x9f\xe4f" +
-	"\xc9-\xf7@\xefr\x97\x9c\xde\x07\xa8\xda\xd1\xa9\x82B" +
-	"\x05\x85\x9e\xa9\x83\xa0\x9c4\x07\x1b\xa8m\xc8I\xfb\x10" +
-	"\x8e\xfa\x00\xbe\x80\xd0\xc1Q\x1c\x1c|\x05\xf1\x11\x047" +
-	"'\x07!\x92n_\xbe|\xfeL\x86\xa2\xa2\x0b\xc0\x84" +
-	"\xd1\xaf\xe6\xecy4\xe9\xdc|<\xc2t\xc9\xe6\xfdm" +
-	"\xd3|\xdf\x7f= \x92\x18P\x7f?U/V\xbdT" +
-	"\xd9\x0d\xd8\xd8\xb2\xd8\x999[I\x9d9[\xf7\xa7\xb6" +
-	"\\\x94\xfb#g\xabt;\xc6\xa4\x09)\xcd\xf9\xed\x9d" +
-	"yz\xbd~\x81\x09\x85\x07\xbbd\x02\xecq MK" +
-	"[\x19\xd7\xba\xf0\xda\xea\xd2\xb9J\xcf\x8b\xb5\x9b\x17\x0b" +
-	"\xe7\xbd\xber\xde\xdbK\xa7\xeb\x99\xdd\x8a\xacZ\xda|" +
-	"j}\xad\x97kW\xe9r\x95f~\x95\xf5\x01\x93\x04" +
-	"!\x10\x12PG\xff\x003\x0chN\x84d\x97\xed;" +
-	"\xfe\x0f\x98\xc3\x80f,T\xc2.\x05P\xa7\x03\xc0\x8c" +
-	"\x02\x9a\\\x18\x149\x13\x08\x130\xae\xeb9#\x08#" +
-	"0\xb5y^yv\xc0q@\xfe\x86\xb4\xf9\x13\x00\x00" +
-	"\xff\xffn\xf0K\x17"
+const schema_b3f8acfcffafd8e8 = "x\xda\x1c\xca\xb1J\xc3@\x00\x06\xe0\xff\xbf$\xc6!" +
+	"\x88\x07uq\xc9U\x1ct\xb0VqrRp\xe8\xe8" +
+	"M\x0e\x82ri\x0f\x1b\x88m\xc8]\xeb;8\xea\x03" +
+	"\xf8\x02\x82\x83\xa388\xf8\x0a\xe2#\x08nN\x0e\xc2" +
+	"I\xba~|\xab'GB&\x97\x80\x8e\x93\xa5p\xfe" +
+	"68[\xb9\xfb~\x81\xee\x90\xe1\xeb\xf3)\xfc=\xfe" +
+	">#a\x0a\xc8\xb5\x1f\xd9Me7\x97\xe6\x06\x0c\xa6" +
+	".w\xc7\xd64\xc2\x17\xd6\xf8\xde\xd0\xd4\x93\xfap`" +
+	"M\x93/\xe0\x94\xd41E\xb8\xb8\x7f\xd0\xaf\x1f\xb7\xef" +
+	"\xd0\xb1\xe0q\x9f\xcc\x80=\xee\x8b\xd0\xd6v\xa6^\x95" +
+	"N\x19U[\xdb\xa8\xaa\x9c\xdb\xaa\x9cX\xe7\xd4\xb5u" +
+	"\xce\\Y\xe5\xc7f1\x8afjFC\xe3\xbc\x9a\xce" +
+	"m\xa3\xeaY^\xb8Y\xd1\x03\xf4r\x14\x031\x01\xb9" +
+	"\xbd\x0e\xe8\xcd\x88\xba/Hv\xd8\xda\xce\x06\xa0\xb7\"" +
+	"\xea\x03\xc1\xa8\x1c1\x83`\x06\xa6\xdeWL \x98\x80" +
+	"\xff\x01\x00\x00\xff\xff ]E^"
 
 func init() {
 	schemas.Register(schema_b3f8acfcffafd8e8,
