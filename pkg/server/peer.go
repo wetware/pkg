@@ -19,13 +19,17 @@ import (
 )
 
 /*
-	connmgr.go manages host connections through (a) the libp2p `ConnManager`
-	interface and (b) the ww `neighborhood` object.
+	peer.go contains the logic responsible for ensuring cluster connectivity.  It
+	ensures the host is connected to at least kmin peers and no more than kmax peers
+	(soft limit).
 */
 
-const tagStreamInUse = "ww-stream-in-use"
+const (
+	tagProtectKmin = "ww-protect-kmin"
+	tagStreamInUse = "ww-stream-in-use"
+)
 
-type connmgrConfig struct {
+type peermanagerConfig struct {
 	fx.In
 
 	Ctx context.Context
@@ -42,12 +46,84 @@ type connmgrConfig struct {
 	Discovery discovery.Discovery
 }
 
-func connmanager(lx fx.Lifecycle, cfg connmgrConfig) error {
-	if err := protectConns(lx, cfg.Host, cfg.ConnMgr); err != nil {
+// peermanager maintains a bounded set of connections to peers, ensuring cluster
+// connectivity.
+func peermanager(lx fx.Lifecycle, cfg peermanagerConfig) error {
+	bus := cfg.Host.EventBus()
+
+	if err := protectConns(lx, cfg, bus); err != nil {
 		return err
 	}
 
-	sub, err := cfg.Host.EventBus().Subscribe(new(ww.EvtNeighborhoodChanged))
+	return maintainNeighborhood(lx, cfg, bus)
+}
+
+func protectConns(lx fx.Lifecycle, cfg peermanagerConfig, bus event.Bus) error {
+	sub, err := bus.Subscribe([]interface{}{
+		new(ww.EvtNeighborhoodChanged),
+		new(ww.EvtStreamChanged),
+	})
+	if err != nil {
+		return err
+	}
+	lx.Append(fx.Hook{
+		OnStop: func(context.Context) error {
+			return sub.Close()
+		},
+	})
+
+	policy := connProtectionPolicy{
+		kmin: cfg.KMin,
+		cm:   cfg.ConnMgr,
+		sub:  sub,
+	}
+	go policy.loop()
+	return nil
+}
+
+type connProtectionPolicy struct {
+	kmin int
+	cm   connmgr.ConnManager
+	sub  event.Subscription
+}
+
+func (p connProtectionPolicy) loop() {
+	for v := range p.sub.Out() {
+		switch ev := v.(type) {
+		case ww.EvtNeighborhoodChanged:
+			// policy is to protect a connection if it's one of the first kmin.
+			p.setProtectStatus(ev)
+		case ww.EvtStreamChanged:
+			// policy is to prune connections with the fewest open streams.
+			p.setTag(ev)
+		}
+
+	}
+}
+
+func (p connProtectionPolicy) setProtectStatus(ev ww.EvtNeighborhoodChanged) {
+	switch ev.State {
+	case ww.ConnStateOpened:
+		if ev.From == ww.PhasePartial {
+			p.cm.Protect(ev.Peer, tagProtectKmin)
+		}
+	case ww.ConnStateClosed:
+		p.cm.Unprotect(ev.Peer, tagProtectKmin)
+		p.cm.UntagPeer(ev.Peer, tagStreamInUse)
+	}
+}
+
+func (p connProtectionPolicy) setTag(ev ww.EvtStreamChanged) {
+	switch ev.State {
+	case ww.StreamStateOpened:
+		p.cm.TagPeer(ev.Peer, tagStreamInUse, 1)
+	case ww.StreamStateClosed:
+		p.cm.TagPeer(ev.Peer, tagStreamInUse, -1)
+	}
+}
+
+func maintainNeighborhood(lx fx.Lifecycle, cfg peermanagerConfig, bus event.Bus) error {
+	sub, err := bus.Subscribe(new(ww.EvtNeighborhoodChanged))
 	if err != nil {
 		return err
 	}
@@ -69,47 +145,6 @@ func connmanager(lx fx.Lifecycle, cfg connmgrConfig) error {
 
 	go m.loop(cfg.Ctx, sub)
 	return nil
-}
-
-func protectConns(lx fx.Lifecycle, host host.Host, cm connmgr.ConnManager) error {
-	sub, err := host.EventBus().Subscribe([]interface{}{
-		new(ww.EvtNeighborhoodChanged),
-		new(ww.EvtStreamChanged),
-	})
-	if err != nil {
-		return err
-	}
-	lx.Append(fx.Hook{
-		OnStop: func(context.Context) error {
-			return sub.Close()
-		},
-	})
-
-	go connProtectorLoop(sub, cm)
-	return nil
-}
-
-func connProtectorLoop(sub event.Subscription, cm connmgr.ConnManager) {
-	for v := range sub.Out() {
-		switch ev := v.(type) {
-		case ww.EvtNeighborhoodChanged:
-			switch ev.State {
-			case ww.ConnStateOpened:
-				// TODO:  ... What's our policy for protecting Host connections?
-				panic("function NOT IMPLEMENTED")
-			case ww.ConnStateClosed:
-				cm.UntagPeer(ev.Peer, tagStreamInUse)
-			}
-		case ww.EvtStreamChanged:
-			switch ev.State {
-			case ww.StreamStateOpened:
-				cm.TagPeer(ev.Peer, tagStreamInUse, 1)
-			case ww.StreamStateClosed:
-				cm.TagPeer(ev.Peer, tagStreamInUse, -1)
-			}
-		}
-
-	}
 }
 
 type neighborhoodMaintainer struct {

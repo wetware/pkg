@@ -21,11 +21,6 @@ type Config struct {
 	d   discover.Strategy
 }
 
-// Log returns a logger with attached fields. Prefer this to using cfg.log directly.
-func (cfg Config) Log() log.Logger {
-	return cfg.log.WithField("ns", cfg.ns)
-}
-
 // WithLogger sets the logger.
 func WithLogger(logger log.Logger) Option {
 	return func(c *Config) (err error) {

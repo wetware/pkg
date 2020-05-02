@@ -144,23 +144,23 @@ func (s Anchor_AnchorMap) String() string {
 	return str
 }
 
-func (s Anchor_AnchorMap) SubAnchors() (Anchor_AnchorMap_SubAnchor_List, error) {
+func (s Anchor_AnchorMap) Anchors() (Anchor_AnchorMap_SubAnchor_List, error) {
 	p, err := s.Struct.Ptr(0)
 	return Anchor_AnchorMap_SubAnchor_List{List: p.List()}, err
 }
 
-func (s Anchor_AnchorMap) HasSubAnchors() bool {
+func (s Anchor_AnchorMap) HasAnchors() bool {
 	p, err := s.Struct.Ptr(0)
 	return p.IsValid() || err != nil
 }
 
-func (s Anchor_AnchorMap) SetSubAnchors(v Anchor_AnchorMap_SubAnchor_List) error {
+func (s Anchor_AnchorMap) SetAnchors(v Anchor_AnchorMap_SubAnchor_List) error {
 	return s.Struct.SetPtr(0, v.List.ToPtr())
 }
 
-// NewSubAnchors sets the subAnchors field to a newly
+// NewAnchors sets the anchors field to a newly
 // allocated Anchor_AnchorMap_SubAnchor_List, preferring placement in s's segment.
-func (s Anchor_AnchorMap) NewSubAnchors(n int32) (Anchor_AnchorMap_SubAnchor_List, error) {
+func (s Anchor_AnchorMap) NewAnchors(n int32) (Anchor_AnchorMap_SubAnchor_List, error) {
 	l, err := NewAnchor_AnchorMap_SubAnchor_List(s.Struct.Segment(), n)
 	if err != nil {
 		return Anchor_AnchorMap_SubAnchor_List{}, err
@@ -222,36 +222,36 @@ func (s Anchor_AnchorMap_SubAnchor) String() string {
 	return str
 }
 
-func (s Anchor_AnchorMap_SubAnchor) Path() (string, error) {
+func (s Anchor_AnchorMap_SubAnchor) Subpath() (string, error) {
 	p, err := s.Struct.Ptr(0)
 	return p.Text(), err
 }
 
-func (s Anchor_AnchorMap_SubAnchor) HasPath() bool {
+func (s Anchor_AnchorMap_SubAnchor) HasSubpath() bool {
 	p, err := s.Struct.Ptr(0)
 	return p.IsValid() || err != nil
 }
 
-func (s Anchor_AnchorMap_SubAnchor) PathBytes() ([]byte, error) {
+func (s Anchor_AnchorMap_SubAnchor) SubpathBytes() ([]byte, error) {
 	p, err := s.Struct.Ptr(0)
 	return p.TextBytes(), err
 }
 
-func (s Anchor_AnchorMap_SubAnchor) SetPath(v string) error {
+func (s Anchor_AnchorMap_SubAnchor) SetSubpath(v string) error {
 	return s.Struct.SetText(0, v)
 }
 
-func (s Anchor_AnchorMap_SubAnchor) Child() Anchor {
+func (s Anchor_AnchorMap_SubAnchor) Subanchor() Anchor {
 	p, _ := s.Struct.Ptr(1)
 	return Anchor{Client: p.Interface().Client()}
 }
 
-func (s Anchor_AnchorMap_SubAnchor) HasChild() bool {
+func (s Anchor_AnchorMap_SubAnchor) HasSubanchor() bool {
 	p, err := s.Struct.Ptr(1)
 	return p.IsValid() || err != nil
 }
 
-func (s Anchor_AnchorMap_SubAnchor) SetChild(v Anchor) error {
+func (s Anchor_AnchorMap_SubAnchor) SetSubanchor(v Anchor) error {
 	if v.Client == nil {
 		return s.Struct.SetPtr(1, capnp.Ptr{})
 	}
@@ -290,7 +290,7 @@ func (p Anchor_AnchorMap_SubAnchor_Promise) Struct() (Anchor_AnchorMap_SubAnchor
 	return Anchor_AnchorMap_SubAnchor{s}, err
 }
 
-func (p Anchor_AnchorMap_SubAnchor_Promise) Child() Anchor {
+func (p Anchor_AnchorMap_SubAnchor_Promise) Subanchor() Anchor {
 	return Anchor{Client: p.Pipeline.GetPipeline(1).Client()}
 }
 
@@ -583,39 +583,40 @@ func (p Anchor_walk_Results_Promise) Anchor() Anchor {
 	return Anchor{Client: p.Pipeline.GetPipeline(0).Client()}
 }
 
-const schema_c8aa6d83e0c03a9d = "x\xda\x94\x93Ok\x13Q\x14\xc5\xcfyob\xbah" +
-	"\x9b\xbcN\xc1\xb4U\x84\x12\xa1\x06\x1a\xad\xba1 \x8d" +
-	"\x0b\xbb\x10\x84\xbc\x84\x16\x117\xd3XH\xe9$\x19f" +
-	"\x1a\xba\x96.\\\xb8\x13\x8a\xba\xe8\xc2]\x117\xe2\xae" +
-	" JEq#n\xfc\x00.ue\x17E\x0c\xfe\x19" +
-	"y\x93&\x93\x16\xaa\xb8\x1ax\xf3{\xe7\x9e{\xde\xbd" +
-	"\xe9vQ\xcc$\x9a\x02\xd0'\x12\xc7\xc2\xad\xc2\xca\x87" +
-	"\x97?>\xdf\x83\xca0,\x7f\\\x7f/\xb6\x9f\xee!" +
-	"\xc1$p\xe1$GhO\xf38`_\xe2,\x18\xee" +
-	"\xdd\xfa~#3<\xb7a`\xecCu\xe6\x08\xda\xad" +
-	"\x08\x18\xcb\xbf\xdd\xba\xff\xed\xe7\xb3~`\x83\x93\x06\xd8" +
-	"\x8c\x80G\xbb\xcf\x87\xefLdw\xfa\x81\x17\x1c7\xc0" +
-	"\x9b\x08\x98\x9b\x17\x95\xdd\x85\xed\xd7P\x93\x8c\xcd%\x84" +
-	"\x01\xbfp\x91\xf6/s\xc7ns\x0d\x0c\x1f\xb4\x7fW" +
-	"&\x1e.|\xed\xa8Y\x86\x99\x17#\x84\x15w\xa2\x94" +
-	"\x0c7\x0b\xaf>\xad\xd7\x9f\xbc\x03h_\x16;\xf6U" +
-	"aZ\xd2\xe2\xae\xfd\xd8\xe8\x86\x8e\xb7|\xd6iTk" +
-	"\xb2\xe9\xe7\xab\x8e\xd7\xf0\x0aW\x1a\xd5Z\xd3\xcfw>" +
-	"\xd7\x1dz\xdab\xbf7\x96\xc3Jk1\xfa\x0d\xfa\xda" +
-	"\x92\x16`\x11PC7\x01=(\xa9\xa7\x04\xc3\xa0\x8b" +
-	"H?\xe00X\x92d:V\x01\xcd\xe1\xd1\xd5\xd7\x1c" +
-	"w%[^\x0aR-w5\xe8\xafQ\x00\xf4\x80\xa4" +
-	"\x1e\x15\x9cu\"\x96*\xee\x18\xa4\xfa\xa7l\xc9\xf1\x93" +
-	"N\xfd\x80j.VMy\xcej\x8d\x83\x10\x1c\xfc\x9b" +
-	"\x92\x1b\x18{-W\x1e\xb4wm?\x82\x8c`X\xad" +
-	"-\xbb\xb7\xfd\xa5\x06\x00\xa6\xe3\xf7\x04\x99\xeeS\xb6\x8e" +
-	"\x0a\xde\xcbwbN\xd6\x9a~\x89\xd4\x03\xbd*g\x8c" +
-	"\xdd\xac\xa4>'\xa8\xc8Q\x9a\xc3\xe9\xf3\x80\x9e\x92\xd4" +
-	"\x17\x0f\xf5p*\xf2\xf1?)\xb9\x81\xc9\xc8\xa93\xe8" +
-	"1\xe2\x10\x83h(\xe2\x05b9\xec\xfa\x06== " +
-	"\x13@oD\xd9\x9d|53\x0e\xa1N'\x19o\x0b" +
-	"\xbb{\xa5\xc6r\x10j()\xdd\xa0\xc8\x94y\xa8\"" +
-	"K\xe4\x9f\x00\x00\x00\xff\xff\x86>\x0b\xf7"
+const schema_c8aa6d83e0c03a9d = "x\xda\x94\x93\xbfk\x13o\x1c\xc7?\xef\xe7\xb9|\x93" +
+	"!M\xf2\xf4\x0a\xdf\xb4\xd5\xa5\xc4\xc1`\xa3\xc5E\x03" +
+	"\xd2(\xd8A\x10\xf2$\xb48\xb8<\x89\x85\x0b\xbd$" +
+	"\xe7]\x8f\x8eE:88)\x88vpp+\xe2\"" +
+	"NvQ+\x88\x8b\xb8\xf8\x07\xb8\x08nv\xa8bP" +
+	"<y.?\xee\"Tq:x\xee\xf5\xbc\x9e\xcf\xcf" +
+	"\\\xaf\xc2\x16\x12]F$\x8f$\xfe\x0bv\xcak\xef" +
+	"\x9e\x7f\xfft\x8bD\x1eA\xed\xfd\xd6[\xb6\xfb\xf8\x80" +
+	"\x12H\x12\x9d>\x8aI\x98\xf3\xf8\x9f\xc8<\x8bEB" +
+	"pp\xf5\xdb\x95|f\xe9\xae\x86i\x00\xb5P\x04\xc1" +
+	"\xbc\x1e\x02\xd3\xa5\xd7;w\xbe\xfex\x12\x07ncN" +
+	"\x03\xdb!\xb0\xbd\xff4sc\xb6\xb0\x17\x07\x9eaF" +
+	"\x03/C`i\x99\xd5\xf7Wv_\x91\x98C\x14\\" +
+	"\x82i\xf0#\x1a0{\xfa\x8e\xf9\x05\x1b\x84\xe0^\xef" +
+	"g}\xf6\xfe\xca\xe7\xbe\xcd\xd0\xcc2\x9b\x04\x19Q&" +
+	"B\xf0\xe0A\xf9\xc5\x87\xad\xf6\xa37D0\xcf\xb1=" +
+	"\xf3\"\xd3)Iv\xd3|\xa8\xbd\x81rZ'U\xa7" +
+	"i\xf1\xae[j*\xa7\xe3\x94\xcfw\x9aV\xd7-\xf5" +
+	"?\x97\x15\x1ci \x1e\x1bjA\xddo\x84\xbf\x09\xae" +
+	"4\xb8Ad\x80HL\\ \x92)\x0eY`\xd8T" +
+	"\xe1u\x0f\x19B\x95\x03\xb9H@\xd0\x87\x87?\xbc\xa1" +
+	"\xec\xb5Bm\xd5\xcb\xfa\xf6\xba\x17\xd7\x97\x07\xfa)\x86" +
+	"\xc5\xbe\x1e\"J\x96\x00\xf1WmU\xb9I\xd5\x1e\xb3" +
+	"\x16#k\xd6Q\xeb\x16\xd2\xc4\x90\xfe\x93\xc9\xf6tx" +
+	"\xbe\xcd\xc7\xc3\xbbD$\xd3\x1c2\xcf\x104\xad\x96}" +
+	"\xcd]\xed\x10\x11rQ+\x09\xc8\xc5\xcc\xc6a5w" +
+	"J\xfd\x0a'\xad\xae[\x05dj\xf4\xcaq]\xe3\x02" +
+	"\x87<\xc5 \x80)\xe8\xc3\xf9\x1a\x91<\xc1!\xcf0" +
+	"lz~c,\x0d\xcfo\xa8A\xaf\xfe\xa5\\\xb6\xa7" +
+	"\x8b\xa5\xda\xf0F\x0c\xfb\x8d\xa1p0\xa2%B-\x18" +
+	"&@pd\x8a'\x88Fc\x8a\xe1\xf4\x8b\x85\x19b" +
+	"\xe2X\x12\xd1\xc6`\xb8[b\xbaHLL$\xb9\xed" +
+	"U\x90\xd5\x1d\xab\xa0\x0a\xfc\x0a\x00\x00\xff\xff\xa5\x1b\x0e" +
+	"\xa2"
 
 func init() {
 	schemas.Register(schema_c8aa6d83e0c03a9d,

@@ -8,7 +8,6 @@ import (
 	"go.uber.org/fx"
 
 	host "github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	log "github.com/lthibault/log/pkg"
@@ -54,5 +53,6 @@ func (c Client) Walk(ctx context.Context, path []string) ww.Anchor {
 		return c
 	}
 
-	return anchor{id: peer.ID(path[0]), host: c.host}.Walk(ctx, path[1:])
+	panic("function NOT IMPLEMENTED")
+	// return anchor{id: peer.ID(path[0]), host: c.host}.Walk(ctx, path[1:])
 }

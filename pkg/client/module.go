@@ -52,7 +52,7 @@ type clientConfig struct {
 
 func newClient(lx fx.Lifecycle, cfg clientConfig) Client {
 	return Client{
-		log:  cfg.Log,
+		log:  cfg.Log.WithField("id", cfg.Host.ID()),
 		host: cfg.Host,
 		ps:   cfg.PubSub,
 	}
@@ -146,7 +146,11 @@ func userConfig(opt []Option) (out userConfigOut, err error) {
 		}
 	}
 
-	out.Log = cfg.Log()
+	out.Log = cfg.log.WithFields(log.F{
+		"ns":   cfg.ns,
+		"type": "client",
+	})
+
 	out.Namespace = cfg.ns
 	out.Secret = cfg.psk
 	out.Datastore = cfg.ds
