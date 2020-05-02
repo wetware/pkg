@@ -53,22 +53,16 @@ func (d MDNS) DiscoverPeers(ctx context.Context) ([]peer.AddrInfo, error) {
 
 // Start an MDNS server that responds to queries in the background.
 func (d *MDNS) Start(s Service) error {
-	as, err := getDialableListenAddrs(s)
+	p, err := getDialableListenAddrs(s)
 	if err != nil {
 		return err
-	}
-
-	port := as[0].Port
-	ips := make([]net.IP, len(as))
-	for i, a := range as {
-		ips[i] = a.IP
 	}
 
 	zone, err := mdns.NewMDNSService(s.ID().Pretty(),
 		d.namespace(),
 		"", "",
-		port, ips,
-		[]string{s.ID().Pretty()})
+		p.Port(), p.IPs(), // these fields are required by MDNS but ignored by ww
+		marshalTxtRecord(s)) // peer.ID and multiaddrs are stored here
 	if err != nil {
 		return err
 	}
@@ -87,22 +81,24 @@ func (d MDNS) Close() error {
 }
 
 func (d MDNS) handleEntry(e *mdns.ServiceEntry) ([]peer.AddrInfo, error) {
-	mpeer, err := peer.IDB58Decode(e.Info)
+	id, err := peer.IDB58Decode(e.InfoFields[0])
 	if err != nil {
-		return nil, errors.Wrap(err, "decode b58")
+		return nil, err
 	}
 
-	maddr, err := manet.FromNetAddr(&net.TCPAddr{IP: e.AddrV4, Port: e.Port})
-	if err != nil {
-		return nil, errors.Wrap(err, "parse multiaddr")
+	as := make([]multiaddr.Multiaddr, len(e.InfoFields)-1)
+	for i, a := range e.InfoFields[1:] {
+		if as[i], err = multiaddr.NewMultiaddr(a); err != nil {
+			return nil, err
+		}
 	}
 
 	return []peer.AddrInfo{
-		{ID: mpeer, Addrs: []multiaddr.Multiaddr{maddr}},
+		{ID: id, Addrs: as},
 	}, nil
 }
 
-func getDialableListenAddrs(s Service) (out []address, err error) {
+func getDialableListenAddrs(s Service) (p payload, err error) {
 	var as []multiaddr.Multiaddr
 	if as, err = s.Network().InterfaceListenAddresses(); err != nil {
 		return nil, err
@@ -116,17 +112,17 @@ func getDialableListenAddrs(s Service) (out []address, err error) {
 
 		switch a := na.(type) {
 		case *net.TCPAddr:
-			out = append(out, address{IP: a.IP, Port: a.Port})
+			p = append(p, address{IP: a.IP, Port: a.Port})
 		case *net.UDPAddr:
-			out = append(out, address{IP: a.IP, Port: a.Port})
+			p = append(p, address{IP: a.IP, Port: a.Port})
 		}
 	}
 
-	if len(out) == 0 {
+	if len(p) == 0 {
 		return nil, errors.New("failed to resolve external addr from service")
 	}
 
-	return out, nil
+	return p, nil
 }
 
 func (d MDNS) namespace() string {
@@ -140,4 +136,24 @@ func (d MDNS) namespace() string {
 type address struct {
 	IP   net.IP
 	Port int
+}
+
+type payload []address
+
+func (p payload) Port() int {
+	return p[0].Port
+}
+
+func (p payload) IPs() []net.IP {
+	return []net.IP{p[0].IP}
+}
+
+func marshalTxtRecord(s Service) []string {
+	out := []string{s.ID().String()}
+
+	for _, addr := range s.Network().ListenAddresses() {
+		out = append(out, addr.String())
+	}
+
+	return out
 }
