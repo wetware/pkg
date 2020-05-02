@@ -67,7 +67,7 @@ func module(h *Host, opt []Option) fx.Option {
 			tracer,
 			bootstrap,
 			eventloop,
-			peermanager,
+			connpolicy,
 			routingtable,
 
 			// This MUST come last. Fires event.EvtLocalAddressesUpdated.

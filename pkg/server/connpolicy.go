@@ -19,9 +19,9 @@ import (
 )
 
 /*
-	peer.go contains the logic responsible for ensuring cluster connectivity.  It
-	ensures the host is connected to at least kmin peers and no more than kmax peers
-	(soft limit).
+	connpolicy.go contains the logic responsible for ensuring cluster connectivity.  It
+	it enacts a policy that attempts to maintain between kmin and kmax unique
+	connections.
 */
 
 const (
@@ -29,7 +29,7 @@ const (
 	tagStreamInUse = "ww-stream-in-use"
 )
 
-type peermanagerConfig struct {
+type connpolicyConfig struct {
 	fx.In
 
 	Ctx context.Context
@@ -46,19 +46,19 @@ type peermanagerConfig struct {
 	Discovery discovery.Discovery
 }
 
-// peermanager maintains a bounded set of connections to peers, ensuring cluster
+// connpolicy maintains a bounded set of connections to peers, ensuring cluster
 // connectivity.
-func peermanager(lx fx.Lifecycle, cfg peermanagerConfig) error {
+func connpolicy(lx fx.Lifecycle, cfg connpolicyConfig) error {
 	bus := cfg.Host.EventBus()
 
-	if err := protectConns(lx, cfg, bus); err != nil {
+	if err := protect(lx, cfg, bus); err != nil {
 		return err
 	}
 
-	return maintainNeighborhood(lx, cfg, bus)
+	return maintain(lx, cfg, bus)
 }
 
-func protectConns(lx fx.Lifecycle, cfg peermanagerConfig, bus event.Bus) error {
+func protect(lx fx.Lifecycle, cfg connpolicyConfig, bus event.Bus) error {
 	sub, err := bus.Subscribe([]interface{}{
 		new(ww.EvtNeighborhoodChanged),
 		new(ww.EvtStreamChanged),
@@ -122,7 +122,7 @@ func (p connProtectionPolicy) setTag(ev ww.EvtStreamChanged) {
 	}
 }
 
-func maintainNeighborhood(lx fx.Lifecycle, cfg peermanagerConfig, bus event.Bus) error {
+func maintain(lx fx.Lifecycle, cfg connpolicyConfig, bus event.Bus) error {
 	sub, err := bus.Subscribe(new(ww.EvtNeighborhoodChanged))
 	if err != nil {
 		return err
