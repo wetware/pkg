@@ -214,10 +214,17 @@ func (n neighborhood) Add(id peer.ID) (leased bool) {
 }
 
 func (n neighborhood) Rm(id peer.ID) (evicted bool) {
-	// ok == false implies a client disconnected
-	if i, ok := n.m[id]; ok && i == 1 {
+	i, ok := n.m[id]
+	if !ok {
+		// ok == false implies a client disconnected; should never happen.
+		panic("unreachable")
+	}
+
+	if i == 1 {
 		delete(n.m, id)
 		evicted = true
+	} else {
+		n.m[id] = i - 1
 	}
 
 	return
@@ -246,7 +253,7 @@ func (n neighborhood) Phase() ww.Phase {
 // resuting in an incorrect event being dispatched over the bus.
 //
 // Developers should prefer to work at the host level, comparing peer.IDs in the
-// peerstore to those in the filter by means of `filter.Contains`.
+// peerstore to those in the filter/routing-table by means of `filter.Contains`.
 func isClient(p peer.ID, ps peerstore.PeerMetadata) bool {
 	switch v, err := ps.Get(p, uagentKey); err {
 	case nil:

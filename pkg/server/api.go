@@ -10,6 +10,8 @@ const (
 
 // func registerAnchor(log logger, host host.Host, rt filter) {
 // 	host.SetStreamHandler(protoID, func(s network.Stream) {
+// 		defer s.Reset()
+
 // 		export := api.Anchor_ServerToClient(rootAnchor{
 // 			host:         host,
 // 			routingTable: rt,
