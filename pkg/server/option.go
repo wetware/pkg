@@ -92,7 +92,16 @@ func WithDiscover(p discover.Protocol) Option {
 	}
 }
 
-func withTTL(ttl time.Duration) Option {
+// WithTTL specifies the TTL for the heartbeat protocol.  `0` specifies a default value
+// of 6 seconds, which is suitable for almost all applications.
+//
+// The most common reason to adjust the TTL is in testing, where it may be desireable to
+// reduce the time needed for peers to become mutually aware.
+func WithTTL(ttl time.Duration) Option {
+	if ttl == 0 {
+		ttl = time.Second * 6
+	}
+
 	return func(c *Config) (err error) {
 		c.ttl = ttl
 		return
@@ -121,7 +130,7 @@ func withDefault(opt []Option) []Option {
 			"/ip6/::1/tcp/0",       // IPv6 loopback
 		),
 		WithDiscover(nil),
-		withTTL(time.Second * 6),
+		WithTTL(0),
 		withCardinality(8, 32),
 	}, opt...)
 }
