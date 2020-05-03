@@ -12,14 +12,11 @@ import (
 // Host .
 type Host struct {
 	logger
+	routingTable
 
 	core interface {
 		ID() peer.ID
 		Addrs() []multiaddr.Multiaddr
-	}
-
-	routingTable interface {
-		Contains(peer.ID) bool
 	}
 
 	app interface {

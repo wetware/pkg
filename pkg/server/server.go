@@ -68,7 +68,7 @@ func module(h *Host, opt []Option) fx.Option {
 			bootstrap,
 			eventloop,
 			connpolicy,
-			routingtable,
+			announcer,
 
 			// This MUST come last. Fires event.EvtLocalAddressesUpdated.
 			listenAndServe,
@@ -120,20 +120,41 @@ type pubsubConfig struct {
 
 	Namespace string        `name:"ns"`
 	TTL       time.Duration `name:"ttl"`
+	Filter    filter
 }
 
 type pubsubOut struct {
 	fx.Out
 
 	PubSub *pubsub.PubSub
+	Topic  *pubsub.Topic
 }
 
-func newPubSub(lx fx.Lifecycle, cfg pubsubConfig) (*pubsub.PubSub, error) {
-	return pubsub.NewGossipSub(
+func newPubSub(lx fx.Lifecycle, cfg pubsubConfig) (out pubsubOut, err error) {
+	if out.PubSub, err = pubsub.NewGossipSub(
 		cfg.Ctx,
 		cfg.Host,
 		pubsub.WithDiscovery(cfg.Discovery),
-	)
+	); err != nil {
+		return
+	}
+
+	if err = out.PubSub.RegisterTopicValidator(cfg.Namespace,
+		newHeartbeatValidator(cfg.Ctx, cfg.Filter)); err != nil {
+		return
+	}
+
+	if out.Topic, err = out.PubSub.Join(cfg.Namespace); err != nil {
+		return
+	}
+
+	lx.Append(fx.Hook{
+		OnStop: func(context.Context) error {
+			return out.Topic.Close()
+		},
+	})
+
+	return
 }
 
 func newDiscovery(r routing.Routing) discovery.Discovery {
@@ -187,6 +208,10 @@ func newRoutedHost(lx fx.Lifecycle, cfg hostConfig) (out hostOut, err error) {
 	return
 }
 
+func newFilter() filter {
+	return newBasicFilter()
+}
+
 type peerstoreConfig struct {
 	fx.In
 
@@ -219,10 +244,6 @@ type connManagerConfig struct {
 
 func newConnMgr(cfg connManagerConfig) cm.ConnManager {
 	return connmgr.NewConnManager(cfg.LowWater, cfg.HighWater, time.Second*10)
-}
-
-func newFilter() filter {
-	return newBasicFilter()
 }
 
 type userConfigOut struct {

@@ -18,7 +18,7 @@ import (
 	ww "github.com/lthibault/wetware/pkg"
 )
 
-type routingtableConfig struct {
+type announcerConfig struct {
 	fx.In
 
 	Ctx context.Context
@@ -29,39 +29,18 @@ type routingtableConfig struct {
 	Namespace string        `name:"ns"`
 	TTL       time.Duration `name:"ttl"`
 
-	PubSub *pubsub.PubSub
-	Filter filter
+	Topic *pubsub.Topic
 }
 
-func routingtable(lx fx.Lifecycle, cfg routingtableConfig) (err error) {
-	if err = cfg.PubSub.RegisterTopicValidator(cfg.Namespace,
-		newHeartbeatValidator(cfg.Ctx, cfg.Filter)); err != nil {
-		return
-	}
-
-	var topic *pubsub.Topic
-	if topic, err = cfg.PubSub.Join(cfg.Namespace); err != nil {
-		return err
-	}
-
-	lx.Append(fx.Hook{
-		OnStop: func(context.Context) error {
-			return topic.Close()
-		},
-	})
-
-	announce(cfg.Ctx, lx, announcer{
+func announcer(lx fx.Lifecycle, cfg announcerConfig) (err error) {
+	a := clusterAnnouner{
 		log:    cfg.Log,
 		hostID: cfg.Host.ID(),
 		ttl:    cfg.TTL,
-		mesh:   topic,
-	})
+		mesh:   cfg.Topic,
+	}
 
-	return nil
-}
-
-func announce(ctx context.Context, lx fx.Lifecycle, a announcer) {
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(cfg.Ctx)
 	lx.Append(fx.Hook{
 		// We must wait until the libp2p.Host is listening before
 		// announcing ourself to peers.
@@ -77,9 +56,11 @@ func announce(ctx context.Context, lx fx.Lifecycle, a announcer) {
 			return nil
 		},
 	})
+
+	return nil
 }
 
-type announcer struct {
+type clusterAnnouner struct {
 	log log.Logger
 
 	hostID peer.ID
@@ -90,7 +71,7 @@ type announcer struct {
 	}
 }
 
-func (a announcer) Announce(ctx context.Context) error {
+func (a clusterAnnouner) Announce(ctx context.Context) error {
 	hb, err := ww.NewHeartbeat(a.hostID, a.ttl)
 	if err != nil {
 		return err
@@ -104,7 +85,7 @@ func (a announcer) Announce(ctx context.Context) error {
 	return a.mesh.Publish(ctx, b)
 }
 
-func (a announcer) loop(ctx context.Context) {
+func (a clusterAnnouner) loop(ctx context.Context) {
 	// Hosts tend to be started in batches, which causes heartbeat storms.  We
 	// add a small ammount of jitter to smooth things out.  The jitter is
 	// calculated by sampling from a uniform distribution between .25 * TTL and
@@ -136,8 +117,6 @@ func (a announcer) loop(ctx context.Context) {
 }
 
 func newHeartbeatValidator(ctx context.Context, f filter) pubsub.Validator {
-	// Return a function that satisfies pubsub.Validator, using the above background
-	// task and filter array.
 	return func(_ context.Context, pid peer.ID, msg *pubsub.Message) bool {
 		hb, err := ww.UnmarshalHeartbeat(msg.GetData())
 		if err != nil {

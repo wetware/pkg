@@ -10,7 +10,11 @@ import (
 
 type filter interface {
 	Upsert(peer.ID, uint64, time.Duration) bool
-	Contains(peer.ID) bool
+	routingTable
+}
+
+type routingTable interface {
+	Peers() peer.IDSlice
 }
 
 type basicFilter struct {
@@ -20,14 +24,6 @@ type basicFilter struct {
 
 func newBasicFilter() *basicFilter {
 	return &basicFilter{es: make(map[peer.ID]*entry, 32)}
-}
-
-func (f *basicFilter) Contains(id peer.ID) (found bool) {
-	f.RLock()
-	defer f.RUnlock()
-
-	_, found = f.es[id]
-	return
 }
 
 func (f *basicFilter) Upsert(id peer.ID, seq uint64, ttl time.Duration) (ok bool) {
@@ -44,6 +40,18 @@ func (f *basicFilter) Upsert(id peer.ID, seq uint64, ttl time.Duration) (ok bool
 	f.Unlock()
 
 	return e.update(seq, ttl)
+}
+
+func (f *basicFilter) Peers() peer.IDSlice {
+	f.RLock()
+	defer f.RUnlock()
+
+	ps := make(peer.IDSlice, 0, len(f.es))
+	for id := range f.es {
+		ps = append(ps, id)
+	}
+
+	return ps
 }
 
 type entry struct {

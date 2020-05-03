@@ -8,7 +8,7 @@ const (
 	protoID = "/ww/anchor/0.0.0"
 )
 
-// func registerAnchor(log logger, host host.Host, rt filter) {
+// func registerAnchor(log logger, host host.Host, rt routingTable) {
 // 	host.SetStreamHandler(protoID, func(s network.Stream) {
 // 		defer s.Reset()
 
