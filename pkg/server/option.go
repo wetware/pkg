@@ -80,8 +80,8 @@ func WithListenAddr(addrs ...multiaddr.Multiaddr) Option {
 	}
 }
 
-// WithBootstrap sets the Host's bootstrap strategy.
-func WithBootstrap(p discover.Protocol) Option {
+// WithDiscover sets the Host's bootstrap strategy.
+func WithDiscover(p discover.Protocol) Option {
 	return func(c *Config) (err error) {
 		if p == nil {
 			p = &discover.MDNS{Namespace: c.ns}
@@ -120,7 +120,7 @@ func withDefault(opt []Option) []Option {
 			"/ip4/127.0.0.1/tcp/0", // IPv4 loopback
 			"/ip6/::1/tcp/0",       // IPv6 loopback
 		),
-		WithBootstrap(nil),
+		WithDiscover(nil),
 		withTTL(time.Second * 6),
 		withCardinality(8, 32),
 	}, opt...)
