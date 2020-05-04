@@ -12,7 +12,7 @@ import (
 // Host .
 type Host struct {
 	logger
-	routingTable
+	rt routingTable
 
 	core interface {
 		ID() peer.ID
@@ -40,6 +40,11 @@ func (h Host) ID() peer.ID {
 // Addrs on which the host is reachable
 func (h Host) Addrs() []multiaddr.Multiaddr {
 	return h.core.Addrs()
+}
+
+// Peers in the cluster
+func (h Host) Peers() peer.IDSlice {
+	return append(h.rt.Peers(), h.core.ID())
 }
 
 // Start the Host's network connections and start its runtime processes.

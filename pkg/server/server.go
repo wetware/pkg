@@ -105,9 +105,9 @@ func newWwHost(cfg wwHostConfig) Host {
 	// registerAnchor(getLog, cfg.Host, cfg.Filter)
 
 	return Host{
-		logger:       getLog,
-		core:         cfg.Host,
-		routingTable: cfg.Filter,
+		logger: getLog,
+		core:   cfg.Host,
+		rt:     cfg.Filter,
 	}
 }
 
