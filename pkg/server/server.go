@@ -253,9 +253,9 @@ type userConfigOut struct {
 	EventTrace bool `name:"trace"`
 
 	// Network address and cluster joining
-	BootProtocol discover.Protocol
-	ListenAddrs  []multiaddr.Multiaddr
-	Secret       pnet.PSK
+	Discover    discover.Protocol
+	ListenAddrs []multiaddr.Multiaddr
+	Secret      pnet.PSK
 
 	// Pubsub params
 	Namespace string        `name:"ns"`
@@ -278,7 +278,7 @@ func userConfig(opt []Option) (out userConfigOut, err error) {
 	out.Log = cfg.log.WithField("ns", cfg.ns)
 	out.EventTrace = cfg.trace
 
-	out.BootProtocol = cfg.boot
+	out.Discover = cfg.d
 	out.ListenAddrs = cfg.addrs
 
 	out.Namespace = cfg.ns

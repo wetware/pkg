@@ -25,7 +25,7 @@ type Config struct {
 	addrs []multiaddr.Multiaddr
 	psk   pnet.PSK
 
-	boot discover.Protocol
+	d discover.Protocol
 }
 
 /*
@@ -80,14 +80,15 @@ func WithListenAddr(addrs ...multiaddr.Multiaddr) Option {
 	}
 }
 
-// WithDiscover sets the Host's bootstrap strategy.
+// WithDiscover sets the Host's bootstrap strategy.  Nil configures a default using
+// discover.MDNS.
 func WithDiscover(p discover.Protocol) Option {
 	return func(c *Config) (err error) {
 		if p == nil {
 			p = &discover.MDNS{Namespace: c.ns}
 		}
 
-		c.boot = p
+		c.d = p
 		return
 	}
 }
