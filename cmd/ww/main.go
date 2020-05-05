@@ -39,12 +39,6 @@ func main() {
 				Usage:   "pretty-print JSON output",
 				Hidden:  true,
 			},
-			&cli.BoolFlag{
-				Name:    "trace",
-				Aliases: []string{"t"},
-				Usage:   "log events on the host's internal bus",
-				Hidden:  true,
-			},
 		},
 		Commands: []*cli.Command{{
 			Name:   "start",

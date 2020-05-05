@@ -64,7 +64,6 @@ func module(h *Host, opt []Option) fx.Option {
 		 *  start runtime goroutines  *
 		 ******************************/
 		fx.Invoke(
-			tracer,
 			bootstrap,
 			eventloop,
 			connpolicy,
@@ -249,8 +248,7 @@ func newConnMgr(cfg connManagerConfig) cm.ConnManager {
 type userConfigOut struct {
 	fx.Out
 
-	Log        log.Logger
-	EventTrace bool `name:"trace"`
+	Log log.Logger
 
 	// Network address and cluster joining
 	Discover    discover.Protocol
@@ -276,7 +274,6 @@ func userConfig(opt []Option) (out userConfigOut, err error) {
 	}
 
 	out.Log = cfg.log.WithField("ns", cfg.ns)
-	out.EventTrace = cfg.trace
 
 	out.Discover = cfg.d
 	out.ListenAddrs = cfg.addrs

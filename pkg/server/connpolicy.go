@@ -127,29 +127,26 @@ func maintain(lx fx.Lifecycle, cfg connpolicyConfig, bus event.Bus) error {
 	if err != nil {
 		return err
 	}
+
 	lx.Append(fx.Hook{
+		OnStart: func(context.Context) error {
+			m := neighborhoodMaintainer{
+				log:  cfg.Log,
+				ns:   cfg.Namespace,
+				kmin: cfg.KMin,
+				kmax: cfg.KMax,
+				host: cfg.Host,
+				b:    cfg.Boot,
+				d:    cfg.Discovery,
+			}
+			go m.loop(cfg.Ctx, sub)
+			return nil
+		},
 		OnStop: func(context.Context) error {
 			return sub.Close()
 		},
 	})
 
-	m := &neighborhoodMaintainer{
-		log:  cfg.Log,
-		ns:   cfg.Namespace,
-		kmin: cfg.KMin,
-		kmax: cfg.KMax,
-		host: cfg.Host,
-		b:    cfg.Boot,
-		d:    cfg.Discovery,
-	}
-
-	// `ready` signals to the maintainer loop that `join` can safely be called.
-	ready, err := bus.Subscribe(new(event.EvtLocalAddressesUpdated))
-	if err != nil {
-		return err
-	}
-
-	go m.loop(cfg.Ctx, sub, ready)
 	return nil
 }
 
@@ -166,9 +163,7 @@ type neighborhoodMaintainer struct {
 	d  discovery.Discoverer
 }
 
-func (m *neighborhoodMaintainer) loop(ctx context.Context, sub, ready event.Subscription) {
-	defer ready.Close()
-
+func (m *neighborhoodMaintainer) loop(ctx context.Context, sub event.Subscription) {
 	ticker := time.NewTicker(time.Second * 15)
 	defer ticker.Stop()
 
@@ -179,18 +174,6 @@ func (m *neighborhoodMaintainer) loop(ctx context.Context, sub, ready event.Subs
 	)
 
 	for {
-		select {
-		case <-ready.Out():
-		case <-ticker.C:
-		case v, ok := <-sub.Out():
-			if ok {
-				ev = v.(ww.EvtNeighborhoodChanged)
-			}
-		case <-ctx.Done():
-			cancel()
-			return
-		}
-
 		switch ev.To {
 		case ww.PhaseOrphaned:
 			reqctx, cancel = context.WithCancel(ctx)
@@ -206,6 +189,17 @@ func (m *neighborhoodMaintainer) loop(ctx context.Context, sub, ready event.Subs
 			// - In-flight requests are harmless to completely-connected nodes; excess
 			//   connections will be pruned by the connection manager, at worst.
 			cancel()
+		}
+
+		select {
+		case <-ticker.C:
+		case v, ok := <-sub.Out():
+			if ok {
+				ev = v.(ww.EvtNeighborhoodChanged)
+			}
+		case <-ctx.Done():
+			cancel()
+			return
 		}
 	}
 }

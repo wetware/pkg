@@ -21,8 +21,7 @@ var (
 func Init() cli.BeforeFunc {
 	return func(c *cli.Context) error {
 		peer = server.New(
-			server.WithLogger(logutil.New(c)),
-			server.WithEventTrace(c.Bool("trace")))
+			server.WithLogger(logutil.New(c)))
 
 		ch := make(chan os.Signal, 1)
 		signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
