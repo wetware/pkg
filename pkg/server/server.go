@@ -106,7 +106,7 @@ func newWwHost(cfg wwHostConfig) Host {
 
 	return Host{
 		logger: getLog,
-		core:   cfg.Host,
+		host:   cfg.Host,
 		rt:     cfg.Filter,
 	}
 }
