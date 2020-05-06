@@ -1,31 +1,26 @@
 package start
 
 import (
-	"os"
-	"os/signal"
-	"syscall"
+	"context"
 
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 
+	ctxutil "github.com/lthibault/wetware/internal/util/ctx"
 	logutil "github.com/lthibault/wetware/internal/util/log"
 	"github.com/lthibault/wetware/pkg/server"
 )
 
 var (
-	peer  server.Host
-	close <-chan os.Signal
+	proc = ctxutil.WithLifetime(context.Background())
+	host server.Host
 )
 
 // Init the `start` command
 func Init() cli.BeforeFunc {
 	return func(c *cli.Context) error {
-		peer = server.New(
+		host = server.New(
 			server.WithLogger(logutil.New(c)))
-
-		ch := make(chan os.Signal, 1)
-		signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
-		close = ch
 
 		return nil
 	}
@@ -46,15 +41,15 @@ func Flags() []cli.Flag {
 // Run the `start` command
 func Run() cli.ActionFunc {
 	return func(c *cli.Context) error {
-		if err := peer.Start(); err != nil {
+		if err := host.Start(); err != nil {
 			return errors.Wrap(err, "start host")
 		}
 
-		peer.Log().Info("host started")
-		<-close
-		peer.Log().Warn("host shutting down")
+		host.Log().Info("host started")
+		<-proc.Done()
+		host.Log().Warn("host shutting down")
 
-		if err := peer.Close(); err != nil {
+		if err := host.Close(); err != nil {
 			return errors.Wrap(err, "stop host")
 		}
 

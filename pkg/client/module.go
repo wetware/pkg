@@ -136,6 +136,8 @@ type userConfigOut struct {
 
 	Datastore datastore.Batching
 	Discover  discover.Strategy
+	Limit     int           `name:"discover_limit"`
+	Timeout   time.Duration `name:"discover_timeout"`
 }
 
 func userConfig(opt []Option) (out userConfigOut, err error) {
@@ -162,16 +164,33 @@ func userConfig(opt []Option) (out userConfigOut, err error) {
 	runtime functions (use fx.Invoke)
 */
 
-func join(ctx context.Context, host host.Host, d discover.Strategy) error {
-	ps, err := d.DiscoverPeers(ctx)
+type joinConfig struct {
+	fx.In
+
+	Ctx  context.Context
+	Log  log.Logger
+	Host host.Host
+
+	discover.Strategy
+	Limit   int           `name:"discover_limit"`
+	Timeout time.Duration `name:"discover_timeout"`
+}
+
+func join(cfg joinConfig) error {
+	ctx, cancel := context.WithTimeout(cfg.Ctx, cfg.Timeout)
+	defer cancel()
+
+	ps, err := cfg.DiscoverPeers(ctx,
+		discover.WithLogger(cfg.Log),
+		discover.WithLimit(cfg.Limit))
 	if err != nil {
 		return errors.Wrap(err, "discover")
 	}
 
 	// TODO:  change this to an at-least-one-succeeds group
 	var g errgroup.Group
-	for _, pinfo := range ps {
-		g.Go(connect(ctx, host, pinfo))
+	for info := range ps {
+		g.Go(connect(ctx, cfg.Host, info))
 	}
 
 	return errors.Wrap(g.Wait(), "join")

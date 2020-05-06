@@ -1,6 +1,8 @@
 package client
 
 import (
+	"time"
+
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/sync"
 	log "github.com/lthibault/log/pkg"
@@ -18,7 +20,10 @@ type Config struct {
 	ns  string
 	psk pnet.PSK
 	ds  datastore.Batching
-	d   discover.Strategy
+
+	d       discover.Strategy
+	limit   int
+	timeout time.Duration
 }
 
 // WithLogger sets the logger.
@@ -60,11 +65,27 @@ func withDataStore(d datastore.Batching) Option {
 	}
 }
 
+func withLimit(lim int) Option {
+	return func(c *Config) (err error) {
+		c.limit = lim
+		return
+	}
+}
+
+func withTimeout(d time.Duration) Option {
+	return func(c *Config) (err error) {
+		c.timeout = d
+		return
+	}
+}
+
 func withDefault(opt []Option) []Option {
 	return append([]Option{
 		WithLogger(log.New(log.OptLevel(log.FatalLevel))),
 		WithNamespace("ww"),
 		WithDiscover(nil),
 		withDataStore(nil),
+		withLimit(1),
+		withTimeout(time.Second * 10),
 	}, opt...)
 }

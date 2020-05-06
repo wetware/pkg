@@ -210,19 +210,21 @@ func (m *neighborhoodMaintainer) join(ctx context.Context) {
 		defer cancel()
 		defer m.sf.Reset("join")
 
-		ps, err := m.b.DiscoverPeers(ctx)
+		ps, err := m.b.DiscoverPeers(ctx,
+			discover.WithLogger(m.log),
+			discover.WithLimit(3))
 		if err != nil {
 			m.log.WithError(err).Debug("peer discovery failed")
 		}
 
 		self := m.host.ID()
 		var g errgroup.Group
-		for _, pinfo := range ps {
-			if pinfo.ID == self {
+		for info := range ps {
+			if info.ID == self {
 				continue // got our own addr info; skip.
 			}
 
-			g.Go(connect(ctx, m.host, pinfo))
+			g.Go(connect(ctx, m.host, info))
 		}
 
 		if err = g.Wait(); err != nil {

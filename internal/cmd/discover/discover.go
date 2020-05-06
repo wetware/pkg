@@ -4,18 +4,27 @@ import (
 	"context"
 	"encoding/json"
 	"net"
-	"time"
 
-	discover "github.com/lthibault/wetware/pkg/discover"
+	log "github.com/lthibault/log/pkg"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
+
+	ctxutil "github.com/lthibault/wetware/internal/util/ctx"
+	logutil "github.com/lthibault/wetware/internal/util/log"
+	discover "github.com/lthibault/wetware/pkg/discover"
 )
 
-var d discover.Strategy
+var (
+	d      discover.Strategy
+	logger log.Logger
+	proc   = ctxutil.WithLifetime(context.Background())
+)
 
 // Init the discovery service
 func Init() cli.BeforeFunc {
 	return func(c *cli.Context) (err error) {
+		logger = logutil.New(c)
+
 		switch c.String("protocol") {
 		case "mdns":
 			mdns := new(discover.MDNS)
@@ -47,7 +56,6 @@ func Flags() []cli.Flag {
 			Name:    "timeout",
 			Aliases: []string{"t"},
 			Usage:   "time to wait for cluster response",
-			Value:   time.Second * 5,
 		},
 		&cli.BoolFlag{
 			Name:    "prettyprint",
@@ -57,8 +65,8 @@ func Flags() []cli.Flag {
 		&cli.IntFlag{
 			Name:    "number",
 			Aliases: []string{"n"},
-			Usage:   "max number of peers to return",
-			Hidden:  true, // TODO:  implement multiple results in client.MDNSDiscovery
+			Usage:   "number of records to return (0 = stream)",
+			Value:   1,
 		},
 	}
 }
@@ -66,12 +74,11 @@ func Flags() []cli.Flag {
 // Run the `discover` command.
 func Run() cli.ActionFunc {
 	return func(c *cli.Context) error {
-		ctx, cancel := context.WithTimeout(context.Background(), c.Duration("timeout"))
-		defer cancel()
-
-		ps, err := d.DiscoverPeers(ctx)
-		if err != nil {
-			return err
+		var ctx = proc
+		var cancel context.CancelFunc
+		if c.Duration("timeout") != 0 {
+			ctx, cancel = context.WithTimeout(proc, c.Duration("timeout"))
+			defer cancel()
 		}
 
 		enc := json.NewEncoder(c.App.Writer)
@@ -79,12 +86,19 @@ func Run() cli.ActionFunc {
 			enc.SetIndent("", "  ")
 		}
 
-		for _, info := range ps {
+		peers, err := d.DiscoverPeers(ctx,
+			discover.WithLogger(logger),
+			discover.WithLimit(c.Int("n")))
+		if err != nil {
+			return err
+		}
+
+		for info := range peers {
 			if err = enc.Encode(info); err != nil {
-				break
+				return err
 			}
 		}
 
-		return err
+		return nil
 	}
 }

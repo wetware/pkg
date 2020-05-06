@@ -23,7 +23,7 @@ type Service interface {
 
 // Strategy for obtaining bootstrap peers.
 type Strategy interface {
-	DiscoverPeers(context.Context) ([]peer.AddrInfo, error)
+	DiscoverPeers(context.Context, ...Option) (<-chan peer.AddrInfo, error)
 }
 
 // Beacon responds to queries from a corresponding Discover implementation.
@@ -43,8 +43,28 @@ type Beacon interface {
 type StaticAddrs []multiaddr.Multiaddr
 
 // DiscoverPeers converts the static addresses into AddrInfos
-func (as StaticAddrs) DiscoverPeers(context.Context) (ps []peer.AddrInfo, err error) {
-	return peer.AddrInfosFromP2pAddrs(as...)
+func (as StaticAddrs) DiscoverPeers(_ context.Context, opt ...Option) (<-chan peer.AddrInfo, error) {
+	var p Param
+	if err := p.Apply(opt); err != nil {
+		return nil, err
+	}
+
+	if p.Limit > 0 && len(as) > p.Limit {
+		as = as[:p.Limit]
+	}
+
+	ps, err := peer.AddrInfosFromP2pAddrs(as...)
+	if err != nil {
+		return nil, err
+	}
+
+	ch := make(chan peer.AddrInfo, len(ps))
+	for _, p := range ps {
+		ch <- p
+	}
+	close(ch)
+
+	return ch, err
 }
 
 // Start is a nop.  It immediately returns nil.

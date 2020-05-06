@@ -3,6 +3,7 @@ package discover
 import (
 	"context"
 	"net"
+	"time"
 
 	ww "github.com/lthibault/wetware/pkg"
 	"github.com/pkg/errors"
@@ -12,6 +13,8 @@ import (
 	manet "github.com/multiformats/go-multiaddr-net"
 	"github.com/whyrusleeping/mdns"
 )
+
+const defaultTimeout = time.Second * 2
 
 func init() {
 	// logs produce false-positive errors.
@@ -28,13 +31,15 @@ type MDNS struct {
 }
 
 // DiscoverPeers queries MDNS.
-func (d MDNS) DiscoverPeers(ctx context.Context) ([]peer.AddrInfo, error) {
-	// TODO:  implement discover.DiscoverOpt to set the desired number of boot peers.
-	//		  In many cases, it's helpful to get n == ww.LowWater bootstrap peers.
+func (d MDNS) DiscoverPeers(ctx context.Context, opt ...Option) (<-chan peer.AddrInfo, error) {
+	var p Param
+	if err := p.Apply(opt); err != nil {
+		return nil, err
+	}
 
-	entries := make(chan *mdns.ServiceEntry, 1)
-
+	entries := make(chan *mdns.ServiceEntry, 8)
 	if err := mdns.Query(&mdns.QueryParam{
+		Timeout:             getTimeout(ctx),
 		Service:             d.namespace(),
 		Entries:             entries,
 		Interface:           d.Interface,
@@ -43,12 +48,36 @@ func (d MDNS) DiscoverPeers(ctx context.Context) ([]peer.AddrInfo, error) {
 		return nil, errors.Wrap(err, "mdns query")
 	}
 
-	select {
-	case entry := <-entries:
-		return d.handleEntry(entry)
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	}
+	ch := make(chan peer.AddrInfo)
+	go func() {
+		defer close(ch)
+
+		remaining := p.Limit
+
+		for {
+			select {
+			case entry := <-entries:
+				info, err := d.handleEntry(entry)
+				if err != nil {
+					continue // TODO:  log
+				}
+
+				select {
+				case ch <- info:
+					if p.Limit > 0 {
+						if remaining--; remaining == 0 {
+							return
+						}
+					}
+				case <-ctx.Done():
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	return ch, nil
 }
 
 // Start an MDNS server that responds to queries in the background.
@@ -80,22 +109,19 @@ func (d MDNS) Close() error {
 	return d.server.Shutdown()
 }
 
-func (d MDNS) handleEntry(e *mdns.ServiceEntry) ([]peer.AddrInfo, error) {
-	id, err := peer.IDB58Decode(e.InfoFields[0])
-	if err != nil {
-		return nil, err
+func (d MDNS) handleEntry(e *mdns.ServiceEntry) (info peer.AddrInfo, err error) {
+	if info.ID, err = peer.IDB58Decode(e.InfoFields[0]); err != nil {
+		return
 	}
 
-	as := make([]multiaddr.Multiaddr, len(e.InfoFields)-1)
-	for i, a := range e.InfoFields[1:] {
-		if as[i], err = multiaddr.NewMultiaddr(a); err != nil {
-			return nil, err
+	info.Addrs = make([]multiaddr.Multiaddr, len(e.InfoFields)-1) // 0th item is peer.ID
+	for i, s := range e.InfoFields[1:] {
+		if info.Addrs[i], err = multiaddr.NewMultiaddr(s); err != nil {
+			break
 		}
 	}
 
-	return []peer.AddrInfo{
-		{ID: id, Addrs: as},
-	}, nil
+	return
 }
 
 func getDialableListenAddrs(s Service) (p payload, err error) {
@@ -156,4 +182,12 @@ func marshalTxtRecord(s Service) []string {
 	}
 
 	return out
+}
+
+func getTimeout(ctx context.Context) time.Duration {
+	if t, ok := ctx.Deadline(); ok {
+		return t.Sub(time.Now())
+	}
+
+	return defaultTimeout
 }
