@@ -336,8 +336,6 @@ github.com/libp2p/go-yamux v1.3.5 h1:ibuz4naPAully0pN6J/kmUARiqLpnDQIzI/8GCOrljg
 github.com/libp2p/go-yamux v1.3.5/go.mod h1:FGTiPvoV/3DVdgWpX+tM0OW3tsM+W5bSE3gZwqQTcow=
 github.com/libp2p/go-yamux v1.3.6 h1:O5qcBXRcfqecvQ/My9NqDNHB3/5t58yuJYqthcKhhgE=
 github.com/libp2p/go-yamux v1.3.6/go.mod h1:FGTiPvoV/3DVdgWpX+tM0OW3tsM+W5bSE3gZwqQTcow=
-github.com/lthibault/jitterbug v0.0.0-20200313035244-37ff5f417161 h1:mQGq+HLtDrr/+LXZCBCNcojKSb2jzF9WF6zq47ElXQE=
-github.com/lthibault/jitterbug v0.0.0-20200313035244-37ff5f417161/go.mod h1:UNNb1BaDpMESmC/+rTXiqOj/BXGzr+evo+sGNRCOMGo=
 github.com/lthibault/log v0.0.0-20190513014217-f549b3a28a20/go.mod h1:mkhKiE0tCpz+ChrbcLrpaDjng4Jb4EVFBDzez3cHdxY=
 github.com/lthibault/util v0.0.0-20200509143049-811c980d6cc4 h1:U1SagUHDx2mNcJ5E39wHirBNw0gTjdINriL3ihYXyd0=
 github.com/lthibault/util v0.0.0-20200509143049-811c980d6cc4/go.mod h1:Mpl937N1qew5Bl2TRw8RMP8AWBSz2xsKrCBynXiBeoQ=

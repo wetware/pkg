@@ -5,9 +5,9 @@ import (
 	"time"
 
 	log "github.com/lthibault/log/pkg"
+	syncutil "github.com/lthibault/util/sync"
 	"github.com/pkg/errors"
 	"go.uber.org/fx"
-	"golang.org/x/sync/errgroup"
 
 	"github.com/ipfs/go-datastore"
 	p2p "github.com/libp2p/go-libp2p"
@@ -158,6 +158,8 @@ func userConfig(opt []Option) (out userConfigOut, err error) {
 	out.Secret = cfg.psk
 	out.Datastore = cfg.ds
 	out.Discover = cfg.d
+	out.Limit = cfg.limit
+	out.Timeout = cfg.timeout
 	return
 }
 
@@ -188,22 +190,16 @@ func join(cfg joinConfig) error {
 		return errors.Wrap(err, "discover")
 	}
 
-	// TODO:  change this to an at-least-one-succeeds group
-	var g errgroup.Group
+	var any syncutil.Any
 	for info := range ps {
-		g.Go(connect(ctx, cfg.Host, info))
+		any.Go(connect(ctx, cfg.Host, info))
 	}
 
-	if err = g.Wait(); err != nil {
-		return errors.Wrap(err, "join")
+	if err = any.Wait(); err == nil {
+		err = ctx.Err() // Wait might return nil if no peers were found.
 	}
 
-	cfg.Log.
-		WithField("id", cfg.Host.ID()).
-		WithField("conns", cfg.Host.Network().Peers()).
-		Debug("connected to cluster")
-
-	return nil
+	return errors.Wrap(err, "join")
 }
 
 /*

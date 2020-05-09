@@ -229,12 +229,13 @@ func (m *neighborhoodMaintainer) join(ctx context.Context) {
 			any.Go(m.connect(ctx, info))
 		}
 
-		if err = any.Wait(); err != nil {
-			m.log.WithError(err).Debug("join failed")
-			return
+		if err = any.Wait(); err == nil {
+			err = ctx.Err() // Wait might return nil if no peers were found.
 		}
 
-		m.log.Debug("join succeeded")
+		if err != nil {
+			m.log.WithError(err).Debug("join failed")
+		}
 	})
 }
 

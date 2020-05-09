@@ -1,6 +1,7 @@
 package client
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"time"
 
@@ -75,7 +76,7 @@ type messagePrinter struct {
 
 func newMessagePrinter(c *cli.Context) messagePrinter {
 	enc := json.NewEncoder(c.App.Writer)
-	if c.Bool("prettypring") {
+	if c.Bool("prettyprint") {
 		enc.SetIndent("", "  ")
 	}
 
@@ -88,11 +89,17 @@ func newMessagePrinter(c *cli.Context) messagePrinter {
 
 func (m messagePrinter) PrintMessage(msg *pubsub.Message) error {
 	if m.topic == "" {
-		hb := msg.ValidatorData.(ww.Heartbeat)
+		hb, err := ww.UnmarshalHeartbeat(msg.GetData())
+		if err != nil {
+			return err
+		}
+
 		return m.enc.Encode(struct {
+			Seq uint64        `json:"seq"`
 			ID  peer.ID       `json:"id"`
 			TTL time.Duration `json:"ttl"`
 		}{
+			Seq: binary.BigEndian.Uint64(msg.Seqno),
 			ID:  hb.ID(),
 			TTL: hb.TTL(),
 		})

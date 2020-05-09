@@ -26,7 +26,7 @@ func Init() cli.BeforeFunc {
 
 		host = server.New(
 			server.WithLogger(log),
-			// withTracer(log),
+			withTracer(log),
 		)
 
 		return nil
