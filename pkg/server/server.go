@@ -146,8 +146,23 @@ func newPubSub(lx fx.Lifecycle, cfg pubsubConfig) (out pubsubOut, err error) {
 		return
 	}
 
+	var sub *pubsub.Subscription
 	lx.Append(fx.Hook{
+		OnStart: func(context.Context) (err error) {
+			if sub, err = out.Topic.Subscribe(); err == nil {
+				go func() {
+					for { // we need to consume messages for pubsub to work.
+						if _, err = sub.Next(cfg.Ctx); err != nil {
+							break
+						}
+					}
+				}()
+			}
+
+			return
+		},
 		OnStop: func(context.Context) error {
+			sub.Cancel()
 			return out.Topic.Close()
 		},
 	})
