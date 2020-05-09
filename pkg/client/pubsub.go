@@ -97,10 +97,17 @@ func (t Topic) Subscribe(ctx context.Context) (s Subscription, err error) {
 	ch := make(chan *pubsub.Message, 32)
 	go func() {
 		defer close(ch)
-		for msg, err := s.sub.Next(ctx); err == nil; {
+
+		for {
+			msg, err := s.sub.Next(ctx)
+			if err != nil {
+				break
+			}
+
 			select {
 			case ch <- msg:
 			case <-ctx.Done():
+				break
 			}
 		}
 	}()
