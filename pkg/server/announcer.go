@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"encoding/binary"
-	"math/rand"
 	"time"
 
 	"go.uber.org/fx"
@@ -11,9 +10,7 @@ import (
 	host "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/lthibault/jitterbug"
 	log "github.com/lthibault/log/pkg"
-	randutil "github.com/lthibault/wetware/pkg/util/rand"
 
 	ww "github.com/lthibault/wetware/pkg"
 )
@@ -86,23 +83,7 @@ func (a clusterAnnouner) Announce(ctx context.Context) error {
 }
 
 func (a clusterAnnouner) loop(ctx context.Context) {
-	// Hosts tend to be started in batches, which causes heartbeat storms.  We
-	// add a small ammount of jitter to smooth things out.  The jitter is
-	// calculated by sampling from a uniform distribution between .25 * TTL and
-	// .5 * TTL.  The TTL corresponds to 2.6 heartbeats, on average.
-	//
-	// With default TTL settings, a heartbeat is emitted every 2250ms, on
-	// average.  This tolerance is optimized for the widest possible variety of
-	// execution settings, and should notably perform well on high-latency
-	// networks, including 3G.
-	//
-	// Clusters operating in low-latency settings such as datacenters may wish
-	// to reduce the TTL.  Doing so will increase the cluster's responsiveness
-	// at the expense of an O(n) increase in bandwidth consumption.
-	ticker := jitterbug.New(a.ttl/2, jitterbug.Uniform{
-		Min:    a.ttl / 4,
-		Source: rand.New(randutil.FromPeer(a.hostID)),
-	})
+	ticker := time.NewTicker(a.ttl / 3)
 	defer ticker.Stop()
 
 	for range ticker.C {
