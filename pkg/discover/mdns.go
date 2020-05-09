@@ -3,7 +3,6 @@ package discover
 import (
 	"context"
 	"net"
-	"sync"
 	"time"
 
 	ww "github.com/lthibault/wetware/pkg"
@@ -38,13 +37,10 @@ func (d MDNS) DiscoverPeers(ctx context.Context, opt ...Option) (<-chan peer.Add
 		return nil, err
 	}
 
-	var once sync.Once
 	out := make(chan peer.AddrInfo, 1)
 	entries := make(chan *mdns.ServiceEntry, 8)
 
 	go func() {
-		defer once.Do(func() { close(out) })
-
 		if err := mdns.Query(&mdns.QueryParam{
 			Timeout:             getTimeout(ctx),
 			Service:             d.namespace(),
@@ -58,7 +54,7 @@ func (d MDNS) DiscoverPeers(ctx context.Context, opt ...Option) (<-chan peer.Add
 	}()
 
 	go func() {
-		defer once.Do(func() { close(out) })
+		defer close(out)
 
 		remaining := p.Limit
 
@@ -86,7 +82,7 @@ func (d MDNS) DiscoverPeers(ctx context.Context, opt ...Option) (<-chan peer.Add
 		}
 	}()
 
-	return out, nil
+	return out, ctx.Err()
 }
 
 // Start an MDNS server that responds to queries in the background.
