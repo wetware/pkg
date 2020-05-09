@@ -3,6 +3,9 @@ package start
 import (
 	"context"
 
+	"github.com/libp2p/go-libp2p-core/event"
+	log "github.com/lthibault/log/pkg"
+	"github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 
@@ -19,8 +22,12 @@ var (
 // Init the `start` command
 func Init() cli.BeforeFunc {
 	return func(c *cli.Context) error {
+		log := logutil.New(c)
+
 		host = server.New(
-			server.WithLogger(logutil.New(c)))
+			server.WithLogger(log),
+			// withTracer(log),
+		)
 
 		return nil
 	}
@@ -55,4 +62,35 @@ func Run() cli.ActionFunc {
 
 		return nil
 	}
+}
+
+func withTracer(log log.Logger) server.Option {
+	ev := []interface{}{
+		new(event.EvtLocalAddressesUpdated),
+		new(event.EvtPeerIdentificationCompleted),
+		new(event.EvtPeerIdentificationFailed),
+	}
+
+	return server.WithEventHandler(ev, func(v interface{}) {
+		switch ev := v.(type) {
+		case event.EvtLocalAddressesUpdated:
+			as := make([]multiaddr.Multiaddr, len(ev.Current))
+			for i, a := range ev.Current {
+				as[i] = a.Address
+			}
+
+			log.
+				WithField("addrs", as).
+				Info("host listening")
+		case event.EvtPeerIdentificationCompleted:
+			log.
+				WithField("peer", ev.Peer).
+				Info("identification succeeded")
+		case event.EvtPeerIdentificationFailed:
+			log.
+				WithError(ev.Reason).
+				WithField("peer", ev.Peer).
+				Warn("identification failed")
+		}
+	})
 }

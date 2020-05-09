@@ -9,14 +9,19 @@ import (
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 
+	ctxutil "github.com/lthibault/wetware/internal/util/ctx"
 	logutil "github.com/lthibault/wetware/internal/util/log"
+	"github.com/lthibault/wetware/pkg/client"
 	mautil "github.com/lthibault/wetware/pkg/util/multiaddr"
 
-	"github.com/lthibault/wetware/pkg/client"
 	discover "github.com/lthibault/wetware/pkg/discover"
 )
 
-var cluster client.Client
+var (
+	cluster client.Client
+	logger  log.Logger
+	proc    = ctxutil.WithLifetime(context.Background())
+)
 
 // Flags for the `start` command
 func Flags() []cli.Flag {
@@ -34,20 +39,27 @@ func Flags() []cli.Flag {
 			Value:   "/mdns",
 			EnvVars: []string{"WW_DISCOVER"},
 		},
+		&cli.StringFlag{
+			Name:    "namespace",
+			Aliases: []string{"ns"},
+			Usage:   "cluster namespace (must match dial host)",
+			Value:   "ww",
+			EnvVars: []string{"WW_NAMESPACE"},
+		},
 	}
 }
 
 // Init the wetware client
 func Init() cli.BeforeFunc {
 	return func(c *cli.Context) (err error) {
-		log := logutil.New(c)
+		logger = logutil.New(c)
 
 		var d discover.Strategy
 		switch {
 		case c.StringSlice("join") != nil:
 			d, err = join(c)
 		case c.String("discover") != "":
-			d, err = discoverPeers(c, log)
+			d, err = discoverPeers(c, logger)
 		default:
 			err = errors.New("must specify either -join or -discover address")
 		}
@@ -55,7 +67,7 @@ func Init() cli.BeforeFunc {
 		if err == nil {
 			cluster, err = client.Dial(context.Background(),
 				client.WithDiscover(d),
-				client.WithLogger(log))
+				client.WithLogger(logger))
 		}
 
 		return
@@ -77,6 +89,16 @@ func Commands() []*cli.Command {
 		ArgsUsage: "path",
 		Flags:     lsFlags(),
 		Action:    lsAction(),
+	}, {
+		Name:    "subscribe",
+		Aliases: []string{"sub"},
+		Flags:   subFlags(),
+		Action:  subAction(),
+	}, {
+		Name:    "publish",
+		Aliases: []string{"pub"},
+		Flags:   pubFlags(),
+		Action:  pubAction(),
 	}}
 }
 
@@ -92,7 +114,9 @@ func discoverPeers(c *cli.Context, log log.Logger) (discover.Strategy, error) {
 
 	switch proto {
 	case "mdns":
-		switch mdns := new(discover.MDNS); param {
+		mdns := &discover.MDNS{Namespace: c.String("ns")}
+
+		switch param {
 		case "":
 			log.Debug("using default multicast interface")
 			return mdns, nil

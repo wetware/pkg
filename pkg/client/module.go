@@ -45,16 +45,17 @@ func module(c *Client, opt []Option) fx.Option {
 type clientConfig struct {
 	fx.In
 
-	Log    log.Logger
-	Host   host.Host
-	PubSub *pubsub.PubSub
+	Log       log.Logger
+	Host      host.Host
+	Namespace string `name:"ns"`
+	PubSub    *pubsub.PubSub
 }
 
 func newClient(lx fx.Lifecycle, cfg clientConfig) Client {
 	return Client{
 		log:  cfg.Log.WithField("id", cfg.Host.ID()),
 		host: cfg.Host,
-		ps:   cfg.PubSub,
+		ps:   newTopicSet(cfg.Namespace, cfg.PubSub),
 	}
 }
 
@@ -193,7 +194,16 @@ func join(cfg joinConfig) error {
 		g.Go(connect(ctx, cfg.Host, info))
 	}
 
-	return errors.Wrap(g.Wait(), "join")
+	if err = g.Wait(); err != nil {
+		return errors.Wrap(err, "join")
+	}
+
+	cfg.Log.
+		WithField("id", cfg.Host.ID()).
+		WithField("conns", cfg.Host.Network().Peers()).
+		Debug("connected to cluster")
+
+	return nil
 }
 
 /*

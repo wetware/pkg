@@ -5,14 +5,16 @@ import (
 	"sync"
 	"time"
 
+	log "github.com/lthibault/log/pkg"
+	syncutil "github.com/lthibault/util/sync"
 	"go.uber.org/fx"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/event"
 	host "github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/peer"
 	discovery "github.com/libp2p/go-libp2p-discovery"
-	log "github.com/lthibault/log/pkg"
 	discover "github.com/lthibault/wetware/pkg/discover"
 
 	ww "github.com/lthibault/wetware/pkg"
@@ -180,7 +182,7 @@ func (m *neighborhoodMaintainer) loop(ctx context.Context, sub event.Subscriptio
 			m.join(reqctx)
 		case ww.PhasePartial:
 			reqctx, cancel = context.WithCancel(ctx)
-			m.graft(reqctx, max((m.kmin-ev.N)/2, 1))
+			m.graft(reqctx, m.kmin-ev.N)
 		case ww.PhaseOverloaded:
 			// In-flight requests only become a liability when the host is overloaded.
 			//
@@ -215,30 +217,35 @@ func (m *neighborhoodMaintainer) join(ctx context.Context) {
 			discover.WithLimit(3))
 		if err != nil {
 			m.log.WithError(err).Debug("peer discovery failed")
+			return
 		}
 
-		self := m.host.ID()
-		var g errgroup.Group
+		var any syncutil.Any
 		for info := range ps {
-			if info.ID == self {
+			if info.ID == m.host.ID() {
 				continue // got our own addr info; skip.
 			}
 
-			g.Go(connect(ctx, m.host, info))
+			any.Go(m.connect(ctx, info))
 		}
 
-		if err = g.Wait(); err != nil {
-			m.log.WithError(err).Debug("peer connection failed")
+		if err = any.Wait(); err != nil {
+			m.log.WithError(err).Debug("join failed")
+			return
 		}
+
+		m.log.Debug("join succeeded")
 	})
 }
 
+// TODO:  this needs work.  seems like parts of this are broken ...
 func (m *neighborhoodMaintainer) graft(ctx context.Context, limit int) {
 	go m.sf.Do("graft", func() {
 		discoverCtx, cancel := context.WithTimeout(ctx, time.Second*30)
 		defer cancel()
 		defer m.sf.Reset("graft")
 
+		// TODO:  provide value for `m.ns` in the DHT.
 		ch, err := m.d.FindPeers(discoverCtx, m.ns, discovery.Limit(limit))
 		if err != nil {
 			m.log.WithError(err).Debug("discovery failed")
@@ -246,15 +253,34 @@ func (m *neighborhoodMaintainer) graft(ctx context.Context, limit int) {
 		}
 
 		var g errgroup.Group
-		for pinfo := range ch {
-			g.Go(connect(ctx, m.host, pinfo))
+		for info := range ch {
+			// TODO:  filter out self, and filter out already-connected peers.
+
+			g.Go(m.connect(ctx, info))
 		}
 
 		if err = g.Wait(); err != nil {
-			m.log.WithError(err).Debug("peer connection failed")
-
+			m.log.WithError(err).Debug("graft failed")
 		}
 	})
+}
+
+func (m *neighborhoodMaintainer) connect(ctx context.Context, info peer.AddrInfo) func() error {
+	return func() error {
+		ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+		defer cancel()
+
+		if err := m.host.Connect(ctx, info); err != nil {
+			m.log.WithError(err).
+				WithField("peer", info.ID).
+				Trace("connection attempt failed")
+			return err
+		}
+
+		m.log.WithField("peer", info.ID).
+			Trace("connection established")
+		return nil
+	}
 }
 
 type singleflight struct {
@@ -286,9 +312,9 @@ func (sf *singleflight) Reset(key string) {
 	delete(sf.m, key)
 }
 
-func max(x, y int) int {
-	if x > y {
-		return x
-	}
-	return y
-}
+// func max(x, y int) int {
+// 	if x > y {
+// 		return x
+// 	}
+// 	return y
+// }

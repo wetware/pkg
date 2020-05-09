@@ -26,6 +26,7 @@ require (
 	github.com/libp2p/go-yamux v1.3.6 // indirect
 	github.com/lthibault/jitterbug v0.0.0-20200313035244-37ff5f417161
 	github.com/lthibault/log v0.0.0-20190513014217-f549b3a28a20
+	github.com/lthibault/util v0.0.0-20200509143049-811c980d6cc4
 	github.com/miekg/dns v1.1.29 // indirect
 	github.com/mr-tron/base58 v1.1.3
 	github.com/multiformats/go-multiaddr v0.2.1

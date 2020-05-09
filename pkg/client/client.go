@@ -8,7 +8,6 @@ import (
 	"go.uber.org/fx"
 
 	host "github.com/libp2p/go-libp2p-core/host"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	log "github.com/lthibault/log/pkg"
 	ww "github.com/lthibault/wetware/pkg"
@@ -18,7 +17,7 @@ import (
 type Client struct {
 	log  log.Logger
 	host host.Host
-	ps   *pubsub.PubSub
+	ps   *topicSet
 	app  interface{ Stop(context.Context) error }
 }
 
@@ -40,6 +39,12 @@ func (c Client) Close() error {
 // Log returns a structured logger whose fields identify the client.
 func (c Client) Log() log.Logger {
 	return c.log
+}
+
+// Join a pubsub topic and returns a Topic handle. Only one Topic handle should
+// exist per topic, and Join will error if the Topic handle already exists.
+func (c Client) Join(topic string) (Topic, error) {
+	return c.ps.Join(topic)
 }
 
 // Ls the sub-achors

@@ -3,6 +3,7 @@ package server
 import (
 	"time"
 
+	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/pnet"
 	log "github.com/lthibault/log/pkg"
 	ww "github.com/lthibault/wetware/pkg"
@@ -26,6 +27,8 @@ type Config struct {
 	psk   pnet.PSK
 
 	d discover.Protocol
+
+	evtHandlers []evtHandler
 }
 
 /*
@@ -97,6 +100,22 @@ func WithTTL(ttl time.Duration) Option {
 
 	return func(c *Config) (err error) {
 		c.ttl = ttl
+		return
+	}
+}
+
+// WithEventHandler is a convenience option for setting long-running, IO-bound event
+// subscriptions.  See Host.EventBus().Subscribe(...) for legal values of `ev`.
+//
+// Events from subscriptions created via WithEventHandler are consumed in a select
+// statement from a single goroutine.  Failure to consume events quickly will cause
+// starvation on the remaining handlers.
+//
+// Event subscriptions created via WithEventHandler cannot be closed, and exist for the
+// duration of the Host's lifetime.
+func WithEventHandler(ev interface{}, h func(interface{}), opt ...event.SubscriptionOpt) Option {
+	return func(c *Config) (err error) {
+		c.evtHandlers = append(c.evtHandlers, evtHandler{ev: ev, cb: h, opt: opt})
 		return
 	}
 }

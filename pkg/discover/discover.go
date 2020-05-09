@@ -49,7 +49,7 @@ func (as StaticAddrs) DiscoverPeers(_ context.Context, opt ...Option) (<-chan pe
 		return nil, err
 	}
 
-	if p.Limit > 0 && len(as) > p.Limit {
+	if p.isLimited() && len(as) > p.Limit {
 		as = as[:p.Limit]
 	}
 
@@ -75,4 +75,14 @@ func (as StaticAddrs) Start(Service) error {
 // Close is a nop.  It immediately returns nil.
 func (as StaticAddrs) Close() error {
 	return nil
+}
+
+/*
+	Misc utilities for built-in discovery strategies.
+	If any of these grow into something non-trivial,
+	consider exporting them in a `discutil` package.
+*/
+
+func (p *Param) isLimited() bool {
+	return p.Limit > 0
 }

@@ -13,7 +13,6 @@ import (
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	cm "github.com/libp2p/go-libp2p-core/connmgr"
 	host "github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/pnet"
 	"github.com/libp2p/go-libp2p-core/routing"
@@ -204,6 +203,7 @@ func newRoutedHost(lx fx.Lifecycle, cfg hostConfig) (out hostOut, err error) {
 
 	out.DHT = dht.NewDHT(cfg.Ctx, out.Host, cfg.Datastore)
 	out.Host = routedhost.Wrap(out.Host, out.DHT)
+
 	return
 }
 
@@ -262,6 +262,9 @@ type userConfigOut struct {
 	// Neighborhood params
 	KMin int `name:"kmin"` // min peer connections to maintain
 	KMax int `name:"kmax"` // max peer connections to maintain
+
+	// Misc
+	EventHandlers []evtHandler
 }
 
 func userConfig(opt []Option) (out userConfigOut, err error) {
@@ -284,6 +287,8 @@ func userConfig(opt []Option) (out userConfigOut, err error) {
 
 	out.KMin = cfg.kmin
 	out.KMax = cfg.kmax
+
+	out.EventHandlers = cfg.evtHandlers
 
 	return
 }
@@ -337,15 +342,6 @@ func listenAndServe(cfg listenAndServeConfig) (err error) {
 /*
 	Misc.
 */
-
-func connect(ctx context.Context, host host.Host, pinfo peer.AddrInfo) func() error {
-	return func() error {
-		ctx, cancel := context.WithTimeout(ctx, time.Second*5)
-		defer cancel()
-
-		return host.Connect(ctx, pinfo)
-	}
-}
 
 // WARNING: this interface is unstable and may removed from basichost.BasicHost in the
 // 		    future.  Hopefully this will only happen after they properly refactor Host

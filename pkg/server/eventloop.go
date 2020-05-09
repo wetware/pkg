@@ -8,8 +8,10 @@ package server
 import (
 	"context"
 	"fmt"
+	"io"
 
 	"go.uber.org/fx"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/libp2p/go-libp2p-core/event"
 	host "github.com/libp2p/go-libp2p-core/host"
@@ -30,15 +32,23 @@ type evtLoopConfig struct {
 	Host host.Host
 	KMin int `name:"kmin"`
 	KMax int `name:"kmax"`
+
+	EventHandlers []evtHandler
 }
 
 // main event loop
 func eventloop(lx fx.Lifecycle, cfg evtLoopConfig) (err error) {
-	if err = dispatchNetworkEvts(lx, cfg.Log, cfg.Host); err != nil {
-		return
+	for _, f := range []func(fx.Lifecycle, evtLoopConfig) error{
+		registerEventHandlers,
+		dispatchNetworkEvts,
+		dispatchNeighborhoodEvts,
+	} {
+		if err = f(lx, cfg); err != nil {
+			break
+		}
 	}
 
-	return dispatchNeighborhoodEvts(lx, cfg.Host.EventBus(), cfg.KMin, cfg.KMax)
+	return
 }
 
 // dispatchNetworkEvts hooks into the host's network and emits events over event.Bus to
@@ -46,51 +56,47 @@ func eventloop(lx fx.Lifecycle, cfg evtLoopConfig) (err error) {
 //
 // HACK:  This is a short-term solution while we wait for libp2p to provide equivalent
 //		  functionality.
-func dispatchNetworkEvts(lx fx.Lifecycle, log log.Logger, host host.Host) error {
-	bus := host.EventBus()
-
-	connEvt, err := bus.Emitter(new(ww.EvtConnectionChanged))
+func dispatchNetworkEvts(lx fx.Lifecycle, cfg evtLoopConfig) error {
+	on, err := mkNetEmitters(cfg.Host.EventBus())
 	if err != nil {
 		return err
 	}
 
-	strmEvt, err := bus.Emitter(new(ww.EvtStreamChanged))
-	if err != nil {
-		return err
-	}
-
-	pidEvt, err := bus.Subscribe(new(event.EvtPeerIdentificationCompleted))
+	sub, err := cfg.Host.EventBus().Subscribe(new(event.EvtPeerIdentificationCompleted))
 	if err != nil {
 		return err
 	}
 
 	go func() {
-		for v := range pidEvt.Out() {
+		for v := range sub.Out() {
 			ev := v.(event.EvtPeerIdentificationCompleted)
-			connEvt.Emit(ww.EvtConnectionChanged{
+			on.Connection.Emit(ww.EvtConnectionChanged{
 				Peer:   ev.Peer,
-				Client: isClient(log, ev.Peer, host.Peerstore()),
+				Client: isClient(cfg.Log, ev.Peer, cfg.Host.Peerstore()),
 				State:  ww.ConnStateOpened,
 			})
 		}
 	}()
 
-	host.Network().Notify(&network.NotifyBundle{
+	cfg.Host.Network().Notify(&network.NotifyBundle{
 		// NOTE:  can't use ConnectedF because the
 		//		  identity protocol will not have
 		// 		  completed, meaning isClient will panic.
-		DisconnectedF: onDisconnected(log, connEvt, host.Peerstore()),
+		DisconnectedF: onDisconnected(cfg.Log, on.Connection, cfg.Host.Peerstore()),
 
-		OpenedStreamF: onStreamOpened(strmEvt),
-		ClosedStreamF: onStreamClosed(strmEvt),
+		OpenedStreamF: onStreamOpened(on.Stream),
+		ClosedStreamF: onStreamClosed(on.Stream),
 	})
 
 	lx.Append(fx.Hook{
-		OnStop: func(context.Context) error {
-			pidEvt.Close()
-			connEvt.Close()
-			strmEvt.Close()
-			return nil
+		OnStop: func(context.Context) (err error) {
+			for _, c := range []io.Closer{on.Connection, on.Stream, sub} {
+				if e := c.Close(); e != nil && err == nil {
+					err = e
+				}
+			}
+
+			return
 		},
 	})
 
@@ -127,11 +133,23 @@ func onStreamClosed(e event.Emitter) func(network.Network, network.Stream) {
 	}
 }
 
-func dispatchNeighborhoodEvts(lx fx.Lifecycle, bus event.Bus, kmin, kmax int) error {
-	var sub event.Subscription
-	var n = newNeighborhood(kmin, kmax)
+func mkNetEmitters(bus event.Bus) (s struct{ Connection, Stream event.Emitter }, err error) {
+	if s.Connection, err = bus.Emitter(new(ww.EvtConnectionChanged)); err != nil {
+		return
+	}
 
-	sub, err := bus.Subscribe(new(ww.EvtConnectionChanged))
+	if s.Stream, err = bus.Emitter(new(ww.EvtStreamChanged)); err != nil {
+		return
+	}
+
+	return
+}
+
+func dispatchNeighborhoodEvts(lx fx.Lifecycle, cfg evtLoopConfig) error {
+	var sub event.Subscription
+	var n = newNeighborhood(cfg.KMin, cfg.KMax)
+
+	sub, err := cfg.Host.EventBus().Subscribe(new(ww.EvtConnectionChanged))
 	if err != nil {
 		return err
 	}
@@ -141,7 +159,7 @@ func dispatchNeighborhoodEvts(lx fx.Lifecycle, bus event.Bus, kmin, kmax int) er
 		},
 	})
 
-	e, err := bus.Emitter(new(ww.EvtNeighborhoodChanged))
+	e, err := cfg.Host.EventBus().Emitter(new(ww.EvtNeighborhoodChanged))
 	if err != nil {
 		return err
 	}
@@ -302,5 +320,42 @@ func isClient(log log.Logger, p peer.ID, ps peerstore.PeerMetadata) bool {
 		return true
 	default:
 		panic(err)
+	}
+}
+
+// event handlers
+
+type evtHandler struct {
+	ev  interface{}
+	cb  func(interface{})
+	opt []event.SubscriptionOpt
+}
+
+func registerEventHandlers(lx fx.Lifecycle, cfg evtLoopConfig) (err error) {
+	ss := make([]event.Subscription, len(cfg.EventHandlers))
+	for i, h := range cfg.EventHandlers {
+		if ss[i], err = cfg.Host.EventBus().Subscribe(h.ev, h.opt...); err != nil {
+			return
+		}
+
+		go watchEventChan(ss[i].Out(), h.cb)
+	}
+
+	lx.Append(fx.Hook{
+		OnStop: func(context.Context) error {
+			var g errgroup.Group
+			for _, sub := range ss {
+				g.Go(sub.Close)
+			}
+			return g.Wait()
+		},
+	})
+
+	return
+}
+
+func watchEventChan(events <-chan interface{}, f func(interface{})) {
+	for event := range events {
+		f(event)
 	}
 }

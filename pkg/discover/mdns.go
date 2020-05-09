@@ -3,6 +3,7 @@ package discover
 import (
 	"context"
 	"net"
+	"sync"
 	"time"
 
 	ww "github.com/lthibault/wetware/pkg"
@@ -37,20 +38,27 @@ func (d MDNS) DiscoverPeers(ctx context.Context, opt ...Option) (<-chan peer.Add
 		return nil, err
 	}
 
+	var once sync.Once
+	out := make(chan peer.AddrInfo, 1)
 	entries := make(chan *mdns.ServiceEntry, 8)
-	if err := mdns.Query(&mdns.QueryParam{
-		Timeout:             getTimeout(ctx),
-		Service:             d.namespace(),
-		Entries:             entries,
-		Interface:           d.Interface,
-		WantUnicastResponse: true,
-	}); err != nil {
-		return nil, errors.Wrap(err, "mdns query")
-	}
 
-	ch := make(chan peer.AddrInfo)
 	go func() {
-		defer close(ch)
+		defer once.Do(func() { close(out) })
+
+		if err := mdns.Query(&mdns.QueryParam{
+			Timeout:             getTimeout(ctx),
+			Service:             d.namespace(),
+			Entries:             entries,
+			Interface:           d.Interface,
+			WantUnicastResponse: true,
+		}); err != nil {
+			p.Log().WithError(err).Debug("mdns query failed")
+			// return nil, errors.Wrap(err, "mdns query")
+		}
+	}()
+
+	go func() {
+		defer once.Do(func() { close(out) })
 
 		remaining := p.Limit
 
@@ -59,12 +67,13 @@ func (d MDNS) DiscoverPeers(ctx context.Context, opt ...Option) (<-chan peer.Add
 			case entry := <-entries:
 				info, err := d.handleEntry(entry)
 				if err != nil {
-					continue // TODO:  log
+					p.Log().WithError(err).Debug("failed to handle MDNS entry")
+					continue
 				}
 
 				select {
-				case ch <- info:
-					if p.Limit > 0 {
+				case out <- info:
+					if p.isLimited() {
 						if remaining--; remaining == 0 {
 							return
 						}
@@ -77,7 +86,7 @@ func (d MDNS) DiscoverPeers(ctx context.Context, opt ...Option) (<-chan peer.Add
 		}
 	}()
 
-	return ch, nil
+	return out, nil
 }
 
 // Start an MDNS server that responds to queries in the background.
