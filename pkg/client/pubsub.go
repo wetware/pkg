@@ -97,6 +97,7 @@ func (t Topic) Subscribe(ctx context.Context) (s Subscription, err error) {
 	ch := make(chan *pubsub.Message, 32)
 	go func() {
 		defer close(ch)
+		defer s.sub.Cancel()
 
 		for {
 			msg, err := s.sub.Next(ctx)
