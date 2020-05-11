@@ -158,8 +158,7 @@ func userConfig(opt []Option) (out userConfigOut, err error) {
 	out.Secret = cfg.psk
 	out.Datastore = cfg.ds
 	out.Discover = cfg.d
-	out.Limit = cfg.limit
-	out.Timeout = cfg.timeout
+	out.Limit = cfg.queryLimit
 	return
 }
 
@@ -175,15 +174,11 @@ type joinConfig struct {
 	Host host.Host
 
 	discover.Strategy
-	Limit   int           `name:"discover_limit"`
-	Timeout time.Duration `name:"discover_timeout"`
+	Limit int `name:"discover_limit"`
 }
 
 func join(cfg joinConfig) error {
-	ctx, cancel := context.WithTimeout(cfg.Ctx, cfg.Timeout)
-	defer cancel()
-
-	ps, err := cfg.DiscoverPeers(ctx,
+	ps, err := cfg.DiscoverPeers(cfg.Ctx,
 		discover.WithLogger(cfg.Log),
 		discover.WithLimit(cfg.Limit))
 	if err != nil {
@@ -192,11 +187,11 @@ func join(cfg joinConfig) error {
 
 	var any syncutil.Any
 	for info := range ps {
-		any.Go(connect(ctx, cfg.Host, info))
+		any.Go(connect(cfg.Ctx, cfg.Host, info))
 	}
 
 	if err = any.Wait(); err == nil {
-		err = ctx.Err() // Wait might return nil if no peers were found.
+		return cfg.Ctx.Err() // Wait might return nil if no peers were found.
 	}
 
 	return errors.Wrap(err, "join")
