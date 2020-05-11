@@ -108,7 +108,7 @@ func (a clusterAnnouner) loop(ctx context.Context) {
 	for range ticker.C {
 		switch err := a.Announce(ctx); err {
 		case nil:
-		case context.Canceled:
+		case context.Canceled, pubsub.ErrTopicClosed:
 			return
 		default:
 			a.log.WithError(err).Error("failed to announce")
