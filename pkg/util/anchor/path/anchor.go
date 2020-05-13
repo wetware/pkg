@@ -2,47 +2,53 @@
 package anchorpath
 
 import (
-	"path/filepath"
 	"strings"
 )
 
-const (
-	sep = "/"
-)
-
-// Clean anchor path via pure lexical analysis
-func Clean(p string) string {
-	return filepath.Clean(p)
-}
+const sep = "/"
 
 // Parts splits the anchor path into its constituent components
-func Parts(p string) []string {
-	raw := strings.Split(strings.Trim(Clean(p), sep), sep)
+func Parts(path string) []string {
+	var b strings.Builder
+	b.Grow(len(path))
 
-	res := raw[:0]
-	for _, p = range raw {
-		if p == "" {
+	parts := make([]string, 0, 8)
+	for _, r := range path {
+		if r == '/' {
+			if b.Len() != 0 {
+				parts = append(parts, b.String())
+				b.Reset()
+			}
 			continue
 		}
 
-		res = append(res, p)
+		b.WriteRune(r)
 	}
 
-	return res
+	if b.Len() != 0 {
+		parts = append(parts, b.String())
+	}
+
+	return parts
 }
 
 // Join path components
-func Join(p ...string) string {
-	return Clean(filepath.Join(p...))
+func Join(parts ...string) string {
+	return Clean(strings.Join(parts, sep))
+
 }
 
-// Rootify prepends a "/" to the specified path, if it is missing.
-func Rootify(p string) string {
-	return Clean(filepath.Join(sep, p))
-}
+// Clean the path through lexical analysis.
+func Clean(path string) string {
+	var b strings.Builder
+	for _, part := range Parts(path) {
+		b.WriteRune('/')
+		b.WriteString(part)
+	}
 
-// Abs returns true if the path is absolute.
-// It is identical to filepath.IsAbs, and is included for convenience.
-func Abs(p string) bool {
-	return strings.HasPrefix(p, "/")
+	if b.Len() == 0 {
+		return sep
+	}
+
+	return b.String()
 }
