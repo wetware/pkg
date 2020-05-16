@@ -16,8 +16,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	discover "github.com/lthibault/wetware/pkg/discover"
-
-	ww "github.com/lthibault/wetware/pkg"
+	"github.com/lthibault/wetware/pkg/internal/eventloop"
 )
 
 /*
@@ -41,91 +40,90 @@ type connpolicyConfig struct {
 	ConnMgr connmgr.ConnManager
 
 	Namespace string `name:"ns"`
-	KMin      int    `name:"kmin"`
-	KMax      int    `name:"kmax"`
+	K         clusterCardinality
 
 	Boot      discover.Protocol
 	Discovery discovery.Discovery
 }
 
-// connpolicy maintains a bounded set of connections to peers, ensuring cluster
-// connectivity.
-func connpolicy(lx fx.Lifecycle, cfg connpolicyConfig) error {
+func maintainConnectivity(lx fx.Lifecycle, cfg connpolicyConfig) error {
 	bus := cfg.Host.EventBus()
 
-	if err := protect(lx, cfg, bus); err != nil {
-		return err
-	}
+	// TODO:  design a proper protection policy
+
+	// if err := protect(lx, cfg, bus); err != nil {
+	// 	return err
+	// }
 
 	return maintain(lx, cfg, bus)
 }
 
-func protect(lx fx.Lifecycle, cfg connpolicyConfig, bus event.Bus) error {
-	sub, err := bus.Subscribe([]interface{}{
-		new(ww.EvtNeighborhoodChanged),
-		new(ww.EvtStreamChanged),
-	})
-	if err != nil {
-		return err
-	}
-	lx.Append(fx.Hook{
-		OnStop: func(context.Context) error {
-			return sub.Close()
-		},
-	})
+// func protect(lx fx.Lifecycle, cfg connpolicyConfig, bus event.Bus) error {
+// 	sub, err := bus.Subscribe([]interface{}{
+// 		new(eventloop.EvtNeighborhoodChanged),
+// 		new(eventloop.EvtStreamChanged),
+// 	})
+// 	if err != nil {
+// 		return err
+// 	}
+// 	lx.Append(fx.Hook{
+// 		OnStop: func(context.Context) error {
+// 			return sub.Close()
+// 		},
+// 	})
 
-	policy := connProtectionPolicy{
-		kmin: cfg.KMin,
-		cm:   cfg.ConnMgr,
-		sub:  sub,
-	}
-	go policy.loop()
-	return nil
-}
+// 	policy := connProtectionPolicy{
+// 		kmin: cfg.KMin,
+// 		cm:   cfg.ConnMgr,
+// 		sub:  sub,
+// 	}
+// 	go policy.loop()
+// 	return nil
+// }
 
-type connProtectionPolicy struct {
-	kmin int
-	cm   connmgr.ConnManager
-	sub  event.Subscription
-}
+// type connProtectionPolicy struct {
+// 	kmin int
+// 	cm   connmgr.ConnManager
+// 	sub  event.Subscription
+// }
 
-func (p connProtectionPolicy) loop() {
-	for v := range p.sub.Out() {
-		switch ev := v.(type) {
-		case ww.EvtNeighborhoodChanged:
-			// policy is to protect a connection if it's one of the first kmin.
-			p.setProtectStatus(ev)
-		case ww.EvtStreamChanged:
-			// policy is to prune connections with the fewest open streams.
-			p.setTag(ev)
-		}
+// func (p connProtectionPolicy) loop() {
+// 	for v := range p.sub.Out() {
+// 		switch ev := v.(type) {
+// 		case eventloop.EvtNeighborhoodChanged:
+// 			// policy is to protect a connection if it's one of the first kmin.
+// 			p.setProtectStatus(ev)
+// 		case eventloop.EvtStreamChanged:
+// 			// policy is to prune connections with the fewest open streams.
+// 			p.setTag(ev)
+// 		}
 
-	}
-}
+// 	}
+// }
 
-func (p connProtectionPolicy) setProtectStatus(ev ww.EvtNeighborhoodChanged) {
-	switch ev.State {
-	case ww.ConnStateOpened:
-		if ev.From == ww.PhasePartial {
-			p.cm.Protect(ev.Peer, tagProtectKmin)
-		}
-	case ww.ConnStateClosed:
-		p.cm.Unprotect(ev.Peer, tagProtectKmin)
-		p.cm.UntagPeer(ev.Peer, tagStreamInUse)
-	}
-}
+// func (p connProtectionPolicy) setProtectStatus(ev eventloop.EvtNeighborhoodChanged) {
+// 	switch ev.State {
+// 	case eventloop.ConnStateOpened:
+// 		if ev.From == eventloop.PhasePartial {
+// 			p.cm.Protect(ev.Peer, tagProtectKmin)
+// 		}
+// 	case eventloop.ConnStateClosed:
+// 		p.cm.Unprotect(ev.Peer, tagProtectKmin)
+// 		p.cm.UntagPeer(ev.Peer, tagStreamInUse)
+// 	}
+// }
 
-func (p connProtectionPolicy) setTag(ev ww.EvtStreamChanged) {
-	switch ev.State {
-	case ww.StreamStateOpened:
-		p.cm.TagPeer(ev.Peer, tagStreamInUse, 1)
-	case ww.StreamStateClosed:
-		p.cm.TagPeer(ev.Peer, tagStreamInUse, -1)
-	}
-}
+// func (p connProtectionPolicy) setTag(ev eventloop.EvtStreamChanged) {
+// 	switch ev.State {
+// 	case eventloop.StreamStateOpened:
+// 		p.cm.TagPeer(ev.Peer, tagStreamInUse, 1)
+// 	case eventloop.StreamStateClosed:
+// 		p.cm.TagPeer(ev.Peer, tagStreamInUse, -1)
+// 	}
+// }
 
 func maintain(lx fx.Lifecycle, cfg connpolicyConfig, bus event.Bus) error {
-	sub, err := bus.Subscribe(new(ww.EvtNeighborhoodChanged))
+	sub, err := bus.Subscribe(new(eventloop.EvtNeighborhoodChanged))
 	if err != nil {
 		return err
 	}
@@ -135,8 +133,7 @@ func maintain(lx fx.Lifecycle, cfg connpolicyConfig, bus event.Bus) error {
 			m := neighborhoodMaintainer{
 				log:  cfg.Log,
 				ns:   cfg.Namespace,
-				kmin: cfg.KMin,
-				kmax: cfg.KMax,
+				k:    cfg.K,
 				host: cfg.Host,
 				b:    cfg.Boot,
 				d:    cfg.Discovery,
@@ -155,8 +152,8 @@ func maintain(lx fx.Lifecycle, cfg connpolicyConfig, bus event.Bus) error {
 type neighborhoodMaintainer struct {
 	log log.Logger
 
-	ns         string
-	kmin, kmax int
+	ns string
+	k  clusterCardinality
 
 	host host.Host
 
@@ -170,20 +167,20 @@ func (m *neighborhoodMaintainer) loop(ctx context.Context, sub event.Subscriptio
 	defer ticker.Stop()
 
 	var (
-		ev     ww.EvtNeighborhoodChanged
+		ev     eventloop.EvtNeighborhoodChanged
 		reqctx context.Context
 		cancel context.CancelFunc
 	)
 
 	for {
 		switch ev.To {
-		case ww.PhaseOrphaned:
+		case eventloop.PhaseOrphaned:
 			reqctx, cancel = context.WithCancel(ctx)
 			m.join(reqctx)
-		case ww.PhasePartial:
+		case eventloop.PhasePartial:
 			reqctx, cancel = context.WithCancel(ctx)
-			m.graft(reqctx, m.kmin-ev.N)
-		case ww.PhaseOverloaded:
+			m.graft(reqctx, m.k.Min-ev.N)
+		case eventloop.PhaseOverloaded:
 			// In-flight requests only become a liability when the host is overloaded.
 			//
 			// - Partially-connected nodes still benefit from in-flight join requests.
@@ -197,7 +194,7 @@ func (m *neighborhoodMaintainer) loop(ctx context.Context, sub event.Subscriptio
 		case <-ticker.C:
 		case v, ok := <-sub.Out():
 			if ok {
-				ev = v.(ww.EvtNeighborhoodChanged)
+				ev = v.(eventloop.EvtNeighborhoodChanged)
 			}
 		case <-ctx.Done():
 			cancel()
@@ -312,10 +309,3 @@ func (sf *singleflight) Reset(key string) {
 
 	delete(sf.m, key)
 }
-
-// func max(x, y int) int {
-// 	if x > y {
-// 		return x
-// 	}
-// 	return y
-// }

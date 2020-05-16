@@ -1,4 +1,4 @@
-package server
+package cluster
 
 import (
 	"sync"
@@ -8,12 +8,14 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
+// filter keeps track of host livelines based on heartbeat messages.
 type filter interface {
 	Upsert(peer.ID, uint64, time.Duration) bool
-	routingTable
+	RoutingTable
 }
 
-type routingTable interface {
+// RoutingTable provides a snapshot of active hosts in a cluster.
+type RoutingTable interface {
 	Peers() peer.IDSlice
 }
 

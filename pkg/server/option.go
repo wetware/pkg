@@ -3,12 +3,15 @@ package server
 import (
 	"time"
 
+	log "github.com/lthibault/log/pkg"
+
 	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/pnet"
-	log "github.com/lthibault/log/pkg"
+	"github.com/multiformats/go-multiaddr"
+
 	ww "github.com/lthibault/wetware/pkg"
 	discover "github.com/lthibault/wetware/pkg/discover"
-	"github.com/multiformats/go-multiaddr"
+	"github.com/lthibault/wetware/pkg/internal/eventloop"
 )
 
 // Option type for Host
@@ -19,16 +22,16 @@ type Config struct {
 	log   log.Logger
 	trace bool
 
-	ns         string
-	ttl        time.Duration
-	kmin, kmax int // min, max node cardinality
+	ns  string
+	ttl time.Duration
+	k   clusterCardinality
 
 	addrs []multiaddr.Multiaddr
 	psk   pnet.PSK
 
 	d discover.Protocol
 
-	evtHandlers []evtHandler
+	evtHandlers []eventloop.Handler
 }
 
 /*
@@ -115,15 +118,18 @@ func WithTTL(ttl time.Duration) Option {
 // duration of the Host's lifetime.
 func WithEventHandler(ev interface{}, h func(interface{}), opt ...event.SubscriptionOpt) Option {
 	return func(c *Config) (err error) {
-		c.evtHandlers = append(c.evtHandlers, evtHandler{ev: ev, cb: h, opt: opt})
+		c.evtHandlers = append(c.evtHandlers, eventloop.Handler{
+			Type:     ev,
+			Callback: h,
+			Opt:      opt,
+		})
 		return
 	}
 }
 
 func withCardinality(k, highwater int) Option {
 	return func(c *Config) (err error) {
-		c.kmin = k
-		c.kmax = highwater
+		c.k = clusterCardinality{Min: k, Max: highwater}
 		return
 	}
 }

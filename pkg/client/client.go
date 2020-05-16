@@ -3,30 +3,33 @@ package client
 
 import (
 	"context"
+	"math/rand"
+	"time"
 
 	"github.com/pkg/errors"
 	"go.uber.org/fx"
 
-	host "github.com/libp2p/go-libp2p-core/host"
-
 	log "github.com/lthibault/log/pkg"
 	ww "github.com/lthibault/wetware/pkg"
+	anchorpath "github.com/lthibault/wetware/pkg/util/anchor/path"
 )
 
-// Client interacts with live clusters.
+func init() { rand.Seed(time.Now().UnixNano()) }
+
+// Client interacts with live clusters.  It implements the root Anchor.
 type Client struct {
 	log  log.Logger
-	host host.Host
+	term *terminal
 	ps   *topicSet
 	app  interface{ Stop(context.Context) error }
 }
 
-// Dial into a cluster using the specified discovery strategy.  The context is used only
-// when dialing into the cluster.  To terminate the client connection, use the Close
-// method.
+// Dial into a cluster using the specified discovery strategy.
+// The context is used only to time-out/cancel when dialing into the cluster.
+// To terminate the client connection, use the Close method.
 func Dial(ctx context.Context, opt ...Option) (Client, error) {
 	var c Client
-	app := fx.New(module(&c, opt))
+	app := fx.New(module(ctx, &c, opt))
 	c.app = app
 	return c, errors.Wrap(app.Start(ctx), "dial")
 }
@@ -47,17 +50,25 @@ func (c Client) Join(topic string) (Topic, error) {
 	return c.ps.Join(topic)
 }
 
-// Ls the sub-achors
-func (c Client) Ls() ww.Iterator {
-	panic("Client.Ls NOT IMPLEMENTED")
+// Ls provides a view of all hosts in the cluster.
+func (c Client) Ls(ctx context.Context) ww.Iterator {
+	var it clusterIterator
+	c.term.AutoDial().Call(ctx, ww.ClusterProtocol, &it)
+	return &it
 }
 
 // Walk the Anchor hierarchy.
-func (c Client) Walk(ctx context.Context, path []string) ww.Anchor {
-	if len(path) == 0 {
-		return c
+func (c Client) Walk(ctx context.Context, path []string) (ww.Anchor, error) {
+	if anchorpath.Root(path) {
+		return c, nil
 	}
 
-	panic("function NOT IMPLEMENTED")
-	// return anchor{id: peer.ID(path[0]), host: c.host}.Walk(ctx, path[1:])
+	// NOTE:  `terminal.Call` may need to inject dependencies into `anchor`.
+	//
+	// TODO:  Consider rewriting terminal.Call to do dependency-injection via Fx, if
+	//		  this provees to be the case.  Or maybe use reflection directly?
+
+	ha := newHostAnchor()
+	c.term.DialString(path[0]).Call(ctx, ww.AnchorProtocol, ha)
+	return ha.Walk(ctx, path[1:])
 }

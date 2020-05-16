@@ -2,45 +2,42 @@ package server
 
 import (
 	"context"
-	"encoding/binary"
 	"math/rand"
 	"time"
 
+	"github.com/lthibault/jitterbug"
+	log "github.com/lthibault/log/pkg"
 	"go.uber.org/fx"
 
 	host "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/lthibault/jitterbug"
-	log "github.com/lthibault/log/pkg"
 
-	ww "github.com/lthibault/wetware/pkg"
+	"github.com/lthibault/wetware/pkg/cluster"
 	randutil "github.com/lthibault/wetware/pkg/util/rand"
 )
 
-type announcerConfig struct {
+type announceConfig struct {
 	fx.In
 
 	Ctx context.Context
 	Log log.Logger
 
-	Host host.Host
-
-	Namespace string        `name:"ns"`
-	TTL       time.Duration `name:"ttl"`
-
-	Topic *pubsub.Topic
+	Host   host.Host
+	Router *cluster.Router
+	TTL    time.Duration `name:"ttl"`
 }
 
-func announcer(lx fx.Lifecycle, cfg announcerConfig) (err error) {
+func announce(lx fx.Lifecycle, cfg announceConfig) {
 	a := clusterAnnouner{
 		log:    cfg.Log,
 		hostID: cfg.Host.ID(),
 		ttl:    cfg.TTL,
-		mesh:   cfg.Topic,
+		mesh:   cfg.Router.Topic(),
 	}
 
 	ctx, cancel := context.WithCancel(cfg.Ctx)
+
 	lx.Append(fx.Hook{
 		// We must wait until the libp2p.Host is listening before
 		// announcing ourself to peers.
@@ -56,8 +53,6 @@ func announcer(lx fx.Lifecycle, cfg announcerConfig) (err error) {
 			return nil
 		},
 	})
-
-	return nil
 }
 
 type clusterAnnouner struct {
@@ -72,12 +67,12 @@ type clusterAnnouner struct {
 }
 
 func (a clusterAnnouner) Announce(ctx context.Context) error {
-	hb, err := ww.NewHeartbeat(a.hostID, a.ttl)
+	hb, err := cluster.NewHeartbeat(a.hostID, a.ttl)
 	if err != nil {
 		return err
 	}
 
-	b, err := ww.MarshalHeartbeat(hb)
+	b, err := cluster.MarshalHeartbeat(hb)
 	if err != nil {
 		return err
 	}
@@ -114,24 +109,4 @@ func (a clusterAnnouner) loop(ctx context.Context) {
 			a.log.WithError(err).Error("failed to announce")
 		}
 	}
-}
-
-func newHeartbeatValidator(ctx context.Context, f filter) pubsub.Validator {
-	return func(_ context.Context, pid peer.ID, msg *pubsub.Message) bool {
-		hb, err := ww.UnmarshalHeartbeat(msg.GetData())
-		if err != nil {
-			return false // drop invalid message
-		}
-
-		if id := msg.GetFrom(); !f.Upsert(id, seqno(msg), hb.TTL()) {
-			return false // drop stale message
-		}
-
-		msg.ValidatorData = hb
-		return true
-	}
-}
-
-func seqno(msg *pubsub.Message) uint64 {
-	return binary.BigEndian.Uint64(msg.GetSeqno())
 }

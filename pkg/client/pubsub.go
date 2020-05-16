@@ -48,7 +48,7 @@ func (s *topicSet) Join(topic string) (Topic, error) {
 		return Topic{}, err
 	}
 
-	t := Topic{topic: name, t: top, mgr: topicManager{s}}
+	t := newTopic(name, (*topicManager)(s), top)
 	s.ts[name] = t
 
 	return t, nil
@@ -60,24 +60,27 @@ func (s *topicSet) fullyQualifiedTopicName(topic string) string {
 
 // Topic handle
 type Topic struct {
-	topic string
-	t     *pubsub.Topic
+	name string
+	t    *pubsub.Topic
+	mgr  *topicManager
+}
 
-	mgr interface {
-		RegisterValidator(string, pubsub.Validator, []pubsub.ValidatorOpt) error
-		UnregisterValidator(string) error
-		Clear(string)
+func newTopic(name string, mgr *topicManager, t *pubsub.Topic) Topic {
+	return Topic{
+		name: name,
+		t:    t,
+		mgr:  mgr,
 	}
 }
 
 func (t Topic) String() string {
-	return t.topic
+	return t.name
 }
 
 // Close the topic.  Returns an error if there are active Subscriptions.
 // Subsequent calls to Close return nil.
 func (t Topic) Close() error {
-	t.mgr.Clear(t.topic)
+	t.mgr.Clear(t.name)
 	return t.t.Close()
 }
 
@@ -88,9 +91,13 @@ func (t Topic) Publish(ctx context.Context, b []byte) error {
 
 // Subscribe to the topic.  When the context passed to Subscribe expires, the
 // returned subscription will be closed.
-func (t Topic) Subscribe(ctx context.Context) (s Subscription, err error) {
-	s.topic = t.topic
-	if s.sub, err = t.t.Subscribe(); err != nil {
+func (t Topic) Subscribe(ctx context.Context) (Subscription, error) {
+	return subscribe(ctx, t.name, t.t)
+}
+
+func subscribe(ctx context.Context, name string, t *pubsub.Topic) (s Subscription, err error) {
+	s.topic = name
+	if s.sub, err = t.Subscribe(); err != nil {
 		return
 	}
 
@@ -117,19 +124,18 @@ func (t Topic) Subscribe(ctx context.Context) (s Subscription, err error) {
 	return
 }
 
-// topicManager is a proxy to a topicSet for use by Topic.
-type topicManager struct{ *topicSet }
+type topicManager topicSet
 
-func (mgr topicManager) RegisterValidator(topic string, v pubsub.Validator, opt []pubsub.ValidatorOpt) error {
-	return mgr.ps.RegisterTopicValidator(topic, v, opt...)
+func (mgr *topicManager) RegisterValidator(name string, f pubsub.Validator, opt []pubsub.ValidatorOpt) error {
+	return mgr.ps.RegisterTopicValidator(name, f, opt...)
 }
 
-func (mgr topicManager) UnregisterValidator(topic string) error {
-	return mgr.ps.UnregisterTopicValidator(topic)
+func (mgr *topicManager) UnregisterValidator(name string) error {
+	return mgr.ps.UnregisterTopicValidator(name)
 }
 
 // NOTE: topic must be a fully-qualified topic name
-func (mgr topicManager) Clear(topic string) {
+func (mgr *topicManager) Clear(topic string) {
 	mgr.mu.Lock()
 	defer mgr.mu.Unlock()
 

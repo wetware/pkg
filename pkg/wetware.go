@@ -1,6 +1,10 @@
 package ww
 
-import "context"
+import (
+	"context"
+
+	protocol "github.com/libp2p/go-libp2p-core/protocol"
+)
 
 const (
 	// DefaultNamespace .
@@ -10,12 +14,21 @@ const (
 	// TODO:  consider moving to package `client` and unexporting when
 	// 		  event.EvtPeerConnectednessChanged becomes available.
 	ClientUAgent = "ww-client"
+
+	// Protocol is the common prefix for all wetware wire protocols.
+	Protocol = "/ww/0.0.0"
+
+	// ClusterProtocol is the protocol ID for cluster-level operations
+	ClusterProtocol = protocol.ID(Protocol + "/cluster")
+
+	// AnchorProtocol is the protocol ID for interacting with remote anchors
+	AnchorProtocol = protocol.ID(Protocol + "/anchor")
 )
 
 // Anchor .
 type Anchor interface {
-	Ls() Iterator
-	Walk(context.Context, []string) Anchor
+	Ls(context.Context) Iterator
+	Walk(context.Context, []string) (Anchor, error)
 }
 
 // Iterator .

@@ -50,12 +50,41 @@ func TestJoin(t *testing.T) {
 		expected: "/",
 	}, {
 		desc:     "complex",
-		parts:    []string{"foo/", "/bar/"},
+		parts:    []string{"foo/", "//bar//"},
 		expected: "/foo/bar",
 	}}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
 			assert.Equal(t, tC.expected, anchorpath.Join(tC.parts...))
+		})
+	}
+}
+
+func TestRoot(t *testing.T) {
+	testCases := []struct {
+		desc     string
+		parts    []string
+		expected bool
+	}{{
+		desc:     "empty",
+		parts:    []string{""},
+		expected: true,
+	}, {
+		desc:     "clean",
+		parts:    []string{"/"},
+		expected: true,
+	}, {
+		desc:     "dirty",
+		parts:    []string{"//////"},
+		expected: true,
+	}, {
+		desc:     "nonroot",
+		parts:    []string{"/foo"},
+		expected: false,
+	}}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+
 		})
 	}
 }

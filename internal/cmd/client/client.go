@@ -14,13 +14,14 @@ import (
 	"github.com/lthibault/wetware/pkg/client"
 	mautil "github.com/lthibault/wetware/pkg/util/multiaddr"
 
+	wwclient "github.com/lthibault/wetware/pkg/client"
 	discover "github.com/lthibault/wetware/pkg/discover"
 )
 
 var (
-	cluster client.Client
-	logger  log.Logger
-	proc    = ctxutil.WithLifetime(context.Background())
+	root   client.Client
+	logger log.Logger
+	proc   = ctxutil.WithLifetime(context.Background())
 )
 
 // Flags for the `start` command
@@ -65,9 +66,9 @@ func Init() cli.BeforeFunc {
 		}
 
 		if err == nil {
-			cluster, err = client.Dial(context.Background(),
-				client.WithDiscover(d),
-				client.WithLogger(logger))
+			root, err = client.Dial(context.Background(),
+				wwclient.WithDiscover(d),
+				wwclient.WithLogger(logger))
 		}
 
 		return
@@ -77,7 +78,7 @@ func Init() cli.BeforeFunc {
 // Shutdown the wetware client
 func Shutdown() cli.AfterFunc {
 	return func(c *cli.Context) error {
-		return cluster.Close()
+		return root.Close()
 	}
 }
 

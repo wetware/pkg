@@ -1,4 +1,4 @@
-package ww
+package cluster
 
 import (
 	"time"

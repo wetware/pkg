@@ -5,14 +5,11 @@ import (
 	"time"
 
 	log "github.com/lthibault/log/pkg"
-	syncutil "github.com/lthibault/util/sync"
-	"github.com/pkg/errors"
 	"go.uber.org/fx"
 
 	"github.com/ipfs/go-datastore"
 	p2p "github.com/libp2p/go-libp2p"
 	host "github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/pnet"
 	"github.com/libp2p/go-libp2p-core/routing"
 	discovery "github.com/libp2p/go-libp2p-discovery"
@@ -24,9 +21,10 @@ import (
 	hostutil "github.com/lthibault/wetware/internal/util/host"
 	ww "github.com/lthibault/wetware/pkg"
 	"github.com/lthibault/wetware/pkg/discover"
+	"github.com/lthibault/wetware/pkg/internal/eventloop"
 )
 
-func module(c *Client, opt []Option) fx.Option {
+func module(ctx context.Context, c *Client, opt []Option) fx.Option {
 	return fx.Options(
 		fx.NopLogger,
 		fx.Supply(opt),
@@ -34,19 +32,25 @@ func module(c *Client, opt []Option) fx.Option {
 			newCtx,
 			userConfig,
 			newRoutedHost,
+			newTerminal,
 			newPubsub,
 			newClient,
 		),
 		fx.Populate(c),
-		fx.Invoke(join),
+		fx.Invoke(
+			eventloop.DispatchNetwork,
+			dialer(ctx),
+		),
 	)
 }
 
 type clientConfig struct {
 	fx.In
 
-	Log       log.Logger
-	Host      host.Host
+	Log  log.Logger
+	Host host.Host
+	Term *terminal
+
 	Namespace string `name:"ns"`
 	PubSub    *pubsub.PubSub
 }
@@ -54,7 +58,7 @@ type clientConfig struct {
 func newClient(lx fx.Lifecycle, cfg clientConfig) Client {
 	return Client{
 		log:  cfg.Log.WithField("id", cfg.Host.ID()),
-		host: cfg.Host,
+		term: cfg.Term,
 		ps:   newTopicSet(cfg.Namespace, cfg.PubSub),
 	}
 }
@@ -74,6 +78,12 @@ func newPubsub(lx fx.Lifecycle, cfg pubsubConfig) (*pubsub.PubSub, error) {
 		pubsub.WithDiscovery(discovery.NewRoutingDiscovery(cfg.DHT)),
 	)
 
+}
+
+func newTerminal(host host.Host) *terminal {
+	return &terminal{
+		local: host,
+	}
 }
 
 type hostConfig struct {
@@ -160,52 +170,4 @@ func userConfig(opt []Option) (out userConfigOut, err error) {
 	out.Discover = cfg.d
 	out.Limit = cfg.queryLimit
 	return
-}
-
-/*
-	runtime functions (use fx.Invoke)
-*/
-
-type joinConfig struct {
-	fx.In
-
-	Ctx  context.Context
-	Log  log.Logger
-	Host host.Host
-
-	discover.Strategy
-	Limit int `name:"discover_limit"`
-}
-
-func join(cfg joinConfig) error {
-	ps, err := cfg.DiscoverPeers(cfg.Ctx,
-		discover.WithLogger(cfg.Log),
-		discover.WithLimit(cfg.Limit))
-	if err != nil {
-		return errors.Wrap(err, "discover")
-	}
-
-	var any syncutil.Any
-	for info := range ps {
-		any.Go(connect(cfg.Ctx, cfg.Host, info))
-	}
-
-	if err = any.Wait(); err == nil {
-		return cfg.Ctx.Err() // Wait might return nil if no peers were found.
-	}
-
-	return errors.Wrap(err, "join")
-}
-
-/*
-	Misc.
-*/
-
-func connect(ctx context.Context, host host.Host, pinfo peer.AddrInfo) func() error {
-	return func() error {
-		ctx, cancel := context.WithTimeout(ctx, time.Second*5)
-		defer cancel()
-
-		return host.Connect(ctx, pinfo)
-	}
 }

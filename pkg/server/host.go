@@ -8,13 +8,14 @@ import (
 	"github.com/libp2p/go-libp2p-core/event"
 	host "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/lthibault/wetware/pkg/cluster"
 	"github.com/multiformats/go-multiaddr"
 )
 
 // Host .
 type Host struct {
-	logger
-	rt   routingTable
+	logProvider
+	r    cluster.RoutingTable
 	host host.Host
 
 	app interface {
@@ -42,7 +43,7 @@ func (h Host) Addrs() []multiaddr.Multiaddr {
 
 // Peers in the cluster
 func (h Host) Peers() peer.IDSlice {
-	return append(h.rt.Peers(), h.host.ID())
+	return append(h.r.Peers(), h.host.ID())
 }
 
 // EventBus provides asynchronous notifications of changes in the host's internal state,

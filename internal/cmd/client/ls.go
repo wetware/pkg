@@ -1,13 +1,13 @@
 package client
 
 import (
-	"context"
 	"fmt"
+	"io"
 
+	ww "github.com/lthibault/wetware/pkg"
+	anchorpath "github.com/lthibault/wetware/pkg/util/anchor/path"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
-
-	anchorpath "github.com/lthibault/wetware/pkg/util/anchor/path"
 )
 
 func lsFlags() []cli.Flag {
@@ -16,28 +16,35 @@ func lsFlags() []cli.Flag {
 
 func lsAction() cli.ActionFunc {
 	return func(c *cli.Context) error {
-		path, err := parsePath(c.Args().First())
+		if err := validatePath(c.Args().First()); err != nil {
+			return errors.Wrap(err, "invalid path")
+		}
+
+		anchor, err := root.Walk(proc, anchorpath.Parts(c.Args().First()))
 		if err != nil {
-			return errors.Wrap(err, "parse path")
+			return errors.Wrapf(err, "walk %s", c.Args().First())
 		}
 
-		it := cluster.Walk(context.Background(), path).Ls()
-		for it.Next() {
-			fmt.Printf("/%s\n", it.Path())
-		}
-
-		return it.Err()
+		return printPaths(c.App.Writer, anchor.Ls(proc))
 	}
 }
 
-func parsePath(path string) ([]string, error) {
+func validatePath(path string) error {
 	if path == "" {
-		return nil, errors.New("path must be a glob argument")
+		return errors.New("must be a glob argument")
 	}
 
-	if !anchorpath.Abs(path) {
-		return nil, errors.New("must specify absolute path")
+	if path[0] != '/' {
+		return errors.New("must specify absolute path")
 	}
 
-	return anchorpath.Parts(path), nil
+	return nil
+}
+
+func printPaths(w io.Writer, it ww.Iterator) error {
+	for it.Next() {
+		fmt.Fprintf(w, "/%s\n", it.Path())
+	}
+
+	return it.Err()
 }

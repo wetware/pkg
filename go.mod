@@ -19,6 +19,7 @@ require (
 	github.com/libp2p/go-libp2p-core v0.5.3
 	github.com/libp2p/go-libp2p-discovery v0.4.0
 	github.com/libp2p/go-libp2p-kad-dht v0.7.11
+	github.com/libp2p/go-libp2p-peer v0.2.0
 	github.com/libp2p/go-libp2p-peerstore v0.2.3
 	github.com/libp2p/go-libp2p-protocol v0.1.0
 	github.com/libp2p/go-libp2p-pubsub v0.2.7
@@ -41,6 +42,7 @@ require (
 	github.com/urfave/cli/v2 v2.2.0
 	github.com/whyrusleeping/mdns v0.0.0-20190826153040-b9b60ed33aa9
 	go.uber.org/fx v1.12.0
+	go.uber.org/multierr v1.5.0
 	go.uber.org/zap v1.15.0 // indirect
 	golang.org/x/crypto v0.0.0-20200427165652-729f1e841bcc // indirect
 	golang.org/x/lint v0.0.0-20191125180803-fdd1cda4f05f // indirect

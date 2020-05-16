@@ -52,3 +52,12 @@ func Clean(path string) string {
 
 	return b.String()
 }
+
+// Root returns true if the path points to the root anchor.
+func Root(path []string) bool {
+	if len(path) == 0 {
+		return true
+	}
+
+	return strings.Trim(path[0], sep) == ""
+}

@@ -1,4 +1,4 @@
-package ww
+package eventloop
 
 import (
 	"fmt"
@@ -26,10 +26,22 @@ type (
 		}
 	}
 
+	// EvtPeerConnectednessChanged fires when a direct connection to a remote host is
+	// established or lost.  This is distinct from EvtConnectionChanged in two ways:
+	//
+	//  1. It is concerned with the presence / absence of connections, not the quantity.
+	//  2. It is emitted only for host connections.  Clients are ignored.
+	//
+	// Developers should generally prefer EvtPeerConnectednessChanged over
+	// EvtConnectionChanged.
+	EvtPeerConnectednessChanged struct {
+		Peer  peer.ID
+		State PeerState
+	}
+
 	// EvtNeighborhoodChanged fires when a graph edge is created or destroyed
 	EvtNeighborhoodChanged struct {
 		Peer     peer.ID
-		State    ConnState
 		From, To Phase
 		N        int
 	}
@@ -114,6 +126,28 @@ func (s StreamState) String() string {
 	case StreamStateOpened:
 		return "opened"
 	case StreamStateClosed:
+		return "closed"
+	default:
+		return fmt.Sprintf("<invalid :: %d>", s)
+	}
+}
+
+// PeerState tags a peer state
+type PeerState uint8
+
+const (
+	// PeerStateConnected .
+	PeerStateConnected PeerState = iota
+
+	// PeerStateDisconnected .
+	PeerStateDisconnected
+)
+
+func (s PeerState) String() string {
+	switch s {
+	case PeerStateConnected:
+		return "opened"
+	case PeerStateDisconnected:
 		return "closed"
 	default:
 		return fmt.Sprintf("<invalid :: %d>", s)

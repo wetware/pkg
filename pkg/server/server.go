@@ -12,6 +12,7 @@ import (
 	p2p "github.com/libp2p/go-libp2p"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	cm "github.com/libp2p/go-libp2p-core/connmgr"
+	"github.com/libp2p/go-libp2p-core/event"
 	host "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/pnet"
@@ -26,7 +27,9 @@ import (
 
 	log "github.com/lthibault/log/pkg"
 	hostutil "github.com/lthibault/wetware/internal/util/host"
+	"github.com/lthibault/wetware/pkg/cluster"
 	discover "github.com/lthibault/wetware/pkg/discover"
+	"github.com/lthibault/wetware/pkg/internal/eventloop"
 )
 
 /*
@@ -44,13 +47,13 @@ func module(h *Host, opt []Option) fx.Option {
 		fx.Provide(
 			newCtx,
 			userConfig,
-			newFilter,
 			newConnMgr,
 			newDatastore,
 			newPeerstore,
 			newRoutedHost,
 			newDiscovery,
 			newPubSub,
+			newRouter,
 			newWwHost,
 		),
 
@@ -64,9 +67,9 @@ func module(h *Host, opt []Option) fx.Option {
 		 ******************************/
 		fx.Invoke(
 			bootstrap,
-			eventloop,
-			connpolicy,
-			announcer,
+			startEventLoop,
+			maintainConnectivity,
+			announce,
 
 			// This MUST come last. Fires event.EvtLocalAddressesUpdated.
 			listenAndServe,
@@ -83,30 +86,47 @@ type wwHostConfig struct {
 
 	Log    log.Logger
 	Host   host.Host
-	Filter filter
+	Router *cluster.Router
 }
 
 func newWwHost(cfg wwHostConfig) Host {
-	var once sync.Once
-	l := cfg.Log
-	getLog := loggerFunc(func() log.Logger {
-		once.Do(func() {
-			l = l.WithFields(log.F{
-				"id":    cfg.Host.ID(),
-				"addrs": cfg.Host.Addrs(),
-			})
+	// logger fields are not available until host starts listening.
+	lp := provideOnce(func() log.Logger {
+		return cfg.Log.WithFields(log.F{
+			"id":    cfg.Host.ID(),
+			"addrs": cfg.Host.Addrs(),
 		})
-
-		return l
 	})
 
-	// registerAnchor(getLog, cfg.Host, cfg.Filter)
+	registerProtocols(lp, cfg.Host, cfg.Router)
 
 	return Host{
-		logger: getLog,
-		host:   cfg.Host,
-		rt:     cfg.Filter,
+		logProvider: lp,
+		host:        cfg.Host,
+		r:           cfg.Router,
 	}
+}
+
+type routerConfig struct {
+	fx.In
+
+	Ctx       context.Context
+	Namespace string `name:"ns"`
+
+	PubSub *pubsub.PubSub
+}
+
+func newRouter(lx fx.Lifecycle, cfg routerConfig) (*cluster.Router, error) {
+	r, err := cluster.NewRouter(cfg.Ctx, cfg.Namespace, cfg.PubSub)
+	if err == nil {
+		lx.Append(fx.Hook{
+			OnStop: func(context.Context) error {
+				return r.Close()
+			},
+		})
+	}
+
+	return r, err
 }
 
 type pubsubConfig struct {
@@ -115,59 +135,14 @@ type pubsubConfig struct {
 	Ctx       context.Context
 	Host      host.Host
 	Discovery discovery.Discovery
-
-	Namespace string        `name:"ns"`
-	TTL       time.Duration `name:"ttl"`
-	Filter    filter
 }
 
-type pubsubOut struct {
-	fx.Out
-
-	PubSub *pubsub.PubSub
-	Topic  *pubsub.Topic
-}
-
-func newPubSub(lx fx.Lifecycle, cfg pubsubConfig) (out pubsubOut, err error) {
-	if out.PubSub, err = pubsub.NewGossipSub(
+func newPubSub(lx fx.Lifecycle, cfg pubsubConfig) (*pubsub.PubSub, error) {
+	return pubsub.NewGossipSub(
 		cfg.Ctx,
 		cfg.Host,
 		pubsub.WithDiscovery(cfg.Discovery),
-	); err != nil {
-		return
-	}
-
-	if err = out.PubSub.RegisterTopicValidator(cfg.Namespace,
-		newHeartbeatValidator(cfg.Ctx, cfg.Filter)); err != nil {
-		return
-	}
-
-	if out.Topic, err = out.PubSub.Join(cfg.Namespace); err != nil {
-		return
-	}
-
-	var sub *pubsub.Subscription
-	lx.Append(fx.Hook{
-		OnStart: func(context.Context) (err error) {
-			if sub, err = out.Topic.Subscribe(); err == nil {
-				go func() {
-					for { // we need to consume messages for pubsub to work.
-						if _, err = sub.Next(cfg.Ctx); err != nil {
-							break
-						}
-					}
-				}()
-			}
-
-			return
-		},
-		OnStop: func(context.Context) error {
-			sub.Cancel()
-			return out.Topic.Close()
-		},
-	})
-
-	return
+	)
 }
 
 func newDiscovery(r routing.Routing) discovery.Discovery {
@@ -222,10 +197,6 @@ func newRoutedHost(lx fx.Lifecycle, cfg hostConfig) (out hostOut, err error) {
 	return
 }
 
-func newFilter() filter {
-	return newBasicFilter()
-}
-
 type peerstoreConfig struct {
 	fx.In
 
@@ -252,12 +223,11 @@ func newDatastore() datastore.Batching {
 type connManagerConfig struct {
 	fx.In
 
-	LowWater  int `name:"kmin"`
-	HighWater int `name:"kmax"`
+	K clusterCardinality
 }
 
 func newConnMgr(cfg connManagerConfig) cm.ConnManager {
-	return connmgr.NewConnManager(cfg.LowWater, cfg.HighWater, time.Second*10)
+	return connmgr.NewConnManager(cfg.K.Min, cfg.K.Max, time.Second*10)
 }
 
 type userConfigOut struct {
@@ -275,11 +245,10 @@ type userConfigOut struct {
 	TTL       time.Duration `name:"ttl"`
 
 	// Neighborhood params
-	KMin int `name:"kmin"` // min peer connections to maintain
-	KMax int `name:"kmax"` // max peer connections to maintain
+	K clusterCardinality
 
 	// Misc
-	EventHandlers []evtHandler
+	EventHandlers []eventloop.Handler
 }
 
 func userConfig(opt []Option) (out userConfigOut, err error) {
@@ -300,8 +269,7 @@ func userConfig(opt []Option) (out userConfigOut, err error) {
 	out.Secret = cfg.psk
 	out.TTL = cfg.ttl
 
-	out.KMin = cfg.kmin
-	out.KMax = cfg.kmax
+	out.K = cfg.k
 
 	out.EventHandlers = cfg.evtHandlers
 
@@ -345,13 +313,21 @@ type listenAndServeConfig struct {
 	Signaller addrChangeSignaller
 }
 
-func listenAndServe(cfg listenAndServeConfig) (err error) {
-	if err = cfg.Host.Network().Listen(cfg.Addrs...); err == nil {
-		// ensure the host fires event.EvtLocalAddressUpdated immediately.
-		cfg.Signaller.SignalAddressChange()
+func listenAndServe(cfg listenAndServeConfig) error {
+	sub, err := cfg.Host.EventBus().Subscribe(new(event.EvtLocalAddressesUpdated))
+	if err != nil {
+		return err
 	}
 
-	return
+	if err := cfg.Host.Network().Listen(cfg.Addrs...); err != nil {
+		return err
+	}
+
+	// ensure the host fires event.EvtLocalAddressUpdated immediately.
+	cfg.Signaller.SignalAddressChange()
+
+	<-sub.Out()
+	return sub.Close()
 }
 
 /*
@@ -365,12 +341,30 @@ type addrChangeSignaller interface {
 	SignalAddressChange()
 }
 
-type logger interface {
+// LogProvider is an interface for lazily configuring structured loggers.
+// It is used to configure a logger before its field values are known.
+// See the Host constructor for a canonical example.
+type logProvider interface {
 	Log() log.Logger
 }
 
-type loggerFunc func() log.Logger
+type logProviderFunc func() log.Logger
 
-func (f loggerFunc) Log() log.Logger {
+func (f logProviderFunc) Log() log.Logger {
 	return f()
+}
+
+// provideOnce returns a provider that calls `f` the first time it is invoked, caches
+// the result, and always returns this result.
+func provideOnce(f func() log.Logger) logProviderFunc {
+	var once sync.Once
+	var cached log.Logger
+	return func() log.Logger {
+		once.Do(func() { cached = f() })
+		return cached
+	}
+}
+
+type clusterCardinality struct {
+	Min, Max int
 }
