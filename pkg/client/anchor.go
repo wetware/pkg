@@ -66,24 +66,21 @@ func (ha *hostAnchor) Close() error {
 	return ha.conn.Close()
 }
 
-func (ha *hostAnchor) Err() error {
-	if capnp.IsErrorClient(ha.Client) {
-		// return the original error
-		return ha.Client.Call(nil).PipelineClose(nil)
-	}
-
-	return nil
-}
-
 func (ha *hostAnchor) Fail(err error) {
 	ha.Client = capnp.ErrorClient(err)
 }
 
-func (ha *hostAnchor) HandleRPC(ctx context.Context, s network.Stream) {
-	if ha.Err() == nil {
-		ha.conn = rpc.NewConn(rpc.StreamTransport(s))
-		ha.Client = ha.conn.Bootstrap(ctx)
+func (ha *hostAnchor) HandleRPC(ctx context.Context, s network.Stream) error {
+	// if the client is already set, it is because an error was encountered.
+	if ha.Client != nil {
+		// the client is guaranteed to be a capnp.errClient.
+		// recover it's error.
+		return ha.Client.Call(nil).PipelineClose(nil)
 	}
+
+	ha.conn = rpc.NewConn(rpc.StreamTransport(s))
+	ha.Client = ha.conn.Bootstrap(ctx)
+	return nil
 }
 
 func (ha *hostAnchor) Ls(ctx context.Context) ww.Iterator {
@@ -107,12 +104,20 @@ func (ha *hostAnchor) Walk(ctx context.Context, path []string) (ww.Anchor, error
 // call to one of lazyAnchor's methods is made.
 type lazyAnchor struct {
 	sess session
-	ww.Anchor
+	*hostAnchor
 
 	flag syncutil.Flag
 	mu   sync.Mutex
 }
 
+// ensureConnection is effectively a specialized implementation of sync.Once.Do that
+// ensures exactly one connection to a remote host is dialed.  If a connection attempt
+// succeeds, ensureConnection returns nil, and subsequent calls are nops.
+//
+// For the avoidance of doubt:  calling ensureConnection after it has returned a non-nil
+// error is legal, and will attempt to connect to the remote host.
+//
+// ensureConnection is thread-safe.
 func (la *lazyAnchor) ensureConnection(ctx context.Context) (err error) {
 	if la.flag.Bool() {
 		// a previous call completed successfully
@@ -122,17 +127,16 @@ func (la *lazyAnchor) ensureConnection(ctx context.Context) (err error) {
 	la.mu.Lock()
 	defer la.mu.Unlock()
 
+	// we hold the lock, so we can access fields directly.
 	if la.flag != 0 {
-		// a concurrent call completed successfully while we were waiting for the lock
+		// a concurrent call completed successfully while
+		// we were waiting for the lock
 		return
 	}
 
 	ha := newHostAnchor()
-	la.sess.Call(ctx, ww.AnchorProtocol, ha)
-
-	// N.B.: ha.Err() is somewhat expensive since it relies on a type-assertion.
-	if err = ha.Err(); err == nil {
-		la.Anchor = ha
+	if err = la.sess.Call(ctx, ww.AnchorProtocol, ha); err == nil {
+		la.hostAnchor = ha
 		la.flag.Set()
 	}
 
@@ -144,7 +148,7 @@ func (la *lazyAnchor) Ls(ctx context.Context) ww.Iterator {
 		return errIter(err)
 	}
 
-	return la.Anchor.Ls(ctx)
+	return la.hostAnchor.Ls(ctx)
 }
 
 func (la *lazyAnchor) Walk(ctx context.Context, path []string) (_ ww.Anchor, err error) {
@@ -152,7 +156,7 @@ func (la *lazyAnchor) Walk(ctx context.Context, path []string) (_ ww.Anchor, err
 		return nil, errIter(err)
 	}
 
-	return la.Anchor.Walk(ctx, path)
+	return la.hostAnchor.Walk(ctx, path)
 }
 
 // refAnchor holds a reference to a hostAnchor, preventing the latter from being
@@ -160,4 +164,19 @@ func (la *lazyAnchor) Walk(ctx context.Context, path []string) (_ ww.Anchor, err
 type refAnchor struct {
 	ww.Anchor
 	ref interface{}
+}
+
+func (ra refAnchor) Ls(ctx context.Context) ww.Iterator {
+	return refIterator{
+		Iterator: ra.Anchor.Ls(ctx),
+		ref:      ra.ref,
+	}
+}
+
+func (ra refAnchor) Walk(ctx context.Context, path []string) (ww.Anchor, error) {
+	a, err := ra.Anchor.Walk(ctx, path)
+	return refAnchor{
+		Anchor: a,
+		ref:    ra.ref,
+	}, err
 }

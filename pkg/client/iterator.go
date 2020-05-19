@@ -43,51 +43,43 @@ func (it *clusterIterator) Fail(err error) {
 	it.err = err
 }
 
-func (it *clusterIterator) HandleRPC(ctx context.Context, s network.Stream) {
+func (it *clusterIterator) HandleRPC(ctx context.Context, s network.Stream) error {
 	defer s.Close()
 	it.Reset()
 
 	t, _ := ctx.Deadline()
 	if err := s.SetReadDeadline(t); err != nil {
-		it.Fail(errors.Wrap(err, "set deadline"))
-		return
+		return errors.Wrap(err, "set deadline")
 	}
 
 	msg, err := capnp.NewPackedDecoder(s).Decode()
 	if err != nil {
-		it.Fail(errors.Wrap(err, "decode hosts"))
-		return
+		return errors.Wrap(err, "decode hosts")
 	}
 
 	ps, err := api.ReadRootPeerSet(msg)
 	if err != nil {
-		it.Fail(errors.Wrap(err, "read root peerset"))
-		return
-	}
-
-	if !ps.HasIds() {
-		return
+		return errors.Wrap(err, "read root peerset")
 	}
 
 	ids, err := ps.Ids()
 	if err != nil {
-		it.Fail(errors.Wrap(err, "read host IDs"))
-		return
+		return errors.Wrap(err, "read host IDs")
 	}
 
 	it.ps = make(peer.IDSlice, ids.Len())
 	for i := range it.ps {
 		raw, err := ids.At(i)
 		if err != nil {
-			it.Fail(errors.Wrapf(err, "error reading id at index %d", i))
-			break
+			return errors.Wrapf(err, "error reading id at index %d", i)
 		}
 
 		if it.ps[i], err = peer.Decode(raw); err != nil {
-			it.Fail(errors.Wrapf(err, "malformed id at index %d", i))
-			break
+			return errors.Wrapf(err, "malformed id at index %d", i)
 		}
 	}
+
+	return nil
 }
 
 func (it clusterIterator) Err() error {

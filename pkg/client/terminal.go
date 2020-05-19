@@ -12,13 +12,28 @@ import (
 )
 
 type callHandler interface {
-	Err() error
+	// Fail marks a call as having encountered an error.
+	//
+	// Failed callHandlers are valid objects, and will exhibit alternative,
+	// implementation-specific behavior.  See clusterIterator.Err for a simple
+	// example.
 	Fail(error)
-	HandleRPC(context.Context, network.Stream)
+
+	// HandleRPC implements an RPC call from the caller's perspective.
+	// If a non-nil error value is returned, the session will pass it
+	// to the Fail method.
+	HandleRPC(context.Context, network.Stream) error
 }
 
 type session interface {
-	Call(context.Context, protocol.ID, callHandler)
+	// Call a remote procedure.
+	//
+	// If Call returns a non-nil error, the underlying implementation MUST pass the
+	// error callHandler.Fail before returning.
+	//
+	// The return value is provided as a convenience and need not be handled.
+	// callHandlers must always handle the errors.
+	Call(context.Context, protocol.ID, callHandler) error
 }
 
 // terminal is responsible for managing interactive sessions with remote hosts.
@@ -41,7 +56,7 @@ func (term terminal) AutoDial() session {
 	}
 
 	if len(ids) == 0 {
-		return errSession{err: errors.New("unable to dial: no hosts")}
+		return errSession{errors.New("unable to dial: no hosts")}
 	}
 
 	rand.Shuffle(len(ids), func(i, j int) {
@@ -102,19 +117,18 @@ type remoteSession struct {
 	remote peer.ID
 }
 
-func (sess remoteSession) Call(ctx context.Context, pid protocol.ID, h callHandler) {
-
-	// We're going to be instantiating a lot of different things here.
-	// Consider using Fx to populate `h`, or using https://pkg.go.dev/go.uber.org/dig
-	// directly.
-
+func (sess remoteSession) Call(ctx context.Context, pid protocol.ID, h callHandler) error {
 	s, err := sess.local.NewStream(ctx, sess.remote, pid)
 	if err != nil {
 		h.Fail(err)
-		return
+		return err
 	}
 
-	h.HandleRPC(ctx, s)
+	if err = h.HandleRPC(ctx, s); err != nil {
+		h.Fail(err)
+	}
+
+	return err
 }
 
 // errSession represents a session dial that has failed.
@@ -123,9 +137,10 @@ func (sess remoteSession) Call(ctx context.Context, pid protocol.ID, h callHandl
 //
 // errSession implements the standard go `error` interface.
 type errSession struct {
-	err error
+	error
 }
 
-func (sess errSession) Call(_ context.Context, _ protocol.ID, h callHandler) {
-	h.Fail(sess.err)
+func (sess errSession) Call(_ context.Context, _ protocol.ID, h callHandler) error {
+	h.Fail(sess)
+	return sess
 }
