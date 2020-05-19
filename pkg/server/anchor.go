@@ -88,11 +88,11 @@ func (a hostAnchor) ServeP2P(s stream) {
 }
 
 func (a hostAnchor) Ls(call api.Anchor_ls) error {
-	return errors.New("NOT IMPLEMENTED")
+	return errors.New("server.hostAnchor.Ls NOT IMPLEMENTED")
 }
 
 func (a hostAnchor) Walk(call api.Anchor_walk) error {
-	return errors.New("NOT IMPLEMENTED")
+	return errors.New("server.hostAnchor.Walk NOT IMPLEMENTED")
 }
 
 func waitRPC(conn *rpc.Conn) error {
