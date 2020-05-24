@@ -91,19 +91,19 @@ type wwHostConfig struct {
 
 func newWwHost(cfg wwHostConfig) Host {
 	// logger fields are not available until host starts listening.
-	lp := provideOnce(func() log.Logger {
+	f := cachedLogFactory(func() log.Logger {
 		return cfg.Log.WithFields(log.F{
 			"id":    cfg.Host.ID(),
 			"addrs": cfg.Host.Addrs(),
 		})
 	})
 
-	registerProtocols(lp, cfg.Host, cfg.Router)
+	registerProtocols(f, cfg.Host, cfg.Router)
 
 	return Host{
-		logProvider: lp,
-		host:        cfg.Host,
-		r:           cfg.Router,
+		logFactory: f,
+		host:       cfg.Host,
+		r:          cfg.Router,
 	}
 }
 
@@ -341,22 +341,22 @@ type addrChangeSignaller interface {
 	SignalAddressChange()
 }
 
-// LogProvider is an interface for lazily configuring structured loggers.
+// logFactory is an interface for lazily configuring structured loggers.
 // It is used to configure a logger before its field values are known.
 // See the Host constructor for a canonical example.
-type logProvider interface {
+type logFactory interface {
 	Log() log.Logger
 }
 
-type logProviderFunc func() log.Logger
+type logFactoryFunc func() log.Logger
 
-func (f logProviderFunc) Log() log.Logger {
+func (f logFactoryFunc) Log() log.Logger {
 	return f()
 }
 
-// provideOnce returns a provider that calls `f` the first time it is invoked, caches
+// cachedLogFactory returns a provider that calls `f` the first time it is invoked, caches
 // the result, and always returns this result.
-func provideOnce(f func() log.Logger) logProviderFunc {
+func cachedLogFactory(f func() log.Logger) logFactoryFunc {
 	var once sync.Once
 	var cached log.Logger
 	return func() log.Logger {

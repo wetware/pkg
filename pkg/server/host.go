@@ -14,7 +14,7 @@ import (
 
 // Host .
 type Host struct {
-	logProvider
+	logFactory
 	r    cluster.RoutingTable
 	host host.Host
 

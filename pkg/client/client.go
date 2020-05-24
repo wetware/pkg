@@ -63,11 +63,6 @@ func (c Client) Walk(ctx context.Context, path []string) (ww.Anchor, error) {
 		return c, nil
 	}
 
-	// NOTE:  `terminal.Call` may need to inject dependencies into `anchor`.
-	//
-	// TODO:  Consider rewriting terminal.Call to do dependency-injection via Fx, if
-	//		  this provees to be the case.  Or maybe use reflection directly?
-
 	ha := newHostAnchor()
 	c.term.DialString(path[0]).Call(ctx, ww.AnchorProtocol, ha)
 	return ha.Walk(ctx, path[1:])
