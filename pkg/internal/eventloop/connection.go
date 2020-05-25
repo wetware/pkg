@@ -2,6 +2,7 @@ package eventloop
 
 import (
 	"context"
+	"sync"
 
 	log "github.com/lthibault/log/pkg"
 	"go.uber.org/fx"
@@ -23,93 +24,143 @@ import (
 
 const uagentKey = "AgentVersion"
 
+// const (
+// 	unidentified identState = iota
+// 	identHost
+// 	identClient
+// )
+
+// type identState uint8
+
 // DispatchNetwork hooks into the host's network and emits events over event.Bus
 // to signal changes in connections or streams.
 func DispatchNetwork(lx fx.Lifecycle, log log.Logger, host host.Host) error {
-	on, err := mkNetEmitters(host.EventBus())
+	t, err := trackConns(log, host)
 	if err != nil {
 		return err
 	}
-
-	sub, err := host.EventBus().Subscribe(new(event.EvtPeerIdentificationCompleted))
-	if err != nil {
-		return err
-	}
-
-	go func() {
-		for v := range sub.Out() {
-			ev := v.(event.EvtPeerIdentificationCompleted)
-			on.Connection.Emit(EvtConnectionChanged{
-				Peer:   ev.Peer,
-				Client: isClient(log, ev.Peer, host.Peerstore()),
-				State:  ConnStateOpened,
-			})
-		}
-	}()
-
-	host.Network().Notify(&network.NotifyBundle{
-		// NOTE:  can't use ConnectedF because the
-		//		  identity protocol will not have
-		// 		  completed, meaning isClient will panic.
-		DisconnectedF: onDisconnected(log, on.Connection, host.Peerstore()),
-
-		OpenedStreamF: onStreamOpened(on.Stream),
-		ClosedStreamF: onStreamClosed(on.Stream),
-	})
 
 	lx.Append(fx.Hook{
 		OnStop: func(context.Context) error {
-			return multierr.Combine(
-				on.Connection.Close(),
-				on.Stream.Close(),
-				sub.Close(),
-			)
+			return t.Close()
 		},
 	})
 
 	return nil
 }
 
-func onDisconnected(log log.Logger, e event.Emitter, m peerstore.PeerMetadata) func(network.Network, network.Conn) {
-	return func(net network.Network, conn network.Conn) {
-		e.Emit(EvtConnectionChanged{
+type connTracker struct {
+	log log.Logger
+
+	sub                  event.Subscription
+	emitConn, emitStream event.Emitter
+	m                    peerstore.PeerMetadata
+
+	mu   sync.Mutex
+	sync map[peer.ID]chan bool
+}
+
+func trackConns(log log.Logger, h host.Host) (t *connTracker, err error) {
+	t = &connTracker{
+		log:  log,
+		m:    h.Peerstore(),
+		sync: make(map[peer.ID]chan bool),
+	}
+
+	if t.sub, err = h.EventBus().Subscribe([]interface{}{
+		new(event.EvtPeerIdentificationCompleted),
+		new(event.EvtPeerIdentificationFailed),
+	}); err != nil {
+		return
+	}
+
+	if t.emitConn, err = h.EventBus().Emitter(new(EvtConnectionChanged)); err != nil {
+		return
+	}
+
+	if t.emitStream, err = h.EventBus().Emitter(new(EvtStreamChanged)); err != nil {
+		return
+	}
+
+	go func() {
+		for v := range t.sub.Out() {
+			t.handleIdentEvent(v)
+		}
+	}()
+
+	h.Network().Notify(&network.NotifyBundle{
+		DisconnectedF: t.onDisconnected,
+
+		OpenedStreamF: t.onStreamOpened,
+		ClosedStreamF: t.onStreamClosed,
+	})
+
+	return
+}
+
+func (t *connTracker) Close() error {
+	return multierr.Combine(
+		t.emitConn.Close(),
+		t.emitStream.Close(),
+		t.sub.Close(),
+	)
+}
+
+func (t *connTracker) ensureChan(id peer.ID) chan bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	if ch, ok := t.sync[id]; ok {
+		return ch
+	}
+
+	ch := make(chan bool, 1)
+	t.sync[id] = ch
+	return ch
+}
+
+func (t *connTracker) handleIdentEvent(v interface{}) {
+	switch ev := v.(type) {
+	case event.EvtPeerIdentificationCompleted:
+		t.ensureChan(ev.Peer) <- true
+		t.emitConn.Emit(EvtConnectionChanged{
+			Peer:   ev.Peer,
+			Client: t.isClient(ev.Peer),
+			State:  ConnStateOpened,
+		})
+	case event.EvtPeerIdentificationFailed:
+		t.ensureChan(ev.Peer) <- false
+	}
+}
+
+func (t *connTracker) onDisconnected(net network.Network, conn network.Conn) {
+	if <-t.ensureChan(conn.RemotePeer()) {
+		t.emitConn.Emit(EvtConnectionChanged{
 			Peer:   conn.RemotePeer(),
-			Client: isClient(log, conn.RemotePeer(), m),
+			Client: t.isClient(conn.RemotePeer()),
 			State:  ConnStateClosed,
 		})
 	}
+
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	delete(t.sync, conn.RemotePeer())
 }
 
-func onStreamOpened(e event.Emitter) func(network.Network, network.Stream) {
-	return func(net network.Network, s network.Stream) {
-		e.Emit(EvtStreamChanged{
-			Peer:   s.Conn().RemotePeer(),
-			Stream: s,
-			State:  StreamStateOpened,
-		})
-	}
+func (t *connTracker) onStreamOpened(net network.Network, s network.Stream) {
+	t.emitStream.Emit(EvtStreamChanged{
+		Peer:   s.Conn().RemotePeer(),
+		Stream: s,
+		State:  StreamStateOpened,
+	})
 }
 
-func onStreamClosed(e event.Emitter) func(network.Network, network.Stream) {
-	return func(net network.Network, s network.Stream) {
-		e.Emit(EvtStreamChanged{
-			Peer:   s.Conn().RemotePeer(),
-			Stream: s,
-			State:  StreamStateClosed,
-		})
-	}
-}
-
-func mkNetEmitters(bus event.Bus) (s struct{ Connection, Stream event.Emitter }, err error) {
-	if s.Connection, err = bus.Emitter(new(EvtConnectionChanged)); err != nil {
-		return
-	}
-
-	if s.Stream, err = bus.Emitter(new(EvtStreamChanged)); err != nil {
-		return
-	}
-
-	return
+func (t *connTracker) onStreamClosed(net network.Network, s network.Stream) {
+	t.emitStream.Emit(EvtStreamChanged{
+		Peer:   s.Conn().RemotePeer(),
+		Stream: s,
+		State:  StreamStateClosed,
+	})
 }
 
 // isClient distinguishes between client and host connections using low-level peerstore
@@ -120,51 +171,12 @@ func mkNetEmitters(bus event.Bus) (s struct{ Connection, Stream event.Emitter },
 // resuting in an incorrect event being dispatched over the bus.
 //
 // Developers should prefer to work at the host level, comparing peer.IDs in the
-// peerstore to those in the filter/routing-table by means of `filter.Contains`.
-func isClient(log log.Logger, p peer.ID, ps peerstore.PeerMetadata) bool {
-	switch v, err := ps.Get(p, uagentKey); err {
-	case nil:
-		return v.(string) == ww.ClientUAgent
-	case peerstore.ErrNotFound:
-		// This usually means isClient was called in network.Notifiee.Connected, before
-		// authentication by the IDService completed.
-
-		// XXX: this is stochastically triggered with the following log output appearing
-		//      immediately before the panic stack-trace appears.
-		//
-		//      Best guess:
-		//			1.  connection established
-		//			2.  id stream opened
-		//			3.  something goes wrong ==> stream reset ==> conn closed
-		//			4.  onConnClosed triggered, but event.PeerIdentificationCompleted
-		//				never fired ==> user agent not present ==> panic.
-		//
-		//		MITIGATION:  emit error-level log message instead of panicking.
-
-		/*
-			TRAC[0001] peer identification failed
-
-			addrs="[/ip4/127.0.0.1/tcp/64725 /ip6/::1/tcp/64726]"
-			error="stream reset"
-			id=QmXJjG9TZzrmQV419v2vcVoGuv15U3RreYTb1b8js9S2id
-			ns=			peer=QmNzXbNoCdWpYKiYKv2VEBVDh21uxoYQ5Pxcck1uxZYzte
-
-			panic: user agent not found: item not found
-		*/
-
-		log.WithError(err).Error("isClient failed to get user agent")
-
-		// HACK: so far we've only observed this in host-host connections (though we've
-		// never tested a host-client conn).
-		//
-		// False positives (clients misidentified as hosts) will trigger a panic in
-		// neighborhood.Rm.  If this happens, consider simply removing the panic
-		// statement in `Rm`.  We _probably_ don't need it.
-		//
-		// Either way, this is a tempororary hack until upstream libp2p begins emitting
-		// event.PeerConnectednessChanged.
-		return true
-	default:
+// peerstore to those in the routing table.
+func (t *connTracker) isClient(p peer.ID) bool {
+	v, err := t.m.Get(p, uagentKey)
+	if err != nil {
 		panic(err)
 	}
+
+	return v.(string) == ww.ClientUAgent
 }
