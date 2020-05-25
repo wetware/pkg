@@ -35,8 +35,7 @@ func (a *anchor) Ls(ctx context.Context) ww.Iterator {
 
 func (a *anchor) Walk(ctx context.Context, path []string) (ww.Anchor, error) {
 	res, err := a.Anchor.Walk(ctx, func(param api.Anchor_walk_Params) error {
-		param.SetPath(anchorpath.Join(path...))
-		return nil
+		return param.SetPath(anchorpath.Join(path...))
 	}).Struct()
 	if err != nil {
 		return nil, err
