@@ -22,6 +22,6 @@ interface Anchor {
     walk @1 (path :Text) -> (anchor :Anchor);
 }
 
-struct PeerSet {
-    ids @0 :List(Text);
+interface Router {
+    ls @0 () -> (view :List(Text));
 }

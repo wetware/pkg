@@ -2,13 +2,9 @@ package client
 
 import (
 	"context"
-	"runtime"
 	"sync"
 
-	"github.com/libp2p/go-libp2p-core/network"
-	capnp "zombiezen.com/go/capnproto2"
-	"zombiezen.com/go/capnproto2/rpc"
-
+	"github.com/libp2p/go-libp2p-core/peer"
 	syncutil "github.com/lthibault/util/sync"
 	"github.com/lthibault/wetware/internal/api"
 	ww "github.com/lthibault/wetware/pkg"
@@ -17,7 +13,7 @@ import (
 
 type anchor struct{ api.Anchor }
 
-func (a *anchor) Ls(ctx context.Context) ww.Iterator {
+func (a anchor) Ls(ctx context.Context) ww.Iterator {
 	res, err := a.Anchor.Ls(ctx, func(p api.Anchor_ls_Params) error {
 		return nil
 	}).Struct()
@@ -33,7 +29,7 @@ func (a *anchor) Ls(ctx context.Context) ww.Iterator {
 	return newAnchorIterator(cs)
 }
 
-func (a *anchor) Walk(ctx context.Context, path []string) (ww.Anchor, error) {
+func (a anchor) Walk(ctx context.Context, path []string) (ww.Anchor, error) {
 	res, err := a.Anchor.Walk(ctx, func(param api.Anchor_walk_Params) error {
 		return param.SetPath(anchorpath.Join(path...))
 	}).Struct()
@@ -41,69 +37,73 @@ func (a *anchor) Walk(ctx context.Context, path []string) (ww.Anchor, error) {
 		return nil, err
 	}
 
-	// TODO(runtime) runtime.SetFinalizer.  This should probably happen in a
-	// 		newRemoteAnchor function or something.
-	return &anchor{Anchor: res.Anchor()}, nil
+	return anchor{res.Anchor()}, nil
 }
 
-type hostAnchor struct {
-	anchor
-	conn *rpc.Conn
+type anchorIterator struct {
+	cs api.Anchor_SubAnchor_List
+
+	idx int
+	err error
 }
 
-func newHostAnchor() *hostAnchor {
-	a := new(hostAnchor)
-
-	runtime.SetFinalizer(a, func(ha *hostAnchor) {
-		a.Close()
-	})
-
-	return a
-}
-
-func (ha *hostAnchor) Close() error {
-	return ha.conn.Close()
-}
-
-func (ha *hostAnchor) Fail(err error) {
-	ha.Client = capnp.ErrorClient(err)
-}
-
-func (ha *hostAnchor) HandleRPC(ctx context.Context, s network.Stream) error {
-	// if the client is already set, it is because an error was encountered.
-	if ha.Client != nil {
-		// the client is guaranteed to be a capnp.errClient.
-		// recover it's error.
-		return ha.Client.Call(nil).PipelineClose(nil)
+func newAnchorIterator(cs api.Anchor_SubAnchor_List) ww.Iterator {
+	if !cs.HasData() || cs.Len() == 0 {
+		return emptyIterator{}
 	}
 
-	ha.conn = rpc.NewConn(rpc.StreamTransport(s))
-	ha.Client = ha.conn.Bootstrap(ctx)
-	return nil
-}
-
-func (ha *hostAnchor) Ls(ctx context.Context) ww.Iterator {
-	return refIterator{
-		Iterator: ha.anchor.Ls(ctx),
-		ref:      ha,
+	return &anchorIterator{
+		cs:  cs,
+		idx: -1,
 	}
 }
 
-func (ha *hostAnchor) Walk(ctx context.Context, path []string) (ww.Anchor, error) {
-	a, err := ha.anchor.Walk(ctx, path)
-	return refAnchor{
-		Anchor: a,
-		ref:    ha,
-	}, err
+func (it anchorIterator) Err() error {
+	return it.err
 }
 
-// lazyAnchor is effectively a hostAnchor that has not yet been initalized.
+func (it *anchorIterator) Next() (more bool) {
+	if more = it.more(); more {
+		it.idx++
+	}
+
+	return
+}
+
+func (it *anchorIterator) Path() (s string) {
+	if it.err != nil {
+		return
+	}
+
+	s, it.err = it.subanchor().Path()
+	return
+}
+
+func (it *anchorIterator) Anchor() ww.Anchor {
+	if it.err != nil {
+		return nil
+	}
+
+	// TODO:  manage lifecycle
+	return &anchor{it.subanchor().Anchor()}
+}
+
+func (it anchorIterator) subanchor() api.Anchor_SubAnchor {
+	return it.cs.At(it.idx)
+}
+
+func (it anchorIterator) more() bool {
+	return it.err == nil && it.idx < it.cs.Len()-1
+}
+
+// lazyAnchor is effectively an anchor that is not yet connected to a host.
 // This is needed because ww.Iterator.Anchor() takes no argument, yet a context is
 // needed in order to dial out to the remote host.  As such, we defer dialing until a
 // call to one of lazyAnchor's methods is made.
 type lazyAnchor struct {
-	sess session
-	*hostAnchor
+	id   peer.ID
+	term *terminal
+	anchor
 
 	flag syncutil.Flag
 	mu   sync.Mutex
@@ -117,7 +117,7 @@ type lazyAnchor struct {
 // error is legal, and will attempt to connect to the remote host.
 //
 // ensureConnection is thread-safe.
-func (la *lazyAnchor) ensureConnection(ctx context.Context) (err error) {
+func (la *lazyAnchor) ensureConnection(ctx context.Context) {
 	if la.flag.Bool() {
 		// a previous call completed successfully
 		return
@@ -133,49 +133,18 @@ func (la *lazyAnchor) ensureConnection(ctx context.Context) (err error) {
 		return
 	}
 
-	ha := newHostAnchor()
-	if err = la.sess.Call(ctx, ww.AnchorProtocol, ha); err == nil {
-		la.hostAnchor = ha
-		la.flag.Set()
-	}
+	la.Client = la.term.Dial(ctx, ww.AnchorProtocol, la.id)
+	la.flag.Set()
 
 	return
 }
 
 func (la *lazyAnchor) Ls(ctx context.Context) ww.Iterator {
-	if err := la.ensureConnection(ctx); err != nil {
-		return errIter(err)
-	}
-
-	return la.hostAnchor.Ls(ctx)
+	la.ensureConnection(ctx)
+	return la.anchor.Ls(ctx)
 }
 
 func (la *lazyAnchor) Walk(ctx context.Context, path []string) (_ ww.Anchor, err error) {
-	if err := la.ensureConnection(ctx); err != nil {
-		return nil, errIter(err)
-	}
-
-	return la.hostAnchor.Walk(ctx, path)
-}
-
-// refAnchor holds a reference to a hostAnchor, preventing the latter from being
-// garbage-collected.  See call to runtime.SetFinalizer in newHostAnchor.
-type refAnchor struct {
-	ww.Anchor
-	ref interface{}
-}
-
-func (ra refAnchor) Ls(ctx context.Context) ww.Iterator {
-	return refIterator{
-		Iterator: ra.Anchor.Ls(ctx),
-		ref:      ra.ref,
-	}
-}
-
-func (ra refAnchor) Walk(ctx context.Context, path []string) (ww.Anchor, error) {
-	a, err := ra.Anchor.Walk(ctx, path)
-	return refAnchor{
-		Anchor: a,
-		ref:    ra.ref,
-	}, err
+	la.ensureConnection(ctx)
+	return la.anchor.Walk(ctx, path)
 }

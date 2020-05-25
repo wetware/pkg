@@ -9,6 +9,7 @@ import (
 
 	host "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/protocol"
 
 	"github.com/lthibault/wetware/internal/api"
 	ww "github.com/lthibault/wetware/pkg"
@@ -20,65 +21,57 @@ import (
 */
 
 func registerProtocols(f logFactory, host host.Host, r cluster.RoutingTable) {
-	host.SetStreamHandler(ww.ClusterProtocol, clusterHandler(f, r))
-	host.SetStreamHandler(ww.AnchorProtocol, hostAnchorHandler(f))
+	for _, iface := range []remoteInterface{
+		anchor{logFactory: f, root: newAnchorTree()},
+		router{logFactory: f, RoutingTable: r},
+	} {
+		host.SetStreamHandler(iface.Proto(), export(iface))
+	}
+
+	// host.SetStreamHandler(ww.ClusterProtocol, clusterHandler(f, r))
+	// host.SetStreamHandler(ww.AnchorProtocol, hostAnchorHandler(f))
 }
 
-func clusterHandler(f logFactory, r cluster.RoutingTable) network.StreamHandler {
-	return wrapHandler(f, handlerFunc(func(s stream) {
-		defer s.Close()
-
-		msg, seg, err := capnp.NewMessage(capnp.SingleSegment(nil))
-		if err != nil {
-			s.Log().WithError(err).WithField("capnp_type", "message").
-				Error("arena allocation failed")
-			return
-		}
-
-		ps, err := api.NewRootPeerSet(seg)
-		if err != nil {
-			s.Log().WithError(err).WithField("capnp_type", "peerset").
-				Error("arena allocation failed")
-			return
-		}
-
-		peers := r.Peers()
-
-		ids, err := ps.NewIds(int32(len(peers)))
-		if err != nil {
-			s.Log().WithError(err).WithField("capnp_type", "id list").
-				Error("arena allocation failed")
-			return
-		}
-
-		for i, p := range peers {
-			if err = ids.Set(i, p.String()); err != nil {
-				s.Log().WithError(err).WithField("capnp_type", "id list").
-					Error("failed to set peer ID")
-				return
-			}
-		}
-
-		if err = capnp.NewPackedEncoder(s).Encode(msg); err != nil {
-			s.Log().WithError(err).Error("failed to encode")
-		}
-	}))
+type router struct {
+	logFactory
+	cluster.RoutingTable
 }
 
-func hostAnchorHandler(f logFactory) network.StreamHandler {
+func (router) Proto() protocol.ID {
+	return ww.ClusterProtocol
+}
 
-	root := newAnchorTree()
+func (r router) Export() capnp.Client {
+	return api.Router_ServerToClient(r).Client
+}
 
-	return wrapHandler(f, handlerFunc(func(s stream) {
-		defer s.Reset()
+func (r router) Ls(call api.Router_ls) error {
+	peers := r.Peers()
 
-		a := newAnchor(f.Log(), root)
-		conn := rpc.NewConn(streamTransport(s), rpc.MainInterface(a.Client))
+	view, err := call.Results.NewView(int32(len(peers)))
+	if err != nil {
+		return r.annotateErr("ls", err)
+	}
 
-		if err := waitRPC(conn); err != nil {
-			s.Log().WithError(err).Debug("rpc conn aborted")
+	for i, p := range peers {
+		if err = view.Set(i, p.String()); err != nil {
+			return r.annotateErr("ls", err)
 		}
-	}))
+	}
+
+	return nil
+}
+
+func (r router) annotateErr(method string, err error) error {
+	if err != nil {
+		r.Log().WithFields(log.F{
+			"error":  err,
+			"method": method,
+			"proto":  r.Proto(),
+		}).Error("rpc call failed")
+	}
+
+	return errors.Wrap(err, "internal server error")
 }
 
 func waitRPC(conn *rpc.Conn) error {
@@ -112,32 +105,20 @@ func streamTransport(s network.Stream) rpc.Transport {
 	return rpc.StreamTransport(s)
 }
 
-type stream interface {
-	logFactory
-	network.Stream
-}
-
-type handler interface {
-	ServeP2P(stream)
-}
-
-type handlerFunc func(stream)
-
-func (f handlerFunc) ServeP2P(s stream) {
-	f(s)
-}
-
-func wrapHandler(f logFactory, h handler) network.StreamHandler {
+func export(iface remoteInterface) network.StreamHandler {
 	return func(s network.Stream) {
-		h.ServeP2P(struct {
-			logFactory
-			network.Stream
-		}{streamLogFactory(f, s), s})
+		defer s.Reset()
+
+		conn := rpc.NewConn(streamTransport(s), rpc.MainInterface(iface.Export()))
+
+		if err := waitRPC(conn); err != nil {
+			iface.Log().WithError(err).Debug("rpc conn aborted")
+		}
 	}
 }
 
-func streamLogFactory(f logFactory, s network.Stream) logFactory {
-	return cachedLogFactory(func() log.Logger {
-		return f.Log().WithField("proto", s.Protocol())
-	})
+type remoteInterface interface {
+	Log() log.Logger
+	Proto() protocol.ID
+	Export() capnp.Client
 }

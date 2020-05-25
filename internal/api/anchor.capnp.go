@@ -499,48 +499,166 @@ func (p Anchor_walk_Results_Promise) Anchor() Anchor {
 	return Anchor{Client: p.Pipeline.GetPipeline(0).Client()}
 }
 
-type PeerSet struct{ capnp.Struct }
+type Router struct{ Client capnp.Client }
 
-// PeerSet_TypeID is the unique identifier for the type PeerSet.
-const PeerSet_TypeID = 0xa5a27b6befa606ee
+// Router_TypeID is the unique identifier for the type Router.
+const Router_TypeID = 0xf6cb28aacbb0b707
 
-func NewPeerSet(s *capnp.Segment) (PeerSet, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return PeerSet{st}, err
+func (c Router) Ls(ctx context.Context, params func(Router_ls_Params) error, opts ...capnp.CallOption) Router_ls_Results_Promise {
+	if c.Client == nil {
+		return Router_ls_Results_Promise{Pipeline: capnp.NewPipeline(capnp.ErrorAnswer(capnp.ErrNullClient))}
+	}
+	call := &capnp.Call{
+		Ctx: ctx,
+		Method: capnp.Method{
+			InterfaceID:   0xf6cb28aacbb0b707,
+			MethodID:      0,
+			InterfaceName: "api/anchor.capnp:Router",
+			MethodName:    "ls",
+		},
+		Options: capnp.NewCallOptions(opts),
+	}
+	if params != nil {
+		call.ParamsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
+		call.ParamsFunc = func(s capnp.Struct) error { return params(Router_ls_Params{Struct: s}) }
+	}
+	return Router_ls_Results_Promise{Pipeline: capnp.NewPipeline(c.Client.Call(call))}
 }
 
-func NewRootPeerSet(s *capnp.Segment) (PeerSet, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return PeerSet{st}, err
+type Router_Server interface {
+	Ls(Router_ls) error
 }
 
-func ReadRootPeerSet(msg *capnp.Message) (PeerSet, error) {
+func Router_ServerToClient(s Router_Server) Router {
+	c, _ := s.(server.Closer)
+	return Router{Client: server.New(Router_Methods(nil, s), c)}
+}
+
+func Router_Methods(methods []server.Method, s Router_Server) []server.Method {
+	if cap(methods) == 0 {
+		methods = make([]server.Method, 0, 1)
+	}
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xf6cb28aacbb0b707,
+			MethodID:      0,
+			InterfaceName: "api/anchor.capnp:Router",
+			MethodName:    "ls",
+		},
+		Impl: func(c context.Context, opts capnp.CallOptions, p, r capnp.Struct) error {
+			call := Router_ls{c, opts, Router_ls_Params{Struct: p}, Router_ls_Results{Struct: r}}
+			return s.Ls(call)
+		},
+		ResultsSize: capnp.ObjectSize{DataSize: 0, PointerCount: 1},
+	})
+
+	return methods
+}
+
+// Router_ls holds the arguments for a server call to Router.ls.
+type Router_ls struct {
+	Ctx     context.Context
+	Options capnp.CallOptions
+	Params  Router_ls_Params
+	Results Router_ls_Results
+}
+
+type Router_ls_Params struct{ capnp.Struct }
+
+// Router_ls_Params_TypeID is the unique identifier for the type Router_ls_Params.
+const Router_ls_Params_TypeID = 0x806d937098563a73
+
+func NewRouter_ls_Params(s *capnp.Segment) (Router_ls_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Router_ls_Params{st}, err
+}
+
+func NewRootRouter_ls_Params(s *capnp.Segment) (Router_ls_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Router_ls_Params{st}, err
+}
+
+func ReadRootRouter_ls_Params(msg *capnp.Message) (Router_ls_Params, error) {
 	root, err := msg.RootPtr()
-	return PeerSet{root.Struct()}, err
+	return Router_ls_Params{root.Struct()}, err
 }
 
-func (s PeerSet) String() string {
-	str, _ := text.Marshal(0xa5a27b6befa606ee, s.Struct)
+func (s Router_ls_Params) String() string {
+	str, _ := text.Marshal(0x806d937098563a73, s.Struct)
 	return str
 }
 
-func (s PeerSet) Ids() (capnp.TextList, error) {
+// Router_ls_Params_List is a list of Router_ls_Params.
+type Router_ls_Params_List struct{ capnp.List }
+
+// NewRouter_ls_Params creates a new list of Router_ls_Params.
+func NewRouter_ls_Params_List(s *capnp.Segment, sz int32) (Router_ls_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	return Router_ls_Params_List{l}, err
+}
+
+func (s Router_ls_Params_List) At(i int) Router_ls_Params { return Router_ls_Params{s.List.Struct(i)} }
+
+func (s Router_ls_Params_List) Set(i int, v Router_ls_Params) error {
+	return s.List.SetStruct(i, v.Struct)
+}
+
+func (s Router_ls_Params_List) String() string {
+	str, _ := text.MarshalList(0x806d937098563a73, s.List)
+	return str
+}
+
+// Router_ls_Params_Promise is a wrapper for a Router_ls_Params promised by a client call.
+type Router_ls_Params_Promise struct{ *capnp.Pipeline }
+
+func (p Router_ls_Params_Promise) Struct() (Router_ls_Params, error) {
+	s, err := p.Pipeline.Struct()
+	return Router_ls_Params{s}, err
+}
+
+type Router_ls_Results struct{ capnp.Struct }
+
+// Router_ls_Results_TypeID is the unique identifier for the type Router_ls_Results.
+const Router_ls_Results_TypeID = 0xc28a3d408aa3f6f2
+
+func NewRouter_ls_Results(s *capnp.Segment) (Router_ls_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Router_ls_Results{st}, err
+}
+
+func NewRootRouter_ls_Results(s *capnp.Segment) (Router_ls_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Router_ls_Results{st}, err
+}
+
+func ReadRootRouter_ls_Results(msg *capnp.Message) (Router_ls_Results, error) {
+	root, err := msg.RootPtr()
+	return Router_ls_Results{root.Struct()}, err
+}
+
+func (s Router_ls_Results) String() string {
+	str, _ := text.Marshal(0xc28a3d408aa3f6f2, s.Struct)
+	return str
+}
+
+func (s Router_ls_Results) View() (capnp.TextList, error) {
 	p, err := s.Struct.Ptr(0)
 	return capnp.TextList{List: p.List()}, err
 }
 
-func (s PeerSet) HasIds() bool {
+func (s Router_ls_Results) HasView() bool {
 	p, err := s.Struct.Ptr(0)
 	return p.IsValid() || err != nil
 }
 
-func (s PeerSet) SetIds(v capnp.TextList) error {
+func (s Router_ls_Results) SetView(v capnp.TextList) error {
 	return s.Struct.SetPtr(0, v.List.ToPtr())
 }
 
-// NewIds sets the ids field to a newly
+// NewView sets the view field to a newly
 // allocated capnp.TextList, preferring placement in s's segment.
-func (s PeerSet) NewIds(n int32) (capnp.TextList, error) {
+func (s Router_ls_Results) NewView(n int32) (capnp.TextList, error) {
 	l, err := capnp.NewTextList(s.Struct.Segment(), n)
 	if err != nil {
 		return capnp.TextList{}, err
@@ -549,72 +667,82 @@ func (s PeerSet) NewIds(n int32) (capnp.TextList, error) {
 	return l, err
 }
 
-// PeerSet_List is a list of PeerSet.
-type PeerSet_List struct{ capnp.List }
+// Router_ls_Results_List is a list of Router_ls_Results.
+type Router_ls_Results_List struct{ capnp.List }
 
-// NewPeerSet creates a new list of PeerSet.
-func NewPeerSet_List(s *capnp.Segment, sz int32) (PeerSet_List, error) {
+// NewRouter_ls_Results creates a new list of Router_ls_Results.
+func NewRouter_ls_Results_List(s *capnp.Segment, sz int32) (Router_ls_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return PeerSet_List{l}, err
+	return Router_ls_Results_List{l}, err
 }
 
-func (s PeerSet_List) At(i int) PeerSet { return PeerSet{s.List.Struct(i)} }
+func (s Router_ls_Results_List) At(i int) Router_ls_Results {
+	return Router_ls_Results{s.List.Struct(i)}
+}
 
-func (s PeerSet_List) Set(i int, v PeerSet) error { return s.List.SetStruct(i, v.Struct) }
+func (s Router_ls_Results_List) Set(i int, v Router_ls_Results) error {
+	return s.List.SetStruct(i, v.Struct)
+}
 
-func (s PeerSet_List) String() string {
-	str, _ := text.MarshalList(0xa5a27b6befa606ee, s.List)
+func (s Router_ls_Results_List) String() string {
+	str, _ := text.MarshalList(0xc28a3d408aa3f6f2, s.List)
 	return str
 }
 
-// PeerSet_Promise is a wrapper for a PeerSet promised by a client call.
-type PeerSet_Promise struct{ *capnp.Pipeline }
+// Router_ls_Results_Promise is a wrapper for a Router_ls_Results promised by a client call.
+type Router_ls_Results_Promise struct{ *capnp.Pipeline }
 
-func (p PeerSet_Promise) Struct() (PeerSet, error) {
+func (p Router_ls_Results_Promise) Struct() (Router_ls_Results, error) {
 	s, err := p.Pipeline.Struct()
-	return PeerSet{s}, err
+	return Router_ls_Results{s}, err
 }
 
-const schema_c8aa6d83e0c03a9d = "x\xda\x84\x93?h\x13a\x18\xc6\xdf\xe7\xfb\xeez\x19" +
-	"\xd2\xa4_\xaf`\xff\xe8RR\xa8\x91F\x83.fi" +
-	"\x1c\x14\x14\x84\xfb\x12\x10\x07\x97\xcf\xf4 \xa1\x97\xe4\xb8" +
-	"K\xe8 \x0eR\xa4\x93\x8bP\xd4\xc1E\xa8\x88\xe8 " +
-	"nN\xd2ADp\x13gu\x14\xb4\x0a\xa5(\x88'" +
-	"\xdf\xc5\xe4\xd2R\xda\xed%\xfc\xf2{\x9f\xf7{\xdf\x1b" +
-	"\xdb)\xb3\xa2\xd9fD\xf2\xa89\x12m_\xfbuu" +
-	"2sa\x9d\xc4$\x88LXD\xa7\x8f!\x0f\x82=" +
-	"\x87EB\xf4}\xe4\xf1\xd6\xf2\x8dG\x1b$\x04\xa2\x87" +
-	"\xa5\xd7\x9fV\x9bO\xdf\xf6@\xfb<\xde\xd92\xae." +
-	"\xc7\xecT\xe1\xcd\x93\xbb;\x7f^\x0c\xcbnbV\xcb" +
-	"n\xc7\xc0\x83\x1f/3\xb7fr\x9b\xc3\xc0\x06\xa65" +
-	"\xf0<\x06\x16\xee\xac}\xf1?\x9e\xf8\xaa\x81\xa8\xf2a" +
-	"\xf5={\xf5l\x9bL\xa6\xc1\xcf\x18\x87\xfd3n\xf7" +
-	"\x0d+\x84\xe8\xde\xef\xbf\xd5\x99\xfbW\xb6z6C3" +
-	"\x17\xd98\xc8H\xfe)\x04OB\x13\xec\"\xdb\xb4\xcf" +
-	"\xb2#:;[\xb3\xd7\xb57R~\xe3\xa4j\xd5\xea" +
-	"\xbc\x1d\x14j\xcao\xf9\xa5s\xadZ\xbd\x1d\x14V\x94" +
-	"\xb7\x9c\xab\xb8a\xb6\xebuBip\x83\xc8\x00\x91\x18" +
-	"-\x11\xc9\x14\x87\x9c`XT1\x0b\x91\xf4$@\x10" +
-	"\x06Z6\xd0:\xae\x1bT\xdd\x0e\x91\x03\x0c\xebf\xff" +
-	"\xebr\x0cVc)D\x86\xe0p ML\x97\x87\xe4" +
-	"sT`\xa9\xe6\xaex\xf9$^\xd6W\x9dzlJ" +
-	"\x1fd\xf2B=g\xd7\xe3\xbb\xe7\xbcD$\xd3\x1cr" +
-	"\x9e!\xaa\xd5\x1b\xdeR\xe0\xb6\x88\xa8\x1fp,Y\x17" +
-	"\xe1\xe0\xa8\xd5\xee\xf5\xb8B\xa0gO\x0dZ\x1c\xd7Y" +
-	"s\x1c\xf2\x14\x83\x00&\xa0\x7f\\\xd0\xef;\xcf!\xcf" +
-	"\xec\x19\xe0\xf0\xc7\xdeo2G\x05\xaa\x89p\x9f\x85\xf4" +
-	"\x18\x92\x06\x86/\x0f\x95\xa8\x1f\x97\x10\xc8\x147\x89\x06" +
-	"\xb7\x86\xfe\x09\x8b\xe2411g!9{\xf4?&" +
-	"1\x95'&F-\xee\x85ed\xf5\x9a\xcap\x80\x7f" +
-	"\x01\x00\x00\xff\xff_\xf0\xf0\xfc"
+const schema_c8aa6d83e0c03a9d = "x\xda\x9c\x93Mh\x13_\x14\xc5\xefyo\xe6\x9f." +
+	"\xd2\xe4\xff:\x05\xfb\xb1\x90\xca\x081\x92\xd8\xa0\xab\x80" +
+	"4n\x14\\\xcd\xa4P\\\xe8b\x8c\x81\x04'\xc98" +
+	"\x93\x18\xdc)\xa5\x14\x0b\xdd(b]\xb8r#EA" +
+	"\x11\x11\x04A\x03\x8aP\xdc\xa9kqW7~P\x82" +
+	"\x828\xf2&L>j\x88\xe0nx\xef7\xe7\x9e{" +
+	"\xee\xbb\xf3s\xc8\xb1\x8c\xba\x97\x13\x99\xba\xfa\x9f\xefe" +
+	"\x976\x9c\xeb\x95\xcb$\xa6@\xa4D\x88\x0e70\x01" +
+	"R\xfc\x9d\xd3\xdfOM\xc5\x8e\xdf\xe8\xdc\xa8\x90Wg" +
+	"\x90\x04A+b\x81\xe0O\xa7_\xdd\xbd\xd6\xfe\xf9\xb0" +
+	"\x1fX\xc1>\x09\xac\x07\xc0\xad/\x8fbWf\xf5V" +
+	"?p\x1f3\x12x\x1c\x00\xdf\xdaw\xd6rG\xd7\x06" +
+	"\x80\xed\x0e\xf05\x00R\xeb\xab\x1f\x9d\xf7\x07?I\xc0" +
+	"\xcf\xbf]~\xc3\x9e\xde\xdb!\x95Ip\x8eM@\xcb" +
+	"\xc8O-\xc5\x9a\x04\xff\xe6\x8f_\x8b\xb3\x1bK\x9f\xfb" +
+	"Z\xb9\xca\x82V\xba\x7f\x0a\xc1\xfd\xdb\xd9\xe7\x1f\x96+" +
+	"\x9b\xaf\x89\xa0]`-\xed\x12\xdbC\xa4\xad\xb0U\xed" +
+	"\x9d\x14\xf3#O\x1elm&\xb6\xda\x7f\xc0\xcfXK" +
+	"{\x19\xd4{\xc1Nh\xdb\x01l9\xe5CV\xb5P" +
+	"\xe257]\xb0\x9c\xaa\x93\xcd\xd7\x1a\xf5\xa2\x9b\xb6=" +
+	"\xdd\xb0\\\xab\x02o\x08s\xacZ(\xd5\xdct\xd3\xb2" +
+	"\xcf\xeb\xf9\xa2\x17o\xd8u\xcfT\xb8B\xa4\x80H\x8c" +
+	"g\x89\xcc1\x0es\x92a\xc1\x0aX\x88^\x13\x04\x08" +
+	"\xc2_d\x0d\xcb\x8dX\x95\x01\xd5dO5\xeeX\xf5" +
+	"\x12\xa2\xc4\x10\x1d\xa5d{\xd2^\xc3\xe6\x83\xf6N\x12" +
+	"\x99Q\x0e3\xc1\xe0\x17Je\xfb\x9c[\xac\x12\x11b" +
+	"\x04\x83\x03\xff\xf7\xc6F\x90\x87#S\x1aV t\xaa" +
+	"3\xc4/\x96\x8b\xcdPY\x1a\x8e\x8d2\xbc\xd88\x1b" +
+	"|\xc15\x00s\xac\xabx@*\xea\x1c\xe6<\x83\x00" +
+	"&!\x0fS2\xe6\x04\x87ydW \xff\x90\xf9\x90" +
+	"q\xb3]\x0c\x99\x0a\xfa_4\xf2~h\x97\xe0\x9ac" +
+	"\\%\xea\xbea\x84\xbb#23\xc4\xc4\xfe\x08z\xfb" +
+	"\x86p3\xc5t\x92\x98\x18\x8fp\xdb\xcb!.\xc7\x9e" +
+	"\x83\x01\x0cq\xd0\x89\x9bd(JP'\\{\x84+" +
+	"(\x84\xac\xa3v\xb4\x0c\xe0w\x00\x00\x00\xff\xff\xb79" +
+	"'\x9f"
 
 func init() {
 	schemas.Register(schema_c8aa6d83e0c03a9d,
+		0x806d937098563a73,
 		0x95460e1858f85cf4,
-		0xa5a27b6befa606ee,
 		0xb1fcf692a8c62e19,
 		0xc2241b810eb3f099,
+		0xc28a3d408aa3f6f2,
 		0xea2bd670e2878d2d,
 		0xef56981b53fef997,
-		0xf4acba02cd83d452)
+		0xf4acba02cd83d452,
+		0xf6cb28aacbb0b707)
 }

@@ -6,10 +6,12 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 	"go.uber.org/fx"
 
 	log "github.com/lthibault/log/pkg"
+	"github.com/lthibault/wetware/internal/api"
 	ww "github.com/lthibault/wetware/pkg"
 	anchorpath "github.com/lthibault/wetware/pkg/util/anchor/path"
 )
@@ -52,9 +54,26 @@ func (c Client) Join(topic string) (Topic, error) {
 
 // Ls provides a view of all hosts in the cluster.
 func (c Client) Ls(ctx context.Context) ww.Iterator {
-	var it clusterIterator
-	c.term.AutoDial().Call(ctx, ww.ClusterProtocol, &it)
-	return &it
+	var r api.Router
+	r.Client = c.term.AutoDial(ctx, ww.ClusterProtocol)
+
+	res, err := r.Ls(ctx, func(p api.Router_ls_Params) error {
+		return nil
+	}).Struct()
+	if err != nil {
+		return errIter(err)
+	}
+
+	view, err := res.View()
+	if err != nil {
+		return errIter(err)
+	}
+
+	if !view.HasData() || view.Len() == 0 {
+		return emptyIterator{}
+	}
+
+	return newClusterView(c.term, view)
 }
 
 // Walk the Anchor hierarchy.
@@ -63,7 +82,20 @@ func (c Client) Walk(ctx context.Context, path []string) (ww.Anchor, error) {
 		return c, nil
 	}
 
-	ha := newHostAnchor()
-	c.term.DialString(path[0]).Call(ctx, ww.AnchorProtocol, ha)
-	return ha.Walk(ctx, path[1:])
+	id, err := peer.Decode(path[0])
+	if err != nil {
+		return nil, err
+	}
+
+	var a api.Anchor
+	a.Client = c.term.Dial(ctx, ww.AnchorProtocol, id)
+
+	res, err := a.Walk(ctx, func(p api.Anchor_walk_Params) error {
+		return p.SetPath(anchorpath.Join(path...))
+	}).Struct()
+	if err != nil {
+		return nil, err
+	}
+
+	return anchor{res.Anchor()}, nil
 }

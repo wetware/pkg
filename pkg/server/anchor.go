@@ -1,34 +1,27 @@
 package server
 
 import (
+	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/pkg/errors"
 	capnp "zombiezen.com/go/capnproto2"
 
 	log "github.com/lthibault/log/pkg"
-
 	"github.com/lthibault/wetware/internal/api"
+	ww "github.com/lthibault/wetware/pkg"
 	anchorpath "github.com/lthibault/wetware/pkg/util/anchor/path"
 )
 
 type anchor struct {
-	log  log.Logger
+	logFactory
 	root anchorNode
 }
 
-func newAnchor(log log.Logger, root anchorNode) api.Anchor {
-	return api.Anchor_ServerToClient(anchor{
-		log:  log,
-		root: root,
-	})
+func (anchor) Proto() protocol.ID {
+	return ww.AnchorProtocol
 }
 
-func (a anchor) annotateErr(method string, err error) error {
-	if err != nil {
-		a.log.WithError(err).WithField("method", method).
-			Error("rpc call failed")
-	}
-
-	return errors.Wrap(err, "internal server error")
+func (a anchor) Export() capnp.Client {
+	return api.Anchor_ServerToClient(a).Client
 }
 
 func (a anchor) Ls(call api.Anchor_ls) error {
@@ -54,10 +47,7 @@ func (a anchor) Ls(call api.Anchor_ls) error {
 			break
 		}
 
-		if err = item.SetAnchor(newAnchor(
-			a.log.WithField("path", child.Node.Path()),
-			child.Node,
-		)); err != nil {
+		if err = item.SetAnchor(a.subAnchor(child.Node)); err != nil {
 			break
 		}
 
@@ -75,9 +65,26 @@ func (a anchor) Walk(call api.Anchor_walk) error {
 		return a.annotateErr("walk", err)
 	}
 
-	node := a.root.Walk(anchorpath.Parts(path))
-	return a.annotateErr("ls", call.Results.SetAnchor(newAnchor(
-		a.log.WithField("path", node.Path()),
-		node,
-	)))
+	child := a.subAnchor(a.root.Walk(anchorpath.Parts(path)))
+	return a.annotateErr("ls", call.Results.SetAnchor(child))
+}
+
+func (a anchor) subAnchor(node anchorNode) api.Anchor {
+	return api.Anchor_ServerToClient(anchor{
+		logFactory: a.logFactory,
+		root:       node,
+	})
+}
+
+func (a anchor) annotateErr(method string, err error) error {
+	if err != nil {
+		a.Log().WithFields(log.F{
+			"error":  err,
+			"method": method,
+			"path":   a.root.Path(),
+			"proto":  a.Proto(),
+		}).Error("rpc call failed")
+	}
+
+	return errors.Wrap(err, "internal server error")
 }
