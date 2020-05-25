@@ -14,6 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/routing"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/config"
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
@@ -121,8 +122,10 @@ func newRoutedHost(lx fx.Lifecycle, cfg hostConfig) (out hostOut, err error) {
 		},
 	})
 
-	out.DHT = dht.NewDHTClient(cfg.Ctx, out.Host, cfg.Datastore)
-	out.Host = routedhost.Wrap(out.Host, out.DHT)
+	out.DHT, err = dual.New(cfg.Ctx, out.Host, dht.Datastore(cfg.Datastore))
+	if err == nil {
+		out.Host = routedhost.Wrap(out.Host, out.DHT)
+	}
 	return
 }
 
