@@ -75,6 +75,6 @@ func withDefault(opt []Option) []Option {
 		WithNamespace("ww"),
 		WithDiscover(nil),
 		withDataStore(nil),
-		withLimit(1),
+		withLimit(3),
 	}, opt...)
 }

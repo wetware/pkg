@@ -314,23 +314,30 @@ type listenAndServeConfig struct {
 	Host      host.Host
 	Addrs     []multiaddr.Multiaddr
 	Signaller addrChangeSignaller
+
+	DHT *dual.DHT
 }
 
-func listenAndServe(cfg listenAndServeConfig) error {
+func listenAndServe(lx fx.Lifecycle, cfg listenAndServeConfig) error {
 	sub, err := cfg.Host.EventBus().Subscribe(new(event.EvtLocalAddressesUpdated))
 	if err != nil {
 		return err
 	}
+	defer sub.Close()
 
 	if err := cfg.Host.Network().Listen(cfg.Addrs...); err != nil {
 		return err
 	}
 
-	// ensure the host fires event.EvtLocalAddressUpdated immediately.
+	// Ensure the host fires event.EvtLocalAddressUpdated immediately.
 	cfg.Signaller.SignalAddressChange()
 
+	// Best-effort attempt at ensuring the DHT is booted when `server.New` returns.
+	// This is probably not necessary, but can't hurt.
+	cfg.DHT.Bootstrap(nil) // `dht.IpfsDHT.Bootstrap` discards the `ctx` param.
+
 	<-sub.Out()
-	return sub.Close()
+	return nil
 }
 
 /*

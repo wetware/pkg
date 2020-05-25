@@ -3,13 +3,17 @@ package client
 import (
 	"context"
 
-	host "github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/peer"
-	log "github.com/lthibault/log/pkg"
-	syncutil "github.com/lthibault/util/sync"
-	discover "github.com/lthibault/wetware/pkg/discover"
 	"github.com/pkg/errors"
 	"go.uber.org/fx"
+
+	log "github.com/lthibault/log/pkg"
+	syncutil "github.com/lthibault/util/sync"
+
+	host "github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-kad-dht/dual"
+
+	discover "github.com/lthibault/wetware/pkg/discover"
 )
 
 /*
@@ -26,6 +30,7 @@ type dialConfig struct {
 
 	discover.Strategy
 	Limit int `name:"discover_limit"`
+	DHT   *dual.DHT
 }
 
 // dialer attempts to connect to n peers, returning when we have at least one successful
@@ -48,7 +53,12 @@ func dialer(ctx context.Context) func(fx.Lifecycle, dialConfig) error {
 
 		select {
 		case <-ctxOK.Done():
-			return nil
+			// Best-effort attempt at booting the DHT, now that
+			// a connection exists.
+			//
+			// This is a hacky attempt at fixing the kbucket.ErrLookupFailure when
+			// invoking client commands.
+			return cfg.DHT.Bootstrap(ctx)
 		case <-ctx.Done():
 			return any.Wait()
 		}

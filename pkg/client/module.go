@@ -11,7 +11,6 @@ import (
 	p2p "github.com/libp2p/go-libp2p"
 	host "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/pnet"
-	"github.com/libp2p/go-libp2p-core/routing"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
@@ -69,7 +68,7 @@ type pubsubConfig struct {
 
 	Ctx  context.Context
 	Host host.Host
-	DHT  routing.Routing
+	DHT  *dual.DHT
 }
 
 func newPubsub(lx fx.Lifecycle, cfg pubsubConfig) (*pubsub.PubSub, error) {
@@ -108,7 +107,7 @@ type hostOut struct {
 	fx.Out
 
 	Host host.Host
-	DHT  routing.Routing
+	DHT  *dual.DHT
 }
 
 func newRoutedHost(lx fx.Lifecycle, cfg hostConfig) (out hostOut, err error) {
@@ -123,9 +122,11 @@ func newRoutedHost(lx fx.Lifecycle, cfg hostConfig) (out hostOut, err error) {
 	})
 
 	out.DHT, err = dual.New(cfg.Ctx, out.Host, dht.Datastore(cfg.Datastore))
-	if err == nil {
-		out.Host = routedhost.Wrap(out.Host, out.DHT)
+	if err != nil {
+		return
 	}
+
+	out.Host = routedhost.Wrap(out.Host, out.DHT)
 	return
 }
 
