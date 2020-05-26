@@ -27,7 +27,7 @@ const (
 
 // Anchor .
 type Anchor interface {
-	Ls(context.Context) Iterator
+	Ls(context.Context) (Iterator, error)
 	Walk(context.Context, []string) (Anchor, error)
 }
 

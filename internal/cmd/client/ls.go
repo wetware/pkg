@@ -26,7 +26,12 @@ func lsAction() cli.ActionFunc {
 			return errors.Wrapf(err, "walk %s", c.Args().First())
 		}
 
-		return printPaths(c.App.Writer, anchor.Ls(proc))
+		children, err := anchor.Ls(proc)
+		if err != nil {
+			return errors.Wrapf(err, "ls %s", anchorpath.Join(c.Args().Slice()))
+		}
+
+		return printPaths(c.App.Writer, children)
 	}
 }
 

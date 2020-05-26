@@ -55,7 +55,7 @@ func TestJoin(t *testing.T) {
 	}}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			assert.Equal(t, tC.expected, anchorpath.Join(tC.parts...))
+			assert.Equal(t, tC.expected, anchorpath.Join(tC.parts))
 		})
 	}
 }

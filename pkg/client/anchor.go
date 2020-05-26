@@ -13,25 +13,20 @@ import (
 
 type anchor struct{ api.Anchor }
 
-func (a anchor) Ls(ctx context.Context) ww.Iterator {
+func (a anchor) Ls(ctx context.Context) (ww.Iterator, error) {
 	res, err := a.Anchor.Ls(ctx, func(p api.Anchor_ls_Params) error {
 		return nil
 	}).Struct()
 	if err != nil {
-		return errIter(err)
+		return nil, err
 	}
 
-	cs, err := res.Children()
-	if err != nil {
-		return errIter(err)
-	}
-
-	return newAnchorIterator(cs)
+	return newAnchorIterator(res)
 }
 
 func (a anchor) Walk(ctx context.Context, path []string) (ww.Anchor, error) {
 	res, err := a.Anchor.Walk(ctx, func(param api.Anchor_walk_Params) error {
-		return param.SetPath(anchorpath.Join(path...))
+		return param.SetPath(anchorpath.Join(path))
 	}).Struct()
 	if err != nil {
 		return nil, err
@@ -47,15 +42,16 @@ type anchorIterator struct {
 	err error
 }
 
-func newAnchorIterator(cs api.Anchor_SubAnchor_List) ww.Iterator {
-	if !cs.HasData() || cs.Len() == 0 {
-		return emptyIterator{}
+func newAnchorIterator(res api.Anchor_ls_Results) (ww.Iterator, error) {
+	cs, err := res.Children()
+	if err != nil {
+		return nil, err
 	}
 
 	return &anchorIterator{
 		cs:  cs,
 		idx: -1,
-	}
+	}, nil
 }
 
 func (it anchorIterator) Err() error {
@@ -139,7 +135,7 @@ func (la *lazyAnchor) ensureConnection(ctx context.Context) {
 	return
 }
 
-func (la *lazyAnchor) Ls(ctx context.Context) ww.Iterator {
+func (la *lazyAnchor) Ls(ctx context.Context) (ww.Iterator, error) {
 	la.ensureConnection(ctx)
 	return la.anchor.Ls(ctx)
 }

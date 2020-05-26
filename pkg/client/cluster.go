@@ -5,6 +5,7 @@ import (
 
 	"github.com/libp2p/go-libp2p-core/peer"
 
+	"github.com/lthibault/wetware/internal/api"
 	ww "github.com/lthibault/wetware/pkg"
 )
 
@@ -18,12 +19,17 @@ type clusterView struct {
 	term *terminal
 }
 
-func newClusterView(term *terminal, view capnp.TextList) *clusterView {
+func newClusterView(term *terminal, res api.Router_ls_Results) (*clusterView, error) {
+	view, err := res.View()
+	if err != nil {
+		return nil, err
+	}
+
 	return &clusterView{
 		view: view,
 		idx:  -1,
 		term: term,
-	}
+	}, nil
 }
 
 func (c clusterView) Err() error {

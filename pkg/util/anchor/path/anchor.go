@@ -33,7 +33,7 @@ func Parts(path string) []string {
 }
 
 // Join path components
-func Join(parts ...string) string {
+func Join(parts []string) string {
 	return Clean(strings.Join(parts, sep))
 
 }
