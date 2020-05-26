@@ -67,7 +67,7 @@ func module(h *Host, opt []Option) fx.Option {
 		 *  start runtime goroutines  *
 		 ******************************/
 		fx.Invoke(
-			bootstrap,
+			startDiscover,
 			startEventLoop,
 			maintainConnectivity,
 			announce,
@@ -295,7 +295,7 @@ func newCtx(lx fx.Lifecycle) context.Context {
 	Runtime processes (use fx.Invoke)
 */
 
-func bootstrap(lx fx.Lifecycle, beacon discover.Protocol, host host.Host) {
+func startDiscover(lx fx.Lifecycle, beacon discover.Protocol, host host.Host) {
 	lx.Append(fx.Hook{
 		// We must wait until the libp2p.Host is listening before
 		// advertising our listen addresses.
