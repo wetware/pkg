@@ -55,7 +55,7 @@ func (c Client) Join(topic string) (Topic, error) {
 // Ls provides a view of all hosts in the cluster.
 func (c Client) Ls(ctx context.Context) ww.Iterator {
 	var r api.Router
-	r.Client = c.term.AutoDial(ctx, ww.ClusterProtocol)
+	r.Client = c.term.AutoDial(ctx, ww.RouterProtocol)
 
 	res, err := r.Ls(ctx, func(p api.Router_ls_Params) error {
 		return nil

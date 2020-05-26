@@ -18,8 +18,8 @@ const (
 	// Protocol is the common prefix for all wetware wire protocols.
 	Protocol = "/ww/0.0.0"
 
-	// ClusterProtocol is the protocol ID for cluster-level operations
-	ClusterProtocol = protocol.ID(Protocol + "/cluster")
+	// RouterProtocol is the protocol ID for cluster-level operations
+	RouterProtocol = protocol.ID(Protocol)
 
 	// AnchorProtocol is the protocol ID for interacting with remote anchors
 	AnchorProtocol = protocol.ID(Protocol + "/anchor")

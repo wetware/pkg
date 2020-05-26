@@ -20,6 +20,7 @@ func lsAction() cli.ActionFunc {
 			return errors.Wrap(err, "invalid path")
 		}
 
+		// TODO:  avoid extra round-trip.
 		anchor, err := root.Walk(proc, anchorpath.Parts(c.Args().First()))
 		if err != nil {
 			return errors.Wrapf(err, "walk %s", c.Args().First())
