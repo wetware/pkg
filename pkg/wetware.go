@@ -15,14 +15,8 @@ const (
 	// 		  event.EvtPeerConnectednessChanged becomes available.
 	ClientUAgent = "ww-client"
 
-	// Protocol is the common prefix for all wetware wire protocols.
-	Protocol = "/ww/0.0.0"
-
-	// RouterProtocol is the protocol ID for cluster-level operations
-	RouterProtocol = protocol.ID(Protocol)
-
-	// AnchorProtocol is the protocol ID for interacting with remote anchors
-	AnchorProtocol = protocol.ID(Protocol + "/anchor")
+	// Protocol id for wetware RPC
+	Protocol = protocol.ID("/ww/0.0.0")
 )
 
 // Anchor .

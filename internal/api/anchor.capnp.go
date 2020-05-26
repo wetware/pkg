@@ -4,6 +4,7 @@ package api
 
 import (
 	context "golang.org/x/net/context"
+	strconv "strconv"
 	capnp "zombiezen.com/go/capnproto2"
 	text "zombiezen.com/go/capnproto2/encoding/text"
 	schemas "zombiezen.com/go/capnproto2/schemas"
@@ -120,17 +121,35 @@ type Anchor_walk struct {
 }
 
 type Anchor_SubAnchor struct{ capnp.Struct }
+type Anchor_SubAnchor_Which uint16
+
+const (
+	Anchor_SubAnchor_Which_root   Anchor_SubAnchor_Which = 0
+	Anchor_SubAnchor_Which_anchor Anchor_SubAnchor_Which = 1
+)
+
+func (w Anchor_SubAnchor_Which) String() string {
+	const s = "rootanchor"
+	switch w {
+	case Anchor_SubAnchor_Which_root:
+		return s[0:4]
+	case Anchor_SubAnchor_Which_anchor:
+		return s[4:10]
+
+	}
+	return "Anchor_SubAnchor_Which(" + strconv.FormatUint(uint64(w), 10) + ")"
+}
 
 // Anchor_SubAnchor_TypeID is the unique identifier for the type Anchor_SubAnchor.
 const Anchor_SubAnchor_TypeID = 0xea2bd670e2878d2d
 
 func NewAnchor_SubAnchor(s *capnp.Segment) (Anchor_SubAnchor, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2})
 	return Anchor_SubAnchor{st}, err
 }
 
 func NewRootAnchor_SubAnchor(s *capnp.Segment) (Anchor_SubAnchor, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2})
 	return Anchor_SubAnchor{st}, err
 }
 
@@ -144,6 +163,9 @@ func (s Anchor_SubAnchor) String() string {
 	return str
 }
 
+func (s Anchor_SubAnchor) Which() Anchor_SubAnchor_Which {
+	return Anchor_SubAnchor_Which(s.Struct.Uint16(0))
+}
 func (s Anchor_SubAnchor) Path() (string, error) {
 	p, err := s.Struct.Ptr(0)
 	return p.Text(), err
@@ -163,17 +185,29 @@ func (s Anchor_SubAnchor) SetPath(v string) error {
 	return s.Struct.SetText(0, v)
 }
 
+func (s Anchor_SubAnchor) SetRoot() {
+	s.Struct.SetUint16(0, 0)
+
+}
+
 func (s Anchor_SubAnchor) Anchor() Anchor {
+	if s.Struct.Uint16(0) != 1 {
+		panic("Which() != anchor")
+	}
 	p, _ := s.Struct.Ptr(1)
 	return Anchor{Client: p.Interface().Client()}
 }
 
 func (s Anchor_SubAnchor) HasAnchor() bool {
+	if s.Struct.Uint16(0) != 1 {
+		return false
+	}
 	p, err := s.Struct.Ptr(1)
 	return p.IsValid() || err != nil
 }
 
 func (s Anchor_SubAnchor) SetAnchor(v Anchor) error {
+	s.Struct.SetUint16(0, 1)
 	if v.Client == nil {
 		return s.Struct.SetPtr(1, capnp.Ptr{})
 	}
@@ -187,7 +221,7 @@ type Anchor_SubAnchor_List struct{ capnp.List }
 
 // NewAnchor_SubAnchor creates a new list of Anchor_SubAnchor.
 func NewAnchor_SubAnchor_List(s *capnp.Segment, sz int32) (Anchor_SubAnchor_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2}, sz)
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2}, sz)
 	return Anchor_SubAnchor_List{l}, err
 }
 
@@ -499,250 +533,43 @@ func (p Anchor_walk_Results_Promise) Anchor() Anchor {
 	return Anchor{Client: p.Pipeline.GetPipeline(0).Client()}
 }
 
-type Router struct{ Client capnp.Client }
-
-// Router_TypeID is the unique identifier for the type Router.
-const Router_TypeID = 0xf6cb28aacbb0b707
-
-func (c Router) Ls(ctx context.Context, params func(Router_ls_Params) error, opts ...capnp.CallOption) Router_ls_Results_Promise {
-	if c.Client == nil {
-		return Router_ls_Results_Promise{Pipeline: capnp.NewPipeline(capnp.ErrorAnswer(capnp.ErrNullClient))}
-	}
-	call := &capnp.Call{
-		Ctx: ctx,
-		Method: capnp.Method{
-			InterfaceID:   0xf6cb28aacbb0b707,
-			MethodID:      0,
-			InterfaceName: "api/anchor.capnp:Router",
-			MethodName:    "ls",
-		},
-		Options: capnp.NewCallOptions(opts),
-	}
-	if params != nil {
-		call.ParamsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		call.ParamsFunc = func(s capnp.Struct) error { return params(Router_ls_Params{Struct: s}) }
-	}
-	return Router_ls_Results_Promise{Pipeline: capnp.NewPipeline(c.Client.Call(call))}
-}
-
-type Router_Server interface {
-	Ls(Router_ls) error
-}
-
-func Router_ServerToClient(s Router_Server) Router {
-	c, _ := s.(server.Closer)
-	return Router{Client: server.New(Router_Methods(nil, s), c)}
-}
-
-func Router_Methods(methods []server.Method, s Router_Server) []server.Method {
-	if cap(methods) == 0 {
-		methods = make([]server.Method, 0, 1)
-	}
-
-	methods = append(methods, server.Method{
-		Method: capnp.Method{
-			InterfaceID:   0xf6cb28aacbb0b707,
-			MethodID:      0,
-			InterfaceName: "api/anchor.capnp:Router",
-			MethodName:    "ls",
-		},
-		Impl: func(c context.Context, opts capnp.CallOptions, p, r capnp.Struct) error {
-			call := Router_ls{c, opts, Router_ls_Params{Struct: p}, Router_ls_Results{Struct: r}}
-			return s.Ls(call)
-		},
-		ResultsSize: capnp.ObjectSize{DataSize: 0, PointerCount: 1},
-	})
-
-	return methods
-}
-
-// Router_ls holds the arguments for a server call to Router.ls.
-type Router_ls struct {
-	Ctx     context.Context
-	Options capnp.CallOptions
-	Params  Router_ls_Params
-	Results Router_ls_Results
-}
-
-type Router_ls_Params struct{ capnp.Struct }
-
-// Router_ls_Params_TypeID is the unique identifier for the type Router_ls_Params.
-const Router_ls_Params_TypeID = 0x806d937098563a73
-
-func NewRouter_ls_Params(s *capnp.Segment) (Router_ls_Params, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Router_ls_Params{st}, err
-}
-
-func NewRootRouter_ls_Params(s *capnp.Segment) (Router_ls_Params, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Router_ls_Params{st}, err
-}
-
-func ReadRootRouter_ls_Params(msg *capnp.Message) (Router_ls_Params, error) {
-	root, err := msg.RootPtr()
-	return Router_ls_Params{root.Struct()}, err
-}
-
-func (s Router_ls_Params) String() string {
-	str, _ := text.Marshal(0x806d937098563a73, s.Struct)
-	return str
-}
-
-// Router_ls_Params_List is a list of Router_ls_Params.
-type Router_ls_Params_List struct{ capnp.List }
-
-// NewRouter_ls_Params creates a new list of Router_ls_Params.
-func NewRouter_ls_Params_List(s *capnp.Segment, sz int32) (Router_ls_Params_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return Router_ls_Params_List{l}, err
-}
-
-func (s Router_ls_Params_List) At(i int) Router_ls_Params { return Router_ls_Params{s.List.Struct(i)} }
-
-func (s Router_ls_Params_List) Set(i int, v Router_ls_Params) error {
-	return s.List.SetStruct(i, v.Struct)
-}
-
-func (s Router_ls_Params_List) String() string {
-	str, _ := text.MarshalList(0x806d937098563a73, s.List)
-	return str
-}
-
-// Router_ls_Params_Promise is a wrapper for a Router_ls_Params promised by a client call.
-type Router_ls_Params_Promise struct{ *capnp.Pipeline }
-
-func (p Router_ls_Params_Promise) Struct() (Router_ls_Params, error) {
-	s, err := p.Pipeline.Struct()
-	return Router_ls_Params{s}, err
-}
-
-type Router_ls_Results struct{ capnp.Struct }
-
-// Router_ls_Results_TypeID is the unique identifier for the type Router_ls_Results.
-const Router_ls_Results_TypeID = 0xc28a3d408aa3f6f2
-
-func NewRouter_ls_Results(s *capnp.Segment) (Router_ls_Results, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Router_ls_Results{st}, err
-}
-
-func NewRootRouter_ls_Results(s *capnp.Segment) (Router_ls_Results, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Router_ls_Results{st}, err
-}
-
-func ReadRootRouter_ls_Results(msg *capnp.Message) (Router_ls_Results, error) {
-	root, err := msg.RootPtr()
-	return Router_ls_Results{root.Struct()}, err
-}
-
-func (s Router_ls_Results) String() string {
-	str, _ := text.Marshal(0xc28a3d408aa3f6f2, s.Struct)
-	return str
-}
-
-func (s Router_ls_Results) View() (capnp.TextList, error) {
-	p, err := s.Struct.Ptr(0)
-	return capnp.TextList{List: p.List()}, err
-}
-
-func (s Router_ls_Results) HasView() bool {
-	p, err := s.Struct.Ptr(0)
-	return p.IsValid() || err != nil
-}
-
-func (s Router_ls_Results) SetView(v capnp.TextList) error {
-	return s.Struct.SetPtr(0, v.List.ToPtr())
-}
-
-// NewView sets the view field to a newly
-// allocated capnp.TextList, preferring placement in s's segment.
-func (s Router_ls_Results) NewView(n int32) (capnp.TextList, error) {
-	l, err := capnp.NewTextList(s.Struct.Segment(), n)
-	if err != nil {
-		return capnp.TextList{}, err
-	}
-	err = s.Struct.SetPtr(0, l.List.ToPtr())
-	return l, err
-}
-
-// Router_ls_Results_List is a list of Router_ls_Results.
-type Router_ls_Results_List struct{ capnp.List }
-
-// NewRouter_ls_Results creates a new list of Router_ls_Results.
-func NewRouter_ls_Results_List(s *capnp.Segment, sz int32) (Router_ls_Results_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return Router_ls_Results_List{l}, err
-}
-
-func (s Router_ls_Results_List) At(i int) Router_ls_Results {
-	return Router_ls_Results{s.List.Struct(i)}
-}
-
-func (s Router_ls_Results_List) Set(i int, v Router_ls_Results) error {
-	return s.List.SetStruct(i, v.Struct)
-}
-
-func (s Router_ls_Results_List) String() string {
-	str, _ := text.MarshalList(0xc28a3d408aa3f6f2, s.List)
-	return str
-}
-
-// Router_ls_Results_Promise is a wrapper for a Router_ls_Results promised by a client call.
-type Router_ls_Results_Promise struct{ *capnp.Pipeline }
-
-func (p Router_ls_Results_Promise) Struct() (Router_ls_Results, error) {
-	s, err := p.Pipeline.Struct()
-	return Router_ls_Results{s}, err
-}
-
-const schema_c8aa6d83e0c03a9d = "x\xda\x9c\x93Mh\x13_\x14\xc5\xefyo\xe6\x9f." +
-	"\xd2\xe4\xff:\x05\xfb\xb1\x90\xca\x081\x92\xd8\xa0\xab\x80" +
-	"4n\x14\\\xcd\xa4P\\\xe8b\x8c\x81\x04'\xc98" +
-	"\x93\x18\xdc)\xa5\x14\x0b\xdd(b]\xb8r#EA" +
-	"\x11\x11\x04A\x03\x8aP\xdc\xa9kqW7~P\x82" +
-	"\x828\xf2&L>j\x88\xe0nx\xef7\xe7\x9e{" +
-	"\xee\xbb\xf3s\xc8\xb1\x8c\xba\x97\x13\x99\xba\xfa\x9f\xefe" +
-	"\x976\x9c\xeb\x95\xcb$\xa6@\xa4D\x88\x0e70\x01" +
-	"R\xfc\x9d\xd3\xdfOM\xc5\x8e\xdf\xe8\xdc\xa8\x90Wg" +
-	"\x90\x04A+b\x81\xe0O\xa7_\xdd\xbd\xd6\xfe\xf9\xb0" +
-	"\x1fX\xc1>\x09\xac\x07\xc0\xad/\x8fbWf\xf5V" +
-	"?p\x1f3\x12x\x1c\x00\xdf\xdaw\xd6rG\xd7\x06" +
-	"\x80\xed\x0e\xf05\x00R\xeb\xab\x1f\x9d\xf7\x07?I\xc0" +
-	"\xcf\xbf]~\xc3\x9e\xde\xdb!\x95Ip\x8eM@\xcb" +
-	"\xc8O-\xc5\x9a\x04\xff\xe6\x8f_\x8b\xb3\x1bK\x9f\xfb" +
-	"Z\xb9\xca\x82V\xba\x7f\x0a\xc1\xfd\xdb\xd9\xe7\x1f\x96+" +
-	"\x9b\xaf\x89\xa0]`-\xed\x12\xdbC\xa4\xad\xb0U\xed" +
-	"\x9d\x14\xf3#O\x1elm&\xb6\xda\x7f\xc0\xcfXK" +
-	"{\x19\xd4{\xc1Nh\xdb\x01l9\xe5CV\xb5P" +
-	"\xe257]\xb0\x9c\xaa\x93\xcd\xd7\x1a\xf5\xa2\x9b\xb6=" +
-	"\xdd\xb0\\\xab\x02o\x08s\xacZ(\xd5\xdct\xd3\xb2" +
-	"\xcf\xeb\xf9\xa2\x17o\xd8u\xcfT\xb8B\xa4\x80H\x8c" +
-	"g\x89\xcc1\x0es\x92a\xc1\x0aX\x88^\x13\x04\x08" +
-	"\xc2_d\x0d\xcb\x8dX\x95\x01\xd5dO5\xeeX\xf5" +
-	"\x12\xa2\xc4\x10\x1d\xa5d{\xd2^\xc3\xe6\x83\xf6N\x12" +
-	"\x99Q\x0e3\xc1\xe0\x17Je\xfb\x9c[\xac\x12\x11b" +
-	"\x04\x83\x03\xff\xf7\xc6F\x90\x87#S\x1aV t\xaa" +
-	"3\xc4/\x96\x8b\xcdPY\x1a\x8e\x8d2\xbc\xd88\x1b" +
-	"|\xc15\x00s\xac\xabx@*\xea\x1c\xe6<\x83\x00" +
-	"&!\x0fS2\xe6\x04\x87ydW \xff\x90\xf9\x90" +
-	"q\xb3]\x0c\x99\x0a\xfa_4\xf2~h\x97\xe0\x9ac" +
-	"\\%\xea\xbea\x84\xbb#23\xc4\xc4\xfe\x08z\xfb" +
-	"\x86p3\xc5t\x92\x98\x18\x8fp\xdb\xcb!.\xc7\x9e" +
-	"\x83\x01\x0cq\xd0\x89\x9bd(JP'\\{\x84+" +
-	"(\x84\xac\xa3v\xb4\x0c\xe0w\x00\x00\x00\xff\xff\xb79" +
-	"'\x9f"
+const schema_c8aa6d83e0c03a9d = "x\xda\x9c\x92?hS]\x18\xc6\x9f\xe7\x9c\x9b\xde~" +
+	"\x90?=\xbd\x81&-\x1d\xfaQA\"FB\xb7," +
+	"M\xc1\x8a\x15\x85\x9cT\xc4\xc1\xe5\x1a\x0b)\xde$\x97" +
+	"{\x13\x9c\x1c\xa4Cq\xe8\"\x88:\xb8\x8b\x08\"n" +
+	"N\xd2A\\\xdc\xc4Y\x1d]T(bAz\xe4D" +
+	"\x92\x9b\x16Tp\xbb\xbc\xf7\xf7>\xef\xfb>\xe7\x99\xfa" +
+	"P\x13\x95\xd4\x8c\x00t!5a\xf6\xae|\xbf\\\xc8" +
+	"\x9e\xb9\x0bU \x90\xa2\x0bT\xbe\x96\x08\xaa\xfde\xd0" +
+	"\x14\xcb\xaf\x1e\xdd\xf9\xf6\xe3\xd9\xd8\xef\xa5\"\xff'\xe8" +
+	"-\xd0\x02\x0f\xbe<\xcf\xde\x9a[\xdc\x1d\x07V8k" +
+	"\x81\xb5\x01prg\xfbc\xf8\xee\xc4'\xe8\x02i\x1a" +
+	"o\xb7\xde\x88\x17O\xf6\xb0*\\\x01,\xdd\xe44\xbd" +
+	"\x1d\xdb\xe5\xdd\xe6S\xd0\xdc\xdb?X\x9f\xbb\x7f\xe9\xf3" +
+	"/=\xc7\xca-\x88i\xc2IZ\x95\x92\xe6a\xf5\xe5" +
+	"\xfb\xad\xf6\xe3\xd7\x00\xbd\xff\xc4\xae\xa7\xc4\x0c\xe0\xcd\x8b" +
+	"m\xaf-\\\xc0\xf8\xe1\xe6)\xbf\xd3l\xc9nTn" +
+	"\xfaa'\xac\xaet\x9a\xadnT\xbe\xe1\x07\xd7\x17\x1b" +
+	"\x1bq\xae\x1f\xf4b\xedH\x07p\x08\xa8L\x15\xd0\x93" +
+	"\x92:/\xb8\xec\x0fX\xaad&H\x05\xfeE\xb6\xee" +
+	"G\xae\xdf>\xa4ZJTs\xa1\xdfk1\x0d\xc1\xf4" +
+	"\x9f\x94\x82\xd8\xae\xd7\x0f\xe4\xe1\xf5\xce\x01:-\xa9\x8f" +
+	"\x0b\x9afk3\xb8\x16mt\x000\x0b\xd6%9\x95" +
+	"\xf8\x0c\xda\xe2\xef\x07\xac\xf7\xaf\x0e\xbe\x18\xd5I\x9d\x1e" +
+	"\x8dX\xb5\xbb\xd6$\xf5y\xc1\x0c\x8d\xc9\xd3V\xd7l" +
+	"\xf5\xb4\xa4\xae\x0b\xce\x8b\x03\xc3<\x05\xa0.X\xbb\xce" +
+	"J\xea\x8bG\x0e\xcbE\xddn\x0f\x13\xff`a\x10[" +
+	"\x03\xfd6\xe3\x11#\x8e0\xd0\x0e\xc7\x12\xa5\xd80\xc3" +
+	"k\xc0HO\xca\x140J\x10\x87\xd1T\x95Y\x08u" +
+	"\xcce\x12g\x0ec\xaf\x8a%\x08\x95qe\x10\xd7\x98" +
+	"\xb3\xafXc\x9d\xfc\x19\x00\x00\xff\xff\x0e\x8f\xdcM"
 
 func init() {
 	schemas.Register(schema_c8aa6d83e0c03a9d,
-		0x806d937098563a73,
 		0x95460e1858f85cf4,
 		0xb1fcf692a8c62e19,
 		0xc2241b810eb3f099,
-		0xc28a3d408aa3f6f2,
 		0xea2bd670e2878d2d,
 		0xef56981b53fef997,
-		0xf4acba02cd83d452,
-		0xf6cb28aacbb0b707)
+		0xf4acba02cd83d452)
 }

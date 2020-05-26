@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"io"
 
-	ww "github.com/lthibault/wetware/pkg"
-	anchorpath "github.com/lthibault/wetware/pkg/util/anchor/path"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
+
+	ww "github.com/lthibault/wetware/pkg"
+	anchorpath "github.com/lthibault/wetware/pkg/util/anchor/path"
 )
 
 func lsFlags() []cli.Flag {
@@ -19,6 +20,12 @@ func lsAction() cli.ActionFunc {
 		if err := validatePath(c.Args().First()); err != nil {
 			return errors.Wrap(err, "invalid path")
 		}
+
+		// path := c.Args().Slice()
+		// children, err := root.Ls(proc, ww.Subpath(path))
+		// if err != nil {
+		// 	return errors.Wrapf(err, "ls %s", path)
+		// }
 
 		// TODO:  avoid extra round-trip.
 		anchor, err := root.Walk(proc, anchorpath.Parts(c.Args().First()))

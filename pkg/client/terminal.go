@@ -6,7 +6,7 @@ import (
 
 	host "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
-	protocol "github.com/libp2p/go-libp2p-protocol"
+	ww "github.com/lthibault/wetware/pkg"
 	"github.com/pkg/errors"
 	capnp "zombiezen.com/go/capnproto2"
 	"zombiezen.com/go/capnproto2/rpc"
@@ -20,8 +20,8 @@ type terminal struct {
 }
 
 // Dial a host and start a remote session.
-func (term terminal) Dial(ctx context.Context, pid protocol.ID, id peer.ID) capnp.Client {
-	s, err := term.local.NewStream(ctx, id, pid)
+func (term terminal) Dial(ctx context.Context, id peer.ID) capnp.Client {
+	s, err := term.local.NewStream(ctx, id, ww.Protocol)
 	if err != nil {
 		return capnp.ErrorClient(err)
 	}
@@ -30,7 +30,7 @@ func (term terminal) Dial(ctx context.Context, pid protocol.ID, id peer.ID) capn
 }
 
 // AutoDial returns an arbitrary host session, dialing a new connection if needed.
-func (term terminal) AutoDial(ctx context.Context, pid protocol.ID) capnp.Client {
+func (term terminal) AutoDial(ctx context.Context) capnp.Client {
 	var ids peer.IDSlice
 	for _, source := range []func() peer.IDSlice{
 		term.fromConns,
@@ -49,7 +49,7 @@ func (term terminal) AutoDial(ctx context.Context, pid protocol.ID) capnp.Client
 		ids[i], ids[j] = ids[j], ids[i]
 	})
 
-	return term.Dial(ctx, pid, ids[0])
+	return term.Dial(ctx, ids[0])
 }
 
 func (term terminal) fromConns() peer.IDSlice {

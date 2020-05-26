@@ -54,19 +54,17 @@ func (c Client) Join(topic string) (Topic, error) {
 
 // Ls provides a view of all hosts in the cluster.
 func (c Client) Ls(ctx context.Context) (ww.Iterator, error) {
-	var r api.Router
-	r.Client = c.term.AutoDial(ctx, ww.RouterProtocol)
+	var a api.Anchor
+	a.Client = c.term.AutoDial(ctx)
 
-	// ...
-
-	res, err := r.Ls(ctx, func(p api.Router_ls_Params) error {
+	res, err := a.Ls(ctx, func(p api.Anchor_ls_Params) error {
 		return nil
 	}).Struct()
 	if err != nil {
 		return nil, err
 	}
 
-	return newClusterView(c.term, res)
+	return newLsResults(c.term, res)
 }
 
 // Walk the Anchor hierarchy.
@@ -81,7 +79,7 @@ func (c Client) Walk(ctx context.Context, path []string) (ww.Anchor, error) {
 	}
 
 	var a api.Anchor
-	a.Client = c.term.Dial(ctx, ww.AnchorProtocol, id)
+	a.Client = c.term.Dial(ctx, id)
 
 	res, err := a.Walk(ctx, func(p api.Anchor_walk_Params) error {
 		return p.SetPath(anchorpath.Join(path))

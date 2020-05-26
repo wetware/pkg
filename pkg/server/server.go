@@ -99,7 +99,7 @@ func newWwHost(cfg wwHostConfig) Host {
 		})
 	})
 
-	rpcRegisterAll(f, cfg.Host, cfg.Router)
+	registerRPC(f, cfg.Host, cfg.Router)
 
 	return Host{
 		logFactory: f,
