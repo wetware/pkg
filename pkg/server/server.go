@@ -16,7 +16,6 @@ import (
 	host "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/pnet"
-	"github.com/libp2p/go-libp2p-core/routing"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
@@ -99,7 +98,7 @@ func newWwHost(cfg wwHostConfig) Host {
 		})
 	})
 
-	rpcRegisterAll(f, cfg.Host, cfg.Router)
+	registerRPC(f, cfg.Host, cfg.Router)
 
 	return Host{
 		logFactory: f,
@@ -146,7 +145,7 @@ func newPubSub(lx fx.Lifecycle, cfg pubsubConfig) (*pubsub.PubSub, error) {
 	)
 }
 
-func newDiscovery(r routing.Routing) discovery.Discovery {
+func newDiscovery(r *dual.DHT) discovery.Discovery {
 	return discovery.NewRoutingDiscovery(r)
 }
 
@@ -175,7 +174,7 @@ type hostOut struct {
 	fx.Out
 
 	Host      host.Host
-	DHT       routing.Routing
+	DHT       *dual.DHT
 	Signaller addrChangeSignaller
 }
 

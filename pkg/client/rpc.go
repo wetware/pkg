@@ -129,7 +129,7 @@ func (la *lazyAnchor) ensureConnection(ctx context.Context) {
 		return
 	}
 
-	la.Client = la.term.Dial(ctx, ww.AnchorProtocol, la.id)
+	la.Client = la.term.Dial(ctx, la.id)
 	la.flag.Set()
 
 	return
@@ -143,4 +143,81 @@ func (la *lazyAnchor) Ls(ctx context.Context) (ww.Iterator, error) {
 func (la *lazyAnchor) Walk(ctx context.Context, path []string) (_ ww.Anchor, err error) {
 	la.ensureConnection(ctx)
 	return la.anchor.Walk(ctx, path)
+}
+
+type lsResults struct {
+	idx    int
+	err    error
+	as     api.Anchor_SubAnchor_List
+	id     peer.ID
+	anchor api.Anchor
+
+	term *terminal
+}
+
+func newLsResults(term *terminal, res api.Anchor_ls_Results) (*lsResults, error) {
+	as, err := res.Children()
+	if err != nil {
+		return nil, err
+	}
+
+	return &lsResults{
+		as:   as,
+		idx:  -1,
+		term: term,
+	}, nil
+}
+
+func (c *lsResults) Err() error {
+	return c.err
+}
+
+func (c *lsResults) Next() (more bool) {
+	if more = c.more(); more {
+		c.idx++
+		c.decodeCurrentID()
+		more = c.err == nil
+	}
+
+	return
+}
+
+func (c *lsResults) Path() string {
+	return c.id.String()
+}
+
+func (c *lsResults) Anchor() ww.Anchor {
+	if !c.isRootAnchor() {
+		return anchor{c.current().Anchor()}
+	}
+
+	return &lazyAnchor{
+		id:   c.id,
+		term: c.term,
+	}
+}
+
+func (c *lsResults) current() api.Anchor_SubAnchor {
+	return c.as.At(c.idx)
+}
+
+func (c *lsResults) isRootAnchor() bool {
+	return c.current().Which() == api.Anchor_SubAnchor_Which_root
+}
+
+func (c *lsResults) decodeCurrentID() {
+	var s string
+	if s, c.err = c.current().Path(); c.err != nil {
+		return
+	}
+
+	if c.id, c.err = peer.Decode(s); c.err != nil {
+		return
+	}
+
+	return
+}
+
+func (c *lsResults) more() bool {
+	return c.err == nil && c.idx < c.as.Len()-1
 }

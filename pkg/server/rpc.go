@@ -9,7 +9,7 @@ import (
 
 	host "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/protocol"
+	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/lthibault/wetware/internal/api"
 	ww "github.com/lthibault/wetware/pkg"
@@ -22,42 +22,63 @@ import (
 */
 
 var (
-	_ remoteInterface = (*router)(nil)
-	_ remoteInterface = (*anchor)(nil)
+	_ capability = (*rootAnchor)(nil)
+	_ capability = (*anchor)(nil)
 )
 
-func rpcRegisterAll(f logFactory, host host.Host, r cluster.RoutingTable) {
-	for _, iface := range []remoteInterface{
-		anchor{logFactory: f, root: newAnchorTree()},
-		router{logFactory: f, RoutingTable: r},
-	} {
-		host.SetStreamHandler(iface.Proto(), export(iface))
+func registerRPC(f logFactory, host host.Host, r cluster.RoutingTable) {
+	host.SetStreamHandler(ww.Protocol, export(newRootAnchor(f, host, r)))
+}
+
+type rootAnchor struct {
+	id peer.ID
+	logFactory
+	cluster.RoutingTable
+	anchor
+}
+
+func newRootAnchor(f logFactory, host host.Host, r cluster.RoutingTable) rootAnchor {
+	return rootAnchor{
+		id:           host.ID(),
+		logFactory:   f,
+		RoutingTable: r,
+		anchor: anchor{
+			logFactory: f,
+			root:       newAnchorTree(),
+		},
 	}
 }
 
-type router struct {
-	logFactory
-	cluster.RoutingTable
+func (r rootAnchor) Client() capnp.Client {
+	return api.Anchor_ServerToClient(r).Client
 }
 
-func (router) Proto() protocol.ID {
-	return ww.RouterProtocol
-}
-
-func (r router) Export() capnp.Client {
-	return api.Router_ServerToClient(r).Client
-}
-
-func (r router) Ls(call api.Router_ls) error {
+func (r rootAnchor) Ls(call api.Anchor_ls) error {
 	peers := r.Peers()
 
-	view, err := call.Results.NewView(int32(len(peers)))
+	cs, err := call.Results.NewChildren(int32(len(peers)))
 	if err != nil {
 		return r.annotateErr("ls", err)
 	}
 
 	for i, p := range peers {
-		if err = view.Set(i, p.String()); err != nil {
+		_, seg, err := capnp.NewMessage(capnp.SingleSegment(nil))
+		if err != nil {
+			return r.annotateErr("ls", err)
+		}
+
+		a, err := api.NewAnchor_SubAnchor(seg)
+		if err != nil {
+			return r.annotateErr("ls", err)
+		}
+
+		a.SetRoot()
+
+		if err = a.SetPath(p.String()); err != nil {
+			return r.annotateErr("ls", err)
+		}
+
+		if err = cs.Set(i, a); err != nil {
 			return r.annotateErr("ls", err)
 		}
 	}
@@ -65,12 +86,30 @@ func (r router) Ls(call api.Router_ls) error {
 	return nil
 }
 
-func (r router) annotateErr(method string, err error) error {
+func (r rootAnchor) Walk(call api.Anchor_walk) error {
+	path, err := call.Params.Path()
+	if err != nil {
+		return r.annotateErr("walk", err)
+	}
+
+	parts := anchorpath.Parts(path)
+	if id := parts[0]; id != r.id.String() {
+		return errors.Errorf("bad request: id mismatch (expected %s, got %s)", r.id, id)
+	}
+
+	// pop the path head before passing the call down to the `anchor`.
+	if err = call.Params.SetPath(anchorpath.Join(parts[1:])); err != nil {
+		return r.annotateErr("walk", err)
+	}
+
+	return r.anchor.Walk(call)
+}
+
+func (r rootAnchor) annotateErr(method string, err error) error {
 	if err != nil {
 		r.Log().WithFields(log.F{
 			"error":  err,
 			"method": method,
-			"proto":  r.Proto(),
 		}).Error("rpc call failed")
 	}
 
@@ -82,11 +121,7 @@ type anchor struct {
 	root anchorNode
 }
 
-func (anchor) Proto() protocol.ID {
-	return ww.AnchorProtocol
-}
-
-func (a anchor) Export() capnp.Client {
+func (a anchor) Client() capnp.Client {
 	return api.Anchor_ServerToClient(a).Client
 }
 
@@ -148,7 +183,6 @@ func (a anchor) annotateErr(method string, err error) error {
 			"error":  err,
 			"method": method,
 			"path":   a.root.Path(),
-			"proto":  a.Proto(),
 		}).Error("rpc call failed")
 	}
 
@@ -178,28 +212,23 @@ func waitRPC(conn *rpc.Conn) error {
 	return nil
 }
 
-func streamTransport(s network.Stream) rpc.Transport {
-	// TODO:  write a stream transport that uses a packed encoder/decoder pair
-	//
-	//  Difficulty:  easy.
-	// 	https: //github.com/capnproto/go-capnproto2/blob/v2.18.0/rpc/transport.go
-	return rpc.StreamTransport(s)
-}
-
-func export(iface remoteInterface) network.StreamHandler {
+func export(c capability) network.StreamHandler {
 	return func(s network.Stream) {
 		defer s.Reset()
 
-		conn := rpc.NewConn(streamTransport(s), rpc.MainInterface(iface.Export()))
+		// TODO:  write a stream transport that uses a packed encoder/decoder pair
+		//
+		//  Difficulty:  easy.
+		// 	https: //github.com/capnproto/go-capnproto2/blob/v2.18.0/rpc/transport.go
+		conn := rpc.NewConn(rpc.StreamTransport(s), rpc.MainInterface(c.Client()))
 
 		if err := waitRPC(conn); err != nil {
-			iface.Log().WithError(err).Debug("rpc conn aborted")
+			c.Log().WithError(err).Debug("rpc conn aborted")
 		}
 	}
 }
 
-type remoteInterface interface {
+type capability interface {
 	Log() log.Logger
-	Proto() protocol.ID
-	Export() capnp.Client
+	Client() capnp.Client
 }
