@@ -33,9 +33,9 @@ type dialConfig struct {
 	DHT   *dual.DHT
 }
 
-// dialer attempts to connect to n peers, returning when we have at least one successful
+// join attempts to connect to n peers, returning when we have at least one successful
 // connection.
-func dialer(ctx context.Context) func(fx.Lifecycle, dialConfig) error {
+func joiner(ctx context.Context) func(fx.Lifecycle, dialConfig) error {
 	return func(lx fx.Lifecycle, cfg dialConfig) error {
 		ps, err := cfg.DiscoverPeers(ctx,
 			discover.WithLogger(cfg.Log),

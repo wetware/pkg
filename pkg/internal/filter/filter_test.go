@@ -1,4 +1,4 @@
-package cluster
+package filter
 
 import (
 	"testing"
@@ -23,7 +23,7 @@ func newID(s string) peer.ID {
 func TestBasicFilter(t *testing.T) {
 	const ttl = time.Second
 
-	f := newBasicFilter()
+	f := New()
 	id := newID("foo")
 
 	t.Run("Upsert", func(t *testing.T) {

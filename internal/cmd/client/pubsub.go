@@ -11,7 +11,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
-	"github.com/lthibault/wetware/pkg/cluster"
+	ww "github.com/lthibault/wetware/pkg"
 )
 
 var sharedFlags = []cli.Flag{
@@ -89,7 +89,7 @@ func newMessagePrinter(c *cli.Context) messagePrinter {
 
 func (m messagePrinter) PrintMessage(msg *pubsub.Message) error {
 	if m.topic == "" {
-		hb, err := cluster.UnmarshalHeartbeat(msg.GetData())
+		hb, err := ww.UnmarshalHeartbeat(msg.GetData())
 		if err != nil {
 			return err
 		}

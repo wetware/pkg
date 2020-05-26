@@ -19,9 +19,9 @@ import (
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 
 	hostutil "github.com/lthibault/wetware/internal/util/host"
-	ww "github.com/lthibault/wetware/pkg"
 	"github.com/lthibault/wetware/pkg/discover"
 	"github.com/lthibault/wetware/pkg/internal/eventloop"
+	"github.com/lthibault/wetware/pkg/internal/rpc"
 )
 
 func module(ctx context.Context, c *Client, opt []Option) fx.Option {
@@ -32,14 +32,13 @@ func module(ctx context.Context, c *Client, opt []Option) fx.Option {
 			newCtx,
 			userConfig,
 			newRoutedHost,
-			newTerminal,
 			newPubsub,
 			newClient,
 		),
 		fx.Populate(c),
 		fx.Invoke(
 			eventloop.DispatchNetwork,
-			dialer(ctx),
+			joiner(ctx),
 		),
 	)
 }
@@ -49,7 +48,6 @@ type clientConfig struct {
 
 	Log  log.Logger
 	Host host.Host
-	Term *terminal
 
 	Namespace string `name:"ns"`
 	PubSub    *pubsub.PubSub
@@ -58,7 +56,7 @@ type clientConfig struct {
 func newClient(lx fx.Lifecycle, cfg clientConfig) Client {
 	return Client{
 		log:  cfg.Log.WithField("id", cfg.Host.ID()),
-		term: cfg.Term,
+		term: rpc.Terminal{Host: cfg.Host},
 		ps:   newTopicSet(cfg.Namespace, cfg.PubSub),
 	}
 }
@@ -80,12 +78,6 @@ func newPubsub(lx fx.Lifecycle, cfg pubsubConfig) (*pubsub.PubSub, error) {
 
 }
 
-func newTerminal(host host.Host) *terminal {
-	return &terminal{
-		local: host,
-	}
-}
-
 type hostConfig struct {
 	fx.In
 
@@ -99,7 +91,7 @@ func (cfg hostConfig) options() []config.Option {
 		hostutil.MaybePrivate(cfg.Secret),
 		p2p.Ping(false),
 		p2p.NoListenAddrs, // also disables relay
-		p2p.UserAgent(ww.ClientUAgent),
+		p2p.UserAgent("ww-client"),
 	}
 }
 

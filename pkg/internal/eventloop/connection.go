@@ -12,9 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	peerstore "github.com/libp2p/go-libp2p-peerstore"
-
-	ww "github.com/lthibault/wetware/pkg"
+	"github.com/libp2p/go-libp2p-core/peerstore"
 )
 
 /*
@@ -178,5 +176,5 @@ func (t *connTracker) isClient(p peer.ID) bool {
 		panic(err)
 	}
 
-	return v.(string) == ww.ClientUAgent
+	return v.(string) == "ww-client"
 }

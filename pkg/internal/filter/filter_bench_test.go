@@ -1,4 +1,4 @@
-package cluster
+package filter
 
 import (
 	"math/rand"
@@ -28,7 +28,7 @@ func init() {
 }
 
 func BenchmarkBasicFilterUpsert(b *testing.B) {
-	f := newBasicFilter()
+	f := New()
 	es := eventStream(b.N)
 
 	var wg, ready sync.WaitGroup

@@ -2,12 +2,11 @@ package client
 
 import (
 	"fmt"
-	"io"
 
-	ww "github.com/lthibault/wetware/pkg"
-	anchorpath "github.com/lthibault/wetware/pkg/util/anchor/path"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
+
+	anchorpath "github.com/lthibault/wetware/pkg/util/anchor/path"
 )
 
 func lsFlags() []cli.Flag {
@@ -16,22 +15,22 @@ func lsFlags() []cli.Flag {
 
 func lsAction() cli.ActionFunc {
 	return func(c *cli.Context) error {
-		if err := validatePath(c.Args().First()); err != nil {
+		path := c.Args().First()
+
+		if err := validatePath(path); err != nil {
 			return errors.Wrap(err, "invalid path")
 		}
 
-		// TODO:  avoid extra round-trip.
-		anchor, err := root.Walk(proc, anchorpath.Parts(c.Args().First()))
+		cs, err := root.Walk(proc, anchorpath.Parts(path)).Ls(proc)
 		if err != nil {
-			return errors.Wrapf(err, "walk %s", c.Args().First())
+			return errors.Wrapf(err, "ls %s", path)
 		}
 
-		children, err := anchor.Ls(proc)
-		if err != nil {
-			return errors.Wrapf(err, "ls %s", anchorpath.Join(c.Args().Slice()))
+		for _, anchor := range cs {
+			fmt.Fprintf(c.App.Writer, "/%s\n", anchor)
 		}
 
-		return printPaths(c.App.Writer, children)
+		return nil
 	}
 }
 
@@ -45,12 +44,4 @@ func validatePath(path string) error {
 	}
 
 	return nil
-}
-
-func printPaths(w io.Writer, it ww.Iterator) error {
-	for it.Next() {
-		fmt.Fprintf(w, "/%s\n", it.Path())
-	}
-
-	return it.Err()
 }

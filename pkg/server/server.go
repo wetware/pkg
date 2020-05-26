@@ -16,7 +16,6 @@ import (
 	host "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/pnet"
-	"github.com/libp2p/go-libp2p-core/routing"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
@@ -28,7 +27,6 @@ import (
 
 	log "github.com/lthibault/log/pkg"
 	hostutil "github.com/lthibault/wetware/internal/util/host"
-	"github.com/lthibault/wetware/pkg/cluster"
 	discover "github.com/lthibault/wetware/pkg/discover"
 	"github.com/lthibault/wetware/pkg/internal/eventloop"
 )
@@ -87,47 +85,25 @@ type wwHostConfig struct {
 
 	Log    log.Logger
 	Host   host.Host
-	Router *cluster.Router
+	Router *router
 }
 
 func newWwHost(cfg wwHostConfig) Host {
 	// logger fields are not available until host starts listening.
-	f := cachedLogFactory(func() log.Logger {
+	log := logLazy(func() log.Logger {
 		return cfg.Log.WithFields(log.F{
 			"id":    cfg.Host.ID(),
 			"addrs": cfg.Host.Addrs(),
 		})
 	})
 
-	rpcRegisterAll(f, cfg.Host, cfg.Router)
+	exportRootAnchor(log, cfg.Host, cfg.Router)
 
 	return Host{
-		logFactory: f,
-		host:       cfg.Host,
-		r:          cfg.Router,
+		log:  log,
+		host: cfg.Host,
+		r:    cfg.Router,
 	}
-}
-
-type routerConfig struct {
-	fx.In
-
-	Ctx       context.Context
-	Namespace string `name:"ns"`
-
-	PubSub *pubsub.PubSub
-}
-
-func newRouter(lx fx.Lifecycle, cfg routerConfig) (*cluster.Router, error) {
-	r, err := cluster.NewRouter(cfg.Ctx, cfg.Namespace, cfg.PubSub)
-	if err == nil {
-		lx.Append(fx.Hook{
-			OnStop: func(context.Context) error {
-				return r.Close()
-			},
-		})
-	}
-
-	return r, err
 }
 
 type pubsubConfig struct {
@@ -146,7 +122,7 @@ func newPubSub(lx fx.Lifecycle, cfg pubsubConfig) (*pubsub.PubSub, error) {
 	)
 }
 
-func newDiscovery(r routing.Routing) discovery.Discovery {
+func newDiscovery(r *dual.DHT) discovery.Discovery {
 	return discovery.NewRoutingDiscovery(r)
 }
 
@@ -175,7 +151,7 @@ type hostOut struct {
 	fx.Out
 
 	Host      host.Host
-	DHT       routing.Routing
+	DHT       *dual.DHT
 	Signaller addrChangeSignaller
 }
 
@@ -351,30 +327,39 @@ type addrChangeSignaller interface {
 	SignalAddressChange()
 }
 
-// logFactory is an interface for lazily configuring structured loggers.
-// It is used to configure a logger before its field values are known.
-// See the Host constructor for a canonical example.
-type logFactory interface {
-	Log() log.Logger
-}
-
-type logFactoryFunc func() log.Logger
-
-func (f logFactoryFunc) Log() log.Logger {
-	return f()
-}
-
-// cachedLogFactory returns a provider that calls `f` the first time it is invoked, caches
-// the result, and always returns this result.
-func cachedLogFactory(f func() log.Logger) logFactoryFunc {
-	var once sync.Once
-	var cached log.Logger
-	return func() log.Logger {
-		once.Do(func() { cached = f() })
-		return cached
-	}
-}
-
 type clusterCardinality struct {
 	Min, Max int
 }
+
+type lazyLogger func() log.Logger
+
+func logLazy(f func() log.Logger) log.Logger {
+	var once sync.Once
+	var l log.Logger
+	return lazyLogger(func() log.Logger {
+		once.Do(func() { l = f() })
+		return l
+	})
+}
+
+func (l lazyLogger) Fatal(v ...interface{})                          { l().Fatal(v...) }
+func (l lazyLogger) Fatalf(fmt string, v ...interface{})             { l().Fatalf(fmt, v...) }
+func (l lazyLogger) Fatalln(v ...interface{})                        { l().Fatalln(v...) }
+func (l lazyLogger) Trace(v ...interface{})                          { l().Trace(v...) }
+func (l lazyLogger) Tracef(fmt string, v ...interface{})             { l().Tracef(fmt, v...) }
+func (l lazyLogger) Traceln(v ...interface{})                        { l().Traceln(v...) }
+func (l lazyLogger) Debug(v ...interface{})                          { l().Debug(v...) }
+func (l lazyLogger) Debugf(fmt string, v ...interface{})             { l().Debugf(fmt, v...) }
+func (l lazyLogger) Debugln(v ...interface{})                        { l().Debugln(v...) }
+func (l lazyLogger) Info(v ...interface{})                           { l().Info(v...) }
+func (l lazyLogger) Infof(fmt string, v ...interface{})              { l().Infof(fmt, v...) }
+func (l lazyLogger) Infoln(v ...interface{})                         { l().Infoln(v...) }
+func (l lazyLogger) Warn(v ...interface{})                           { l().Warn(v...) }
+func (l lazyLogger) Warnf(fmt string, v ...interface{})              { l().Warnf(fmt, v...) }
+func (l lazyLogger) Warnln(v ...interface{})                         { l().Warnln(v...) }
+func (l lazyLogger) Error(v ...interface{})                          { l().Error(v...) }
+func (l lazyLogger) Errorf(fmt string, v ...interface{})             { l().Errorf(fmt, v...) }
+func (l lazyLogger) Errorln(v ...interface{})                        { l().Errorln(v...) }
+func (l lazyLogger) WithError(err error) log.Logger                  { return l().WithError(err) }
+func (l lazyLogger) WithField(name string, v interface{}) log.Logger { return l().WithField(name, v) }
+func (l lazyLogger) WithFields(fs log.F) log.Logger                  { return l().WithFields(fs) }

@@ -3,19 +3,20 @@ package server
 import (
 	"context"
 
+	log "github.com/lthibault/log/pkg"
+	"github.com/lthibault/wetware/pkg/internal/filter"
 	"go.uber.org/fx"
 
 	"github.com/libp2p/go-libp2p-core/event"
 	host "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/lthibault/wetware/pkg/cluster"
 	"github.com/multiformats/go-multiaddr"
 )
 
 // Host .
 type Host struct {
-	logFactory
-	r    cluster.RoutingTable
+	log  log.Logger
+	r    filter.RoutingTable
 	host host.Host
 
 	app interface {
@@ -29,6 +30,11 @@ func New(opt ...Option) Host {
 	var h Host
 	h.app = fx.New(module(&h, opt))
 	return h
+}
+
+// Log returns the host's logger
+func (h Host) Log() log.Logger {
+	return h.log
 }
 
 // ID of the Host

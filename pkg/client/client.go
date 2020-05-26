@@ -3,26 +3,22 @@ package client
 
 import (
 	"context"
-	"math/rand"
-	"time"
 
-	"github.com/libp2p/go-libp2p-core/peer"
+	log "github.com/lthibault/log/pkg"
 	"github.com/pkg/errors"
 	"go.uber.org/fx"
 
-	log "github.com/lthibault/log/pkg"
-	"github.com/lthibault/wetware/internal/api"
 	ww "github.com/lthibault/wetware/pkg"
+	"github.com/lthibault/wetware/pkg/internal/rpc"
+	"github.com/lthibault/wetware/pkg/internal/rpc/anchor"
 	anchorpath "github.com/lthibault/wetware/pkg/util/anchor/path"
 )
-
-func init() { rand.Seed(time.Now().UnixNano()) }
 
 // Client interacts with live clusters.  It implements the root Anchor.
 type Client struct {
 	log  log.Logger
-	term *terminal
 	ps   *topicSet
+	term rpc.Terminal
 	app  interface{ Stop(context.Context) error }
 }
 
@@ -52,43 +48,27 @@ func (c Client) Join(topic string) (Topic, error) {
 	return c.ps.Join(topic)
 }
 
+// String representation of the Client's anchor name.  This always returns "/", but is
+// required in order for Client to implement ww.Anchor.
+func (c Client) String() string {
+	return ""
+}
+
+// Path slice.  Required for Client to implement ww.Anchor.
+func (c Client) Path() []string {
+	return []string{}
+}
+
 // Ls provides a view of all hosts in the cluster.
-func (c Client) Ls(ctx context.Context) (ww.Iterator, error) {
-	var r api.Router
-	r.Client = c.term.AutoDial(ctx, ww.RouterProtocol)
-
-	// ...
-
-	res, err := r.Ls(ctx, func(p api.Router_ls_Params) error {
-		return nil
-	}).Struct()
-	if err != nil {
-		return nil, err
-	}
-
-	return newClusterView(c.term, res)
+func (c Client) Ls(ctx context.Context) ([]ww.Anchor, error) {
+	return anchor.Ls(ctx, c.term, rpc.AutoDial{})
 }
 
 // Walk the Anchor hierarchy.
-func (c Client) Walk(ctx context.Context, path []string) (ww.Anchor, error) {
+func (c Client) Walk(ctx context.Context, path []string) ww.Anchor {
 	if anchorpath.Root(path) {
-		return c, nil
+		return c
 	}
 
-	id, err := peer.Decode(path[0])
-	if err != nil {
-		return nil, err
-	}
-
-	var a api.Anchor
-	a.Client = c.term.Dial(ctx, ww.AnchorProtocol, id)
-
-	res, err := a.Walk(ctx, func(p api.Anchor_walk_Params) error {
-		return p.SetPath(anchorpath.Join(path))
-	}).Struct()
-	if err != nil {
-		return nil, err
-	}
-
-	return anchor{res.Anchor()}, nil
+	return anchor.Walk(ctx, c.term, rpc.DialString(path[0]), path)
 }

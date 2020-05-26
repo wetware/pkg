@@ -13,7 +13,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
-	"github.com/lthibault/wetware/pkg/cluster"
+	ww "github.com/lthibault/wetware/pkg"
 	randutil "github.com/lthibault/wetware/pkg/util/rand"
 )
 
@@ -24,7 +24,7 @@ type announceConfig struct {
 	Log log.Logger
 
 	Host   host.Host
-	Router *cluster.Router
+	Router *router
 	TTL    time.Duration `name:"ttl"`
 }
 
@@ -67,12 +67,12 @@ type clusterAnnouner struct {
 }
 
 func (a clusterAnnouner) Announce(ctx context.Context) error {
-	hb, err := cluster.NewHeartbeat(a.hostID, a.ttl)
+	hb, err := ww.NewHeartbeat(a.hostID, a.ttl)
 	if err != nil {
 		return err
 	}
 
-	b, err := cluster.MarshalHeartbeat(hb)
+	b, err := ww.MarshalHeartbeat(hb)
 	if err != nil {
 		return err
 	}
