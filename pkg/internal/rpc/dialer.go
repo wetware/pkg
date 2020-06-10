@@ -15,14 +15,14 @@ import (
 
 // Dialer .
 type Dialer interface {
-	Dial(context.Context, host.Host, protocol.ID) capnp.Client
+	Dial(context.Context, host.Host, []protocol.ID) Client
 }
 
 // DialPeer opens a transport connection to the specified peer.
 type DialPeer peer.ID
 
 // Dial decodes the peer ID string and then opens a transport to the specified host.
-func (d DialPeer) Dial(ctx context.Context, h host.Host, pid protocol.ID) capnp.Client {
+func (d DialPeer) Dial(ctx context.Context, h host.Host, pid []protocol.ID) Client {
 	return Dial(ctx, h, peer.ID(d), pid)
 }
 
@@ -30,34 +30,37 @@ func (d DialPeer) Dial(ctx context.Context, h host.Host, pid protocol.ID) capnp.
 type DialString string
 
 // Dial decodes the peer ID string and then opens a transport to the specified host.
-func (d DialString) Dial(ctx context.Context, h host.Host, pid protocol.ID) capnp.Client {
+func (d DialString) Dial(ctx context.Context, h host.Host, pid []protocol.ID) Client {
 	id, err := peer.Decode(string(d))
 	if err != nil {
-		return capnp.ErrorClient(errors.Wrap(err, "decode id"))
+		return errclient(err, "decode id")
 	}
 
 	return Dial(ctx, h, id, pid)
 }
 
 // Dial opens a transport to the specified peer
-func Dial(ctx context.Context, h host.Host, id peer.ID, pid protocol.ID) capnp.Client {
-	s, err := h.NewStream(ctx, id, pid)
+func Dial(ctx context.Context, h host.Host, id peer.ID, pid []protocol.ID) Client {
+	s, err := h.NewStream(ctx, id, pid...)
 	if err != nil {
-		return capnp.ErrorClient(errors.Wrap(err, "open stream"))
+		return errclient(err, "open stream")
 	}
 
 	// TODO(performance):  packed stream transport
-	return rpc.NewConn(rpc.StreamTransport(s)).Bootstrap(ctx)
+	return Client{
+		Peer:   id,
+		Client: rpc.NewConn(rpc.StreamTransport(s)).Bootstrap(ctx),
+	}
 }
 
 // AutoDial opens a transport connection to an arbitrary peer.
 type AutoDial struct{}
 
 // Dial an arbitrary peer
-func (d AutoDial) Dial(ctx context.Context, h host.Host, pid protocol.ID) capnp.Client {
+func (d AutoDial) Dial(ctx context.Context, h host.Host, pid []protocol.ID) Client {
 	id, err := d.selectPeer(ctx, h)
 	if err != nil {
-		return capnp.ErrorClient(errors.Wrap(err, "select peer"))
+		return errclient(err, "select peer")
 	}
 
 	return Dial(ctx, h, id, pid)
@@ -116,4 +119,10 @@ func pick(ids peer.IDSlice) peer.ID {
 	}
 
 	return ids[0]
+}
+
+func errclient(err error, msg string) Client {
+	return Client{
+		Client: capnp.ErrorClient(errors.Wrap(err, msg)),
+	}
 }

@@ -15,12 +15,7 @@ type anchor struct {
 }
 
 func (a anchor) Ls(ctx context.Context) ([]ww.Anchor, error) {
-	res, err := a.Anchor().Ls(ctx, func(api.Anchor_ls_Params) error { return nil }).Struct()
-	if err != nil {
-		return nil, err
-	}
-
-	return parseLs(res, anchorLsHandler(a.path))
+	return ls(ctx, a.Anchor(), adaptSubanchor(a.path))
 }
 
 func (a anchor) Walk(ctx context.Context, path []string) ww.Anchor {
@@ -64,6 +59,10 @@ func (a path) Path() []string {
 	}
 
 	return a
+}
+
+func (a path) Absolute() string {
+	return anchorpath.Join(a)
 }
 
 type anchorProvider interface {

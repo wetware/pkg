@@ -56,7 +56,7 @@ type clientConfig struct {
 func newClient(lx fx.Lifecycle, cfg clientConfig) Client {
 	return Client{
 		log:  cfg.Log.WithField("id", cfg.Host.ID()),
-		term: rpc.Terminal{Host: cfg.Host},
+		term: rpc.NewTerminal(cfg.Host),
 		ps:   newTopicSet(cfg.Namespace, cfg.PubSub),
 	}
 }

@@ -1,8 +1,6 @@
 package rpc
 
 import (
-	"context"
-
 	log "github.com/lthibault/log/pkg"
 
 	capnp "zombiezen.com/go/capnproto2"
@@ -11,12 +9,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/protocol"
 )
-
-// Caller implements a specific RPC call
-type Caller interface {
-	Protocol() protocol.ID
-	HandleRPC(context.Context, capnp.Client)
-}
 
 // Capability is a network object.  Remote hosts can hold references to a capability and
 // call its methods.

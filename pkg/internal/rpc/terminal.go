@@ -6,8 +6,16 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	protocol "github.com/libp2p/go-libp2p-core/protocol"
+	"github.com/libp2p/go-libp2p-core/protocol"
+
+	capnp "zombiezen.com/go/capnproto2"
 )
+
+// Client tags a capnp.Client with the remote endpoint's peer.ID.
+type Client struct {
+	Peer peer.ID
+	capnp.Client
+}
 
 // Terminal provides a low-level API for interacting with remote hosts over RPC.
 // It abstracts over details of connecting to remote hosts and obtaining references to
@@ -20,12 +28,31 @@ type Terminal struct {
 	host.Host
 }
 
-// Call a method on a remote host
-func (t Terminal) Call(ctx context.Context, d Dialer, c Caller) {
-	client := d.Dial(ctx, streamCachingHost(t), c.Protocol())
-	// defer t.Hangup(c)
+// NewTerminal .
+func NewTerminal(h host.Host) Terminal {
+	return Terminal{
+		Host: h,
+	}
+}
 
-	c.HandleRPC(ctx, client)
+// Dial a method on a remote host
+func (t Terminal) Dial(ctx context.Context, d Dialer, pids ...protocol.ID) Client {
+	return d.Dial(ctx, streamCachingHost(t), pids)
+}
+
+// HangUp the client, freeing its resources for reuse.
+func (t Terminal) HangUp(c Client) {
+	/*
+		TODO(performance):  caching
+	*/
+
+	c.Close() // NOTE:  change this when implementing caching.
+}
+
+// Session binds a client to a Terminal, allowing it to be returned to a free list when
+// no longer needed.
+type Session struct {
+	Client
 }
 
 type streamCachingHost Terminal
