@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/libp2p/go-libp2p-core/peer"
-	protocol "github.com/libp2p/go-libp2p-protocol"
+	"github.com/libp2p/go-libp2p-core/protocol"
 )
 
 // TODO:  consider moving this to package `server`.  Consider also making private.
