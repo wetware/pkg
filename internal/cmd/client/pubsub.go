@@ -40,7 +40,7 @@ func subAction() cli.ActionFunc {
 		}
 		defer t.Close()
 
-		sub, err := t.Subscribe(proc)
+		sub, err := t.Subscribe(ctx)
 		if err != nil {
 			return err
 		}

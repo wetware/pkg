@@ -4,11 +4,15 @@ package client
 import (
 	"context"
 
+	host "github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-kad-dht/dual"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	log "github.com/lthibault/log/pkg"
 	"github.com/pkg/errors"
 	"go.uber.org/fx"
 
 	ww "github.com/lthibault/wetware/pkg"
+	discover "github.com/lthibault/wetware/pkg/discover"
 	"github.com/lthibault/wetware/pkg/internal/rpc"
 	"github.com/lthibault/wetware/pkg/internal/rpc/anchor"
 	anchorpath "github.com/lthibault/wetware/pkg/util/anchor/path"
@@ -16,20 +20,30 @@ import (
 
 // Client interacts with live clusters.  It implements the root Anchor.
 type Client struct {
-	log  log.Logger
+	log log.Logger
+	app *fx.App
+
 	ps   *topicSet
 	term rpc.Terminal
-	app  interface{ Stop(context.Context) error }
 }
 
 // Dial into a cluster using the specified discovery strategy.
 // The context is used only to time-out/cancel when dialing into the cluster.
 // To terminate the client connection, use the Close method.
-func Dial(ctx context.Context, opt ...Option) (Client, error) {
-	var c Client
-	app := fx.New(module(ctx, &c, opt))
-	c.app = app
-	return c, errors.Wrap(app.Start(ctx), "dial")
+func Dial(ctx context.Context, opt ...Option) (c Client, err error) {
+	var cfg Config
+	for _, f := range withDefault(opt) {
+		if err = f(&cfg); err != nil {
+			return
+		}
+	}
+
+	cfg.assemble(ctx, &c)
+	if err = c.app.Start(ctx); err != nil {
+		err = errors.Wrap(err, "dial")
+	}
+
+	return
 }
 
 // Close the client's cluster connections.
@@ -71,4 +85,28 @@ func (c Client) Walk(ctx context.Context, path []string) ww.Anchor {
 	}
 
 	return anchor.Walk(ctx, c.term, rpc.DialString(path[0]), path)
+}
+
+/*
+	go.uber.org/fx
+*/
+
+type clientParams struct {
+	fx.In
+
+	Log       log.Logger
+	Host      host.Host
+	Namespace string `name:"ns"`
+	Limit     int    `name:"discover_limit"`
+	PubSub    *pubsub.PubSub
+	Discover  discover.Strategy
+	DHT       *dual.DHT
+}
+
+func newClient(ctx context.Context, lx fx.Lifecycle, ps clientParams) Client {
+	return Client{
+		log:  ps.Log.WithField("id", ps.Host.ID()),
+		term: rpc.NewTerminal(ps.Host),
+		ps:   newTopicSet(ps.Namespace, ps.PubSub),
+	}
 }

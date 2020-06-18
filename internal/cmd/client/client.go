@@ -21,7 +21,7 @@ import (
 var (
 	root   client.Client
 	logger log.Logger
-	proc   = ctxutil.WithLifetime(context.Background())
+	ctx    = ctxutil.WithDefaultSignals(context.Background())
 )
 
 // Flags for the `start` command

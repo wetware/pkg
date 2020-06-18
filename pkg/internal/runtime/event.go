@@ -1,4 +1,4 @@
-package eventloop
+package runtime
 
 import (
 	"fmt"

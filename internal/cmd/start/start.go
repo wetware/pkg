@@ -3,9 +3,6 @@ package start
 import (
 	"context"
 
-	"github.com/libp2p/go-libp2p-core/event"
-	log "github.com/lthibault/log/pkg"
-	"github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 
@@ -15,34 +12,24 @@ import (
 )
 
 var (
-	proc = ctxutil.WithLifetime(context.Background())
+	ctx  = ctxutil.WithDefaultSignals(context.Background())
 	host server.Host
 )
 
 // Init the `start` command
 func Init() cli.BeforeFunc {
-	return func(c *cli.Context) error {
-		log := logutil.New(c)
-
-		host = server.New(
-			server.WithLogger(log),
-			// withTracer(log),
+	return func(c *cli.Context) (err error) {
+		host, err = server.New(
+			server.WithLogger(logutil.New(c)),
 		)
 
-		return nil
+		return
 	}
 }
 
 // Flags for the `start` command
 func Flags() []cli.Flag {
-	return []cli.Flag{
-		&cli.StringFlag{
-			Name:    "repo",
-			Aliases: []string{"r"},
-			Usage:   "path to IPFS repository",
-			EnvVars: []string{"WW_REPO"},
-		},
-	}
+	return []cli.Flag{}
 }
 
 // Run the `start` command
@@ -53,7 +40,7 @@ func Run() cli.ActionFunc {
 		}
 
 		host.Log().Info("host started")
-		<-proc.Done()
+		<-ctx.Done()
 		host.Log().Warn("host shutting down")
 
 		if err := host.Close(); err != nil {
@@ -62,35 +49,4 @@ func Run() cli.ActionFunc {
 
 		return nil
 	}
-}
-
-func withTracer(log log.Logger) server.Option {
-	ev := []interface{}{
-		new(event.EvtLocalAddressesUpdated),
-		new(event.EvtPeerIdentificationCompleted),
-		new(event.EvtPeerIdentificationFailed),
-	}
-
-	return server.WithEventHandler(ev, func(v interface{}) {
-		switch ev := v.(type) {
-		case event.EvtLocalAddressesUpdated:
-			as := make([]multiaddr.Multiaddr, len(ev.Current))
-			for i, a := range ev.Current {
-				as[i] = a.Address
-			}
-
-			log.
-				WithField("addrs", as).
-				Info("host listening")
-		case event.EvtPeerIdentificationCompleted:
-			log.
-				WithField("peer", ev.Peer).
-				Info("identification succeeded")
-		case event.EvtPeerIdentificationFailed:
-			log.
-				WithError(ev.Reason).
-				WithField("peer", ev.Peer).
-				Warn("identification failed")
-		}
-	})
 }

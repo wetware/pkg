@@ -5,23 +5,10 @@ import (
 	"github.com/ipfs/go-datastore/sync"
 	log "github.com/lthibault/log/pkg"
 	discover "github.com/lthibault/wetware/pkg/discover"
-
-	"github.com/libp2p/go-libp2p-core/pnet"
 )
 
 // Option type for Client
 type Option func(*Config) error
-
-// Config .
-type Config struct {
-	log log.Logger
-	ns  string
-	psk pnet.PSK
-	ds  datastore.Batching
-
-	d          discover.Strategy
-	queryLimit int
-}
 
 // WithLogger sets the logger.
 func WithLogger(logger log.Logger) Option {

@@ -1,4 +1,4 @@
-package filter
+package routing
 
 import (
 	"testing"
@@ -23,7 +23,7 @@ func newID(s string) peer.ID {
 func TestBasicFilter(t *testing.T) {
 	const ttl = time.Second
 
-	f := New()
+	f := newFilter()
 	id := newID("foo")
 
 	t.Run("Upsert", func(t *testing.T) {

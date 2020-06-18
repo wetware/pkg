@@ -1,0 +1,68 @@
+package p2p
+
+import (
+	"context"
+
+	"go.uber.org/fx"
+
+	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p-core/host"
+	discovery "github.com/libp2p/go-libp2p-discovery"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/libp2p/go-libp2p-kad-dht/dual"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/config"
+)
+
+// Config for p2p layer
+type Config struct {
+	fx.In
+
+	HostOpt []config.Option
+	DHTOpt  []dht.Option
+}
+
+// Module encapsulates p2p primitives
+type Module struct {
+	fx.Out
+
+	DHT       *dual.DHT
+	Host      host.Host
+	PubSub    *pubsub.PubSub
+	Discovery discovery.Discovery
+}
+
+// New p2p module
+func New(ctx context.Context, cfg Config, lx fx.Lifecycle) (mod Module, err error) {
+	if mod.Host, err = newHost(ctx, lx, cfg.HostOpt...); err != nil {
+		return
+	}
+
+	if mod.DHT, err = dual.New(ctx, mod.Host, cfg.DHTOpt...); err != nil {
+		return
+	}
+
+	mod.Host = wrapHost(mod.Host, mod.DHT)
+	mod.Discovery = discovery.NewRoutingDiscovery(mod.DHT)
+
+	if mod.PubSub, err = pubsub.NewGossipSub(
+		ctx,
+		mod.Host,
+		pubsub.WithDiscovery(mod.Discovery),
+	); err != nil {
+		return
+	}
+
+	return
+}
+
+func newHost(ctx context.Context, lx fx.Lifecycle, opt ...config.Option) (h host.Host, err error) {
+	if h, err = libp2p.New(ctx, opt...); err == nil {
+		lx.Append(fx.Hook{
+			OnStop: func(context.Context) error {
+				return h.Close()
+			},
+		})
+	}
+	return
+}

@@ -12,8 +12,7 @@ import (
 
 	"github.com/lthibault/wetware/internal/api"
 	ww "github.com/lthibault/wetware/pkg"
-	"github.com/lthibault/wetware/pkg/internal/filter"
-	"github.com/lthibault/wetware/pkg/internal/rpc"
+	"github.com/lthibault/wetware/pkg/internal/routing"
 	anchorpath "github.com/lthibault/wetware/pkg/util/anchor/path"
 )
 
@@ -21,23 +20,18 @@ import (
 	api.go contains the capnp api that is served by the host
 */
 
-func exportRootAnchor(log log.Logger, host host.Host, r filter.RoutingTable) {
-	root := newRootAnchor(log, host, r)
-	host.SetStreamHandler(root.Protocol(), rpc.Export(root))
-}
-
 type rootAnchor struct {
 	id  peer.ID
 	log log.Logger
-	filter.RoutingTable
+	routing.Table
 	anchor
 }
 
-func newRootAnchor(log log.Logger, host host.Host, r filter.RoutingTable) rootAnchor {
+func newRootAnchor(log log.Logger, host host.Host, t routing.Table) rootAnchor {
 	return rootAnchor{
-		id:           host.ID(),
-		log:          log,
-		RoutingTable: r,
+		id:    host.ID(),
+		log:   log,
+		Table: t,
 		anchor: anchor{
 			log:  log,
 			root: newAnchorTree(),

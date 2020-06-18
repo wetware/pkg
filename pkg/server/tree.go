@@ -1,7 +1,7 @@
 package server
 
 import (
-	"runtime"
+	goruntime "runtime"
 	"sync"
 )
 
@@ -190,7 +190,7 @@ func (n *node) ref() *nodeRef {
 	n.ctr.Incr()
 	h := &nodeRef{n}
 
-	runtime.SetFinalizer(h, func(h *nodeRef) {
+	goruntime.SetFinalizer(h, func(h *nodeRef) {
 		n.µ.Lock()
 		defer n.µ.Unlock()
 

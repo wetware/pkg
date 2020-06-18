@@ -1,4 +1,4 @@
-package eventloop
+package runtime
 
 import (
 	"context"
@@ -22,23 +22,31 @@ import (
 
 const uagentKey = "AgentVersion"
 
-// const (
-// 	unidentified identState = iota
-// 	identHost
-// 	identClient
-// )
+type connTrackerParams struct {
+	fx.In
 
-// type identState uint8
+	Host host.Host
+	Log  log.Logger
+}
 
-// DispatchNetwork hooks into the host's network and emits events over event.Bus
+// trackConnections hooks into the host's network and emits events over event.Bus
 // to signal changes in connections or streams.
-func DispatchNetwork(lx fx.Lifecycle, log log.Logger, host host.Host) error {
-	t, err := trackConns(log, host)
+func trackConnections(ctx context.Context, ps connTrackerParams, lx fx.Lifecycle) error {
+	t, err := newConnTracker(
+		ps.Log.WithField("service", "conntracker"),
+		ps.Host.EventBus(),
+		ps.Host.Peerstore(),
+	)
 	if err != nil {
 		return err
 	}
 
+	ps.Host.Network().Notify(t.notifiee())
+
 	lx.Append(fx.Hook{
+		OnStart: func(context.Context) error {
+			return t.Start()
+		},
 		OnStop: func(context.Context) error {
 			return t.Close()
 		},
@@ -49,59 +57,83 @@ func DispatchNetwork(lx fx.Lifecycle, log log.Logger, host host.Host) error {
 
 type connTracker struct {
 	log log.Logger
+	m   peerstore.PeerMetadata
 
 	sub                  event.Subscription
 	emitConn, emitStream event.Emitter
-	m                    peerstore.PeerMetadata
 
 	mu   sync.Mutex
 	sync map[peer.ID]chan bool
 }
 
-func trackConns(log log.Logger, h host.Host) (t *connTracker, err error) {
-	t = &connTracker{
-		log:  log,
-		m:    h.Peerstore(),
-		sync: make(map[peer.ID]chan bool),
-	}
-
-	if t.sub, err = h.EventBus().Subscribe([]interface{}{
+func newConnTracker(log log.Logger, bus event.Bus, m peerstore.PeerMetadata) (*connTracker, error) {
+	sub, err := bus.Subscribe([]interface{}{
 		new(event.EvtPeerIdentificationCompleted),
 		new(event.EvtPeerIdentificationFailed),
-	}); err != nil {
-		return
-	}
-
-	if t.emitConn, err = h.EventBus().Emitter(new(EvtConnectionChanged)); err != nil {
-		return
-	}
-
-	if t.emitStream, err = h.EventBus().Emitter(new(EvtStreamChanged)); err != nil {
-		return
-	}
-
-	go func() {
-		for v := range t.sub.Out() {
-			t.handleIdentEvent(v)
-		}
-	}()
-
-	h.Network().Notify(&network.NotifyBundle{
-		DisconnectedF: t.onDisconnected,
-
-		OpenedStreamF: t.onStreamOpened,
-		ClosedStreamF: t.onStreamClosed,
 	})
+	if err != nil {
+		return nil, err
+	}
 
-	return
+	emitConn, err := bus.Emitter(new(EvtConnectionChanged))
+	if err != nil {
+		return nil, err
+	}
+
+	emitStream, err := bus.Emitter(new(EvtStreamChanged))
+	if err != nil {
+		return nil, err
+	}
+
+	return &connTracker{
+		log:        log,
+		m:          m,
+		sync:       make(map[peer.ID]chan bool),
+		sub:        sub,
+		emitConn:   emitConn,
+		emitStream: emitStream,
+	}, nil
+}
+
+func (t *connTracker) Start() error {
+	defer t.log.Debug("service started")
+	go t.loop()
+	return nil
 }
 
 func (t *connTracker) Close() error {
+	defer t.log.Debug("service stopped")
+
 	return multierr.Combine(
 		t.emitConn.Close(),
 		t.emitStream.Close(),
 		t.sub.Close(),
 	)
+}
+
+func (t *connTracker) loop() {
+	for v := range t.sub.Out() {
+		switch ev := v.(type) {
+		case event.EvtPeerIdentificationCompleted:
+			t.ensureChan(ev.Peer) <- true
+			t.emitConn.Emit(EvtConnectionChanged{
+				Peer:   ev.Peer,
+				Client: t.isClient(ev.Peer),
+				State:  ConnStateOpened,
+			})
+		case event.EvtPeerIdentificationFailed:
+			t.ensureChan(ev.Peer) <- false
+		}
+	}
+}
+
+func (t *connTracker) notifiee() network.Notifiee {
+	return &network.NotifyBundle{
+		DisconnectedF: t.onDisconnected,
+
+		OpenedStreamF: t.onStreamOpened,
+		ClosedStreamF: t.onStreamClosed,
+	}
 }
 
 func (t *connTracker) ensureChan(id peer.ID) chan bool {
@@ -115,20 +147,6 @@ func (t *connTracker) ensureChan(id peer.ID) chan bool {
 	ch := make(chan bool, 1)
 	t.sync[id] = ch
 	return ch
-}
-
-func (t *connTracker) handleIdentEvent(v interface{}) {
-	switch ev := v.(type) {
-	case event.EvtPeerIdentificationCompleted:
-		t.ensureChan(ev.Peer) <- true
-		t.emitConn.Emit(EvtConnectionChanged{
-			Peer:   ev.Peer,
-			Client: t.isClient(ev.Peer),
-			State:  ConnStateOpened,
-		})
-	case event.EvtPeerIdentificationFailed:
-		t.ensureChan(ev.Peer) <- false
-	}
 }
 
 func (t *connTracker) onDisconnected(net network.Network, conn network.Conn) {

@@ -3,40 +3,18 @@ package server
 import (
 	"time"
 
+	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/sync"
 	log "github.com/lthibault/log/pkg"
 
-	"github.com/libp2p/go-libp2p-core/event"
-	"github.com/libp2p/go-libp2p-core/pnet"
 	"github.com/multiformats/go-multiaddr"
 
 	ww "github.com/lthibault/wetware/pkg"
 	discover "github.com/lthibault/wetware/pkg/discover"
-	"github.com/lthibault/wetware/pkg/internal/eventloop"
 )
 
 // Option type for Host
 type Option func(*Config) error
-
-// Config .
-type Config struct {
-	log   log.Logger
-	trace bool
-
-	ns  string
-	ttl time.Duration
-	k   clusterCardinality
-
-	addrs []multiaddr.Multiaddr
-	psk   pnet.PSK
-
-	d discover.Protocol
-
-	evtHandlers []eventloop.Handler
-}
-
-/*
-	Options
-*/
 
 // WithLogger sets the logger.
 func WithLogger(logger log.Logger) Option {
@@ -107,37 +85,24 @@ func WithTTL(ttl time.Duration) Option {
 	}
 }
 
-// WithEventHandler is a convenience option for setting long-running, IO-bound event
-// subscriptions.  See Host.EventBus().Subscribe(...) for legal values of `ev`.
-//
-// Events from subscriptions created via WithEventHandler are consumed in a select
-// statement from a single goroutine.  Failure to consume events quickly will cause
-// starvation on the remaining handlers.
-//
-// Event subscriptions created via WithEventHandler cannot be closed, and exist for the
-// duration of the Host's lifetime.
-func WithEventHandler(ev interface{}, h func(interface{}), opt ...event.SubscriptionOpt) Option {
-	return func(c *Config) (err error) {
-		c.evtHandlers = append(c.evtHandlers, eventloop.Handler{
-			Type:     ev,
-			Callback: h,
-			Opt:      opt,
-		})
-		return
-	}
-}
-
 func withCardinality(k, highwater int) Option {
 	return func(c *Config) (err error) {
-		c.k = clusterCardinality{Min: k, Max: highwater}
+		c.gp.MinNeighbors = k
+		c.gp.MaxNeighbors = highwater
 		return
 	}
 }
 
-/*
-	Utils
-*/
+func withDataStore(d datastore.Batching) Option {
+	if d == nil {
+		d = sync.MutexWrap(datastore.NewMapDatastore())
+	}
 
+	return func(c *Config) (err error) {
+		c.ds = d
+		return
+	}
+}
 func withDefault(opt []Option) []Option {
 	return append([]Option{
 		WithLogger(log.New(log.OptLevel(log.FatalLevel))),
@@ -149,5 +114,6 @@ func withDefault(opt []Option) []Option {
 		WithDiscover(nil),
 		WithTTL(0),
 		withCardinality(8, 32),
+		withDataStore(nil),
 	}, opt...)
 }

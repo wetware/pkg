@@ -17,7 +17,7 @@ import (
 var (
 	d      discover.Strategy
 	logger log.Logger
-	proc   = ctxutil.WithLifetime(context.Background())
+	ctx    = ctxutil.WithDefaultSignals(context.Background())
 )
 
 // Init the discovery service
@@ -74,10 +74,9 @@ func Flags() []cli.Flag {
 // Run the `discover` command.
 func Run() cli.ActionFunc {
 	return func(c *cli.Context) error {
-		var ctx = proc
 		var cancel context.CancelFunc
 		if c.Duration("timeout") != 0 {
-			ctx, cancel = context.WithTimeout(proc, c.Duration("timeout"))
+			ctx, cancel = context.WithTimeout(ctx, c.Duration("timeout"))
 			defer cancel()
 		}
 

@@ -1,4 +1,4 @@
-package filter
+package routing
 
 import (
 	"math/rand"
@@ -28,7 +28,7 @@ func init() {
 }
 
 func BenchmarkBasicFilterUpsert(b *testing.B) {
-	f := New()
+	f := newFilter()
 	es := eventStream(b.N)
 
 	var wg, ready sync.WaitGroup

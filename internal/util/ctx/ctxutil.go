@@ -8,14 +8,28 @@ import (
 	"syscall"
 
 	"github.com/pkg/errors"
+	"go.uber.org/fx"
 )
 
-// WithLifetime returns a context that expires when the process receives any of the
-// following signals from the operating system:
+// WithLifecycle returns a context that is bound to a go.uber.org/fx Lifecycle.
+func WithLifecycle(ctx context.Context, lx fx.Lifecycle) context.Context {
+	ctx, cancel := context.WithCancel(context.Background())
+	lx.Append(fx.Hook{
+		OnStop: func(context.Context) error {
+			cancel()
+			return nil
+		},
+	})
+
+	return ctx
+}
+
+// WithDefaultSignals returns a context that expires when the process receives any of
+// the following signals from the operating system:
 // - SIGINT
 // - SIGTERM
 // - SIGKILL
-func WithLifetime(ctx context.Context) context.Context {
+func WithDefaultSignals(ctx context.Context) context.Context {
 	return WithSignals(ctx, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
 }
 

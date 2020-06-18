@@ -21,7 +21,7 @@ func lsAction() cli.ActionFunc {
 			return errors.Wrap(err, "invalid path")
 		}
 
-		cs, err := root.Walk(proc, anchorpath.Parts(path)).Ls(proc)
+		cs, err := root.Walk(ctx, anchorpath.Parts(path)).Ls(ctx)
 		if err != nil {
 			return errors.Wrapf(err, "ls %s", path)
 		}

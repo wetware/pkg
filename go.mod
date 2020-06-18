@@ -20,7 +20,6 @@ require (
 	github.com/libp2p/go-libp2p-discovery v0.4.0
 	github.com/libp2p/go-libp2p-kad-dht v0.7.11
 	github.com/libp2p/go-libp2p-peerstore v0.2.3
-	github.com/libp2p/go-libp2p-protocol v0.1.0
 	github.com/libp2p/go-libp2p-pubsub v0.2.7
 	github.com/libp2p/go-sockaddr v0.1.0 // indirect
 	github.com/libp2p/go-yamux v1.3.6 // indirect

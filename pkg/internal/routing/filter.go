@@ -1,4 +1,4 @@
-package filter
+package routing
 
 import (
 	"sync"
@@ -8,28 +8,16 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
-// RoutingTable provides a snapshot of active hosts in a cluster.
-type RoutingTable interface {
-	Peers() peer.IDSlice
-}
-
-// Filter keeps track of host livelines based on heartbeat messages.
-type Filter interface {
-	Upsert(peer.ID, uint64, time.Duration) bool
-	RoutingTable
-}
-
-type basicFilter struct {
+type filter struct {
 	sync.RWMutex
 	es map[peer.ID]*entry
 }
 
-// New basic filter
-func New() Filter {
-	return &basicFilter{es: make(map[peer.ID]*entry, 32)}
+func newFilter() *filter {
+	return &filter{es: make(map[peer.ID]*entry, 32)}
 }
 
-func (f *basicFilter) Upsert(id peer.ID, seq uint64, ttl time.Duration) (ok bool) {
+func (f *filter) Upsert(id peer.ID, seq uint64, ttl time.Duration) (ok bool) {
 	f.Lock()
 	var e *entry
 	if e, ok = f.es[id]; !ok {
@@ -45,7 +33,7 @@ func (f *basicFilter) Upsert(id peer.ID, seq uint64, ttl time.Duration) (ok bool
 	return e.update(seq, ttl)
 }
 
-func (f *basicFilter) Peers() peer.IDSlice {
+func (f *filter) Peers() peer.IDSlice {
 	f.RLock()
 	defer f.RUnlock()
 
@@ -58,7 +46,7 @@ func (f *basicFilter) Peers() peer.IDSlice {
 }
 
 type entry struct {
-	pool *basicFilter
+	pool *filter
 
 	key       peer.ID
 	seq       uint64
