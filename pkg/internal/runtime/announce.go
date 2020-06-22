@@ -14,7 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
-	ww "github.com/lthibault/wetware/pkg"
+	"github.com/lthibault/wetware/pkg/routing"
 	randutil "github.com/lthibault/wetware/pkg/util/rand"
 )
 
@@ -77,12 +77,12 @@ type clusterAnnouner struct {
 }
 
 func (a clusterAnnouner) Announce(ctx context.Context) error {
-	hb, err := ww.NewHeartbeat(a.id, a.ttl)
+	hb, err := routing.NewHeartbeat(a.id, a.ttl)
 	if err != nil {
 		return err
 	}
 
-	b, err := ww.MarshalHeartbeat(hb)
+	b, err := routing.MarshalHeartbeat(hb)
 	if err != nil {
 		return err
 	}

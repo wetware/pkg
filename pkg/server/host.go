@@ -11,8 +11,8 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multiaddr"
 
-	"github.com/lthibault/wetware/pkg/internal/routing"
 	"github.com/lthibault/wetware/pkg/internal/rpc"
+	"github.com/lthibault/wetware/pkg/routing"
 )
 
 // Host .

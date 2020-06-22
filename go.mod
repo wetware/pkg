@@ -9,6 +9,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/golang/protobuf v1.3.2 // indirect
 	github.com/google/go-cmp v0.4.0 // indirect
+	github.com/google/gopacket v1.1.17
 	github.com/ipfs/go-datastore v0.4.4
 	github.com/ipfs/go-ds-badger v0.2.4 // indirect
 	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect

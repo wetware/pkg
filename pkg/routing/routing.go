@@ -10,8 +10,6 @@ import (
 	host "github.com/libp2p/go-libp2p-core/host"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-
-	ww "github.com/lthibault/wetware/pkg"
 )
 
 // Table provides a snapshot of active hosts in a cluster.
@@ -61,7 +59,7 @@ func New(ctx context.Context, cfg Config, lx fx.Lifecycle) (mod Module, err erro
 
 func newHeartbeatValidator(ctx context.Context, f *filter) pubsub.Validator {
 	return func(_ context.Context, pid peer.ID, msg *pubsub.Message) bool {
-		hb, err := ww.UnmarshalHeartbeat(msg.GetData())
+		hb, err := UnmarshalHeartbeat(msg.GetData())
 		if err != nil {
 			return false // drop invalid message
 		}
