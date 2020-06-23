@@ -13,7 +13,7 @@ import (
 
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-kad-dht/dual"
+	"github.com/libp2p/go-libp2p-core/routing"
 
 	"github.com/lthibault/wetware/pkg/discover"
 	"github.com/lthibault/wetware/pkg/internal/p2p"
@@ -58,8 +58,8 @@ type dialAndJoinParams struct {
 	Log   log.Logger
 	Host  host.Host
 	Boot  discover.Strategy
-	DHT   *dual.DHT `optional:"true"`
-	Limit int       `name:"discover_limit" optional:"true"`
+	DHT   routing.Routing `optional:"true"`
+	Limit int             `name:"discover_limit" optional:"true"`
 }
 
 func dialAndJoin(ctx context.Context, ps dialAndJoinParams) error {

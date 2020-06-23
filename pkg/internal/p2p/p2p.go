@@ -7,6 +7,7 @@ import (
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/routing"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
@@ -26,7 +27,7 @@ type Config struct {
 type Module struct {
 	fx.Out
 
-	DHT       *dual.DHT
+	DHT       routing.Routing
 	Host      host.Host
 	PubSub    *pubsub.PubSub
 	Discovery discovery.Discovery

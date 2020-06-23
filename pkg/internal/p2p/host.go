@@ -1,11 +1,9 @@
 package p2p
 
 import (
-	"context"
-
 	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-kad-dht/dual"
+	"github.com/libp2p/go-libp2p-core/routing"
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	"github.com/multiformats/go-multiaddr"
 )
@@ -22,13 +20,11 @@ type Listener interface {
 
 type listenerHost struct {
 	host.Host
-	dht interface {
-		Bootstrap(context.Context) error
-	}
+	dht routing.Routing
 	sig addrChangeSignaller
 }
 
-func wrapHost(h host.Host, dht *dual.DHT) listenerHost {
+func wrapHost(h host.Host, dht routing.Routing) listenerHost {
 	return listenerHost{
 		Host: routedhost.Wrap(h, dht),
 		dht:  dht,

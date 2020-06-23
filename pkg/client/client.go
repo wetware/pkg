@@ -5,7 +5,7 @@ import (
 	"context"
 
 	host "github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-kad-dht/dual"
+	"github.com/libp2p/go-libp2p-core/routing"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	log "github.com/lthibault/log/pkg"
 	"github.com/pkg/errors"
@@ -100,7 +100,7 @@ type clientParams struct {
 	Limit     int    `name:"discover_limit"`
 	PubSub    *pubsub.PubSub
 	Discover  discover.Strategy
-	DHT       *dual.DHT
+	DHT       routing.Routing
 }
 
 func newClient(ctx context.Context, lx fx.Lifecycle, ps clientParams) Client {

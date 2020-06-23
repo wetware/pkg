@@ -20,6 +20,7 @@ import (
 	ctxutil "github.com/lthibault/wetware/internal/util/ctx"
 	hostutil "github.com/lthibault/wetware/internal/util/host"
 	discover "github.com/lthibault/wetware/pkg/discover"
+	"github.com/lthibault/wetware/pkg/internal/block"
 	"github.com/lthibault/wetware/pkg/internal/p2p"
 	"github.com/lthibault/wetware/pkg/internal/runtime"
 	"github.com/lthibault/wetware/pkg/routing"
@@ -47,6 +48,7 @@ func (cfg Config) assemble(h *Host) {
 			cfg.options,
 			p2p.New,
 			routing.New,
+			block.New,
 			newHost,
 		),
 		runtime.HostEnv(),
