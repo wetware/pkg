@@ -7,11 +7,15 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/davidlazar/go-crypto v0.0.0-20190912175916-7055855a373f // indirect
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
-	github.com/golang/protobuf v1.3.2 // indirect
 	github.com/google/go-cmp v0.4.0 // indirect
-	github.com/google/gopacket v1.1.17
+	github.com/ipfs/go-bitswap v0.2.19
+	github.com/ipfs/go-blockservice v0.1.0
 	github.com/ipfs/go-datastore v0.4.4
 	github.com/ipfs/go-ds-badger v0.2.4 // indirect
+	github.com/ipfs/go-ipfs-blockstore v1.0.0
+	github.com/ipfs/go-ipfs-exchange-interface v0.0.1
+	github.com/ipfs/go-ipld-format v0.0.2
+	github.com/ipfs/go-merkledag v0.3.2
 	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.3 // indirect
 	github.com/libp2p/go-addr-util v0.0.2 // indirect
