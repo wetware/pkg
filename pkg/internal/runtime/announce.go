@@ -14,7 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
-	"github.com/lthibault/wetware/pkg/routing"
+	"github.com/lthibault/wetware/pkg/internal/routing"
 	randutil "github.com/lthibault/wetware/pkg/util/rand"
 )
 

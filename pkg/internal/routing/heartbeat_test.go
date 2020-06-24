@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/lthibault/wetware/pkg/routing"
+	"github.com/lthibault/wetware/pkg/internal/routing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

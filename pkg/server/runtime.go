@@ -22,8 +22,8 @@ import (
 	discover "github.com/lthibault/wetware/pkg/discover"
 	"github.com/lthibault/wetware/pkg/internal/block"
 	"github.com/lthibault/wetware/pkg/internal/p2p"
+	"github.com/lthibault/wetware/pkg/internal/routing"
 	"github.com/lthibault/wetware/pkg/internal/runtime"
-	"github.com/lthibault/wetware/pkg/routing"
 )
 
 // Config for the server runtime.

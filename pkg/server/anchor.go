@@ -12,7 +12,7 @@ import (
 
 	"github.com/lthibault/wetware/internal/api"
 	ww "github.com/lthibault/wetware/pkg"
-	"github.com/lthibault/wetware/pkg/routing"
+	"github.com/lthibault/wetware/pkg/internal/routing"
 	anchorpath "github.com/lthibault/wetware/pkg/util/anchor/path"
 )
 
