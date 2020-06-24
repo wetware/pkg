@@ -14,13 +14,11 @@ const (
 	Protocol = protocol.ID("/ww/0.0.0")
 )
 
-type (
-	// Anchor is a node in a cluster-wide, hierarchical namespace.
-	Anchor interface {
-		String() string
-		Path() []string
-		Ls(context.Context) ([]Anchor, error)
-		Walk(context.Context, []string) Anchor
-		// Resolve() (Anchor, error)
-	}
-)
+// Anchor is a node in a cluster-wide, hierarchical namespace.
+type Anchor interface {
+	String() string
+	Path() []string
+	Ls(context.Context) ([]Anchor, error)
+	Walk(context.Context, []string) Anchor
+	// Resolve() (Anchor, error)
+}
