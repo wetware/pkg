@@ -6,13 +6,13 @@ import (
 	"strings"
 
 	log "github.com/lthibault/log/pkg"
+	"github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 
 	ctxutil "github.com/lthibault/wetware/internal/util/ctx"
 	logutil "github.com/lthibault/wetware/internal/util/log"
 	"github.com/lthibault/wetware/pkg/client"
-	mautil "github.com/lthibault/wetware/pkg/util/multiaddr"
 
 	wwclient "github.com/lthibault/wetware/pkg/client"
 	discover "github.com/lthibault/wetware/pkg/discover"
@@ -103,8 +103,15 @@ func Commands() []*cli.Command {
 	}}
 }
 
-func join(c *cli.Context) (discover.StaticAddrs, error) {
-	return mautil.NewMultiaddrs(c.StringSlice("join")...)
+func join(c *cli.Context) (as discover.StaticAddrs, err error) {
+	as = make(discover.StaticAddrs, len(c.StringSlice("join")))
+	for i, a := range c.StringSlice("join") {
+		if as[i], err = multiaddr.NewMultiaddr(a); err != nil {
+			break
+		}
+	}
+
+	return
 }
 
 func discoverPeers(c *cli.Context, log log.Logger) (discover.Strategy, error) {
