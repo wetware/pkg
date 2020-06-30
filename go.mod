@@ -14,8 +14,6 @@ require (
 	github.com/ipfs/go-ds-badger v0.2.4 // indirect
 	github.com/ipfs/go-ipfs-blockstore v1.0.0
 	github.com/ipfs/go-ipfs-exchange-interface v0.0.1
-	github.com/ipfs/go-ipld-format v0.0.2
-	github.com/ipfs/go-merkledag v0.3.2
 	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.3 // indirect
 	github.com/libp2p/go-addr-util v0.0.2 // indirect

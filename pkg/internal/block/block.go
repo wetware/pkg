@@ -1,4 +1,9 @@
+// Package block implements efficient storage and transfer of arbitrary blocks of data.
 package block
+
+/*
+	TODO(refactor):  package name `block` is easily confused with github.com/ipfs/go-block-format.
+*/
 
 import (
 	"context"
@@ -50,9 +55,13 @@ type Module struct {
 // New .
 func New(ctx context.Context, cfg Config, lx fx.Lifecycle) (mod Module, err error) {
 	bs := blockstore.NewBlockstore(cfg.Store)
-	if bs, err = blockstore.CachedBlockstore(ctx, bs, blockstore.DefaultCacheOpts()); err != nil {
-		return
-	}
+
+	/*
+		TODO(performance): investigate persistent blockstore with caching (see below)
+	*/
+	// if bs, err = blockstore.CachedBlockstore(ctx, bs, blockstore.DefaultCacheOpts()); err != nil {
+	// 	return
+	// }
 
 	mod.GCLocker = blockstore.NewGCLocker()
 	exc := bitswap.New(ctx,
