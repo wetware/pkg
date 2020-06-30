@@ -5,14 +5,12 @@ import (
 	"context"
 
 	host "github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/routing"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	log "github.com/lthibault/log/pkg"
 	"github.com/pkg/errors"
 	"go.uber.org/fx"
 
 	ww "github.com/lthibault/wetware/pkg"
-	discover "github.com/lthibault/wetware/pkg/discover"
 	"github.com/lthibault/wetware/pkg/internal/rpc"
 	"github.com/lthibault/wetware/pkg/internal/rpc/anchor"
 	anchorpath "github.com/lthibault/wetware/pkg/util/anchor/path"
@@ -97,10 +95,7 @@ type clientParams struct {
 	Log       log.Logger
 	Host      host.Host
 	Namespace string `name:"ns"`
-	Limit     int    `name:"discover_limit"`
 	PubSub    *pubsub.PubSub
-	Discover  discover.Strategy
-	DHT       routing.Routing
 }
 
 func newClient(ctx context.Context, lx fx.Lifecycle, ps clientParams) Client {
