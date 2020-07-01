@@ -5,24 +5,15 @@ import (
 
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/sync"
-	log "github.com/lthibault/log/pkg"
 
 	"github.com/multiformats/go-multiaddr"
 
 	ww "github.com/lthibault/wetware/pkg"
-	discover "github.com/lthibault/wetware/pkg/discover"
+	"github.com/lthibault/wetware/pkg/boot"
 )
 
 // Option type for Host
 type Option func(*Config) error
-
-// WithLogger sets the logger.
-func WithLogger(logger log.Logger) Option {
-	return func(c *Config) (err error) {
-		c.log = logger
-		return
-	}
-}
 
 // WithNamespace sets the cluster's namespace
 func WithNamespace(ns string) Option {
@@ -56,15 +47,15 @@ func WithListenAddr(addrs ...multiaddr.Multiaddr) Option {
 	}
 }
 
-// WithDiscover sets the Host's bootstrap strategy.  Nil configures a default using
-// discover.MDNS.
-func WithDiscover(p discover.Protocol) Option {
+// WithBootStrategy sets the Host's bootstrap strategy.  Nil configures a default using
+// MDNS.
+func WithBootStrategy(b boot.Strategy) Option {
 	return func(c *Config) (err error) {
-		if p == nil {
-			p = &discover.MDNS{Namespace: c.ns}
+		if b == nil {
+			b = &boot.MDNS{Namespace: c.ns}
 		}
 
-		c.d = p
+		c.boot = b
 		return
 	}
 }
@@ -87,8 +78,8 @@ func WithTTL(ttl time.Duration) Option {
 
 func withCardinality(k, highwater int) Option {
 	return func(c *Config) (err error) {
-		c.gp.MinNeighbors = k
-		c.gp.MaxNeighbors = highwater
+		c.kmin = k
+		c.kmax = highwater
 		return
 	}
 }
@@ -105,13 +96,12 @@ func withDataStore(d datastore.Batching) Option {
 }
 func withDefault(opt []Option) []Option {
 	return append([]Option{
-		WithLogger(log.New(log.OptLevel(log.FatalLevel))),
 		WithNamespace(ww.DefaultNamespace),
 		WithListenAddrString(
 			"/ip4/127.0.0.1/tcp/0", // IPv4 loopback
 			"/ip6/::1/tcp/0",       // IPv6 loopback
 		),
-		WithDiscover(nil),
+		WithBootStrategy(nil),
 		WithTTL(0),
 		withCardinality(8, 32),
 		withDataStore(nil),

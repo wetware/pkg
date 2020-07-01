@@ -10,23 +10,19 @@ import (
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 
-	ctxutil "github.com/lthibault/wetware/internal/util/ctx"
-	logutil "github.com/lthibault/wetware/internal/util/log"
+	"github.com/lthibault/wetware/pkg/boot"
 	"github.com/lthibault/wetware/pkg/client"
 
+	logutil "github.com/lthibault/wetware/internal/util/log"
 	wwclient "github.com/lthibault/wetware/pkg/client"
-	discover "github.com/lthibault/wetware/pkg/discover"
 )
 
 var (
-	root   client.Client
+	// initialized by `before` function
 	logger log.Logger
-	ctx    = ctxutil.WithDefaultSignals(context.Background())
-)
+	root   client.Client
 
-// Flags for the `start` command
-func Flags() []cli.Flag {
-	return []cli.Flag{
+	flags = []cli.Flag{
 		&cli.StringSliceFlag{
 			Name:    "join",
 			Aliases: []string{"j"},
@@ -48,63 +44,60 @@ func Flags() []cli.Flag {
 			EnvVars: []string{"WW_NAMESPACE"},
 		},
 	}
+)
+
+// Command constructor
+func Command(ctx context.Context) *cli.Command {
+	return &cli.Command{
+		Name:        "client",
+		Usage:       "interact with a live cluster",
+		Flags:       flags,
+		Before:      before(),
+		After:       after(),
+		Subcommands: subcommands(ctx),
+	}
 }
 
-// Init the wetware client
-func Init() cli.BeforeFunc {
+// before the wetware client
+func before() cli.BeforeFunc {
 	return func(c *cli.Context) (err error) {
 		logger = logutil.New(c)
 
-		var d discover.Strategy
+		var d boot.Strategy
 		switch {
 		case c.StringSlice("join") != nil:
 			d, err = join(c)
 		case c.String("discover") != "":
-			d, err = discoverPeers(c, logger)
+			d, err = discoverPeers(c)
 		default:
 			err = errors.New("must specify either -join or -discover address")
 		}
 
 		if err == nil {
 			root, err = client.Dial(context.Background(),
-				wwclient.WithDiscover(d),
-				wwclient.WithLogger(logger))
+				wwclient.WithDiscover(d))
 		}
 
 		return
 	}
 }
 
-// Shutdown the wetware client
-func Shutdown() cli.AfterFunc {
+func after() cli.AfterFunc {
 	return func(c *cli.Context) error {
 		return root.Close()
 	}
 }
 
-// Commands under `client`
-func Commands() []*cli.Command {
-	return []*cli.Command{{
-		Name:      "ls",
-		Usage:     "list cluster elements",
-		ArgsUsage: "path",
-		Flags:     lsFlags(),
-		Action:    lsAction(),
-	}, {
-		Name:    "subscribe",
-		Aliases: []string{"sub"},
-		Flags:   subFlags(),
-		Action:  subAction(),
-	}, {
-		Name:    "publish",
-		Aliases: []string{"pub"},
-		Flags:   pubFlags(),
-		Action:  pubAction(),
-	}}
+func subcommands(ctx context.Context) []*cli.Command {
+	return []*cli.Command{
+		ls(ctx),
+		subscribe(ctx),
+		publish(ctx),
+	}
 }
 
-func join(c *cli.Context) (as discover.StaticAddrs, err error) {
-	as = make(discover.StaticAddrs, len(c.StringSlice("join")))
+func join(c *cli.Context) (as boot.StaticAddrs, err error) {
+	as = make(boot.StaticAddrs, len(c.StringSlice("join")))
 	for i, a := range c.StringSlice("join") {
 		if as[i], err = multiaddr.NewMultiaddr(a); err != nil {
 			break
@@ -114,7 +107,7 @@ func join(c *cli.Context) (as discover.StaticAddrs, err error) {
 	return
 }
 
-func discoverPeers(c *cli.Context, log log.Logger) (discover.Strategy, error) {
+func discoverPeers(c *cli.Context) (boot.Strategy, error) {
 	proto, param, err := head(c.String("discover"))
 	if err != nil {
 		return nil, err
@@ -122,7 +115,7 @@ func discoverPeers(c *cli.Context, log log.Logger) (discover.Strategy, error) {
 
 	switch proto {
 	case "mdns":
-		mdns := &discover.MDNS{Namespace: c.String("ns")}
+		mdns := &boot.MDNS{Namespace: c.String("ns")}
 
 		switch param {
 		case "":

@@ -3,20 +3,11 @@ package client
 import (
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/sync"
-	log "github.com/lthibault/log/pkg"
-	discover "github.com/lthibault/wetware/pkg/discover"
+	"github.com/lthibault/wetware/pkg/boot"
 )
 
 // Option type for Client
 type Option func(*Config) error
-
-// WithLogger sets the logger.
-func WithLogger(logger log.Logger) Option {
-	return func(c *Config) (err error) {
-		c.log = logger
-		return
-	}
-}
 
 // WithNamespace sets the cluster namespace to connect to.
 func WithNamespace(ns string) Option {
@@ -27,10 +18,10 @@ func WithNamespace(ns string) Option {
 }
 
 // WithDiscover determines how the client will connect to a cluster.
-func WithDiscover(d discover.Strategy) Option {
+func WithDiscover(d boot.Strategy) Option {
 	return func(c *Config) (err error) {
 		if d == nil {
-			d = discover.MDNS{Namespace: c.ns}
+			d = boot.MDNS{Namespace: c.ns}
 		}
 
 		c.d = d
@@ -49,19 +40,10 @@ func withDataStore(d datastore.Batching) Option {
 	}
 }
 
-func withLimit(lim int) Option {
-	return func(c *Config) (err error) {
-		c.queryLimit = lim
-		return
-	}
-}
-
 func withDefault(opt []Option) []Option {
 	return append([]Option{
-		WithLogger(log.New(log.OptLevel(log.FatalLevel))),
 		WithNamespace("ww"),
 		WithDiscover(nil),
 		withDataStore(nil),
-		withLimit(3),
 	}, opt...)
 }

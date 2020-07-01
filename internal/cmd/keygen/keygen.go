@@ -1,6 +1,7 @@
 package keygen
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -12,8 +13,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-// Description provides detailed documentation to the main CLI command.
-var Description = `Generates a 256-bit, base16-encoded, cryptographically symmetric key.
+var descr = `Generates a 256-bit, base16-encoded, cryptographically symmetric key.
 
 PROTOCOL:
 	/key/swarm/psk/1.0.0/
@@ -21,20 +21,27 @@ PROTOCOL:
 ENCODING:
 	/base16/`
 
-// Flags for `keygen` command
-func Flags() []cli.Flag {
-	return []cli.Flag{
-		&cli.StringFlag{
-			Name:      "output",
-			Aliases:   []string{"out", "o"},
-			Usage:     "write key to file",
-			TakesFile: true,
-		},
+var flags = []cli.Flag{
+	&cli.StringFlag{
+		Name:      "output",
+		Aliases:   []string{"out", "o"},
+		Usage:     "write key to file",
+		TakesFile: true,
+	},
+}
+
+// Command constructor
+func Command(context.Context) *cli.Command {
+	return &cli.Command{
+		Name:        "keygen",
+		Usage:       "generate a shared secret for a cluster",
+		Description: descr,
+		Flags:       flags,
+		Action:      run(),
 	}
 }
 
-// Run the `keygen` command
-func Run() cli.ActionFunc {
+func run() cli.ActionFunc {
 	return func(c *cli.Context) error {
 		key := make([]byte, 32)
 		if _, err := rand.Read(key); err != nil {

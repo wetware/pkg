@@ -2,12 +2,13 @@ package server
 
 import (
 	"context"
+	"time"
 
-	log "github.com/lthibault/log/pkg"
 	"go.uber.org/fx"
 
 	"github.com/libp2p/go-libp2p-core/event"
 	host "github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multiaddr"
 
@@ -17,7 +18,7 @@ import (
 
 // Host .
 type Host struct {
-	log  log.Logger
+	ns   string
 	r    routing.Table
 	host host.Host
 
@@ -40,12 +41,13 @@ func New(opt ...Option) (h Host, err error) {
 	return
 }
 
-// Log returns the host's logger
-func (h Host) Log() log.Logger {
-	return h.log.WithFields(log.F{
+// Loggable fields for the Host
+func (h Host) Loggable() map[string]interface{} {
+	return map[string]interface{}{
+		"ns":    h.ns,
 		"id":    h.ID(),
 		"addrs": h.Addrs(),
-	})
+	}
 }
 
 // ID of the Host
@@ -71,12 +73,18 @@ func (h Host) EventBus() event.Bus {
 
 // Start the Host's network connections and start its runtime processes.
 func (h Host) Start() error {
-	return h.app.Start(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	return h.app.Start(ctx)
 }
 
 // Close the Host's network connections and stop its runtime processes.
 func (h Host) Close() error {
-	return h.app.Stop(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	return h.app.Stop(ctx)
 }
 
 /*
@@ -86,7 +94,7 @@ func (h Host) Close() error {
 type hostParams struct {
 	fx.In
 
-	Log log.Logger
+	Namespace string `name:"ns"`
 
 	Host    host.Host
 	Routing routing.Table
@@ -95,10 +103,23 @@ type hostParams struct {
 func newHost(ctx context.Context, lx fx.Lifecycle, ps hostParams) Host {
 	// export capabilities
 	for _, cap := range []rpc.Capability{
-		newRootAnchor(ps.Log, ps.Host, ps.Routing),
+		newRootAnchor(ps.Host, ps.Routing),
 	} {
-		ps.Host.SetStreamHandler(cap.Protocol(), rpc.Export(cap))
+		ps.Host.SetStreamHandler(cap.Protocol(), handler(cap))
 	}
 
-	return Host{log: ps.Log, host: ps.Host, r: ps.Routing}
+	return Host{ns: ps.Namespace, host: ps.Host, r: ps.Routing}
+}
+
+func handler(cap rpc.Capability) network.StreamHandler {
+	return func(s network.Stream) {
+		defer s.Reset()
+
+		if err := rpc.Handle(cap, s); err != nil {
+			panic(err) // TODO(easy): emit to event bus
+			// log.WithFields(cap.Loggable()).
+			// 	WithError(err).
+			// 	Debug("connection aborted")
+		}
+	}
 }

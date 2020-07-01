@@ -1,4 +1,4 @@
-package discover
+package boot
 
 import (
 	"context"
@@ -30,6 +30,15 @@ type MDNS struct {
 	server interface{ Shutdown() error }
 }
 
+// Loggable representation
+func (d MDNS) Loggable() map[string]interface{} {
+	return map[string]interface{}{
+		"boot_strategy":  "mdns",
+		"boot_namespace": d.Namespace,
+		"interface":      d.Interface.Name,
+	}
+}
+
 // DiscoverPeers queries MDNS.
 func (d MDNS) DiscoverPeers(ctx context.Context, opt ...Option) (<-chan peer.AddrInfo, error) {
 	var p Param
@@ -48,8 +57,7 @@ func (d MDNS) DiscoverPeers(ctx context.Context, opt ...Option) (<-chan peer.Add
 			Interface:           d.Interface,
 			WantUnicastResponse: true,
 		}); err != nil {
-			p.Log().WithError(err).Debug("mdns query failed")
-			// return nil, errors.Wrap(err, "mdns query")
+			panic(err) // TODO(enhancement):  propagate errors somehow
 		}
 	}()
 
@@ -63,7 +71,7 @@ func (d MDNS) DiscoverPeers(ctx context.Context, opt ...Option) (<-chan peer.Add
 			case entry := <-entries:
 				info, err := d.handleEntry(entry)
 				if err != nil {
-					p.Log().WithError(err).Debug("failed to handle MDNS entry")
+					// TODO(enhancement):  report errors somehow
 					continue
 				}
 

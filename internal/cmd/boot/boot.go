@@ -1,4 +1,4 @@
-package discover
+package boot
 
 import (
 	"context"
@@ -9,43 +9,16 @@ import (
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 
-	ctxutil "github.com/lthibault/wetware/internal/util/ctx"
 	logutil "github.com/lthibault/wetware/internal/util/log"
-	discover "github.com/lthibault/wetware/pkg/discover"
+	"github.com/lthibault/wetware/pkg/boot"
 )
 
 var (
-	d      discover.Strategy
+	// initialized by `before` function
 	logger log.Logger
-	ctx    = ctxutil.WithDefaultSignals(context.Background())
-)
+	d      boot.Strategy
 
-// Init the discovery service
-func Init() cli.BeforeFunc {
-	return func(c *cli.Context) (err error) {
-		logger = logutil.New(c)
-
-		switch c.String("protocol") {
-		case "mdns":
-			mdns := new(discover.MDNS)
-			if name := c.String("if"); name != "" {
-				if mdns.Interface, err = net.InterfaceByName(name); err != nil {
-					return errors.Wrap(err, "interface")
-				}
-			}
-
-			d = mdns
-		default:
-			err = errors.Errorf("unknown discovery protocol %s", c.String("protocol"))
-		}
-
-		return
-	}
-}
-
-// Flags for `discover` command.
-func Flags() []cli.Flag {
-	return []cli.Flag{
+	flags = []cli.Flag{
 		&cli.StringFlag{
 			Name:    "protocol",
 			Aliases: []string{"p"},
@@ -69,10 +42,42 @@ func Flags() []cli.Flag {
 			Value:   1,
 		},
 	}
+)
+
+// Command constructor
+func Command(ctx context.Context) *cli.Command {
+	return &cli.Command{
+		Name:   "discover",
+		Usage:  "discover peers on the network",
+		Flags:  flags,
+		Before: before(ctx),
+		Action: run(ctx),
+	}
 }
 
-// Run the `discover` command.
-func Run() cli.ActionFunc {
+func before(ctx context.Context) cli.BeforeFunc {
+	return func(c *cli.Context) (err error) {
+		logger = logutil.New(c)
+
+		switch c.String("protocol") {
+		case "mdns":
+			mdns := new(boot.MDNS)
+			if name := c.String("if"); name != "" {
+				if mdns.Interface, err = net.InterfaceByName(name); err != nil {
+					return errors.Wrap(err, "interface")
+				}
+			}
+
+			d = mdns
+		default:
+			err = errors.Errorf("unknown discovery protocol %s", c.String("protocol"))
+		}
+
+		return
+	}
+}
+
+func run(ctx context.Context) cli.ActionFunc {
 	return func(c *cli.Context) error {
 		var cancel context.CancelFunc
 		if c.Duration("timeout") != 0 {
@@ -86,8 +91,8 @@ func Run() cli.ActionFunc {
 		}
 
 		peers, err := d.DiscoverPeers(ctx,
-			discover.WithLogger(logger),
-			discover.WithLimit(c.Int("n")))
+			// discover.WithLogger(logger),
+			boot.WithLimit(c.Int("n")))
 		if err != nil {
 			return err
 		}

@@ -4,11 +4,12 @@ package client
 import (
 	"context"
 
-	host "github.com/libp2p/go-libp2p-core/host"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	log "github.com/lthibault/log/pkg"
 	"github.com/pkg/errors"
 	"go.uber.org/fx"
+
+	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/peer"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	ww "github.com/lthibault/wetware/pkg"
 	"github.com/lthibault/wetware/pkg/internal/rpc"
@@ -18,8 +19,10 @@ import (
 
 // Client interacts with live clusters.  It implements the root Anchor.
 type Client struct {
-	log log.Logger
 	app *fx.App
+
+	id peer.ID
+	ns string
 
 	ps   *topicSet
 	term rpc.Terminal
@@ -49,9 +52,9 @@ func (c Client) Close() error {
 	return c.app.Stop(context.Background())
 }
 
-// Log returns a structured logger whose fields identify the client.
-func (c Client) Log() log.Logger {
-	return c.log
+// Loggable fields for Client
+func (c Client) Loggable() map[string]interface{} {
+	return map[string]interface{}{"ns": c.ns, "id": c.id, "path": "/", "type": "client"}
 }
 
 // Join a pubsub topic and returns a Topic handle. Only one Topic handle should
@@ -92,7 +95,6 @@ func (c Client) Walk(ctx context.Context, path []string) ww.Anchor {
 type clientParams struct {
 	fx.In
 
-	Log       log.Logger
 	Host      host.Host
 	Namespace string `name:"ns"`
 	PubSub    *pubsub.PubSub
@@ -100,7 +102,8 @@ type clientParams struct {
 
 func newClient(ctx context.Context, lx fx.Lifecycle, ps clientParams) Client {
 	return Client{
-		log:  ps.Log.WithField("id", ps.Host.ID()),
+		ns:   ps.Namespace,
+		id:   ps.Host.ID(),
 		term: rpc.NewTerminal(ps.Host),
 		ps:   newTopicSet(ps.Namespace, ps.PubSub),
 	}

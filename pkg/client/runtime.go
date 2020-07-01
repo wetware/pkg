@@ -2,33 +2,48 @@ package client
 
 import (
 	"context"
-	"time"
 
-	log "github.com/lthibault/log/pkg"
 	"go.uber.org/fx"
 
 	"github.com/ipfs/go-datastore"
+	"github.com/libp2p/go-eventbus"
 	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p-core/event"
+	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/pnet"
+	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/config"
 
 	ctxutil "github.com/lthibault/wetware/internal/util/ctx"
 	hostutil "github.com/lthibault/wetware/internal/util/host"
-	discover "github.com/lthibault/wetware/pkg/discover"
+	"github.com/lthibault/wetware/pkg/boot"
 	"github.com/lthibault/wetware/pkg/internal/p2p"
-	"github.com/lthibault/wetware/pkg/internal/runtime"
+	"github.com/lthibault/wetware/pkg/runtime"
+	"github.com/lthibault/wetware/pkg/runtime/service"
 )
+
+const (
+	kmin = 3
+	kmax = 64
+)
+
+func services(cfg serviceConfig) runtime.ServiceBundle {
+	return runtime.Bundle(
+		service.ConnTracker(cfg.Host),
+		service.Neighborhood(cfg.EventBus, kmin, kmax),
+		service.Bootstrap(cfg.EventBus, cfg.Boot),
+		service.Graph(cfg.EventBus, cfg.Discovery, cfg.Namespace, kmax),
+		service.Joiner(cfg.Host),
+	)
+}
 
 // Config contains user-supplied parameters used by Dial.
 type Config struct {
-	log log.Logger
 	ns  string
 	psk pnet.PSK
 	ds  datastore.Batching
-
-	d          discover.Strategy
-	queryLimit int
+	d   boot.Strategy
 }
 
 func (cfg Config) assemble(ctx context.Context, c *Client) {
@@ -38,22 +53,21 @@ func (cfg Config) assemble(ctx context.Context, c *Client) {
 		fx.Provide(
 			cfg.options,
 			p2p.New,
+			services,
 			newClient,
 		),
-		runtime.ClientEnv(),
+		fx.Invoke(
+			runtime.Register,
+			start,
+		),
 	)
 }
 
 func (cfg Config) options(lx fx.Lifecycle) (mod module, err error) {
 	mod.Ctx = ctxutil.WithLifecycle(context.Background(), lx) // libp2p lifecycle
-	mod.Log = cfg.log.WithFields(log.F{
-		"ns":   cfg.ns,
-		"type": "client",
-	})
 	mod.Namespace = cfg.ns
 	mod.Datastore = cfg.ds
 	mod.Boot = cfg.d
-	mod.Limit = cfg.queryLimit
 
 	// options for host.Host
 	mod.HostOpt = []config.Option{
@@ -76,14 +90,31 @@ type module struct {
 	fx.Out
 
 	Ctx       context.Context
-	Log       log.Logger
 	Namespace string `name:"ns"`
 
 	Datastore datastore.Batching
-	Boot      discover.Strategy
-	Limit     int           `name:"discover_limit"`
-	Timeout   time.Duration `name:"discover_timeout"`
+	Boot      boot.Strategy
 
 	HostOpt []config.Option
 	DHTOpt  []dht.Option
+}
+
+type serviceConfig struct {
+	fx.In
+
+	Namespace string `name:"ns"`
+	Host      host.Host
+	EventBus  event.Bus
+	Discovery discovery.Discovery
+	Boot      boot.Strategy
+}
+
+func start(h host.Host) error {
+	e, err := h.EventBus().Emitter(new(p2p.EvtNetworkReady), eventbus.Stateful)
+	if err != nil {
+		return err
+	}
+	defer e.Close()
+
+	return e.Emit(p2p.EvtNetworkReady{Network: h.Network()})
 }

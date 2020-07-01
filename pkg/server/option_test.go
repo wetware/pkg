@@ -3,7 +3,7 @@ package server
 import (
 	"testing"
 
-	discover "github.com/lthibault/wetware/pkg/discover"
+	"github.com/lthibault/wetware/pkg/boot"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,9 +21,9 @@ func TestDefaultOpt(t *testing.T) {
 	})
 
 	t.Run("Discover", func(t *testing.T) {
-		assert.NotNil(t, cfg.d,
+		assert.NotNil(t, cfg.boot,
 			"no discovery service supplied by default")
-		assert.Equal(t, &discover.MDNS{Namespace: cfg.ns}, cfg.d,
+		assert.Equal(t, &boot.MDNS{Namespace: cfg.ns}, cfg.boot,
 			"unexpected default discovery service")
 	})
 }
@@ -33,18 +33,18 @@ func TestDiscoveryOpt(t *testing.T) {
 
 	// default is MDNS using most recent namespace value
 	t.Run("DefaultUsesNamespace", func(t *testing.T) {
-		require.NoError(t, WithDiscover(nil)(&cfg),
+		require.NoError(t, WithBootStrategy(nil)(&cfg),
 			"unable to auto-assign discovery service")
-		assert.NotNil(t, cfg.d,
+		assert.NotNil(t, cfg.boot,
 			"no discovery service supplied by default")
-		assert.Equal(t, &discover.MDNS{Namespace: "test"}, cfg.d,
+		assert.Equal(t, &boot.MDNS{Namespace: "test"}, cfg.boot,
 			"unexpected default discovery service")
 	})
 
 	t.Run("Override", func(t *testing.T) {
-		require.NoError(t, WithDiscover(discover.StaticAddrs{})(&cfg),
+		require.NoError(t, WithBootStrategy(boot.StaticAddrs{})(&cfg),
 			"unable to override discovery service")
-		assert.Equal(t, discover.StaticAddrs{}, cfg.d,
+		assert.Equal(t, boot.StaticAddrs{}, cfg.boot,
 			"config does not contain override value")
 	})
 }

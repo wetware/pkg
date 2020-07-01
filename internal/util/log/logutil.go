@@ -62,3 +62,16 @@ func WithFormat(c *cli.Context) log.Option {
 
 	return log.OptFormatter(fmt)
 }
+
+// JoinFields returns a new map[string]interface{} that is the union of all field maps.
+func JoinFields(ms ...map[string]interface{}) (res map[string]interface{}) {
+	res = make(map[string]interface{}, len(ms)*5) // best effort pre-allocation
+
+	for _, m := range ms {
+		for k, v := range m {
+			res[k] = v
+		}
+	}
+
+	return
+}

@@ -1,5 +1,5 @@
-// Package discover contains facilities for joining active clusters.
-package discover
+// Package boot contains facilities for joining active clusters.
+package boot
 
 import (
 	"context"
@@ -9,11 +9,13 @@ import (
 	"github.com/multiformats/go-multiaddr"
 )
 
-// Protocol for cluster bootstrap.
-type Protocol interface {
-	Strategy
-	Beacon
-}
+var _ Strategy = (StaticAddrs)(nil)
+
+// // Protocol for cluster bootstrap.
+// type Protocol interface {
+// 	Strategy
+// 	Beacon
+// }
 
 // Service that can be discovered.
 type Service interface {
@@ -23,6 +25,7 @@ type Service interface {
 
 // Strategy for obtaining bootstrap peers.
 type Strategy interface {
+	Loggable() map[string]interface{}
 	DiscoverPeers(context.Context, ...Option) (<-chan peer.AddrInfo, error)
 }
 
@@ -41,6 +44,14 @@ type Beacon interface {
 
 // StaticAddrs for cluster discovery
 type StaticAddrs []multiaddr.Multiaddr
+
+// Loggable representation
+func (as StaticAddrs) Loggable() map[string]interface{} {
+	return map[string]interface{}{
+		"boot_strategy": "static_addrs",
+		"boot_addrs":    as,
+	}
+}
 
 // DiscoverPeers converts the static addresses into AddrInfos
 func (as StaticAddrs) DiscoverPeers(_ context.Context, opt ...Option) (<-chan peer.AddrInfo, error) {

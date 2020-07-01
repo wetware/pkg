@@ -6,6 +6,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/routing"
 	discovery "github.com/libp2p/go-libp2p-discovery"
@@ -29,6 +30,7 @@ type Module struct {
 
 	DHT       routing.Routing
 	Host      host.Host
+	EventBus  event.Bus
 	PubSub    *pubsub.PubSub
 	Discovery discovery.Discovery
 }
@@ -43,7 +45,11 @@ func New(ctx context.Context, cfg Config, lx fx.Lifecycle) (mod Module, err erro
 		return
 	}
 
-	mod.Host = wrapHost(mod.Host, mod.DHT)
+	if mod.Host, err = wrapHost(mod.Host, mod.DHT); err != nil {
+		return
+	}
+
+	mod.EventBus = mod.Host.EventBus()
 	mod.Discovery = discovery.NewRoutingDiscovery(mod.DHT)
 
 	if mod.PubSub, err = pubsub.NewGossipSub(

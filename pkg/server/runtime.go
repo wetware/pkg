@@ -4,40 +4,67 @@ import (
 	"context"
 	"time"
 
-	"github.com/ipfs/go-datastore"
-	log "github.com/lthibault/log/pkg"
 	"go.uber.org/fx"
 
+	// libp2p
+
 	"github.com/libp2p/go-libp2p"
-	connmgr "github.com/libp2p/go-libp2p-connmgr"
+	"github.com/libp2p/go-libp2p/config"
+
+	// libp2p core interfaces
+	"github.com/libp2p/go-libp2p-core/discovery"
+	"github.com/libp2p/go-libp2p-core/event"
+	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/pnet"
+
+	// libp2p core implementations
+	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
-	"github.com/libp2p/go-libp2p/config"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
+
+	// libp2p/IPFS misc.
+	"github.com/ipfs/go-datastore"
 	"github.com/multiformats/go-multiaddr"
 
+	// wetware utils
 	ctxutil "github.com/lthibault/wetware/internal/util/ctx"
 	hostutil "github.com/lthibault/wetware/internal/util/host"
-	discover "github.com/lthibault/wetware/pkg/discover"
+
+	// wetware internal
 	"github.com/lthibault/wetware/pkg/internal/block"
 	"github.com/lthibault/wetware/pkg/internal/p2p"
 	"github.com/lthibault/wetware/pkg/internal/routing"
-	"github.com/lthibault/wetware/pkg/internal/runtime"
+
+	// wetware public
+	"github.com/lthibault/wetware/pkg/boot"
+	"github.com/lthibault/wetware/pkg/runtime"
+	"github.com/lthibault/wetware/pkg/runtime/service"
 )
+
+func services(cfg serviceConfig) runtime.ServiceBundle {
+	return runtime.Bundle(
+		service.ConnTracker(cfg.Host),
+		service.Neighborhood(cfg.EventBus, cfg.Graph.KMin, cfg.Graph.KMax),
+		service.Bootstrap(cfg.EventBus, cfg.Boot),
+		// service.Beacon(cfg.Host, p),
+		service.Announcer(cfg.Host, cfg.RoutingTopic, cfg.TTL),
+		service.Graph(cfg.EventBus, cfg.Discovery, cfg.Namespace, cfg.Graph.KMax),
+		service.Joiner(cfg.Host),
+	)
+}
 
 // Config for the server runtime.
 type Config struct {
-	log log.Logger
-
-	ns  string
-	ttl time.Duration
-	gp  runtime.GraphParams
+	ns         string
+	ttl        time.Duration
+	kmin, kmax int
 
 	psk   pnet.PSK
 	addrs []multiaddr.Multiaddr
 	ds    datastore.Batching
-	d     discover.Protocol
+	boot  boot.Strategy
 }
 
 func (cfg Config) assemble(h *Host) {
@@ -49,27 +76,30 @@ func (cfg Config) assemble(h *Host) {
 			p2p.New,
 			routing.New,
 			block.New,
+			services,
 			newHost,
 		),
-		runtime.HostEnv(),
+		fx.Invoke(
+			runtime.Register,
+			listen,
+		),
 	)
 }
 
 func (cfg Config) options(lx fx.Lifecycle) (mod module, err error) {
 	mod.Ctx = ctxutil.WithLifecycle(context.Background(), lx) // libp2p lifecycle
-	mod.Log = cfg.log.WithField("ns", cfg.ns)
 	mod.Namespace = cfg.ns
 	mod.TTL = cfg.ttl
-	mod.Discover = cfg.d
+	mod.Boot = cfg.boot
 	mod.ListenAddrs = cfg.addrs
-	mod.Graph = cfg.gp
+	mod.Graph = graphParams(cfg.kmin, cfg.kmax)
 
 	var ps peerstore.Peerstore
 	if ps, err = pstoreds.NewPeerstore(mod.Ctx, cfg.ds, pstoreds.DefaultOpts()); err != nil {
 		return
 	}
 
-	cm := connmgr.NewConnManager(cfg.gp.MinNeighbors, cfg.gp.MaxNeighbors, time.Second*10)
+	cm := connmgr.NewConnManager(cfg.kmin, cfg.kmax, time.Second*10)
 
 	mod.HostOpt = []config.Option{
 		libp2p.DisableRelay(),
@@ -92,17 +122,42 @@ type module struct {
 	fx.Out
 
 	Ctx       context.Context
-	Log       log.Logger
 	Namespace string        `name:"ns"`
 	TTL       time.Duration `name:"ttl"`
 
-	Graph runtime.GraphParams
+	Graph struct{ KMin, KMax int }
 
 	ListenAddrs []multiaddr.Multiaddr
-	Discover    discover.Protocol
+	Boot        boot.Strategy
 
 	HostOpt []config.Option
 	DHTOpt  []dht.Option
 
 	Datastore datastore.Batching
+}
+
+type serviceConfig struct {
+	fx.In
+
+	Namespace    string `name:"ns"`
+	Graph        struct{ KMin, KMax int }
+	Host         host.Host
+	EventBus     event.Bus
+	Boot         boot.Strategy
+	RoutingTopic *pubsub.Topic
+	TTL          time.Duration `name:"ttl"`
+	Discovery    discovery.Discovery
+}
+
+func graphParams(kmin, kmax int) (ps struct{ KMin, KMax int }) {
+	ps.KMin = kmin
+	ps.KMax = kmax
+	return
+}
+
+func listen(ctx context.Context, h host.Host, as []multiaddr.Multiaddr) error {
+	ctx, cancel := context.WithTimeout(ctx, time.Second*15)
+	defer cancel()
+
+	return h.(p2p.Listener).Listen(ctx, as...)
 }

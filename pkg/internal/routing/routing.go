@@ -4,10 +4,8 @@ import (
 	"context"
 	"encoding/binary"
 
-	log "github.com/lthibault/log/pkg"
 	"go.uber.org/fx"
 
-	host "github.com/libp2p/go-libp2p-core/host"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 )
@@ -21,13 +19,8 @@ type Table interface {
 type Config struct {
 	fx.In
 
-	Ctx context.Context
-	Log log.Logger
-
 	Namespace string `name:"ns"`
-
-	Host   host.Host
-	PubSub *pubsub.PubSub
+	PubSub    *pubsub.PubSub
 }
 
 // Module containing router primitives

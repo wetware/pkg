@@ -1,11 +1,12 @@
 package client
 
 import (
+	"context"
 	"encoding/binary"
 	"encoding/json"
+	"io"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -14,25 +15,26 @@ import (
 	routingutil "github.com/lthibault/wetware/pkg/util/routing"
 )
 
-var sharedFlags = []cli.Flag{
-	&cli.StringFlag{
-		Name:    "topic",
-		Aliases: []string{"t"},
-		Usage:   "pubsub topic",
-	},
+func subscribe(ctx context.Context) *cli.Command {
+	return &cli.Command{
+		Name:    "subscribe",
+		Aliases: []string{"sub"},
+		Flags:   subFlags(),
+		Action:  subAction(ctx),
+	}
 }
 
 func subFlags() []cli.Flag {
-	return append(sharedFlags, []cli.Flag{
-		&cli.BoolFlag{
-			Name:    "prettyprint",
-			Aliases: []string{"pretty", "pp"},
-			Usage:   "indent JSON output",
+	return []cli.Flag{
+		&cli.StringFlag{
+			Name:    "topic",
+			Aliases: []string{"t"},
+			Usage:   "pubsub topic",
 		},
-	}...)
+	}
 }
 
-func subAction() cli.ActionFunc {
+func subAction(ctx context.Context) cli.ActionFunc {
 	return func(c *cli.Context) error {
 		t, err := root.Join(c.String("topic"))
 		if err != nil {
@@ -44,9 +46,12 @@ func subAction() cli.ActionFunc {
 		if err != nil {
 			return err
 		}
-		logger.WithField("topic", t.String()).Debug("subscribed to topic")
 
-		w := newMessagePrinter(c)
+		w := messagePrinter{
+			topic: c.String("topic"),
+			enc:   jsonEncoder(c.App.Writer, c.Bool("prettyprint")),
+		}
+
 		for msg := range sub.C {
 			if err = w.PrintMessage(msg); err != nil {
 				break
@@ -57,34 +62,17 @@ func subAction() cli.ActionFunc {
 	}
 }
 
-func pubFlags() []cli.Flag {
-	return append(sharedFlags, []cli.Flag{
-		// ...
-	}...)
-}
-
-func pubAction() cli.ActionFunc {
-	return func(c *cli.Context) error {
-		return errors.New("NOT IMPLEMENTED")
+func jsonEncoder(w io.Writer, pretty bool) (enc *json.Encoder) {
+	if enc = json.NewEncoder(w); pretty {
+		enc.SetIndent("", "  ")
 	}
+
+	return
 }
 
 type messagePrinter struct {
 	topic string
 	enc   *json.Encoder
-}
-
-func newMessagePrinter(c *cli.Context) messagePrinter {
-	enc := json.NewEncoder(c.App.Writer)
-	if c.Bool("prettyprint") {
-		enc.SetIndent("", "  ")
-	}
-
-	return messagePrinter{
-
-		topic: c.String("topic"),
-		enc:   enc,
-	}
 }
 
 func (m messagePrinter) PrintMessage(msg *pubsub.Message) error {
@@ -105,8 +93,10 @@ func (m messagePrinter) PrintMessage(msg *pubsub.Message) error {
 		})
 	}
 
+	// TODO(enhancement):  support s-exprs (or EDN) using github.com/polydawn/refmt
 	if err := m.enc.Encode(msg.GetData); err != nil {
 		logger.
+			WithField("topic", m.topic).
 			WithField("raw", string(msg.GetData())).
 			Warn("failed to render message (currently, only JSON is supported)")
 		return err
