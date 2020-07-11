@@ -26,7 +26,7 @@ func (f *filter) Upsert(id peer.ID, seq uint64, ttl time.Duration) (ok bool) {
 		f.es[id] = e
 
 		f.Unlock()
-		return
+		return true
 	}
 	f.Unlock()
 
