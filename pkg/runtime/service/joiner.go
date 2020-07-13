@@ -5,24 +5,15 @@ import (
 
 	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/lthibault/wetware/pkg/runtime"
 )
-
-type joiner struct {
-	h host.Host
-
-	ctx    context.Context
-	cancel context.CancelFunc
-
-	errs chan error
-	join chan EvtPeerDiscovered
-	sub  event.Subscription
-}
 
 // Joiner performs a JOIN operation against the cluster graph, resulting in the merger
 // of the local peer's graph and the remote peer's graph.
 //
 // Consumes:
+//	- p2p.EvtNetworkReady
 // 	- EvtPeerDiscovered
 func Joiner(h host.Host) ProviderFunc {
 	return func() (_ runtime.Service, err error) {
@@ -41,6 +32,17 @@ func Joiner(h host.Host) ProviderFunc {
 
 		return j, nil
 	}
+}
+
+type joiner struct {
+	h host.Host
+
+	ctx    context.Context
+	cancel context.CancelFunc
+
+	errs chan error
+	join chan EvtPeerDiscovered
+	sub  event.Subscription
 }
 
 // Loggable representation
@@ -63,9 +65,8 @@ func (j *joiner) Start(ctx context.Context) (err error) {
 
 // Stop service
 func (j joiner) Stop(ctx context.Context) error {
-	defer close(j.errs)
-	defer close(j.join)
 	defer j.cancel()
+
 	return j.sub.Close()
 }
 
@@ -75,9 +76,12 @@ func (j joiner) Errors() <-chan error {
 }
 
 func (j joiner) subloop() {
+	defer close(j.join)
+
 	for v := range j.sub.Out() {
 		select {
 		case j.join <- v.(EvtPeerDiscovered):
+		case <-j.ctx.Done():
 		default:
 			// there's already a join in progress
 		}
@@ -85,9 +89,14 @@ func (j joiner) subloop() {
 }
 
 func (j joiner) joinloop() {
+	defer close(j.errs)
+
 	for ev := range j.join {
-		if err := j.h.Connect(j.ctx, ev.Peer); err != nil {
-			j.errs <- err
+		if err := j.h.Connect(j.ctx, peer.AddrInfo(ev)); err != nil {
+			select {
+			case j.errs <- err:
+			case <-j.ctx.Done():
+			}
 		}
 	}
 }

@@ -32,11 +32,16 @@ type MDNS struct {
 
 // Loggable representation
 func (d MDNS) Loggable() map[string]interface{} {
-	return map[string]interface{}{
+	m := map[string]interface{}{
 		"boot_strategy":  "mdns",
 		"boot_namespace": d.Namespace,
-		"interface":      d.Interface.Name,
 	}
+
+	if d.Interface != nil {
+		m["interface"] = d.Interface.Name
+	}
+
+	return m
 }
 
 // DiscoverPeers queries MDNS.

@@ -33,7 +33,8 @@ func services(cfg serviceConfig) runtime.ServiceBundle {
 		service.ConnTracker(cfg.Host),
 		service.Neighborhood(cfg.EventBus, kmin, kmax),
 		service.Bootstrap(cfg.EventBus, cfg.Boot),
-		service.Graph(cfg.EventBus, cfg.Discovery, cfg.Namespace, kmax),
+		// service.Discover(cfg.EventBus, cfg.Namespace, cfg.Discovery),
+		service.Graph(cfg.Host),
 		service.Joiner(cfg.Host),
 	)
 }

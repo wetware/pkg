@@ -12,9 +12,7 @@ import (
 )
 
 // EvtPeerDiscovered .
-type EvtPeerDiscovered struct {
-	Peer peer.AddrInfo
-}
+type EvtPeerDiscovered peer.AddrInfo
 
 // Bootstrap performs bootstrap peer discovery.
 //
@@ -77,8 +75,6 @@ func (b *bootstrapper) Start(ctx context.Context) (err error) {
 }
 
 func (b bootstrapper) Stop(context.Context) error {
-	defer close(b.errs)
-	defer close(b.discover)
 	defer b.cancel()
 
 	return b.sub.Close()
@@ -89,8 +85,11 @@ func (b bootstrapper) Errors() <-chan error {
 }
 
 func (b bootstrapper) subloop() {
+	defer close(b.discover)
+
 	for v := range b.sub.Out() {
-		if orphaned(v.(EvtNeighborhoodChanged)) {
+		// Only use bootstrap discovery if the local node is orphaned.
+		if notOrphaned(v.(EvtNeighborhoodChanged)) {
 			continue
 		}
 
@@ -103,28 +102,37 @@ func (b bootstrapper) subloop() {
 }
 
 func (b bootstrapper) queryloop() {
-	defer b.foundPeer.Close()
+	defer close(b.errs)
+	defer b.foundPeer.Close() // see b.emit()
 
 	for range b.discover {
 		ch, err := b.s.DiscoverPeers(b.ctx, boot.WithLimit(3))
 		if err != nil {
-			b.errs <- err
+			b.raise(err)
 			continue
 		}
 
 		for info := range ch {
-			if err = b.emit(info); err != nil {
-				b.errs <- err
-			}
+			b.emit(info)
 		}
-
 	}
 }
 
-func (b bootstrapper) emit(info peer.AddrInfo) error {
-	return b.foundPeer.Emit(EvtPeerDiscovered{Peer: info})
+func (b bootstrapper) emit(info peer.AddrInfo) {
+	b.raise(b.foundPeer.Emit(EvtPeerDiscovered(info)))
 }
 
-func orphaned(ev EvtNeighborhoodChanged) bool {
+func (b bootstrapper) raise(err error) {
+	if err == nil {
+		return
+	}
+
+	select {
+	case b.errs <- err:
+	case <-b.ctx.Done():
+	}
+}
+
+func notOrphaned(ev EvtNeighborhoodChanged) bool {
 	return ev.To != PhaseOrphaned
 }

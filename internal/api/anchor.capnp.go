@@ -11,6 +11,225 @@ import (
 	server "zombiezen.com/go/capnproto2/server"
 )
 
+type Var struct{ capnp.Struct }
+
+// Var_TypeID is the unique identifier for the type Var.
+const Var_TypeID = 0xf9f76aa770fd06d1
+
+func NewVar(s *capnp.Segment) (Var, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Var{st}, err
+}
+
+func NewRootVar(s *capnp.Segment) (Var, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Var{st}, err
+}
+
+func ReadRootVar(msg *capnp.Message) (Var, error) {
+	root, err := msg.RootPtr()
+	return Var{root.Struct()}, err
+}
+
+func (s Var) String() string {
+	str, _ := text.Marshal(0xf9f76aa770fd06d1, s.Struct)
+	return str
+}
+
+func (s Var) State() (Var_State, error) {
+	p, err := s.Struct.Ptr(0)
+	return Var_State{Struct: p.Struct()}, err
+}
+
+func (s Var) HasState() bool {
+	p, err := s.Struct.Ptr(0)
+	return p.IsValid() || err != nil
+}
+
+func (s Var) SetState(v Var_State) error {
+	return s.Struct.SetPtr(0, v.Struct.ToPtr())
+}
+
+// NewState sets the state field to a newly
+// allocated Var_State struct, preferring placement in s's segment.
+func (s Var) NewState() (Var_State, error) {
+	ss, err := NewVar_State(s.Struct.Segment())
+	if err != nil {
+		return Var_State{}, err
+	}
+	err = s.Struct.SetPtr(0, ss.Struct.ToPtr())
+	return ss, err
+}
+
+// Var_List is a list of Var.
+type Var_List struct{ capnp.List }
+
+// NewVar creates a new list of Var.
+func NewVar_List(s *capnp.Segment, sz int32) (Var_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return Var_List{l}, err
+}
+
+func (s Var_List) At(i int) Var { return Var{s.List.Struct(i)} }
+
+func (s Var_List) Set(i int, v Var) error { return s.List.SetStruct(i, v.Struct) }
+
+func (s Var_List) String() string {
+	str, _ := text.MarshalList(0xf9f76aa770fd06d1, s.List)
+	return str
+}
+
+// Var_Promise is a wrapper for a Var promised by a client call.
+type Var_Promise struct{ *capnp.Pipeline }
+
+func (p Var_Promise) Struct() (Var, error) {
+	s, err := p.Pipeline.Struct()
+	return Var{s}, err
+}
+
+func (p Var_Promise) State() Var_State_Promise {
+	return Var_State_Promise{Pipeline: p.Pipeline.GetPipeline(0)}
+}
+
+type Var_State struct{ capnp.Struct }
+
+// Var_State_TypeID is the unique identifier for the type Var_State.
+const Var_State_TypeID = 0xb1db32ec78450f53
+
+func NewVar_State(s *capnp.Segment) (Var_State, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
+	return Var_State{st}, err
+}
+
+func NewRootVar_State(s *capnp.Segment) (Var_State, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
+	return Var_State{st}, err
+}
+
+func ReadRootVar_State(msg *capnp.Message) (Var_State, error) {
+	root, err := msg.RootPtr()
+	return Var_State{root.Struct()}, err
+}
+
+func (s Var_State) String() string {
+	str, _ := text.Marshal(0xb1db32ec78450f53, s.Struct)
+	return str
+}
+
+func (s Var_State) Type() Var_State_StateType {
+	return Var_State_StateType(s.Struct.Uint16(0))
+}
+
+func (s Var_State) SetType(v Var_State_StateType) {
+	s.Struct.SetUint16(0, uint16(v))
+}
+
+func (s Var_State) Value() (capnp.Pointer, error) {
+	return s.Struct.Pointer(0)
+}
+
+func (s Var_State) HasValue() bool {
+	p, err := s.Struct.Ptr(0)
+	return p.IsValid() || err != nil
+}
+
+func (s Var_State) ValuePtr() (capnp.Ptr, error) {
+	return s.Struct.Ptr(0)
+}
+
+func (s Var_State) SetValue(v capnp.Pointer) error {
+	return s.Struct.SetPointer(0, v)
+}
+
+func (s Var_State) SetValuePtr(v capnp.Ptr) error {
+	return s.Struct.SetPtr(0, v)
+}
+
+// Var_State_List is a list of Var_State.
+type Var_State_List struct{ capnp.List }
+
+// NewVar_State creates a new list of Var_State.
+func NewVar_State_List(s *capnp.Segment, sz int32) (Var_State_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1}, sz)
+	return Var_State_List{l}, err
+}
+
+func (s Var_State_List) At(i int) Var_State { return Var_State{s.List.Struct(i)} }
+
+func (s Var_State_List) Set(i int, v Var_State) error { return s.List.SetStruct(i, v.Struct) }
+
+func (s Var_State_List) String() string {
+	str, _ := text.MarshalList(0xb1db32ec78450f53, s.List)
+	return str
+}
+
+// Var_State_Promise is a wrapper for a Var_State promised by a client call.
+type Var_State_Promise struct{ *capnp.Pipeline }
+
+func (p Var_State_Promise) Struct() (Var_State, error) {
+	s, err := p.Pipeline.Struct()
+	return Var_State{s}, err
+}
+
+func (p Var_State_Promise) Value() *capnp.Pipeline {
+	return p.Pipeline.GetPipeline(0)
+}
+
+type Var_State_StateType uint16
+
+// Var_State_StateType_TypeID is the unique identifier for the type Var_State_StateType.
+const Var_State_StateType_TypeID = 0xd84e5d193eb57901
+
+// Values of Var_State_StateType.
+const (
+	Var_State_StateType_proc Var_State_StateType = 0
+	Var_State_StateType_chan Var_State_StateType = 1
+)
+
+// String returns the enum's constant name.
+func (c Var_State_StateType) String() string {
+	switch c {
+	case Var_State_StateType_proc:
+		return "proc"
+	case Var_State_StateType_chan:
+		return "chan"
+
+	default:
+		return ""
+	}
+}
+
+// Var_State_StateTypeFromString returns the enum value with a name,
+// or the zero value if there's no such value.
+func Var_State_StateTypeFromString(c string) Var_State_StateType {
+	switch c {
+	case "proc":
+		return Var_State_StateType_proc
+	case "chan":
+		return Var_State_StateType_chan
+
+	default:
+		return 0
+	}
+}
+
+type Var_State_StateType_List struct{ capnp.List }
+
+func NewVar_State_StateType_List(s *capnp.Segment, sz int32) (Var_State_StateType_List, error) {
+	l, err := capnp.NewUInt16List(s, sz)
+	return Var_State_StateType_List{l.List}, err
+}
+
+func (l Var_State_StateType_List) At(i int) Var_State_StateType {
+	ul := capnp.UInt16List{List: l.List}
+	return Var_State_StateType(ul.At(i))
+}
+
+func (l Var_State_StateType_List) Set(i int, v Var_State_StateType) {
+	ul := capnp.UInt16List{List: l.List}
+	ul.Set(i, uint16(v))
+}
+
 type Anchor struct{ Client capnp.Client }
 
 // Anchor_TypeID is the unique identifier for the type Anchor.
@@ -533,43 +752,62 @@ func (p Anchor_walk_Results_Promise) Anchor() Anchor {
 	return Anchor{Client: p.Pipeline.GetPipeline(0).Client()}
 }
 
-const schema_c8aa6d83e0c03a9d = "x\xda\x9c\x92?hS]\x18\xc6\x9f\xe7\x9c\x9b\xde~" +
-	"\x90?=\xbd\x81&-\x1d\xfaQA\"FB\xb7," +
-	"M\xc1\x8a\x15\x85\x9cT\xc4\xc1\xe5\x1a\x0b)\xde$\x97" +
-	"{\x13\x9c\x1c\xa4Cq\xe8\"\x88:\xb8\x8b\x08\"n" +
-	"N\xd2A\\\xdc\xc4Y\x1d]T(bAz\xe4D" +
-	"\x92\x9b\x16Tp\xbb\xbc\xf7\xf7>\xef\xfb>\xe7\x99\xfa" +
-	"P\x13\x95\xd4\x8c\x00t!5a\xf6\xae|\xbf\\\xc8" +
-	"\x9e\xb9\x0bU \x90\xa2\x0bT\xbe\x96\x08\xaa\xfde\xd0" +
-	"\x14\xcb\xaf\x1e\xdd\xf9\xf6\xe3\xd9\xd8\xef\xa5\"\xff'\xe8" +
-	"-\xd0\x02\x0f\xbe<\xcf\xde\x9a[\xdc\x1d\x07V8k" +
-	"\x81\xb5\x01prg\xfbc\xf8\xee\xc4'\xe8\x02i\x1a" +
-	"o\xb7\xde\x88\x17O\xf6\xb0*\\\x01,\xdd\xe44\xbd" +
-	"\x1d\xdb\xe5\xdd\xe6S\xd0\xdc\xdb?X\x9f\xbb\x7f\xe9\xf3" +
-	"/=\xc7\xca-\x88i\xc2IZ\x95\x92\xe6a\xf5\xe5" +
-	"\xfb\xad\xf6\xe3\xd7\x00\xbd\xff\xc4\xae\xa7\xc4\x0c\xe0\xcd\x8b" +
-	"m\xaf-\\\xc0\xf8\xe1\xe6)\xbf\xd3l\xc9nTn" +
-	"\xfaa'\xac\xaet\x9a\xadnT\xbe\xe1\x07\xd7\x17\x1b" +
-	"\x1bq\xae\x1f\xf4b\xedH\x07p\x08\xa8L\x15\xd0\x93" +
-	"\x92:/\xb8\xec\x0fX\xaad&H\x05\xfeE\xb6\xee" +
-	"G\xae\xdf>\xa4ZJTs\xa1\xdfk1\x0d\xc1\xf4" +
-	"\x9f\x94\x82\xd8\xae\xd7\x0f\xe4\xe1\xf5\xce\x01:-\xa9\x8f" +
-	"\x0b\x9afk3\xb8\x16mt\x000\x0b\xd6%9\x95" +
-	"\xf8\x0c\xda\xe2\xef\x07\xac\xf7\xaf\x0e\xbe\x18\xd5I\x9d\x1e" +
-	"\x8dX\xb5\xbb\xd6$\xf5y\xc1\x0c\x8d\xc9\xd3V\xd7l" +
-	"\xf5\xb4\xa4\xae\x0b\xce\x8b\x03\xc3<\x05\xa0.X\xbb\xce" +
-	"J\xea\x8bG\x0e\xcbE\xddn\x0f\x13\xff`a\x10[" +
-	"\x03\xfd6\xe3\x11#\x8e0\xd0\x0e\xc7\x12\xa5\xd80\xc3" +
-	"k\xc0HO\xca\x140J\x10\x87\xd1T\x95Y\x08u" +
-	"\xcce\x12g\x0ec\xaf\x8a%\x08\x95qe\x10\xd7\x98" +
-	"\xb3\xafXc\x9d\xfc\x19\x00\x00\xff\xff\x0e\x8f\xdcM"
+const schema_c8aa6d83e0c03a9d = "x\xda\x84TAh#U\x18\xfe\xbe\xf7&M\x84\xb4" +
+	"\x93\x97\xa9\xd8n\x91\x80T\xd0\x88\xd1\xa4\x07\xd9\xa2n" +
+	"\x0a\x1b\xd9\x15\x95\xbc\xa6\x94\x15\xf4\xf0\x8c\x03YM\x93" +
+	"a2q\xcda\x0f\xb2\xc8\x9e\xf6\"\x14\xf5\xb0\x07\x0f" +
+	"\x8b\xba\x08R\xa4\x17O\xb2\x07\xf1\xe2A\x10\x11\xbd\x88" +
+	"G\x11\xf4P\xd4\x82v\xe4M\xdaL*u{\x09\xe1" +
+	"\xcd7\xdf\xf7\x7f\xdf\xff\xcd{\xfc\x12\xeb\xa2\x9a)I" +
+	"@/gf\xe2\xbd\x97\xfe\xba\xb40\xf7\xcc6\xd4\x02" +
+	"\x81\x0c\xb3\xc0\xca\x90e\x82\xdeU\x9e\x03\xe3\x96\xdbx" +
+	"\xf3\xd7\xda\x8f;\xd0\xf7\x92\xf173\xff\x04\x1f\xbe\xf6" +
+	"\xe7\xbeE\x16\xe8\xdd\xe4\x0f\xde\xc7\xbc\x0f\xf0vy\x05" +
+	"\xf0\x9e\x12n\xbcX\xf9\xf2\xa3w\xfe\xf8{g\x9a\xb1" +
+	"*\x1e\xb0\x8cg\x85e|\xff\xf7\xcf\xe6\xdeZZ\xbe" +
+	"3\x0dxQ\x9c\xb1\x00\x93\x008\xda}z\xf1\xe5\x17" +
+	"\xbe\x87Z\x12\xa9>P\xe0\xca\xb6(\xd3\xbb%\xb2\x80" +
+	"\xf7\x81x\x02\x8c\x1f\xbdq\xfd\xe7\xe0\xbbG~\x81^" +
+	" \xe3\xf5o\xaf}->\xffd\x0f\x0d\x91\x15\xc0\xca" +
+	"-Q\xa4\xb7\x9b\xc0w\xc4\xa7`\xfc\xee\xfeAk\xe9" +
+	"\xbd\xcd\xdf\xc6\xda\x8e\x95\xbe(\x8b\x84\x93\xbe\xaa\x94\x8c" +
+	"o\xae~\xf1\xd3\xb5\xad\xdb_\x01\xf4\xaa\xf2\x8ewV" +
+	"Z\x8f\x0dy\xdd\xdb\x96Y \x8dA)\xa6\xe0\xc4\x8a" +
+	"wU\xde\xf6\xdeN\xf07\xa4uc\x82\xcb\x8f\x99^" +
+	"\xbb#\xfba\xa5m\x82^\xb0\xba\xd6kw\xfaa\xe5" +
+	"\x8a\xe9\xbe\xbe\xbc\xee\x0f\xdca7\x1ahG:\x80C" +
+	"@\xcd\xae\x02:'\xa9\xe7\x05\xcf\x99\x04K\x95\xce\x07" +
+	"RM\xd1\x8a\x09\xed\xa6\x09+\xad\xc8\xc8\xc8\xd7\x0e\xa7" +
+	"S\xe4z\xdc\x8aL\xe4o\x8c\x02\xd0\xd7\xb9\x89\xd2\xc3" +
+	"e\xdb\x02I}^\x90\x9c\xa7=[\xab\x01\xfaII" +
+	"}A\xd0\x8dF\x81O7\xa5\x02\xeaT,iGL" +
+	"\x15\xc3\xbeF\x17,\xbda\xbaC\x9fE\x08\x16\xc15" +
+	"\x87\x8aEn\x9e\xe2\xbfi\xc2\xac\xd9:f\xbf\x9c\xda" +
+	"w\x03\x13u\x98\x87`\xfenIv\x076\xc7aW" +
+	"\x1e\xcf\xf1Y@\xe7%\xf5C\x82q\xbbs\xb9\xfbj" +
+	"\xe8\xf7\x00p\x0elJ\xb2\x90\x96\x07\xb4\x87'\x08\x1c" +
+	"f\x1a\xf9\xe3_wc\x14\xf8MR\xe7(\x00\xa5\xca" +
+	"\xc96\xee)\x03n\x10\xf6\xdbn\xbbcz\xff?f" +
+	"k\xf8J\xf2\x8f\xa1\xa5\xc8O\x06mX\xc7uI\xfd" +
+	"\x9c\xe0,\xe3x\xbc\x88\x8b\xf6\xf4\xbc\xa4n\x0a\xde/" +
+	"\x0eb\xce'\x9a\xcf\xdbv\\\x90\xd4\x1b\xff\x89\xc7\x0d" +
+	"\xfb\xfd\x083\xa77\xe6\xa4\xf8\x9a&4[\x1c\x9c\xd0" +
+	"\xaa1\x06I\xa5&y%\x95:t\x03\x86:'3" +
+	"\xc0\xe4\xe3\xe2\xd1\x17\xae\xaag \xd4\x83Yrr+" +
+	"\xf0\xe8\xc2Q\x8be\x085\x9b\x95\xddA\x9d\xae\xedB" +
+	"\x9dM\xa6S\xf2h\x02\xd7.!\x91\x9f4N\xb1V" +
+	"J\xf61\xbd\xedZZ\x9b\xd2\xc0>da\xea\xf2 " +
+	"\x0b\xe0\xbf\x01\x00\x00\xff\xff\xc9\xe5Y\x9c"
 
 func init() {
 	schemas.Register(schema_c8aa6d83e0c03a9d,
 		0x95460e1858f85cf4,
+		0xb1db32ec78450f53,
 		0xb1fcf692a8c62e19,
 		0xc2241b810eb3f099,
+		0xd84e5d193eb57901,
 		0xea2bd670e2878d2d,
 		0xef56981b53fef997,
-		0xf4acba02cd83d452)
+		0xf4acba02cd83d452,
+		0xf9f76aa770fd06d1)
 }

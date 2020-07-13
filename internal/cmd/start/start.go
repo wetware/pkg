@@ -42,11 +42,16 @@ func before(ctx context.Context) cli.BeforeFunc {
 
 func run(ctx context.Context) cli.ActionFunc {
 	return func(c *cli.Context) error {
+		events, err := runtimeutil.CoreEventStream(ctx, host)
+		if err != nil {
+			return err
+		}
+
 		if err := host.Start(); err != nil {
 			return errors.Wrap(err, "start host")
 		}
 
-		if err := eventloop(ctx); err != nil {
+		if err := loop(events); err != nil {
 			return err
 		}
 
@@ -58,16 +63,11 @@ func run(ctx context.Context) cli.ActionFunc {
 	}
 }
 
-func eventloop(ctx context.Context) error {
+func loop(events <-chan interface{}) error {
 	logger.Info("host started")
 	defer logger.Warn("host shutting down")
 
-	stream, err := runtimeutil.CoreEventStream(ctx, host)
-	if err != nil {
-		return err
-	}
-
-	for v := range stream {
+	for v := range events {
 		switch ev := v.(type) {
 		case runtime.Exception:
 			logger.WithFields(ev.Loggable()).Error("runtime error")

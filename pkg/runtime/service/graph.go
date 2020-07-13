@@ -2,39 +2,72 @@ package service
 
 import (
 	"context"
-	"errors"
+	"math/rand"
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/discovery"
 	"github.com/libp2p/go-libp2p-core/event"
+	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/lthibault/jitterbug"
 	"github.com/lthibault/wetware/pkg/runtime"
+	randutil "github.com/lthibault/wetware/pkg/util/rand"
 	"go.uber.org/multierr"
 )
 
-// Graph is responsible for keeping the local host's connections within acceptable
+type (
+	// EvtBootRequested is emitted by the Graph service when the local node is orphaned.
+	// It signals that out-of-band peer discovery should take place (via the `boot`
+	// package).
+	EvtBootRequested struct{}
+
+	// EvtGraftRequested is emitted by the Graph service when the local node is not in
+	// a "Complete" connectivity phase.  It signals that the peer graph should be
+	// queried for supplementary peers.
+	EvtGraftRequested struct{}
+
+	// EvtPruneRequested is emitted by the graph service when the local node's
+	// connectivity phase is "Overloaded".  It signals that the local node should
+	// attempt to terminate connections to remote hosts.
+	EvtPruneRequested struct{}
+)
+
+// Graph is responsible for maintaining the local node's connectivity properties within
 // bounds.
 //
 // Consumes:
 //  - EvtNeighborhoodChanged
 //
 // Emits:
-//  - EvtPeerDiscovered
-func Graph(bus event.Bus, d discovery.Discoverer, ns string, kmax int) ProviderFunc {
+//	- EvtBootRequested
+//  - EvtGraftRequested
+//  - EvtPruneRequested
+func Graph(h host.Host) ProviderFunc {
 	return func() (_ runtime.Service, err error) {
-		ctx, cancel := context.WithCancel(context.Background())
 
 		g := graph{
-			d:      d,
-			ctx:    ctx,
-			cancel: cancel,
-			errs:   make(chan error, 1),
+			bus:       h.EventBus(),
+			src:       randutil.FromPeer(h.ID()),
+			cq:        make(chan struct{}),
+			errs:      make(chan error, 1),
+			neighbors: make(chan EvtNeighborhoodChanged),
 		}
 
-		if g.sub, err = bus.Subscribe(new(EvtNeighborhoodChanged)); err != nil {
+		if g.tstep, err = g.bus.Subscribe(new(EvtTimestep)); err != nil {
 			return
 		}
 
-		if g.e, err = bus.Emitter(new(EvtPeerDiscovered)); err != nil {
+		if g.nhood, err = g.bus.Subscribe(new(EvtNeighborhoodChanged)); err != nil {
+			return
+		}
+
+		if g.boot, err = g.bus.Emitter(new(EvtBootRequested)); err != nil {
+			return
+		}
+
+		if g.graft, err = g.bus.Emitter(new(EvtGraftRequested)); err != nil {
+			return
+		}
+
+		if g.prune, err = g.bus.Emitter(new(EvtPruneRequested)); err != nil {
 			return
 		}
 
@@ -43,16 +76,15 @@ func Graph(bus event.Bus, d discovery.Discoverer, ns string, kmax int) ProviderF
 }
 
 type graph struct {
-	ns   string
-	kmax int
-	d    discovery.Discoverer
+	src rand.Source
 
-	ctx    context.Context
-	cancel context.CancelFunc
+	cq        chan struct{}
+	errs      chan error
+	neighbors chan EvtNeighborhoodChanged
 
-	errs chan error
-	sub  event.Subscription
-	e    event.Emitter
+	bus                event.Bus
+	tstep, nhood       event.Subscription
+	boot, graft, prune event.Emitter
 }
 
 func (g graph) Loggable() map[string]interface{} {
@@ -65,65 +97,81 @@ func (g graph) Errors() <-chan error {
 	return g.errs
 }
 
-func (g graph) Start(context.Context) (err error) {
-	go g.subloop()
+func (g graph) Start(ctx context.Context) (err error) {
+	if err = waitNetworkReady(ctx, g.bus); err == nil {
+		go g.subloop()
+		go g.emitloop()
+	}
 
 	return
 }
 
 func (g graph) Stop(context.Context) error {
-	defer close(g.errs)
-	defer g.cancel()
+	close(g.cq)
 
 	return multierr.Combine(
-		g.sub.Close(),
-		g.e.Close(),
+		g.nhood.Close(),
+		g.boot.Close(),
+		g.graft.Close(),
+		g.prune.Close(),
 	)
 }
 
 func (g graph) subloop() {
-	ticker := time.NewTicker(time.Second * 15)
-	defer ticker.Stop()
+	defer close(g.neighbors)
+
+	var s = newScheduler(time.Minute, jitterbug.Uniform{
+		Min:    time.Second * 15,
+		Source: rand.New(g.src),
+	})
 
 	var ev EvtNeighborhoodChanged
 
 	for {
 		select {
-		case <-ticker.C:
-		case v, ok := <-g.sub.Out():
-			if !ok {
-				return
+		case v := <-g.tstep.Out():
+			if !s.Advance(v.(EvtTimestep).Delta) {
+				continue
 			}
 
+			// scheduler deadline reached; reschedule, then re-send `ev` to g.neighbors.
+			s.Reset()
+		case v := <-g.nhood.Out():
 			ev = v.(EvtNeighborhoodChanged)
+		case <-g.cq:
+			return
 		}
 
-		// NOTE:  the PhaseOrphaned case is handled directly by the Bootstrap service.
-
-		switch ev.To {
-		case PhasePartial:
-			g.queryDHT(ev)
-		case PhaseOverloaded:
-			// TODO(enhancement): Trim back some host connections
-			g.errs <- errors.New("connection pruning NOT IMPLEMENTED")
+		select {
+		case g.neighbors <- ev:
+		case <-g.cq:
+			return
 		}
 	}
 }
 
-func (g graph) queryDHT(ev EvtNeighborhoodChanged) {
-	ctx, cancel := context.WithTimeout(g.ctx, time.Second*30)
-	defer cancel()
+func (g graph) emitloop() {
+	defer close(g.errs)
 
-	// TODO(bugfix):  provide value for `g.ns` in the DHT (maybe in g.Start?)
-	ch, err := g.d.FindPeers(ctx, g.ns, discovery.Limit(g.kmax-ev.K))
-	if err != nil {
-		g.errs <- err
+	for ev := range g.neighbors {
+		switch ev.To {
+		case PhaseOrphaned:
+			g.raise(g.boot.Emit(EvtBootRequested{}))
+		case PhasePartial:
+			g.raise(g.graft.Emit(EvtGraftRequested{}))
+		case PhaseOverloaded:
+			g.raise(g.prune.Emit(EvtPruneRequested{}))
+		}
+	}
+}
+
+func (g graph) raise(err error) {
+	if err == nil {
 		return
 	}
 
-	for info := range ch {
-		if err = g.e.Emit(EvtPeerDiscovered{info}); err != nil {
-			g.errs <- err
-		}
+	select {
+	case g.errs <- err:
+	case <-g.cq:
 	}
 }

@@ -9,6 +9,8 @@ import (
 )
 
 func TestParts(t *testing.T) {
+	t.Parallel()
+
 	testCases := []struct {
 		desc, path string
 		expected   []string
@@ -37,6 +39,8 @@ func TestParts(t *testing.T) {
 }
 
 func TestJoin(t *testing.T) {
+	t.Parallel()
+
 	testCases := []struct {
 		desc, expected string
 		parts          []string
@@ -61,6 +65,8 @@ func TestJoin(t *testing.T) {
 }
 
 func TestRoot(t *testing.T) {
+	t.Parallel()
+
 	testCases := []struct {
 		desc     string
 		parts    []string

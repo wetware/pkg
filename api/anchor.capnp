@@ -39,6 +39,6 @@ interface Anchor {
     # which is effectively a List(uint8), in _another_ list.
     walk @1 (path :Text) -> (anchor :Anchor);
 
-    get @2 () -> (var :Var);
-    set @3 (var :Var) -> ();
+    # get @2 () -> (var :Var);
+    # set @3 (var :Var) -> ();
 }

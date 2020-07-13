@@ -39,12 +39,11 @@ func Neighborhood(bus event.Bus, kmin, kmax int) ProviderFunc {
 		}
 
 		return neighborhood{
-			kmin: kmin,
-			kmax: kmax,
-			bus:  bus,
-			sub:  sub,
-			e:    e,
-			errs: make(chan error, 1),
+			phaseMap: phasemap(kmin, kmax),
+			bus:      bus,
+			sub:      sub,
+			e:        e,
+			errs:     make(chan error, 1),
 		}, nil
 	}
 }
@@ -53,15 +52,20 @@ func Neighborhood(bus event.Bus, kmin, kmax int) ProviderFunc {
 // hosts.  Neighborhood events do not concern themselves with the number of connections,
 // but rather the presence or absence of a direct link.
 type neighborhood struct {
-	kmin, kmax int
-	bus        event.Bus
-	sub        event.Subscription
-	e          event.Emitter
-	errs       chan error
+	phaseMap
+
+	bus  event.Bus
+	sub  event.Subscription
+	e    event.Emitter
+	errs chan error
 }
 
 func (n neighborhood) Loggable() map[string]interface{} {
 	return map[string]interface{}{"service": "neighborhood"}
+}
+
+func (n neighborhood) Errors() <-chan error {
+	return n.errs
 }
 
 func (n neighborhood) Start(ctx context.Context) (err error) {
@@ -99,26 +103,11 @@ func (n neighborhood) subloop() {
 
 		state.K = len(ps)
 		state.From = state.To
-		state.To = n.phase(len(ps))
+		state.To = n.Phase(len(ps))
 
 		if err := n.e.Emit(state); err != nil {
 			n.errs <- err
 		}
-	}
-}
-
-func (n neighborhood) phase(k int) Phase {
-	switch {
-	case k == 0:
-		return PhaseOrphaned
-	case 0 < k && k < n.kmin:
-		return PhasePartial
-	case n.kmin < k && k < n.kmax:
-		return PhaseComplete
-	case k > n.kmax:
-		return PhaseOverloaded
-	default:
-		panic(fmt.Sprintf("invalid cardinality:  %d", k))
 	}
 }
 
@@ -132,8 +121,8 @@ func (n neighborhood) phase(k int) Phase {
 // Then:
 // - orphaned := k == 0
 // - partial := 0 < k < l
-// - complete := l <= k < h
-// - overloaded := k >= h
+// - complete := l <= k <= h
+// - overloaded := k > h
 type Phase uint8
 
 const (
@@ -160,5 +149,28 @@ func (p Phase) String() string {
 		return "neighborhood overloaded"
 	default:
 		return fmt.Sprintf("<invalid phase:: %d>", p)
+	}
+}
+
+type phaseMap struct {
+	l, h int
+}
+
+func phasemap(l, h int) phaseMap {
+	return phaseMap{l: l, h: h}
+}
+
+func (p phaseMap) Phase(k int) Phase {
+	switch {
+	case k == 0:
+		return PhaseOrphaned
+	case 0 < k && k < p.l:
+		return PhasePartial
+	case p.l <= k && k <= p.h:
+		return PhaseComplete
+	case k > p.h:
+		return PhaseOverloaded
+	default:
+		panic(fmt.Sprintf("invalid cardinality:  %d", k))
 	}
 }
