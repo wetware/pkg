@@ -49,7 +49,7 @@ func services(cfg serviceConfig) runtime.ServiceBundle {
 		service.Neighborhood(cfg.EventBus, cfg.Graph.KMin, cfg.Graph.KMax),
 		service.Bootstrap(cfg.EventBus, cfg.Boot),
 		// service.Beacon(cfg.Host, p),
-		// service.Discover(cfg.EventBus, cfg.Namespace, cfg.Discovery),
+		service.Discover(cfg.Host, cfg.Namespace, cfg.Discovery),
 		service.Graph(cfg.Host),
 		service.Announcer(cfg.Host, cfg.RoutingTopic, cfg.TTL),
 		service.Joiner(cfg.Host),
