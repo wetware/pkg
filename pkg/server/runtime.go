@@ -48,7 +48,7 @@ func services(cfg serviceConfig) runtime.ServiceBundle {
 		service.ConnTracker(cfg.Host),
 		service.Neighborhood(cfg.EventBus, cfg.Graph.KMin, cfg.Graph.KMax),
 		service.Bootstrap(cfg.EventBus, cfg.Boot),
-		// service.Beacon(cfg.Host, p),
+		service.Beacon(cfg.Host, cfg.Boot),
 		service.Discover(cfg.Host, cfg.Namespace, cfg.Discovery),
 		service.Graph(cfg.Host),
 		service.Announcer(cfg.Host, cfg.RoutingTopic, cfg.TTL),

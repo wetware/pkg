@@ -4,24 +4,12 @@ package boot
 import (
 	"context"
 
-	"github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multiaddr"
 )
 
 var _ Strategy = (StaticAddrs)(nil)
-
-// // Protocol for cluster bootstrap.
-// type Protocol interface {
-// 	Strategy
-// 	Beacon
-// }
-
-// Service that can be discovered.
-type Service interface {
-	ID() peer.ID
-	Network() network.Network
-}
 
 // Strategy for obtaining bootstrap peers.
 type Strategy interface {
@@ -29,17 +17,12 @@ type Strategy interface {
 	DiscoverPeers(context.Context, ...Option) (<-chan peer.AddrInfo, error)
 }
 
-// Beacon responds to queries from a corresponding Discover implementation.
-// Implementations MUST ensure Start can be called again after a successful call to
-// Close, and SHOULD make efforts to ensure Close returns in a timely manner.
+// Beacon is a boot strategy that requires a service running on a local node in
+// order to respond to boot requests.
 type Beacon interface {
-	// Start advertising the service in the background.  Does not block.
-	// Subsequent calls to Start MUST be preceeded by a call to Close.
-	Start(Service) error
-
-	// Close stops the active service advertisement.  Once called, Start can be called
-	// again.
-	Close() error
+	Loggable() map[string]interface{}
+	Signal(context.Context, host.Host) error
+	Stop(context.Context) error
 }
 
 // StaticAddrs for cluster discovery
@@ -76,16 +59,6 @@ func (as StaticAddrs) DiscoverPeers(_ context.Context, opt ...Option) (<-chan pe
 	close(ch)
 
 	return ch, err
-}
-
-// Start is a nop.  It immediately returns nil.
-func (as StaticAddrs) Start(Service) error {
-	return nil
-}
-
-// Close is a nop.  It immediately returns nil.
-func (as StaticAddrs) Close() error {
-	return nil
 }
 
 /*

@@ -129,14 +129,22 @@ func (g graph) subloop() {
 
 	for {
 		select {
-		case v := <-g.tstep.Out():
+		case v, ok := <-g.tstep.Out():
+			if !ok {
+				return
+			}
+
 			if !s.Advance(v.(EvtTimestep).Delta) {
 				continue
 			}
 
 			// scheduler deadline reached; reschedule, then re-send `ev` to g.neighbors.
 			s.Reset()
-		case v := <-g.nhood.Out():
+		case v, ok := <-g.nhood.Out():
+			if !ok {
+				return
+			}
+
 			ev = v.(EvtNeighborhoodChanged)
 		case <-g.cq:
 			return

@@ -48,12 +48,6 @@ func TestDiscovery(t *testing.T) {
 
 	dy := mock_service.NewMockDiscovery(ctrl)
 
-	// dy.Advertise() is called once at service start.
-	dy.EXPECT().
-		Advertise(gomock.Any(), ns, gomock.Any()).
-		Return(time.Hour*2, nil).
-		Times(1)
-
 	d, err := service.Discover(h, ns, dy).Service()
 	require.NoError(t, err)
 

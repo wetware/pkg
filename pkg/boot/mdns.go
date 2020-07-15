@@ -8,6 +8,7 @@ import (
 	ww "github.com/lthibault/wetware/pkg"
 	"github.com/pkg/errors"
 
+	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr-net"
@@ -98,18 +99,18 @@ func (d MDNS) DiscoverPeers(ctx context.Context, opt ...Option) (<-chan peer.Add
 	return out, ctx.Err()
 }
 
-// Start an MDNS server that responds to queries in the background.
-func (d *MDNS) Start(s Service) error {
-	p, err := getDialableListenAddrs(s)
+// Signal presence to other peers.
+func (d *MDNS) Signal(_ context.Context, h host.Host) error {
+	p, err := getDialableListenAddrs(h)
 	if err != nil {
 		return err
 	}
 
-	zone, err := mdns.NewMDNSService(s.ID().Pretty(),
+	zone, err := mdns.NewMDNSService(h.ID().Pretty(),
 		d.namespace(),
 		"", "",
 		p.Port(), p.IPs(), // these fields are required by MDNS but ignored by ww
-		marshalTxtRecord(s)) // peer.ID and multiaddrs are stored here
+		marshalTxtRecord(h)) // peer.ID and multiaddrs are stored here
 	if err != nil {
 		return err
 	}
@@ -122,8 +123,8 @@ func (d *MDNS) Start(s Service) error {
 	return err
 }
 
-// Close the server.  Panics if ListenAndServe was not previously called.
-func (d MDNS) Close() error {
+// Stop the server.  Panics if ListenAndServe was not previously called.
+func (d MDNS) Stop(context.Context) error {
 	return d.server.Shutdown()
 }
 
@@ -142,9 +143,9 @@ func (d MDNS) handleEntry(e *mdns.ServiceEntry) (info peer.AddrInfo, err error) 
 	return
 }
 
-func getDialableListenAddrs(s Service) (p payload, err error) {
+func getDialableListenAddrs(h host.Host) (p payload, err error) {
 	var as []multiaddr.Multiaddr
-	if as, err = s.Network().InterfaceListenAddresses(); err != nil {
+	if as, err = h.Network().InterfaceListenAddresses(); err != nil {
 		return nil, err
 	}
 
@@ -192,10 +193,10 @@ func (p payload) IPs() []net.IP {
 	return []net.IP{p[0].IP}
 }
 
-func marshalTxtRecord(s Service) []string {
-	out := []string{s.ID().String()}
+func marshalTxtRecord(h host.Host) []string {
+	out := []string{h.ID().String()}
 
-	for _, addr := range s.Network().ListenAddresses() {
+	for _, addr := range h.Network().ListenAddresses() {
 		out = append(out, addr.String())
 	}
 

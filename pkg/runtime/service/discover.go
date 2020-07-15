@@ -83,11 +83,7 @@ func (d discoverer) Errors() <-chan error {
 }
 
 func (d discoverer) Start(ctx context.Context) (err error) {
-	if err = waitNetworkReady(ctx, d.h.EventBus()); err != nil {
-		return
-	}
-
-	if err = d.advertise(ctx); err == nil {
+	if err = waitNetworkReady(ctx, d.h.EventBus()); err == nil {
 		go d.tsloop()
 		go d.adloop()
 		go d.graftloop()

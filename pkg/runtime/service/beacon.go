@@ -1,59 +1,54 @@
 package service
 
-// type startBeaconParams struct {
-// 	fx.In
+import (
+	"context"
 
-// 	Host host.Host
-// 	Boot discover.Protocol
-// }
+	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/lthibault/wetware/pkg/boot"
+	"github.com/lthibault/wetware/pkg/runtime"
+)
 
-// func startBeacon(ctx context.Context, ps startBeaconParams, lx fx.Lifecycle) error {
-// 	bs := beaconService{
-// 		Service: ps.Host,
-// 		Beacon:  ps.Boot,
-// 	}
+// Beacon starts a local local server to respond to boot requests, if such a server
+// is required by the boot strategy.
+func Beacon(h host.Host, b boot.Strategy) ProviderFunc {
+	return func() (runtime.Service, error) {
+		if bc, ok := b.(boot.Beacon); ok {
+			return beaconService{Beacon: bc, h: h}, nil
+		}
 
-// 	lx.Append(fx.Hook{
-// 		OnStart: func(ctx context.Context) error {
-// 			ps.Log.WithFields(bs.Loggable()).Debug("starting service")
-// 			return bs.Start(ctx)
-// 		},
-// 		OnStop: func(context.Context) error {
-// 			ps.Log.WithFields(bs.Loggable()).Debug("stopping service")
-// 			return bs.Stop(ctx)
-// 		},
-// 	})
+		return nopService{}, nil
+	}
+}
 
-// 	return nil
-// }
+type beaconService struct {
+	h host.Host
+	boot.Beacon
+}
 
-// type beaconService struct {
-// 	Beacon  discover.Beacon
-// 	Service interface {
-// 		Addrs() []multiaddr.Multiaddr
-// 		discover.Service
-// 	}
-// }
+func (b beaconService) Start(ctx context.Context) (err error) {
+	if err = waitNetworkReady(ctx, b.h.EventBus()); err == nil {
+		err = b.Beacon.Signal(ctx, b.h)
+	}
 
-// func (beaconService) Loggable() map[string]interface{} {
-// 	return map[string]interface{}{"service": "beacon"}
-// }
+	return
+}
 
-// func (b beaconService) Start(context.Context) error {
-// 	// We must wait until the libp2p.Host is listening before
-// 	// advertising our listen addresses.  If you encounter this error,
-// 	// try starting the beaconService later.
-// 	if len(b.Service.Addrs()) == 0 {
-// 		return errors.New("start beacon: host is not listening")
-// 	}
+func (b beaconService) Stop(ctx context.Context) error {
+	return b.Beacon.Stop(ctx)
+}
 
-// 	if err := b.Beacon.Start(b.Service); err != nil {
-// 		return err
-// 	}
+type nopService struct{}
 
-// 	return nil
-// }
+func (nopService) Loggable() map[string]interface{} {
+	return map[string]interface{}{
+		"service": "nop",
+	}
+}
 
-// func (b beaconService) Stop(context.Context) error {
-// 	return b.Beacon.Close()
-// }
+func (nopService) Start(context.Context) error {
+	return nil
+}
+
+func (nopService) Stop(context.Context) error {
+	return nil
+}
