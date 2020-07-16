@@ -84,11 +84,16 @@ func (d discoverer) Errors() <-chan error {
 
 func (d discoverer) Start(ctx context.Context) (err error) {
 	if err = waitNetworkReady(ctx, d.h.EventBus()); err == nil {
-		go d.tsloop()
-		go d.adloop()
-		go d.graftloop()
-		go d.discloop()
+		startBackground(
+			d.tsloop,
+			d.adloop,
+			d.graftloop,
+			d.discloop,
+		)
 	}
+
+	// TODO(bugfix):  advertise namespace; We currently have to wait 90 minutes for the
+	//				  initial advertisement to occur.
 
 	return
 }
@@ -107,16 +112,16 @@ func (d discoverer) Stop(ctx context.Context) error {
 func (d discoverer) tsloop() {
 	defer close(d.advert)
 
-	s := newScheduler(adTTL, jitterbug.Uniform{
+	sched := newScheduler(adTTL, jitterbug.Uniform{
 		Min:    time.Minute * 90,
 		Source: rand.New(randutil.FromPeer(d.h.ID())),
 	})
 
 	for v := range d.tstep.Out() {
-		if s.Advance(v.(EvtTimestep).Delta) {
+		if sched.Advance(v.(EvtTimestep).Delta) {
 			select {
 			case d.advert <- struct{}{}:
-				s.Reset()
+				sched.Reset()
 			default:
 				// advertisement in progress
 			}
@@ -149,19 +154,23 @@ func (d discoverer) adloop() {
 }
 
 func (d discoverer) discloop() {
+
 	for range d.disc {
 		d.raise(func() error {
 			ctx, cancel := context.WithTimeout(d.ctx, time.Second*30)
 			defer cancel()
 
-			// TODO(optimization): consider raising the limit to amortize cost of
-			//					   initiating DHT traversal.
-			ch, err := d.d.FindPeers(ctx, d.ns, discovery.Limit(1))
+			// TODO(performance):  investigate ideal limit & consider making it dynamic.
+			ch, err := d.d.FindPeers(ctx, d.ns, discovery.Limit(3))
 			if err != nil {
 				return errors.Wrap(err, "find peers")
 			}
 
 			for info := range ch {
+				if d.h.ID() == info.ID {
+					continue
+				}
+
 				if err = d.e.Emit(EvtPeerDiscovered(info)); err != nil {
 					return errors.Wrap(err, "emit")
 				}

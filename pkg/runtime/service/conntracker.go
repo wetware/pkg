@@ -48,6 +48,7 @@ type conntracker struct {
 
 	mu   sync.Mutex
 	sync map[peer.ID]chan bool
+	cq   chan struct{}
 }
 
 // ConnTracker produces a conntracker service.
@@ -65,6 +66,7 @@ func ConnTracker(h host.Host) ProviderFunc {
 		t := &conntracker{
 			m:    h.Peerstore(),
 			sync: make(map[peer.ID]chan bool),
+			cq:   make(chan struct{}),
 		}
 
 		bus := h.EventBus()
@@ -109,14 +111,18 @@ func (t *conntracker) Loggable() map[string]interface{} {
 
 // Start service
 func (t *conntracker) Start(context.Context) error {
-	go t.idloop()
-	go t.connloop()
+	startBackground(
+		t.idloop,
+		t.connloop,
+	)
 
 	return nil
 }
 
 // Stop service
 func (t *conntracker) Stop(context.Context) error {
+	close(t.cq)
+
 	return multierr.Combine(
 		t.emitConn.Close(),
 		t.emitStream.Close(),
@@ -128,14 +134,14 @@ func (t *conntracker) idloop() {
 	for v := range t.idsub.Out() {
 		switch ev := v.(type) {
 		case event.EvtPeerIdentificationCompleted:
-			t.ensureChan(ev.Peer) <- true
+			t.ensureChan(ev.Peer) <- true // buffered; nonblocking
 			t.emitConn.Emit(EvtConnectionChanged{
 				Peer:   ev.Peer,
 				Client: t.isClient(ev.Peer),
 				State:  ConnStateOpened,
 			})
 		case event.EvtPeerIdentificationFailed:
-			t.ensureChan(ev.Peer) <- false
+			t.ensureChan(ev.Peer) <- false // buffered; nonblocking
 		}
 	}
 }
@@ -191,17 +197,21 @@ func (t *conntracker) ensureChan(id peer.ID) chan bool {
 }
 
 func (t *conntracker) onDisconnected(net network.Network, conn network.Conn) {
-	if <-t.ensureChan(conn.RemotePeer()) {
-		t.emitConn.Emit(EvtConnectionChanged{
-			Peer:   conn.RemotePeer(),
-			Client: t.isClient(conn.RemotePeer()),
-			State:  ConnStateClosed,
-		})
-	}
+	select {
+	case ok := <-t.ensureChan(conn.RemotePeer()):
+		if ok {
+			t.emitConn.Emit(EvtConnectionChanged{
+				Peer:   conn.RemotePeer(),
+				Client: t.isClient(conn.RemotePeer()),
+				State:  ConnStateClosed,
+			})
+		}
 
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	delete(t.sync, conn.RemotePeer())
+		t.mu.Lock()
+		defer t.mu.Unlock()
+		delete(t.sync, conn.RemotePeer())
+	case <-t.cq:
+	}
 }
 
 func (t *conntracker) onStreamOpened(net network.Network, s network.Stream) {

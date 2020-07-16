@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -56,8 +57,10 @@ func (j joiner) Loggable() map[string]interface{} {
 // Start service
 func (j *joiner) Start(ctx context.Context) (err error) {
 	if err = waitNetworkReady(ctx, j.h.EventBus()); err == nil {
-		go j.subloop()
-		go j.joinloop()
+		startBackground(
+			j.subloop,
+			j.joinloop,
+		)
 	}
 
 	return
@@ -92,11 +95,28 @@ func (j joiner) joinloop() {
 	defer close(j.errs)
 
 	for ev := range j.join {
-		if err := j.h.Connect(j.ctx, peer.AddrInfo(ev)); err != nil {
-			select {
-			case j.errs <- err:
-			case <-j.ctx.Done():
-			}
+		if ev.ID == j.h.ID() {
+			continue
 		}
+
+		j.connect(peer.AddrInfo(ev))
+	}
+}
+
+func (j joiner) connect(info peer.AddrInfo) {
+	ctx, cancel := context.WithTimeout(j.ctx, time.Second*30)
+	defer cancel()
+
+	j.raise(j.h.Connect(ctx, info))
+}
+
+func (j joiner) raise(err error) {
+	if err == nil {
+		return
+	}
+
+	select {
+	case j.errs <- err:
+	case <-j.ctx.Done():
 	}
 }

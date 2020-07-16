@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/event"
@@ -19,6 +20,10 @@ func (f ProviderFunc) Service() (runtime.Service, error) {
 	return f()
 }
 
+/*
+	Internal utilities
+*/
+
 func waitNetworkReady(ctx context.Context, bus event.Bus) error {
 	sub, err := bus.Subscribe(new(p2p.EvtNetworkReady))
 	if err != nil {
@@ -33,10 +38,6 @@ func waitNetworkReady(ctx context.Context, bus event.Bus) error {
 		return errors.Wrap(ctx.Err(), "wait network ready")
 	}
 }
-
-/*
-	Internal utilities
-*/
 
 type scheduler struct {
 	d, remaining time.Duration
@@ -56,4 +57,17 @@ func (s *scheduler) Advance(d time.Duration) bool {
 
 func (s *scheduler) Reset() {
 	s.remaining = s.j.Jitter(s.d)
+}
+
+func startBackground(fs ...func()) {
+	var wg sync.WaitGroup
+	wg.Add(len(fs))
+	defer wg.Wait()
+
+	for _, f := range fs {
+		go func(f func()) {
+			wg.Done()
+			f()
+		}(f)
+	}
 }

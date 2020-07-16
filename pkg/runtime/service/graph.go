@@ -99,8 +99,10 @@ func (g graph) Errors() <-chan error {
 
 func (g graph) Start(ctx context.Context) (err error) {
 	if err = waitNetworkReady(ctx, g.bus); err == nil {
-		go g.subloop()
-		go g.emitloop()
+		startBackground(
+			g.subloop,
+			g.emitloop,
+		)
 	}
 
 	return
@@ -120,12 +122,11 @@ func (g graph) Stop(context.Context) error {
 func (g graph) subloop() {
 	defer close(g.neighbors)
 
-	var s = newScheduler(time.Minute, jitterbug.Uniform{
+	var ev EvtNeighborhoodChanged
+	sched := newScheduler(time.Minute, jitterbug.Uniform{
 		Min:    time.Second * 15,
 		Source: rand.New(g.src),
 	})
-
-	var ev EvtNeighborhoodChanged
 
 	for {
 		select {
@@ -134,12 +135,12 @@ func (g graph) subloop() {
 				return
 			}
 
-			if !s.Advance(v.(EvtTimestep).Delta) {
+			if !sched.Advance(v.(EvtTimestep).Delta) {
 				continue
 			}
 
 			// scheduler deadline reached; reschedule, then re-send `ev` to g.neighbors.
-			s.Reset()
+			sched.Reset()
 		case v, ok := <-g.nhood.Out():
 			if !ok {
 				return

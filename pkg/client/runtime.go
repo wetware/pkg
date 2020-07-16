@@ -11,9 +11,11 @@ import (
 	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/pnet"
+	"github.com/libp2p/go-libp2p-core/routing"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/config"
+	"github.com/pkg/errors"
 
 	ctxutil "github.com/lthibault/wetware/internal/util/ctx"
 	hostutil "github.com/lthibault/wetware/internal/util/host"
@@ -33,7 +35,7 @@ func services(cfg serviceConfig) runtime.ServiceBundle {
 		service.ConnTracker(cfg.Host),
 		service.Neighborhood(cfg.EventBus, kmin, kmax),
 		service.Bootstrap(cfg.EventBus, cfg.Boot),
-		// service.Discover(cfg.EventBus, cfg.Namespace, cfg.Discovery),
+		// service.Discover(cfg.EventBus, cfg.Namespace, cfg.Discovery),  // TODO:  initial advertisement
 		service.Graph(cfg.Host),
 		service.Joiner(cfg.Host),
 	)
@@ -59,7 +61,7 @@ func (cfg Config) assemble(ctx context.Context, c *Client) {
 		),
 		fx.Invoke(
 			runtime.Register,
-			start,
+			dial,
 		),
 	)
 }
@@ -110,12 +112,43 @@ type serviceConfig struct {
 	Boot      boot.Strategy
 }
 
-func start(h host.Host) error {
+func dial(h host.Host, dht routing.Routing, lx fx.Lifecycle) error {
 	e, err := h.EventBus().Emitter(new(p2p.EvtNetworkReady), eventbus.Stateful)
 	if err != nil {
 		return err
 	}
 	defer e.Close()
 
-	return e.Emit(p2p.EvtNetworkReady{Network: h.Network()})
+	lx.Append(dialhook(h.EventBus(), dht))
+
+	return e.Emit(netready(h))
+}
+
+func dialhook(bus event.Bus, dht interface{ Bootstrap(context.Context) error }) fx.Hook {
+	return fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			sub, err := bus.Subscribe(new(service.EvtNeighborhoodChanged))
+			if err != nil {
+				return err
+			}
+			defer sub.Close()
+
+			for {
+				select {
+				case v := <-sub.Out():
+					if v.(service.EvtNeighborhoodChanged).To == service.PhaseOrphaned {
+						continue
+					}
+
+					return errors.Wrap(dht.Bootstrap(ctx), "dht bootstrap") // async call
+				case <-ctx.Done():
+					return errors.Wrap(ctx.Err(), "join cluster")
+				}
+			}
+		},
+	}
+}
+
+func netready(h host.Host) p2p.EvtNetworkReady {
+	return p2p.EvtNetworkReady{Network: h.Network()}
 }

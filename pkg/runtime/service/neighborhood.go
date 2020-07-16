@@ -14,7 +14,6 @@ import (
 
 // EvtNeighborhoodChanged fires when a graph edge is created or destroyed
 type EvtNeighborhoodChanged struct {
-	// Peer     peer.ID
 	K        int
 	From, To Phase
 }
@@ -22,6 +21,7 @@ type EvtNeighborhoodChanged struct {
 // Neighborhood produces a neighborhood service.
 //
 // Consumes:
+//  - p2p.EvtNetworkReady
 // 	- event.EvtPeerConnectednessChanged [ libp2p ]
 //
 // Emits:
@@ -43,6 +43,7 @@ func Neighborhood(bus event.Bus, kmin, kmax int) ProviderFunc {
 			bus:      bus,
 			sub:      sub,
 			e:        e,
+			cq:       make(chan struct{}),
 			errs:     make(chan error, 1),
 		}, nil
 	}
@@ -57,6 +58,7 @@ type neighborhood struct {
 	bus  event.Bus
 	sub  event.Subscription
 	e    event.Emitter
+	cq   chan struct{}
 	errs chan error
 }
 
@@ -70,7 +72,7 @@ func (n neighborhood) Errors() <-chan error {
 
 func (n neighborhood) Start(ctx context.Context) (err error) {
 	if err = waitNetworkReady(ctx, n.bus); err == nil {
-		go n.subloop()
+		startBackground(n.subloop)
 
 		// signal initial state - PhaseOrphaned
 		err = n.e.Emit(EvtNeighborhoodChanged{})
@@ -80,6 +82,8 @@ func (n neighborhood) Start(ctx context.Context) (err error) {
 }
 
 func (n neighborhood) Stop(context.Context) error {
+	close(n.cq)
+
 	return multierr.Combine(
 		n.sub.Close(),
 		n.e.Close(),
@@ -87,9 +91,8 @@ func (n neighborhood) Stop(context.Context) error {
 }
 
 func (n neighborhood) subloop() {
-	var ps = make(map[peer.ID]struct{})
-
 	var state EvtNeighborhoodChanged
+	var ps = make(map[peer.ID]struct{})
 
 	for v := range n.sub.Out() {
 		switch ev := v.(event.EvtPeerConnectednessChanged); ev.Connectedness {
@@ -105,9 +108,18 @@ func (n neighborhood) subloop() {
 		state.From = state.To
 		state.To = n.Phase(len(ps))
 
-		if err := n.e.Emit(state); err != nil {
-			n.errs <- err
-		}
+		n.raise(n.e.Emit(state))
+	}
+}
+
+func (n neighborhood) raise(err error) {
+	if err == nil {
+		return
+	}
+
+	select {
+	case n.errs <- err:
+	case <-n.cq:
 	}
 }
 

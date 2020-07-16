@@ -30,7 +30,7 @@ func Bootstrap(bus event.Bus, s boot.Strategy) ProviderFunc {
 			ctx:      ctx,
 			cancel:   cancel,
 			errs:     make(chan error, 1),
-			discover: make(chan struct{}),
+			discover: make(chan struct{}, 1),
 		}
 
 		if b.sub, err = bus.Subscribe(new(EvtNeighborhoodChanged)); err != nil {
@@ -67,8 +67,10 @@ func (b bootstrapper) Loggable() map[string]interface{} {
 
 func (b *bootstrapper) Start(ctx context.Context) (err error) {
 	if err = waitNetworkReady(ctx, b.bus); err == nil {
-		go b.subloop()
-		go b.queryloop()
+		startBackground(
+			b.subloop,
+			b.queryloop,
+		)
 	}
 
 	return
