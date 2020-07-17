@@ -27,7 +27,6 @@ type Publisher interface {
 // Emits:
 func Announcer(h host.Host, p Publisher, ttl time.Duration) ProviderFunc {
 	return func() (runtime.Service, error) {
-
 		tstep, err := h.EventBus().Subscribe(new(EvtTimestep))
 		if err != nil {
 			return nil, err
@@ -70,13 +69,11 @@ func (a announcer) Loggable() map[string]interface{} {
 }
 
 func (a announcer) Start(ctx context.Context) (err error) {
-	if err = waitNetworkReady(ctx, a.h.EventBus()); err != nil {
-		return
-	}
-
-	if err = a.Announce(ctx); err == nil {
-		go a.subloop()
-		go a.announceloop()
+	if err = waitNetworkReady(ctx, a.h.EventBus()); err == nil {
+		if err = a.Announce(ctx); err == nil {
+			go a.subloop()
+			go a.announceloop()
+		}
 	}
 
 	return

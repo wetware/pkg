@@ -43,13 +43,16 @@ import (
 	"github.com/lthibault/wetware/pkg/runtime/service"
 )
 
+const timestep = time.Millisecond * 100
+
 func services(cfg serviceConfig) runtime.ServiceBundle {
 	return runtime.Bundle(
+		service.Ticker(cfg.Host.EventBus(), timestep),
 		service.ConnTracker(cfg.Host),
 		service.Neighborhood(cfg.EventBus, cfg.Graph.KMin, cfg.Graph.KMax),
 		service.Bootstrap(cfg.EventBus, cfg.Boot),
 		service.Beacon(cfg.Host, cfg.Boot),
-		service.Discover(cfg.Host, cfg.Namespace, cfg.Discovery),
+		// service.Discover(cfg.Host, cfg.Namespace, cfg.Discovery),
 		service.Graph(cfg.Host),
 		service.Announcer(cfg.Host, cfg.RoutingTopic, cfg.TTL),
 		service.Joiner(cfg.Host),

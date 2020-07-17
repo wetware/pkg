@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"time"
 
 	"go.uber.org/fx"
 
@@ -26,12 +27,14 @@ import (
 )
 
 const (
-	kmin = 3
-	kmax = 64
+	kmin     = 3
+	kmax     = 64
+	timestep = time.Millisecond * 100
 )
 
 func services(cfg serviceConfig) runtime.ServiceBundle {
 	return runtime.Bundle(
+		service.Ticker(cfg.Host.EventBus(), timestep),
 		service.ConnTracker(cfg.Host),
 		service.Neighborhood(cfg.EventBus, kmin, kmax),
 		service.Bootstrap(cfg.EventBus, cfg.Boot),
