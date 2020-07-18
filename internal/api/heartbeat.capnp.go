@@ -15,12 +15,12 @@ type Heartbeat struct{ capnp.Struct }
 const Heartbeat_TypeID = 0xbbeb920e5748c15b
 
 func NewHeartbeat(s *capnp.Segment) (Heartbeat, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 0})
 	return Heartbeat{st}, err
 }
 
 func NewRootHeartbeat(s *capnp.Segment) (Heartbeat, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 0})
 	return Heartbeat{st}, err
 }
 
@@ -32,25 +32,6 @@ func ReadRootHeartbeat(msg *capnp.Message) (Heartbeat, error) {
 func (s Heartbeat) String() string {
 	str, _ := text.Marshal(0xbbeb920e5748c15b, s.Struct)
 	return str
-}
-
-func (s Heartbeat) Id() (string, error) {
-	p, err := s.Struct.Ptr(0)
-	return p.Text(), err
-}
-
-func (s Heartbeat) HasId() bool {
-	p, err := s.Struct.Ptr(0)
-	return p.IsValid() || err != nil
-}
-
-func (s Heartbeat) IdBytes() ([]byte, error) {
-	p, err := s.Struct.Ptr(0)
-	return p.TextBytes(), err
-}
-
-func (s Heartbeat) SetId(v string) error {
-	return s.Struct.SetText(0, v)
 }
 
 func (s Heartbeat) Ttl() int64 {
@@ -66,7 +47,7 @@ type Heartbeat_List struct{ capnp.List }
 
 // NewHeartbeat creates a new list of Heartbeat.
 func NewHeartbeat_List(s *capnp.Segment, sz int32) (Heartbeat_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1}, sz)
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 0}, sz)
 	return Heartbeat_List{l}, err
 }
 
@@ -87,22 +68,20 @@ func (p Heartbeat_Promise) Struct() (Heartbeat, error) {
 	return Heartbeat{s}, err
 }
 
-const schema_b3f8acfcffafd8e8 = "x\xda\x1c\xca1J\x03A\x1c\x85\xf1\xf7fw]\x91" +
-	" \x0e\xc4\xc6&\x13\xb1\xd0\xc2\x18\xc1\xcaJ\xc1\"\xa5" +
-	"SY\x08\xca\x7f\x93\xc1,\xc4d\xd9\x99\xc4;X\xea" +
-	"\x01\xbc\x80`a)\x16\x16^A<\x82`ge!" +
-	"\x8c$\xed\xf7\xfd\xd6N\x8e\x94\xce.\x01\x9bfK\xf1" +
-	"\xfc\xadw\xb6z\xf7\xfd\x02\xdb$\xe3\xd7\xe7S\xfc{" +
-	"\xfc}F\xc6\x1c\xd0\xeb?\xba\x9d\xebvK\xcb\x0d\x18" +
-	"\xa5*\xf7\x86Nj\x15\x0a'\xa1\xd3\x97j\\\x1d\xf6" +
-	"\x9c\xd4\xadE8%mJ\x15/\xee\x1f\xec\xeb\xc7\xed" +
-	";l\xaax\xdc%\x1b\xc0>WT\x9c\xd3\xb9\xcc\x83" +
-	")\xbd\x113*gnT\x8e\x9d\xf7\xe6\xday/W" +
-	"\xce\x84\xa1,fQOd\xd0\x17\x1f\xccd\xe6jS" +
-	"M\x0b?-:\xa0]NR %\xa0w6\x00\xbb" +
-	"\x95\xd0v\x15\xc9&\xe7mw\x13\xb0\xdb\x09\xed\x81b" +
-	"R\x0e\xd8\x80b\x03\xccC\x181\x83b\x06\xfe\x07\x00" +
-	"\x00\xff\xff\x13\xc7CL"
+const schema_b3f8acfcffafd8e8 = "x\xda\x1c\xca1J\x03A\x1c\x85\xf1\xf7&\xb3\xae\x88" +
+	"\x8a\x03\xb1\xce\xc4\x03D-ll\xd4.\xa5SY\x08" +
+	"\xca\x7f\xe3`\x16\xd6d\x99\x99\xe4\x10\x96z\x00/ " +
+	"XX\x8a\x85\x85W\x10\x8f \xd8YY\x08#I\xfb" +
+	"}\xbf\xad\x83ce\x8aK\xc0\xe9b%\x9f\xbf\x0d\xcf" +
+	"6\xef\xbe_\xe0\xbad\xfe\xfa|\xca\x7f\x8f\xbf\xcf\xd0" +
+	"%`\xb6\x7fL\xbf4\xfd\x9e\x91#0K[\xef\x8e" +
+	"\xbd\x04\x95*/i0\x92v\xd2\x1e\x0e\xbd\x84\xde2" +
+	"\x9c\x92NS\xe5\x8b\xfb\x07\xf7\xfaq\xfb\x0e\xa7\x15O" +
+	"\xf6\xc8u`\x9fk*/\xe8B\x96\xc9\xd6\xd1\x8am" +
+	"\xea\xb9o\xea\x89\x8f\xd1\xde\xf8\x18\xe5\xda\xdb4\x96\xe5" +
+	"\xac\xc2T\xaeF\x12\x93\x9d\xce}\xb0\xed\xac\x8a\xb3j" +
+	"\x00:\xdd\xd1\x80&`6v\x00\xb7\xda\xa1\xeb*\x96" +
+	")5,\xa0X\x80\xff\x01\x00\x00\xff\xff\xda\x03@I"
 
 func init() {
 	schemas.Register(schema_b3f8acfcffafd8e8,

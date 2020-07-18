@@ -10,7 +10,7 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	"github.com/lthibault/jitterbug"
-	"github.com/lthibault/wetware/pkg/internal/routing"
+	"github.com/lthibault/wetware/pkg/routing"
 	"github.com/lthibault/wetware/pkg/runtime"
 	randutil "github.com/lthibault/wetware/pkg/util/rand"
 )
@@ -90,7 +90,7 @@ func (a announcer) Errors() <-chan error {
 }
 
 func (a announcer) Announce(ctx context.Context) error {
-	hb, err := routing.NewHeartbeat(a.h.ID(), a.ttl)
+	hb, err := routing.NewHeartbeat(a.ttl)
 	if err != nil {
 		return err
 	}

@@ -1,4 +1,4 @@
-package server
+package host
 
 import (
 	"github.com/pkg/errors"
@@ -11,7 +11,6 @@ import (
 
 	"github.com/lthibault/wetware/internal/api"
 	ww "github.com/lthibault/wetware/pkg"
-	"github.com/lthibault/wetware/pkg/internal/routing"
 	anchorpath "github.com/lthibault/wetware/pkg/util/anchor/path"
 )
 
@@ -19,16 +18,20 @@ import (
 	api.go contains the capnp api that is served by the host
 */
 
+type routingTable interface {
+	Peers() peer.IDSlice
+}
+
 type rootAnchor struct {
 	id peer.ID
-	routing.Table
+	routingTable
 	anchor
 }
 
-func newRootAnchor(host host.Host, t routing.Table) rootAnchor {
+func newRootAnchor(host host.Host, t routingTable) rootAnchor {
 	return rootAnchor{
-		id:    host.ID(),
-		Table: t,
+		id:           host.ID(),
+		routingTable: t,
 		anchor: anchor{
 			root: newAnchorTree(),
 		},

@@ -2,22 +2,20 @@ package start
 
 import (
 	"context"
+	"time"
 
-	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 
 	log "github.com/lthibault/log/pkg"
-
 	logutil "github.com/lthibault/wetware/internal/util/log"
-	runtimeutil "github.com/lthibault/wetware/pkg/util/runtime"
 
+	"github.com/lthibault/wetware/pkg/host"
 	"github.com/lthibault/wetware/pkg/runtime"
-	"github.com/lthibault/wetware/pkg/server"
 )
 
 var (
-	logger log.Logger
-	host   server.Host
+	h host.Host
+	l log.Logger
 )
 
 // Command constructor
@@ -25,56 +23,61 @@ func Command(ctx context.Context) *cli.Command {
 	return &cli.Command{
 		Name:   "start",
 		Usage:  "start a host process",
-		Before: before(ctx),
+		Before: setUp(ctx),
+		After:  tearDown(),
 		Action: run(ctx),
 	}
 }
 
-func before(ctx context.Context) cli.BeforeFunc {
+func setUp(ctx context.Context) cli.BeforeFunc {
 	return func(c *cli.Context) (err error) {
-		if host, err = server.New(); err == nil {
-			logger = logutil.New(c).WithFields(host.Loggable())
+		ctx, cancel := context.WithTimeout(ctx, time.Second*15)
+		defer cancel()
+
+		if h, err = host.New(ctx); err == nil {
+			l = logutil.New(c).WithFields(h.Loggable())
+			l.Info("host started")
 		}
 
 		return
 	}
 }
 
+func tearDown() cli.AfterFunc {
+	return func(c *cli.Context) error {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+		defer cancel()
+
+		return h.Shutdown(ctx)
+	}
+}
+
 func run(ctx context.Context) cli.ActionFunc {
 	return func(c *cli.Context) error {
-		events, err := runtimeutil.CoreEventStream(ctx, host)
+		defer l.Warn("host shutting down")
+
+		sub, err := h.EventBus().Subscribe([]interface{}{
+			new(runtime.Exception),
+			new(runtime.EvtServiceStateChanged),
+		})
 		if err != nil {
 			return err
 		}
 
-		if err := host.Start(); err != nil {
-			return errors.Wrap(err, "start host")
-		}
+		go func() {
+			<-ctx.Done()
+			sub.Close()
+		}()
 
-		if err := loop(events); err != nil {
-			return err
-		}
-
-		if err := host.Close(); err != nil {
-			return errors.Wrap(err, "stop host")
+		for v := range sub.Out() {
+			switch ev := v.(type) {
+			case runtime.Exception:
+				l.WithFields(ev.Loggable()).Error("runtime error")
+			case runtime.EvtServiceStateChanged:
+				l.WithFields(ev.Loggable()).Debug(ev.State)
+			}
 		}
 
 		return nil
 	}
-}
-
-func loop(events <-chan interface{}) error {
-	logger.Info("host started")
-	defer logger.Warn("host shutting down")
-
-	for v := range events {
-		switch ev := v.(type) {
-		case runtime.Exception:
-			logger.WithFields(ev.Loggable()).Error("runtime error")
-		case runtime.EvtServiceStateChanged:
-			logger.WithFields(ev.Loggable()).Debug(ev.State)
-		}
-	}
-
-	return nil
 }

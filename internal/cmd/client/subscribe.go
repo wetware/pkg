@@ -12,7 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
-	routingutil "github.com/lthibault/wetware/pkg/util/routing"
+	"github.com/lthibault/wetware/pkg/routing"
 )
 
 func subscribe(ctx context.Context) *cli.Command {
@@ -77,7 +77,7 @@ type messagePrinter struct {
 
 func (m messagePrinter) PrintMessage(msg *pubsub.Message) error {
 	if m.topic == "" {
-		hb, err := routingutil.UnmarshalHeartbeat(msg.GetData())
+		hb, err := routing.UnmarshalHeartbeat(msg.Data)
 		if err != nil {
 			return err
 		}
@@ -88,7 +88,7 @@ func (m messagePrinter) PrintMessage(msg *pubsub.Message) error {
 			TTL time.Duration `json:"ttl"`
 		}{
 			Seq: binary.BigEndian.Uint64(msg.Seqno),
-			ID:  hb.ID(),
+			ID:  msg.GetFrom(),
 			TTL: hb.TTL(),
 		})
 	}

@@ -47,5 +47,10 @@ func hash(b []byte) []byte {
 }
 
 func newID(s string) peer.ID {
-	return peer.ID(base58.Encode(hash([]byte(s))))
+	id, err := peer.IDB58Decode(base58.Encode(hash([]byte(s))))
+	if err != nil {
+		panic(err)
+	}
+
+	return id
 }

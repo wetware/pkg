@@ -1,4 +1,4 @@
-package server
+package host
 
 import (
 	"context"
@@ -7,7 +7,6 @@ import (
 	"go.uber.org/fx"
 
 	// libp2p
-
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/config"
 
@@ -33,9 +32,9 @@ import (
 	hostutil "github.com/lthibault/wetware/internal/util/host"
 
 	// wetware internal
-	"github.com/lthibault/wetware/pkg/internal/block"
+
+	"github.com/lthibault/wetware/pkg/internal/filter"
 	"github.com/lthibault/wetware/pkg/internal/p2p"
-	"github.com/lthibault/wetware/pkg/internal/routing"
 
 	// wetware public
 	"github.com/lthibault/wetware/pkg/boot"
@@ -48,6 +47,7 @@ const timestep = time.Millisecond * 100
 func services(cfg serviceConfig) runtime.ServiceBundle {
 	return runtime.Bundle(
 		service.Ticker(cfg.Host.EventBus(), timestep),
+		service.Filter(cfg.Host.EventBus(), cfg.RoutingTopic, cfg.Filter),
 		service.ConnTracker(cfg.Host),
 		service.Neighborhood(cfg.EventBus, cfg.Graph.KMin, cfg.Graph.KMax),
 		service.Bootstrap(cfg.EventBus, cfg.Boot),
@@ -72,14 +72,15 @@ type Config struct {
 }
 
 func (cfg Config) assemble(h *Host) {
-	h.app = fx.New(
+	h.runtime = fx.New(
 		fx.NopLogger,
 		fx.Populate(h),
 		fx.Provide(
 			cfg.options,
 			p2p.New,
-			routing.New,
-			block.New,
+			routingTopic,
+			// block.New,
+			filter.New,
 			services,
 			newHost,
 		),
@@ -148,6 +149,7 @@ type serviceConfig struct {
 	Host         host.Host
 	EventBus     event.Bus
 	Boot         boot.Strategy
+	Filter       filter.Filter
 	RoutingTopic *pubsub.Topic
 	TTL          time.Duration `name:"ttl"`
 	Discovery    discovery.Discovery

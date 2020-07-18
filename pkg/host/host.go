@@ -1,8 +1,7 @@
-package server
+package host
 
 import (
 	"context"
-	"time"
 
 	"go.uber.org/fx"
 
@@ -11,25 +10,26 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multiaddr"
+	"github.com/pkg/errors"
 
-	"github.com/lthibault/wetware/pkg/internal/routing"
+	"github.com/lthibault/wetware/pkg/internal/filter"
 	"github.com/lthibault/wetware/pkg/internal/rpc"
 )
 
 // Host .
 type Host struct {
 	ns   string
-	r    routing.Table
+	r    routingTable
 	host host.Host
 
-	app interface {
+	runtime interface {
 		Start(context.Context) error
 		Stop(context.Context) error
 	}
 }
 
 // New Host
-func New(opt ...Option) (h Host, err error) {
+func New(ctx context.Context, opt ...Option) (h Host, err error) {
 	var cfg Config
 	for _, f := range withDefault(opt) {
 		if err = f(&cfg); err != nil {
@@ -38,6 +38,7 @@ func New(opt ...Option) (h Host, err error) {
 	}
 
 	cfg.assemble(&h)
+	err = errors.Wrap(h.runtime.Start(ctx), "host start")
 	return
 }
 
@@ -62,7 +63,7 @@ func (h Host) Addrs() []multiaddr.Multiaddr {
 
 // Peers in the cluster
 func (h Host) Peers() peer.IDSlice {
-	return append(h.r.Peers(), h.host.ID())
+	return append(h.r.Peers(), h.host.ID()) // TODO(xxx):  is the append necessary?
 }
 
 // EventBus provides asynchronous notifications of changes in the host's internal state,
@@ -71,20 +72,9 @@ func (h Host) EventBus() event.Bus {
 	return h.host.EventBus()
 }
 
-// Start the Host's network connections and start its runtime processes.
-func (h Host) Start() error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-
-	return h.app.Start(ctx)
-}
-
-// Close the Host's network connections and stop its runtime processes.
-func (h Host) Close() error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-
-	return h.app.Stop(ctx)
+// Shutdown the Host's network connections and stop its runtime processes.
+func (h Host) Shutdown(ctx context.Context) error {
+	return errors.Wrap(h.runtime.Stop(ctx), "host shutdown")
 }
 
 /*
@@ -96,19 +86,19 @@ type hostParams struct {
 
 	Namespace string `name:"ns"`
 
-	Host    host.Host
-	Routing routing.Table
+	Host   host.Host
+	Filter filter.Filter
 }
 
 func newHost(ctx context.Context, lx fx.Lifecycle, ps hostParams) Host {
 	// export capabilities
 	for _, cap := range []rpc.Capability{
-		newRootAnchor(ps.Host, ps.Routing),
+		newRootAnchor(ps.Host, ps.Filter),
 	} {
 		ps.Host.SetStreamHandler(cap.Protocol(), handler(cap))
 	}
 
-	return Host{ns: ps.Namespace, host: ps.Host, r: ps.Routing}
+	return Host{ns: ps.Namespace, host: ps.Host, r: ps.Filter}
 }
 
 func handler(cap rpc.Capability) network.StreamHandler {

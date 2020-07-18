@@ -6,6 +6,5 @@ $Go.package("api");
 $Go.import("github.com/lthibault/wetware/internal/api");
 
 struct Heartbeat $Go.doc("Heartbeat is a liveliness message that is broadcast over pubsub.") {
-	id @0 :Text;
-    ttl @1 :Int64;
+    ttl @0 :Int64;
 }
