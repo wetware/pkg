@@ -7,7 +7,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/event"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
-	log "github.com/lthibault/log/pkg"
 	"github.com/lthibault/wetware/pkg/runtime"
 )
 
@@ -89,11 +88,9 @@ func (r router) tickloop() {
 // consumes and discards topic messages
 func (r router) sinkloop() {
 	for {
-		msg, err := r.hb.Next(context.Background())
+		_, err := r.hb.Next(context.Background())
 		if err != nil {
 			break
 		}
-
-		log.Info(msg.GetFrom())
 	}
 }

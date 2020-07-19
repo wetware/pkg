@@ -12,7 +12,6 @@ import (
 	"github.com/lthibault/wetware/pkg/runtime"
 	randutil "github.com/lthibault/wetware/pkg/util/rand"
 	"github.com/pkg/errors"
-	"go.uber.org/multierr"
 )
 
 // TODO(config): parametrize (?)
@@ -41,11 +40,10 @@ func Discover(h host.Host, ns string, d discovery.Discovery) ProviderFunc {
 			disc:   make(chan struct{}),
 		}
 
-		if d.tstep, err = h.EventBus().Subscribe(new(EvtTimestep)); err != nil {
-			return
-		}
-
-		if d.graft, err = h.EventBus().Subscribe(new(EvtGraftRequested)); err != nil {
+		if d.sub, err = h.EventBus().Subscribe([]interface{}{
+			new(EvtTimestep),
+			new(EvtGraftRequested),
+		}); err != nil {
 			return
 		}
 
@@ -67,7 +65,7 @@ type discoverer struct {
 
 	errs         chan error
 	advert, disc chan struct{}
-	tstep, graft event.Subscription
+	sub          event.Subscription
 	e            event.Emitter
 }
 
@@ -85,10 +83,9 @@ func (d discoverer) Errors() <-chan error {
 func (d discoverer) Start(ctx context.Context) (err error) {
 	if err = waitNetworkReady(ctx, d.h.EventBus()); err == nil {
 		startBackground(
-			d.tsloop,
 			d.adloop,
 			d.graftloop,
-			d.discloop,
+			d.subloop,
 		)
 	}
 
@@ -103,58 +100,53 @@ func (d discoverer) Stop(ctx context.Context) error {
 
 	d.cancel()
 
-	return multierr.Combine(
-		d.tstep.Close(),
-		d.graft.Close(),
-	)
+	return d.sub.Close()
 }
 
-func (d discoverer) tsloop() {
+func (d discoverer) subloop() {
 	defer close(d.advert)
+	defer close(d.disc)
 
 	sched := newScheduler(adTTL, jitterbug.Uniform{
 		Min:    time.Minute * 90,
 		Source: rand.New(randutil.FromPeer(d.h.ID())),
 	})
 
-	for v := range d.tstep.Out() {
-		if sched.Advance(v.(EvtTimestep).Delta) {
-			select {
-			case d.advert <- struct{}{}:
-				sched.Reset()
-			default:
-				// advertisement in progress
+	for v := range d.sub.Out() {
+		switch ev := v.(type) {
+		case EvtTimestep:
+			if !sched.Advance(ev.Delta) {
+				continue
 			}
 
-		}
-	}
-}
+			sched.Reset()
 
-func (d discoverer) graftloop() {
-	defer close(d.disc)
-
-	for range d.graft.Out() {
-		select {
-		case d.disc <- struct{}{}:
-		default:
-			// discovery in progress
+			select {
+			case d.advert <- struct{}{}:
+			default:
+			}
+		case EvtGraftRequested:
+			select {
+			case d.disc <- struct{}{}:
+			default:
+			}
 		}
 	}
 }
 
 func (d discoverer) adloop() {
 	for range d.advert {
-		d.raise(func() error {
+		d.raise(func() (err error) {
 			ctx, cancel := context.WithTimeout(d.ctx, time.Minute*2)
 			defer cancel()
 
-			return d.advertise(ctx)
+			_, err = d.d.Advertise(ctx, d.ns, discovery.TTL(adTTL))
+			return
 		}())
 	}
 }
 
-func (d discoverer) discloop() {
-
+func (d discoverer) graftloop() {
 	for range d.disc {
 		d.raise(func() error {
 			ctx, cancel := context.WithTimeout(d.ctx, time.Second*30)
@@ -179,11 +171,6 @@ func (d discoverer) discloop() {
 			return nil
 		}())
 	}
-}
-
-func (d discoverer) advertise(ctx context.Context) (err error) {
-	_, err = d.d.Advertise(ctx, d.ns, discovery.TTL(adTTL))
-	return
 }
 
 func (d discoverer) raise(err error) {

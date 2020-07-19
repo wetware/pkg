@@ -22,13 +22,6 @@ type Filter interface {
 	Upsert(peer.ID, uint64, time.Duration) bool
 }
 
-// Iterator traverses the filter
-type Iterator interface {
-	Peer() peer.ID
-	Next() bool
-	More() bool
-}
-
 // New filter
 func New() Filter {
 	return &filter{}
