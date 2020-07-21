@@ -7,10 +7,10 @@ import (
 	"github.com/urfave/cli/v2"
 
 	log "github.com/lthibault/log/pkg"
-	logutil "github.com/lthibault/wetware/internal/util/log"
+	logutil "github.com/wetware/ww/internal/util/log"
 
-	"github.com/lthibault/wetware/pkg/host"
-	"github.com/lthibault/wetware/pkg/runtime"
+	"github.com/wetware/ww/pkg/host"
+	"github.com/wetware/ww/pkg/runtime"
 )
 
 var (

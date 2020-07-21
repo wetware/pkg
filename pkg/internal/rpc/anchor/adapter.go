@@ -1,9 +1,9 @@
 package anchor
 
 import (
-	"github.com/lthibault/wetware/internal/api"
-	ww "github.com/lthibault/wetware/pkg"
-	"github.com/lthibault/wetware/pkg/internal/rpc"
+	"github.com/wetware/ww/internal/api"
+	ww "github.com/wetware/ww/pkg"
+	"github.com/wetware/ww/pkg/internal/rpc"
 )
 
 /*

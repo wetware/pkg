@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 
-	anchorpath "github.com/lthibault/wetware/pkg/util/anchor/path"
+	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
 )
 
 func ls(ctx context.Context) *cli.Command {

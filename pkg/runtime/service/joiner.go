@@ -7,7 +7,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/lthibault/wetware/pkg/runtime"
+	"github.com/wetware/ww/pkg/runtime"
 )
 
 // Joiner performs a JOIN operation against the cluster graph, resulting in the merger

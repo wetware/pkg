@@ -3,7 +3,7 @@ package client
 import (
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/sync"
-	"github.com/lthibault/wetware/pkg/boot"
+	"github.com/wetware/ww/pkg/boot"
 )
 
 // Option type for Client

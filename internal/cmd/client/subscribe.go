@@ -12,7 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
-	"github.com/lthibault/wetware/pkg/routing"
+	"github.com/wetware/ww/pkg/routing"
 )
 
 func subscribe(ctx context.Context) *cli.Command {

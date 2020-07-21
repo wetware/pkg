@@ -8,7 +8,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/lthibault/wetware/pkg/runtime"
+	"github.com/wetware/ww/pkg/runtime"
 	"go.uber.org/multierr"
 )
 

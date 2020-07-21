@@ -7,7 +7,7 @@ using Go = import "/go.capnp";
 @0xc8aa6d83e0c03a9d;
 
 $Go.package("api");
-$Go.import("github.com/lthibault/wetware/internal/api");
+$Go.import("github.com/wetware/ww/internal/api");
 
 
 # Var is similar to its Clojure homologue (https://clojure.org/reference/vars).

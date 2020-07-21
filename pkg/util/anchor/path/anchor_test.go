@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	anchorpath "github.com/lthibault/wetware/pkg/util/anchor/path"
+	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
 )
 
 func TestParts(t *testing.T) {

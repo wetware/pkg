@@ -9,8 +9,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 
-	logutil "github.com/lthibault/wetware/internal/util/log"
-	"github.com/lthibault/wetware/pkg/boot"
+	logutil "github.com/wetware/ww/internal/util/log"
+	"github.com/wetware/ww/pkg/boot"
 )
 
 var (

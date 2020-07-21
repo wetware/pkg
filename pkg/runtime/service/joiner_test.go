@@ -7,17 +7,17 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	testutil "github.com/lthibault/wetware/pkg/runtime/service/internal/test"
-	mock_service "github.com/lthibault/wetware/pkg/runtime/service/internal/test/mock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	testutil "github.com/wetware/ww/pkg/runtime/service/internal/test"
+	mock_service "github.com/wetware/ww/pkg/runtime/service/internal/test/mock"
 
 	eventbus "github.com/libp2p/go-eventbus"
 	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/peer"
 
-	"github.com/lthibault/wetware/pkg/runtime"
-	"github.com/lthibault/wetware/pkg/runtime/service"
+	"github.com/wetware/ww/pkg/runtime"
+	"github.com/wetware/ww/pkg/runtime/service"
 )
 
 func TestJoiner(t *testing.T) {

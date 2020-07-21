@@ -8,8 +8,8 @@ import (
 
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/lthibault/wetware/pkg/internal/filter"
-	"github.com/lthibault/wetware/pkg/routing"
+	"github.com/wetware/ww/pkg/internal/filter"
+	"github.com/wetware/ww/pkg/routing"
 )
 
 type routingTopicParams struct {

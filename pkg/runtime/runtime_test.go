@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/libp2p/go-eventbus"
-	"github.com/lthibault/wetware/pkg/runtime"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/wetware/ww/pkg/runtime"
 	"go.uber.org/fx"
 )
 

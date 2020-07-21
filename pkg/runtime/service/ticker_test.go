@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	eventbus "github.com/libp2p/go-eventbus"
-	"github.com/lthibault/wetware/pkg/runtime"
-	"github.com/lthibault/wetware/pkg/runtime/service"
+	"github.com/wetware/ww/pkg/runtime"
+	"github.com/wetware/ww/pkg/runtime/service"
 )
 
 func TestTicker(t *testing.T) {

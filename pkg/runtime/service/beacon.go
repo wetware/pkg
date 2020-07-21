@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/lthibault/wetware/pkg/boot"
-	"github.com/lthibault/wetware/pkg/runtime"
+	"github.com/wetware/ww/pkg/boot"
+	"github.com/wetware/ww/pkg/runtime"
 )
 
 // Beacon starts a local local server to respond to boot requests, if such a server

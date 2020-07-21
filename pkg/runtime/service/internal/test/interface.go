@@ -3,8 +3,8 @@ package testutil
 import (
 	"github.com/libp2p/go-libp2p-core/discovery"
 	"github.com/libp2p/go-libp2p-core/host"
-	boot "github.com/lthibault/wetware/pkg/boot"
-	"github.com/lthibault/wetware/pkg/runtime/service"
+	boot "github.com/wetware/ww/pkg/boot"
+	"github.com/wetware/ww/pkg/runtime/service"
 )
 
 // Host interface

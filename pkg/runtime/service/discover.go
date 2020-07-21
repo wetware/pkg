@@ -9,9 +9,9 @@ import (
 	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/lthibault/jitterbug"
-	"github.com/lthibault/wetware/pkg/runtime"
-	randutil "github.com/lthibault/wetware/pkg/util/rand"
 	"github.com/pkg/errors"
+	"github.com/wetware/ww/pkg/runtime"
+	randutil "github.com/wetware/ww/pkg/util/rand"
 )
 
 // TODO(config): parametrize (?)

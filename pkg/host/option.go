@@ -8,8 +8,8 @@ import (
 
 	"github.com/multiformats/go-multiaddr"
 
-	ww "github.com/lthibault/wetware/pkg"
-	"github.com/lthibault/wetware/pkg/boot"
+	ww "github.com/wetware/ww/pkg"
+	"github.com/wetware/ww/pkg/boot"
 )
 
 // Option type for Host

@@ -3,10 +3,10 @@ package anchor
 import (
 	"context"
 
-	"github.com/lthibault/wetware/internal/api"
-	ww "github.com/lthibault/wetware/pkg"
-	"github.com/lthibault/wetware/pkg/internal/rpc"
-	anchorpath "github.com/lthibault/wetware/pkg/util/anchor/path"
+	"github.com/wetware/ww/internal/api"
+	ww "github.com/wetware/ww/pkg"
+	"github.com/wetware/ww/pkg/internal/rpc"
+	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
 )
 
 type anchor struct {

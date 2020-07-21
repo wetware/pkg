@@ -13,7 +13,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/protocol"
-	"github.com/lthibault/wetware/pkg/runtime"
+	"github.com/wetware/ww/pkg/runtime"
 )
 
 /*

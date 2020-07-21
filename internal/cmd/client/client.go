@@ -10,11 +10,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 
-	"github.com/lthibault/wetware/pkg/boot"
-	"github.com/lthibault/wetware/pkg/client"
+	"github.com/wetware/ww/pkg/boot"
+	"github.com/wetware/ww/pkg/client"
 
-	logutil "github.com/lthibault/wetware/internal/util/log"
-	wwclient "github.com/lthibault/wetware/pkg/client"
+	logutil "github.com/wetware/ww/internal/util/log"
+	wwclient "github.com/wetware/ww/pkg/client"
 )
 
 var (

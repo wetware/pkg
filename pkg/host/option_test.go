@@ -3,9 +3,9 @@ package host
 import (
 	"testing"
 
-	"github.com/lthibault/wetware/pkg/boot"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/wetware/ww/pkg/boot"
 )
 
 func TestDefaultOpt(t *testing.T) {

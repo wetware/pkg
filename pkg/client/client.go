@@ -11,10 +11,10 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
-	ww "github.com/lthibault/wetware/pkg"
-	"github.com/lthibault/wetware/pkg/internal/rpc"
-	"github.com/lthibault/wetware/pkg/internal/rpc/anchor"
-	anchorpath "github.com/lthibault/wetware/pkg/util/anchor/path"
+	ww "github.com/wetware/ww/pkg"
+	"github.com/wetware/ww/pkg/internal/rpc"
+	"github.com/wetware/ww/pkg/internal/rpc/anchor"
+	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
 )
 
 // Client interacts with live clusters.  It implements the root Anchor.

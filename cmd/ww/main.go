@@ -14,12 +14,12 @@ import (
 
 	log "github.com/lthibault/log/pkg"
 
-	ctxutil "github.com/lthibault/wetware/internal/util/ctx"
+	ctxutil "github.com/wetware/ww/internal/util/ctx"
 
-	"github.com/lthibault/wetware/internal/cmd/boot"
-	"github.com/lthibault/wetware/internal/cmd/client"
-	"github.com/lthibault/wetware/internal/cmd/keygen"
-	"github.com/lthibault/wetware/internal/cmd/start"
+	"github.com/wetware/ww/internal/cmd/boot"
+	"github.com/wetware/ww/internal/cmd/client"
+	"github.com/wetware/ww/internal/cmd/keygen"
+	"github.com/wetware/ww/internal/cmd/start"
 )
 
 const version = "0.0.0"

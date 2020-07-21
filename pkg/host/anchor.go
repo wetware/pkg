@@ -9,9 +9,9 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
 
-	"github.com/lthibault/wetware/internal/api"
-	ww "github.com/lthibault/wetware/pkg"
-	anchorpath "github.com/lthibault/wetware/pkg/util/anchor/path"
+	"github.com/wetware/ww/internal/api"
+	ww "github.com/wetware/ww/pkg"
+	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
 )
 
 /*

@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/lthibault/wetware/pkg/internal/filter"
 	"github.com/mr-tron/base58"
 	"github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/assert"
+	"github.com/wetware/ww/pkg/internal/filter"
 )
 
 const ttl = time.Second

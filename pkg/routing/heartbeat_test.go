@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lthibault/wetware/pkg/routing"
+	"github.com/wetware/ww/pkg/routing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

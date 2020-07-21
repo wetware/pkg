@@ -28,18 +28,18 @@ import (
 	"github.com/multiformats/go-multiaddr"
 
 	// wetware utils
-	ctxutil "github.com/lthibault/wetware/internal/util/ctx"
-	hostutil "github.com/lthibault/wetware/internal/util/host"
+	ctxutil "github.com/wetware/ww/internal/util/ctx"
+	hostutil "github.com/wetware/ww/internal/util/host"
 
 	// wetware internal
 
-	"github.com/lthibault/wetware/pkg/internal/filter"
-	"github.com/lthibault/wetware/pkg/internal/p2p"
+	"github.com/wetware/ww/pkg/internal/filter"
+	"github.com/wetware/ww/pkg/internal/p2p"
 
 	// wetware public
-	"github.com/lthibault/wetware/pkg/boot"
-	"github.com/lthibault/wetware/pkg/runtime"
-	"github.com/lthibault/wetware/pkg/runtime/service"
+	"github.com/wetware/ww/pkg/boot"
+	"github.com/wetware/ww/pkg/runtime"
+	"github.com/wetware/ww/pkg/runtime/service"
 )
 
 const timestep = time.Millisecond * 100

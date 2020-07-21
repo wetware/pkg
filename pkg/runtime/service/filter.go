@@ -7,7 +7,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/event"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
-	"github.com/lthibault/wetware/pkg/runtime"
+	"github.com/wetware/ww/pkg/runtime"
 )
 
 // Timer is a monotonically increasing function.

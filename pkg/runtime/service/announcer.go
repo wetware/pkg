@@ -10,9 +10,9 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	"github.com/lthibault/jitterbug"
-	"github.com/lthibault/wetware/pkg/routing"
-	"github.com/lthibault/wetware/pkg/runtime"
-	randutil "github.com/lthibault/wetware/pkg/util/rand"
+	"github.com/wetware/ww/pkg/routing"
+	"github.com/wetware/ww/pkg/runtime"
+	randutil "github.com/wetware/ww/pkg/util/rand"
 )
 
 // Publisher can publish messages to a pubsub topic.

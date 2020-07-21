@@ -1,4 +1,4 @@
-module github.com/lthibault/wetware
+module github.com/wetware/ww
 
 go 1.14
 

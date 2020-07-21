@@ -15,8 +15,8 @@ import (
 	peerstore "github.com/libp2p/go-libp2p-core/peerstore"
 	protocol "github.com/libp2p/go-libp2p-core/protocol"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	boot "github.com/lthibault/wetware/pkg/boot"
 	multiaddr "github.com/multiformats/go-multiaddr"
+	boot "github.com/wetware/ww/pkg/boot"
 	reflect "reflect"
 	time "time"
 )

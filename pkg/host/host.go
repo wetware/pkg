@@ -12,8 +12,8 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 
-	"github.com/lthibault/wetware/pkg/internal/filter"
-	"github.com/lthibault/wetware/pkg/internal/rpc"
+	"github.com/wetware/ww/pkg/internal/filter"
+	"github.com/wetware/ww/pkg/internal/rpc"
 )
 
 // Host .

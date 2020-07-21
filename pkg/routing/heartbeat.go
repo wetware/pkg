@@ -7,7 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/lthibault/wetware/internal/api"
+	"github.com/wetware/ww/internal/api"
 )
 
 // MarshalHeartbeat serializes a heartbeat message.

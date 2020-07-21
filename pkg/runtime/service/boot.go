@@ -6,9 +6,9 @@ import (
 	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/peer"
 
-	logutil "github.com/lthibault/wetware/internal/util/log"
-	"github.com/lthibault/wetware/pkg/boot"
-	"github.com/lthibault/wetware/pkg/runtime"
+	logutil "github.com/wetware/ww/internal/util/log"
+	"github.com/wetware/ww/pkg/boot"
+	"github.com/wetware/ww/pkg/runtime"
 )
 
 // EvtPeerDiscovered .

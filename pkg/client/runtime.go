@@ -18,12 +18,12 @@ import (
 	"github.com/libp2p/go-libp2p/config"
 	"github.com/pkg/errors"
 
-	ctxutil "github.com/lthibault/wetware/internal/util/ctx"
-	hostutil "github.com/lthibault/wetware/internal/util/host"
-	"github.com/lthibault/wetware/pkg/boot"
-	"github.com/lthibault/wetware/pkg/internal/p2p"
-	"github.com/lthibault/wetware/pkg/runtime"
-	"github.com/lthibault/wetware/pkg/runtime/service"
+	ctxutil "github.com/wetware/ww/internal/util/ctx"
+	hostutil "github.com/wetware/ww/internal/util/host"
+	"github.com/wetware/ww/pkg/boot"
+	"github.com/wetware/ww/pkg/internal/p2p"
+	"github.com/wetware/ww/pkg/runtime"
+	"github.com/wetware/ww/pkg/runtime/service"
 )
 
 const (

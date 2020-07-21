@@ -7,9 +7,9 @@ import (
 
 	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/lthibault/jitterbug"
-	"github.com/lthibault/wetware/pkg/internal/p2p"
-	"github.com/lthibault/wetware/pkg/runtime"
 	"github.com/pkg/errors"
+	"github.com/wetware/ww/pkg/internal/p2p"
+	"github.com/wetware/ww/pkg/runtime"
 )
 
 // ProviderFunc satisfies runtime.ServiceFactory.

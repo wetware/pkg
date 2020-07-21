@@ -5,8 +5,8 @@ import (
 	"net"
 	"time"
 
-	ww "github.com/lthibault/wetware/pkg"
 	"github.com/pkg/errors"
+	ww "github.com/wetware/ww/pkg"
 
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"

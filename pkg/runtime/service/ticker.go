@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/event"
-	"github.com/lthibault/wetware/pkg/runtime"
+	"github.com/wetware/ww/pkg/runtime"
 )
 
 // EvtTimestep represents an increment in the runtime's logical clock.

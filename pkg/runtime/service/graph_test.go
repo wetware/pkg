@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	testutil "github.com/lthibault/wetware/pkg/runtime/service/internal/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	testutil "github.com/wetware/ww/pkg/runtime/service/internal/test"
 
 	eventbus "github.com/libp2p/go-eventbus"
-	"github.com/lthibault/wetware/pkg/runtime"
-	"github.com/lthibault/wetware/pkg/runtime/service"
+	"github.com/wetware/ww/pkg/runtime"
+	"github.com/wetware/ww/pkg/runtime/service"
 )
 
 func TestGraphLogFields(t *testing.T) {

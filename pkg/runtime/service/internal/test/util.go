@@ -6,9 +6,9 @@ import (
 	eventbus "github.com/libp2p/go-eventbus"
 	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/lthibault/wetware/pkg/internal/p2p"
 	"github.com/mr-tron/base58"
 	"github.com/multiformats/go-multihash"
+	"github.com/wetware/ww/pkg/internal/p2p"
 )
 
 /*
