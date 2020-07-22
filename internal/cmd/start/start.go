@@ -2,11 +2,11 @@ package start
 
 import (
 	"context"
-	"time"
 
 	"github.com/urfave/cli/v2"
 
 	log "github.com/lthibault/log/pkg"
+	ctxutil "github.com/wetware/ww/internal/util/ctx"
 	logutil "github.com/wetware/ww/internal/util/log"
 
 	"github.com/wetware/ww/pkg/host"
@@ -16,25 +16,24 @@ import (
 var (
 	h host.Host
 	l log.Logger
+
+	ctx = ctxutil.WithDefaultSignals(context.Background())
 )
 
 // Command constructor
-func Command(ctx context.Context) *cli.Command {
+func Command() *cli.Command {
 	return &cli.Command{
 		Name:   "start",
 		Usage:  "start a host process",
-		Before: setUp(ctx),
+		Before: setUp(),
 		After:  tearDown(),
-		Action: run(ctx),
+		Action: run(),
 	}
 }
 
-func setUp(ctx context.Context) cli.BeforeFunc {
+func setUp() cli.BeforeFunc {
 	return func(c *cli.Context) (err error) {
-		ctx, cancel := context.WithTimeout(ctx, time.Second*15)
-		defer cancel()
-
-		if h, err = host.New(ctx); err == nil {
+		if h, err = host.New(); err == nil {
 			l = logutil.New(c).WithFields(h.Loggable())
 			l.Info("host started")
 		}
@@ -45,14 +44,11 @@ func setUp(ctx context.Context) cli.BeforeFunc {
 
 func tearDown() cli.AfterFunc {
 	return func(c *cli.Context) error {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-		defer cancel()
-
-		return h.Shutdown(ctx)
+		return h.Close()
 	}
 }
 
-func run(ctx context.Context) cli.ActionFunc {
+func run() cli.ActionFunc {
 	return func(c *cli.Context) error {
 		defer l.Warn("host shutting down")
 

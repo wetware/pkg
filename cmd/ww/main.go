@@ -6,15 +6,12 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"os"
 
 	"github.com/urfave/cli/v2"
 
 	log "github.com/lthibault/log/pkg"
-
-	ctxutil "github.com/wetware/ww/internal/util/ctx"
 
 	"github.com/wetware/ww/internal/cmd/boot"
 	"github.com/wetware/ww/internal/cmd/client"
@@ -23,8 +20,6 @@ import (
 )
 
 const version = "0.0.0"
-
-var ctx = ctxutil.WithDefaultSignals(context.Background())
 
 var flags = []cli.Flag{
 	&cli.StringFlag{
@@ -49,10 +44,10 @@ var flags = []cli.Flag{
 }
 
 var commands = []*cli.Command{
-	start.Command(ctx),
-	client.Command(ctx),
-	keygen.Command(ctx),
-	boot.Command(ctx),
+	start.Command(),
+	client.Command(),
+	keygen.Command(),
+	boot.Command(),
 }
 
 func main() {

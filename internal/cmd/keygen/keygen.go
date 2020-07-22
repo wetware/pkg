@@ -1,7 +1,6 @@
 package keygen
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -31,7 +30,7 @@ var flags = []cli.Flag{
 }
 
 // Command constructor
-func Command(context.Context) *cli.Command {
+func Command() *cli.Command {
 	return &cli.Command{
 		Name:        "keygen",
 		Usage:       "generate a shared secret for a cluster",

@@ -71,8 +71,8 @@ type Config struct {
 	boot  boot.Strategy
 }
 
-func (cfg Config) assemble(h *Host) {
-	h.runtime = fx.New(
+func (cfg Config) assemble(h *Host) *fx.App {
+	return fx.New(
 		fx.NopLogger,
 		fx.Populate(h),
 		fx.Provide(

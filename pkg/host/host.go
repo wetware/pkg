@@ -2,6 +2,7 @@ package host
 
 import (
 	"context"
+	"time"
 
 	"go.uber.org/fx"
 
@@ -29,7 +30,7 @@ type Host struct {
 }
 
 // New Host
-func New(ctx context.Context, opt ...Option) (h Host, err error) {
+func New(opt ...Option) (h Host, err error) {
 	var cfg Config
 	for _, f := range withDefault(opt) {
 		if err = f(&cfg); err != nil {
@@ -37,9 +38,8 @@ func New(ctx context.Context, opt ...Option) (h Host, err error) {
 		}
 	}
 
-	cfg.assemble(&h)
-	err = errors.Wrap(h.runtime.Start(ctx), "host start")
-	return
+	h.runtime = cfg.assemble(&h)
+	return h, start(h.runtime)
 }
 
 // Loggable fields for the Host
@@ -72,9 +72,21 @@ func (h Host) EventBus() event.Bus {
 	return h.host.EventBus()
 }
 
-// Shutdown the Host's network connections and stop its runtime processes.
-func (h Host) Shutdown(ctx context.Context) error {
+// Close the Host's network connections and stop its runtime processes.
+// It is equivalent to calling Shutdown() with the default shutdown context, which
+// expires in 15s.
+func (h Host) Close() error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
+	defer cancel()
+
 	return errors.Wrap(h.runtime.Stop(ctx), "host shutdown")
+}
+
+func start(r interface{ Start(context.Context) error }) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
+	defer cancel()
+
+	return errors.Wrap(r.Start(ctx), "host start")
 }
 
 /*

@@ -1,18 +1,16 @@
 package client
 
 import (
-	"context"
-
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 )
 
-func publish(ctx context.Context) *cli.Command {
+func publish() *cli.Command {
 	return &cli.Command{
 		Name:    "publish",
 		Aliases: []string{"pub"},
 		Flags:   pubFlags(),
-		Action:  pubAction(ctx),
+		Action:  pubAction(),
 	}
 }
 
@@ -26,7 +24,7 @@ func pubFlags() []cli.Flag {
 	}
 }
 
-func pubAction(ctx context.Context) cli.ActionFunc {
+func pubAction() cli.ActionFunc {
 	return func(c *cli.Context) error {
 		return errors.New("NOT IMPLEMENTED")
 	}

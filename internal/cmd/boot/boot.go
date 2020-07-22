@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 
+	ctxutil "github.com/wetware/ww/internal/util/ctx"
 	logutil "github.com/wetware/ww/internal/util/log"
 	"github.com/wetware/ww/pkg/boot"
 )
@@ -17,6 +18,8 @@ var (
 	// initialized by `before` function
 	logger log.Logger
 	d      boot.Strategy
+
+	ctx = ctxutil.WithDefaultSignals(context.Background())
 
 	flags = []cli.Flag{
 		&cli.StringFlag{
@@ -45,17 +48,17 @@ var (
 )
 
 // Command constructor
-func Command(ctx context.Context) *cli.Command {
+func Command() *cli.Command {
 	return &cli.Command{
 		Name:   "discover",
 		Usage:  "discover peers on the network",
 		Flags:  flags,
-		Before: before(ctx),
-		Action: run(ctx),
+		Before: before(),
+		Action: run(),
 	}
 }
 
-func before(ctx context.Context) cli.BeforeFunc {
+func before() cli.BeforeFunc {
 	return func(c *cli.Context) (err error) {
 		logger = logutil.New(c)
 
@@ -77,7 +80,7 @@ func before(ctx context.Context) cli.BeforeFunc {
 	}
 }
 
-func run(ctx context.Context) cli.ActionFunc {
+func run() cli.ActionFunc {
 	return func(c *cli.Context) error {
 		var cancel context.CancelFunc
 		if c.Duration("timeout") != 0 {

@@ -1,7 +1,6 @@
 package client
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -10,16 +9,16 @@ import (
 	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
 )
 
-func ls(ctx context.Context) *cli.Command {
+func ls() *cli.Command {
 	return &cli.Command{
 		Name:      "ls",
 		Usage:     "list cluster elements",
 		ArgsUsage: "path",
-		Action:    lsAction(ctx),
+		Action:    lsAction(),
 	}
 }
 
-func lsAction(ctx context.Context) cli.ActionFunc {
+func lsAction() cli.ActionFunc {
 	return func(c *cli.Context) error {
 		path := c.Args().First()
 

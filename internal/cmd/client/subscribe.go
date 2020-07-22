@@ -1,7 +1,6 @@
 package client
 
 import (
-	"context"
 	"encoding/binary"
 	"encoding/json"
 	"io"
@@ -15,12 +14,12 @@ import (
 	"github.com/wetware/ww/pkg/routing"
 )
 
-func subscribe(ctx context.Context) *cli.Command {
+func subscribe() *cli.Command {
 	return &cli.Command{
 		Name:    "subscribe",
 		Aliases: []string{"sub"},
 		Flags:   subFlags(),
-		Action:  subAction(ctx),
+		Action:  subAction(),
 	}
 }
 
@@ -34,7 +33,7 @@ func subFlags() []cli.Flag {
 	}
 }
 
-func subAction(ctx context.Context) cli.ActionFunc {
+func subAction() cli.ActionFunc {
 	return func(c *cli.Context) error {
 		t, err := root.Join(c.String("topic"))
 		if err != nil {

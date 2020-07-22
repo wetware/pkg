@@ -13,6 +13,7 @@ import (
 	"github.com/wetware/ww/pkg/boot"
 	"github.com/wetware/ww/pkg/client"
 
+	ctxutil "github.com/wetware/ww/internal/util/ctx"
 	logutil "github.com/wetware/ww/internal/util/log"
 	wwclient "github.com/wetware/ww/pkg/client"
 )
@@ -21,6 +22,8 @@ var (
 	// initialized by `before` function
 	logger log.Logger
 	root   client.Client
+
+	ctx = ctxutil.WithDefaultSignals(context.Background())
 
 	flags = []cli.Flag{
 		&cli.StringSliceFlag{
@@ -47,14 +50,14 @@ var (
 )
 
 // Command constructor
-func Command(ctx context.Context) *cli.Command {
+func Command() *cli.Command {
 	return &cli.Command{
 		Name:        "client",
 		Usage:       "interact with a live cluster",
 		Flags:       flags,
 		Before:      before(),
 		After:       after(),
-		Subcommands: subcommands(ctx),
+		Subcommands: subcommands(),
 	}
 }
 
@@ -88,11 +91,11 @@ func after() cli.AfterFunc {
 	}
 }
 
-func subcommands(ctx context.Context) []*cli.Command {
+func subcommands() []*cli.Command {
 	return []*cli.Command{
-		ls(ctx),
-		subscribe(ctx),
-		publish(ctx),
+		ls(),
+		subscribe(),
+		publish(),
 	}
 }
 
