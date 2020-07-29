@@ -27,13 +27,13 @@ var flags = []cli.Flag{
 		Aliases: []string{"f"},
 		Usage:   "text, json, none",
 		Value:   "text",
-		EnvVars: []string{"CASM_LOGFMT"},
+		EnvVars: []string{"WW_LOGFMT"},
 	},
 	&cli.StringFlag{
 		Name:    "loglvl",
 		Usage:   "trace, debug, info, warn, error, fatal",
 		Value:   "info",
-		EnvVars: []string{"CASM_LOGLVL"},
+		EnvVars: []string{"WW_LOGLVL"},
 	},
 	&cli.BoolFlag{
 		Name:    "prettyprint",
