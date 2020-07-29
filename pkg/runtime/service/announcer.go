@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/binary"
 	"math/rand"
 	"time"
 
@@ -10,7 +11,6 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	"github.com/lthibault/jitterbug"
-	"github.com/wetware/ww/pkg/routing"
 	"github.com/wetware/ww/pkg/runtime"
 	randutil "github.com/wetware/ww/pkg/util/rand"
 )
@@ -90,17 +90,8 @@ func (a announcer) Errors() <-chan error {
 }
 
 func (a announcer) Announce(ctx context.Context) error {
-	hb, err := routing.NewHeartbeat(a.ttl)
-	if err != nil {
-		return err
-	}
-
-	b, err := routing.MarshalHeartbeat(hb)
-	if err != nil {
-		return err
-	}
-
-	return a.p.Publish(ctx, b)
+	b := make([]byte, binary.MaxVarintLen64)
+	return a.p.Publish(ctx, b[:binary.PutUvarint(b, uint64(a.ttl))])
 }
 
 func (a announcer) subloop() {

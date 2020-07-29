@@ -3,13 +3,13 @@ package host
 import (
 	"context"
 	"encoding/binary"
+	"time"
 
 	"go.uber.org/fx"
 
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/wetware/ww/pkg/internal/filter"
-	"github.com/wetware/ww/pkg/routing"
 )
 
 type routingTopicParams struct {
@@ -35,18 +35,13 @@ func routingTopic(ctx context.Context, lx fx.Lifecycle, ps routingTopicParams) (
 }
 
 func newHeartbeatValidator(f filter.Filter) pubsub.Validator {
-	return func(_ context.Context, pid peer.ID, msg *pubsub.Message) bool {
-		hb, err := routing.UnmarshalHeartbeat(msg.GetData())
-		if err != nil {
-			return false // drop invalid message
+	return func(_ context.Context, pid peer.ID, msg *pubsub.Message) (ok bool) {
+		if id := msg.GetFrom(); f.Upsert(id, seqno(msg), ttl(msg)) {
+			ok = true // continue processing the message
+			msg.ValidatorData = ttl(msg)
 		}
 
-		if id := msg.GetFrom(); !f.Upsert(id, seqno(msg), hb.TTL()) {
-			return false // drop stale message
-		}
-
-		msg.ValidatorData = hb
-		return true
+		return
 	}
 }
 
@@ -61,4 +56,9 @@ func closehook(ctx context.Context, t *pubsub.Topic) fx.Hook {
 
 func seqno(msg *pubsub.Message) uint64 {
 	return binary.BigEndian.Uint64(msg.GetSeqno())
+}
+
+func ttl(msg *pubsub.Message) time.Duration {
+	d, _ := binary.Varint(msg.GetData())
+	return time.Duration(d)
 }

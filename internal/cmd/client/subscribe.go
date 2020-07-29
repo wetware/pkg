@@ -10,8 +10,6 @@ import (
 
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-
-	"github.com/wetware/ww/pkg/routing"
 )
 
 func subscribe() *cli.Command {
@@ -76,19 +74,14 @@ type messagePrinter struct {
 
 func (m messagePrinter) PrintMessage(msg *pubsub.Message) error {
 	if m.topic == "" {
-		hb, err := routing.UnmarshalHeartbeat(msg.Data)
-		if err != nil {
-			return err
-		}
-
 		return m.enc.Encode(struct {
 			Seq uint64        `json:"seq"`
 			ID  peer.ID       `json:"id"`
 			TTL time.Duration `json:"ttl"`
 		}{
-			Seq: binary.BigEndian.Uint64(msg.Seqno),
 			ID:  msg.GetFrom(),
-			TTL: hb.TTL(),
+			Seq: seqno(msg),
+			TTL: ttl(msg),
 		})
 	}
 
@@ -102,4 +95,13 @@ func (m messagePrinter) PrintMessage(msg *pubsub.Message) error {
 	}
 
 	return nil
+}
+
+func seqno(msg *pubsub.Message) uint64 {
+	return binary.BigEndian.Uint64(msg.GetSeqno())
+}
+
+func ttl(msg *pubsub.Message) time.Duration {
+	d, _ := binary.Varint(msg.GetData())
+	return time.Duration(d)
 }
