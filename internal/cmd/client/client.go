@@ -78,7 +78,7 @@ func before() cli.BeforeFunc {
 
 		if err == nil {
 			root, err = client.Dial(context.Background(),
-				wwclient.WithDiscover(d))
+				wwclient.WithBootStrategy(d))
 		}
 
 		return
