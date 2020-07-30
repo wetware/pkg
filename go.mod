@@ -25,7 +25,7 @@ require (
 	github.com/libp2p/go-libp2p-pubsub v0.3.2
 	github.com/lthibault/jitterbug v0.0.0-20200313035244-37ff5f417161
 	github.com/lthibault/log v0.0.0-20190513014217-f549b3a28a20
-	github.com/lthibault/treap v0.0.6
+	github.com/lthibault/treap v0.1.0
 	github.com/miekg/dns v1.1.30 // indirect
 	github.com/mr-tron/base58 v1.2.0
 	github.com/multiformats/go-multiaddr v0.2.2
