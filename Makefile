@@ -11,5 +11,3 @@ capnp: clean
 mockgen:
 	@mockgen -package mock_service -source pkg/runtime/service/internal/test/interface.go -destination pkg/runtime/service/internal/test/mock/service.go
 
-cleanmock:
-	@rm pkg/runtime/service/internal/mock/*.go
