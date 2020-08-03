@@ -36,8 +36,8 @@ func services(cfg serviceConfig) runtime.ServiceBundle {
 	return runtime.Bundle(
 		service.Ticker(cfg.Host.EventBus(), timestep),
 		service.ConnTracker(cfg.Host),
-		service.Neighborhood(cfg.EventBus, kmin, kmax),
-		service.Bootstrap(cfg.EventBus, cfg.Boot),
+		service.Neighborhood(cfg.Host.EventBus(), kmin, kmax),
+		service.Bootstrap(cfg.Host, cfg.Boot),
 		// service.Discover(cfg.EventBus, cfg.Namespace, cfg.Discovery),  // TODO:  initial advertisement
 		service.Graph(cfg.Host),
 		service.Joiner(cfg.Host),
@@ -110,7 +110,6 @@ type serviceConfig struct {
 
 	Namespace string `name:"ns"`
 	Host      host.Host
-	EventBus  event.Bus
 	Discovery discovery.Discovery
 	Boot      boot.Strategy
 }

@@ -24,7 +24,7 @@ func Joiner(h host.Host) ProviderFunc {
 			ctx:    ctx,
 			cancel: cancel,
 			errs:   make(chan error, 1),
-			join:   make(chan EvtPeerDiscovered),
+			join:   make(chan EvtPeerDiscovered, 1),
 		}
 
 		if j.sub, err = j.h.EventBus().Subscribe(new(EvtPeerDiscovered)); err != nil {
@@ -95,10 +95,15 @@ func (j joiner) joinloop() {
 	defer close(j.errs)
 
 	for ev := range j.join {
-		if ev.ID == j.h.ID() {
-			continue
-		}
-
+		// NOTE:  It is important that the joiner respond to _ALL_ events it receives
+		//		  on this channel.  Event validation (e.g. to avoid a connect-to-self)
+		//		  must take place at the source, else a sublte race condition may occur.
+		//
+		//		  The race condition works like this:
+		//		   1. emit EvtPeerDiscovered
+		//		   2. joiner receives event, compares to local host's ID, drops event.
+		//		   3. in the meantime, subsequent (valid) events arrive, but joinloop is
+		//			  not receiving, so the events are dropped.
 		j.connect(peer.AddrInfo(ev))
 	}
 }

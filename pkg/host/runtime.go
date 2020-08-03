@@ -12,7 +12,6 @@ import (
 
 	// libp2p core interfaces
 	"github.com/libp2p/go-libp2p-core/discovery"
-	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/pnet"
@@ -49,8 +48,8 @@ func services(cfg serviceConfig) runtime.ServiceBundle {
 		service.Ticker(cfg.Host.EventBus(), timestep),
 		service.Filter(cfg.Host.EventBus(), cfg.RoutingTopic, cfg.Filter),
 		service.ConnTracker(cfg.Host),
-		service.Neighborhood(cfg.EventBus, cfg.Graph.KMin, cfg.Graph.KMax),
-		service.Bootstrap(cfg.EventBus, cfg.Boot),
+		service.Neighborhood(cfg.Host.EventBus(), cfg.Graph.KMin, cfg.Graph.KMax),
+		service.Bootstrap(cfg.Host, cfg.Boot),
 		service.Beacon(cfg.Host, cfg.Boot),
 		// service.Discover(cfg.Host, cfg.Namespace, cfg.Discovery),
 		service.Graph(cfg.Host),
@@ -147,7 +146,6 @@ type serviceConfig struct {
 	Namespace    string `name:"ns"`
 	Graph        struct{ KMin, KMax int }
 	Host         host.Host
-	EventBus     event.Bus
 	Boot         boot.Strategy
 	Filter       filter.Filter
 	RoutingTopic *pubsub.Topic

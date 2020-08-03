@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/libp2p/go-libp2p-core/event"
+	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	logutil "github.com/wetware/ww/internal/util/log"
@@ -21,23 +22,23 @@ type EvtPeerDiscovered peer.AddrInfo
 //
 // Emits:
 //  - EvtPeerDiscovered
-func Bootstrap(bus event.Bus, s boot.Strategy) ProviderFunc {
+func Bootstrap(h host.Host, s boot.Strategy) ProviderFunc {
 	return func() (_ runtime.Service, err error) {
 		ctx, cancel := context.WithCancel(context.Background())
 		b := &bootstrapper{
 			s:        s,
-			bus:      bus,
+			h:        h,
 			ctx:      ctx,
 			cancel:   cancel,
 			errs:     make(chan error, 1),
 			discover: make(chan struct{}, 1),
 		}
 
-		if b.sub, err = bus.Subscribe(new(EvtNeighborhoodChanged)); err != nil {
+		if b.sub, err = h.EventBus().Subscribe(new(EvtNeighborhoodChanged)); err != nil {
 			return
 		}
 
-		if b.foundPeer, err = bus.Emitter(new(EvtPeerDiscovered)); err != nil {
+		if b.foundPeer, err = h.EventBus().Emitter(new(EvtPeerDiscovered)); err != nil {
 			return
 		}
 
@@ -46,8 +47,8 @@ func Bootstrap(bus event.Bus, s boot.Strategy) ProviderFunc {
 }
 
 type bootstrapper struct {
-	s   boot.Strategy
-	bus event.Bus
+	s boot.Strategy
+	h host.Host
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -66,10 +67,10 @@ func (b bootstrapper) Loggable() map[string]interface{} {
 }
 
 func (b *bootstrapper) Start(ctx context.Context) (err error) {
-	if err = waitNetworkReady(ctx, b.bus); err == nil {
+	if err = waitNetworkReady(ctx, b.h.EventBus()); err == nil {
 		startBackground(
-			b.subloop,
 			b.queryloop,
+			b.subloop,
 		)
 	}
 
@@ -115,6 +116,10 @@ func (b bootstrapper) queryloop() {
 		}
 
 		for info := range ch {
+			if info.ID == b.h.ID() {
+				continue
+			}
+
 			b.emit(info)
 		}
 	}

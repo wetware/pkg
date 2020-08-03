@@ -22,9 +22,13 @@ import (
 func TestBootstrapperLogFields(t *testing.T) {
 	t.Parallel()
 
-	bus := eventbus.NewBus()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-	n, err := service.Bootstrap(bus, boot.StaticAddrs{}).Service()
+	bus := eventbus.NewBus()
+	h := newMockHost(ctrl, bus)
+
+	n, err := service.Bootstrap(h, boot.StaticAddrs{}).Service()
 	require.NoError(t, err)
 
 	require.Contains(t, n.Loggable(), "service")
@@ -41,10 +45,11 @@ func TestBootstrapper(t *testing.T) {
 	defer cancel()
 
 	bus := eventbus.NewBus()
+	h := newMockHost(ctrl, bus)
 
 	s := mock_service.NewMockBootStrategy(ctrl)
 
-	b, err := service.Bootstrap(bus, s).Service()
+	b, err := service.Bootstrap(h, s).Service()
 	require.NoError(t, err)
 
 	// signal that network is ready; note that this must happen before
