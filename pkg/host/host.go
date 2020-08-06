@@ -61,6 +61,13 @@ func (h Host) Addrs() []multiaddr.Multiaddr {
 	return h.host.Addrs()
 }
 
+// InterfaceListenAddrs returns a list of addresses at which this network
+// listens. It expands "any interface" addresses (/ip4/0.0.0.0, /ip6/::) to
+// use the known local interfaces.
+func (h Host) InterfaceListenAddrs() ([]multiaddr.Multiaddr, error) {
+	return h.host.Network().InterfaceListenAddresses()
+}
+
 // Peers in the cluster
 func (h Host) Peers() peer.IDSlice {
 	return append(h.r.Peers(), h.host.ID()) // TODO(xxx):  is the append necessary?
