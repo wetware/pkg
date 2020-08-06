@@ -8,8 +8,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	testutil "github.com/wetware/ww/pkg/runtime/service/internal/test"
-	mock_service "github.com/wetware/ww/pkg/runtime/service/internal/test/mock"
+	mock_vendor "github.com/wetware/ww/internal/test/mock/vendor"
 
 	eventbus "github.com/libp2p/go-eventbus"
 	"github.com/wetware/ww/pkg/runtime/service"
@@ -46,14 +45,14 @@ func TestDiscovery(t *testing.T) {
 	bus := eventbus.NewBus()
 	h := newMockHost(ctrl, bus)
 
-	dy := mock_service.NewMockDiscovery(ctrl)
+	dy := mock_vendor.NewMockDiscovery(ctrl)
 
 	d, err := service.Discover(h, ns, dy).Service()
 	require.NoError(t, err)
 
 	// signal that network is ready; note that this must happen before
 	// starting the neighborhood service
-	require.NoError(t, testutil.NetReady(bus))
+	require.NoError(t, netReady(bus))
 
 	require.NoError(t, d.Start(ctx))
 	defer func() {

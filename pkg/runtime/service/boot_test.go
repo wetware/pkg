@@ -9,8 +9,8 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	testutil "github.com/wetware/ww/pkg/runtime/service/internal/test"
-	mock_service "github.com/wetware/ww/pkg/runtime/service/internal/test/mock"
+	mock_boot "github.com/wetware/ww/internal/test/mock/pkg/boot"
+	testutil "github.com/wetware/ww/internal/test/util"
 
 	eventbus "github.com/libp2p/go-eventbus"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -47,14 +47,14 @@ func TestBootstrapper(t *testing.T) {
 	bus := eventbus.NewBus()
 	h := newMockHost(ctrl, bus)
 
-	s := mock_service.NewMockBootStrategy(ctrl)
+	s := mock_boot.NewMockStrategy(ctrl)
 
 	b, err := service.Bootstrap(h, s).Service()
 	require.NoError(t, err)
 
 	// signal that network is ready; note that this must happen before
 	// starting the neighborhood service
-	require.NoError(t, testutil.NetReady(bus))
+	require.NoError(t, netReady(bus))
 
 	require.NoError(t, b.Start(ctx))
 	defer func() {

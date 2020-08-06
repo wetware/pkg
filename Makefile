@@ -8,6 +8,12 @@ clean:
 capnp: clean
 	@capnp compile -I$(GOPATH)/src/zombiezen.com/go/capnproto2/std -ogo:internal api/anchor.capnp
 
-mockgen:
-	@mockgen -package mock_service -source pkg/runtime/service/internal/test/interface.go -destination pkg/runtime/service/internal/test/mock/service.go
+cleanmocks:
+	@find . -name 'mock_*.go' | xargs -I{} rm {}
 
+mocks: cleanmocks
+	# This roundabout call to 'go generate' allows us to:
+	# 	- use modules
+	# 	- prevent grep missing (totally fine) from causing nonzero exit
+	#   - mirror the pkg/ structure under internal/test/mock
+	@find . -name '*.go' | xargs -I{} grep -l '//go:generate' {} | xargs -I{} -P 10 go generate {}

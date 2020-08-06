@@ -1,3 +1,6 @@
+//go:generate mockgen -destination ../../../internal/test/mock/pkg/runtime/service/mock_service.go github.com/wetware/ww/pkg/runtime/service Publisher
+
+// Package service contains runtime service definitions
 package service
 
 import (

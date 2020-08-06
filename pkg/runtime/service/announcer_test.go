@@ -8,8 +8,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	testutil "github.com/wetware/ww/pkg/runtime/service/internal/test"
-	mock_service "github.com/wetware/ww/pkg/runtime/service/internal/test/mock"
+	mock_service "github.com/wetware/ww/internal/test/mock/pkg/runtime/service"
 
 	eventbus "github.com/libp2p/go-eventbus"
 	"github.com/wetware/ww/pkg/runtime"
@@ -58,7 +57,7 @@ func TestAnnouner(t *testing.T) {
 
 	// signal that network is ready; note that this must happen before
 	// starting the neighborhood service
-	require.NoError(t, testutil.NetReady(bus))
+	require.NoError(t, netReady(bus))
 
 	require.NoError(t, a.Start(ctx))
 	defer func() {

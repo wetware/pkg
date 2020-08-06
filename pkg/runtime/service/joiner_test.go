@@ -7,17 +7,19 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	testutil "github.com/wetware/ww/pkg/runtime/service/internal/test"
-	mock_service "github.com/wetware/ww/pkg/runtime/service/internal/test/mock"
 
 	eventbus "github.com/libp2p/go-eventbus"
 	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/peer"
 
+	"github.com/wetware/ww/pkg/internal/p2p"
 	"github.com/wetware/ww/pkg/runtime"
 	"github.com/wetware/ww/pkg/runtime/service"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	mock_vendor "github.com/wetware/ww/internal/test/mock/vendor"
+	testutil "github.com/wetware/ww/internal/test/util"
 )
 
 func TestJoiner(t *testing.T) {
@@ -38,7 +40,7 @@ func TestJoiner(t *testing.T) {
 
 		// signal that the network is ready; note that this must happen before the
 		// joiner service is started.
-		require.NoError(t, testutil.NetReady(bus))
+		require.NoError(t, netReady(bus))
 
 		// start the service
 		require.NoError(t, j.Start(ctx))
@@ -88,7 +90,7 @@ func TestJoiner(t *testing.T) {
 
 		// signal that the network is ready; note that this must happen before the
 		// joiner service is started.
-		require.NoError(t, testutil.NetReady(bus))
+		require.NoError(t, netReady(bus))
 
 		// start the service
 		require.NoError(t, j.Start(ctx))
@@ -126,8 +128,8 @@ func TestJoiner(t *testing.T) {
 	*/
 }
 
-func newMockHost(ctrl *gomock.Controller, bus event.Bus) *mock_service.MockHost {
-	h := mock_service.NewMockHost(ctrl)
+func newMockHost(ctrl *gomock.Controller, bus event.Bus) *mock_vendor.MockHost {
+	h := mock_vendor.NewMockHost(ctrl)
 	h.EXPECT().
 		EventBus().
 		Return(bus).
@@ -139,4 +141,14 @@ func newMockHost(ctrl *gomock.Controller, bus event.Bus) *mock_service.MockHost 
 		AnyTimes()
 
 	return h
+}
+
+// netReady emits p2p.EvtNetworkReady
+func netReady(bus event.Bus) error {
+	e, err := bus.Emitter(new(p2p.EvtNetworkReady), eventbus.Stateful)
+	if err != nil {
+		return err
+	}
+
+	return e.Emit(p2p.EvtNetworkReady{})
 }

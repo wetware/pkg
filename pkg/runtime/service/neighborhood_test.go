@@ -8,7 +8,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	testutil "github.com/wetware/ww/pkg/runtime/service/internal/test"
+	testutil "github.com/wetware/ww/internal/test/util"
 
 	eventbus "github.com/libp2p/go-eventbus"
 	"github.com/libp2p/go-libp2p-core/event"
@@ -50,7 +50,7 @@ func TestNeighborhoodPhase(t *testing.T) {
 
 	// signal that network is ready; note that this must happen before
 	// starting the neighborhood service
-	require.NoError(t, testutil.NetReady(bus))
+	require.NoError(t, netReady(bus))
 
 	require.NoError(t, n.Start(ctx))
 	defer func() {

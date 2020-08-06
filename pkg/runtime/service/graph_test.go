@@ -8,7 +8,6 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	testutil "github.com/wetware/ww/pkg/runtime/service/internal/test"
 
 	eventbus "github.com/libp2p/go-eventbus"
 	"github.com/wetware/ww/pkg/runtime"
@@ -48,7 +47,7 @@ func TestGraph(t *testing.T) {
 
 	// signal that network is ready; note that this must happen before
 	// starting the neighborhood service
-	require.NoError(t, testutil.NetReady(bus))
+	require.NoError(t, netReady(bus))
 
 	require.NoError(t, g.Start(ctx))
 	defer func() {

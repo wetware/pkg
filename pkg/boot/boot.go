@@ -1,4 +1,6 @@
-// Package boot contains facilities for joining active clusters.
+//go:generate mockgen -destination ../../internal/test/mock/pkg/boot/mock_boot.go github.com/wetware/ww/pkg/boot Strategy,Beacon
+
+// Package boot implements cluster bootstrap
 package boot
 
 import (

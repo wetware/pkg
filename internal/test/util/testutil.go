@@ -3,27 +3,10 @@ package testutil
 import (
 	"math/rand"
 
-	eventbus "github.com/libp2p/go-eventbus"
-	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/mr-tron/base58"
 	"github.com/multiformats/go-multihash"
-	"github.com/wetware/ww/pkg/internal/p2p"
 )
-
-/*
-	testing utilities
-*/
-
-// NetReady emits p2p.EvtNetworkReady
-func NetReady(bus event.Bus) error {
-	e, err := bus.Emitter(new(p2p.EvtNetworkReady), eventbus.Stateful)
-	if err != nil {
-		return err
-	}
-
-	return e.Emit(p2p.EvtNetworkReady{})
-}
 
 // RandID creates a random peer.ID
 func RandID() peer.ID {
