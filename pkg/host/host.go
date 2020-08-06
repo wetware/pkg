@@ -66,6 +66,14 @@ func (h Host) Peers() peer.IDSlice {
 	return append(h.r.Peers(), h.host.ID()) // TODO(xxx):  is the append necessary?
 }
 
+// Join the cluster via the specified peer information.
+//
+// Note that if the local peer belongs to a cluster, it will be merged with the remote
+// peer's cluster.
+func (h Host) Join(ctx context.Context, info peer.AddrInfo) error {
+	return h.host.Connect(ctx, info)
+}
+
 // EventBus provides asynchronous notifications of changes in the host's internal state,
 // or the state of the environment.
 func (h Host) EventBus() event.Bus {
