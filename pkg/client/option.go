@@ -17,8 +17,8 @@ func WithNamespace(ns string) Option {
 	}
 }
 
-// WithBootStrategy determines how the client will connect to a cluster.
-func WithBootStrategy(d boot.Strategy) Option {
+// WithStrategy determines how the client will connect to a cluster.
+func WithStrategy(d boot.Strategy) Option {
 	return func(c *Config) (err error) {
 		if d == nil {
 			d = boot.MDNS{Namespace: c.ns}
@@ -43,7 +43,7 @@ func withDataStore(d datastore.Batching) Option {
 func withDefault(opt []Option) []Option {
 	return append([]Option{
 		WithNamespace("ww"),
-		WithBootStrategy(nil),
+		WithStrategy(nil),
 		withDataStore(nil),
 	}, opt...)
 }

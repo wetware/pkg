@@ -15,7 +15,6 @@ import (
 
 	ctxutil "github.com/wetware/ww/internal/util/ctx"
 	logutil "github.com/wetware/ww/internal/util/log"
-	wwclient "github.com/wetware/ww/pkg/client"
 )
 
 var (
@@ -78,7 +77,7 @@ func before() cli.BeforeFunc {
 
 		if err == nil {
 			root, err = client.Dial(context.Background(),
-				wwclient.WithBootStrategy(d))
+				client.WithStrategy(d))
 		}
 
 		return
