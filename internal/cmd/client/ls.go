@@ -9,6 +9,8 @@ import (
 	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
 )
 
+const emsg = "error listing anchor, likely due to missing host or misspelled anchor"
+
 func ls() *cli.Command {
 	return &cli.Command{
 		Name:      "ls",
@@ -28,7 +30,7 @@ func lsAction() cli.ActionFunc {
 
 		cs, err := root.Walk(ctx, anchorpath.Parts(path)).Ls(ctx)
 		if err != nil {
-			return errors.Wrapf(err, "ls %s", path)
+			return errors.Wrap(err, emsg)
 		}
 
 		for _, anchor := range cs {

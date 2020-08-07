@@ -4,6 +4,9 @@ go 1.14
 
 require (
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
+	github.com/chzyer/logex v1.1.10 // indirect
+	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
+	github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/davidlazar/go-crypto v0.0.0-20200604182044-b73af7476f6c // indirect
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
@@ -16,7 +19,7 @@ require (
 	github.com/ipfs/go-ipfs-blockstore v1.0.1
 	github.com/ipfs/go-ipfs-exchange-interface v0.0.1
 	github.com/libp2p/go-eventbus v0.2.1
-	github.com/libp2p/go-libp2p v0.10.2
+	github.com/libp2p/go-libp2p v0.10.3
 	github.com/libp2p/go-libp2p-connmgr v0.2.4
 	github.com/libp2p/go-libp2p-core v0.6.1
 	github.com/libp2p/go-libp2p-discovery v0.5.0
@@ -34,6 +37,7 @@ require (
 	github.com/philhofer/fwd v1.0.0 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.6.0
+	github.com/spy16/sabre v0.3.4-0.20200725142133-706a6955a907
 	github.com/stretchr/testify v1.6.1
 	github.com/tinylib/msgp v1.1.2 // indirect
 	github.com/urfave/cli/v2 v2.2.0

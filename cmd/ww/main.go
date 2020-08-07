@@ -6,7 +6,6 @@
 package main
 
 import (
-	"errors"
 	"os"
 
 	"github.com/urfave/cli/v2"
@@ -16,6 +15,7 @@ import (
 	"github.com/wetware/ww/internal/cmd/boot"
 	"github.com/wetware/ww/internal/cmd/client"
 	"github.com/wetware/ww/internal/cmd/keygen"
+	"github.com/wetware/ww/internal/cmd/shell"
 	"github.com/wetware/ww/internal/cmd/start"
 )
 
@@ -48,6 +48,7 @@ var commands = []*cli.Command{
 	client.Command(),
 	keygen.Command(),
 	boot.Command(),
+	shell.Command(),
 }
 
 func main() {
@@ -55,17 +56,12 @@ func main() {
 		Name:                 "wetware",
 		Usage:                "the distributed programming language",
 		UsageText:            "ww [global options] command [command options] [arguments...]",
+		Copyright:            "2020 The Wetware Project",
 		Version:              version,
 		EnableBashCompletion: true,
 		Flags:                flags,
 		Commands:             commands,
-		Action:               repl,
 	})
-}
-
-func repl(c *cli.Context) error {
-	return errors.New("shell NOT IMPLEMENTED")
-	// return c.App.Command("shell").Run(c)
 }
 
 func run(app *cli.App) {

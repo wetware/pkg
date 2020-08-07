@@ -6,6 +6,7 @@ import (
 	"io"
 	"time"
 
+	log "github.com/lthibault/log/pkg"
 	"github.com/urfave/cli/v2"
 
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -87,7 +88,7 @@ func (m messagePrinter) PrintMessage(msg *pubsub.Message) error {
 
 	// TODO(enhancement):  support s-exprs (or EDN) using github.com/polydawn/refmt
 	if err := m.enc.Encode(msg.GetData); err != nil {
-		logger.
+		log.New().
 			WithField("topic", m.topic).
 			WithField("raw", string(msg.GetData())).
 			Warn("failed to render message (currently, only JSON is supported)")
