@@ -37,7 +37,7 @@ require (
 	github.com/philhofer/fwd v1.0.0 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.6.0
-	github.com/spy16/sabre v0.3.4-0.20200725142133-706a6955a907
+	github.com/spy16/sabre v0.3.4-0.20200818165745-1dafdbf6e7c1
 	github.com/stretchr/testify v1.6.1
 	github.com/tinylib/msgp v1.1.2 // indirect
 	github.com/urfave/cli/v2 v2.2.0

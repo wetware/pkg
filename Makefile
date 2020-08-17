@@ -7,6 +7,7 @@ clean:
 
 capnp: clean
 	@capnp compile -I$(GOPATH)/src/zombiezen.com/go/capnproto2/std -ogo:internal api/anchor.capnp
+	@capnp compile -I$(GOPATH)/src/zombiezen.com/go/capnproto2/std -ogo:internal api/lang.capnp
 
 cleanmocks:
 	@find . -name 'mock_*.go' | xargs -I{} rm {}

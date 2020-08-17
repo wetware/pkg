@@ -4,7 +4,6 @@ package shell
 import (
 	"bytes"
 	"context"
-	"io"
 	"runtime"
 	"text/template"
 
@@ -12,13 +11,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 
-	"github.com/spy16/sabre/reader"
 	"github.com/spy16/sabre/repl"
 
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/client"
 	"github.com/wetware/ww/pkg/lang"
-	"github.com/wetware/ww/pkg/lang/core"
 	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
 
 	clientutil "github.com/wetware/ww/internal/util/client"
@@ -84,7 +81,7 @@ func run() cli.ActionFunc {
 	return func(c *cli.Context) error {
 		ww := lang.New(nil)
 
-		if err := core.Bind(ww, root); err != nil {
+		if err := lang.BindAll(ww, root); err != nil {
 			return err
 		}
 
@@ -123,11 +120,7 @@ func after() cli.AfterFunc {
 }
 
 func readerFactory() repl.ReaderFactory {
-	return repl.ReaderFactoryFunc(func(r io.Reader) *reader.Reader {
-		rd := reader.New(r)
-		core.RegisterMacros(rd)
-		return rd
-	})
+	return repl.ReaderFactoryFunc(lang.NewReader)
 }
 
 func newLineReader(c *cli.Context) (r linereader, err error) {

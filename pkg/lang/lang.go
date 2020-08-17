@@ -5,7 +5,11 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/spy16/sabre/reader"
 	"github.com/spy16/sabre/runtime"
+	ww "github.com/wetware/ww/pkg"
+	"github.com/wetware/ww/pkg/lang/core"
+	bindutil "github.com/wetware/ww/pkg/lang/util/bind"
 )
 
 var _ runtime.Runtime = (*Ww)(nil)
@@ -29,8 +33,8 @@ func New(parent *Ww) *Ww {
 // rules for different values, but in most cases, eval will be dispatched to
 // Eval() method of value.
 func (ww *Ww) Eval(form runtime.Value) (runtime.Value, error) {
-	if isNil(form) {
-		return runtime.Nil{}, nil
+	if core.IsNil(form) {
+		return core.Nil{}, nil
 	}
 
 	v, err := form.Eval(ww)
@@ -41,7 +45,7 @@ func (ww *Ww) Eval(form runtime.Value) (runtime.Value, error) {
 	}
 
 	if v == nil {
-		return runtime.Nil{}, nil
+		return core.Nil{}, nil
 	}
 
 	return v, nil
@@ -101,14 +105,15 @@ func (ww *Ww) Doc(symbol string) string {
 	return ""
 }
 
+// BindAll registers core functions into the given scope.
+func BindAll(r runtime.Runtime, root ww.Anchor) error {
+	return bindutil.BindAll(r,
+		core.Bind(root))
+}
+
 type scopeItem struct {
 	doc string
 	val runtime.Value
-}
-
-func isNil(v runtime.Value) bool {
-	_, isNil := v.(runtime.Nil)
-	return v == nil || isNil
 }
 
 func getPosition(form runtime.Value) (p runtime.Position) {
@@ -117,4 +122,18 @@ func getPosition(form runtime.Value) (p runtime.Position) {
 	}
 
 	return
+}
+
+func macro(init rune, dispatch bool, m reader.Macro) macroSpec {
+	return macroSpec{
+		Init:       init,
+		IsDispatch: dispatch,
+		Macro:      m,
+	}
+}
+
+type macroSpec struct {
+	Init       rune
+	IsDispatch bool
+	Macro      reader.Macro
 }
