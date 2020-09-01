@@ -8,7 +8,6 @@ import (
 	"text/template"
 
 	"github.com/chzyer/readline"
-	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 
 	"github.com/spy16/sabre/repl"
@@ -125,7 +124,7 @@ func readerFactory() repl.ReaderFactory {
 
 func newLineReader(c *cli.Context) (r linereader, err error) {
 	r.r, err = readline.NewEx(&readline.Config{
-		HistoryFile: "/tmp/ww.tmp",
+		HistoryFile: "/tmp/ww.tmp", // TODO(enhancement): ~/.ww/history.ww
 		Stdout:      c.App.Writer,
 		Stderr:      c.App.ErrWriter,
 
@@ -134,7 +133,7 @@ func newLineReader(c *cli.Context) (r linereader, err error) {
 
 		/*
 			TODO(enhancemenbt):  pass in the lang.Ww and configure autocomplete.
-								 The lang.Ww instance will need to sup
+								 The lang.Ww instance will need to supply completions.
 		*/
 		// AutoComplete: completer(ww),
 	})
@@ -209,9 +208,7 @@ func (a nopAnchor) String() string { return anchorpath.Join(a) }
 func (a nopAnchor) Path() []string { return a }
 
 func (nopAnchor) Ls(context.Context) ([]ww.Anchor, error) {
-	// simulate missing host
-	return nil, errors.Wrap(errors.New("open stream"),
-		"failed to find any peer in table")
+	return []ww.Anchor{}, nil
 }
 
 func (a nopAnchor) Walk(_ context.Context, path []string) ww.Anchor {

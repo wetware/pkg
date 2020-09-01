@@ -2,12 +2,10 @@ package core
 
 import (
 	"context"
-	"errors"
-	"reflect"
 
 	capnp "zombiezen.com/go/capnproto2"
 
-	"github.com/spy16/sabre"
+	"github.com/pkg/errors"
 	"github.com/spy16/sabre/runtime"
 
 	"github.com/wetware/ww/internal/api"
@@ -87,6 +85,10 @@ func (root list) Eval(r runtime.Runtime) (runtime.Value, error) {
 }
 
 func (root list) Invoke(r runtime.Runtime, args ...runtime.Value) (runtime.Value, error) {
+	if len(args) != 1 {
+		return nil, errors.Errorf("expected 1 argument, got %d", len(args))
+	}
+
 	p, ok := args[0].(Path)
 	if !ok {
 		return nil, errors.New("argument 0 must by of type Path")
@@ -97,8 +99,32 @@ func (root list) Invoke(r runtime.Runtime, args ...runtime.Value) (runtime.Value
 		return nil, err
 	}
 
-	// TODO:  replace Any with Vector or Set implementation.
-	return sabre.Any{
-		V: reflect.ValueOf(as),
-	}, nil
+	b, err := NewVectorBuilder(capnp.SingleSegment(nil))
+	if err != nil {
+		return nil, err
+	}
+
+	for _, a := range as {
+		/*
+			TODO(performance):  we're effectively throwing away the anchor, here.
+
+			Most of the time, the anchors retrieve by a call to `ls` will be used in a
+			subsequent call.  How can we avoid the extra round-trip to retrieve them?
+
+			Options include:
+
+			- caching anchors at the rpc.Terminal level
+			- binding the Anchor to the Path object (i.e.: caching at the core.Path level)
+		*/
+
+		if p, err = NewPath(a.String()); err != nil {
+			return nil, err
+		}
+
+		if err = b.Conj(p); err != nil {
+			return nil, err
+		}
+	}
+
+	return b.Vector()
 }
