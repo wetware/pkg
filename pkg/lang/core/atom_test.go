@@ -14,27 +14,27 @@ func TestKeywordLookup(t *testing.T) {
 	t.Parallel()
 
 	for _, tt := range []struct {
-		title   string
+		desc    string
 		getEnv  func() runtime.Runtime
 		args    []runtime.Value
 		want    runtime.Value
 		wantErr bool
 	}{{
-		title:   "ArityMismatch",
+		desc:    "ArityMismatch",
 		args:    nil,
 		wantErr: true,
 	}, {
-		title:   "ArgEvalError",
+		desc:    "ArgEvalError",
 		args:    []runtime.Value{mustSymbol("test")},
 		getEnv:  func() runtime.Runtime { return lang.New(nil) },
 		wantErr: true,
 	}, {
-		title:  "NotMap",
+		desc:   "NotMap",
 		args:   []runtime.Value{runtime.Seq(nil)},
 		getEnv: func() runtime.Runtime { return lang.New(nil) },
 		want:   core.Nil{},
 	}, {
-		title: "WithDefault",
+		desc: "WithDefault",
 		args: []runtime.Value{
 			&mockMap{
 				Lookup: func(key runtime.Value) runtime.Value {
@@ -46,7 +46,7 @@ func TestKeywordLookup(t *testing.T) {
 		getEnv: func() runtime.Runtime { return lang.New(nil) },
 		want:   runtime.Float64(10), // TODO(xxx): replace
 	}, {
-		title: "WithoutDefault",
+		desc: "WithoutDefault",
 		args: []runtime.Value{
 			&mockMap{Lookup: func(key runtime.Value) runtime.Value {
 				if runtime.Equals(key, mustKeyword("specimen")) {
@@ -59,7 +59,7 @@ func TestKeywordLookup(t *testing.T) {
 		getEnv: func() runtime.Runtime { return lang.New(nil) },
 		want:   runtime.Float64(10), // TODO(xxx): replace
 	}} {
-		t.Run(tt.title, func(t *testing.T) {
+		t.Run(tt.desc, func(t *testing.T) {
 			var env runtime.Runtime
 			if tt.getEnv != nil {
 				env = tt.getEnv()
@@ -80,35 +80,35 @@ func TestKeywordLookup(t *testing.T) {
 func Test_Eval(t *testing.T) {
 	t.Parallel()
 	runEvalTests(t, []evalTestCase{{
-		title: "Nil",
-		form:  core.Nil{},
-		want:  core.Nil{},
+		desc: "Nil",
+		form: core.Nil{},
+		want: core.Nil{},
 	}, {
-		title: "Bool",
-		form:  core.False,
-		want:  core.False,
+		desc: "Bool",
+		form: core.False,
+		want: core.False,
 	}, {
-		title: "Float64",
-		form:  runtime.Float64(0.123456789), // TODO(xxx): replace
-		want:  runtime.Float64(0.123456789), // TODO(xxx): replace
+		desc: "Float64",
+		form: runtime.Float64(0.123456789), // TODO(xxx): replace
+		want: runtime.Float64(0.123456789), // TODO(xxx): replace
 	}, {
-		title: "Int64",
-		form:  runtime.Int64(10), // TODO(xxx): replace
-		want:  runtime.Int64(10), // TODO(xxx): replace
+		desc: "Int64",
+		form: runtime.Int64(10), // TODO(xxx): replace
+		want: runtime.Int64(10), // TODO(xxx): replace
 	}, {
-		title: "Char",
-		form:  mustChar('c'),
-		want:  mustChar('c'),
+		desc: "Char",
+		form: mustChar('c'),
+		want: mustChar('c'),
 	}, {
-		title: "Keyword",
-		form:  mustKeyword("specimen"),
-		want:  mustKeyword("specimen"),
+		desc: "Keyword",
+		form: mustKeyword("specimen"),
+		want: mustKeyword("specimen"),
 	}, {
-		title: "String",
-		form:  mustString("specimen"),
-		want:  mustString("specimen"),
+		desc: "String",
+		form: mustString("specimen"),
+		want: mustString("specimen"),
 	}, {
-		title: "Symbol",
+		desc: "Symbol",
 		getEnv: func() runtime.Runtime {
 			env := lang.New(nil)
 			_ = env.Bind("π", runtime.Float64(3.1412)) // TODO(xxx): replace

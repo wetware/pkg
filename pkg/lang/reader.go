@@ -19,10 +19,10 @@ var (
 		';':  readComment,
 		':':  readKeyword,
 		'\\': readCharacter,
-		// '(':  readList,
-		// ')':  reader.UnmatchedDelimiter(),
-		'[': readVector,
-		']': reader.UnmatchedDelimiter(),
+		'(':  readList,
+		')':  reader.UnmatchedDelimiter(),
+		'[':  readVector,
+		']':  reader.UnmatchedDelimiter(),
 		// '\'': quoteFormReader("quote"),
 		// '~':  quoteFormReader("unquote"),
 		// '`':  quoteFormReader("syntax-quote"),
@@ -62,44 +62,6 @@ func NewReader(r io.Reader) *reader.Reader {
 	return reader.New(r,
 		reader.WithMacros(readerMacros),
 		reader.WithPredefinedSymbols(symbols))
-}
-
-func readContainer(rd *reader.Reader, end rune, formType string, fn func(runtime.Value) error) error {
-	for {
-		if err := rd.SkipSpaces(); err != nil {
-			if err == io.EOF {
-				return fmt.Errorf("%w: while reading %s", reader.ErrEOF, formType)
-			}
-			return err
-		}
-
-		r, err := rd.NextRune()
-		if err != nil {
-			if err == io.EOF {
-				return fmt.Errorf("%w: while reading %s", reader.ErrEOF, formType)
-			}
-			return err
-		}
-
-		if r == end {
-			break
-		}
-		rd.Unread(r)
-
-		expr, err := rd.One()
-		if err != nil {
-			if err == reader.ErrSkip {
-				continue
-			}
-			return err
-		}
-
-		if err = fn(expr); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func readString(rd *reader.Reader, _ rune) (runtime.Value, error) {
@@ -212,13 +174,23 @@ func readPath(rd *reader.Reader, char rune) (_ runtime.Value, err error) {
 	return core.NewPath(b.String())
 }
 
+func readList(rd *reader.Reader, _ rune) (runtime.Value, error) {
+	const listEnd = ')'
+
+	forms, err := rd.Container(listEnd, "list")
+	if err != nil {
+		return nil, err
+	}
+	return runtime.NewSeq(forms...), nil
+}
+
 func readVector(rd *reader.Reader, char rune) (runtime.Value, error) {
 	b, err := core.NewVectorBuilder(capnp.SingleSegment(nil))
 	if err != nil {
 		return nil, err
 	}
 
-	if err = readContainer(rd, ']', "vector", func(v runtime.Value) error {
+	if err = readContainerStream(rd, ']', "vector", func(v runtime.Value) error {
 		return b.Conj(v)
 	}); err != nil {
 		return nil, err
@@ -272,4 +244,42 @@ func getEscape(r rune) (rune, error) {
 
 func isSpace(r rune) bool {
 	return unicode.IsSpace(r) || r == ','
+}
+
+func readContainerStream(rd *reader.Reader, end rune, formType string, fn func(runtime.Value) error) error {
+	for {
+		if err := rd.SkipSpaces(); err != nil {
+			if err == io.EOF {
+				return fmt.Errorf("%w: while reading %s", reader.ErrEOF, formType)
+			}
+			return err
+		}
+
+		r, err := rd.NextRune()
+		if err != nil {
+			if err == io.EOF {
+				return fmt.Errorf("%w: while reading %s", reader.ErrEOF, formType)
+			}
+			return err
+		}
+
+		if r == end {
+			break
+		}
+		rd.Unread(r)
+
+		expr, err := rd.One()
+		if err != nil {
+			if err == reader.ErrSkip {
+				continue
+			}
+			return err
+		}
+
+		if err = fn(expr); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

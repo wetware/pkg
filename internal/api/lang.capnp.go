@@ -20,11 +20,12 @@ const (
 	Value_Which_keyword Value_Which = 4
 	Value_Which_symbol  Value_Which = 5
 	Value_Which_path    Value_Which = 6
-	Value_Which_vector  Value_Which = 7
+	Value_Which_list    Value_Which = 7
+	Value_Which_vector  Value_Which = 8
 )
 
 func (w Value_Which) String() string {
-	const s = "nilboolcharstrkeywordsymbolpathvector"
+	const s = "nilboolcharstrkeywordsymbolpathlistvector"
 	switch w {
 	case Value_Which_nil:
 		return s[0:3]
@@ -40,8 +41,10 @@ func (w Value_Which) String() string {
 		return s[21:27]
 	case Value_Which_path:
 		return s[27:31]
+	case Value_Which_list:
+		return s[31:35]
 	case Value_Which_vector:
-		return s[31:37]
+		return s[35:41]
 
 	}
 	return "Value_Which(" + strconv.FormatUint(uint64(w), 10) + ")"
@@ -206,15 +209,15 @@ func (s Value) SetPath(v string) error {
 	return s.Struct.SetText(0, v)
 }
 
-func (s Value) Vector() (Vector, error) {
+func (s Value) List() (LinkedList, error) {
 	if s.Struct.Uint16(0) != 7 {
-		panic("Which() != vector")
+		panic("Which() != list")
 	}
 	p, err := s.Struct.Ptr(0)
-	return Vector{Struct: p.Struct()}, err
+	return LinkedList{Struct: p.Struct()}, err
 }
 
-func (s Value) HasVector() bool {
+func (s Value) HasList() bool {
 	if s.Struct.Uint16(0) != 7 {
 		return false
 	}
@@ -222,15 +225,48 @@ func (s Value) HasVector() bool {
 	return p.IsValid() || err != nil
 }
 
-func (s Value) SetVector(v Vector) error {
+func (s Value) SetList(v LinkedList) error {
 	s.Struct.SetUint16(0, 7)
+	return s.Struct.SetPtr(0, v.Struct.ToPtr())
+}
+
+// NewList sets the list field to a newly
+// allocated LinkedList struct, preferring placement in s's segment.
+func (s Value) NewList() (LinkedList, error) {
+	s.Struct.SetUint16(0, 7)
+	ss, err := NewLinkedList(s.Struct.Segment())
+	if err != nil {
+		return LinkedList{}, err
+	}
+	err = s.Struct.SetPtr(0, ss.Struct.ToPtr())
+	return ss, err
+}
+
+func (s Value) Vector() (Vector, error) {
+	if s.Struct.Uint16(0) != 8 {
+		panic("Which() != vector")
+	}
+	p, err := s.Struct.Ptr(0)
+	return Vector{Struct: p.Struct()}, err
+}
+
+func (s Value) HasVector() bool {
+	if s.Struct.Uint16(0) != 8 {
+		return false
+	}
+	p, err := s.Struct.Ptr(0)
+	return p.IsValid() || err != nil
+}
+
+func (s Value) SetVector(v Vector) error {
+	s.Struct.SetUint16(0, 8)
 	return s.Struct.SetPtr(0, v.Struct.ToPtr())
 }
 
 // NewVector sets the vector field to a newly
 // allocated Vector struct, preferring placement in s's segment.
 func (s Value) NewVector() (Vector, error) {
-	s.Struct.SetUint16(0, 7)
+	s.Struct.SetUint16(0, 8)
 	ss, err := NewVector(s.Struct.Segment())
 	if err != nil {
 		return Vector{}, err
@@ -265,8 +301,129 @@ func (p Value_Promise) Struct() (Value, error) {
 	return Value{s}, err
 }
 
+func (p Value_Promise) List() LinkedList_Promise {
+	return LinkedList_Promise{Pipeline: p.Pipeline.GetPipeline(0)}
+}
+
 func (p Value_Promise) Vector() Vector_Promise {
 	return Vector_Promise{Pipeline: p.Pipeline.GetPipeline(0)}
+}
+
+type LinkedList struct{ capnp.Struct }
+
+// LinkedList_TypeID is the unique identifier for the type LinkedList.
+const LinkedList_TypeID = 0xabb6209005a46075
+
+func NewLinkedList(s *capnp.Segment) (LinkedList, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2})
+	return LinkedList{st}, err
+}
+
+func NewRootLinkedList(s *capnp.Segment) (LinkedList, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2})
+	return LinkedList{st}, err
+}
+
+func ReadRootLinkedList(msg *capnp.Message) (LinkedList, error) {
+	root, err := msg.RootPtr()
+	return LinkedList{root.Struct()}, err
+}
+
+func (s LinkedList) String() string {
+	str, _ := text.Marshal(0xabb6209005a46075, s.Struct)
+	return str
+}
+
+func (s LinkedList) Count() uint32 {
+	return s.Struct.Uint32(0)
+}
+
+func (s LinkedList) SetCount(v uint32) {
+	s.Struct.SetUint32(0, v)
+}
+
+func (s LinkedList) Head() (Value, error) {
+	p, err := s.Struct.Ptr(0)
+	return Value{Struct: p.Struct()}, err
+}
+
+func (s LinkedList) HasHead() bool {
+	p, err := s.Struct.Ptr(0)
+	return p.IsValid() || err != nil
+}
+
+func (s LinkedList) SetHead(v Value) error {
+	return s.Struct.SetPtr(0, v.Struct.ToPtr())
+}
+
+// NewHead sets the head field to a newly
+// allocated Value struct, preferring placement in s's segment.
+func (s LinkedList) NewHead() (Value, error) {
+	ss, err := NewValue(s.Struct.Segment())
+	if err != nil {
+		return Value{}, err
+	}
+	err = s.Struct.SetPtr(0, ss.Struct.ToPtr())
+	return ss, err
+}
+
+func (s LinkedList) Tail() (Value, error) {
+	p, err := s.Struct.Ptr(1)
+	return Value{Struct: p.Struct()}, err
+}
+
+func (s LinkedList) HasTail() bool {
+	p, err := s.Struct.Ptr(1)
+	return p.IsValid() || err != nil
+}
+
+func (s LinkedList) SetTail(v Value) error {
+	return s.Struct.SetPtr(1, v.Struct.ToPtr())
+}
+
+// NewTail sets the tail field to a newly
+// allocated Value struct, preferring placement in s's segment.
+func (s LinkedList) NewTail() (Value, error) {
+	ss, err := NewValue(s.Struct.Segment())
+	if err != nil {
+		return Value{}, err
+	}
+	err = s.Struct.SetPtr(1, ss.Struct.ToPtr())
+	return ss, err
+}
+
+// LinkedList_List is a list of LinkedList.
+type LinkedList_List struct{ capnp.List }
+
+// NewLinkedList creates a new list of LinkedList.
+func NewLinkedList_List(s *capnp.Segment, sz int32) (LinkedList_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2}, sz)
+	return LinkedList_List{l}, err
+}
+
+func (s LinkedList_List) At(i int) LinkedList { return LinkedList{s.List.Struct(i)} }
+
+func (s LinkedList_List) Set(i int, v LinkedList) error { return s.List.SetStruct(i, v.Struct) }
+
+func (s LinkedList_List) String() string {
+	str, _ := text.MarshalList(0xabb6209005a46075, s.List)
+	return str
+}
+
+// LinkedList_Promise is a wrapper for a LinkedList promised by a client call.
+type LinkedList_Promise struct{ *capnp.Pipeline }
+
+func (p LinkedList_Promise) Struct() (LinkedList, error) {
+	s, err := p.Pipeline.Struct()
+	return LinkedList{s}, err
+}
+
+func (p LinkedList_Promise) Head() Value_Promise {
+	return Value_Promise{Pipeline: p.Pipeline.GetPipeline(0)}
+}
+
+func (p LinkedList_Promise) Tail() Value_Promise {
+	return Value_Promise{Pipeline: p.Pipeline.GetPipeline(1)}
 }
 
 type Vector struct{ capnp.Struct }
@@ -528,45 +685,53 @@ func (p Vector_Node_Promise) Struct() (Vector_Node, error) {
 	return Vector_Node{s}, err
 }
 
-const schema_e7dd644ba93cb72c = "x\xdatR\xcfK\x14a\x18~\x9e\xf7\x9b\xddYh" +
-	"\xb7\xd9\xc1!Obt*\x11\xcd\xba\x89`\xbf\xbc\x14" +
-	"\x88\xdf%\":4\xeeN\xed\xd2\xb8\xb3\xec\x8e\x8a\x97" +
-	"\xbc\xf4\x0ft\xf7\xd8\xa5\x8e\x11t\xea\xd0!\xba\x14T" +
-	"\x14X(\x18\x18\x1a\x14x0\xd0J\xbf\xf8\\v\xb7" +
-	"\xa2\x8e\xef\xf3>\xbc<?\xde\x93\xbd<##\x19\x8f" +
-	"\x80\xceg\xb2f\xeb\xf4\xa3\xa9\xd1\xc1\xdbw\xa1\x8f\x90" +
-	"\xe6\xfc\xa1\xabo\x16\x97\xc6\xb61AW\x00\x7f\xe6\x83" +
-	"\xbf\xe0\x02\xfe\xec<\xb8wox\xe7\xe9\xc4\xd2\xb2\xf6" +
-	"H3\xf8x\xec\xfe\xa5\xf2\xea\x86%\xe6\x00\xff\xdb\x03" +
-	"\x7f\xcf\x05Fv\x9f\x13\xbf\x9d\xf9\x93\x9b\x11\x17\xe8y" +
-	"\"\x0f{\x9eI/\xd0\xf3R6@\x13\xd6\xab\xc3q" +
-	"X\xbb)C\xa5\xb0^\xab\x8f^\x8eJi\xd2\x18\x9a" +
-	"LT9\x9a\"uN9yc\x1c\x02\xfe\x89\x8b\x80" +
-	">\xae\xa8/\x08\x0b\xdc7\x01-zv\x14\xd0c\x8a" +
-	"\xfa\x8a\xd0L7\xc2Z\xa9\x125\x01\xf008\xa5\xc8" +
-	"b\xd7$h\xc1\xf1\xb90\x9e\x8d\x9a\x9d}\xdbYk" +
-	"\xdb\x11\xc4\xb6 \xcf\xd2\xad\x94\xa3])\xaf\x8f\x01\xfa" +
-	"\x85\xa2^\x16\xf6q\xdf\x14[Z\xde\x0d\x00\xfa\x95\xa2" +
-	"^\x11\xf6\xc9\x9ea@\x9b\xe3{\x0b\xbfU\xd4k\xc2" +
-	"\x82\xfai\x02*\xc0_\xb57\x96\x15\xf5\xba\xb0\xe0\xfc" +
-	"0\x01\x1d\xc0\xffx\x0e\xd0+\x8azSX\xc8|7" +
-	"\x013\x80\xff\xc9\x9a\\S\xd4_\x84\x85\xec\xae\x09\x98" +
-	"\x05\xfc\xcf\xf6\xee\xba\xa2\xde\x12\x16\xdc\x1d\x13\xd0\xb6\xf5" +
-	"\xd5r7\x15\xf5\xb6\xd0\xadUcd\xbd\xe9$\x89I" +
-	"\x08\x09z\xa5J\xd8\xa0\x03\xa1\x03\xba\xcd\xb4\xc1<\x84" +
-	"yp\xf1V\xb40\x9f4\xca\xedy\xbc\xb903\x9d" +
-	"\xc4\xed\xd1\xab\x87i\xa5\xb3\x9b;\xa8\x89\xc5n\xd9 " +
-	"\x8b\xff\x8a\xaf\xff\x80\xa9\x1d\xb2[\x84\xcf\x01o2)" +
-	"G\xba\xa8\x1c\xe0 \xd1\xf0\x14\xa0\xaf)\xea\x8a\xd0\xa7" +
-	"\xd3\xca3\xb2\xe0uE\x1d\x0b)\xad0\xab\xd6tY" +
-	"Q\xd7\x85\xbeb+\xcb\x19\x0bV\x14\xf5\x1da\x7f)" +
-	"\x99\xad\xa5\xccA\x98\x03\xfb\x9b\x95\xea\x8d\x94Y\x08\xb3" +
-	"\xa0\xd7H\x92\xf4\xaf\x97(\x82^\x1aV\xe3\xff<\xc4" +
-	"\xaf\x00\x00\x00\xff\xff\x82\x15\xcb\x0a"
+const schema_e7dd644ba93cb72c = "x\xdat\x92\xbfO<U\x14\xc5\xcfyo\xf6\x07q" +
+	"\xd7\x99\xc9L\xb4\"\xa8\xb1\x10\x82\xa0\xd2\x11\x12P\xd9" +
+	"\xc4\x1fH\xf6\xb1\xc6\x18c\xc1\xb03\xb2\x13\x86\x9d\xcd" +
+	"\xee\x00\xa1\x91\xc6?@K\x13\x1a\x13,\xd4\xc2\xc4\x18" +
+	"\xad)(,lHL\x8c\x895\x16\x9a`\x82qQ" +
+	"\xe0\x99\xb7\xeb\xee~\xe1\xcb\xb7\x9b{\xee\xcd\x9d\xf3\xce" +
+	"\xfd\xbc\x10rI\xbc\x98\xdb$\xa0\x9c\\^\x9f\xcf}" +
+	"[\x9d\x9f\xfe\xf0\x13\xa8'H\xfd\xeac\xef\x9d\x1e\x1c" +
+	".\\\xa0\xc2\x82\x00\xdcO\x7fq?/\x00\xeeg{" +
+	"\xa0\xdeY?\xca}\xfc\xd4w_A\xd9\xa4\x9e\xfe~" +
+	"\xe1\x8b7\xc3_\xcf\x90\x13\x05\xc0{\x9a\xa7\xde\xf34" +
+	"_\x93\xfc\x1a\xbc>\x9a\xed\x1eW\x0e\x7f\xbe=Za" +
+	"a\x0c\xf0\x8e\xf9\xa5\xf7\x83\x99\x9d;\xa1&\x1e\xf8\xed" +
+	"}\x9bO\xe47\xde\x8f\xf2I\xc0\xfbI\x9e\x81:h" +
+	"\xc5\xb3I\xd0\xdc\x143\xf5\xa0\xd5l\xcd\xbf\x13\xd5\xb3" +
+	"\xb4=\xb3\x9a\xca0\xaa\x92\xaa(\xad\x92\xd6\x16\x01w" +
+	"\xf2\x0d@='\xa9\x96\x05\xcb\xbc\xd1>\x8d\xfa\xf2<" +
+	"\xa0\x16$\xd5\xbb\x82z\xa3\x1d4\xeb\x8d\xa8\x03\x80\x8f" +
+	"\x83UI:\xa3P@#.\xee\x06\xc9N\xd4\x19\xf6" +
+	"\x07\x8f\xebw\x1f2\xb4\x127\xb7\xa2p%\xee03" +
+	"~J\xd2\x02zv*/\x01jIR\xad\x08\x92}" +
+	"3\xafO\x01jYRU\x05]A\x9f&\xf6\xb7\x8c" +
+	"\xf8\x9a\xa4z[p\xa2\x9e\xee43\x16!X\x04\xed" +
+	"F\x14\x84\xb7\x1c8\xa0\x9d\x05qrW\x1c\xda\xe2 " +
+	"'\xdb\xbc\xc28zv\x94\xd0\x1f\xcf\x00\xea7Iu" +
+	"!8\xce\x1b\xed\xf4]\xfdi\x0c\xfc.\xa9\xba\x82\xe3" +
+	"\xe2Z\xff\xef\xeb/#\x9fK\xaa+\xc1\xb2\xbc\xd2>" +
+	"%\xe0^\x9a\x1d\x17\x92k\x14,[\xffj\x9f\x16\xe0" +
+	"^\xbf\x02\xa8\xaed\xcd2r\xee\x1f\xed3\x07x\xa4" +
+	"I\xffJ\xb2V4z\xfeR\xfb\xcc\x03^\x8eS\xc0" +
+	"\x1a%k%\xa3\x17\xba\xda\xef\xd14f\xf4\x9ae\x1a" +
+	"\x8ei\x14\xff\xd6>\x8b\x80W6\x8bjE\xd3\xf0)" +
+	"Xh\xc6\x09\xf2\xf6F\x9a&$\x04\x09\xda\xf5F\xd0" +
+	"\xa6\x05A\x0b,t\xb26K\x10,\x81\x07[\xd1\xfe" +
+	"^\xda\x0e\x07\xf5bg\x7f{#M\x06\xa5\xdd\x0a\xb2" +
+	"\xc6\xb0H\xe2NFg\x04\x7f?\xdd\xc5\xdd\x1eut" +
+	"F\xec>*\xf6\x89\xde\xa4\xb2\xc8\x11W.\xa7\xec\xd5" +
+	"4\x8c\x943\x84#0p\xbc/\xa9\x1a\x82.\xad\xfe" +
+	"\x1d\"#\xaeK\xaaD\x90\xa2\x7f\x84\xd8\x1c!\x94T" +
+	"-AW\xb2\x7f\x83m#6$\xd5Gw\x89\x99\xe8" +
+	"4\xe2\x0f2\xe6!\x98\x07\xedv\x9afw\x08\x1f\x12" +
+	"t?\xdf\xff\x05\x00\x00\xff\xffu\xcb\xfc-"
 
 func init() {
 	schemas.Register(schema_e7dd644ba93cb72c,
 		0x917e2c3a50b433f0,
+		0xabb6209005a46075,
 		0xd89c45c1f82f00a4,
 		0xf43c9c7fd25a0b43)
 }

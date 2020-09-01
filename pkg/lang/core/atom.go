@@ -59,6 +59,12 @@ func valueOf(v api.Value) (val runtime.Value, err error) {
 		} else {
 			err = enoval(w)
 		}
+	case api.Value_Which_list:
+		if v.HasList() {
+			val = List{v: v}
+		} else {
+			err = enoval(w)
+		}
 	case api.Value_Which_vector:
 		if v.HasVector() {
 			val = Vector{v: v}

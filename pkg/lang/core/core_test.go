@@ -6,10 +6,11 @@ import (
 
 	"github.com/spy16/sabre/runtime"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type evalTestCase struct {
-	title   string
+	desc    string
 	getEnv  func() runtime.Runtime
 	form    runtime.Value
 	want    runtime.Value
@@ -18,19 +19,25 @@ type evalTestCase struct {
 
 func runEvalTests(t *testing.T, cases []evalTestCase) {
 	for _, tt := range cases {
-		t.Run(tt.title, func(t *testing.T) {
+		t.Run(tt.desc, func(t *testing.T) {
 			var env runtime.Runtime
 			if tt.getEnv != nil {
 				env = tt.getEnv()
 			}
 
 			got, err := tt.form.Eval(env)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("%s.Eval() error = %v, wantErr %v",
-					reflect.TypeOf(tt.form), err, tt.wantErr)
-			} else {
-				assert.Equal(t, tt.want, got)
+			if tt.wantErr {
+				assert.Error(t, err, "expected error, but got nil")
+				return
 			}
+
+			require.NoError(t, err, "%s.Eval() error = %v, wantErr %v",
+				reflect.TypeOf(tt.form),
+				err,
+				tt.wantErr,
+			)
+
+			assert.Equal(t, tt.want.String(), got.String())
 		})
 	}
 }

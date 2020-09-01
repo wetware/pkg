@@ -19,12 +19,18 @@ struct Value {
         keyword @4 :Text;
         symbol @5 :Text;
         path @6 :Text;
-        vector @7 :Vector;
-        # list @8 :PList;
+        list @7 :LinkedList;
+        vector @8 :Vector;
         # map @9 :CHAMP;
     }
 }
 
+
+struct LinkedList {
+    count @0 :UInt32;
+    head @1 :Value;  # any
+    tail @2 :Value;  # ∈ {nil, list}
+}
 
 
 struct Vector {

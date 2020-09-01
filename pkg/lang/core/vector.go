@@ -73,16 +73,18 @@ func NewVector(a capnp.Arena, vs ...runtime.Value) (_ Vector, err error) {
 		return emptyVector, nil
 	}
 
-	var vb *VectorBuilder
-	if vb, err = NewVectorBuilder(a); err != nil {
+	var b *VectorBuilder
+	if b, err = NewVectorBuilder(a); err != nil {
 		return
 	}
 
-	if err = vb.Conj(vs...); err != nil {
-		return
+	for _, v := range vs {
+		if err = b.Conj(v); err != nil {
+			return
+		}
 	}
 
-	return vb.Vector()
+	return b.Vector()
 }
 
 // Value for Vector type
@@ -406,7 +408,7 @@ func vectorUpdate(vec api.Vector, cnt, i int, val runtime.Value) (runtime.Vector
 		}
 
 		// newTail[i & 0x01f] = val;
-		if err = setValue(tail, i&mask, val); err != nil {
+		if err = setValueListAt(tail, i&mask, val); err != nil {
 			return nil, err
 		}
 	} else {
@@ -449,7 +451,7 @@ func vectorCons(vec api.Vector, cnt int, val runtime.Value) (_ Vector, err error
 			return
 		}
 
-		if err = setValue(newtail, tail.Len(), val); err != nil {
+		if err = setValueListAt(newtail, tail.Len(), val); err != nil {
 			return
 		}
 
@@ -571,7 +573,7 @@ func (b *VectorBuilder) Vector() (_ Vector, err error) {
 	}
 
 	for i, v := range b.tail {
-		if err = setValue(tail, i, v); err != nil {
+		if err = setValueListAt(tail, i, v); err != nil {
 			return
 		}
 	}
@@ -584,17 +586,7 @@ func (b *VectorBuilder) Vector() (_ Vector, err error) {
 }
 
 // Conj appends the values to the vector under construction.
-func (b *VectorBuilder) Conj(vs ...runtime.Value) (err error) {
-	for _, v := range vs {
-		if err = b.conj(v); err != nil {
-			return
-		}
-	}
-
-	return
-}
-
-func (b *VectorBuilder) conj(v runtime.Value) (err error) {
+func (b *VectorBuilder) Conj(v runtime.Value) (err error) {
 	// room in tail?
 	if len(b.tail) < width {
 		b.tail = append(b.tail, v)
@@ -834,10 +826,10 @@ func setNodeValue(n api.Vector_Node, i int, v runtime.Value) error {
 		return err
 	}
 
-	return setValue(vs, i, v)
+	return setValueListAt(vs, i, v)
 }
 
-func setValue(vs api.Value_List, i int, v runtime.Value) error {
+func setValueListAt(vs api.Value_List, i int, v runtime.Value) error {
 	switch x := v.(type) {
 	case Nil:
 		vs.At(i & mask).SetNil()
