@@ -14,14 +14,19 @@ struct Value {
     union {
         nil @0 :Void;
         bool @1 :Bool;
-        char @2 :Int32;
-        str @3 :Text;
-        keyword @4 :Text;
-        symbol @5 :Text;
-        path @6 :Text;
-        list @7 :LinkedList;
-        vector @8 :Vector;
-        # map @9 :CHAMP;
+        i64 @2 :Int64;
+        bigInt @3 :Data;
+        f64 @4 :Float64;
+        bigFloat @5 :Text;
+        frac @6 :Frac;
+        char @7 :Int32;
+        str @8 :Text;
+        keyword @9 :Text;
+        symbol @10 :Text;
+        path @11 :Text;
+        list @12 :LinkedList;
+        vector @13 :Vector;
+        # map @14 :CHAMP;
     }
 }
 
@@ -39,6 +44,12 @@ interface Anchor {
     # Using Text paths saves a couple of bytes since we don't have to wrap the text,
     # which is effectively a List(uint8), in _another_ list.
     walk @1 (path :Text) -> (anchor :Anchor);
+}
+
+
+struct Frac {
+    numer @0 :Data;
+    denom @1 :Data;
 }
 
 

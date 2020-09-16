@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"strconv"
 	"strings"
 	"unicode"
@@ -15,97 +14,6 @@ import (
 
 	"github.com/wetware/ww/pkg/lang"
 )
-
-func readNumber(rd *reader.Reader, init rune) (parens.Any, error) {
-	beginPos := rd.Position()
-
-	numStr, err := rd.Token(init)
-	if err != nil {
-		return nil, err
-	}
-
-	decimalPoint := strings.ContainsRune(numStr, '.')
-	isRadix := strings.ContainsRune(numStr, 'r')
-	isScientific := strings.ContainsRune(numStr, 'e')
-
-	switch {
-	case isRadix && (decimalPoint || isScientific):
-		return nil, annotateErr(rd, reader.ErrNumberFormat, beginPos, numStr)
-
-	case isScientific:
-		v, err := parseScientific(numStr)
-		if err != nil {
-			return nil, annotateErr(rd, err, beginPos, numStr)
-		}
-		return v, nil
-
-	case decimalPoint:
-		v, err := strconv.ParseFloat(numStr, 64)
-		if err != nil {
-			return nil, annotateErr(rd, reader.ErrNumberFormat, beginPos, numStr)
-		}
-		return parens.Float64(v), nil
-
-	case isRadix:
-		v, err := parseRadix(numStr)
-		if err != nil {
-			return nil, annotateErr(rd, err, beginPos, numStr)
-		}
-		return v, nil
-
-	default:
-		v, err := strconv.ParseInt(numStr, 0, 64)
-		if err != nil {
-			return nil, annotateErr(rd, reader.ErrNumberFormat, beginPos, numStr)
-		}
-
-		return parens.Int64(v), nil
-	}
-}
-
-func parseRadix(numStr string) (parens.Int64, error) {
-	parts := strings.Split(numStr, "r")
-	if len(parts) != 2 {
-		return 0, fmt.Errorf("%w (radix notation): '%s'", reader.ErrNumberFormat, numStr)
-	}
-
-	base, err := strconv.ParseInt(parts[0], 10, 64)
-	if err != nil {
-		return 0, fmt.Errorf("%w (radix notation): '%s'", reader.ErrNumberFormat, numStr)
-	}
-
-	repr := parts[1]
-	if base < 0 {
-		base = -1 * base
-		repr = "-" + repr
-	}
-
-	v, err := strconv.ParseInt(repr, int(base), 64)
-	if err != nil {
-		return 0, fmt.Errorf("%w (radix notation): '%s'", reader.ErrNumberFormat, numStr)
-	}
-
-	return parens.Int64(v), nil
-}
-
-func parseScientific(numStr string) (parens.Float64, error) {
-	parts := strings.Split(numStr, "e")
-	if len(parts) != 2 {
-		return 0, fmt.Errorf("%w (scientific notation): '%s'", reader.ErrNumberFormat, numStr)
-	}
-
-	base, err := strconv.ParseFloat(parts[0], 64)
-	if err != nil {
-		return 0, fmt.Errorf("%w (scientific notation): '%s'", reader.ErrNumberFormat, numStr)
-	}
-
-	pow, err := strconv.ParseInt(parts[1], 10, 64)
-	if err != nil {
-		return 0, fmt.Errorf("%w (scientific notation): '%s'", reader.ErrNumberFormat, numStr)
-	}
-
-	return parens.Float64(base * math.Pow(10, float64(pow))), nil
-}
 
 // func readSymbol(rd *reader.Reader, init rune) (parens.Symbol, error) {
 // 	beginPos := rd.Position()

@@ -4,6 +4,7 @@ package api
 
 import (
 	context "golang.org/x/net/context"
+	math "math"
 	strconv "strconv"
 	capnp "zombiezen.com/go/capnproto2"
 	text "zombiezen.com/go/capnproto2/encoding/text"
@@ -15,38 +16,53 @@ type Value struct{ capnp.Struct }
 type Value_Which uint16
 
 const (
-	Value_Which_nil     Value_Which = 0
-	Value_Which_bool    Value_Which = 1
-	Value_Which_char    Value_Which = 2
-	Value_Which_str     Value_Which = 3
-	Value_Which_keyword Value_Which = 4
-	Value_Which_symbol  Value_Which = 5
-	Value_Which_path    Value_Which = 6
-	Value_Which_list    Value_Which = 7
-	Value_Which_vector  Value_Which = 8
+	Value_Which_nil      Value_Which = 0
+	Value_Which_bool     Value_Which = 1
+	Value_Which_i64      Value_Which = 2
+	Value_Which_bigInt   Value_Which = 3
+	Value_Which_f64      Value_Which = 4
+	Value_Which_bigFloat Value_Which = 5
+	Value_Which_frac     Value_Which = 6
+	Value_Which_char     Value_Which = 7
+	Value_Which_str      Value_Which = 8
+	Value_Which_keyword  Value_Which = 9
+	Value_Which_symbol   Value_Which = 10
+	Value_Which_path     Value_Which = 11
+	Value_Which_list     Value_Which = 12
+	Value_Which_vector   Value_Which = 13
 )
 
 func (w Value_Which) String() string {
-	const s = "nilboolcharstrkeywordsymbolpathlistvector"
+	const s = "nilbooli64bigIntf64bigFloatfraccharstrkeywordsymbolpathlistvector"
 	switch w {
 	case Value_Which_nil:
 		return s[0:3]
 	case Value_Which_bool:
 		return s[3:7]
-	case Value_Which_char:
-		return s[7:11]
-	case Value_Which_str:
-		return s[11:14]
-	case Value_Which_keyword:
-		return s[14:21]
-	case Value_Which_symbol:
-		return s[21:27]
-	case Value_Which_path:
+	case Value_Which_i64:
+		return s[7:10]
+	case Value_Which_bigInt:
+		return s[10:16]
+	case Value_Which_f64:
+		return s[16:19]
+	case Value_Which_bigFloat:
+		return s[19:27]
+	case Value_Which_frac:
 		return s[27:31]
-	case Value_Which_list:
+	case Value_Which_char:
 		return s[31:35]
+	case Value_Which_str:
+		return s[35:38]
+	case Value_Which_keyword:
+		return s[38:45]
+	case Value_Which_symbol:
+		return s[45:51]
+	case Value_Which_path:
+		return s[51:55]
+	case Value_Which_list:
+		return s[55:59]
 	case Value_Which_vector:
-		return s[35:41]
+		return s[59:65]
 
 	}
 	return "Value_Which(" + strconv.FormatUint(uint64(w), 10) + ")"
@@ -56,12 +72,12 @@ func (w Value_Which) String() string {
 const Value_TypeID = 0xba39aaea7d7bcba2
 
 func NewValue(s *capnp.Segment) (Value, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 16, PointerCount: 1})
 	return Value{st}, err
 }
 
 func NewRootValue(s *capnp.Segment) (Value, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 16, PointerCount: 1})
 	return Value{st}, err
 }
 
@@ -95,20 +111,124 @@ func (s Value) SetBool(v bool) {
 	s.Struct.SetBit(16, v)
 }
 
-func (s Value) Char() int32 {
+func (s Value) I64() int64 {
 	if s.Struct.Uint16(0) != 2 {
+		panic("Which() != i64")
+	}
+	return int64(s.Struct.Uint64(8))
+}
+
+func (s Value) SetI64(v int64) {
+	s.Struct.SetUint16(0, 2)
+	s.Struct.SetUint64(8, uint64(v))
+}
+
+func (s Value) BigInt() ([]byte, error) {
+	if s.Struct.Uint16(0) != 3 {
+		panic("Which() != bigInt")
+	}
+	p, err := s.Struct.Ptr(0)
+	return []byte(p.Data()), err
+}
+
+func (s Value) HasBigInt() bool {
+	if s.Struct.Uint16(0) != 3 {
+		return false
+	}
+	p, err := s.Struct.Ptr(0)
+	return p.IsValid() || err != nil
+}
+
+func (s Value) SetBigInt(v []byte) error {
+	s.Struct.SetUint16(0, 3)
+	return s.Struct.SetData(0, v)
+}
+
+func (s Value) F64() float64 {
+	if s.Struct.Uint16(0) != 4 {
+		panic("Which() != f64")
+	}
+	return math.Float64frombits(s.Struct.Uint64(8))
+}
+
+func (s Value) SetF64(v float64) {
+	s.Struct.SetUint16(0, 4)
+	s.Struct.SetUint64(8, math.Float64bits(v))
+}
+
+func (s Value) BigFloat() (string, error) {
+	if s.Struct.Uint16(0) != 5 {
+		panic("Which() != bigFloat")
+	}
+	p, err := s.Struct.Ptr(0)
+	return p.Text(), err
+}
+
+func (s Value) HasBigFloat() bool {
+	if s.Struct.Uint16(0) != 5 {
+		return false
+	}
+	p, err := s.Struct.Ptr(0)
+	return p.IsValid() || err != nil
+}
+
+func (s Value) BigFloatBytes() ([]byte, error) {
+	p, err := s.Struct.Ptr(0)
+	return p.TextBytes(), err
+}
+
+func (s Value) SetBigFloat(v string) error {
+	s.Struct.SetUint16(0, 5)
+	return s.Struct.SetText(0, v)
+}
+
+func (s Value) Frac() (Frac, error) {
+	if s.Struct.Uint16(0) != 6 {
+		panic("Which() != frac")
+	}
+	p, err := s.Struct.Ptr(0)
+	return Frac{Struct: p.Struct()}, err
+}
+
+func (s Value) HasFrac() bool {
+	if s.Struct.Uint16(0) != 6 {
+		return false
+	}
+	p, err := s.Struct.Ptr(0)
+	return p.IsValid() || err != nil
+}
+
+func (s Value) SetFrac(v Frac) error {
+	s.Struct.SetUint16(0, 6)
+	return s.Struct.SetPtr(0, v.Struct.ToPtr())
+}
+
+// NewFrac sets the frac field to a newly
+// allocated Frac struct, preferring placement in s's segment.
+func (s Value) NewFrac() (Frac, error) {
+	s.Struct.SetUint16(0, 6)
+	ss, err := NewFrac(s.Struct.Segment())
+	if err != nil {
+		return Frac{}, err
+	}
+	err = s.Struct.SetPtr(0, ss.Struct.ToPtr())
+	return ss, err
+}
+
+func (s Value) Char() int32 {
+	if s.Struct.Uint16(0) != 7 {
 		panic("Which() != char")
 	}
-	return int32(s.Struct.Uint32(4))
+	return int32(s.Struct.Uint32(8))
 }
 
 func (s Value) SetChar(v int32) {
-	s.Struct.SetUint16(0, 2)
-	s.Struct.SetUint32(4, uint32(v))
+	s.Struct.SetUint16(0, 7)
+	s.Struct.SetUint32(8, uint32(v))
 }
 
 func (s Value) Str() (string, error) {
-	if s.Struct.Uint16(0) != 3 {
+	if s.Struct.Uint16(0) != 8 {
 		panic("Which() != str")
 	}
 	p, err := s.Struct.Ptr(0)
@@ -116,7 +236,7 @@ func (s Value) Str() (string, error) {
 }
 
 func (s Value) HasStr() bool {
-	if s.Struct.Uint16(0) != 3 {
+	if s.Struct.Uint16(0) != 8 {
 		return false
 	}
 	p, err := s.Struct.Ptr(0)
@@ -129,12 +249,12 @@ func (s Value) StrBytes() ([]byte, error) {
 }
 
 func (s Value) SetStr(v string) error {
-	s.Struct.SetUint16(0, 3)
+	s.Struct.SetUint16(0, 8)
 	return s.Struct.SetText(0, v)
 }
 
 func (s Value) Keyword() (string, error) {
-	if s.Struct.Uint16(0) != 4 {
+	if s.Struct.Uint16(0) != 9 {
 		panic("Which() != keyword")
 	}
 	p, err := s.Struct.Ptr(0)
@@ -142,7 +262,7 @@ func (s Value) Keyword() (string, error) {
 }
 
 func (s Value) HasKeyword() bool {
-	if s.Struct.Uint16(0) != 4 {
+	if s.Struct.Uint16(0) != 9 {
 		return false
 	}
 	p, err := s.Struct.Ptr(0)
@@ -155,12 +275,12 @@ func (s Value) KeywordBytes() ([]byte, error) {
 }
 
 func (s Value) SetKeyword(v string) error {
-	s.Struct.SetUint16(0, 4)
+	s.Struct.SetUint16(0, 9)
 	return s.Struct.SetText(0, v)
 }
 
 func (s Value) Symbol() (string, error) {
-	if s.Struct.Uint16(0) != 5 {
+	if s.Struct.Uint16(0) != 10 {
 		panic("Which() != symbol")
 	}
 	p, err := s.Struct.Ptr(0)
@@ -168,7 +288,7 @@ func (s Value) Symbol() (string, error) {
 }
 
 func (s Value) HasSymbol() bool {
-	if s.Struct.Uint16(0) != 5 {
+	if s.Struct.Uint16(0) != 10 {
 		return false
 	}
 	p, err := s.Struct.Ptr(0)
@@ -181,12 +301,12 @@ func (s Value) SymbolBytes() ([]byte, error) {
 }
 
 func (s Value) SetSymbol(v string) error {
-	s.Struct.SetUint16(0, 5)
+	s.Struct.SetUint16(0, 10)
 	return s.Struct.SetText(0, v)
 }
 
 func (s Value) Path() (string, error) {
-	if s.Struct.Uint16(0) != 6 {
+	if s.Struct.Uint16(0) != 11 {
 		panic("Which() != path")
 	}
 	p, err := s.Struct.Ptr(0)
@@ -194,7 +314,7 @@ func (s Value) Path() (string, error) {
 }
 
 func (s Value) HasPath() bool {
-	if s.Struct.Uint16(0) != 6 {
+	if s.Struct.Uint16(0) != 11 {
 		return false
 	}
 	p, err := s.Struct.Ptr(0)
@@ -207,12 +327,12 @@ func (s Value) PathBytes() ([]byte, error) {
 }
 
 func (s Value) SetPath(v string) error {
-	s.Struct.SetUint16(0, 6)
+	s.Struct.SetUint16(0, 11)
 	return s.Struct.SetText(0, v)
 }
 
 func (s Value) List() (LinkedList, error) {
-	if s.Struct.Uint16(0) != 7 {
+	if s.Struct.Uint16(0) != 12 {
 		panic("Which() != list")
 	}
 	p, err := s.Struct.Ptr(0)
@@ -220,7 +340,7 @@ func (s Value) List() (LinkedList, error) {
 }
 
 func (s Value) HasList() bool {
-	if s.Struct.Uint16(0) != 7 {
+	if s.Struct.Uint16(0) != 12 {
 		return false
 	}
 	p, err := s.Struct.Ptr(0)
@@ -228,14 +348,14 @@ func (s Value) HasList() bool {
 }
 
 func (s Value) SetList(v LinkedList) error {
-	s.Struct.SetUint16(0, 7)
+	s.Struct.SetUint16(0, 12)
 	return s.Struct.SetPtr(0, v.Struct.ToPtr())
 }
 
 // NewList sets the list field to a newly
 // allocated LinkedList struct, preferring placement in s's segment.
 func (s Value) NewList() (LinkedList, error) {
-	s.Struct.SetUint16(0, 7)
+	s.Struct.SetUint16(0, 12)
 	ss, err := NewLinkedList(s.Struct.Segment())
 	if err != nil {
 		return LinkedList{}, err
@@ -245,7 +365,7 @@ func (s Value) NewList() (LinkedList, error) {
 }
 
 func (s Value) Vector() (Vector, error) {
-	if s.Struct.Uint16(0) != 8 {
+	if s.Struct.Uint16(0) != 13 {
 		panic("Which() != vector")
 	}
 	p, err := s.Struct.Ptr(0)
@@ -253,7 +373,7 @@ func (s Value) Vector() (Vector, error) {
 }
 
 func (s Value) HasVector() bool {
-	if s.Struct.Uint16(0) != 8 {
+	if s.Struct.Uint16(0) != 13 {
 		return false
 	}
 	p, err := s.Struct.Ptr(0)
@@ -261,14 +381,14 @@ func (s Value) HasVector() bool {
 }
 
 func (s Value) SetVector(v Vector) error {
-	s.Struct.SetUint16(0, 8)
+	s.Struct.SetUint16(0, 13)
 	return s.Struct.SetPtr(0, v.Struct.ToPtr())
 }
 
 // NewVector sets the vector field to a newly
 // allocated Vector struct, preferring placement in s's segment.
 func (s Value) NewVector() (Vector, error) {
-	s.Struct.SetUint16(0, 8)
+	s.Struct.SetUint16(0, 13)
 	ss, err := NewVector(s.Struct.Segment())
 	if err != nil {
 		return Vector{}, err
@@ -282,7 +402,7 @@ type Value_List struct{ capnp.List }
 
 // NewValue creates a new list of Value.
 func NewValue_List(s *capnp.Segment, sz int32) (Value_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1}, sz)
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 16, PointerCount: 1}, sz)
 	return Value_List{l}, err
 }
 
@@ -301,6 +421,10 @@ type Value_Promise struct{ *capnp.Pipeline }
 func (p Value_Promise) Struct() (Value, error) {
 	s, err := p.Pipeline.Struct()
 	return Value{s}, err
+}
+
+func (p Value_Promise) Frac() Frac_Promise {
+	return Frac_Promise{Pipeline: p.Pipeline.GetPipeline(0)}
 }
 
 func (p Value_Promise) List() LinkedList_Promise {
@@ -833,6 +957,85 @@ func (p Anchor_walk_Results_Promise) Anchor() Anchor {
 	return Anchor{Client: p.Pipeline.GetPipeline(0).Client()}
 }
 
+type Frac struct{ capnp.Struct }
+
+// Frac_TypeID is the unique identifier for the type Frac.
+const Frac_TypeID = 0xf84b0bdc2ebe874f
+
+func NewFrac(s *capnp.Segment) (Frac, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
+	return Frac{st}, err
+}
+
+func NewRootFrac(s *capnp.Segment) (Frac, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
+	return Frac{st}, err
+}
+
+func ReadRootFrac(msg *capnp.Message) (Frac, error) {
+	root, err := msg.RootPtr()
+	return Frac{root.Struct()}, err
+}
+
+func (s Frac) String() string {
+	str, _ := text.Marshal(0xf84b0bdc2ebe874f, s.Struct)
+	return str
+}
+
+func (s Frac) Numer() ([]byte, error) {
+	p, err := s.Struct.Ptr(0)
+	return []byte(p.Data()), err
+}
+
+func (s Frac) HasNumer() bool {
+	p, err := s.Struct.Ptr(0)
+	return p.IsValid() || err != nil
+}
+
+func (s Frac) SetNumer(v []byte) error {
+	return s.Struct.SetData(0, v)
+}
+
+func (s Frac) Denom() ([]byte, error) {
+	p, err := s.Struct.Ptr(1)
+	return []byte(p.Data()), err
+}
+
+func (s Frac) HasDenom() bool {
+	p, err := s.Struct.Ptr(1)
+	return p.IsValid() || err != nil
+}
+
+func (s Frac) SetDenom(v []byte) error {
+	return s.Struct.SetData(1, v)
+}
+
+// Frac_List is a list of Frac.
+type Frac_List struct{ capnp.List }
+
+// NewFrac creates a new list of Frac.
+func NewFrac_List(s *capnp.Segment, sz int32) (Frac_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2}, sz)
+	return Frac_List{l}, err
+}
+
+func (s Frac_List) At(i int) Frac { return Frac{s.List.Struct(i)} }
+
+func (s Frac_List) Set(i int, v Frac) error { return s.List.SetStruct(i, v.Struct) }
+
+func (s Frac_List) String() string {
+	str, _ := text.MarshalList(0xf84b0bdc2ebe874f, s.List)
+	return str
+}
+
+// Frac_Promise is a wrapper for a Frac promised by a client call.
+type Frac_Promise struct{ *capnp.Pipeline }
+
+func (p Frac_Promise) Struct() (Frac, error) {
+	s, err := p.Pipeline.Struct()
+	return Frac{s}, err
+}
+
 type LinkedList struct{ capnp.Struct }
 
 // LinkedList_TypeID is the unique identifier for the type LinkedList.
@@ -1209,70 +1412,84 @@ func (p Vector_Node_Promise) Struct() (Vector_Node, error) {
 	return Vector_Node{s}, err
 }
 
-const schema_c8aa6d83e0c03a9d = "x\xda\x8cU]h\x1cU\x14>\xdf\xb93\xb3[\xd9" +
-	"\xcd\xeet\xb6h-K\xa9\xa4\xd0\xae46\x8a\x0f\x06" +
-	"\xed&\x92\x88JZr\xb3\xb5Th\xa1\x93\xdd\x91]" +
-	"2\xd9Yvv\x1b\x8a\x14\x95\x08}\xf2E\x10\xf5A" +
-	"\xc4>\x88\x06\x7f\x10\xdf\xfa$\x0aE\x94\xbe\x88\x08\xbe" +
-	"\xa9/Ji\xb0\x85T\x934\xcd\x95\xbb\x93\xddI6" +
-	"Z|\xdb9g\xee7\xf7\xfb\xce\xf9\xbe=z\x8cG" +
-	"y\xd8\x9c\x17D\xf2\x90i\xa9\x1b\xc9\xf5\xd4\xc9\xf1s" +
-	"\xaf\x92\xdc\x03\xa8c\xe1gG\x97\xde\xff\xe6\x0eM " +
-	"\xc1D\xce\x07\xf8\xc1\xf9\x14\x09\"\xe7c\xcc\x13\xd4\xf2" +
-	"\x99\x95\xd3\x0f\x0c<\xf3\x16\xd9{@d\xea\xcec\x87" +
-	"y7\x08\xce0\x17\x09\xea\xea\xb5\xdd\x17\xf3\xbb\x17>" +
-	"$9\x00\xa8\xf7F\xbe\xfaean\xf1[2Yc" +
-	"H\xfe\xce9\xdb\xf9\xf5\"\x7fNP{\x87\xae~\xf4" +
-	"\xe6_\xeb_lE\xbb\xc5\xf7i\xb4\xd5\x0e\xda\xe5\xef" +
-	"_\xbex}\xf1\x89+}h\x13H\xec\"r\xf6\x8a" +
-	"\xcb\xce\x01\xa1\x0f\xe5\x85\x02A\xbd{\xf3\xcb\x81\xd7\xf6" +
-	"\x0d~\xbd\x15/o\xb2\xc6;`j\xbc#o\\\xfa" +
-	"\xad\xf1\xd3\xc3\xd7#\xb2\xd3?.\\\xe3+\x9f,\xd3" +
-	"\x04w\xc8\xbe`\xae9\xae\xa9\xafw\xd6\xd4\xd7{{" +
-	"u\xa3\xb4\xef\x9dS\x7fFp\x86n\xdc6\xd7\xc8\x88" +
-	"\x0f\xda\x03\"\xbe\x15\xc1\xf9\xd9\\t~5\xef'r" +
-	"\x96\xccK\xceSV\x82(\x96\xf4\xdf\x149h-:" +
-	"G,}\xe0q\xebw\x82r\x1b\xb5G\xdcFm\x88" +
-	"\xcbn\xa3\xde\x189\xe5\x95[As\xe8DP\x817" +
-	"\x05\xc8\xa40RJ\x19 \xb2\x0f?\xaf\x07( \xc7" +
-	"\x19il\xa8\x1ctul\x84H>) O3\xd4" +
-	"L\xd3\xad\x97\xab^HD\x18 L\x09 \x1b\xcf\x9b" +
-	"\xa0\x8b\xc5\xf3\xae\xdf\xf6\xc2\xb8\xdf\x93<\xea\xf7n$" +
-	"\xa2\x1b\x8d\xd5\xcb\xd5\xa094\xef\xfa\xb3\x83\xd3^\xd8" +
-	"\xf6[\x08\xa5!\x0c\xa2\xce\xad\xd2\xfa\xfbI\x01\x99c" +
-	"\x14\xdd\xce\xbb\xb0c\xbd\x08\xb0w\xb2\x9c\xac\xd5g\xbd" +
-	"\xcad-l\x11i\x96\xa9\x1e\xdc\xc4\xa3DrT@" +
-	"N2\x80\x88\xe2s\x05\"9. \xa7\x186#\x07" +
-	"&\xb2\x8f\xeb\xe2\xb3\x02\xf2$c\x7f9h\xd7[H" +
-	"\x12#I\xc8T=\xb7\xd2\xc7+K\xc8\xb4\xdc\x9a\xbf" +
-	"\xb3|/\xbaSn\xd3\x9d\x0b\x89\xb6\xd2-\xc4t3" +
-	"\x0d\xb7UE\x8a\x18\xa9-8\xd8\x1c\xa4\x9b\xf0\xdb\x9d" +
-	"\x11\x0e\xc6#\\z\x88H\xfe! \x97\x19yl\xa8" +
-	"lD\xf0\x96\x06\xbd! W\x18y\xbe\xab6)\xde" +
-	"\xd6\xe5\x9b\x02r\x9d\x91\x16\xeb*\x07Ad\xafj\x8c" +
-	"e\x81i0\xd2\xc6\x1d\x95\x83Ad\xdf}\x9aH\xae" +
-	"\x08\x94\x0c]6\xd7T\x0e&\x91\x03\xe8\xf1\xac\x0b\x94" +
-	"\x92\xban\xad\xaa\x1c,\"\xc7D\x81h\x1a\x02\xa5\x94" +
-	"\xae'VT\xae\xe3\xf9]\xba^2t#\xab\x1b\xc9" +
-	"\xbfU\x0eI\"'\xad\x81JI\xdd\xc8\x81\x91\xa8\xd7" +
-	"|\xb223A\xe0\x03\xc4\x00!S\xae\xbaM\x18\xc4" +
-	"0\x08\x89\xb0\xd5\xec*\xf3\xca\xacwa>hV\xba" +
-	"\xcf\xc5\xf0\xc2\xdcL\xe0w\x1f\xb7\xa9\x98\xf1ka\x0b" +
-	"\xd98T\xa2!\x15\xcfwl\x81l\xec\xad{N\xcf" +
-	"\x0f7W5\xdc6;m\xa0\x94\x80<\xc4P\xe5j" +
-	"\xcd\xaf4\xbd\xfa6\xab\xf4\xd2\xa2\xcf\x0a\xbc\x0d\xbd\xd4" +
-	"\x9e)F?\xfbv\xb7\x10\xefn\x1aJ\xed\xdc\xde<" +
-	"ot\x87{|$\xde\xdf\xed\x124\x83\xa0E\xd6\xff" +
-	"\xf6RL\xb9\x18\xedk\xff&\x8e\xd53\xfa\x0di`" +
-	"K\x1c\xda\x98V\xa5\xf6L\xe70\xa1)\x93\xc2$\xea" +
-	"\xe5\x1f\xba\xb9j\x0f?Hl\x1fL \x8ent\xff" +
-	"\x11\xec\xbd\x05b;\x9d\x10~8\x8a\x8c6\xcc(\xa6" +
-	"\xb0\xd3\x08^F\xcf\xae\xf3\xf9^\x14\xd9(dN\x04" +
-	"\x15Of{\xea\xb9\xda\xf9g\x04d\x95a\xc3\x88\xc4" +
-	"\xf3t\xf1\x9c\x80\xf4\x19\xe0H\xb9\x9a\x16\xb4\" \x1b" +
-	"\x0c[ r\xc5\x9c.V\x05\xe4\xeb\xfdq\xb0?\xac" +
-	"\xd6^j\xc1\"\x86\xb5\xa9n_(\xf6\xc2\xe1\xbf\"" +
-	"\xf1\x9f\x00\x00\x00\xff\xff-\xef\xd5\xd8"
+const schema_c8aa6d83e0c03a9d = "x\xda\x8cUk\x88T\xe5\x1b\x7f~\xef;3gt" +
+	"\xe7v<#\xfe\xfd\xcb\xb2\x10\x0a\xba\xe5\xa6fRK" +
+	"5k\xb8\xd2\x9a\xda\x1e\xc7\xc4\x0f\x06\x9e\x999:\x83" +
+	"gg\x869g\xb4\xa5\x96\x14\x0d\x13\x14$\x924\x94" +
+	"L,l\xb1\x8b\xd4\x07\x13\x8a(\x90($\x88\x0a\x82" +
+	">T_\")\xba\x99y\xd9\xf6\x8d\xe7\xcc\xe5\xec\xa5" +
+	"\xa4o3\xef\xef<\xbf\xf7}.\xbf\xdf\xb3\xe4\xbc\xe8" +
+	"\x13K\xc3\x9fJ\"\xf3\x8epD\xfd\x18\x1d\x8bm\\" +
+	"\xb5u7\x99\xb3\x01\xf5\x80\xfb\xfa\x92\x9f^\xfc\xf0&" +
+	"\xf5C\x13D\xc6%|f|\x05\x8d\xc8\xf8\x02\xbb\x08" +
+	"\xea\xca\x96k\x9b\xff\x97X}\x84\xf4\xd9 \x0a3r" +
+	"\xd7\xa3b\x16\x08\xc6c\"CP\x17/\xcd\x1a\xe9\x9c" +
+	"\xb5\xf7\x152\x13\x80:\xd1\xfb\xfe7{\x87F?\xa2" +
+	"\xb0`\x8e\x11\xf1\xb1q\xc0\xff\xf5\xb4x\x83\xa0\xe6\xf6" +
+	"\\<\xf3\xec\xd5\xb1s\x13\xd9:\xe5Lf[ \x99" +
+	"\xed\xd4'O\x8c\\\x1e\xbd\xf7\x02\xb3\x89\x80\xad\x1fZ" +
+	"\x82\xc8\xe8\x97\xa7\x8cu\x92\x83\x06\xe4\x1cIP\xc7~" +
+	"y+\xb1g\xde\xfc\x0f&\xf2\x0dG\x04\xf3\x8dD\x98" +
+	"o\xf1\xa1\xfd\xdfU\xbf\xbc\xfdr#\xd9\x0d\x9f\xef\xbd" +
+	"$.\x9c\xbdB\xfd\xc2O\xf6\\\xe4\x86\xf1n\x84\x9f" +
+	"\xf7N\x84\x9f\xf7\xfc\xf5\xf1\xec\xbc\xa3\x9b~n\xd0\x85" +
+	"\x180\xb5\x1b\x14\x0a\x02\xf5\x84\x0c^E0\xee\xd6F" +
+	"\x8d\xfb\xb59D\xc6\x80\xb6\xdf8\xa6iD\xea\x91\xfd" +
+	"\xef\xf5|\xdd\xf1\xf05\xd2\x13\xd3\x0a\xb2G{\xc18" +
+	"\xa0\xf9\x05\xd1\xb8\xbc\xed\xf2\xffS\xf5\xbe\xd5F\x8d\x1f" +
+	"|\xf2_\xb5\xef\x09\xca\xaa\x96\xee\xb4\xaa\xa5\x1e\x91\xb7" +
+	"\xaa\xe5j\xef&;\xefUj=\xeb+\x05\xd8\x83\x80" +
+	"\x19\x95\xa1\x98R!\x10\xe9\x8b\xd6\x10\x99\x0b%\xccU" +
+	"\x02q\x8c\xab4\xf8te/\x91y\x9f\x84\xb9Y@" +
+	"\xe5jV9_\xb4]\"B\x820(\x81T0\x1b" +
+	"\x04>\xcc\xec\xb4\x9c\xba\xed\x06x\xbb=\x0d\xbc\xfd\"" +
+	"\xd9x\xd1\xcar\xbeX\xa9\xf5\xec\xb2\x9c\x1d\xf37\xd8" +
+	"n\xdd\xf1\xe0\x9a!\x19\"\xf2_\x15\xe7\xfb\xa3\x12f" +
+	"Z c\xf9\xdfB\x0fjK\x80>=\xcb\xb5\xa5\xf2" +
+	"\x0e\xbb\xb0\xb6\xe4zD\x9ce\xacM\xd7\xbf\x8c\xc8\xec" +
+	"\x930\xd7\x0a\x00\x8d\x14\x07\xba\x89\xccU\x12\xe6\xa0\x80" +
+	".\x90\x86 \xd2\xd7\xf1\xe1C\x12\xe6F\x81\xae|\xa5" +
+	"^\xf6\x10%\x81(!Y\xb4\xad\xc2\x94\xbcR\x84\xa4" +
+	"g\x95\x9c\xe9\xc7\xb7Jw\xd0\xaaYC.\xd1\xc4t" +
+	"\xbb\x83t\x93U\xcb+\"F\x02\xb1\x09<h6\xd2" +
+	"\xd2\x9c\xba\xdf\xc2{\xda-4\x86q\x1bQ\xd6\x83D" +
+	"v7\x04:1\xaeR~\x8e\xc6\x08\xba\x89\xb2\x8f3" +
+	"\xb2\x8f\x11\xf1\x97j$j\xec\xf1c\x9ed\xe4\x19\x08" +
+	"\xc4\xe5\x98JC\xf2\xb0\xa1\x97(\xbb\x9b\x81\x83\x1c\x12" +
+	"\xba\xc9!!\"\xe3\x80\x1f\xb2\x8f\x91\xc3\x1c\x12\xbe\xa1" +
+	"\xd2\x08\x13\x19\x87\xb0\x86({\x90\x81\xa3\x0cD\xae\xab" +
+	"4\"D\xc6\x11\xff\xfa\xc3\x0c\x1cg.\xed\x9a\x12i" +
+	"\xdf1\x8e\xf9\xc8s\x8c\x9c\xe4\x90\xe8\x9f*\x8d(\x91" +
+	"q\xc2\xbf\xe4(\x03\xa7\x19\x98qU\xa51\x83\xc8x" +
+	"\x09\x0f\x12e\x8f3p\x86\x81\x99\x7f\xa84f\x12\x19" +
+	"/\xfb\x0f>\xc9\xc0Y\x06:\xae\xa84:\x88\x8cW" +
+	"\xfd;N3\xf0&\x03\xb1\xdfU\x1a1\"\xe35\x1f" +
+	"8\xc3\xc0\xdb\x0c\xc4\x7fSi\xc4Y\xe4>\xd5Y\x06" +
+	"\xceC@+\x97\x1c\x8a$s\x95\x8a\x03\x90\x00\x08Z" +
+	"i\xc5r\x84I L\xc8\xe4J\xdb\x07\xca\x1e\xe2$" +
+	"\x10'h\xdbV,G\x07\x09t\x10T\xae\xb4}\xb5" +
+	"S\xb1<\x96L\xb3\x95\xc9m5+\x8fT\xa0\xf9\xe6" +
+	"\x00\xe5\x8bV\x0d!\x12\x08\x114\xd7\xab\xb5\xbe\x7fj" +
+	"\x87=\xbc\xabR+\xb4\xfeg\xdc\xe1\xa1\\\xc5i\xd3" +
+	"M\x1c\x93\xa4Sr=\xa4\x02\x87mpgv\xfa\xba" +
+	"G*0\x8f[\x8e\xa7\xe36\xb5\xe8N\x1aNv\x88" +
+	"\x98\x84\xb9P@\xe5\x8b%\xa7P\xb3\xcb\x93\xbc\xa0m" +
+	"\x9dS\xb4.&\xb1g\xeb\xb9L\xe3\xe7\x14qv\x07" +
+	"\xe2\x8cC\xa9\xe9\xf2\xec\x14\xe3\xaa%\xd0\xde@\xa0\x93" +
+	"KP\xabT<\x8a\xfcg\xb3\x08R\xce4\x049U" +
+	"j+\xcbI\xfe\xc2\x0ca\xc2n\xd0\xb1Ae\xeb9" +
+	"?\x98P3\xa32L\xd4^\x06h-\x19}\xe9\xff" +
+	"I\xe8\x0b4\x04{\x0c\xad\xf5\xa8\xcf\xed&\xa1\xc75" +
+	"\xe9\xb8}H\xb2#\xf4a\x10\xd3\x94\xbe\xba&\xad|" +
+	"\xd3\xab\x9b\x85Z\xc4.6_\xc2\\\"\xa0\xb7ll" +
+	"\xf1\xb2\xa6\x7f/\x17\xe8*\xd7\x87\xecZk \xbb\x0a" +
+	"v\xb92\xd4\xfa7\xcdI\xec$\xcf\x86\x9f^\xdb\xcb" +
+	"ut'\xd7W\x0a\xb6\x99j_j1\xff\x16\x09\xb3" +
+	"\xc8\x97\x86\x1a\x97\xda|\xb8U\xc2t\x04 \x1a\x9d)" +
+	"q\xc3\x0a\x12fU@\x97\xf0\xddD\x1f\xe2\xc3\xa2\x84" +
+	"\xb9o\xaa\x9fv\xb9\xc5\xd26\x0f\x11\x12\x884\xbb7" +
+	"e\xab\xb4\xdd\xf5\xdfv\xca\xdf\x01\x00\x00\xff\xffkz" +
+	" _"
 
 func init() {
 	schemas.Register(schema_c8aa6d83e0c03a9d,
@@ -1285,5 +1502,6 @@ func init() {
 		0xea2bd670e2878d2d,
 		0xef56981b53fef997,
 		0xf4acba02cd83d452,
+		0xf84b0bdc2ebe874f,
 		0xfbc39fed30ae733e)
 }

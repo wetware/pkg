@@ -27,20 +27,26 @@ func TestSExpr(t *testing.T) {
 		val:  lang.False,
 		want: "false",
 	}, {
-		val:  parens.Int64(100), // TODO(xxx): replace
+		val:  mustInt(100),
 		want: "100",
 	}, {
-		val:  parens.Int64(-100), // TODO(xxx): replace
+		val:  mustInt(-100),
 		want: "-100",
 	}, {
-		val:  parens.Float64(0.123456), // TODO(xxx): replace
+		val:  mustFloat(0.123456),
 		want: "0.123456",
 	}, {
-		val:  parens.Float64(-0.123456), // TODO(xxx): replace
+		val:  mustFloat(-0.123456),
 		want: "-0.123456",
 	}, {
-		val:  parens.Float64(0.12345678), // TODO(xxx): replace
-		want: "0.123457",
+		val:  mustFloat(0.12345678),
+		want: "0.12345678",
+	}, {
+		val:  mustFrac(1, 2),
+		want: "1/2",
+	}, {
+		val:  mustFrac(-1, 2),
+		want: "-1/2",
 	}, {
 		val:  mustChar('π'),
 		want: `\π`,

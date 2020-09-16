@@ -15,8 +15,6 @@ var (
 	_ parens.Any = (*Keyword)(nil)
 	_ parens.Any = (*Symbol)(nil)
 	_ parens.Any = (*Char)(nil)
-	// _ parens.Any = Int64(0)
-	// _ parens.Any = Float64(0)
 
 	_ apiValueProvider = (*Bool)(nil)
 	_ apiValueProvider = (*String)(nil)
@@ -31,6 +29,16 @@ func valueOf(v api.Value) (val parens.Any, err error) {
 		val = Nil{}
 	case api.Value_Which_bool:
 		val = Bool{v: v}
+	case api.Value_Which_i64:
+		val = Int64{v: v}
+	case api.Value_Which_f64:
+		val = Float64{v: v}
+	case api.Value_Which_bigInt:
+		val, err = bigIntFromValue(v)
+	case api.Value_Which_bigFloat:
+		val, err = bigFloatFromValue(v)
+	case api.Value_Which_frac:
+		val, err = fracFromValue(v)
 	case api.Value_Which_char:
 		val = Char{v: v}
 	case api.Value_Which_str:
@@ -51,24 +59,24 @@ func valueOf(v api.Value) (val parens.Any, err error) {
 		} else {
 			err = enoval(w)
 		}
-	// case api.Value_Which_path:
-	// 	if v.HasPath() {
-	// 		val = Path{v: v}
-	// 	} else {
-	// 		err = enoval(w)
-	// 	}
+	case api.Value_Which_path:
+		if v.HasPath() {
+			val = Path{v: v}
+		} else {
+			err = enoval(w)
+		}
 	case api.Value_Which_list:
 		if v.HasList() {
 			val = List{v: v}
 		} else {
 			err = enoval(w)
 		}
-	// case api.Value_Which_vector:
-	// 	if v.HasVector() {
-	// 		val = Vector{v: v}
-	// 	} else {
-	// 		err = enoval(w)
-	// 	}
+	case api.Value_Which_vector:
+		if v.HasVector() {
+			val = Vector{v: v}
+		} else {
+			err = enoval(w)
+		}
 	default:
 		panic(errors.Errorf("unknown value type '%s'", w))
 	}
@@ -117,11 +125,11 @@ func (b Bool) String() string {
 	return "false"
 }
 
-// Equals returns true if 'other' is a boolean and has same logical value.
-func (b Bool) Equals(other parens.Any) bool {
-	o, ok := other.(Bool)
-	return ok && (o.v.Bool() == b.v.Bool())
-}
+// // Eq returns true if 'other' is a boolean and has same logical value.
+// func (b Bool) Eq(other parens.Any) bool {
+// 	o, ok := other.(Bool)
+// 	return ok && (o.v.Bool() == b.v.Bool())
+// }
 
 // Char represents a character literal.  For example, \a, \b, \1, \∂ etc are
 // valid character literals. In addition, special literals like \newline, \space
@@ -154,11 +162,11 @@ func (c Char) SExpr() (string, error) {
 	return fmt.Sprintf("\\%c", c.v.Char()), nil
 }
 
-// Equals returns true if the other value is also a character and has same value.
-func (c Char) Equals(other parens.Any) bool {
-	o, isChar := other.(Char)
-	return isChar && (o.v.Char() == c.v.Char())
-}
+// // Eq returns true if the other value is also a character and has same value.
+// func (c Char) Eq(other parens.Any) bool {
+// 	o, isChar := other.(Char)
+// 	return isChar && (o.v.Char() == c.v.Char())
+// }
 
 func (c Char) String() string {
 	return fmt.Sprintf("\\%c", rune(c.v.Char()))
@@ -199,25 +207,25 @@ func (s String) SExpr() (str string, err error) {
 	return
 }
 
-// Equals returns true if 'other' is string and has same value.
-func (s String) Equals(other parens.Any) bool {
-	str, err := s.v.Str()
-	if err != nil {
-		panic(err)
-	}
+// // Eq returns true if 'other' is string and has same value.
+// func (s String) Eq(other parens.Any) bool {
+// 	str, err := s.v.Str()
+// 	if err != nil {
+// 		panic(err)
+// 	}
 
-	o, ok := other.(String)
-	if !ok {
-		return false
-	}
+// 	o, ok := other.(String)
+// 	if !ok {
+// 		return false
+// 	}
 
-	otherStr, err := o.v.Str()
-	if err != nil {
-		panic(err) // TODO(upstream):  return error from Equals()
-	}
+// 	otherStr, err := o.v.Str()
+// 	if err != nil {
+// 		panic(err) // TODO(upstream):  return error from Eq()
+// 	}
 
-	return str == otherStr
-}
+// 	return str == otherStr
+// }
 
 // Keyword represents a keyword literal.
 type Keyword struct {
@@ -253,25 +261,25 @@ func (kw Keyword) SExpr() (string, error) {
 	return ":" + s, nil
 }
 
-// Equals returns true if the other value is keyword and has same value.
-func (kw Keyword) Equals(other parens.Any) bool {
-	keyword, err := kw.v.Keyword()
-	if err != nil {
-		panic(err)
-	}
+// // Eq returns true if the other value is keyword and has same value.
+// func (kw Keyword) Eq(other parens.Any) bool {
+// 	keyword, err := kw.v.Keyword()
+// 	if err != nil {
+// 		panic(err)
+// 	}
 
-	o, ok := other.(Keyword)
-	if !ok {
-		return false
-	}
+// 	o, ok := other.(Keyword)
+// 	if !ok {
+// 		return false
+// 	}
 
-	otherKW, err := o.v.Keyword()
-	if err != nil {
-		panic(err) // TODO(upstream):  return error from Equals()
-	}
+// 	otherKW, err := o.v.Keyword()
+// 	if err != nil {
+// 		panic(err) // TODO(upstream):  return error from Eq()
+// 	}
 
-	return keyword == otherKW
-}
+// 	return keyword == otherKW
+// }
 
 // Symbol represents a name given to a value in memory.
 type Symbol struct {
@@ -307,22 +315,22 @@ func (s Symbol) Value() api.Value {
 	return s.v
 }
 
-// Equals returns true if the other value is also a symbol and has same value.
-func (s Symbol) Equals(other parens.Any) bool {
-	sym, err := s.v.Symbol()
-	if err != nil {
-		panic(err)
-	}
+// // Eq returns true if the other value is also a symbol and has same value.
+// func (s Symbol) Eq(other parens.Any) bool {
+// 	sym, err := s.v.Symbol()
+// 	if err != nil {
+// 		panic(err)
+// 	}
 
-	o, ok := other.(Symbol)
-	if !ok {
-		return false
-	}
+// 	o, ok := other.(Symbol)
+// 	if !ok {
+// 		return false
+// 	}
 
-	otherSym, err := o.v.Symbol()
-	if err != nil {
-		panic(err) // TODO(upstream):  return error from Equals()
-	}
+// 	otherSym, err := o.v.Symbol()
+// 	if err != nil {
+// 		panic(err) // TODO(upstream):  return error from Eq()
+// 	}
 
-	return sym == otherSym
-}
+// 	return sym == otherSym
+// }
