@@ -98,7 +98,7 @@ func (a announcer) subloop() {
 	defer close(a.announce)
 
 	// Hosts tend to be started in batches, which causes heartbeat storms.  We
-	// add a small ammount of jitter to smooth things out.  The jitter is
+	// add a small amount of jitter to smooth things out.  The jitter is
 	// calculated by sampling from a uniform distribution between .25 * TTL and
 	// .5 * TTL.  The TTL corresponds to 2.6 heartbeats, on average.
 	//

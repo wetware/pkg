@@ -1,5 +1,7 @@
 # Wetware
 
+[![Godoc Reference](https://img.shields.io/badge/godoc-reference-blue.svg?style=flat-square)](https://godoc.org/github.com/wetware/ww)
+[![Go Report Card](https://goreportcard.com/badge/github.com/SentimensRG/ctx?style=flat-square)](https://goreportcard.com/report/github.com/wetware/ww)
 ![tests](https://github.com/wetware/ww/workflows/Go/badge.svg)
 
 Wetware is a programming language for the cloud.  It's like adding an interactive shell to [Mesos](https://mesos.apache.org/), or a systems language for [Kubernetes](https://kubernetes.io/).

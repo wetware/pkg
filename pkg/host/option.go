@@ -63,7 +63,7 @@ func WithBootStrategy(b boot.Strategy) Option {
 // WithTTL specifies the TTL for the heartbeat protocol.  `0` specifies a default value
 // of 6 seconds, which is suitable for almost all applications.
 //
-// The most common reason to adjust the TTL is in testing, where it may be desireable to
+// The most common reason to adjust the TTL is in testing, where it may be desirable to
 // reduce the time needed for peers to become mutually aware.
 func WithTTL(ttl time.Duration) Option {
 	if ttl == 0 {
