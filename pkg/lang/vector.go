@@ -1,11 +1,10 @@
-package core
+package lang
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/spy16/sabre/runtime"
+	"github.com/spy16/parens"
 	"github.com/wetware/ww/internal/api"
 	capnp "zombiezen.com/go/capnproto2"
 )
@@ -27,11 +26,15 @@ var (
 	// ErrIndexOutOfBounds is returned when a sequence's index is out of range.
 	ErrIndexOutOfBounds = errors.New("index out of bounds")
 
+	// ErrInvalidVectorNode is returned when a node in the vector trie is invalid.
+	ErrInvalidVectorNode = errors.New("invalid VectorNode")
+
 	emptyVector Vector
 
-	_ runtime.Vector   = (*Vector)(nil)
+	_ parens.Any       = (*Vector)(nil)
 	_ apiValueProvider = (*Vector)(nil)
-	_ runtime.Seq      = (*vectorSeq)(nil)
+	// _ parens.Vector    = (*Vector)(nil)
+	// _ parens.Seq       = (*vectorSeq)(nil)
 )
 
 func init() {
@@ -68,7 +71,7 @@ type Vector struct {
 }
 
 // NewVector creates a vector containing the supplied values.
-func NewVector(a capnp.Arena, vs ...runtime.Value) (_ Vector, err error) {
+func NewVector(a capnp.Arena, vs ...parens.Any) (_ Vector, err error) {
 	if len(vs) == 0 {
 		return emptyVector, nil
 	}
@@ -92,39 +95,40 @@ func (v Vector) Value() api.Value {
 	return v.v
 }
 
-// String representation of the vector
-func (v Vector) String() string {
+// SExpr returns a valid s-expression for vector
+func (v Vector) SExpr() (string, error) {
+	cnt, err := v.Count()
+	if err != nil {
+		return "", err
+	}
+
 	var b strings.Builder
 	b.WriteRune('[')
-	for i := 0; i < v.Count(); i++ {
+	for i := 0; i < cnt; i++ {
 		val, err := v.EntryAt(i)
 		if err != nil {
-			panic(err)
+			return "", err
 		}
 
-		b.WriteString(val.String())
+		sexpr, err := val.SExpr()
+		if err != nil {
+			return "", err
+		}
 
-		if i < v.Count()-1 {
+		b.WriteString(sexpr)
+
+		if i < cnt-1 {
 			b.WriteRune(' ')
 		}
 	}
 	b.WriteRune(']')
-	return b.String()
-}
-
-// Eval returns the unmodified vector.
-func (v Vector) Eval(runtime.Runtime) (runtime.Value, error) {
-	return v, nil
+	return b.String(), nil
 }
 
 // Count returns the number of elements in the vector.
-func (v Vector) Count() int {
-	_, cnt, err := v.count()
-	if err != nil {
-		panic(err)
-	}
-
-	return cnt
+func (v Vector) Count() (cnt int, err error) {
+	_, cnt, err = v.count()
+	return
 }
 
 func (v Vector) count() (vec api.Vector, cnt int, err error) {
@@ -137,7 +141,7 @@ func (v Vector) count() (vec api.Vector, cnt int, err error) {
 }
 
 // Conj returns a new vector with items appended.
-func (v Vector) Conj(items ...runtime.Value) runtime.Vector {
+func (v Vector) Conj(items ...parens.Any) (Vector, error) {
 	/*
 		TODO(performance):  lots of room for improvement here. A good solution should:
 
@@ -157,32 +161,31 @@ func (v Vector) Conj(items ...runtime.Value) runtime.Vector {
 	*/
 	vec, cnt, err := v.count()
 	if err != nil {
-		panic(err) // TODO(upstream):  should runtime.Vector.Conj() return an error?
+		return Vector{}, err
 	}
 
 	for i, val := range items {
 		if v, err = vectorCons(vec, cnt+i, val); err != nil {
-			panic(err)
+			return Vector{}, err
 		}
 	}
 
-	// TODO(sanity-check):  ensure v is not permanently modified ...
-	return v
+	return v, nil
 }
 
-// Seq returns the implementing value as a sequence.
-func (v Vector) Seq() runtime.Seq {
-	s, err := newVectorSeq(v, 0, 0)
-	if err != nil {
-		panic(err)
-	}
+// // Seq returns the implementing value as a sequence.
+// func (v Vector) Seq() runtime.Seq {
+// 	s, err := newVectorSeq(v, 0, 0)
+// 	if err != nil {
+// 		panic(err)
+// 	}
 
-	return s
-}
+// 	return s
+// }
 
 // EntryAt returns the item at given index. Returns error if the index
 // is out of range.
-func (v Vector) EntryAt(i int) (runtime.Value, error) {
+func (v Vector) EntryAt(i int) (parens.Any, error) {
 	vs, err := v.arrayFor(i)
 	if err != nil {
 		return nil, err
@@ -193,12 +196,12 @@ func (v Vector) EntryAt(i int) (runtime.Value, error) {
 
 // Assoc returns a new vector with the value at given index updated.
 // Returns error if the index is out of range.
-func (v Vector) Assoc(i int, val runtime.Value) (runtime.Vector, error) {
+func (v Vector) Assoc(i int, val parens.Any) (Vector, error) {
 	// https://github.com/clojure/clojure/blob/0b73494c3c855e54b1da591eeb687f24f608f346/src/jvm/clojure/lang/PersistentVector.java#L121
 
 	vec, cnt, err := v.count()
 	if err != nil {
-		return nil, err
+		return Vector{}, err
 	}
 
 	// update?
@@ -211,7 +214,7 @@ func (v Vector) Assoc(i int, val runtime.Value) (runtime.Vector, error) {
 		return vectorCons(vec, cnt, val)
 	}
 
-	return nil, ErrIndexOutOfBounds
+	return Vector{}, ErrIndexOutOfBounds
 }
 
 // Pop returns a new vector without the last item in v
@@ -339,17 +342,18 @@ func popVectorTail(level, cnt int, n api.Vector_Node) (ret api.Vector_Node, ok b
 	}
 }
 
-func (v Vector) arrayFor(i int) (vs api.Value_List, err error) {
+func (v Vector) arrayFor(i int) (api.Value_List, error) {
 	// See:  https://github.com/clojure/clojure/blob/0b73494c3c855e54b1da591eeb687f24f608f346/src/jvm/clojure/lang/PersistentVector.java#L97-L113
 
-	if i < 0 || i >= v.Count() {
-		err = ErrIndexOutOfBounds
-		return
+	if cnt, err := v.Count(); err == nil {
+		if i < 0 || i >= cnt {
+			return api.Value_List{}, ErrIndexOutOfBounds
+		}
 	}
 
-	var vec api.Vector
-	if vec, err = v.v.Vector(); err != nil {
-		return
+	vec, err := v.v.Vector()
+	if err != nil {
+		return api.Value_List{}, err
 	}
 
 	// value in tail?
@@ -363,40 +367,44 @@ func (v Vector) arrayFor(i int) (vs api.Value_List, err error) {
 
 	var n api.Vector_Node
 	if n, err = vec.Root(); err != nil {
-		return
+		return api.Value_List{}, err
 	}
 
 	var bs api.Vector_Node_List
 	for level := vec.Shift(); level > 0; level -= bits {
 		if !n.HasBranches() {
-			err = errors.New("invalid VectorNode:  non-leaf node must branch")
-			return
+			return api.Value_List{}, parens.Error{
+				Cause:   ErrInvalidVectorNode,
+				Message: "non-leaf node must branch",
+			}
 		}
 
 		if bs, err = n.Branches(); err != nil {
-			return
+			return api.Value_List{}, err
 		}
 
 		n = bs.At((i >> level) & mask)
 	}
 
 	if !n.HasValues() {
-		err = errors.New("invalid VectorNode:  leaf node must contain values")
-		return
+		return api.Value_List{}, parens.Error{
+			Cause:   ErrInvalidVectorNode,
+			Message: "leaf node must contain values",
+		}
 	}
 
 	return n.Values()
 }
 
-func vectorUpdate(vec api.Vector, cnt, i int, val runtime.Value) (runtime.Vector, error) {
+func vectorUpdate(vec api.Vector, cnt, i int, val parens.Any) (Vector, error) {
 	root, err := vec.Root()
 	if err != nil {
-		return nil, err
+		return Vector{}, err
 	}
 
 	tail, err := vec.Tail()
 	if err != nil {
-		return nil, err
+		return Vector{}, err
 	}
 
 	// room in tail?
@@ -404,16 +412,16 @@ func vectorUpdate(vec api.Vector, cnt, i int, val runtime.Value) (runtime.Vector
 		// Object[] newTail = new Object[tail.length];
 		// System.arraycopy(tail, 0, newTail, 0, tail.length);
 		if tail, err = cloneValueList(capnp.SingleSegment(nil), tail); err != nil {
-			return nil, err
+			return Vector{}, err
 		}
 
 		// newTail[i & 0x01f] = val;
 		if err = setValueListAt(tail, i&mask, val); err != nil {
-			return nil, err
+			return Vector{}, err
 		}
 	} else {
 		if root, err = vectorAssoc(int(vec.Shift()), root, i, val); err != nil {
-			return nil, err
+			return Vector{}, err
 		}
 	}
 
@@ -425,7 +433,7 @@ func vectorUpdate(vec api.Vector, cnt, i int, val runtime.Value) (runtime.Vector
 	)
 }
 
-func vectorCons(vec api.Vector, cnt int, val runtime.Value) (_ Vector, err error) {
+func vectorCons(vec api.Vector, cnt int, val parens.Any) (_ Vector, err error) {
 	shift := int(vec.Shift())
 
 	var root api.Vector_Node
@@ -502,7 +510,7 @@ func vectorCons(vec api.Vector, cnt int, val runtime.Value) (_ Vector, err error
 		newtail)
 }
 
-func vectorAssoc(level int, n api.Vector_Node, i int, v runtime.Value) (ret api.Vector_Node, err error) {
+func vectorAssoc(level int, n api.Vector_Node, i int, v parens.Any) (ret api.Vector_Node, err error) {
 	if ret, err = cloneNode(capnp.SingleSegment(nil), n, -1); err != nil {
 		return
 	}
@@ -543,7 +551,7 @@ func vectorTailoff(cnt int) int {
 type VectorBuilder struct {
 	cnt, shift int
 	root       api.Vector_Node
-	tail       []runtime.Value
+	tail       []parens.Any
 }
 
 // NewVectorBuilder returns a new VectorBuilder, using the a to create the root
@@ -557,7 +565,7 @@ func NewVectorBuilder(a capnp.Arena) (*VectorBuilder, error) {
 	return &VectorBuilder{
 		shift: bits,
 		root:  root,
-		tail:  make([]runtime.Value, 0, 32),
+		tail:  make([]parens.Any, 0, 32),
 	}, nil
 }
 
@@ -586,7 +594,7 @@ func (b *VectorBuilder) Vector() (_ Vector, err error) {
 }
 
 // Conj appends the values to the vector under construction.
-func (b *VectorBuilder) Conj(v runtime.Value) (err error) {
+func (b *VectorBuilder) Conj(v parens.Any) (err error) {
 	// room in tail?
 	if len(b.tail) < width {
 		b.tail = append(b.tail, v)
@@ -774,7 +782,7 @@ func newVectorLeafNode(a capnp.Arena) (n api.Vector_Node, vs api.Value_List, err
 	return
 }
 
-func newVectorNodeWithValues(a capnp.Arena, vs ...runtime.Value) (n api.Vector_Node, err error) {
+func newVectorNodeWithValues(a capnp.Arena, vs ...parens.Any) (n api.Vector_Node, err error) {
 	var vals api.Value_List
 	if n, vals, err = newVectorLeafNode(a); err != nil {
 		return
@@ -820,7 +828,7 @@ func setNodeBranch(p, n api.Vector_Node, i int) error {
 	return bs.Set(i, n)
 }
 
-func setNodeValue(n api.Vector_Node, i int, v runtime.Value) error {
+func setNodeValue(n api.Vector_Node, i int, v parens.Any) error {
 	vs, err := n.Values()
 	if err != nil {
 		return err
@@ -829,7 +837,7 @@ func setNodeValue(n api.Vector_Node, i int, v runtime.Value) error {
 	return setValueListAt(vs, i, v)
 }
 
-func setValueListAt(vs api.Value_List, i int, v runtime.Value) error {
+func setValueListAt(vs api.Value_List, i int, v parens.Any) error {
 	switch x := v.(type) {
 	case Nil:
 		vs.At(i & mask).SetNil()
@@ -937,73 +945,68 @@ func copyVectorTail(dst, src api.Value_List, lim int) (err error) {
 	return
 }
 
-/*
-	seq
-*/
+// /*
+// 	seq
+// */
 
-type vectorSeq struct {
-	v         Vector
-	vs        api.Value_List
-	i, offset int
-}
+// type vectorSeq struct {
+// 	v         Vector
+// 	vs        api.Value_List
+// 	i, offset int
+// }
 
-func newVectorSeq(v Vector, i, offset int) (vectorSeq, error) {
-	vs, err := v.arrayFor(i)
-	if err != nil {
-		return vectorSeq{}, err
-	}
+// func newVectorSeq(v Vector, i, offset int) (vectorSeq, error) {
+// 	vs, err := v.arrayFor(i)
+// 	if err != nil {
+// 		return vectorSeq{}, err
+// 	}
 
-	return vectorSeq{
-		v:      v,
-		i:      i,
-		offset: offset,
-		vs:     vs,
-	}, nil
-}
+// 	return vectorSeq{
+// 		v:      v,
+// 		i:      i,
+// 		offset: offset,
+// 		vs:     vs,
+// 	}, nil
+// }
 
-func (s vectorSeq) Eval(runtime.Runtime) (runtime.Value, error) {
-	// TODO(enhancement):  clojure evaluates (seq [1 2 3]) as `(1 2 3)`
-	return s, nil
-}
+// func (s vectorSeq) String() string {
+// 	return fmt.Sprintf("(seq %s)", s.v)
+// }
 
-func (s vectorSeq) String() string {
-	return fmt.Sprintf("(seq %s)", s.v)
-}
+// func (s vectorSeq) Count() int {
+// 	return s.v.Count() - (s.i + s.offset)
+// }
 
-func (s vectorSeq) Count() int {
-	return s.v.Count() - (s.i + s.offset)
-}
+// func (s vectorSeq) ChunkedNext() runtime.Seq {
+// 	if s.i+s.vs.Len() < s.v.Count() {
+// 		s, err := newVectorSeq(s.v, s.i+s.vs.Len(), 0)
+// 		if err != nil {
+// 			panic(err)
+// 		}
 
-func (s vectorSeq) ChunkedNext() runtime.Seq {
-	if s.i+s.vs.Len() < s.v.Count() {
-		s, err := newVectorSeq(s.v, s.i+s.vs.Len(), 0)
-		if err != nil {
-			panic(err)
-		}
+// 		return s
+// 	}
 
-		return s
-	}
+// 	return nil
+// }
 
-	return nil
-}
+// func (s vectorSeq) First() parens.Any {
+// 	val, err := valueOf(s.vs.At(s.offset))
+// 	if err != nil {
+// 		panic(err)
+// 	}
 
-func (s vectorSeq) First() runtime.Value {
-	val, err := valueOf(s.vs.At(s.offset))
-	if err != nil {
-		panic(err)
-	}
+// 	return val
+// }
 
-	return val
-}
+// func (s vectorSeq) Next() runtime.Seq {
+// 	if s.offset+1 < s.vs.Len() {
+// 		return vectorSeq{v: s.v, vs: s.vs, i: s.i, offset: s.offset + 1}
+// 	}
 
-func (s vectorSeq) Next() runtime.Seq {
-	if s.offset+1 < s.vs.Len() {
-		return vectorSeq{v: s.v, vs: s.vs, i: s.i, offset: s.offset + 1}
-	}
+// 	return s.ChunkedNext()
+// }
 
-	return s.ChunkedNext()
-}
-
-func (s vectorSeq) Conj(vs ...runtime.Value) runtime.Seq {
-	panic("core.vectorSeq.Conj() NOT IMPLEMENTED")
-}
+// func (s vectorSeq) Conj(vs ...parens.Any) runtime.Seq {
+// 	panic("core.vectorSeq.Conj() NOT IMPLEMENTED")
+// }

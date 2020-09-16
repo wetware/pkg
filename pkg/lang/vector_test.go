@@ -1,13 +1,13 @@
-package core_test
+package lang_test
 
 import (
 	"fmt"
 	"testing"
 
-	"github.com/spy16/sabre/runtime"
+	"github.com/spy16/parens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/wetware/ww/pkg/lang/core"
+	"github.com/wetware/ww/pkg/lang"
 	capnp "zombiezen.com/go/capnproto2"
 )
 
@@ -16,16 +16,16 @@ func TestNewVector(t *testing.T) {
 
 	for _, tt := range []struct {
 		desc string
-		vs   []runtime.Value
+		vs   []parens.Any
 	}{{
 		desc: "empty",
-		vs:   []runtime.Value{},
+		vs:   []parens.Any{},
 	}, {
 		desc: "single",
-		vs:   []runtime.Value{mustKeyword("specimen")},
+		vs:   []parens.Any{mustKeyword("specimen")},
 	}, {
 		desc: "multi",
-		vs: []runtime.Value{
+		vs: []parens.Any{
 			mustKeyword("keyword"),
 			mustString("string"),
 			mustSymbol("symbol"),
@@ -38,7 +38,7 @@ func TestNewVector(t *testing.T) {
 		vs:   valueRange(1025), // tree w/ single branch-node => max size of 1024
 	}} {
 		t.Run(tt.desc, func(t *testing.T) {
-			vec, err := core.NewVector(capnp.SingleSegment(nil), tt.vs...)
+			vec, err := lang.NewVector(capnp.SingleSegment(nil), tt.vs...)
 			if !assert.NoError(t, err) {
 				return
 			}
@@ -49,8 +49,8 @@ func TestNewVector(t *testing.T) {
 					break
 				}
 
-				assert.Equal(t, want.String(), got.String(),
-					"expected %s, got %s", want.String(), got.String())
+				assert.Equal(t, mustSExpr(want), mustSExpr(got),
+					"expected %s, got %s", mustSExpr(want), mustSExpr(got))
 			}
 		})
 	}
@@ -61,7 +61,7 @@ func TestVectorStringer(t *testing.T) {
 
 	for _, tt := range []struct {
 		desc, want string
-		vec        core.Vector
+		vec        lang.Vector
 	}{{
 		desc: "empty",
 		vec:  mustVector(),
@@ -80,9 +80,8 @@ func TestVectorStringer(t *testing.T) {
 		want: "[:keyword \"string\" symbol \\🧠]",
 	}} {
 		t.Run(tt.desc, func(t *testing.T) {
-			t.Log(tt.vec.String())
-			assert.Equal(t, tt.want, tt.vec.String(),
-				"expected %s, got %s", tt.want, tt.vec.String())
+			assert.Equal(t, tt.want, mustSExpr(tt.vec),
+				"expected %s, got %s", tt.want, mustSExpr(tt.vec))
 		})
 	}
 }
@@ -93,8 +92,8 @@ func TestAssoc(t *testing.T) {
 	t.Run("Append", func(t *testing.T) {
 		for _, tt := range []struct {
 			desc, want string
-			vec        core.Vector
-			add        runtime.Value
+			vec        lang.Vector
+			add        parens.Any
 		}{{
 			desc: "empty",
 			vec:  mustVector(),
@@ -111,16 +110,19 @@ func TestAssoc(t *testing.T) {
 			want: "[:keyword \"string\" symbol \\🧠 :added]",
 		}} {
 			t.Run(tt.desc, func(t *testing.T) {
-				orig := tt.vec.String()
+				orig := mustSExpr(tt.vec)
 				defer func() {
-					require.Equal(t, orig, tt.vec.String(),
+					require.Equal(t, orig, mustSExpr(tt.vec),
 						"IMMUTABILITY VIOLATION")
 				}()
 
-				got, err := tt.vec.Assoc(tt.vec.Count(), tt.add)
+				cnt, err := tt.vec.Count()
+				require.NoError(t, err)
+
+				got, err := tt.vec.Assoc(cnt, tt.add)
 				if assert.NoError(t, err) {
-					assert.Equal(t, tt.want, got.String(),
-						"expected %s, got %s", tt.want, tt.vec.String())
+					assert.Equal(t, tt.want, mustSExpr(got),
+						"expected %s, got %s", tt.want, mustSExpr(tt.vec))
 				}
 			})
 		}
@@ -129,8 +131,8 @@ func TestAssoc(t *testing.T) {
 	t.Run("Update", func(t *testing.T) {
 		for _, tt := range []struct {
 			want string
-			vec  core.Vector
-			add  runtime.Value
+			vec  lang.Vector
+			add  parens.Any
 			idx  int
 		}{{
 			vec: mustVector(
@@ -161,16 +163,16 @@ func TestAssoc(t *testing.T) {
 			idx:  3,
 		}} {
 			t.Run(fmt.Sprintf("%d", tt.idx), func(t *testing.T) {
-				orig := tt.vec.String()
+				orig := mustSExpr(tt.vec)
 				defer func() {
-					require.Equal(t, orig, tt.vec.String(),
+					require.Equal(t, orig, mustSExpr(tt.vec),
 						"IMMUTABILITY VIOLATION")
 				}()
 
 				got, err := tt.vec.Assoc(tt.idx, tt.add)
 				if assert.NoError(t, err) {
-					assert.Equal(t, tt.want, got.String(),
-						"expected %s, got %s", tt.want, got.String())
+					assert.Equal(t, tt.want, mustSExpr(got),
+						"expected %s, got %s", tt.want, mustSExpr(got))
 				}
 			})
 		}
@@ -180,7 +182,7 @@ func TestAssoc(t *testing.T) {
 func TestVectorPop(t *testing.T) {
 	for _, tt := range []struct {
 		desc      string
-		vec, want core.Vector
+		vec, want lang.Vector
 		wantErr   bool
 	}{{
 		desc:    "empty",
@@ -222,8 +224,8 @@ func TestVectorPop(t *testing.T) {
 	}
 }
 
-func mustVector(vs ...runtime.Value) core.Vector {
-	vec, err := core.NewVector(capnp.SingleSegment(nil), vs...)
+func mustVector(vs ...parens.Any) lang.Vector {
+	vec, err := lang.NewVector(capnp.SingleSegment(nil), vs...)
 	if err != nil {
 		panic(err)
 	}
@@ -231,36 +233,50 @@ func mustVector(vs ...runtime.Value) core.Vector {
 	return vec
 }
 
-func valueRange(n int) []runtime.Value {
-	vs := make([]runtime.Value, n)
+func valueRange(n int) []parens.Any {
+	vs := make([]parens.Any, n)
 	for i := 0; i < n; i++ {
 		vs[i] = mustKeyword(fmt.Sprintf("%d", i))
 	}
 	return vs
 }
 
-func assertVectEq(t *testing.T, want, got core.Vector) (ok bool) {
-	if want.Count() != got.Count() {
-		t.Errorf("want len=%d, got len=%d", want.Count(), got.Count())
+func assertVectEq(t *testing.T, want, got lang.Vector) (ok bool) {
+	wantcnt, err := want.Count()
+	assert.NoError(t, err)
+
+	gotcnt, err := got.Count()
+	assert.NoError(t, err)
+
+	if wantcnt != gotcnt {
+		t.Errorf("want len=%d, got len=%d", wantcnt, gotcnt)
 		return
 	}
 
-	for i := 0; i < want.Count(); i++ {
-		wat, err := want.EntryAt(i)
+	for i := 0; i < wantcnt; i++ {
+		w, err := want.EntryAt(i)
 		if !assert.NoError(t, err) {
 			return
 		}
 
-		gat, err := got.EntryAt(i)
+		g, err := got.EntryAt(i)
 		if !assert.NoError(t, err) {
-			fmt.Println(got.Value())
 			return
 		}
 
-		if !assert.Equal(t, wat.String(), gat.String()) {
+		if !assert.Equal(t, mustSExpr(w), mustSExpr(g)) {
 			return
 		}
 	}
 
 	return true
+}
+
+func mustSExpr(v parens.Any) string {
+	sexpr, err := v.SExpr()
+	if err != nil {
+		panic(err)
+	}
+
+	return sexpr
 }

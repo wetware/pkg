@@ -15,6 +15,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/routing"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	"github.com/libp2p/go-libp2p/config"
 	"github.com/pkg/errors"
 
@@ -84,10 +85,10 @@ func (cfg Config) options(lx fx.Lifecycle) (mod module, err error) {
 	}
 
 	// options for DHT
-	mod.DHTOpt = []dht.Option{
+	mod.DHTOpt = append(mod.DHTOpt, dual.DHTOption(
 		dht.Datastore(cfg.ds),
 		dht.Mode(dht.ModeClient),
-	}
+	))
 
 	return
 }
@@ -102,7 +103,7 @@ type module struct {
 	Boot      boot.Strategy
 
 	HostOpt []config.Option
-	DHTOpt  []dht.Option
+	DHTOpt  []dual.Option
 }
 
 type serviceConfig struct {

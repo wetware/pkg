@@ -1,9 +1,7 @@
-package core
+package lang
 
 import (
-	"fmt"
-
-	"github.com/spy16/sabre/runtime"
+	"github.com/spy16/parens"
 	"github.com/wetware/ww/internal/api"
 	capnp "zombiezen.com/go/capnproto2"
 )
@@ -12,7 +10,8 @@ var (
 	// EmptyList is a zero-value List
 	EmptyList List
 
-	_ runtime.Seq      = (*List)(nil)
+	_ parens.Any       = (*List)(nil)
+	_ parens.Seq       = (*List)(nil)
 	_ apiValueProvider = (*List)(nil)
 )
 
@@ -26,17 +25,18 @@ func init() {
 		panic(err)
 	}
 
-	EmptyList.v.SetNil()
+	if _, err = EmptyList.v.NewList(); err != nil {
+		panic(err)
+	}
 }
 
 // List is a persistent, singly-linked list with fast insertions/pops to its head.
 type List struct {
-	runtime.Position
 	v api.Value
 }
 
 // NewList returns a new list containing given values.
-func NewList(a capnp.Arena, vs ...runtime.Value) (l List, err error) {
+func NewList(a capnp.Arena, vs ...parens.Any) (l List, err error) {
 	if len(vs) == 0 {
 		return EmptyList, nil
 	}
@@ -55,94 +55,61 @@ func NewList(a capnp.Arena, vs ...runtime.Value) (l List, err error) {
 }
 
 // Count returns the number of the list.
-func (l List) Count() int {
-	_, cnt, err := l.count()
-	if err != nil {
-		panic(err)
+func (l List) Count() (cnt int, err error) {
+	var null bool
+	if null, err = l.isNull(); err == nil && !null {
+		_, cnt, err = l.count()
 	}
 
-	return cnt
+	return
 }
 
-func (l List) String() string {
-	return runtime.SeqString(l, "(", ")", " ")
-}
-
-// Eval evaluates the first item in the list and invokes the resultant first with
-// rest of the list as arguments.
-func (l List) Eval(r runtime.Runtime) (runtime.Value, error) {
-	if l.isNull() {
-		return l, nil
-	}
-
-	_, cnt, err := l.count()
-	if err != nil {
-		return nil, err
-	}
-
-	if cnt == 0 {
-		return l, nil
-	}
-
-	v, err := r.Eval(l.First())
-	if err != nil {
-		return nil, err
-	}
-
-	target, ok := v.(runtime.Invokable)
-	if !ok {
-		return nil, fmt.Errorf("value of type '%s' is not invokable",
-			v.(apiValueProvider).Value().Which())
-	}
-
-	return target.Invoke(r, listToSlice(l, cnt-1)...)
+// SExpr returns a valid s-expression for List
+func (l List) SExpr() (string, error) {
+	return parens.SeqString(l, "(", ")", " ")
 }
 
 // Conj returns a new list with all the items added at the head of the list.
-func (l List) Conj(items ...runtime.Value) runtime.Seq {
-	var res List
-	if l.isNull() {
-		res = EmptyList
-	} else {
-		res = l
+func (l List) Conj(items ...parens.Any) (parens.Seq, error) {
+	null, err := l.isNull()
+	if err != nil {
+		return nil, err
 	}
 
-	var err error
+	var res List
+	if null {
+		res = l
+	} else {
+		res = EmptyList
+	}
+
 	for _, item := range items {
 		if res, err = listCons(capnp.SingleSegment(nil), item, res); err != nil {
-			panic(err)
+			return nil, err
 		}
 	}
 
-	return res
+	return res, nil
 }
 
 // First returns the head or first item of the list.
-func (l List) First() runtime.Value {
-	if l.isNull() {
-		return nil
+func (l List) First() (v parens.Any, err error) {
+	var null bool
+	if null, err = l.isNull(); err == nil && !null {
+		_, v, err = l.head()
 	}
 
-	_, v, err := l.head()
-	if err != nil {
-		panic(err)
-	}
-
-	return v
+	return
 }
 
 // Next returns the tail of the list.
-func (l List) Next() runtime.Seq {
-	if l.isNull() {
-		return nil
+func (l List) Next() (tail parens.Seq, err error) {
+	var null bool
+	if null, err = l.isNull(); err == nil && !null {
+		_, tail, err = l.tail()
 	}
 
-	_, tail, err := l.tail()
-	if err != nil {
-		panic(err)
-	}
-
-	return tail
+	return
 }
 
 // Value returns the api.Value for List
@@ -158,7 +125,7 @@ func (l List) count() (ll api.LinkedList, cnt int, err error) {
 	return
 }
 
-func (l List) head() (ll api.LinkedList, v runtime.Value, err error) {
+func (l List) head() (ll api.LinkedList, v parens.Any, err error) {
 	if ll, err = l.v.List(); err != nil {
 		return
 	}
@@ -185,20 +152,25 @@ func (l List) tail() (ll api.LinkedList, tail List, err error) {
 	return
 }
 
-func (l List) isNull() bool {
-	return !l.v.HasList()
+func (l List) isNull() (bool, error) {
+	lv, err := l.v.List()
+	if err != nil {
+		return false, err
+	}
+
+	return lv.Count() == 0, nil
 }
 
-func listToSlice(l List, sizeHint int) []runtime.Value {
-	slice := make([]runtime.Value, 0, sizeHint)
-	runtime.ForEach(l, func(item runtime.Value) bool {
-		slice = append(slice, item)
-		return false
-	})
-	return slice
-}
+// func listToSlice(l List, sizeHint int) ([]parens.Any, error) {
+// 	slice := make([]parens.Any, 0, sizeHint)
+// 	err := parens.ForEach(l, func(item parens.Any) (bool, error) {
+// 		slice = append(slice, item)
+// 		return false, nil
+// 	})
+// 	return slice, err
+// }
 
-func listCons(a capnp.Arena, v runtime.Value, tail List) (l List, err error) {
+func listCons(a capnp.Arena, v parens.Any, tail List) (l List, err error) {
 	var ll api.LinkedList
 	if l, ll, err = newList(a); err != nil {
 		return
@@ -212,9 +184,18 @@ func listCons(a capnp.Arena, v runtime.Value, tail List) (l List, err error) {
 		return
 	}
 
+	var null bool
+	if null, err = tail.isNull(); err != nil {
+		return
+	}
+
 	var cnt int = 1
-	if !tail.isNull() {
-		cnt = tail.Count() + 1
+	if !null {
+		if cnt, err = tail.Count(); err != nil {
+			return
+		}
+
+		cnt++
 	}
 
 	ll.SetCount(uint32(cnt))

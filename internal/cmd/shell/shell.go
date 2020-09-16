@@ -8,13 +8,13 @@ import (
 	"text/template"
 
 	"github.com/chzyer/readline"
+	"github.com/spy16/parens/repl"
 	"github.com/urfave/cli/v2"
-
-	"github.com/spy16/sabre/repl"
 
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/client"
 	"github.com/wetware/ww/pkg/lang"
+	"github.com/wetware/ww/pkg/lang/reader"
 	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
 
 	clientutil "github.com/wetware/ww/internal/util/client"
@@ -78,19 +78,13 @@ func Command() *cli.Command {
 
 func run() cli.ActionFunc {
 	return func(c *cli.Context) error {
-		ww := lang.New(nil)
-
-		if err := lang.BindAll(ww, root); err != nil {
-			return err
-		}
-
 		lr, err := newLineReader(c)
 		if err != nil {
 			return err
 		}
 		defer lr.Close()
 
-		return repl.New(ww,
+		return repl.New(lang.New(),
 			repl.WithBanner(banner(c)),
 			repl.WithReaderFactory(readerFactory()),
 			repl.WithPrompts("ww »", "   ›"),
@@ -118,8 +112,8 @@ func after() cli.AfterFunc {
 	}
 }
 
-func readerFactory() repl.ReaderFactory {
-	return repl.ReaderFactoryFunc(lang.NewReader)
+func readerFactory() repl.ReaderFactoryFunc {
+	return reader.New
 }
 
 func newLineReader(c *cli.Context) (r linereader, err error) {

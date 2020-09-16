@@ -1,4 +1,4 @@
-package core
+package lang
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	capnp "zombiezen.com/go/capnproto2"
 
 	"github.com/pkg/errors"
-	"github.com/spy16/sabre/runtime"
+	"github.com/spy16/parens"
 
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
@@ -14,9 +14,8 @@ import (
 )
 
 var (
-	_ runtime.Invokable = (*list)(nil)
-
-	_ runtime.Value    = (*Path)(nil)
+	_ parens.Any       = (*Path)(nil)
+	_ parens.Invokable = (*list)(nil)
 	_ apiValueProvider = (*Path)(nil)
 )
 
@@ -30,9 +29,9 @@ type Path struct {
 }
 
 // NewPath .
-func NewPath(s string) (p Path, err error) {
+func NewPath(a capnp.Arena, s string) (p Path, err error) {
 	var seg *capnp.Segment
-	if _, seg, err = capnp.NewMessage(capnp.SingleSegment(nil)); err != nil {
+	if _, seg, err = capnp.NewMessage(a); err != nil {
 		return
 	}
 
@@ -48,23 +47,9 @@ func (p Path) Value() api.Value {
 	return p.v
 }
 
-func (p Path) String() string {
-	str, err := p.v.Path()
-	if err != nil {
-		panic(err)
-	}
-
-	return str
-}
-
-// Parts of the path
-func (p Path) Parts() []string {
-	return anchorpath.Parts(p.String())
-}
-
-// Eval .
-func (p Path) Eval(runtime.Runtime) (runtime.Value, error) {
-	return p, nil
+// SExpr returns a valid s-expression for path.
+func (p Path) SExpr() (string, error) {
+	return p.v.Path()
 }
 
 /*
@@ -80,11 +65,7 @@ func (root list) String() string {
 	return "ls"
 }
 
-func (root list) Eval(r runtime.Runtime) (runtime.Value, error) {
-	return root, nil
-}
-
-func (root list) Invoke(r runtime.Runtime, args ...runtime.Value) (runtime.Value, error) {
+func (root list) Invoke(env *parens.Env, args ...parens.Any) (parens.Any, error) {
 	if len(args) != 1 {
 		return nil, errors.Errorf("expected 1 argument, got %d", len(args))
 	}
@@ -94,7 +75,12 @@ func (root list) Invoke(r runtime.Runtime, args ...runtime.Value) (runtime.Value
 		return nil, errors.New("argument 0 must by of type Path")
 	}
 
-	as, err := root.Walk(context.Background(), p.Parts()).Ls(context.Background())
+	pstr, err := p.v.Path()
+	if err != nil {
+		return nil, err
+	}
+
+	as, err := root.Walk(context.Background(), anchorpath.Parts(pstr)).Ls(context.Background())
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +103,7 @@ func (root list) Invoke(r runtime.Runtime, args ...runtime.Value) (runtime.Value
 			- binding the Anchor to the Path object (i.e.: caching at the core.Path level)
 		*/
 
-		if p, err = NewPath(a.String()); err != nil {
+		if p, err = NewPath(capnp.SingleSegment(nil), a.String()); err != nil {
 			return nil, err
 		}
 

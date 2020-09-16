@@ -8,6 +8,8 @@ import (
 
 	// libp2p
 	"github.com/libp2p/go-libp2p"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	"github.com/libp2p/go-libp2p/config"
 
 	// libp2p core interfaces
@@ -18,7 +20,6 @@ import (
 
 	// libp2p core implementations
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
-	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
@@ -114,10 +115,10 @@ func (cfg Config) options(lx fx.Lifecycle) (mod module, err error) {
 		libp2p.ConnectionManager(cm),
 	}
 
-	mod.DHTOpt = []dht.Option{
+	mod.DHTOpt = append(mod.DHTOpt, dual.DHTOption(
 		dht.Datastore(cfg.ds),
 		dht.Mode(dht.ModeServer),
-	}
+	))
 
 	return
 }
@@ -135,7 +136,7 @@ type module struct {
 	Boot        boot.Strategy
 
 	HostOpt []config.Option
-	DHTOpt  []dht.Option
+	DHTOpt  []dual.Option
 
 	Datastore datastore.Batching
 }

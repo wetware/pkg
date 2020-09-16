@@ -10,7 +10,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/routing"
 	discovery "github.com/libp2p/go-libp2p-discovery"
-	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/config"
@@ -21,7 +20,7 @@ type Config struct {
 	fx.In
 
 	HostOpt []config.Option
-	DHTOpt  []dht.Option
+	DHTOpt  []dual.Option
 }
 
 // Module encapsulates p2p primitives
