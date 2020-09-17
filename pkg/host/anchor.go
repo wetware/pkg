@@ -18,6 +18,26 @@ import (
 	api.go contains the capnp api that is served by the host
 */
 
+var (
+	_ api.Anchor_Server = (*rootAnchor)(nil)
+	_ api.Anchor_Server = (*anchor)(nil)
+
+	nullValue api.Value
+)
+
+func init() {
+	_, seg, err := capnp.NewMessage(capnp.SingleSegment(nil))
+	if err != nil {
+		panic(err)
+	}
+
+	if nullValue, err = api.NewRootValue(seg); err != nil {
+		panic(err)
+	}
+
+	nullValue.SetNil()
+}
+
 type routingTable interface {
 	Peers() peer.IDSlice
 }
@@ -102,6 +122,14 @@ func (r rootAnchor) Walk(call api.Anchor_walk) error {
 	return r.anchor.Walk(call)
 }
 
+func (r rootAnchor) Load(call api.Anchor_load) error {
+	return errors.New("NOT IMPLEMENTED")
+}
+
+func (r rootAnchor) Store(call api.Anchor_store) error {
+	return errors.New("NOT IMPLEMENTED")
+}
+
 type anchor struct {
 	root anchorNode
 }
@@ -157,6 +185,31 @@ func (a anchor) Walk(call api.Anchor_walk) error {
 
 	child := a.subAnchor(a.root.Walk(anchorpath.Parts(path)))
 	return errinternal(call.Results.SetAnchor(child))
+}
+
+func (a anchor) Load(call api.Anchor_load) error {
+	if v := a.root.Load(); v != nil {
+		return call.Results.SetValue(*v)
+	}
+
+	return call.Results.SetValue(nullValue)
+}
+
+func (a anchor) Store(call api.Anchor_store) error {
+	v, err := call.Params.Value()
+	if err != nil {
+		return err
+	}
+
+	if v.Which() == api.Value_Which_nil {
+		_ = a.root.Store(nil) // scrub never fails
+	}
+
+	if a.root.Store(&v) {
+		return nil
+	}
+
+	return errors.New("anchor contains value")
 }
 
 func (a anchor) subAnchor(node anchorNode) api.Anchor {

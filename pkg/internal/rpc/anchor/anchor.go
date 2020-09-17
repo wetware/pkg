@@ -2,6 +2,7 @@ package anchor
 
 import (
 	"context"
+	"errors"
 
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
@@ -27,6 +28,25 @@ func (a anchor) Walk(ctx context.Context, path []string) ww.Anchor {
 	}
 }
 
+func (a anchor) Load(ctx context.Context) (api.Value, error) {
+	res, err := a.Anchor().Load(ctx, func(api.Anchor_load_Params) error { return nil }).Struct()
+	if err != nil {
+		return api.Value{}, err
+	}
+
+	return res.Value()
+}
+
+func (a anchor) Store(ctx context.Context, v api.Value) error {
+	if _, err := a.Anchor().Store(ctx, func(p api.Anchor_store_Params) error {
+		return p.SetValue(v)
+	}).Struct(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 type hostAnchor struct {
 	d rpc.DialString
 	t rpc.Terminal
@@ -41,6 +61,15 @@ func (h hostAnchor) Ls(ctx context.Context) ([]ww.Anchor, error) {
 
 func (h hostAnchor) Walk(ctx context.Context, path []string) ww.Anchor {
 	return Walk(ctx, h.t, h.d, path)
+}
+
+func (hostAnchor) Load(ctx context.Context) (api.Value, error) {
+	// TODO(enhancement):  return a dict with server info
+	return api.Value{}, errors.New("hostAnchor.Load NOT IMPLEMENTED")
+}
+
+func (hostAnchor) Store(ctx context.Context, v api.Value) error {
+	return errors.New("hostAnchor.Store NOT IMPLEMENTED")
 }
 
 type path []string

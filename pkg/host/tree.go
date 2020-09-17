@@ -3,6 +3,8 @@ package host
 import (
 	goruntime "runtime"
 	"sync"
+
+	"github.com/wetware/ww/internal/api"
 )
 
 // subNode .
@@ -39,14 +41,6 @@ func (a anchorNode) Walk(path []string) anchorNode {
 	}
 }
 
-// Value of the anchor
-func (a anchorNode) Value() interface{} {
-	a.r.Tx().RLock()
-	defer a.r.Tx().RUnlock()
-
-	return a.r.getValUnsafe()
-}
-
 // List the anchor's children
 func (a anchorNode) List() []subNode {
 	// N.B.:  hard-lock because the List() operation may co-occur with a sub-anchor
@@ -62,8 +56,14 @@ func (a anchorNode) List() []subNode {
 	return children
 }
 
-// Bind a value to the anchor
-func (a anchorNode) Bind(val interface{}) bool {
+func (a anchorNode) Load() *api.Value {
+	a.r.Tx().RLock()
+	defer a.r.Tx().RUnlock()
+
+	return a.r.getValUnsafe()
+}
+
+func (a anchorNode) Store(val *api.Value) bool {
 	a.r.Tx().Lock()
 	defer a.r.Tx().Unlock()
 
@@ -80,22 +80,22 @@ func (h nodeRef) Tx() *sync.RWMutex {
 }
 
 // Unsafe - requires locking
-func (h nodeRef) setObjUnsafe(val interface{}) {
+func (h nodeRef) setObjUnsafe(val *api.Value) {
 	h.n.val = val
 }
 
 // Unsafe - requires locking
-func (h nodeRef) setValIfEmpty(val interface{}) (set bool) {
-	if h.n.val == nil {
-		set = true
+func (h nodeRef) setValIfEmpty(val *api.Value) bool {
+	if val == nil || h.n.val == nil {
 		h.n.val = val
+		return true
 	}
 
-	return
+	return false
 }
 
 // Unsafe - requires locking
-func (h nodeRef) getValUnsafe() interface{} {
+func (h nodeRef) getValUnsafe() *api.Value {
 	return h.n.val
 }
 
@@ -145,7 +145,7 @@ type node struct {
 	ctr ctr
 
 	tx  sync.RWMutex
-	val interface{}
+	val *api.Value
 
 	name     string
 	parent   *node

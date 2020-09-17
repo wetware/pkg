@@ -44,6 +44,8 @@ interface Anchor {
     # Using Text paths saves a couple of bytes since we don't have to wrap the text,
     # which is effectively a List(uint8), in _another_ list.
     walk @1 (path :Text) -> (anchor :Anchor);
+    load @2 () -> (value :Value);
+    store @3 (value :Value) -> ();
 }
 
 

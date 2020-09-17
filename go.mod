@@ -36,7 +36,7 @@ require (
 	github.com/philhofer/fwd v1.0.0 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.6.0
-	github.com/spy16/parens v0.0.0-20200917163848-5b9f0a5c7284
+	github.com/spy16/parens v0.0.0-20200917203108-4014e156dec4
 	github.com/stretchr/testify v1.6.1
 	github.com/tinylib/msgp v1.1.2 // indirect
 	github.com/urfave/cli/v2 v2.2.0

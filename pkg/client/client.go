@@ -11,6 +11,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
+	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/internal/rpc"
 	"github.com/wetware/ww/pkg/internal/rpc/anchor"
@@ -86,6 +87,16 @@ func (c Client) Walk(ctx context.Context, path []string) ww.Anchor {
 	}
 
 	return anchor.Walk(ctx, c.term, rpc.DialString(path[0]), path)
+}
+
+// Load returns a map containing global cluster info
+func (c Client) Load(_ context.Context) (api.Value, error) {
+	return api.Value{}, errors.New("NOT IMPLEMENTED")
+}
+
+// Store is a nop that always returns an error.
+func (c Client) Store(context.Context, api.Value) error {
+	return errors.New("not implemented") // store is defined as an error for root anchor
 }
 
 /*

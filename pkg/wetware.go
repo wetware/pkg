@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/libp2p/go-libp2p-core/protocol"
+	"github.com/wetware/ww/internal/api"
 )
 
 const (
@@ -20,5 +21,7 @@ type Anchor interface {
 	Path() []string
 	Ls(context.Context) ([]Anchor, error)
 	Walk(context.Context, []string) Anchor
+	Load(context.Context) (api.Value, error)
+	Store(context.Context, api.Value) error
 	// Resolve() (Anchor, error)
 }

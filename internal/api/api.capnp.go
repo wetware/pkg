@@ -480,11 +480,55 @@ func (c Anchor) Walk(ctx context.Context, params func(Anchor_walk_Params) error,
 	}
 	return Anchor_walk_Results_Promise{Pipeline: capnp.NewPipeline(c.Client.Call(call))}
 }
+func (c Anchor) Load(ctx context.Context, params func(Anchor_load_Params) error, opts ...capnp.CallOption) Anchor_load_Results_Promise {
+	if c.Client == nil {
+		return Anchor_load_Results_Promise{Pipeline: capnp.NewPipeline(capnp.ErrorAnswer(capnp.ErrNullClient))}
+	}
+	call := &capnp.Call{
+		Ctx: ctx,
+		Method: capnp.Method{
+			InterfaceID:   0xf4acba02cd83d452,
+			MethodID:      2,
+			InterfaceName: "api/api.capnp:Anchor",
+			MethodName:    "load",
+		},
+		Options: capnp.NewCallOptions(opts),
+	}
+	if params != nil {
+		call.ParamsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
+		call.ParamsFunc = func(s capnp.Struct) error { return params(Anchor_load_Params{Struct: s}) }
+	}
+	return Anchor_load_Results_Promise{Pipeline: capnp.NewPipeline(c.Client.Call(call))}
+}
+func (c Anchor) Store(ctx context.Context, params func(Anchor_store_Params) error, opts ...capnp.CallOption) Anchor_store_Results_Promise {
+	if c.Client == nil {
+		return Anchor_store_Results_Promise{Pipeline: capnp.NewPipeline(capnp.ErrorAnswer(capnp.ErrNullClient))}
+	}
+	call := &capnp.Call{
+		Ctx: ctx,
+		Method: capnp.Method{
+			InterfaceID:   0xf4acba02cd83d452,
+			MethodID:      3,
+			InterfaceName: "api/api.capnp:Anchor",
+			MethodName:    "store",
+		},
+		Options: capnp.NewCallOptions(opts),
+	}
+	if params != nil {
+		call.ParamsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
+		call.ParamsFunc = func(s capnp.Struct) error { return params(Anchor_store_Params{Struct: s}) }
+	}
+	return Anchor_store_Results_Promise{Pipeline: capnp.NewPipeline(c.Client.Call(call))}
+}
 
 type Anchor_Server interface {
 	Ls(Anchor_ls) error
 
 	Walk(Anchor_walk) error
+
+	Load(Anchor_load) error
+
+	Store(Anchor_store) error
 }
 
 func Anchor_ServerToClient(s Anchor_Server) Anchor {
@@ -494,7 +538,7 @@ func Anchor_ServerToClient(s Anchor_Server) Anchor {
 
 func Anchor_Methods(methods []server.Method, s Anchor_Server) []server.Method {
 	if cap(methods) == 0 {
-		methods = make([]server.Method, 0, 2)
+		methods = make([]server.Method, 0, 4)
 	}
 
 	methods = append(methods, server.Method{
@@ -525,6 +569,34 @@ func Anchor_Methods(methods []server.Method, s Anchor_Server) []server.Method {
 		ResultsSize: capnp.ObjectSize{DataSize: 0, PointerCount: 1},
 	})
 
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xf4acba02cd83d452,
+			MethodID:      2,
+			InterfaceName: "api/api.capnp:Anchor",
+			MethodName:    "load",
+		},
+		Impl: func(c context.Context, opts capnp.CallOptions, p, r capnp.Struct) error {
+			call := Anchor_load{c, opts, Anchor_load_Params{Struct: p}, Anchor_load_Results{Struct: r}}
+			return s.Load(call)
+		},
+		ResultsSize: capnp.ObjectSize{DataSize: 0, PointerCount: 1},
+	})
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xf4acba02cd83d452,
+			MethodID:      3,
+			InterfaceName: "api/api.capnp:Anchor",
+			MethodName:    "store",
+		},
+		Impl: func(c context.Context, opts capnp.CallOptions, p, r capnp.Struct) error {
+			call := Anchor_store{c, opts, Anchor_store_Params{Struct: p}, Anchor_store_Results{Struct: r}}
+			return s.Store(call)
+		},
+		ResultsSize: capnp.ObjectSize{DataSize: 0, PointerCount: 0},
+	})
+
 	return methods
 }
 
@@ -542,6 +614,22 @@ type Anchor_walk struct {
 	Options capnp.CallOptions
 	Params  Anchor_walk_Params
 	Results Anchor_walk_Results
+}
+
+// Anchor_load holds the arguments for a server call to Anchor.load.
+type Anchor_load struct {
+	Ctx     context.Context
+	Options capnp.CallOptions
+	Params  Anchor_load_Params
+	Results Anchor_load_Results
+}
+
+// Anchor_store holds the arguments for a server call to Anchor.store.
+type Anchor_store struct {
+	Ctx     context.Context
+	Options capnp.CallOptions
+	Params  Anchor_store_Params
+	Results Anchor_store_Results
 }
 
 type Anchor_SubAnchor struct{ capnp.Struct }
@@ -955,6 +1043,284 @@ func (p Anchor_walk_Results_Promise) Struct() (Anchor_walk_Results, error) {
 
 func (p Anchor_walk_Results_Promise) Anchor() Anchor {
 	return Anchor{Client: p.Pipeline.GetPipeline(0).Client()}
+}
+
+type Anchor_load_Params struct{ capnp.Struct }
+
+// Anchor_load_Params_TypeID is the unique identifier for the type Anchor_load_Params.
+const Anchor_load_Params_TypeID = 0xa94cf75566fcc440
+
+func NewAnchor_load_Params(s *capnp.Segment) (Anchor_load_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Anchor_load_Params{st}, err
+}
+
+func NewRootAnchor_load_Params(s *capnp.Segment) (Anchor_load_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Anchor_load_Params{st}, err
+}
+
+func ReadRootAnchor_load_Params(msg *capnp.Message) (Anchor_load_Params, error) {
+	root, err := msg.RootPtr()
+	return Anchor_load_Params{root.Struct()}, err
+}
+
+func (s Anchor_load_Params) String() string {
+	str, _ := text.Marshal(0xa94cf75566fcc440, s.Struct)
+	return str
+}
+
+// Anchor_load_Params_List is a list of Anchor_load_Params.
+type Anchor_load_Params_List struct{ capnp.List }
+
+// NewAnchor_load_Params creates a new list of Anchor_load_Params.
+func NewAnchor_load_Params_List(s *capnp.Segment, sz int32) (Anchor_load_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	return Anchor_load_Params_List{l}, err
+}
+
+func (s Anchor_load_Params_List) At(i int) Anchor_load_Params {
+	return Anchor_load_Params{s.List.Struct(i)}
+}
+
+func (s Anchor_load_Params_List) Set(i int, v Anchor_load_Params) error {
+	return s.List.SetStruct(i, v.Struct)
+}
+
+func (s Anchor_load_Params_List) String() string {
+	str, _ := text.MarshalList(0xa94cf75566fcc440, s.List)
+	return str
+}
+
+// Anchor_load_Params_Promise is a wrapper for a Anchor_load_Params promised by a client call.
+type Anchor_load_Params_Promise struct{ *capnp.Pipeline }
+
+func (p Anchor_load_Params_Promise) Struct() (Anchor_load_Params, error) {
+	s, err := p.Pipeline.Struct()
+	return Anchor_load_Params{s}, err
+}
+
+type Anchor_load_Results struct{ capnp.Struct }
+
+// Anchor_load_Results_TypeID is the unique identifier for the type Anchor_load_Results.
+const Anchor_load_Results_TypeID = 0xb3012e36a35e0fb0
+
+func NewAnchor_load_Results(s *capnp.Segment) (Anchor_load_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Anchor_load_Results{st}, err
+}
+
+func NewRootAnchor_load_Results(s *capnp.Segment) (Anchor_load_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Anchor_load_Results{st}, err
+}
+
+func ReadRootAnchor_load_Results(msg *capnp.Message) (Anchor_load_Results, error) {
+	root, err := msg.RootPtr()
+	return Anchor_load_Results{root.Struct()}, err
+}
+
+func (s Anchor_load_Results) String() string {
+	str, _ := text.Marshal(0xb3012e36a35e0fb0, s.Struct)
+	return str
+}
+
+func (s Anchor_load_Results) Value() (Value, error) {
+	p, err := s.Struct.Ptr(0)
+	return Value{Struct: p.Struct()}, err
+}
+
+func (s Anchor_load_Results) HasValue() bool {
+	p, err := s.Struct.Ptr(0)
+	return p.IsValid() || err != nil
+}
+
+func (s Anchor_load_Results) SetValue(v Value) error {
+	return s.Struct.SetPtr(0, v.Struct.ToPtr())
+}
+
+// NewValue sets the value field to a newly
+// allocated Value struct, preferring placement in s's segment.
+func (s Anchor_load_Results) NewValue() (Value, error) {
+	ss, err := NewValue(s.Struct.Segment())
+	if err != nil {
+		return Value{}, err
+	}
+	err = s.Struct.SetPtr(0, ss.Struct.ToPtr())
+	return ss, err
+}
+
+// Anchor_load_Results_List is a list of Anchor_load_Results.
+type Anchor_load_Results_List struct{ capnp.List }
+
+// NewAnchor_load_Results creates a new list of Anchor_load_Results.
+func NewAnchor_load_Results_List(s *capnp.Segment, sz int32) (Anchor_load_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return Anchor_load_Results_List{l}, err
+}
+
+func (s Anchor_load_Results_List) At(i int) Anchor_load_Results {
+	return Anchor_load_Results{s.List.Struct(i)}
+}
+
+func (s Anchor_load_Results_List) Set(i int, v Anchor_load_Results) error {
+	return s.List.SetStruct(i, v.Struct)
+}
+
+func (s Anchor_load_Results_List) String() string {
+	str, _ := text.MarshalList(0xb3012e36a35e0fb0, s.List)
+	return str
+}
+
+// Anchor_load_Results_Promise is a wrapper for a Anchor_load_Results promised by a client call.
+type Anchor_load_Results_Promise struct{ *capnp.Pipeline }
+
+func (p Anchor_load_Results_Promise) Struct() (Anchor_load_Results, error) {
+	s, err := p.Pipeline.Struct()
+	return Anchor_load_Results{s}, err
+}
+
+func (p Anchor_load_Results_Promise) Value() Value_Promise {
+	return Value_Promise{Pipeline: p.Pipeline.GetPipeline(0)}
+}
+
+type Anchor_store_Params struct{ capnp.Struct }
+
+// Anchor_store_Params_TypeID is the unique identifier for the type Anchor_store_Params.
+const Anchor_store_Params_TypeID = 0x8ef1ac844ec73672
+
+func NewAnchor_store_Params(s *capnp.Segment) (Anchor_store_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Anchor_store_Params{st}, err
+}
+
+func NewRootAnchor_store_Params(s *capnp.Segment) (Anchor_store_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Anchor_store_Params{st}, err
+}
+
+func ReadRootAnchor_store_Params(msg *capnp.Message) (Anchor_store_Params, error) {
+	root, err := msg.RootPtr()
+	return Anchor_store_Params{root.Struct()}, err
+}
+
+func (s Anchor_store_Params) String() string {
+	str, _ := text.Marshal(0x8ef1ac844ec73672, s.Struct)
+	return str
+}
+
+func (s Anchor_store_Params) Value() (Value, error) {
+	p, err := s.Struct.Ptr(0)
+	return Value{Struct: p.Struct()}, err
+}
+
+func (s Anchor_store_Params) HasValue() bool {
+	p, err := s.Struct.Ptr(0)
+	return p.IsValid() || err != nil
+}
+
+func (s Anchor_store_Params) SetValue(v Value) error {
+	return s.Struct.SetPtr(0, v.Struct.ToPtr())
+}
+
+// NewValue sets the value field to a newly
+// allocated Value struct, preferring placement in s's segment.
+func (s Anchor_store_Params) NewValue() (Value, error) {
+	ss, err := NewValue(s.Struct.Segment())
+	if err != nil {
+		return Value{}, err
+	}
+	err = s.Struct.SetPtr(0, ss.Struct.ToPtr())
+	return ss, err
+}
+
+// Anchor_store_Params_List is a list of Anchor_store_Params.
+type Anchor_store_Params_List struct{ capnp.List }
+
+// NewAnchor_store_Params creates a new list of Anchor_store_Params.
+func NewAnchor_store_Params_List(s *capnp.Segment, sz int32) (Anchor_store_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return Anchor_store_Params_List{l}, err
+}
+
+func (s Anchor_store_Params_List) At(i int) Anchor_store_Params {
+	return Anchor_store_Params{s.List.Struct(i)}
+}
+
+func (s Anchor_store_Params_List) Set(i int, v Anchor_store_Params) error {
+	return s.List.SetStruct(i, v.Struct)
+}
+
+func (s Anchor_store_Params_List) String() string {
+	str, _ := text.MarshalList(0x8ef1ac844ec73672, s.List)
+	return str
+}
+
+// Anchor_store_Params_Promise is a wrapper for a Anchor_store_Params promised by a client call.
+type Anchor_store_Params_Promise struct{ *capnp.Pipeline }
+
+func (p Anchor_store_Params_Promise) Struct() (Anchor_store_Params, error) {
+	s, err := p.Pipeline.Struct()
+	return Anchor_store_Params{s}, err
+}
+
+func (p Anchor_store_Params_Promise) Value() Value_Promise {
+	return Value_Promise{Pipeline: p.Pipeline.GetPipeline(0)}
+}
+
+type Anchor_store_Results struct{ capnp.Struct }
+
+// Anchor_store_Results_TypeID is the unique identifier for the type Anchor_store_Results.
+const Anchor_store_Results_TypeID = 0xc54940df263f58ae
+
+func NewAnchor_store_Results(s *capnp.Segment) (Anchor_store_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Anchor_store_Results{st}, err
+}
+
+func NewRootAnchor_store_Results(s *capnp.Segment) (Anchor_store_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Anchor_store_Results{st}, err
+}
+
+func ReadRootAnchor_store_Results(msg *capnp.Message) (Anchor_store_Results, error) {
+	root, err := msg.RootPtr()
+	return Anchor_store_Results{root.Struct()}, err
+}
+
+func (s Anchor_store_Results) String() string {
+	str, _ := text.Marshal(0xc54940df263f58ae, s.Struct)
+	return str
+}
+
+// Anchor_store_Results_List is a list of Anchor_store_Results.
+type Anchor_store_Results_List struct{ capnp.List }
+
+// NewAnchor_store_Results creates a new list of Anchor_store_Results.
+func NewAnchor_store_Results_List(s *capnp.Segment, sz int32) (Anchor_store_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	return Anchor_store_Results_List{l}, err
+}
+
+func (s Anchor_store_Results_List) At(i int) Anchor_store_Results {
+	return Anchor_store_Results{s.List.Struct(i)}
+}
+
+func (s Anchor_store_Results_List) Set(i int, v Anchor_store_Results) error {
+	return s.List.SetStruct(i, v.Struct)
+}
+
+func (s Anchor_store_Results_List) String() string {
+	str, _ := text.MarshalList(0xc54940df263f58ae, s.List)
+	return str
+}
+
+// Anchor_store_Results_Promise is a wrapper for a Anchor_store_Results promised by a client call.
+type Anchor_store_Results_Promise struct{ *capnp.Pipeline }
+
+func (p Anchor_store_Results_Promise) Struct() (Anchor_store_Results, error) {
+	s, err := p.Pipeline.Struct()
+	return Anchor_store_Results{s}, err
 }
 
 type Frac struct{ capnp.Struct }
@@ -1412,93 +1778,106 @@ func (p Vector_Node_Promise) Struct() (Vector_Node, error) {
 	return Vector_Node{s}, err
 }
 
-const schema_c8aa6d83e0c03a9d = "x\xda\x8cUk\x88T\xe5\x1b\x7f~\xef;3gt" +
-	"\xe7v<#\xfe\xfd\xcb\xb2\x10\x0a\xba\xe5\xa6fRK" +
-	"5k\xb8\xd2\x9a\xda\x1e\xc7\xc4\x0f\x06\x9e\x999:\x83" +
-	"gg\x869g\xb4\xa5\x96\x14\x0d\x13\x14$\x924\x94" +
-	"L,l\xb1\x8b\xd4\x07\x13\x8a(\x90($\x88\x0a\x82" +
-	">T_\")\xba\x99y\xd9\xf6\x8d\xe7\xcc\xe5\xec\xa5" +
-	"\xa4o3\xef\xef<\xbf\xf7}.\xbf\xdf\xb3\xe4\xbc\xe8" +
-	"\x13K\xc3\x9fJ\"\xf3\x8epD\xfd\x18\x1d\x8bm\\" +
-	"\xb5u7\x99\xb3\x01\xf5\x80\xfb\xfa\x92\x9f^\xfc\xf0&" +
-	"\xf5C\x13D\xc6%|f|\x05\x8d\xc8\xf8\x02\xbb\x08" +
-	"\xea\xca\x96k\x9b\xff\x97X}\x84\xf4\xd9 \x0a3r" +
-	"\xd7\xa3b\x16\x08\xc6c\"CP\x17/\xcd\x1a\xe9\x9c" +
-	"\xb5\xf7\x152\x13\x80:\xd1\xfb\xfe7{\x87F?\xa2" +
-	"\xb0`\x8e\x11\xf1\xb1q\xc0\xff\xf5\xb4x\x83\xa0\xe6\xf6" +
-	"\\<\xf3\xec\xd5\xb1s\x13\xd9:\xe5Lf[ \x99" +
-	"\xed\xd4'O\x8c\\\x1e\xbd\xf7\x02\xb3\x89\x80\xad\x1fZ" +
-	"\x82\xc8\xe8\x97\xa7\x8cu\x92\x83\x06\xe4\x1cIP\xc7~" +
-	"y+\xb1g\xde\xfc\x0f&\xf2\x0dG\x04\xf3\x8dD\x98" +
-	"o\xf1\xa1\xfd\xdfU\xbf\xbc\xfdr#\xd9\x0d\x9f\xef\xbd" +
-	"$.\x9c\xbdB\xfd\xc2O\xf6\\\xe4\x86\xf1n\x84\x9f" +
-	"\xf7N\x84\x9f\xf7\xfc\xf5\xf1\xec\xbc\xa3\x9b~n\xd0\x85" +
-	"\x180\xb5\x1b\x14\x0a\x02\xf5\x84\x0c^E0\xee\xd6F" +
-	"\x8d\xfb\xb59D\xc6\x80\xb6\xdf8\xa6iD\xea\x91\xfd" +
-	"\xef\xf5|\xdd\xf1\xf05\xd2\x13\xd3\x0a\xb2G{\xc18" +
-	"\xa0\xf9\x05\xd1\xb8\xbc\xed\xf2\xffS\xf5\xbe\xd5F\x8d\x1f" +
-	"|\xf2_\xb5\xef\x09\xca\xaa\x96\xee\xb4\xaa\xa5\x1e\x91\xb7" +
-	"\xaa\xe5j\xef&;\xefUj=\xeb+\x05\xd8\x83\x80" +
-	"\x19\x95\xa1\x98R!\x10\xe9\x8b\xd6\x10\x99\x0b%\xccU" +
-	"\x02q\x8c\xab4\xf8te/\x91y\x9f\x84\xb9Y@" +
-	"\xe5jV9_\xb4]\"B\x820(\x81T0\x1b" +
-	"\x04>\xcc\xec\xb4\x9c\xba\xed\x06x\xbb=\x0d\xbc\xfd\"" +
-	"\xd9x\xd1\xcar\xbeX\xa9\xf5\xec\xb2\x9c\x1d\xf37\xd8" +
-	"n\xdd\xf1\xe0\x9a!\x19\"\xf2_\x15\xe7\xfb\xa3\x12f" +
-	"Z c\xf9\xdfB\x0fjK\x80>=\xcb\xb5\xa5\xf2" +
-	"\x0e\xbb\xb0\xb6\xe4zD\x9ce\xacM\xd7\xbf\x8c\xc8\xec" +
-	"\x930\xd7\x0a\x00\x8d\x14\x07\xba\x89\xccU\x12\xe6\xa0\x80" +
-	".\x90\x86 \xd2\xd7\xf1\xe1C\x12\xe6F\x81\xae|\xa5" +
-	"^\xf6\x10%\x81(!Y\xb4\xad\xc2\x94\xbcR\x84\xa4" +
-	"g\x95\x9c\xe9\xc7\xb7Jw\xd0\xaaYC.\xd1\xc4t" +
-	"\xbb\x83t\x93U\xcb+\"F\x02\xb1\x09<h6\xd2" +
-	"\xd2\x9c\xba\xdf\xc2{\xda-4\x86q\x1bQ\xd6\x83D" +
-	"v7\x04:1\xaeR~\x8e\xc6\x08\xba\x89\xb2\x8f3" +
-	"\xb2\x8f\x11\xf1\x97j$j\xec\xf1c\x9ed\xe4\x19\x08" +
-	"\xc4\xe5\x98JC\xf2\xb0\xa1\x97(\xbb\x9b\x81\x83\x1c\x12" +
-	"\xba\xc9!!\"\xe3\x80\x1f\xb2\x8f\x91\xc3\x1c\x12\xbe\xa1" +
-	"\xd2\x08\x13\x19\x87\xb0\x86({\x90\x81\xa3\x0cD\xae\xab" +
-	"4\"D\xc6\x11\xff\xfa\xc3\x0c\x1cg.\xed\x9a\x12i" +
-	"\xdf1\x8e\xf9\xc8s\x8c\x9c\xe4\x90\xe8\x9f*\x8d(\x91" +
-	"q\xc2\xbf\xe4(\x03\xa7\x19\x98qU\xa51\x83\xc8x" +
-	"\x09\x0f\x12e\x8f3p\x86\x81\x99\x7f\xa84f\x12\x19" +
-	"/\xfb\x0f>\xc9\xc0Y\x06:\xae\xa84:\x88\x8cW" +
-	"\xfd;N3\xf0&\x03\xb1\xdfU\x1a1\"\xe35\x1f" +
-	"8\xc3\xc0\xdb\x0c\xc4\x7fSi\xc4Y\xe4>\xd5Y\x06" +
-	"\xceC@+\x97\x1c\x8a$s\x95\x8a\x03\x90\x00\x08Z" +
-	"i\xc5r\x84I L\xc8\xe4J\xdb\x07\xca\x1e\xe2$" +
-	"\x10'h\xdbV,G\x07\x09t\x10T\xae\xb4}\xb5" +
-	"S\xb1<\x96L\xb3\x95\xc9m5+\x8fT\xa0\xf9\xe6" +
-	"\x00\xe5\x8bV\x0d!\x12\x08\x114\xd7\xab\xb5\xbe\x7fj" +
-	"\x87=\xbc\xabR+\xb4\xfeg\xdc\xe1\xa1\\\xc5i\xd3" +
-	"M\x1c\x93\xa4Sr=\xa4\x02\x87mpgv\xfa\xba" +
-	"G*0\x8f[\x8e\xa7\xe36\xb5\xe8N\x1aNv\x88" +
-	"\x98\x84\xb9P@\xe5\x8b%\xa7P\xb3\xcb\x93\xbc\xa0m" +
-	"\x9dS\xb4.&\xb1g\xeb\xb9L\xe3\xe7\x14qv\x07" +
-	"\xe2\x8cC\xa9\xe9\xf2\xec\x14\xe3\xaa%\xd0\xde@\xa0\x93" +
-	"KP\xabT<\x8a\xfcg\xb3\x08R\xce4\x049U" +
-	"j+\xcbI\xfe\xc2\x0ca\xc2n\xd0\xb1Ae\xeb9" +
-	"?\x98P3\xa32L\xd4^\x06h-\x19}\xe9\xff" +
-	"I\xe8\x0b4\x04{\x0c\xad\xf5\xa8\xcf\xed&\xa1\xc75" +
-	"\xe9\xb8}H\xb2#\xf4a\x10\xd3\x94\xbe\xba&\xad|" +
-	"\xd3\xab\x9b\x85Z\xc4.6_\xc2\\\"\xa0\xb7ll" +
-	"\xf1\xb2\xa6\x7f/\x17\xe8*\xd7\x87\xecZk \xbb\x0a" +
-	"v\xb92\xd4\xfa7\xcdI\xec$\xcf\x86\x9f^\xdb\xcb" +
-	"ut'\xd7W\x0a\xb6\x99j_j1\xff\x16\x09\xb3" +
-	"\xc8\x97\x86\x1a\x97\xda|\xb8U\xc2t\x04 \x1a\x9d)" +
-	"q\xc3\x0a\x12fU@\x97\xf0\xddD\x1f\xe2\xc3\xa2\x84" +
-	"\xb9o\xaa\x9fv\xb9\xc5\xd26\x0f\x11\x12\x884\xbb7" +
-	"e\xab\xb4\xdd\xf5\xdfv\xca\xdf\x01\x00\x00\xff\xffkz" +
-	" _"
+const schema_c8aa6d83e0c03a9d = "x\xda\x94VmhTW\x1a~\x9fs\xee\xe4N\xcc" +
+	"Lf\xaew\xc4U\x09a\x97\xb0hv\x13\xbf\xc3n" +
+	"Xv&\x8b\x91\xd5\x8dn\xae\xa3\xe2\x82\xbbx3s" +
+	"\xe3\x0cNf\xb2s'ZiC\x15S\xac\xa0EJ" +
+	"\xa5Z\x94Zk\x8b\x86\xd4*\xf6G\xeb\x8fR\xfaa" +
+	"K\x8b\x7fJ\xe9\xaf\x96\x96B)HK\xbf\xfc6\xcd" +
+	")\xef\x9d\x8f\x9b\x0f\x15\xfbo\xe6<\xefy\xde\xf7<" +
+	"\xe7=\xcf{\x97\xfcY&\xc4\xd2\xc0\xe2\x00\x91\xf5\xb7" +
+	"@\x9d\xfa68\x1e\xda\xb8j\xdb\x1e\xb2\xe6\x00\xea\xef" +
+	"\xee\xb9%\xdf=\xff\xce]\xea\x86.\x88\xcca\xf1\xb1" +
+	"y@\xe8D\xe6\x13b\x17A\x15;\xde_?2\xf6" +
+	"\xe3Sd\xcc\x01Q\x00:\xd1\xf2\x80\x9c\x0d\x82\x19\x96" +
+	"q\x82\xba\xb6\xf5\xd6\x96\xdf5\xae>29\xa0\xad\x1c" +
+	"\xb0\xd2\x0b\xb8|e\xf6p\xd3\xec}/\x93\xd5\x08\xa8" +
+	"\x13\x9do}\xb9o`\xf4\x03\x0axI6\xc9\x0fM" +
+	"[\xf2\xaf\xff\xcaW\x09*\xf1\xeex\xff\xa6\x9b=g" +
+	"\xcbl\x1a\x93]\x97\xb3@\x9a\x9a\xd7~\xf9\xcc\xd37" +
+	"\xc6/L\xce\xf39C0\xbf\xf6\xf2\x9c\x8f\xfc\xef\xc5" +
+	"\x8ev\\\x9cR\xa9V\xaeT\xe3\x80S\x1f=:|" +
+	"u\xf4\xaf\x97\xb8\x10\xe1\x17\xd2\x0d\xbd\x91\xc8l\xd3N" +
+	"\x99+\xbd\x84K\xb5\xb9\x92\xa0\x8e\xfdp\xb1q\xef\x82" +
+	"\x96\xb7'\xf3\xd9\xba`>Gg\xbes[\xe2\x7f\xfc" +
+	"\"\xb1\xe6\xbdI\xb5\x1e\xd3\xe7s\xadm\x87\xf6\x7f5" +
+	"\xf8\xe9\x9f\xae\x96%\xde\xf0\xc9\xbe+\xe2\xd2\xd85\xea" +
+	"\x16\x9e\xc4{\xf5;\xe6!\x9d\xcf|@\xe73?{" +
+	"{\"\xb9\xe0\xe8\xe6\xef}\x1e\xf3\xf7\xc1;\xa4\xf9\x1b" +
+	"\x8dF\xe9\xd7K0\x03\xc1Q3\x1c\x9cK\xb4|^" +
+	"P\x87\xf9FP'R\xff\xde\xfff\xfbg\x0d\xff\xba" +
+	"EF\xe3\x0c\x99_\x08>g\x9e\xe5(\xf3\xa5 \xdf" +
+	"j\xed\xd6\xefu'\xa8\x1f5\xeb\xeb\xe7\x12\x99F\xfd" +
+	"7\x04e\x0ff\x17\xdb\x83\xd9v\x91\xb2\x07\xf3\x83\x9d" +
+	"\x9b\x9dT\xa9Pl__H\xc3\xe9\x05\xac\xa0\xd4B" +
+	"Ji 2\x16\xad%\xb2\x16JX\xab\x04\xc2\x98P" +
+	"1\xf0jW'w\x9e\x84\xb5E@\xf5\x15\xed|*" +
+	"\xe3\xb8D\x84FB\xaf\x04\xa2~K\x12x1\xbe\xd3" +
+	"\xce\x0d9\xae\x8f\xd7n\xae\x8c\xd7*\x92\xe5\x8a\xba\xf2" +
+	"\xa9L\xa1\xd8\xee\x96\x0aE\xa7\xa5\xd7.\xda\x03p-" +
+	"MjD^U\xe1eDVP\xc2\x8a\x094{\xd4" +
+	"\xd3(\xa3\xf7\xa5\xdce\xe7v\xb4lp\xdc\xa1\\i" +
+	"*e\xa7O\x19\xb7\xbdX\x18\xfe}\x11`\xcc\x14\xae" +
+	"'\x9b\xdf\xe1\xa4{\xb2n\x89\x88\x85\x0b\xd5\xe8\xba\xb9" +
+	"\xc2\x84\x84\xd5#\x00\x94U[\xd3Jd\xad\x92\xb0z" +
+	"\x05\x0c\x81\x18\x04\x91\xb1\x8e\x17\xff)am\x14hN" +
+	"\x15\x86\xf2%\x04I H\x88d\x1c;=\xf3\\\x91" +
+	"\x92\x9d\xcd=\xf4qs\x05;]\x16\xd0%z\x90$" +
+	"\xd5\x98\xc9\x92\xb4\xfa\x92D\x06\xedR\x06!\x12\x08=" +
+	"8\xd7\xbd\xa4\xfd-\xb7\x85JK\xdazn\xc8k\xc6" +
+	"\xbf\xd4\x9a\xd1\xdc\x8d?\x10%K\x90H\xee\x81@\x13" +
+	"&T\xd4\x93\xd6\x1cF+Q\xf2\x11FF\x18\x11\xbf" +
+	"\xa8\xb2\xbe\xe6^o\xcfc\x8c<\x09\x81\xb0\x1cW1" +
+	"H6Ct\x12%\xf70p\x90\xb7hwy\x8b\xc6" +
+	"o\xd8\xdb2\xc2\xc8a\xde\x12\xb8\xa3b\x08\x10\x99\x87" +
+	"\xb0\x96(y\x90\x81\xa3\x0c\xd4\xddV1\xd4\x11\x99G" +
+	"\xbc\xf4\x87\x198\xce\\\xfa-%bl/\xe61\x0f" +
+	"y\x86\x91\x93\xbc%xS\xc5\x10$2OxI\x8e" +
+	"2p\x9a\x81\xfa\x1b*\x86z~\xd8\xf8\x07Q\xf28" +
+	"\x03g\x18\x98u]\xc50\x8b\xdf\xb9W\xf0I\x06\xc6" +
+	"\x18h\xb8\xa6bh 2\xcfz9N3p\x9e\x81" +
+	"\xd0\xcf*\x86\x10\x91\xf9\x8a\x07\x9ca\xe05\x06\xc2?" +
+	"\xa9\x18\xc2D\xe6\x05\x8fj\x8c\x81\xd7!\xa0\xe7\xb39" +
+	"\xaa\x8b\xf4\x15\x0a9\x80\x04@\xd0\xb3\x1d+\x10 \x81" +
+	"\x00!\xde\x97\xdd\xbe&_B\x98\x04\xc2\x04\xbd\xbfc" +
+	"\x05\x1aH\xa0\x81\xa0\xfa\xb2\xdbW\xe7\x0av\x89\x1f\x7f" +
+	"\xa5;\"\xfdE;\x85\xa8\xef^\x95\xbeMe\xec\"" +
+	"4\x12\xd0\x08\xba[*V\xe3\x1f\xdf\xe1\xec\xdeU(" +
+	"\xa6\xab\xff\xe3\xee\xee\x81\xbeB\xaeF7\xb9\xf3\"\xb9" +
+	"\xac[B\xd4\x9f@e\xee\xf8N\xcf\xc1\x10\xf5m\xf0" +
+	"\xc1\xaf\xc2\xad\xf4\xa9;\xa5\xdf\xd9\xebB\x12\xd6B\x01" +
+	"\x95\xcads\xe9\xa2\x93\x9f\xe2j\xb5)\xf0\x10\xae\xe5" +
+	"%\x90%w\xbagT\x82\x92C}\xf1\xf2\xcfi\xc6" +
+	"\xd1\xea\x1bG\x18J\xcd\xb4\x8e&1\xa1\xaa\xe6\xd1\xe9" +
+	"\x9b\xc7T\x9d\x8a\x85B\x89\xea\x1e\xda\xc8|]\xe2e" +
+	"#\x98\xfe\x1e\xbb\xf2\x11\x8e\xb04\xc0W\xc1\xc0\x06\x95" +
+	"\x1c\xea\xf36\x13\x8aVT\x06\x88j\xc3\x0f\xd5qk" +
+	"\xfc\x7f>\x09\xc3\xd1\x81\xda\xc8G\xf5\x1b\xc3\xf8O+" +
+	"\x09c\x9d\x0eQ\xfbP@u\xec\x1b]\x8c\xad\xd4!" +
+	"k\xdf,\xa8Nhc\xd12\x12F\x93.sn\x02" +
+	"\x11v\xb0\x04\"l@\x094{\xfa'\xd0\x8b\x19\xae" +
+	"\xb2\xba(\xedTe\xc2U\xf4^\xc4\xe6\xd4\"a-" +
+	"\x110\xaaN\xdd\xb6\xac2\xf5V\x084\xe7\x87\x06\x9c" +
+	"b\xb5\xf9\x9b\xd3N\xbe0P\xfd7\xc3\xb5\x9c\x08\xf7" +
+	"\xa1\xa7Rm\x02\x1ah\x8d\xac/\xa4\x1d+ZKj" +
+	"3\xffV\x09+\xc3I\xb5rR\x87\x17\xb7IX9" +
+	"\x01\x88\xf2\x05g\xf9\xde\xd3\x12\xd6\xa0\x80!\xe19\x97" +
+	"1\xc0\x8b\x19\x09kd\xfa\xc8hv3\xd9\xfe\x12\xea" +
+	"H\xa0\xae\xd2\x04\xd3fqm\x80\xdco\x12\xff\x1a\x00" +
+	"\x00\xff\xff\xe5\xea\x94<"
 
 func init() {
 	schemas.Register(schema_c8aa6d83e0c03a9d,
 		0x806044540cfc08ec,
+		0x8ef1ac844ec73672,
 		0x95460e1858f85cf4,
 		0xa683121d7d12cdc6,
+		0xa94cf75566fcc440,
 		0xb1fcf692a8c62e19,
+		0xb3012e36a35e0fb0,
 		0xba39aaea7d7bcba2,
 		0xc2241b810eb3f099,
+		0xc54940df263f58ae,
 		0xea2bd670e2878d2d,
 		0xef56981b53fef997,
 		0xf4acba02cd83d452,

@@ -8,6 +8,7 @@ import (
 	"text/template"
 
 	"github.com/chzyer/readline"
+	"github.com/pkg/errors"
 	"github.com/spy16/parens/repl"
 	"github.com/urfave/cli/v2"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/wetware/ww/pkg/lang/reader"
 	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
 
+	"github.com/wetware/ww/internal/api"
 	clientutil "github.com/wetware/ww/internal/util/client"
 	ctxutil "github.com/wetware/ww/internal/util/ctx"
 )
@@ -84,7 +86,7 @@ func run() cli.ActionFunc {
 		}
 		defer lr.Close()
 
-		return repl.New(lang.New(),
+		return repl.New(lang.New(root),
 			repl.WithBanner(banner(c)),
 			repl.WithReaderFactory(readerFactory()),
 			repl.WithPrompts("ww »", "   ›"),
@@ -207,4 +209,18 @@ func (nopAnchor) Ls(context.Context) ([]ww.Anchor, error) {
 
 func (a nopAnchor) Walk(_ context.Context, path []string) ww.Anchor {
 	return append(a, path...)
+}
+
+func (a nopAnchor) Load(context.Context) (api.Value, error) {
+	// TODO:  return something for /
+
+	return api.Value{}, errors.New("not found")
+}
+
+func (a nopAnchor) Store(context.Context, api.Value) error {
+	if anchorpath.Root(a) {
+		return errors.New("not implemented")
+	}
+
+	return errors.New("not found")
 }
