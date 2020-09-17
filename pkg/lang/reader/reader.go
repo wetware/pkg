@@ -76,6 +76,7 @@ func init() {
 func New(r io.Reader) *reader.Reader {
 	rd := reader.New(r,
 		reader.WithNumReader(readNumber),
+		reader.WithSymbolFactory(newSymbol),
 		reader.WithPredefinedSymbols(symbols))
 
 	for init, macro := range macroTable {
@@ -83,6 +84,11 @@ func New(r io.Reader) *reader.Reader {
 	}
 
 	return rd
+}
+
+func newSymbol(s string) (parens.Any, error) {
+	// TODO(performance):  pre-allocate the arena
+	return lang.NewSymbol(capnp.SingleSegment(nil), s)
 }
 
 func annotateErr(rd *reader.Reader, err error, beginPos reader.Position, form string) error {

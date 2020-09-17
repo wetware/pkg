@@ -594,6 +594,8 @@ github.com/spy16/parens v0.0.0-20200916041413-f9a77bf315eb h1:n/gw69oS8eTAGAPXMi
 github.com/spy16/parens v0.0.0-20200916041413-f9a77bf315eb/go.mod h1:29mKVZbwwNIoUWXznUvkPLvjemtu8QnhGhabpnSPszM=
 github.com/spy16/parens v0.0.0-20200916153346-f5fd37c0e4bd h1:2jJgNlL+dF4gOR0G22jq/WgIBFb5D9xo5aj/YAmNFfI=
 github.com/spy16/parens v0.0.0-20200916153346-f5fd37c0e4bd/go.mod h1:29mKVZbwwNIoUWXznUvkPLvjemtu8QnhGhabpnSPszM=
+github.com/spy16/parens v0.0.0-20200917163848-5b9f0a5c7284 h1:CCMSpYwl0RYsj39mVav+nR5o7rEmxHk6s6K4mYt4LEQ=
+github.com/spy16/parens v0.0.0-20200917163848-5b9f0a5c7284/go.mod h1:29mKVZbwwNIoUWXznUvkPLvjemtu8QnhGhabpnSPszM=
 github.com/src-d/envconfig v1.0.0/go.mod h1:Q9YQZ7BKITldTBnoxsE5gOeB5y66RyPXeue/R4aaNBc=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.1.1/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
