@@ -12,6 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
+	"github.com/spy16/parens"
 
 	"github.com/wetware/ww/pkg/internal/filter"
 	"github.com/wetware/ww/pkg/internal/rpc"
@@ -113,15 +114,16 @@ type hostParams struct {
 
 	Namespace string `name:"ns"`
 
-	Host   host.Host
-	Filter filter.Filter
+	Host     host.Host
+	Filter   filter.Filter
+	Handlers []rpc.Capability `group:"rpc"`
+
+	Env *parens.Env
 }
 
 func newHost(ctx context.Context, lx fx.Lifecycle, ps hostParams) Host {
 	// export capabilities
-	for _, cap := range []rpc.Capability{
-		newRootAnchor(ps.Host, ps.Filter),
-	} {
+	for _, cap := range ps.Handlers {
 		ps.Host.SetStreamHandler(cap.Protocol(), handler(cap))
 	}
 

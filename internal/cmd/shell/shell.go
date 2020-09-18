@@ -18,7 +18,6 @@ import (
 	"github.com/wetware/ww/pkg/lang/reader"
 	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
 
-	"github.com/wetware/ww/internal/api"
 	clientutil "github.com/wetware/ww/internal/util/client"
 	ctxutil "github.com/wetware/ww/internal/util/ctx"
 )
@@ -210,16 +209,20 @@ func (a nopAnchor) Walk(_ context.Context, path []string) ww.Anchor {
 	return append(a, path...)
 }
 
-func (a nopAnchor) Load(context.Context) (api.Value, error) {
+func (a nopAnchor) Load(context.Context) (ww.Any, error) {
 	// TODO:  return something for /
 
-	return api.Value{}, errors.New("not found")
+	return nil, errors.New("not found")
 }
 
-func (a nopAnchor) Store(context.Context, api.Value) error {
+func (a nopAnchor) Store(context.Context, ww.Any) error {
 	if anchorpath.Root(a) {
 		return errors.New("not implemented")
 	}
 
 	return errors.New("not found")
+}
+
+func (a nopAnchor) Go(context.Context, ww.ProcSpec) error {
+	return errors.New("not implemented")
 }

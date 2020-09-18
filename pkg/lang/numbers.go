@@ -7,21 +7,16 @@ import (
 
 	"github.com/spy16/parens"
 	"github.com/wetware/ww/internal/api"
+	ww "github.com/wetware/ww/pkg"
 	capnp "zombiezen.com/go/capnproto2"
 )
 
 var (
-	_ parens.Any = (*Int64)(nil)
-	_ parens.Any = (*Float64)(nil)
-	_ parens.Any = (*BigInt)(nil)
-	_ parens.Any = (*BigFloat)(nil)
-	_ parens.Any = (*Frac)(nil)
-
-	_ apiValueProvider = (*Int64)(nil)
-	_ apiValueProvider = (*Float64)(nil)
-	_ apiValueProvider = (*BigInt)(nil)
-	_ apiValueProvider = (*BigFloat)(nil)
-	_ apiValueProvider = (*Frac)(nil)
+	_ ww.Any = (*Int64)(nil)
+	_ ww.Any = (*Float64)(nil)
+	_ ww.Any = (*BigInt)(nil)
+	_ ww.Any = (*BigFloat)(nil)
+	_ ww.Any = (*Frac)(nil)
 
 	_ Comparable = (*Int64)(nil)
 	_ Comparable = (*Float64)(nil)

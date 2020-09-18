@@ -2,11 +2,11 @@
 package lang
 
 import (
-	"reflect"
-
 	"github.com/pkg/errors"
 	"github.com/spy16/parens"
+	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
+	capnp "zombiezen.com/go/capnproto2"
 )
 
 var (
@@ -19,6 +19,10 @@ var (
 
 // New returns a new root environment.
 func New(a ww.Anchor) *parens.Env {
+	if a == nil {
+		panic("nil Anchor")
+	}
+
 	return parens.New(
 		parens.WithAnalyzer(analyzer(a)),
 		parens.WithGlobals(globals, nil))
@@ -39,18 +43,20 @@ type Comparable interface {
 // returns a new list/queue without the first item, for a vector,
 // returns a new vector without the last item. If the collection
 // is empty, returns an error.
-func Pop(v parens.Any) (parens.Any, error) {
-	switch c := v.(type) {
-	case List:
-		return c.Tail()
+func Pop(col ww.Any) (parens.Any, error) {
+	switch col.Value().Which() {
+	case api.Value_Which_list:
+		_, tail, err := listTail(col.Value())
+		return tail, err
 
-	case Vector:
-		return c.Pop()
+	case api.Value_Which_vector:
+		_, vec, err := vectorPop(col.Value())
+		return vec, err
 
 	default:
 		return nil, parens.Error{
 			Cause:   errors.New("unordered collection or atom"),
-			Message: reflect.TypeOf(v).String(),
+			Message: col.Value().Which().String(),
 		}
 
 	}
@@ -59,26 +65,28 @@ func Pop(v parens.Any) (parens.Any, error) {
 // Conj returns a new collection with the xs
 // 'added'. (conj nil item) returns (item).  The 'addition' may
 // happen at different 'places' depending on the concrete type.
-func Conj(v parens.Any, vs parens.Seq) (parens.Any, error) {
-	switch c := v.(type) {
-	case List:
+func Conj(col ww.Any, vs parens.Seq) (parens.Any, error) {
+	switch col.Value().Which() {
+	case api.Value_Which_list:
+		l := List{col.Value()}
 		err := parens.ForEach(vs, func(v parens.Any) (_ bool, err error) {
-			c, err = c.Cons(v)
+			l, err = listCons(capnp.SingleSegment(nil), v.(ww.Any).Value(), l)
 			return
 		})
-		return c, err
+		return l, err
 
-	case Vector:
+	case api.Value_Which_vector:
+		vec := Vector{col.Value()}
 		err := parens.ForEach(vs, func(v parens.Any) (_ bool, err error) {
-			c, err = c.Conj(v)
+			vec, err = vec.Conj(v)
 			return
 		})
-		return c, err
+		return vec, err
 
 	default:
 		return nil, parens.Error{
 			Cause:   errors.New("unordered collection or atom"),
-			Message: reflect.TypeOf(v).String(),
+			Message: col.Value().Which().String(),
 		}
 
 	}

@@ -4,26 +4,49 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	"github.com/spy16/parens"
 	"github.com/wetware/ww/internal/api"
+	ww "github.com/wetware/ww/pkg"
 	capnp "zombiezen.com/go/capnproto2"
 )
 
 var (
-	_ parens.Any = (*Bool)(nil)
-	_ parens.Any = (*String)(nil)
-	_ parens.Any = (*Keyword)(nil)
-	_ parens.Any = (*Symbol)(nil)
-	_ parens.Any = (*Char)(nil)
+	_ ww.Any = (*Bool)(nil)
+	_ ww.Any = (*String)(nil)
+	_ ww.Any = (*Keyword)(nil)
+	_ ww.Any = (*Symbol)(nil)
+	_ ww.Any = (*Char)(nil)
 
-	_ apiValueProvider = (*Bool)(nil)
-	_ apiValueProvider = (*String)(nil)
-	_ apiValueProvider = (*Keyword)(nil)
-	_ apiValueProvider = (*Symbol)(nil)
-	_ apiValueProvider = (*Char)(nil)
+	// singleton api.Value for Nil
+	nilVal api.Value
+
+	// True value of Bool
+	True Bool
+
+	//False value of Bool
+	False Bool
 )
 
-func valueOf(v api.Value) (val parens.Any, err error) {
+func init() {
+	_, seg, err := capnp.NewMessage(capnp.SingleSegment(nil))
+	if err != nil {
+		panic(err)
+	}
+
+	if nilVal, err = api.NewRootValue(seg); err == nil {
+		nilVal.SetNil()
+	}
+
+	if True, err = NewBool(capnp.SingleSegment(nil), true); err != nil {
+		panic(err)
+	}
+
+	if False, err = NewBool(capnp.SingleSegment(nil), false); err != nil {
+		panic(err)
+	}
+}
+
+// LiftValue to a parens.Any.
+func LiftValue(v api.Value) (val ww.Any, err error) {
 	switch w := v.Which(); w {
 	case api.Value_Which_nil:
 		val = Nil{}
@@ -88,8 +111,14 @@ func enoval(w api.Value_Which) error {
 	return errors.Errorf("ValueError: missing %s", w)
 }
 
-// Nil value
-type Nil = parens.Nil
+// Nil represents a null value.
+type Nil struct{}
+
+// SExpr returns a valid s-expression for nil.
+func (Nil) SExpr() (string, error) { return "nil", nil }
+
+// Value of the Nil type
+func (Nil) Value() api.Value { return nilVal }
 
 // Bool represents a boolean value.
 type Bool struct {

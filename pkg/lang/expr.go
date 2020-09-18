@@ -23,33 +23,25 @@ type PathExpr struct {
 }
 
 // Eval returns the PathExpr unmodified
-func (pe PathExpr) Eval(env *parens.Env) (parens.Any, error) {
-	return pe, nil
+func (pex PathExpr) Eval(env *parens.Env) (parens.Any, error) {
+	return pex, nil
 }
 
 // Invoke is the data selector for the Path type.  It gets/sets the value at the anchor
 // path.
-func (pe PathExpr) Invoke(_ *parens.Env, args ...parens.Any) (parens.Any, error) {
-	path, err := pe.Parts()
+func (pex PathExpr) Invoke(_ *parens.Env, args ...parens.Any) (parens.Any, error) {
+	path, err := pex.Parts()
 	if err != nil {
 		return nil, err
 	}
 
-	anchor := pe.Root.Walk(context.Background(), path)
+	anchor := pex.Root.Walk(context.Background(), path)
 
 	if len(args) == 0 {
-		v, err := anchor.Load(context.Background())
-		if err != nil {
-			return nil, parens.Error{
-				Cause:   err,
-				Message: anchorpath.Join(path),
-			}
-		}
-
-		return valueOf(v)
+		return anchor.Load(context.Background())
 	}
 
-	err = anchor.Store(context.Background(), args[0].(apiValueProvider).Value())
+	err = anchor.Store(context.Background(), args[0].(ww.Any))
 	if err != nil {
 		return nil, parens.Error{
 			Cause:   err,
@@ -64,13 +56,13 @@ func (pe PathExpr) Invoke(_ *parens.Env, args ...parens.Any) (parens.Any, error)
 type PathListExpr struct{ PathExpr }
 
 // Eval calls ww.Anchor.Ls
-func (le PathListExpr) Eval(_ *parens.Env) (parens.Any, error) {
-	path, err := le.Parts()
+func (plx PathListExpr) Eval(_ *parens.Env) (parens.Any, error) {
+	path, err := plx.Parts()
 	if err != nil {
 		return nil, err
 	}
 
-	as, err := le.Root.Walk(context.Background(), path).Ls(context.Background())
+	as, err := plx.Root.Walk(context.Background(), path).Ls(context.Background())
 	if err != nil {
 		return nil, err
 	}
@@ -95,26 +87,19 @@ func (le PathListExpr) Eval(_ *parens.Env) (parens.Any, error) {
 	return b.Vector()
 }
 
-// // GoExpr evaluates an expression in a separate goroutine.
-// type GoExpr struct {
-// 	Value parens.Any
-// }
+// RemoteProcExpr starts a remote goroutine.
+type RemoteProcExpr struct {
+	PathExpr
+	Spec ww.ProcSpec
+}
 
-// // Eval forks the given context to get a child context and launches goroutine
-// // with the child context to evaluate the
-// func (ge GoExpr) Eval(env *parens.Env) (parens.Any, error) {
-// 	child := env.Fork()
-// 	go func() {
-// 		_, _ = child.Eval(ge.Value)
-// 	}()
-// 	return nil, nil
-// }
+// Eval resolves the anchor and starts the remote goroutine.
+func (rpx RemoteProcExpr) Eval(env *parens.Env) (parens.Any, error) {
+	path, err := rpx.Parts()
+	if err != nil {
+		return nil, err
+	}
 
-// type PopExpr struct{ Value parens.Any }
-
-// // Eval removes an element from the collection and returns it, along with a new
-// // collection of identical type, corresponding to v without the returned value.
-// // Calling Pop on an atom is an error.
-// func (pe PopExpr) Eval(env *parens.Env) (parens.Any, error) {
-
-// }
+	return nil, rpx.Root.Walk(context.Background(), path).
+		Go(context.Background(), rpx.Spec)
+}

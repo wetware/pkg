@@ -1,7 +1,10 @@
 package host
 
 import (
+	"context"
+
 	"github.com/pkg/errors"
+	"go.uber.org/fx"
 
 	capnp "zombiezen.com/go/capnproto2"
 
@@ -11,6 +14,11 @@ import (
 
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
+	"github.com/wetware/ww/pkg/internal/filter"
+	"github.com/wetware/ww/pkg/internal/rpc"
+	"github.com/wetware/ww/pkg/internal/rpc/anchor"
+	"github.com/wetware/ww/pkg/internal/tree"
+	"github.com/wetware/ww/pkg/lang"
 	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
 )
 
@@ -19,23 +27,43 @@ import (
 */
 
 var (
-	_ api.Anchor_Server = (*rootAnchor)(nil)
-	_ api.Anchor_Server = (*anchor)(nil)
+	_ ww.Anchor = (*rootAnchor)(nil)
+	_ ww.Anchor = (*hostAnchor)(nil)
 
-	nullValue api.Value
+	_ rpc.Capability = (*rootAnchorCap)(nil)
+
+	_ api.Anchor_Server = (*rootAnchorCap)(nil)
+	_ api.Anchor_Server = (*anchorCap)(nil)
 )
 
-func init() {
-	_, seg, err := capnp.NewMessage(capnp.SingleSegment(nil))
-	if err != nil {
-		panic(err)
-	}
+type anchorParams struct {
+	fx.In
 
-	if nullValue, err = api.NewRootValue(seg); err != nil {
-		panic(err)
-	}
+	Host   host.Host
+	Filter filter.Filter
+}
 
-	nullValue.SetNil()
+type anchorOut struct {
+	fx.Out
+
+	Tree    tree.Node
+	Handler rpc.Capability `group:"rpc"`
+	Root    ww.Anchor
+}
+
+func newAnchor(ps anchorParams) (out anchorOut) {
+	out.Tree = tree.New()
+	out.Handler = rootAnchorCap{
+		id:           ps.Host.ID(),
+		routingTable: ps.Filter,
+		anchorCap:    anchorCap{root: out.Tree},
+	}
+	out.Root = rootAnchor{
+		local: ps.Host.ID().String(),
+		node:  out.Tree,
+		term:  rpc.NewTerminal(ps.Host),
+	}
+	return
 }
 
 type routingTable interface {
@@ -43,34 +71,124 @@ type routingTable interface {
 }
 
 type rootAnchor struct {
-	id peer.ID
-	routingTable
-	anchor
+	local string
+	node  tree.Node
+	term  rpc.Terminal
 }
 
-func newRootAnchor(host host.Host, t routingTable) rootAnchor {
-	return rootAnchor{
-		id:           host.ID(),
-		routingTable: t,
-		anchor: anchor{
-			root: newAnchorTree(),
-		},
+func (rootAnchor) String() string {
+	return "/"
+}
+
+func (root rootAnchor) Path() []string {
+	return []string{}
+}
+
+func (root rootAnchor) Ls(ctx context.Context) ([]ww.Anchor, error) {
+	return anchor.Ls(ctx, root.term, rpc.AutoDial{})
+}
+
+func (root rootAnchor) Walk(ctx context.Context, path []string) ww.Anchor {
+	if anchorpath.Root(path) {
+		return root
+	}
+
+	if root.isLocal(path) {
+		return hostAnchor{
+			root: path[0],
+			node: root.node.Walk(path[1:]),
+		}
+	}
+
+	return anchor.Walk(ctx, root.term, rpc.DialString(path[0]), path)
+}
+
+func (root rootAnchor) Load(context.Context) (ww.Any, error) {
+	// TODO:  return a dict with some info about the global cluster
+	return nil, errors.New("NOT IMPLEMENTED")
+}
+
+func (root rootAnchor) Store(context.Context, ww.Any) error {
+	return errors.New("not implemented")
+}
+
+func (root rootAnchor) Go(context.Context, ww.ProcSpec) error {
+	return errors.New("not implemented")
+}
+
+func (root rootAnchor) isLocal(path []string) bool {
+	return !anchorpath.Root(path) && path[0] == root.local
+}
+
+type hostAnchor struct {
+	root string
+	node tree.Node
+}
+
+func (a hostAnchor) String() string {
+	return anchorpath.Join(a.Path())
+}
+
+func (a hostAnchor) Path() []string {
+	return append([]string{a.root}, a.node.Path()...)
+}
+
+func (a hostAnchor) Ls(context.Context) ([]ww.Anchor, error) {
+	ns := a.node.List()
+	as := make([]ww.Anchor, len(ns))
+	for i, n := range ns {
+		as[i] = hostAnchor{root: a.root, node: n}
+	}
+
+	return as, nil
+}
+
+func (a hostAnchor) Walk(_ context.Context, path []string) ww.Anchor {
+	return hostAnchor{
+		root: a.root,
+		node: a.node.Walk(path),
 	}
 }
 
-func (r rootAnchor) Loggable() map[string]interface{} {
+func (a hostAnchor) Load(context.Context) (ww.Any, error) {
+	if n := a.node.Load(); n != nil {
+		return lang.LiftValue(*n)
+	}
+
+	return lang.Nil{}, nil
+}
+
+func (a hostAnchor) Store(_ context.Context, any ww.Any) error {
+	if v := any.Value(); a.node.Store(&v) {
+		return nil
+	}
+
+	return ww.ErrAnchorNotEmpty
+}
+
+func (a hostAnchor) Go(_ context.Context, s ww.ProcSpec) error {
+	panic("NOT IMPLEMENTED")
+}
+
+type rootAnchorCap struct {
+	id peer.ID
+	routingTable
+	anchorCap
+}
+
+func (r rootAnchorCap) Loggable() map[string]interface{} {
 	return map[string]interface{}{"cap": "root_anchor"}
 }
 
-func (r rootAnchor) Protocol() protocol.ID {
-	return ww.Protocol
+func (r rootAnchorCap) Protocol() protocol.ID {
+	return ww.AnchorProtocol
 }
 
-func (r rootAnchor) Client() capnp.Client {
+func (r rootAnchorCap) Client() capnp.Client {
 	return api.Anchor_ServerToClient(r).Client
 }
 
-func (r rootAnchor) Ls(call api.Anchor_ls) error {
+func (r rootAnchorCap) Ls(call api.Anchor_ls) error {
 	peers := r.Peers()
 
 	cs, err := call.Results.NewChildren(int32(len(peers)))
@@ -103,7 +221,7 @@ func (r rootAnchor) Ls(call api.Anchor_ls) error {
 	return nil
 }
 
-func (r rootAnchor) Walk(call api.Anchor_walk) error {
+func (r rootAnchorCap) Walk(call api.Anchor_walk) error {
 	path, err := call.Params.Path()
 	if err != nil {
 		return errinternal(err)
@@ -114,35 +232,35 @@ func (r rootAnchor) Walk(call api.Anchor_walk) error {
 		return errors.Errorf("bad request: id mismatch (expected %s, got %s)", r.id, id)
 	}
 
-	// pop the path head before passing the call down to the `anchor`.
+	// pop the path head before passing the call down to the `anchorCap`.
 	if err = call.Params.SetPath(anchorpath.Join(parts[1:])); err != nil {
 		return errinternal(err)
 	}
 
-	return r.anchor.Walk(call)
+	return r.anchorCap.Walk(call)
 }
 
-func (r rootAnchor) Load(call api.Anchor_load) error {
+func (r rootAnchorCap) Load(call api.Anchor_load) error {
 	return errors.New("NOT IMPLEMENTED")
 }
 
-func (r rootAnchor) Store(call api.Anchor_store) error {
+func (r rootAnchorCap) Store(call api.Anchor_store) error {
 	return errors.New("NOT IMPLEMENTED")
 }
 
-type anchor struct {
-	root anchorNode
+type anchorCap struct {
+	root tree.Node
 }
 
-func (a anchor) Loggable() map[string]interface{} {
-	return map[string]interface{}{"cap": "anchor"}
+func (a anchorCap) Loggable() map[string]interface{} {
+	return map[string]interface{}{"cap": "anchorCap"}
 }
 
-func (a anchor) Client() capnp.Client {
+func (a anchorCap) Client() capnp.Client {
 	return api.Anchor_ServerToClient(a).Client
 }
 
-func (a anchor) Ls(call api.Anchor_ls) error {
+func (a anchorCap) Ls(call api.Anchor_ls) error {
 	children := a.root.List()
 
 	cs, err := call.Results.NewChildren(int32(len(children)))
@@ -161,11 +279,11 @@ func (a anchor) Ls(call api.Anchor_ls) error {
 			break
 		}
 
-		if err = item.SetPath(child.Path); err != nil {
+		if err = item.SetPath(child.Name); err != nil {
 			break
 		}
 
-		if err = item.SetAnchor(a.subAnchor(child.Node)); err != nil {
+		if err = item.SetAnchor(a.subAnchor(child)); err != nil {
 			break
 		}
 
@@ -177,7 +295,7 @@ func (a anchor) Ls(call api.Anchor_ls) error {
 	return errinternal(err)
 }
 
-func (a anchor) Walk(call api.Anchor_walk) error {
+func (a anchorCap) Walk(call api.Anchor_walk) error {
 	path, err := call.Params.Path()
 	if err != nil {
 		return errinternal(err)
@@ -187,15 +305,15 @@ func (a anchor) Walk(call api.Anchor_walk) error {
 	return errinternal(call.Results.SetAnchor(child))
 }
 
-func (a anchor) Load(call api.Anchor_load) error {
+func (a anchorCap) Load(call api.Anchor_load) error {
 	if v := a.root.Load(); v != nil {
 		return call.Results.SetValue(*v)
 	}
 
-	return call.Results.SetValue(nullValue)
+	return call.Results.SetValue(lang.Nil{}.Value())
 }
 
-func (a anchor) Store(call api.Anchor_store) error {
+func (a anchorCap) Store(call api.Anchor_store) error {
 	v, err := call.Params.Value()
 	if err != nil {
 		return err
@@ -209,13 +327,34 @@ func (a anchor) Store(call api.Anchor_store) error {
 		return nil
 	}
 
-	return errors.New("anchor contains value")
+	return ww.ErrAnchorNotEmpty
 }
 
-func (a anchor) subAnchor(node anchorNode) api.Anchor {
-	return api.Anchor_ServerToClient(anchor{
+func (a anchorCap) subAnchor(node tree.Node) api.Anchor {
+	return api.Anchor_ServerToClient(anchorCap{
 		root: node,
 	})
+}
+
+func (a anchorCap) Go(call api.Anchor_go) error {
+	spec, err := call.Params.Spec()
+	if err != nil {
+		return err
+	}
+
+	switch spec.Which() {
+	case api.Anchor_ProcSpec_Which_goroutine:
+		return errors.New("Goroutine NOT IMPLEMENTED")
+
+	case api.Anchor_ProcSpec_Which_osProc:
+		return errors.New("UnixProc NOT IMPLEMENTED")
+
+	case api.Anchor_ProcSpec_Which_docker:
+		return errors.New("Docker NOT IMPLEMENTED")
+
+	default:
+		return errors.New("invalid spec")
+	}
 }
 
 func errinternal(err error) error {

@@ -135,34 +135,6 @@ func (c anchorClient) Go(env *parens.Env, args parens.Seq) (parens.Expr, error) 
 	return goLocal(env, first, args)
 }
 
-func (c anchorClient) GoRemote(env *parens.Env, p Path, args parens.Seq) (parens.Expr, error) {
-	first, err := args.First()
-	if err != nil {
-		return nil, err
-	}
-
-	if _, ok := first.(Keyword); ok {
-		// TODO(enhancement):  it's config. can be UNIX or Docker.
-		//
-		// 1. read args into map
-		// 2. analyze the map & determine next steps
-		return nil, errors.New("NOT IMPLEMENTED")
-	}
-
-	// TODO(enhancement):  evaluate the value in a native goroutine (on the remote host)
-	return nil, errors.New("NOT IMPLEMENTED")
-}
-
-func goLocal(env *parens.Env, target parens.Any, args parens.Seq) (parens.Expr, error) {
-	/*
-		TODO(enhancement):  support for local UNIX procs and Docker containers.
-
-		Read in args and check if they satisfy a exec.Cmd, or Docker equivalent.
-	*/
-
-	return parens.GoExpr{Value: target}, nil
-}
-
 func parsePop(_ *parens.Env, args parens.Seq) (parens.Expr, error) {
 	v, err := args.First()
 	if err != nil {
@@ -175,7 +147,7 @@ func parsePop(_ *parens.Env, args parens.Seq) (parens.Expr, error) {
 		}
 	}
 
-	v, err = Pop(v)
+	v, err = Pop(v.(ww.Any))
 	return parens.ConstExpr{Const: v}, err
 }
 
@@ -195,6 +167,6 @@ func parseConj(_ *parens.Env, args parens.Seq) (parens.Expr, error) {
 		return nil, err
 	}
 
-	v, err = Conj(v, args)
+	v, err = Conj(v.(ww.Any), args)
 	return parens.ConstExpr{Const: v}, err
 }

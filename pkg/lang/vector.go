@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spy16/parens"
 	"github.com/wetware/ww/internal/api"
+	ww "github.com/wetware/ww/pkg"
 	capnp "zombiezen.com/go/capnproto2"
 )
 
@@ -31,8 +32,7 @@ var (
 
 	emptyVector Vector
 
-	_ parens.Any       = (*Vector)(nil)
-	_ apiValueProvider = (*Vector)(nil)
+	_ ww.Any = (*Vector)(nil)
 	// _ parens.Vector    = (*Vector)(nil)
 	// _ parens.Seq       = (*vectorSeq)(nil)
 )
@@ -131,13 +131,8 @@ func (v Vector) Count() (cnt int, err error) {
 	return
 }
 
-func (v Vector) count() (vec api.Vector, cnt int, err error) {
-	if vec, err = v.v.Vector(); err != nil {
-		return
-	}
-
-	cnt = int(vec.Count())
-	return
+func (v Vector) count() (api.Vector, int, error) {
+	return vectorCount(v.v)
 }
 
 // Conj returns a new vector with items appended.
@@ -165,7 +160,7 @@ func (v Vector) Conj(items ...parens.Any) (Vector, error) {
 	}
 
 	for i, val := range items {
-		if v, err = vectorCons(vec, cnt+i, val); err != nil {
+		if v, err = vectorCons(vec, cnt+i, val.(ww.Any)); err != nil {
 			return Vector{}, err
 		}
 	}
@@ -186,12 +181,12 @@ func (v Vector) Conj(items ...parens.Any) (Vector, error) {
 // EntryAt returns the item at given index. Returns error if the index
 // is out of range.
 func (v Vector) EntryAt(i int) (parens.Any, error) {
-	vs, err := v.arrayFor(i)
+	vs, err := vectorArrayFor(v.v, i)
 	if err != nil {
 		return nil, err
 	}
 
-	return valueOf(vs.At(i & mask))
+	return LiftValue(vs.At(i & mask))
 }
 
 // Assoc returns a new vector with the value at given index updated.
@@ -206,99 +201,21 @@ func (v Vector) Assoc(i int, val parens.Any) (Vector, error) {
 
 	// update?
 	if i >= 0 && i < cnt {
-		return vectorUpdate(vec, cnt, i, val)
+		return vectorUpdate(vec, cnt, i, val.(ww.Any))
 	}
 
 	// append?
 	if i == cnt {
-		return vectorCons(vec, cnt, val)
+		return vectorCons(vec, cnt, val.(ww.Any))
 	}
 
 	return Vector{}, ErrIndexOutOfBounds
 }
 
 // Pop returns a new vector without the last item in v
-func (v Vector) Pop() (_ Vector, err error) {
-	var cnt int
-	var vec api.Vector
-	if vec, cnt, err = v.count(); err != nil {
-		return
-	}
-
-	switch cnt {
-	case 0:
-		err = errors.New("can't pop empty vector")
-		return
-	case 1:
-		return emptyVector, nil
-	}
-
-	var root api.Vector_Node
-	if root, err = vec.Root(); err != nil {
-		return
-	}
-
-	var tail api.Value_List
-	if tail, err = vec.Tail(); err != nil {
-		return
-	}
-
-	// more than one item in the tail?
-	var newtail api.Value_List
-	if cnt-vectorTailoff(cnt) > 1 {
-		if newtail, err = newVectorTail(capnp.SingleSegment(nil), tail.Len()-1); err != nil {
-			return
-		}
-
-		if err = copyVectorTail(newtail, tail, newtail.Len()); err != nil {
-			return
-		}
-
-		return newVector(capnp.SingleSegment(nil),
-			cnt-1,
-			int(vec.Shift()),
-			root,
-			newtail)
-	}
-
-	/*
-		slow path; single item in tail => fetch tail node from trie
-	*/
-
-	if newtail, err = v.arrayFor(cnt - 2); err != nil {
-		return
-	}
-
-	shift := int(vec.Shift())
-	var ok bool
-	var newroot api.Vector_Node
-	if newroot, ok, err = popVectorTail(shift, cnt, root); err != nil {
-		return
-	}
-
-	// null node?
-	if !ok {
-		// 	newroot = EMPTY_NODE;
-		if newroot, err = newVectorNodeWithBranches(capnp.SingleSegment(nil)); err != nil {
-			return
-		}
-	}
-
-	var bs api.Vector_Node_List
-	if bs, err = newroot.Branches(); err != nil {
-		return
-	}
-
-	if shift > bits && nullNode(bs.At(1)) {
-		newroot = bs.At(0)
-		shift -= 5
-	}
-
-	return newVector(capnp.SingleSegment(nil),
-		cnt-1,
-		shift,
-		newroot,
-		newtail)
+func (v Vector) Pop() (Vector, error) {
+	_, vec, err := vectorPop(v.v)
+	return vec, err
 }
 
 func popVectorTail(level, cnt int, n api.Vector_Node) (ret api.Vector_Node, ok bool, err error) {
@@ -342,18 +259,14 @@ func popVectorTail(level, cnt int, n api.Vector_Node) (ret api.Vector_Node, ok b
 	}
 }
 
-func (v Vector) arrayFor(i int) (api.Value_List, error) {
+func vectorArrayFor(v api.Value, i int) (api.Value_List, error) {
 	// See:  https://github.com/clojure/clojure/blob/0b73494c3c855e54b1da591eeb687f24f608f346/src/jvm/clojure/lang/PersistentVector.java#L97-L113
 
-	if cnt, err := v.Count(); err == nil {
+	vec, cnt, err := vectorCount(v)
+	if err == nil {
 		if i < 0 || i >= cnt {
 			return api.Value_List{}, ErrIndexOutOfBounds
 		}
-	}
-
-	vec, err := v.v.Vector()
-	if err != nil {
-		return api.Value_List{}, err
 	}
 
 	// value in tail?
@@ -396,7 +309,7 @@ func (v Vector) arrayFor(i int) (api.Value_List, error) {
 	return n.Values()
 }
 
-func vectorUpdate(vec api.Vector, cnt, i int, val parens.Any) (Vector, error) {
+func vectorUpdate(vec api.Vector, cnt, i int, any ww.Any) (Vector, error) {
 	root, err := vec.Root()
 	if err != nil {
 		return Vector{}, err
@@ -415,25 +328,26 @@ func vectorUpdate(vec api.Vector, cnt, i int, val parens.Any) (Vector, error) {
 			return Vector{}, err
 		}
 
-		// newTail[i & 0x01f] = val;
-		if err = setValueListAt(tail, i&mask, val); err != nil {
+		// newTail[i & 0x01f] = any;
+		if err = tail.Set(i&mask, any.Value()); err != nil {
 			return Vector{}, err
 		}
 	} else {
-		if root, err = vectorAssoc(int(vec.Shift()), root, i, val); err != nil {
+		if root, err = vectorAssoc(int(vec.Shift()), root, i, any); err != nil {
 			return Vector{}, err
 		}
 	}
 
-	return newVector(capnp.SingleSegment(nil),
+	_, res, err := newVector(capnp.SingleSegment(nil),
 		cnt,
 		int(vec.Shift()),
 		root,
 		tail,
 	)
+	return res, err
 }
 
-func vectorCons(vec api.Vector, cnt int, val parens.Any) (_ Vector, err error) {
+func vectorCons(vec api.Vector, cnt int, any ww.Any) (_ Vector, err error) {
 	shift := int(vec.Shift())
 
 	var root api.Vector_Node
@@ -459,15 +373,16 @@ func vectorCons(vec api.Vector, cnt int, val parens.Any) (_ Vector, err error) {
 			return
 		}
 
-		if err = setValueListAt(newtail, tail.Len(), val); err != nil {
+		if err = newtail.Set(tail.Len()&mask, any.Value()); err != nil {
 			return
 		}
 
-		return newVector(capnp.SingleSegment(nil),
+		_, res, err := newVector(capnp.SingleSegment(nil),
 			cnt+1,
 			shift,
 			root,
 			newtail)
+		return res, err
 	}
 
 	/*
@@ -503,14 +418,15 @@ func vectorCons(vec api.Vector, cnt int, val parens.Any) (_ Vector, err error) {
 		return
 	}
 
-	return newVector(capnp.SingleSegment(nil),
+	_, res, err := newVector(capnp.SingleSegment(nil),
 		cnt+1,
 		shift,
 		root,
 		newtail)
+	return res, err
 }
 
-func vectorAssoc(level int, n api.Vector_Node, i int, v parens.Any) (ret api.Vector_Node, err error) {
+func vectorAssoc(level int, n api.Vector_Node, i int, v ww.Any) (ret api.Vector_Node, err error) {
 	if ret, err = cloneNode(capnp.SingleSegment(nil), n, -1); err != nil {
 		return
 	}
@@ -546,12 +462,107 @@ func vectorTailoff(cnt int) int {
 	return ((cnt - 1) >> bits) << bits
 }
 
+func vectorCount(v api.Value) (vec api.Vector, cnt int, err error) {
+	if vec, err = v.Vector(); err != nil {
+		return
+	}
+
+	cnt = int(vec.Count())
+	return
+}
+
+func vectorPop(v api.Value) (vec api.Vector, _ Vector, err error) {
+	var cnt int
+	if vec, cnt, err = vectorCount(v); err != nil {
+		return
+	}
+
+	switch cnt {
+	case 0:
+		err = errors.New("can't pop empty vector")
+		return
+	case 1:
+		return vec, emptyVector, nil
+	}
+
+	var root api.Vector_Node
+	if root, err = vec.Root(); err != nil {
+		return
+	}
+
+	var tail api.Value_List
+	if tail, err = vec.Tail(); err != nil {
+		return
+	}
+
+	// more than one item in the tail?
+	var newtail api.Value_List
+	if cnt-vectorTailoff(cnt) > 1 {
+		if newtail, err = newVectorTail(capnp.SingleSegment(nil), tail.Len()-1); err != nil {
+			return
+		}
+
+		if err = copyVectorTail(newtail, tail, newtail.Len()); err != nil {
+			return
+		}
+
+		return newVector(capnp.SingleSegment(nil),
+			cnt-1,
+			int(vec.Shift()),
+			root,
+			newtail)
+	}
+
+	/*
+		slow path; single item in tail => fetch tail node from trie
+	*/
+
+	if newtail, err = vectorArrayFor(v, cnt-2); err != nil {
+		return
+	}
+
+	shift := int(vec.Shift())
+	var ok bool
+	var newroot api.Vector_Node
+	if newroot, ok, err = popVectorTail(shift, cnt, root); err != nil {
+		return
+	}
+
+	// null node?
+	if !ok {
+		// 	newroot = EMPTY_NODE;
+		if newroot, err = newVectorNodeWithBranches(capnp.SingleSegment(nil)); err != nil {
+			return
+		}
+	}
+
+	var bs api.Vector_Node_List
+	if bs, err = newroot.Branches(); err != nil {
+		return
+	}
+
+	if shift > bits && nullNode(bs.At(1)) {
+		newroot = bs.At(0)
+		shift -= 5
+	}
+
+	return newVector(capnp.SingleSegment(nil),
+		cnt-1,
+		shift,
+		newroot,
+		newtail)
+}
+
+func vectorConj() {
+
+}
+
 // VectorBuilder is a factory type used to efficiently construct Vectors using the Conj
 // method.
 type VectorBuilder struct {
 	cnt, shift int
 	root       api.Vector_Node
-	tail       []parens.Any
+	tail       []ww.Any
 }
 
 // NewVectorBuilder returns a new VectorBuilder, using the a to create the root
@@ -565,12 +576,12 @@ func NewVectorBuilder(a capnp.Arena) (*VectorBuilder, error) {
 	return &VectorBuilder{
 		shift: bits,
 		root:  root,
-		tail:  make([]parens.Any, 0, 32),
+		tail:  make([]ww.Any, 0, 32),
 	}, nil
 }
 
 // Vector returns the accumulated vector.
-func (b *VectorBuilder) Vector() (_ Vector, err error) {
+func (b *VectorBuilder) Vector() (vec Vector, err error) {
 	if b.cnt == 0 {
 		return emptyVector, nil
 	}
@@ -581,23 +592,24 @@ func (b *VectorBuilder) Vector() (_ Vector, err error) {
 	}
 
 	for i, v := range b.tail {
-		if err = setValueListAt(tail, i, v); err != nil {
+		if err = tail.Set(i&mask, v.(ww.Any).Value()); err != nil {
 			return
 		}
 	}
 
-	return newVector(capnp.SingleSegment(nil),
+	_, vec, err = newVector(capnp.SingleSegment(nil),
 		b.cnt,
 		b.shift,
 		b.root,
 		tail)
+	return
 }
 
 // Conj appends the values to the vector under construction.
 func (b *VectorBuilder) Conj(v parens.Any) (err error) {
 	// room in tail?
 	if len(b.tail) < width {
-		b.tail = append(b.tail, v)
+		b.tail = append(b.tail, v.(ww.Any))
 		b.cnt++
 		return
 	}
@@ -605,7 +617,7 @@ func (b *VectorBuilder) Conj(v parens.Any) (err error) {
 	// full tail; push into tree
 	if err = b.insertTail(); err == nil {
 		// shove v into the tail
-		b.tail = append(b.tail[:0], v)
+		b.tail = append(b.tail[:0], v.(ww.Any))
 		b.cnt++
 	}
 
@@ -720,24 +732,24 @@ func newVectorValue(a capnp.Arena) (val api.Value, v api.Vector, err error) {
 	return
 }
 
-func newVector(a capnp.Arena, cnt, shift int, root api.Vector_Node, t api.Value_List) (Vector, error) {
+func newVector(a capnp.Arena, cnt, shift int, root api.Vector_Node, t api.Value_List) (api.Vector, Vector, error) {
 	val, vec, err := newVectorValue(a)
 	if err != nil {
-		return Vector{}, err
+		return api.Vector{}, Vector{}, err
 	}
 
 	if err = vec.SetRoot(root); err != nil {
-		return Vector{}, err
+		return api.Vector{}, Vector{}, err
 	}
 
 	if err = vec.SetTail(t); err != nil {
-		return Vector{}, err
+		return api.Vector{}, Vector{}, err
 	}
 
 	vec.SetCount(uint32(cnt))
 	vec.SetShift(uint8(shift))
 
-	return Vector{val}, nil
+	return vec, Vector{val}, nil
 }
 
 func newRootVectorNode(a capnp.Arena) (api.Vector_Node, error) {
@@ -782,22 +794,15 @@ func newVectorLeafNode(a capnp.Arena) (n api.Vector_Node, vs api.Value_List, err
 	return
 }
 
-func newVectorNodeWithValues(a capnp.Arena, vs ...parens.Any) (n api.Vector_Node, err error) {
+func newVectorNodeWithValues(a capnp.Arena, vs ...ww.Any) (n api.Vector_Node, err error) {
 	var vals api.Value_List
 	if n, vals, err = newVectorLeafNode(a); err != nil {
 		return
 	}
 
 	for i, v := range vs {
-		switch x := v.(type) {
-		case Nil:
-			vals.At(i).SetNil()
-		case apiValueProvider:
-			if err = vals.Set(i, x.Value()); err != nil {
-				return
-			}
-		default:
-			panic(errors.Errorf("no Value() method for %T", x))
+		if err = vals.Set(i, v.(ww.Any).Value()); err != nil {
+			return
 		}
 	}
 
@@ -828,26 +833,18 @@ func setNodeBranch(p, n api.Vector_Node, i int) error {
 	return bs.Set(i, n)
 }
 
-func setNodeValue(n api.Vector_Node, i int, v parens.Any) error {
+func setNodeValue(n api.Vector_Node, i int, any ww.Any) error {
 	vs, err := n.Values()
 	if err != nil {
 		return err
 	}
 
-	return setValueListAt(vs, i, v)
+	return vs.Set(i&mask, any.Value())
 }
 
-func setValueListAt(vs api.Value_List, i int, v parens.Any) error {
-	switch x := v.(type) {
-	case Nil:
-		vs.At(i & mask).SetNil()
-		return nil
-	case apiValueProvider:
-		return vs.Set(i&mask, x.Value())
-	default:
-		return errors.Errorf("no Value() method for %T", x)
-	}
-}
+// func setValueListAt(vs api.Value_List, i int, v parens.Any) error {
+// 	return
+// }
 
 // cloneNode deep-copies n.  If lim >= 0, it will only copy the first `lim` elements.
 func cloneNode(a capnp.Arena, n api.Vector_Node, lim int) (api.Vector_Node, error) {
@@ -991,7 +988,7 @@ func copyVectorTail(dst, src api.Value_List, lim int) (err error) {
 // }
 
 // func (s vectorSeq) First() parens.Any {
-// 	val, err := valueOf(s.vs.At(s.offset))
+// 	val, err := ValueOf(s.vs.At(s.offset))
 // 	if err != nil {
 // 		panic(err)
 // 	}

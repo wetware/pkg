@@ -1,4 +1,5 @@
-package host
+// Package tree contains the anchor tree
+package tree
 
 import (
 	goruntime "runtime"
@@ -7,87 +8,77 @@ import (
 	"github.com/wetware/ww/internal/api"
 )
 
-// subNode .
-type subNode struct {
-	Path string
-	Node anchorNode
-}
+// Node in an anchor tree.
+type Node struct{ *nodeRef }
 
-// anchorNode in an anchor tree.
-type anchorNode struct {
-	r *nodeRef
-}
-
-// newAnchorTree anchor tree
-func newAnchorTree() anchorNode {
-	return anchorNode{
-		r: newRootNode(),
-	}
+// New anchor tree
+func New() Node {
+	return Node{newRootNode()}
 }
 
 func newRootNode() *nodeRef {
 	return newNode(nil, "").ref()
 }
 
-// Path from root to the present anchorNode
-func (a anchorNode) Path() []string {
-	return a.r.Path()
+// Path from root to the present Node
+func (a Node) Path() []string {
+	return a.nodeRef.Path()
 }
 
 // Walk an anchor path
-func (a anchorNode) Walk(path []string) anchorNode {
-	return anchorNode{
-		r: a.r.Walk(path),
-	}
+func (a Node) Walk(path []string) Node {
+	return Node{a.nodeRef.Walk(path)}
 }
 
 // List the anchor's children
-func (a anchorNode) List() []subNode {
+func (a Node) List() []Node {
 	// N.B.:  hard-lock because the List() operation may co-occur with a sub-anchor
 	//		  creation/deletion.
-	a.r.Hard().Lock()
-	defer a.r.Hard().Unlock()
+	a.nodeRef.Hard().Lock()
+	defer a.nodeRef.Hard().Unlock()
 
-	children := make([]subNode, 0, len(a.r.childrenUnsafe()))
-	for path, child := range a.r.childrenUnsafe() {
-		children = append(children, subNode{Path: path, Node: anchorNode{r: child.ref()}})
+	children := make([]Node, 0, len(a.nodeRef.childrenUnsafe()))
+	for _, child := range a.nodeRef.childrenUnsafe() {
+		children = append(children, Node{child.ref()})
 	}
 
 	return children
 }
 
-func (a anchorNode) Load() *api.Value {
-	a.r.Tx().RLock()
-	defer a.r.Tx().RUnlock()
+// Load API value
+func (a Node) Load() *api.Value {
+	a.Tx().RLock()
+	defer a.Tx().RUnlock()
 
-	return a.r.getValUnsafe()
+	return a.getValUnsafe()
 }
 
-func (a anchorNode) Store(val *api.Value) bool {
-	a.r.Tx().Lock()
-	defer a.r.Tx().Unlock()
+// Store API value
+func (a Node) Store(val *api.Value) bool {
+	a.Tx().Lock()
+	defer a.Tx().Unlock()
 
-	return a.r.setValIfEmpty(val)
+	return a.setValIfEmpty(val)
 }
 
 // nodeRef is a proxy to a node that is responsible for implemented refcounting and gc
 // logic.  When anchor is GCed, the underlying node's refcount is decremented.
-type nodeRef struct{ n *node }
+type nodeRef struct{ *node }
 
 // transaction lock
 func (h nodeRef) Tx() *sync.RWMutex {
-	return &h.n.tx
+	return &h.tx
 }
 
 // Unsafe - requires locking
 func (h nodeRef) setObjUnsafe(val *api.Value) {
-	h.n.val = val
+	h.val = val
 }
 
 // Unsafe - requires locking
 func (h nodeRef) setValIfEmpty(val *api.Value) bool {
-	if val == nil || h.n.val == nil {
-		h.n.val = val
+	if val == nil || h.val == nil {
+		h.val = val
 		return true
 	}
 
@@ -96,22 +87,22 @@ func (h nodeRef) setValIfEmpty(val *api.Value) bool {
 
 // Unsafe - requires locking
 func (h nodeRef) getValUnsafe() *api.Value {
-	return h.n.val
+	return h.val
 }
 
 // Unsafe - requires locking
 func (h nodeRef) childrenUnsafe() map[string]*node {
-	return h.n.children
+	return h.children
 }
 
 // hard lock - prevents updates to children & counter states
 func (h nodeRef) Hard() *sync.Mutex {
-	return &h.n.µ
+	return &h.µ
 }
 
 func (h nodeRef) Path() (parts []string) {
 	// zero-allocation filtering of empty path components.
-	raw := h.n.path()
+	raw := h.path()
 	parts = raw[:0]
 	for _, segment := range raw {
 		if len(segment) > 0 {
@@ -123,16 +114,16 @@ func (h nodeRef) Path() (parts []string) {
 
 func (h nodeRef) Walk(path []string) *nodeRef {
 	if len(path) == 0 {
-		return h.n.ref()
+		return h.ref()
 	}
 
-	h.n.µ.Lock()
-	defer h.n.µ.Unlock()
+	h.µ.Lock()
+	defer h.µ.Unlock()
 
-	n, ok := h.n.children[path[0]]
+	n, ok := h.children[path[0]]
 	if !ok {
-		n = newNode(h.n, path[0])
-		h.n.children[path[0]] = n
+		n = newNode(h.node, path[0])
+		h.children[path[0]] = n
 		return n.ref().Walk(path[1:]) // Ensure n is garbage-collected.
 	}
 
@@ -147,14 +138,14 @@ type node struct {
 	tx  sync.RWMutex
 	val *api.Value
 
-	name     string
+	Name     string
 	parent   *node
 	children map[string]*node
 }
 
 func newNode(parent *node, name string) *node {
 	return &node{
-		name:     name,
+		Name:     name,
 		parent:   parent,
 		children: make(map[string]*node),
 	}
@@ -162,10 +153,10 @@ func newNode(parent *node, name string) *node {
 
 func (n *node) path() []string {
 	if n.parent == nil {
-		return []string{n.name}
+		return []string{n.Name}
 	}
 
-	return append(n.parent.path(), n.name)
+	return append(n.parent.path(), n.Name)
 }
 
 func (n *node) orphaned() bool {
@@ -196,7 +187,7 @@ func (n *node) ref() *nodeRef {
 
 		n.ctr.Decr()
 		if n.orphanedUnsafe() && n.parent != nil {
-			go n.parent.rmChild(n.name)
+			go n.parent.rmChild(n.Name)
 		}
 	})
 

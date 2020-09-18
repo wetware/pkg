@@ -35,6 +35,7 @@ import (
 
 	"github.com/wetware/ww/pkg/internal/filter"
 	"github.com/wetware/ww/pkg/internal/p2p"
+	"github.com/wetware/ww/pkg/lang"
 
 	// wetware public
 	"github.com/wetware/ww/pkg/boot"
@@ -82,6 +83,8 @@ func (cfg Config) assemble(h *Host) *fx.App {
 			// block.New,
 			filter.New,
 			services,
+			newAnchor,
+			lang.New,
 			newHost,
 		),
 		fx.Invoke(

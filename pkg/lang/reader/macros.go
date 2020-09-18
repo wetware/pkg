@@ -15,16 +15,21 @@ import (
 	"github.com/wetware/ww/pkg/lang"
 )
 
-// func readSymbol(rd *reader.Reader, init rune) (parens.Symbol, error) {
-// 	beginPos := rd.Position()
+func readSymbol(rd *reader.Reader, init rune) (parens.Any, error) {
+	beginPos := rd.Position()
 
-// 	s, err := rd.Token(init)
-// 	if err != nil {
-// 		return "", annotateErr(rd, err, beginPos, s)
-// 	}
+	s, err := rd.Token(init)
+	if err != nil {
+		return nil, annotateErr(rd, err, beginPos, s)
+	}
 
-// 	return lang.NewSymbol(capnp.SingleSegment(nil), s)
-// }
+	if predefVal, found := rd.Resolve(s); found {
+		return predefVal, nil
+	}
+
+	// TODO(performance):  pre-allocate
+	return lang.NewSymbol(capnp.SingleSegment(nil), s)
+}
 
 func readString(rd *reader.Reader, init rune) (parens.Any, error) {
 	beginPos := rd.Position()

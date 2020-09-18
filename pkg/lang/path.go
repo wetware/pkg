@@ -3,15 +3,13 @@ package lang
 import (
 	capnp "zombiezen.com/go/capnproto2"
 
-	"github.com/spy16/parens"
-
 	"github.com/wetware/ww/internal/api"
+	ww "github.com/wetware/ww/pkg"
 	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
 )
 
 var (
-	_ parens.Any       = (*Path)(nil)
-	_ apiValueProvider = (*Path)(nil)
+	_ ww.Any = (*Path)(nil)
 )
 
 // Path points to an anchor

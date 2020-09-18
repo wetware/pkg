@@ -3,6 +3,7 @@ package lang
 import (
 	"github.com/spy16/parens"
 	"github.com/wetware/ww/internal/api"
+	ww "github.com/wetware/ww/pkg"
 	capnp "zombiezen.com/go/capnproto2"
 )
 
@@ -10,9 +11,8 @@ var (
 	// EmptyList is a zero-value List
 	EmptyList List
 
-	_ parens.Any       = (*List)(nil)
-	_ parens.Seq       = (*List)(nil)
-	_ apiValueProvider = (*List)(nil)
+	_ ww.Any     = (*List)(nil)
+	_ parens.Seq = (*List)(nil)
 )
 
 func init() {
@@ -46,7 +46,8 @@ func NewList(a capnp.Arena, vs ...parens.Any) (l List, err error) {
 	}
 
 	for i := len(vs) - 1; i >= 0; i-- {
-		if l, err = listCons(capnp.SingleSegment(nil), vs[i], l); err != nil {
+		l, err = listCons(capnp.SingleSegment(nil), vs[i].(ww.Any).Value(), l)
+		if err != nil {
 			break
 		}
 	}
@@ -55,13 +56,9 @@ func NewList(a capnp.Arena, vs ...parens.Any) (l List, err error) {
 }
 
 // Count returns the number of the list.
-func (l List) Count() (cnt int, err error) {
-	var null bool
-	if null, err = l.isNull(); err == nil && !null {
-		_, cnt, err = l.count()
-	}
-
-	return
+func (l List) Count() (int, error) {
+	ll, _, err := listIsNull(l.v)
+	return int(ll.Count()), err
 }
 
 // SExpr returns a valid s-expression for List
@@ -84,7 +81,7 @@ func (l List) Conj(items ...parens.Any) (parens.Seq, error) {
 	}
 
 	for _, item := range items {
-		if res, err = res.Cons(item); err != nil {
+		if res, err = res.Cons(item.(ww.Any)); err != nil {
 			return nil, err
 		}
 	}
@@ -93,8 +90,8 @@ func (l List) Conj(items ...parens.Any) (parens.Seq, error) {
 }
 
 // Cons returns a new list with the item added at the head of the list.
-func (l List) Cons(v parens.Any) (List, error) {
-	return listCons(capnp.SingleSegment(nil), v, l)
+func (l List) Cons(any parens.Any) (List, error) {
+	return listCons(capnp.SingleSegment(nil), any.(ww.Any).Value(), l)
 }
 
 // First returns the head or first item of the list.
@@ -108,20 +105,9 @@ func (l List) First() (v parens.Any, err error) {
 }
 
 // Next returns the tail of the list.
-func (l List) Next() (tail parens.Seq, err error) {
-	tail, err = l.Tail()
-	return
-}
-
-// Tail returns the tail of the list.  It is equivalent to Next() except that it returns
-// a List.
-func (l List) Tail() (tail List, err error) {
-	var null bool
-	if null, err = l.isNull(); err == nil && !null {
-		_, tail, err = l.tail()
-	}
-
-	return
+func (l List) Next() (parens.Seq, error) {
+	_, next, err := listNext(l.v)
+	return next, err
 }
 
 // Value returns the api.Value for List
@@ -147,30 +133,26 @@ func (l List) head() (ll api.LinkedList, v parens.Any, err error) {
 		return
 	}
 
-	v, err = valueOf(raw)
+	v, err = LiftValue(raw)
 	return
 }
 
-func (l List) tail() (ll api.LinkedList, tail List, err error) {
-	if ll, err = l.v.List(); err != nil {
+func (l List) isNull() (null bool, err error) {
+	_, null, err = listIsNull(l.v)
+	return
+}
+
+func listTail(v api.Value) (ll api.LinkedList, tail List, err error) {
+	if ll, err = v.List(); err != nil {
 		return
 	}
 
 	var val api.Value
 	if val, err = ll.Tail(); err == nil {
-		tail = List{v: val} // TODO(xxx) position?
+		tail = List{v: val}
 	}
 
 	return
-}
-
-func (l List) isNull() (bool, error) {
-	lv, err := l.v.List()
-	if err != nil {
-		return false, err
-	}
-
-	return lv.Count() == 0, nil
 }
 
 // func listToSlice(l List, sizeHint int) ([]parens.Any, error) {
@@ -182,13 +164,13 @@ func (l List) isNull() (bool, error) {
 // 	return slice, err
 // }
 
-func listCons(a capnp.Arena, v parens.Any, tail List) (l List, err error) {
+func listCons(a capnp.Arena, v api.Value, tail List) (l List, err error) {
 	var ll api.LinkedList
 	if l, ll, err = newList(a); err != nil {
 		return
 	}
 
-	if err = ll.SetHead(v.(apiValueProvider).Value()); err != nil {
+	if err = ll.SetHead(v); err != nil {
 		return
 	}
 
@@ -212,6 +194,25 @@ func listCons(a capnp.Arena, v parens.Any, tail List) (l List, err error) {
 
 	ll.SetCount(uint32(cnt))
 	return
+}
+
+func listIsNull(v api.Value) (l api.LinkedList, null bool, err error) {
+	l, err = v.List()
+	null = err == nil && l.Count() == 0
+	return
+}
+
+func listNext(v api.Value) (api.LinkedList, parens.Seq, error) {
+	ll, null, err := listIsNull(v)
+	if err != nil || null {
+		return ll, nil, err
+	}
+
+	if v, err = ll.Tail(); err != nil {
+		return ll, nil, err
+	}
+
+	return ll, List{v}, nil
 }
 
 func newList(a capnp.Arena) (l List, ll api.LinkedList, err error) {
