@@ -49,7 +49,7 @@ func Dial(ctx context.Context, h host.Host, id peer.ID, pid []protocol.ID) Clien
 	// TODO(performance):  packed stream transport
 	return Client{
 		Peer:   id,
-		Client: rpc.NewConn(rpc.StreamTransport(s)).Bootstrap(ctx),
+		Client: rpc.NewConn(StreamTransport(PackedCodec{}, s)).Bootstrap(ctx),
 	}
 }
 

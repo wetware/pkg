@@ -25,16 +25,12 @@ type Capability interface {
 
 // Handle an incoming stream with the supplied capability.
 func Handle(cap Capability, rwc io.ReadWriteCloser) error {
-	// TODO:  write a stream transport that uses a packed encoder/decoder pair
-	//
-	//  Difficulty:  easy.
-	// 	https: //github.com/capnproto/go-capnproto2/blob/v2.18.0/rpc/transport.go
-	conn := rpc.NewConn(rpc.StreamTransport(rwc), rpc.MainInterface(cap.Client()))
-
-	err := conn.Wait() // always returns an error
-	if err == rpc.ErrConnClosed {
-		return nil
+	if err := rpc.NewConn(
+		StreamTransport(PackedCodec{}, rwc),
+		rpc.MainInterface(cap.Client()),
+	).Wait(); err != rpc.ErrConnClosed { // Wait always returns non-nil error
+		return err
 	}
 
-	return err
+	return nil
 }
