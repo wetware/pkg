@@ -10,13 +10,13 @@ import (
 )
 
 var (
-	_ = parens.ParseSpecial(parseGoExpr)
 	_ = parens.ParseSpecial(parseDefExpr)
 	_ = parens.ParseSpecial(parseQuoteExpr)
 	_ = parens.ParseSpecial(parsePop)
 	_ = parens.ParseSpecial(parseConj)
 
 	_ = parens.ParseSpecial(anchorClient{}.Ls)
+	_ = parens.ParseSpecial(anchorClient{}.Go)
 )
 
 func parseQuoteExpr(_ *parens.Env, args parens.Seq) (parens.Expr, error) {
@@ -86,22 +86,6 @@ func parseDefExpr(env *parens.Env, args parens.Seq) (parens.Expr, error) {
 	}, nil
 }
 
-func parseGoExpr(_ *parens.Env, args parens.Seq) (parens.Expr, error) {
-	return nil, errors.New("NOT IMPLEMENTED")
-	// v, err := args.First()
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// if v == nil {
-	// 	return nil, parens.Error{
-	// 		Cause: errors.New("go expr requires exactly one argument"),
-	// 	}
-	// }
-
-	// return GoExpr{Value: v}, nil
-}
-
 type anchorClient struct{ root ww.Anchor }
 
 func (c anchorClient) Ls(_ *parens.Env, args parens.Seq) (parens.Expr, error) {
@@ -126,6 +110,57 @@ func (c anchorClient) Ls(_ *parens.Env, args parens.Seq) (parens.Expr, error) {
 		Root: c.root,
 		Path: p,
 	}}, nil
+}
+
+func (c anchorClient) Go(env *parens.Env, args parens.Seq) (parens.Expr, error) {
+	first, err := args.First()
+	if err != nil {
+		return nil, err
+	}
+
+	if first == nil {
+		return nil, parens.Error{
+			Cause: errors.New("go expr requires at least one argument"),
+		}
+	}
+
+	if args, err = args.Next(); err != nil {
+		return nil, err
+	}
+
+	if p, ok := first.(Path); ok {
+		return c.GoRemote(env, p, args)
+	}
+
+	return goLocal(env, first, args)
+}
+
+func (c anchorClient) GoRemote(env *parens.Env, p Path, args parens.Seq) (parens.Expr, error) {
+	first, err := args.First()
+	if err != nil {
+		return nil, err
+	}
+
+	if _, ok := first.(Keyword); ok {
+		// TODO(enhancement):  it's config. can be UNIX or Docker.
+		//
+		// 1. read args into map
+		// 2. analyze the map & determine next steps
+		return nil, errors.New("NOT IMPLEMENTED")
+	}
+
+	// TODO(enhancement):  evaluate the value in a native goroutine (on the remote host)
+	return nil, errors.New("NOT IMPLEMENTED")
+}
+
+func goLocal(env *parens.Env, target parens.Any, args parens.Seq) (parens.Expr, error) {
+	/*
+		TODO(enhancement):  support for local UNIX procs and Docker containers.
+
+		Read in args and check if they satisfy a exec.Cmd, or Docker equivalent.
+	*/
+
+	return parens.GoExpr{Value: target}, nil
 }
 
 func parsePop(_ *parens.Env, args parens.Seq) (parens.Expr, error) {

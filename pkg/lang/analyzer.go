@@ -22,9 +22,9 @@ func analyzer(root ww.Anchor) formAnalyzer {
 	return formAnalyzer{
 		root: root,
 		specialForms: map[string]parens.ParseSpecial{
-			"go":    parseGoExpr,
 			"def":   parseDefExpr,
 			"quote": parseQuoteExpr,
+			"go":    c.Go,
 			"ls":    c.Ls,
 			"pop":   parsePop,
 			"conj":  parseConj,
