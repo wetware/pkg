@@ -13,8 +13,10 @@ var (
 	_ = parens.ParseSpecial(parseGoExpr)
 	_ = parens.ParseSpecial(parseDefExpr)
 	_ = parens.ParseSpecial(parseQuoteExpr)
+	_ = parens.ParseSpecial(parsePop)
+	_ = parens.ParseSpecial(parseConj)
 
-	_ = parens.ParseSpecial(anchorClient{}.parseLsExpr)
+	_ = parens.ParseSpecial(anchorClient{}.Ls)
 )
 
 func parseQuoteExpr(_ *parens.Env, args parens.Seq) (parens.Expr, error) {
@@ -102,7 +104,7 @@ func parseGoExpr(_ *parens.Env, args parens.Seq) (parens.Expr, error) {
 
 type anchorClient struct{ root ww.Anchor }
 
-func (c anchorClient) parseLsExpr(_ *parens.Env, args parens.Seq) (parens.Expr, error) {
+func (c anchorClient) Ls(_ *parens.Env, args parens.Seq) (parens.Expr, error) {
 	v, err := args.First()
 	if err != nil {
 		return nil, err
@@ -124,4 +126,40 @@ func (c anchorClient) parseLsExpr(_ *parens.Env, args parens.Seq) (parens.Expr, 
 		Root: c.root,
 		Path: p,
 	}}, nil
+}
+
+func parsePop(_ *parens.Env, args parens.Seq) (parens.Expr, error) {
+	v, err := args.First()
+	if err != nil {
+		return nil, err
+	}
+
+	if v == nil {
+		return nil, parens.Error{
+			Cause: errors.New("pop requires exactly one argument"),
+		}
+	}
+
+	v, err = Pop(v)
+	return parens.ConstExpr{Const: v}, err
+}
+
+func parseConj(_ *parens.Env, args parens.Seq) (parens.Expr, error) {
+	v, err := args.First()
+	if err != nil {
+		return nil, err
+	}
+
+	if v == nil {
+		return nil, parens.Error{
+			Cause: errors.New("pop requires at least one argument"),
+		}
+	}
+
+	if args, err = args.Next(); err != nil {
+		return nil, err
+	}
+
+	v, err = Conj(v, args)
+	return parens.ConstExpr{Const: v}, err
 }

@@ -109,3 +109,12 @@ func (le PathListExpr) Eval(_ *parens.Env) (parens.Any, error) {
 // 	}()
 // 	return nil, nil
 // }
+
+// type PopExpr struct{ Value parens.Any }
+
+// // Eval removes an element from the collection and returns it, along with a new
+// // collection of identical type, corresponding to v without the returned value.
+// // Calling Pop on an atom is an error.
+// func (pe PopExpr) Eval(env *parens.Env) (parens.Any, error) {
+
+// }

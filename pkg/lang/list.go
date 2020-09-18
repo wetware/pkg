@@ -84,12 +84,17 @@ func (l List) Conj(items ...parens.Any) (parens.Seq, error) {
 	}
 
 	for _, item := range items {
-		if res, err = listCons(capnp.SingleSegment(nil), item, res); err != nil {
+		if res, err = res.Cons(item); err != nil {
 			return nil, err
 		}
 	}
 
 	return res, nil
+}
+
+// Cons returns a new list with the item added at the head of the list.
+func (l List) Cons(v parens.Any) (List, error) {
+	return listCons(capnp.SingleSegment(nil), v, l)
 }
 
 // First returns the head or first item of the list.
@@ -104,6 +109,13 @@ func (l List) First() (v parens.Any, err error) {
 
 // Next returns the tail of the list.
 func (l List) Next() (tail parens.Seq, err error) {
+	tail, err = l.Tail()
+	return
+}
+
+// Tail returns the tail of the list.  It is equivalent to Next() except that it returns
+// a List.
+func (l List) Tail() (tail List, err error) {
 	var null bool
 	if null, err = l.isNull(); err == nil && !null {
 		_, tail, err = l.tail()

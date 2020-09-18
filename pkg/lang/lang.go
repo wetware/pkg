@@ -35,39 +35,51 @@ type Comparable interface {
 	Comp(other parens.Any) (int, error)
 }
 
-// Pop removes an element from the collection and returns it, along with a new
-// collection of identical type, corresponding to v without the returned value.
-// Calling Pop on an atom is an error.
-func Pop(v parens.Any) (res parens.Any, col parens.Any, err error) {
+// Pop returns a collection without one item.  For a list, Pop
+// returns a new list/queue without the first item, for a vector,
+// returns a new vector without the last item. If the collection
+// is empty, returns an error.
+func Pop(v parens.Any) (parens.Any, error) {
 	switch c := v.(type) {
-	case parens.Seq:
-		res, col, err = popSeq(c)
+	case List:
+		return c.Tail()
 
 	case Vector:
-		var i int
-		if i, err = c.Count(); err != nil {
-			return
-		}
-
-		if res, err = c.EntryAt(i - 1); err == nil {
-			col, err = c.Pop()
-		}
+		return c.Pop()
 
 	default:
-		err = parens.Error{
-			Cause:   errors.New("not a collection"),
+		return nil, parens.Error{
+			Cause:   errors.New("unordered collection or atom"),
 			Message: reflect.TypeOf(v).String(),
 		}
 
 	}
-
-	return
 }
 
-func popSeq(seq parens.Seq) (res parens.Any, _ parens.Seq, err error) {
-	if res, err = seq.First(); err == nil {
-		seq, err = seq.Next()
-	}
+// Conj returns a new collection with the xs
+// 'added'. (conj nil item) returns (item).  The 'addition' may
+// happen at different 'places' depending on the concrete type.
+func Conj(v parens.Any, vs parens.Seq) (parens.Any, error) {
+	switch c := v.(type) {
+	case List:
+		err := parens.ForEach(vs, func(v parens.Any) (_ bool, err error) {
+			c, err = c.Cons(v)
+			return
+		})
+		return c, err
 
-	return res, seq, err
+	case Vector:
+		err := parens.ForEach(vs, func(v parens.Any) (_ bool, err error) {
+			c, err = c.Conj(v)
+			return
+		})
+		return c, err
+
+	default:
+		return nil, parens.Error{
+			Cause:   errors.New("unordered collection or atom"),
+			Message: reflect.TypeOf(v).String(),
+		}
+
+	}
 }

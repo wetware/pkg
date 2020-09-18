@@ -25,7 +25,9 @@ func analyzer(root ww.Anchor) formAnalyzer {
 			"go":    parseGoExpr,
 			"def":   parseDefExpr,
 			"quote": parseQuoteExpr,
-			"ls":    c.parseLsExpr,
+			"ls":    c.Ls,
+			"pop":   parsePop,
+			"conj":  parseConj,
 		},
 	}
 }
