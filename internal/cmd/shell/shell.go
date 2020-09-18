@@ -26,7 +26,6 @@ import (
 const bannerTemplate = `Wetware v{{.App.Version}}
 Copyright {{.App.Copyright}}
 Compiled with {{.GoVersion}} for {{.GOOS}}
-
 `
 
 var (
