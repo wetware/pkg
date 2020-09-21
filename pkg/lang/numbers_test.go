@@ -5,15 +5,15 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/spy16/parens"
 	"github.com/stretchr/testify/assert"
+	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/lang"
 	capnp "zombiezen.com/go/capnproto2"
 )
 
 func TestInt(t *testing.T) {
 	for _, tt := range []struct {
-		a, b    parens.Any
+		a, b    ww.Any
 		want    int
 		wantErr bool
 	}{
@@ -107,7 +107,7 @@ func TestInt(t *testing.T) {
 
 func TestFloat(t *testing.T) {
 	for _, tt := range []struct {
-		a, b    parens.Any
+		a, b    ww.Any
 		want    int
 		wantErr bool
 	}{
@@ -201,7 +201,7 @@ func TestFloat(t *testing.T) {
 
 func TestBigInt(t *testing.T) {
 	for _, tt := range []struct {
-		a, b    parens.Any
+		a, b    ww.Any
 		want    int
 		wantErr bool
 	}{
@@ -295,7 +295,7 @@ func TestBigInt(t *testing.T) {
 
 func TestBigFloat(t *testing.T) {
 	for _, tt := range []struct {
-		a, b    parens.Any
+		a, b    ww.Any
 		want    int
 		wantErr bool
 	}{
@@ -389,7 +389,7 @@ func TestBigFloat(t *testing.T) {
 
 func TestFrac(t *testing.T) {
 	for _, tt := range []struct {
-		a, b    parens.Any
+		a, b    ww.Any
 		want    int
 		wantErr bool
 	}{
@@ -527,7 +527,7 @@ func mustBigInt(i int64) lang.BigInt {
 }
 
 func compDesc(tt struct {
-	a, b    parens.Any
+	a, b    ww.Any
 	want    int
 	wantErr bool
 }) string {

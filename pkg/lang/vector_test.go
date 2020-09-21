@@ -7,6 +7,7 @@ import (
 	"github.com/spy16/parens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/lang"
 	capnp "zombiezen.com/go/capnproto2"
 )
@@ -16,16 +17,16 @@ func TestNewVector(t *testing.T) {
 
 	for _, tt := range []struct {
 		desc string
-		vs   []parens.Any
+		vs   []ww.Any
 	}{{
 		desc: "empty",
-		vs:   []parens.Any{},
+		vs:   []ww.Any{},
 	}, {
 		desc: "single",
-		vs:   []parens.Any{mustKeyword("specimen")},
+		vs:   []ww.Any{mustKeyword("specimen")},
 	}, {
 		desc: "multi",
-		vs: []parens.Any{
+		vs: []ww.Any{
 			mustKeyword("keyword"),
 			mustString("string"),
 			mustSymbol("symbol"),
@@ -224,7 +225,88 @@ func TestVectorPop(t *testing.T) {
 	}
 }
 
-func mustVector(vs ...parens.Any) lang.Vector {
+func TestVectorEquality(t *testing.T) {
+	for _, tt := range []struct {
+		desc      string
+		v         lang.Vector
+		newVector func() lang.Vector
+	}{
+		{
+			desc: "basic",
+			v:    mustVector(mustInt(0), mustInt(1), mustInt(2)),
+			newVector: func() lang.Vector {
+				return mustVector(mustInt(0), mustInt(1), mustInt(2))
+			},
+		},
+		{
+			desc: "pop from tail",
+			v:    mustVector(mustInt(0), mustInt(1), mustInt(2)),
+			newVector: func() lang.Vector {
+				v := mustVector(mustInt(0), mustInt(1), mustInt(2), mustInt(3))
+				any, err := lang.Pop(v)
+				require.NoError(t, err)
+				return any.(lang.Vector)
+			},
+		},
+		{
+			desc: "pop from leaf",
+			v:    vectorRange(32),
+			newVector: func() lang.Vector {
+				v := vectorRange(33)
+				any, err := lang.Pop(v)
+				require.NoError(t, err)
+				return any.(lang.Vector)
+			},
+		},
+		{
+			desc: "pop multiple across tail boundary",
+			v:    vectorRange(30),
+			newVector: func() lang.Vector {
+				var err error
+				var any ww.Any = vectorRange(35)
+				for i := 0; i < 5; i++ {
+					if any, err = lang.Pop(any); err != nil {
+						panic(err)
+					}
+				}
+
+				return any.(lang.Vector)
+			},
+		},
+		{
+			desc: "complex",
+			v: mustVector(
+				mustKeyword("keyword"),
+				mustFrac(1, 32),
+				mustVector(mustFloat(3.14), mustString("string")),
+			),
+			newVector: func() lang.Vector {
+				var err error
+				v := mustVector(mustKeyword("keyword"), mustFrac(1, 32))
+				v, err = v.Assoc(2, mustVector(mustFloat(3.14), mustString("string")))
+				if err != nil {
+					panic(err)
+				}
+				return v
+			},
+		},
+	} {
+		t.Run(tt.desc, func(t *testing.T) {
+			assert.True(t, lang.Eq(tt.v, tt.newVector()),
+				"expected %s, got %s", mustSexpr(tt.v), mustSexpr(tt.newVector()))
+		})
+	}
+}
+
+func mustSexpr(any ww.Any) string {
+	s, err := any.SExpr()
+	if err != nil {
+		panic(err)
+	}
+	return s
+}
+
+func mustVector(vs ...ww.Any) lang.Vector {
 	vec, err := lang.NewVector(capnp.SingleSegment(nil), vs...)
 	if err != nil {
 		panic(err)
@@ -233,8 +315,17 @@ func mustVector(vs ...parens.Any) lang.Vector {
 	return vec
 }
 
-func valueRange(n int) []parens.Any {
-	vs := make([]parens.Any, n)
+func vectorRange(n int) lang.Vector {
+	v, err := lang.NewVector(capnp.SingleSegment(nil), valueRange(n)...)
+	if err != nil {
+		panic(err)
+	}
+
+	return v
+}
+
+func valueRange(n int) []ww.Any {
+	vs := make([]ww.Any, n)
 	for i := 0; i < n; i++ {
 		vs[i] = mustKeyword(fmt.Sprintf("%d", i))
 	}

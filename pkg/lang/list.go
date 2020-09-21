@@ -4,6 +4,7 @@ import (
 	"github.com/spy16/parens"
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
+	"github.com/wetware/ww/pkg/mem"
 	capnp "zombiezen.com/go/capnproto2"
 )
 
@@ -21,19 +22,17 @@ func init() {
 		panic(err)
 	}
 
-	if EmptyList.v, err = api.NewRootValue(seg); err != nil {
+	if EmptyList.Raw, err = api.NewRootValue(seg); err != nil {
 		panic(err)
 	}
 
-	if _, err = EmptyList.v.NewList(); err != nil {
+	if _, err = EmptyList.Raw.NewList(); err != nil {
 		panic(err)
 	}
 }
 
 // List is a persistent, singly-linked list with fast insertions/pops to its head.
-type List struct {
-	v api.Value
-}
+type List struct{ mem.Value }
 
 // NewList returns a new list containing given values.
 func NewList(a capnp.Arena, vs ...parens.Any) (l List, err error) {
@@ -46,7 +45,7 @@ func NewList(a capnp.Arena, vs ...parens.Any) (l List, err error) {
 	}
 
 	for i := len(vs) - 1; i >= 0; i-- {
-		l, err = listCons(capnp.SingleSegment(nil), vs[i].(ww.Any).Value(), l)
+		l, err = listCons(capnp.SingleSegment(nil), vs[i].(ww.Any).Data(), l)
 		if err != nil {
 			break
 		}
@@ -57,7 +56,7 @@ func NewList(a capnp.Arena, vs ...parens.Any) (l List, err error) {
 
 // Count returns the number of the list.
 func (l List) Count() (int, error) {
-	ll, _, err := listIsNull(l.v)
+	ll, _, err := listIsNull(l.Raw)
 	return int(ll.Count()), err
 }
 
@@ -91,7 +90,7 @@ func (l List) Conj(items ...parens.Any) (parens.Seq, error) {
 
 // Cons returns a new list with the item added at the head of the list.
 func (l List) Cons(any parens.Any) (List, error) {
-	return listCons(capnp.SingleSegment(nil), any.(ww.Any).Value(), l)
+	return listCons(capnp.SingleSegment(nil), any.(ww.Any).Data(), l)
 }
 
 // First returns the head or first item of the list.
@@ -106,17 +105,12 @@ func (l List) First() (v parens.Any, err error) {
 
 // Next returns the tail of the list.
 func (l List) Next() (parens.Seq, error) {
-	_, next, err := listNext(l.v)
+	_, next, err := listNext(l.Raw)
 	return next, err
 }
 
-// Value returns the api.Value for List
-func (l List) Value() api.Value {
-	return l.v
-}
-
 func (l List) count() (ll api.LinkedList, cnt int, err error) {
-	if ll, err = l.v.List(); err == nil {
+	if ll, err = l.Raw.List(); err == nil {
 		cnt = int(ll.Count())
 	}
 
@@ -124,34 +118,29 @@ func (l List) count() (ll api.LinkedList, cnt int, err error) {
 }
 
 func (l List) head() (ll api.LinkedList, v parens.Any, err error) {
-	if ll, err = l.v.List(); err != nil {
+	if ll, err = l.Raw.List(); err != nil {
 		return
 	}
 
-	var raw api.Value
-	if raw, err = ll.Head(); err != nil {
-		return
+	var val mem.Value
+	if val.Raw, err = ll.Head(); err == nil {
+		v, err = AsAny(val)
 	}
 
-	v, err = LiftValue(raw)
 	return
 }
 
 func (l List) isNull() (null bool, err error) {
-	_, null, err = listIsNull(l.v)
+	_, null, err = listIsNull(l.Raw)
 	return
 }
 
-func listTail(v api.Value) (ll api.LinkedList, tail List, err error) {
-	if ll, err = v.List(); err != nil {
+func listTail(v mem.Value) (ll api.LinkedList, tail List, err error) {
+	if ll, err = v.Raw.List(); err != nil {
 		return
 	}
 
-	var val api.Value
-	if val, err = ll.Tail(); err == nil {
-		tail = List{v: val}
-	}
-
+	tail.Raw, err = ll.Tail()
 	return
 }
 
@@ -164,17 +153,17 @@ func listTail(v api.Value) (ll api.LinkedList, tail List, err error) {
 // 	return slice, err
 // }
 
-func listCons(a capnp.Arena, v api.Value, tail List) (l List, err error) {
+func listCons(a capnp.Arena, v mem.Value, tail List) (l List, err error) {
 	var ll api.LinkedList
 	if l, ll, err = newList(a); err != nil {
 		return
 	}
 
-	if err = ll.SetHead(v); err != nil {
+	if err = ll.SetHead(v.Raw); err != nil {
 		return
 	}
 
-	if err = ll.SetTail(tail.v); err != nil {
+	if err = ll.SetTail(tail.Raw); err != nil {
 		return
 	}
 
@@ -208,11 +197,12 @@ func listNext(v api.Value) (api.LinkedList, parens.Seq, error) {
 		return ll, nil, err
 	}
 
-	if v, err = ll.Tail(); err != nil {
+	var l List
+	if l.Raw, err = ll.Tail(); err != nil {
 		return ll, nil, err
 	}
 
-	return ll, List{v}, nil
+	return ll, l, nil
 }
 
 func newList(a capnp.Arena) (l List, ll api.LinkedList, err error) {
@@ -221,11 +211,11 @@ func newList(a capnp.Arena) (l List, ll api.LinkedList, err error) {
 		return
 	}
 
-	if l.v, err = api.NewRootValue(seg); err != nil {
+	if l.Raw, err = api.NewRootValue(seg); err != nil {
 		return
 	}
 
-	if ll, err = l.v.NewList(); err != nil {
+	if ll, err = l.Raw.NewList(); err != nil {
 		return
 	}
 

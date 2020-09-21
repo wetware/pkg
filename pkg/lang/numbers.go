@@ -5,9 +5,9 @@ import (
 	"math/big"
 	"strconv"
 
-	"github.com/spy16/parens"
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
+	"github.com/wetware/ww/pkg/mem"
 	capnp "zombiezen.com/go/capnproto2"
 )
 
@@ -32,9 +32,7 @@ func init() {
 }
 
 // Int64 represents a 64-bit signed integer.
-type Int64 struct {
-	v api.Value
-}
+type Int64 struct{ mem.Value }
 
 // NewInt64 .
 func NewInt64(a capnp.Arena, i int64) (i64 Int64, err error) {
@@ -43,43 +41,38 @@ func NewInt64(a capnp.Arena, i int64) (i64 Int64, err error) {
 		return
 	}
 
-	if i64.v, err = api.NewRootValue(seg); err == nil {
-		i64.v.SetI64(i)
+	if i64.Raw, err = api.NewRootValue(seg); err == nil {
+		i64.Raw.SetI64(i)
 	}
 
 	return
 }
 
-// Value for Int64 type
-func (i64 Int64) Value() api.Value {
-	return i64.v
-}
-
 // SExpr returns a valid s-expression for Int64
 func (i64 Int64) SExpr() (string, error) {
-	return fmt.Sprintf("%d", i64.v.I64()), nil
+	return fmt.Sprintf("%d", i64.Raw.I64()), nil
 }
 
 // Comp returns 0 if the v == other, -1 if v < other, and 1 if v > other.
-func (i64 Int64) Comp(other parens.Any) (int, error) {
-	switch n := other.(type) {
-	case Int64:
-		return compI64(i64.v.I64(), n.v.I64()), nil
+func (i64 Int64) Comp(other ww.Any) (int, error) {
+	switch o := other.Data(); o.Type() {
+	case api.Value_Which_i64:
+		return compI64(i64.Raw.I64(), o.Raw.I64()), nil
 
-	case Float64:
+	case api.Value_Which_f64:
 		var f big.Float
-		return f.SetInt64(i64.v.I64()).Cmp(big.NewFloat(n.v.F64())), nil
+		return f.SetInt64(i64.Raw.I64()).Cmp(big.NewFloat(o.Raw.F64())), nil
 
-	case BigInt:
-		return big.NewInt(i64.v.I64()).Cmp(n.i), nil
+	case api.Value_Which_bigInt:
+		return big.NewInt(i64.Raw.I64()).Cmp(other.(BigInt).i), nil
 
-	case BigFloat:
+	case api.Value_Which_bigFloat:
 		var f big.Float
-		return f.SetInt64(i64.v.I64()).Cmp(n.f), nil
+		return f.SetInt64(i64.Raw.I64()).Cmp(other.(BigFloat).f), nil
 
-	case Frac:
+	case api.Value_Which_frac:
 		var r big.Rat
-		return r.SetInt64(i64.v.I64()).Cmp(n.r), nil
+		return r.SetInt64(i64.Raw.I64()).Cmp(other.(Frac).r), nil
 
 	default:
 		return 0, ErrIncomparableTypes
@@ -90,7 +83,7 @@ func (i64 Int64) Comp(other parens.Any) (int, error) {
 // BigInt represents an arbitrary-length signed integer
 type BigInt struct {
 	i *big.Int
-	v api.Value
+	mem.Value
 }
 
 // NewBigInt .
@@ -100,29 +93,24 @@ func NewBigInt(a capnp.Arena, i *big.Int) (bi BigInt, err error) {
 		return
 	}
 
-	if bi.v, err = api.NewRootValue(seg); err == nil {
-		err = bi.v.SetBigInt(i.Bytes())
+	if bi.Raw, err = api.NewRootValue(seg); err == nil {
+		err = bi.Raw.SetBigInt(i.Bytes())
 	}
 
 	bi.i = i
 	return
 }
 
-func bigIntFromValue(v api.Value) (bi BigInt, err error) {
+func asBigInt(v mem.Value) (bi BigInt, err error) {
 	bi.i = &big.Int{}
-	bi.v = v
+	bi.Value = v
 
 	var buf []byte
-	if buf, err = v.BigInt(); err == nil {
+	if buf, err = v.Raw.BigInt(); err == nil {
 		bi.i.SetBytes(buf)
 	}
 
 	return
-}
-
-// Value for BigInt type
-func (bi BigInt) Value() api.Value {
-	return bi.v
 }
 
 // SExpr returns a valid s-expression for BigInt.
@@ -131,25 +119,25 @@ func (bi BigInt) SExpr() (string, error) {
 }
 
 // Comp returns 0 if the v == other, -1 if v < other, and 1 if v > other.
-func (bi BigInt) Comp(other parens.Any) (int, error) {
-	switch n := other.(type) {
-	case Int64:
-		return bi.i.Cmp(big.NewInt(n.v.I64())), nil
+func (bi BigInt) Comp(other ww.Any) (int, error) {
+	switch o := other.Data(); o.Type() {
+	case api.Value_Which_i64:
+		return bi.i.Cmp(big.NewInt(o.Raw.I64())), nil
 
-	case Float64:
+	case api.Value_Which_f64:
 		var f big.Float
-		return f.SetInt(bi.i).Cmp(big.NewFloat(n.v.F64())), nil
+		return f.SetInt(bi.i).Cmp(big.NewFloat(o.Raw.F64())), nil
 
-	case BigInt:
-		return bi.i.Cmp(n.i), nil
+	case api.Value_Which_bigInt:
+		return bi.i.Cmp(other.(BigInt).i), nil
 
-	case BigFloat:
+	case api.Value_Which_bigFloat:
 		var f big.Float
-		return f.SetInt(bi.i).Cmp(n.f), nil
+		return f.SetInt(bi.i).Cmp(other.(BigFloat).f), nil
 
-	case Frac:
+	case api.Value_Which_frac:
 		var r big.Rat
-		return r.SetFrac(bi.i, &unit).Cmp(n.r), nil
+		return r.SetFrac(bi.i, &unit).Cmp(other.(Frac).r), nil
 
 	default:
 		return 0, ErrIncomparableTypes
@@ -157,9 +145,7 @@ func (bi BigInt) Comp(other parens.Any) (int, error) {
 }
 
 // Float64 represents a 64-bit floating-point number
-type Float64 struct {
-	v api.Value
-}
+type Float64 struct{ mem.Value }
 
 // NewFloat64 .
 func NewFloat64(a capnp.Arena, f float64) (f64 Float64, err error) {
@@ -168,46 +154,41 @@ func NewFloat64(a capnp.Arena, f float64) (f64 Float64, err error) {
 		return
 	}
 
-	if f64.v, err = api.NewRootValue(seg); err == nil {
-		f64.v.SetF64(f)
+	if f64.Raw, err = api.NewRootValue(seg); err == nil {
+		f64.Raw.SetF64(f)
 	}
 
 	return
 }
 
-// Value for Float64 type
-func (f64 Float64) Value() api.Value {
-	return f64.v
-}
-
 // SExpr returns a valid s-expression for Float64
 func (f64 Float64) SExpr() (string, error) {
-	return strconv.FormatFloat(f64.v.F64(), 'g', -1, 64), nil
+	return strconv.FormatFloat(f64.Raw.F64(), 'g', -1, 64), nil
 }
 
 // Comp returns 0 if the v == other, -1 if v < other, and 1 if v > other.
-func (f64 Float64) Comp(other parens.Any) (int, error) {
-	switch n := other.(type) {
-	case Int64:
+func (f64 Float64) Comp(other ww.Any) (int, error) {
+	switch o := other.Data(); o.Type() {
+	case api.Value_Which_i64:
 		var f big.Float
-		return big.NewFloat(f64.v.F64()).Cmp(f.SetInt64(n.v.I64())), nil
+		return big.NewFloat(f64.Raw.F64()).Cmp(f.SetInt64(o.Raw.I64())), nil
 
-	case Float64:
-		return compF64(f64.v.F64(), n.v.F64()), nil
+	case api.Value_Which_f64:
+		return compF64(f64.Raw.F64(), o.Raw.F64()), nil
 
-	case BigInt:
+	case api.Value_Which_bigInt:
 		var f big.Float
-		return big.NewFloat(f64.v.F64()).Cmp(f.SetInt(n.i)), nil
+		return big.NewFloat(f64.Raw.F64()).Cmp(f.SetInt(other.(BigInt).i)), nil
 
-	case BigFloat:
+	case api.Value_Which_bigFloat:
 		var bi big.Float
-		bi.SetFloat64(f64.v.F64())
-		return bi.Cmp(n.f), nil
+		bi.SetFloat64(f64.Raw.F64())
+		return bi.Cmp(other.(BigFloat).f), nil
 
-	case Frac:
+	case api.Value_Which_frac:
 		var r big.Rat
-		r.SetFloat64(f64.v.F64())
-		return r.Cmp(n.r), nil
+		r.SetFloat64(f64.Raw.F64())
+		return r.Cmp(other.(Frac).r), nil
 
 	default:
 		return 0, ErrIncomparableTypes
@@ -218,7 +199,7 @@ func (f64 Float64) Comp(other parens.Any) (int, error) {
 // BigFloat represents an arbitrary-precision floating-point number.
 type BigFloat struct {
 	f *big.Float
-	v api.Value
+	mem.Value
 }
 
 // NewBigFloat .
@@ -230,24 +211,19 @@ func NewBigFloat(a capnp.Arena, f *big.Float) (bf BigFloat, err error) {
 		return
 	}
 
-	if bf.v, err = api.NewRootValue(seg); err == nil {
-		err = bf.v.SetBigFloat(f.Text('g', -1))
+	if bf.Raw, err = api.NewRootValue(seg); err == nil {
+		err = bf.Raw.SetBigFloat(f.Text('g', -1))
 	}
 
 	return
 }
 
-// Value for BigFloat type
-func (bf BigFloat) Value() api.Value {
-	return bf.v
-}
-
-func bigFloatFromValue(v api.Value) (bf BigFloat, err error) {
+func asBigFloat(v mem.Value) (bf BigFloat, err error) {
 	bf.f = &big.Float{}
-	bf.v = v
+	bf.Value = v
 
 	var s string
-	if s, err = v.BigFloat(); err == nil {
+	if s, err = v.Raw.BigFloat(); err == nil {
 		if _, ok := bf.f.SetString(s); !ok {
 			err = fmt.Errorf("invalid bigfloat format '%s'", s)
 		}
@@ -262,24 +238,24 @@ func (bf BigFloat) SExpr() (string, error) {
 }
 
 // Comp returns 0 if the v == other, -1 if v < other, and 1 if v > other.
-func (bf BigFloat) Comp(other parens.Any) (int, error) {
-	switch n := other.(type) {
-	case Int64:
+func (bf BigFloat) Comp(other ww.Any) (int, error) {
+	switch o := other.Data(); o.Type() {
+	case api.Value_Which_i64:
 		var f big.Float
-		return bf.f.Cmp(f.SetInt64(n.v.I64())), nil
-	case Float64:
-		return bf.f.Cmp(big.NewFloat(n.v.F64())), nil
-	case BigInt:
+		return bf.f.Cmp(f.SetInt64(o.Raw.I64())), nil
+	case api.Value_Which_f64:
+		return bf.f.Cmp(big.NewFloat(o.Raw.F64())), nil
+	case api.Value_Which_bigInt:
 		var f big.Float
-		return bf.f.Cmp(f.SetInt(n.i)), nil
+		return bf.f.Cmp(f.SetInt(other.(BigInt).i)), nil
 
-	case BigFloat:
-		return bf.f.Cmp(n.f), nil
+	case api.Value_Which_bigFloat:
+		return bf.f.Cmp(other.(BigFloat).f), nil
 
-	case Frac:
+	case api.Value_Which_frac:
 		var r big.Rat
 		bf.f.Rat(&r)
-		return r.Cmp(n.r), nil
+		return r.Cmp(other.(Frac).r), nil
 
 	default:
 		return 0, ErrIncomparableTypes
@@ -290,7 +266,7 @@ func (bf BigFloat) Comp(other parens.Any) (int, error) {
 // Frac represents a rational number a/b of arbitrary precision.
 type Frac struct {
 	r *big.Rat
-	v api.Value
+	mem.Value
 }
 
 // NewFrac .
@@ -302,12 +278,12 @@ func NewFrac(a capnp.Arena, r *big.Rat) (f Frac, err error) {
 		return
 	}
 
-	if f.v, err = api.NewRootValue(seg); err != nil {
+	if f.Raw, err = api.NewRootValue(seg); err != nil {
 		return
 	}
 
 	var frac api.Frac
-	if frac, err = f.v.NewFrac(); err != nil {
+	if frac, err = f.Raw.NewFrac(); err != nil {
 		return
 	}
 
@@ -322,12 +298,12 @@ func NewFrac(a capnp.Arena, r *big.Rat) (f Frac, err error) {
 	return
 }
 
-func fracFromValue(v api.Value) (f Frac, err error) {
+func asFrac(v mem.Value) (f Frac, err error) {
 	f.r = &big.Rat{}
-	f.v = v
+	f.Value = v
 
 	var fv api.Frac
-	if fv, err = v.Frac(); err != nil {
+	if fv, err = v.Raw.Frac(); err != nil {
 		return
 	}
 
@@ -348,38 +324,33 @@ func fracFromValue(v api.Value) (f Frac, err error) {
 	return
 }
 
-// Value for Frac type
-func (f Frac) Value() api.Value {
-	return f.v
-}
-
 // SExpr returns a valid s-expression for frac.
 func (f Frac) SExpr() (string, error) {
 	return f.r.String(), nil
 }
 
 // Comp returns true if the other value is numerical and has the same value.
-func (f Frac) Comp(other parens.Any) (int, error) {
-	switch n := other.(type) {
-	case Int64:
+func (f Frac) Comp(other ww.Any) (int, error) {
+	switch o := other.Data(); o.Type() {
+	case api.Value_Which_i64:
 		var r big.Rat
-		return f.r.Cmp(r.SetFrac(big.NewInt(n.v.I64()), &unit)), nil
+		return f.r.Cmp(r.SetFrac(big.NewInt(o.Raw.I64()), &unit)), nil
 
-	case Float64:
+	case api.Value_Which_f64:
 		var r big.Rat
-		return f.r.Cmp(r.SetFloat64(n.v.F64())), nil
+		return f.r.Cmp(r.SetFloat64(o.Raw.F64())), nil
 
-	case BigInt:
+	case api.Value_Which_bigInt:
 		var r big.Rat
-		return f.r.Cmp(r.SetFrac(n.i, &unit)), nil
+		return f.r.Cmp(r.SetFrac(other.(BigInt).i, &unit)), nil
 
-	case BigFloat:
+	case api.Value_Which_bigFloat:
 		var r big.Rat
-		n.f.Rat(&r)
+		other.(BigFloat).f.Rat(&r)
 		return f.r.Cmp(&r), nil
 
-	case Frac:
-		return f.r.Cmp(n.r), nil
+	case api.Value_Which_frac:
+		return f.r.Cmp(other.(Frac).r), nil
 
 	default:
 		return 0, ErrIncomparableTypes

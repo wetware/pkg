@@ -5,6 +5,7 @@ import (
 	"github.com/spy16/parens"
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
+	"github.com/wetware/ww/pkg/mem"
 )
 
 // ProcSpecFromArgs .
@@ -15,7 +16,7 @@ func ProcSpecFromArgs(args parens.Seq) ww.ProcSpec {
 			return err
 		}
 
-		switch v := first.(ww.Any).Value(); v.Which() {
+		switch v := first.(ww.Any).Data(); v.Type() {
 		case api.Value_Which_list:
 			return setGoroutineSpec(p, v)
 
@@ -25,14 +26,14 @@ func ProcSpecFromArgs(args parens.Seq) ww.ProcSpec {
 		default:
 			return parens.Error{
 				Cause:   errors.New("unsuitable type for remote goroutine"),
-				Message: v.Which().String(),
+				Message: v.Type().String(),
 			}
 
 		}
 	}
 }
 
-func setGoroutineSpec(p api.Anchor_go_Params, v api.Value) error {
+func setGoroutineSpec(p api.Anchor_go_Params, v mem.Value) error {
 	spec, err := p.NewSpec()
 	if err != nil {
 		return err
@@ -43,7 +44,7 @@ func setGoroutineSpec(p api.Anchor_go_Params, v api.Value) error {
 		return err
 	}
 
-	return g.SetValue(v)
+	return g.SetValue(v.Raw)
 }
 
 func setSpecFromKeywordArgs(p api.Anchor_go_Params, args parens.Seq) error {

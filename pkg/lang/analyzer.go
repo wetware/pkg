@@ -47,7 +47,7 @@ func (a formAnalyzer) Analyze(env *parens.Env, form parens.Any) (parens.Expr, er
 		}, nil
 
 	case Symbol:
-		sym, err := f.v.Symbol()
+		sym, err := f.Raw.Symbol()
 		if err != nil {
 			return nil, err
 		}
@@ -89,7 +89,7 @@ func (a formAnalyzer) analyzeSeq(env *parens.Env, seq parens.Seq) (parens.Expr, 
 	// corresponding parser function, which will take care of parsing/analyzing
 	// the tail.
 	if sym, ok := first.(Symbol); ok {
-		s, err := sym.v.Symbol()
+		s, err := sym.Raw.Symbol()
 		if err != nil {
 			return nil, err
 		}

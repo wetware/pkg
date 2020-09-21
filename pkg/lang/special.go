@@ -75,7 +75,7 @@ func parseDefExpr(env *parens.Env, args parens.Seq) (parens.Expr, error) {
 		return nil, err
 	}
 
-	s, err := sym.v.Symbol()
+	s, err := sym.Raw.Symbol()
 	if err != nil {
 		return nil, err
 	}

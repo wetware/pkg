@@ -6,6 +6,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/pkg/errors"
 	"github.com/wetware/ww/internal/api"
+	"github.com/wetware/ww/pkg/mem"
 )
 
 const (
@@ -31,9 +32,10 @@ var (
 // Any is a generic value type
 type Any interface {
 	SExpr() (string, error)
-	Value() api.Value
+	Data() mem.Value
 }
 
+// ProcSpec specifies parameters for a process.
 type ProcSpec func(api.Anchor_go_Params) error
 
 // Anchor is a node in a cluster-wide, hierarchical namespace.

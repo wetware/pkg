@@ -9,19 +9,12 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/spy16/parens"
 	"github.com/spy16/parens/reader"
 	"github.com/wetware/ww/pkg/lang"
 	capnp "zombiezen.com/go/capnproto2"
 )
 
 var (
-	symbols = map[string]parens.Any{
-		"nil":   parens.Nil{},
-		"false": lang.False,
-		"true":  lang.True,
-	}
-
 	escapeMap = map[rune]rune{
 		'"':  '"',
 		'n':  '\n',
@@ -76,8 +69,7 @@ func init() {
 func New(r io.Reader) *reader.Reader {
 	rd := reader.New(r,
 		reader.WithNumReader(readNumber),
-		reader.WithSymbolReader(readSymbol),
-		reader.WithPredefinedSymbols(symbols))
+		reader.WithSymbolReader(readSymbol))
 
 	for init, macro := range macroTable {
 		rd.SetMacro(init, macro.dispatch, macro.fn)

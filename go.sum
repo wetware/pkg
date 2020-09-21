@@ -602,6 +602,10 @@ github.com/spy16/parens v0.0.0-20200917203108-4014e156dec4 h1:n7JgoPTwwqLdz4wGxF
 github.com/spy16/parens v0.0.0-20200917203108-4014e156dec4/go.mod h1:29mKVZbwwNIoUWXznUvkPLvjemtu8QnhGhabpnSPszM=
 github.com/spy16/parens v0.0.0-20200920220241-172631f53a11 h1:t0suNxRHNG0XIdnIIzvKRTtcxbzIn1vszxmj0PBdcl8=
 github.com/spy16/parens v0.0.0-20200920220241-172631f53a11/go.mod h1:29mKVZbwwNIoUWXznUvkPLvjemtu8QnhGhabpnSPszM=
+github.com/spy16/parens v0.0.0-20200921121544-bb93c0433d3d h1:TmeSgNyBc/3CSN3/XXkr1gizK6ttXxUN0873GAFIPMc=
+github.com/spy16/parens v0.0.0-20200921121544-bb93c0433d3d/go.mod h1:29mKVZbwwNIoUWXznUvkPLvjemtu8QnhGhabpnSPszM=
+github.com/spy16/parens v0.0.0-20200921121906-540f8ec777aa h1:xO4N4VhVotATz4ktoTL6WrrWwQ/fMzHCJWNsNsnxsfA=
+github.com/spy16/parens v0.0.0-20200921121906-540f8ec777aa/go.mod h1:29mKVZbwwNIoUWXznUvkPLvjemtu8QnhGhabpnSPszM=
 github.com/src-d/envconfig v1.0.0/go.mod h1:Q9YQZ7BKITldTBnoxsE5gOeB5y66RyPXeue/R4aaNBc=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.1.1/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=

@@ -19,6 +19,7 @@ import (
 	"github.com/wetware/ww/pkg/internal/rpc/anchor"
 	"github.com/wetware/ww/pkg/internal/tree"
 	"github.com/wetware/ww/pkg/lang"
+	"github.com/wetware/ww/pkg/mem"
 	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
 )
 
@@ -151,15 +152,15 @@ func (a hostAnchor) Walk(_ context.Context, path []string) ww.Anchor {
 }
 
 func (a hostAnchor) Load(context.Context) (ww.Any, error) {
-	if n := a.node.Load(); n != nil {
-		return lang.LiftValue(*n)
+	if n := a.node.Load(); !n.Nil() {
+		return lang.AsAny(n)
 	}
 
 	return lang.Nil{}, nil
 }
 
 func (a hostAnchor) Store(_ context.Context, any ww.Any) error {
-	if v := any.Value(); a.node.Store(&v) {
+	if v := any.Data(); a.node.Store(v) {
 		return nil
 	}
 
@@ -306,24 +307,20 @@ func (a anchorCap) Walk(call api.Anchor_walk) error {
 }
 
 func (a anchorCap) Load(call api.Anchor_load) error {
-	if v := a.root.Load(); v != nil {
-		return call.Results.SetValue(*v)
+	if v := a.root.Load(); !v.Nil() {
+		return call.Results.SetValue(v.Raw)
 	}
 
-	return call.Results.SetValue(lang.Nil{}.Value())
+	return call.Results.SetValue(mem.NilValue.Raw)
 }
 
-func (a anchorCap) Store(call api.Anchor_store) error {
-	v, err := call.Params.Value()
-	if err != nil {
+func (a anchorCap) Store(call api.Anchor_store) (err error) {
+	var val mem.Value
+	if val.Raw, err = call.Params.Value(); err != nil {
 		return err
 	}
 
-	if v.Which() == api.Value_Which_nil {
-		_ = a.root.Store(nil) // scrub never fails
-	}
-
-	if a.root.Store(&v) {
+	if a.root.Store(val) {
 		return nil
 	}
 

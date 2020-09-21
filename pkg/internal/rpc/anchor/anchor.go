@@ -8,6 +8,7 @@ import (
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/internal/rpc"
 	"github.com/wetware/ww/pkg/lang"
+	"github.com/wetware/ww/pkg/mem"
 	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
 )
 
@@ -40,12 +41,12 @@ func (a anchor) Load(ctx context.Context) (ww.Any, error) {
 		return nil, err
 	}
 
-	return lang.LiftValue(v)
+	return lang.AsAny(mem.Value{Raw: v})
 }
 
 func (a anchor) Store(ctx context.Context, any ww.Any) error {
 	if _, err := a.Anchor().Store(ctx, func(p api.Anchor_store_Params) error {
-		return p.SetValue(any.Value())
+		return p.SetValue(any.Data().Raw)
 	}).Struct(); err != nil {
 		return err
 	}

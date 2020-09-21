@@ -5,7 +5,7 @@ import (
 	goruntime "runtime"
 	"sync"
 
-	"github.com/wetware/ww/internal/api"
+	"github.com/wetware/ww/pkg/mem"
 )
 
 // Node in an anchor tree.
@@ -37,8 +37,8 @@ func (a Node) List() []Node {
 	a.nodeRef.Hard().Lock()
 	defer a.nodeRef.Hard().Unlock()
 
-	children := make([]Node, 0, len(a.nodeRef.childrenUnsafe()))
-	for _, child := range a.nodeRef.childrenUnsafe() {
+	children := make([]Node, 0, len(a.nodeRef.children))
+	for _, child := range a.nodeRef.children {
 		children = append(children, Node{child.ref()})
 	}
 
@@ -46,19 +46,24 @@ func (a Node) List() []Node {
 }
 
 // Load API value
-func (a Node) Load() *api.Value {
+func (a Node) Load() mem.Value {
 	a.Tx().RLock()
 	defer a.Tx().RUnlock()
 
-	return a.getValUnsafe()
+	return a.val
 }
 
 // Store API value
-func (a Node) Store(val *api.Value) bool {
+func (a Node) Store(val mem.Value) bool {
 	a.Tx().Lock()
 	defer a.Tx().Unlock()
 
-	return a.setValIfEmpty(val)
+	if val.Nil() || a.val.Nil() {
+		a.val = val
+		return true
+	}
+
+	return false
 }
 
 // nodeRef is a proxy to a node that is responsible for implemented refcounting and gc
@@ -70,34 +75,9 @@ func (h nodeRef) Tx() *sync.RWMutex {
 	return &h.tx
 }
 
-// Unsafe - requires locking
-func (h nodeRef) setObjUnsafe(val *api.Value) {
-	h.val = val
-}
-
-// Unsafe - requires locking
-func (h nodeRef) setValIfEmpty(val *api.Value) bool {
-	if val == nil || h.val == nil {
-		h.val = val
-		return true
-	}
-
-	return false
-}
-
-// Unsafe - requires locking
-func (h nodeRef) getValUnsafe() *api.Value {
-	return h.val
-}
-
-// Unsafe - requires locking
-func (h nodeRef) childrenUnsafe() map[string]*node {
-	return h.children
-}
-
 // hard lock - prevents updates to children & counter states
 func (h nodeRef) Hard() *sync.Mutex {
-	return &h.µ
+	return &h.mu
 }
 
 func (h nodeRef) Path() (parts []string) {
@@ -117,8 +97,8 @@ func (h nodeRef) Walk(path []string) *nodeRef {
 		return h.ref()
 	}
 
-	h.µ.Lock()
-	defer h.µ.Unlock()
+	h.mu.Lock()
+	defer h.mu.Unlock()
 
 	n, ok := h.children[path[0]]
 	if !ok {
@@ -132,11 +112,11 @@ func (h nodeRef) Walk(path []string) *nodeRef {
 }
 
 type node struct {
-	µ   sync.Mutex
-	ctr ctr
+	mu  sync.Mutex
+	ctr int
 
 	tx  sync.RWMutex
-	val *api.Value
+	val mem.Value
 
 	Name     string
 	parent   *node
@@ -160,8 +140,8 @@ func (n *node) path() []string {
 }
 
 func (n *node) orphaned() bool {
-	n.µ.Lock()
-	defer n.µ.Unlock()
+	n.mu.Lock()
+	defer n.mu.Unlock()
 
 	return n.orphanedUnsafe()
 }
@@ -171,39 +151,28 @@ func (n *node) orphanedUnsafe() bool {
 	// - nobody's using it
 	// - it has no children
 	// - it's not holding an object
-	return n.ctr == 0 && len(n.children) == 0 && n.val == nil
+	return n.ctr == 0 && len(n.children) == 0 && n.val.Nil()
 }
 
 func (n *node) ref() *nodeRef {
-	n.µ.Lock()
-	defer n.µ.Unlock()
+	n.mu.Lock()
+	defer n.mu.Unlock()
 
-	n.ctr.Incr()
-	h := &nodeRef{n}
+	n.ctr++
+	ref := &nodeRef{n}
+	goruntime.SetFinalizer(ref, gc)
 
-	goruntime.SetFinalizer(h, func(h *nodeRef) {
-		n.µ.Lock()
-		defer n.µ.Unlock()
-
-		n.ctr.Decr()
-		if n.orphanedUnsafe() && n.parent != nil {
-			go n.parent.rmChild(n.Name)
-		}
-	})
-
-	return h
+	return ref
 }
 
-func (n *node) rmChild(childName string) {
-	n.µ.Lock()
-	defer n.µ.Unlock()
+func gc(n *nodeRef) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
 
-	if child, ok := n.children[childName]; ok && child.orphaned() {
-		delete(n.children, childName)
+	n.ctr--
+	if n.orphanedUnsafe() && n.parent != nil {
+		if child, ok := n.children[n.Name]; ok && child.orphanedUnsafe() {
+			delete(n.children, n.Name)
+		}
 	}
 }
-
-type ctr int
-
-func (c *ctr) Incr() { *c++ }
-func (c *ctr) Decr() { *c-- }

@@ -1,4 +1,4 @@
-package host_test
+package tree_test
 
 import (
 	"sync"

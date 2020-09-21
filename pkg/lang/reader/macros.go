@@ -15,6 +15,12 @@ import (
 	"github.com/wetware/ww/pkg/lang"
 )
 
+var symbols = map[string]parens.Any{
+	"nil":   parens.Nil{},
+	"false": lang.False,
+	"true":  lang.True,
+}
+
 func readSymbol(rd *reader.Reader, init rune) (parens.Any, error) {
 	beginPos := rd.Position()
 
@@ -23,7 +29,7 @@ func readSymbol(rd *reader.Reader, init rune) (parens.Any, error) {
 		return nil, annotateErr(rd, err, beginPos, s)
 	}
 
-	if predefVal, found := rd.Resolve(s); found {
+	if predefVal, found := symbols[s]; found {
 		return predefVal, nil
 	}
 
