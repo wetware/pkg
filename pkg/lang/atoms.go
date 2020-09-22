@@ -61,13 +61,11 @@ func NewBool(a capnp.Arena, b bool) (bl Bool, err error) {
 }
 
 // SExpr returns a valid s-expression representing Bool.
-func (b Bool) SExpr() (string, error) { return b.String(), nil }
-
-func (b Bool) String() string {
+func (b Bool) SExpr() (string, error) {
 	if b.Raw.Bool() {
-		return "true"
+		return "true", nil
 	}
-	return "false"
+	return "false", nil
 }
 
 // Char represents a character literal.  For example, \a, \b, \1, \∂ etc are

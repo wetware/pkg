@@ -7,6 +7,7 @@ import (
 	"github.com/spy16/parens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/lang"
 	capnp "zombiezen.com/go/capnproto2"
 )
@@ -72,6 +73,59 @@ func TestSExpr(t *testing.T) {
 	}
 }
 
+func TestConj(t *testing.T) {
+	for _, tt := range []struct {
+		desc      string
+		col, want ww.Any
+		vs        []ww.Any
+		wantErr   bool
+	}{
+		// list
+		{
+			desc: "(conj () 0 1 2 3)",
+			col:  mustList(),
+			vs:   []ww.Any{mustInt(0), mustInt(1), mustInt(2), mustInt(3)},
+			want: mustList(mustInt(3), mustInt(2), mustInt(1), mustInt(0)),
+		},
+		{
+			desc: "(conj (0) 1 2 3)",
+			col:  mustList(mustInt(0)),
+			vs:   []ww.Any{mustInt(1), mustInt(2), mustInt(3)},
+			want: mustList(mustInt(3), mustInt(2), mustInt(1), mustInt(0)),
+		},
+		// vector
+		{
+			desc: "(conj [] 0 1 2 3)",
+			col:  mustVector(),
+			vs:   []ww.Any{mustInt(0), mustInt(1), mustInt(2), mustInt(3)},
+			want: mustVector(mustInt(0), mustInt(1), mustInt(2), mustInt(3)),
+		},
+		{
+			desc: "(conj [0] 1 2 3)",
+			col:  mustVector(mustInt(0)),
+			vs:   []ww.Any{mustInt(1), mustInt(2), mustInt(3)},
+			want: mustVector(mustInt(0), mustInt(1), mustInt(2), mustInt(3)),
+		},
+	} {
+		t.Run(tt.desc, func(t *testing.T) {
+			got, err := lang.Conj(tt.col, mustList(tt.vs...))
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else if assert.NoError(t, err) {
+				assert.Equal(t, mustSExpr(tt.want), mustSexpr(got))
+			}
+		})
+	}
+}
+
+func mustSexpr(any interface{ SExpr() (string, error) }) string {
+	s, err := any.SExpr()
+	if err != nil {
+		panic(err)
+	}
+	return s
+}
+
 func mustSymbol(s string) lang.Symbol {
 	sym, err := lang.NewSymbol(capnp.SingleSegment(nil), s)
 	if err != nil {
@@ -108,7 +162,7 @@ func mustChar(r rune) lang.Char {
 	return c
 }
 
-func mustList(vs ...parens.Any) lang.List {
+func mustList(vs ...ww.Any) lang.List {
 	l, err := lang.NewList(capnp.SingleSegment(nil), vs...)
 	if err != nil {
 		panic(err)
@@ -116,61 +170,3 @@ func mustList(vs ...parens.Any) lang.List {
 
 	return l
 }
-
-// import (
-// 	"strings"
-// 	"testing"
-
-// 	"github.com/spy16/sabre/runtime"
-// 	"github.com/stretchr/testify/assert"
-// 	"github.com/stretchr/testify/require"
-// 	"github.com/wetware/ww/pkg/lang"
-// )
-
-// func TestBind(t *testing.T) {
-// 	ww := lang.New(nil)
-
-// 	t.Run("BindDoc", func(t *testing.T) {
-// 		for _, tC := range []struct {
-// 			desc, symbol string
-// 			val          runtime.Value
-// 			doc          []string
-// 		}{{
-// 			desc: "basic",
-// 			val:  runtime.String("foo"),
-// 			doc:  []string{"foo", "bar"},
-// 		}, {
-// 			desc: "whitespace",
-// 			val:  runtime.String("foo"),
-// 			doc:  []string{"foo", "bar", "\n", "\n"},
-// 		}} {
-// 			t.Run(tC.desc, func(t *testing.T) {
-// 				require.NoError(t, ww.BindDoc(tC.symbol, tC.val, tC.doc...))
-
-// 				v, err := ww.Resolve(tC.symbol)
-// 				assert.NoError(t, err)
-// 				assert.Equal(t, tC.val.String(), v.String())
-
-// 				assert.Equal(t, doc(tC.doc), ww.Doc(tC.symbol))
-// 			})
-// 		}
-// 	})
-
-// 	t.Run("Bind", func(t *testing.T) {
-// 		require.NoError(t, ww.Bind("foo", runtime.String("foo")), runtime.String("foo"))
-
-// 		v, err := ww.Resolve("foo")
-// 		assert.NoError(t, err)
-// 		assert.Equal(t, runtime.String("foo").String(), v.String())
-// 		assert.Equal(t, "", ww.Doc("foo"))
-// 	})
-
-// 	t.Run("ResolveMissing", func(t *testing.T) {
-// 		_, err := ww.Resolve("fail")
-// 		assert.EqualError(t, err, runtime.ErrNotFound.Error())
-// 	})
-// }
-
-// func doc(ss []string) string {
-// 	return strings.TrimSpace(strings.Join(ss, "\n"))
-// }

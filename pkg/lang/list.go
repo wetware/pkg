@@ -35,7 +35,7 @@ func init() {
 type List struct{ mem.Value }
 
 // NewList returns a new list containing given values.
-func NewList(a capnp.Arena, vs ...parens.Any) (l List, err error) {
+func NewList(a capnp.Arena, vs ...ww.Any) (l List, err error) {
 	if len(vs) == 0 {
 		return EmptyList, nil
 	}

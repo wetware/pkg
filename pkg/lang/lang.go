@@ -9,7 +9,6 @@ import (
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/mem"
-	capnp "zombiezen.com/go/capnproto2"
 )
 
 var (
@@ -116,7 +115,7 @@ func Conj(col ww.Any, vs parens.Seq) (parens.Any, error) {
 	case api.Value_Which_list:
 		l := List{col.Data()}
 		err := parens.ForEach(vs, func(v parens.Any) (_ bool, err error) {
-			l, err = listCons(capnp.SingleSegment(nil), v.(ww.Any).Data(), l)
+			l, err = l.Cons(v)
 			return
 		})
 		return l, err

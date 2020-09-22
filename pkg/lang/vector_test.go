@@ -298,14 +298,6 @@ func TestVectorEquality(t *testing.T) {
 	}
 }
 
-func mustSexpr(any ww.Any) string {
-	s, err := any.SExpr()
-	if err != nil {
-		panic(err)
-	}
-	return s
-}
-
 func mustVector(vs ...ww.Any) lang.Vector {
 	vec, err := lang.NewVector(capnp.SingleSegment(nil), vs...)
 	if err != nil {

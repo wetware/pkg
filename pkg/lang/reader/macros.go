@@ -12,6 +12,7 @@ import (
 	"github.com/spy16/parens/reader"
 	capnp "zombiezen.com/go/capnproto2"
 
+	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/lang"
 )
 
@@ -144,9 +145,9 @@ func readList(rd *reader.Reader, _ rune) (parens.Any, error) {
 
 	beginPos := rd.Position()
 
-	forms := make([]parens.Any, 0, 32) // pre-allocate to improve performance on small lists
+	forms := make([]ww.Any, 0, 32) // pre-allocate to improve performance on small lists
 	if err := rd.Container(listEnd, "list", func(val parens.Any) error {
-		forms = append(forms, val)
+		forms = append(forms, val.(ww.Any))
 		return nil
 	}); err != nil {
 		return nil, annotateErr(rd, err, beginPos, "")

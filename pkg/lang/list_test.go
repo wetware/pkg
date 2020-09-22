@@ -1,10 +1,10 @@
 package lang_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/wetware/ww/pkg/lang"
 )
 
@@ -37,6 +37,37 @@ func TestEmptyList(t *testing.T) {
 
 		v, err := seq.First()
 		assert.NoError(t, err)
-		assert.Equal(t, lang.True.String(), v.(fmt.Stringer).String())
+		assert.Equal(t, mustSExpr(lang.True), mustSexpr(v))
 	})
+}
+
+func TestListEquality(t *testing.T) {
+	for _, tt := range []struct {
+		desc    string
+		l       lang.List
+		newList func() lang.List
+	}{
+		{
+			desc: "basic",
+			l:    mustList(mustInt(0), mustInt(1), mustInt(2)),
+			newList: func() lang.List {
+				return mustList(mustInt(0), mustInt(1), mustInt(2))
+			},
+		},
+		{
+			desc: "shared tail",
+			l:    mustList(mustInt(0), mustInt(1), mustInt(2), mustInt(3)),
+			newList: func() lang.List {
+				l := mustList(mustInt(1), mustInt(2), mustInt(3))
+				l, err := l.Cons(mustInt(0))
+				require.NoError(t, err)
+				return l
+			},
+		},
+	} {
+		t.Run(tt.desc, func(t *testing.T) {
+			assert.True(t, lang.Eq(tt.l, tt.newList()),
+				"expected %s, got %s", mustSexpr(tt.l), mustSexpr(tt.newList()))
+		})
+	}
 }
