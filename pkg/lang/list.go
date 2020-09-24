@@ -45,7 +45,7 @@ func NewList(a capnp.Arena, vs ...ww.Any) (l List, err error) {
 	}
 
 	for i := len(vs) - 1; i >= 0; i-- {
-		l, err = listCons(capnp.SingleSegment(nil), vs[i].(ww.Any).Data(), l)
+		l, err = listCons(capnp.SingleSegment(nil), vs[i].(ww.Any).MemVal(), l)
 		if err != nil {
 			break
 		}
@@ -90,7 +90,7 @@ func (l List) Conj(items ...parens.Any) (parens.Seq, error) {
 
 // Cons returns a new list with the item added at the head of the list.
 func (l List) Cons(any parens.Any) (List, error) {
-	return listCons(capnp.SingleSegment(nil), any.(ww.Any).Data(), l)
+	return listCons(capnp.SingleSegment(nil), any.(ww.Any).MemVal(), l)
 }
 
 // First returns the head or first item of the list.
@@ -206,17 +206,8 @@ func listNext(v api.Value) (api.LinkedList, parens.Seq, error) {
 }
 
 func newList(a capnp.Arena) (l List, ll api.LinkedList, err error) {
-	var seg *capnp.Segment
-	if _, seg, err = capnp.NewMessage(a); err != nil {
-		return
-	}
-
-	if l.Raw, err = api.NewRootValue(seg); err != nil {
-		return
-	}
-
-	if ll, err = l.Raw.NewList(); err != nil {
-		return
+	if l.Value, err = mem.NewValue(a); err == nil {
+		ll, err = l.Raw.NewList()
 	}
 
 	return

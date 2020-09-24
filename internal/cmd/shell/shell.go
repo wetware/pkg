@@ -197,7 +197,13 @@ func (l linereader) Close() error {
 
 type nopAnchor []string
 
-func (a nopAnchor) String() string { return anchorpath.Join(a) }
+func (a nopAnchor) Name() string {
+	if anchorpath.Root(a) {
+		return ""
+	}
+
+	return a[len(a)-1]
+}
 
 func (a nopAnchor) Path() []string { return a }
 
@@ -223,6 +229,6 @@ func (a nopAnchor) Store(context.Context, ww.Any) error {
 	return errors.New("not found")
 }
 
-func (a nopAnchor) Go(context.Context, ww.ProcSpec) error {
-	return errors.New("not implemented")
+func (a nopAnchor) Go(context.Context, ...ww.Any) (ww.Proc, error) {
+	return nil, errors.New("not implemented")
 }

@@ -55,7 +55,7 @@ func (i64 Int64) SExpr() (string, error) {
 
 // Comp returns 0 if the v == other, -1 if v < other, and 1 if v > other.
 func (i64 Int64) Comp(other ww.Any) (int, error) {
-	switch o := other.Data(); o.Type() {
+	switch o := other.MemVal(); o.Type() {
 	case api.Value_Which_i64:
 		return compI64(i64.Raw.I64(), o.Raw.I64()), nil
 
@@ -120,7 +120,7 @@ func (bi BigInt) SExpr() (string, error) {
 
 // Comp returns 0 if the v == other, -1 if v < other, and 1 if v > other.
 func (bi BigInt) Comp(other ww.Any) (int, error) {
-	switch o := other.Data(); o.Type() {
+	switch o := other.MemVal(); o.Type() {
 	case api.Value_Which_i64:
 		return bi.i.Cmp(big.NewInt(o.Raw.I64())), nil
 
@@ -168,7 +168,7 @@ func (f64 Float64) SExpr() (string, error) {
 
 // Comp returns 0 if the v == other, -1 if v < other, and 1 if v > other.
 func (f64 Float64) Comp(other ww.Any) (int, error) {
-	switch o := other.Data(); o.Type() {
+	switch o := other.MemVal(); o.Type() {
 	case api.Value_Which_i64:
 		var f big.Float
 		return big.NewFloat(f64.Raw.F64()).Cmp(f.SetInt64(o.Raw.I64())), nil
@@ -239,7 +239,7 @@ func (bf BigFloat) SExpr() (string, error) {
 
 // Comp returns 0 if the v == other, -1 if v < other, and 1 if v > other.
 func (bf BigFloat) Comp(other ww.Any) (int, error) {
-	switch o := other.Data(); o.Type() {
+	switch o := other.MemVal(); o.Type() {
 	case api.Value_Which_i64:
 		var f big.Float
 		return bf.f.Cmp(f.SetInt64(o.Raw.I64())), nil
@@ -331,7 +331,7 @@ func (f Frac) SExpr() (string, error) {
 
 // Comp returns true if the other value is numerical and has the same value.
 func (f Frac) Comp(other ww.Any) (int, error) {
-	switch o := other.Data(); o.Type() {
+	switch o := other.MemVal(); o.Type() {
 	case api.Value_Which_i64:
 		var r big.Rat
 		return f.r.Cmp(r.SetFrac(big.NewInt(o.Raw.I64()), &unit)), nil

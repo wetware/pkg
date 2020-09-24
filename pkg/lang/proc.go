@@ -5,65 +5,45 @@ import (
 	"github.com/spy16/parens"
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
-	"github.com/wetware/ww/pkg/mem"
 )
 
-// ProcSpecFromArgs .
-func ProcSpecFromArgs(args parens.Seq) ww.ProcSpec {
-	return func(p api.Anchor_go_Params) error {
-		first, err := args.First()
-		if err != nil {
-			return err
-		}
+type procArgs []ww.Any
 
-		switch v := first.(ww.Any).Data(); v.Type() {
-		case api.Value_Which_list:
-			return setGoroutineSpec(p, v)
-
-		case api.Value_Which_keyword:
-			return setSpecFromKeywordArgs(p, args)
-
-		default:
-			return parens.Error{
-				Cause:   errors.New("unsuitable type for remote goroutine"),
-				Message: v.Type().String(),
-			}
-
-		}
-	}
-}
-
-func setGoroutineSpec(p api.Anchor_go_Params, v mem.Value) error {
-	spec, err := p.NewSpec()
+func newProcArgs(args parens.Seq) (procArgs, error) {
+	n, err := args.Count()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	g, err := spec.NewGoroutine()
-	if err != nil {
-		return err
+	if n == 0 {
+		return nil, errors.Errorf("expected at least one argument, got %d", n)
 	}
 
-	return g.SetValue(v.Raw)
+	as := make([]ww.Any, 0, n)
+	parens.ForEach(args, func(item parens.Any) (bool, error) {
+		as = append(as, item.(ww.Any))
+		return false, nil
+	})
+
+	return as, nil
 }
 
-func setSpecFromKeywordArgs(p api.Anchor_go_Params, args parens.Seq) error {
-	return errors.New("NOT IMPLEMENTED")
+func (as procArgs) Global() (p Path, ok bool) {
+	if ok = as.isGlobalProc(); ok {
+		p.Value = as[0].MemVal()
+	}
+
+	return
 }
 
-func goLocal(env *parens.Env, target parens.Any, args parens.Seq) (parens.Expr, error) {
-	/*
-		TODO(enhancement):  support for local UNIX procs and Docker containers.
+func (as procArgs) Args() []ww.Any {
+	if as.isGlobalProc() {
+		return as[1:]
+	}
 
-		Read in args and check if they satisfy a exec.Cmd, or Docker equivalent.
-	*/
-
-	return parens.GoExpr{Value: target}, nil
+	return as
 }
 
-func (c anchorClient) GoRemote(env *parens.Env, p Path, args parens.Seq) (parens.Expr, error) {
-	return RemoteProcExpr{
-		PathExpr: PathExpr{Root: c.root, Path: p},
-		Spec:     ProcSpecFromArgs(args),
-	}, nil
+func (as procArgs) isGlobalProc() bool {
+	return as[0].MemVal().Type() == api.Value_Which_path
 }

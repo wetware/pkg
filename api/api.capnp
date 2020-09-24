@@ -27,6 +27,7 @@ struct Value {
         list @12 :LinkedList;
         vector @13 :Vector;
         # map @14 :CHAMP;
+        proc @14 :Proc;
     }
 }
 
@@ -41,40 +42,16 @@ interface Anchor {
         }
     }
 
-    struct ProcSpec {
-        struct Goroutine {
-            value @0 :Value;
-        }
-
-        struct OSProc {
-            args @0 :List(Text);
-            env @1 :List(EnvVar);
-            dir @2 :Text;
-        }
-
-        struct Docker {
-        }
-
-        struct EnvVar {
-            name @0 :Text;
-            value @1 :Text;
-        }
-
-        union{
-            goroutine @0 :Goroutine;
-            osProc @1 :OSProc;
-            docker @2 :Docker;
-        }
-    }
-    
-    # Using Text paths saves a couple of bytes since we don't have to wrap the text,
-    # which is effectively a List(uint8), in _another_ list.
     walk @1 (path :Text) -> (anchor :Anchor);
     load @2 () -> (value :Value);
     store @3 (value :Value) -> ();
-    go @4 (spec :ProcSpec) -> ();  # TODO:  return a Process interface.
+    go @4 (args :List(Value)) -> (proc :Proc);
 }
 
+
+interface Proc {
+    wait @0 () -> ();
+}
 
 struct Frac {
     numer @0 :Data;

@@ -6,6 +6,7 @@ import (
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/internal/rpc"
+	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
 )
 
 // Ls .
@@ -42,7 +43,7 @@ func walk(ctx context.Context, a api.Anchor, p path) ww.Anchor {
 	return anchor{
 		path: p,
 		anchorProvider: a.Walk(ctx, func(ps api.Anchor_walk_Params) error {
-			return ps.SetPath(p.Absolute())
+			return ps.SetPath(anchorpath.Join(p.Path()))
 		}),
 	}
 }

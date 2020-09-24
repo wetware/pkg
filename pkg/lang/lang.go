@@ -8,6 +8,7 @@ import (
 	"github.com/spy16/parens"
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
+	"github.com/wetware/ww/pkg/lang/proc"
 	"github.com/wetware/ww/pkg/mem"
 )
 
@@ -65,6 +66,8 @@ func AsAny(v mem.Value) (val ww.Any, err error) {
 		val = List{v}
 	case api.Value_Which_vector:
 		val = Vector{v}
+	case api.Value_Which_proc:
+		val = proc.Proc{Value: v}
 	default:
 		err = errors.Errorf("unknown value type '%s'", v.Type())
 	}
@@ -81,7 +84,7 @@ type Comparable interface {
 
 // Eq returns true is the two values are equal
 func Eq(a, b ww.Any) bool {
-	return bytes.Equal(a.Data().Bytes(), b.Data().Bytes())
+	return bytes.Equal(a.MemVal().Bytes(), b.MemVal().Bytes())
 }
 
 // Pop returns a collection without one item.  For a list, Pop
@@ -89,19 +92,19 @@ func Eq(a, b ww.Any) bool {
 // returns a new vector without the last item. If the collection
 // is empty, returns an error.
 func Pop(col ww.Any) (ww.Any, error) {
-	switch col.Data().Type() {
+	switch col.MemVal().Type() {
 	case api.Value_Which_list:
-		_, tail, err := listTail(col.Data())
+		_, tail, err := listTail(col.MemVal())
 		return tail, err
 
 	case api.Value_Which_vector:
-		_, vec, err := vectorPop(col.Data())
+		_, vec, err := vectorPop(col.MemVal())
 		return vec, err
 
 	default:
 		return nil, parens.Error{
 			Cause:   errors.New("unordered collection or atom"),
-			Message: col.Data().Type().String(),
+			Message: col.MemVal().Type().String(),
 		}
 
 	}
@@ -111,9 +114,9 @@ func Pop(col ww.Any) (ww.Any, error) {
 // 'added'. (conj nil item) returns (item).  The 'addition' may
 // happen at different 'places' depending on the concrete type.
 func Conj(col ww.Any, vs parens.Seq) (parens.Any, error) {
-	switch col.Data().Type() {
+	switch col.MemVal().Type() {
 	case api.Value_Which_list:
-		l := List{col.Data()}
+		l := List{col.MemVal()}
 		err := parens.ForEach(vs, func(v parens.Any) (_ bool, err error) {
 			l, err = l.Cons(v)
 			return
@@ -121,7 +124,7 @@ func Conj(col ww.Any, vs parens.Seq) (parens.Any, error) {
 		return l, err
 
 	case api.Value_Which_vector:
-		vec := Vector{col.Data()}
+		vec := Vector{col.MemVal()}
 		err := parens.ForEach(vs, func(v parens.Any) (_ bool, err error) {
 			vec, err = vec.Conj(v)
 			return
@@ -131,7 +134,7 @@ func Conj(col ww.Any, vs parens.Seq) (parens.Any, error) {
 	default:
 		return nil, parens.Error{
 			Cause:   errors.New("unordered collection or atom"),
-			Message: col.Data().Type().String(),
+			Message: col.MemVal().Type().String(),
 		}
 
 	}

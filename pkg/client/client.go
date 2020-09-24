@@ -63,11 +63,9 @@ func (c Client) Join(topic string) (Topic, error) {
 	return c.ps.Join(topic)
 }
 
-// String representation of the Client's anchor name.  This always returns "/", but is
-// required in order for Client to implement ww.Anchor.
-func (c Client) String() string {
-	return ""
-}
+// Name of the anchor.  Clients represent the global anchor, so are always named with
+// an empty string.
+func (c Client) Name() string { return "" }
 
 // Path slice.  Required for Client to implement ww.Anchor.
 func (c Client) Path() []string {
@@ -99,8 +97,8 @@ func (c Client) Store(context.Context, ww.Any) error {
 }
 
 // Go is a nop that always returns an error.
-func (c Client) Go(context.Context, ww.ProcSpec) error {
-	return errors.New("not implemented")
+func (c Client) Go(context.Context, ...ww.Any) (ww.Proc, error) {
+	return nil, errors.New("not implemented")
 }
 
 /*

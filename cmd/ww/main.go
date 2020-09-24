@@ -45,10 +45,10 @@ var flags = []cli.Flag{
 
 var commands = []*cli.Command{
 	start.Command(),
+	shell.Command(),
 	client.Command(),
 	keygen.Command(),
 	boot.Command(),
-	shell.Command(),
 }
 
 func main() {

@@ -5,7 +5,6 @@ import (
 
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/pkg/errors"
-	"github.com/wetware/ww/internal/api"
 	"github.com/wetware/ww/pkg/mem"
 )
 
@@ -32,20 +31,25 @@ var (
 // Any is a generic value type
 type Any interface {
 	SExpr() (string, error)
-	Data() mem.Value
+	MemVal() mem.Value
 }
 
-// ProcSpec specifies parameters for a process.
-type ProcSpec func(api.Anchor_go_Params) error
+// Proc is a generic asynchronous process.
+type Proc interface {
+	Any
+
+	// Wait for the process to terminate.
+	Wait(context.Context) error
+}
 
 // Anchor is a node in a cluster-wide, hierarchical namespace.
 type Anchor interface {
-	String() string
+	Name() string
 	Path() []string
 	Ls(context.Context) ([]Anchor, error)
 	Walk(context.Context, []string) Anchor
 	Load(context.Context) (Any, error)
 	Store(context.Context, Any) error
-	Go(context.Context, ProcSpec) error
+	Go(context.Context, ...Any) (Proc, error)
 	// Resolve() (Anchor, error)
 }

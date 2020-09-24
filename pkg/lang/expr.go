@@ -5,6 +5,7 @@ import (
 
 	"github.com/spy16/parens"
 	ww "github.com/wetware/ww/pkg"
+	"github.com/wetware/ww/pkg/lang/proc"
 	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
 	capnp "zombiezen.com/go/capnproto2"
 )
@@ -23,9 +24,7 @@ type PathExpr struct {
 }
 
 // Eval returns the PathExpr unmodified
-func (pex PathExpr) Eval(env *parens.Env) (parens.Any, error) {
-	return pex, nil
-}
+func (pex PathExpr) Eval() (parens.Any, error) { return pex, nil }
 
 // Invoke is the data selector for the Path type.  It gets/sets the value at the anchor
 // path.
@@ -56,7 +55,7 @@ func (pex PathExpr) Invoke(_ *parens.Env, args ...parens.Any) (parens.Any, error
 type PathListExpr struct{ PathExpr }
 
 // Eval calls ww.Anchor.Ls
-func (plx PathListExpr) Eval(_ *parens.Env) (parens.Any, error) {
+func (plx PathListExpr) Eval() (parens.Any, error) {
 	path, err := plx.Parts()
 	if err != nil {
 		return nil, err
@@ -74,7 +73,7 @@ func (plx PathListExpr) Eval(_ *parens.Env) (parens.Any, error) {
 
 	for _, a := range as {
 		// TODO(performance):  cache the anchors.
-		p, err := NewPath(capnp.SingleSegment(nil), a.String())
+		p, err := NewPath(capnp.SingleSegment(nil), anchorpath.Join(a.Path()))
 		if err != nil {
 			return nil, err
 		}
@@ -87,19 +86,32 @@ func (plx PathListExpr) Eval(_ *parens.Env) (parens.Any, error) {
 	return b.Vector()
 }
 
-// RemoteProcExpr starts a remote goroutine.
-type RemoteProcExpr struct {
-	PathExpr
-	Spec ww.ProcSpec
+// LocalGoExpr starts a local process.  Local processes cannot be addressed by remote
+// hosts.
+type LocalGoExpr struct {
+	Env  *parens.Env
+	Args []ww.Any
 }
 
-// Eval resolves the anchor and starts the remote goroutine.
-func (rpx RemoteProcExpr) Eval(env *parens.Env) (parens.Any, error) {
-	path, err := rpx.Parts()
+// Eval resolves starts the process.
+func (lx LocalGoExpr) Eval() (parens.Any, error) {
+	return proc.Spawn(lx.Env.Fork(), lx.Args...)
+}
+
+// GlobalGoExpr starts a global process.  Global processes may be bound to an Anchor,
+// rendering them addressable by remote hosts.
+type GlobalGoExpr struct {
+	Root ww.Anchor
+	Path Path
+	Args []ww.Any
+}
+
+// Eval resolves the anchor and starts the process.
+func (gx GlobalGoExpr) Eval() (parens.Any, error) {
+	path, err := gx.Path.Parts()
 	if err != nil {
 		return nil, err
 	}
 
-	return nil, rpx.Root.Walk(context.Background(), path).
-		Go(context.Background(), rpx.Spec)
+	return gx.Root.Walk(context.Background(), path).Go(context.Background(), gx.Args...)
 }

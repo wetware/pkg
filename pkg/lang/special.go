@@ -1,15 +1,17 @@
 package lang
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 
+	"github.com/pkg/errors"
 	"github.com/spy16/parens"
 	ww "github.com/wetware/ww/pkg"
 )
 
 var (
+	_ = parens.ParseSpecial(parseDoExpr)
+	_ = parens.ParseSpecial(parseIfExpr)
 	_ = parens.ParseSpecial(parseDefExpr)
 	_ = parens.ParseSpecial(parseQuoteExpr)
 	_ = parens.ParseSpecial(parsePop)
@@ -18,6 +20,57 @@ var (
 	_ = parens.ParseSpecial(anchorClient{}.Ls)
 	_ = parens.ParseSpecial(anchorClient{}.Go)
 )
+
+func parseDoExpr(env *parens.Env, args parens.Seq) (parens.Expr, error) {
+	var de parens.DoExpr
+	err := parens.ForEach(args, func(item parens.Any) (bool, error) {
+		expr, err := env.Analyze(item)
+		if err != nil {
+			return true, err
+		}
+		de.Exprs = append(de.Exprs, expr)
+		return false, nil
+	})
+
+	return de, err
+}
+
+func parseIfExpr(env *parens.Env, args parens.Seq) (parens.Expr, error) {
+	count, err := args.Count()
+	if err != nil {
+		return nil, err
+	} else if count != 2 && count != 3 {
+		return nil, parens.Error{
+			Cause:   errors.New("invalid if form"),
+			Message: fmt.Sprintf("requires 2 or 3 arguments, got %d", count),
+		}
+	}
+
+	exprs := [3]parens.Expr{}
+	for i := 0; i < count; i++ {
+		f, err := args.First()
+		if err != nil {
+			return nil, err
+		}
+
+		expr, err := env.Analyze(f)
+		if err != nil {
+			return nil, err
+		}
+		exprs[i] = expr
+
+		args, err = args.Next()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &parens.IfExpr{
+		Test: exprs[0],
+		Then: exprs[1],
+		Else: exprs[2],
+	}, nil
+}
 
 func parseQuoteExpr(_ *parens.Env, args parens.Seq) (parens.Expr, error) {
 	if count, err := args.Count(); err != nil {
@@ -70,18 +123,19 @@ func parseDefExpr(env *parens.Env, args parens.Seq) (parens.Expr, error) {
 		return nil, err
 	}
 
-	res, err := env.Eval(second)
+	res, err := env.Analyze(second)
 	if err != nil {
 		return nil, err
 	}
 
-	s, err := sym.Raw.Symbol()
+	name, err := sym.Raw.Symbol()
 	if err != nil {
 		return nil, err
 	}
 
-	return parens.DefExpr{
-		Name:  s,
+	return &parens.DefExpr{
+		Env:   env,
+		Name:  name,
 		Value: res,
 	}, nil
 }
@@ -113,26 +167,23 @@ func (c anchorClient) Ls(_ *parens.Env, args parens.Seq) (parens.Expr, error) {
 }
 
 func (c anchorClient) Go(env *parens.Env, args parens.Seq) (parens.Expr, error) {
-	first, err := args.First()
+	as, err := newProcArgs(args)
 	if err != nil {
 		return nil, err
 	}
 
-	if first == nil {
-		return nil, parens.Error{
-			Cause: errors.New("go expr requires at least one argument"),
-		}
+	if p, ok := as.Global(); ok {
+		return GlobalGoExpr{
+			Root: c.root,
+			Path: p,
+			Args: as.Args(),
+		}, nil
 	}
 
-	if args, err = args.Next(); err != nil {
-		return nil, err
-	}
-
-	if p, ok := first.(Path); ok {
-		return c.GoRemote(env, p, args)
-	}
-
-	return goLocal(env, first, args)
+	return LocalGoExpr{
+		Env:  env,
+		Args: as.Args(),
+	}, nil
 }
 
 func parsePop(_ *parens.Env, args parens.Seq) (parens.Expr, error) {

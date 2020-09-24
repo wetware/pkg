@@ -323,7 +323,7 @@ func vectorUpdate(vec api.Vector, cnt, i int, any ww.Any) (Vector, error) {
 		}
 
 		// newTail[i & 0x01f] = any;
-		if err = tail.Set(i&mask, any.Data().Raw); err != nil {
+		if err = tail.Set(i&mask, any.MemVal().Raw); err != nil {
 			return Vector{}, err
 		}
 	} else {
@@ -367,7 +367,7 @@ func vectorCons(vec api.Vector, cnt int, any ww.Any) (_ Vector, err error) {
 			return
 		}
 
-		if err = newtail.Set(tail.Len()&mask, any.Data().Raw); err != nil {
+		if err = newtail.Set(tail.Len()&mask, any.MemVal().Raw); err != nil {
 			return
 		}
 
@@ -586,7 +586,7 @@ func (b *VectorBuilder) Vector() (vec Vector, err error) {
 	}
 
 	for i, any := range b.tail {
-		if err = tail.Set(i&mask, any.Data().Raw); err != nil {
+		if err = tail.Set(i&mask, any.MemVal().Raw); err != nil {
 			return
 		}
 	}
@@ -712,20 +712,6 @@ func getChild(p api.Vector_Node, i int) (api.Vector_Node, error) {
 	vector utils
 */
 
-func newVectorValue(a capnp.Arena) (val mem.Value, vec api.Vector, err error) {
-	var seg *capnp.Segment
-	if _, seg, err = capnp.NewMessage(a); err != nil {
-		return
-	}
-
-	if val.Raw, err = api.NewRootValue(seg); err != nil {
-		return
-	}
-
-	vec, err = val.Raw.NewVector()
-	return
-}
-
 func newVector(a capnp.Arena, cnt, shift int, root api.Vector_Node, t api.Value_List) (api.Vector, Vector, error) {
 	val, vec, err := newVectorValue(a)
 	if err != nil {
@@ -744,6 +730,14 @@ func newVector(a capnp.Arena, cnt, shift int, root api.Vector_Node, t api.Value_
 	vec.SetShift(uint8(shift))
 
 	return vec, Vector{val}, nil
+}
+
+func newVectorValue(a capnp.Arena) (val mem.Value, vec api.Vector, err error) {
+	if val, err = mem.NewValue(a); err == nil {
+		vec, err = val.Raw.NewVector()
+	}
+
+	return
 }
 
 func newRootVectorNode(a capnp.Arena) (api.Vector_Node, error) {
@@ -795,7 +789,7 @@ func newVectorNodeWithValues(a capnp.Arena, vs ...ww.Any) (n api.Vector_Node, er
 	}
 
 	for i, v := range vs {
-		if err = vals.Set(i, v.Data().Raw); err != nil {
+		if err = vals.Set(i, v.MemVal().Raw); err != nil {
 			return
 		}
 	}
@@ -833,7 +827,7 @@ func setNodeValue(n api.Vector_Node, i int, any ww.Any) error {
 		return err
 	}
 
-	return vs.Set(i&mask, any.Data().Raw)
+	return vs.Set(i&mask, any.MemVal().Raw)
 }
 
 // func setValueListAt(vs api.Value_List, i int, v parens.Any) error {

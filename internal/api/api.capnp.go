@@ -30,10 +30,11 @@ const (
 	Value_Which_path     Value_Which = 11
 	Value_Which_list     Value_Which = 12
 	Value_Which_vector   Value_Which = 13
+	Value_Which_proc     Value_Which = 14
 )
 
 func (w Value_Which) String() string {
-	const s = "nilbooli64bigIntf64bigFloatfraccharstrkeywordsymbolpathlistvector"
+	const s = "nilbooli64bigIntf64bigFloatfraccharstrkeywordsymbolpathlistvectorproc"
 	switch w {
 	case Value_Which_nil:
 		return s[0:3]
@@ -63,6 +64,8 @@ func (w Value_Which) String() string {
 		return s[55:59]
 	case Value_Which_vector:
 		return s[59:65]
+	case Value_Which_proc:
+		return s[65:69]
 
 	}
 	return "Value_Which(" + strconv.FormatUint(uint64(w), 10) + ")"
@@ -397,6 +400,32 @@ func (s Value) NewVector() (Vector, error) {
 	return ss, err
 }
 
+func (s Value) Proc() Proc {
+	if s.Struct.Uint16(0) != 14 {
+		panic("Which() != proc")
+	}
+	p, _ := s.Struct.Ptr(0)
+	return Proc{Client: p.Interface().Client()}
+}
+
+func (s Value) HasProc() bool {
+	if s.Struct.Uint16(0) != 14 {
+		return false
+	}
+	p, err := s.Struct.Ptr(0)
+	return p.IsValid() || err != nil
+}
+
+func (s Value) SetProc(v Proc) error {
+	s.Struct.SetUint16(0, 14)
+	if v.Client == nil {
+		return s.Struct.SetPtr(0, capnp.Ptr{})
+	}
+	seg := s.Segment()
+	in := capnp.NewInterface(seg, seg.Message().AddCap(v.Client))
+	return s.Struct.SetPtr(0, in.ToPtr())
+}
+
 // Value_List is a list of Value.
 type Value_List struct{ capnp.List }
 
@@ -433,6 +462,10 @@ func (p Value_Promise) List() LinkedList_Promise {
 
 func (p Value_Promise) Vector() Vector_Promise {
 	return Vector_Promise{Pipeline: p.Pipeline.GetPipeline(0)}
+}
+
+func (p Value_Promise) Proc() Proc {
+	return Proc{Client: p.Pipeline.GetPipeline(0).Client()}
 }
 
 type Anchor struct{ Client capnp.Client }
@@ -630,7 +663,7 @@ func Anchor_Methods(methods []server.Method, s Anchor_Server) []server.Method {
 			call := Anchor_go{c, opts, Anchor_go_Params{Struct: p}, Anchor_go_Results{Struct: r}}
 			return s.Go(call)
 		},
-		ResultsSize: capnp.ObjectSize{DataSize: 0, PointerCount: 0},
+		ResultsSize: capnp.ObjectSize{DataSize: 0, PointerCount: 1},
 	})
 
 	return methods
@@ -802,550 +835,6 @@ func (p Anchor_SubAnchor_Promise) Struct() (Anchor_SubAnchor, error) {
 
 func (p Anchor_SubAnchor_Promise) Anchor() Anchor {
 	return Anchor{Client: p.Pipeline.GetPipeline(1).Client()}
-}
-
-type Anchor_ProcSpec struct{ capnp.Struct }
-type Anchor_ProcSpec_Which uint16
-
-const (
-	Anchor_ProcSpec_Which_goroutine Anchor_ProcSpec_Which = 0
-	Anchor_ProcSpec_Which_osProc    Anchor_ProcSpec_Which = 1
-	Anchor_ProcSpec_Which_docker    Anchor_ProcSpec_Which = 2
-)
-
-func (w Anchor_ProcSpec_Which) String() string {
-	const s = "goroutineosProcdocker"
-	switch w {
-	case Anchor_ProcSpec_Which_goroutine:
-		return s[0:9]
-	case Anchor_ProcSpec_Which_osProc:
-		return s[9:15]
-	case Anchor_ProcSpec_Which_docker:
-		return s[15:21]
-
-	}
-	return "Anchor_ProcSpec_Which(" + strconv.FormatUint(uint64(w), 10) + ")"
-}
-
-// Anchor_ProcSpec_TypeID is the unique identifier for the type Anchor_ProcSpec.
-const Anchor_ProcSpec_TypeID = 0xb87b8be74e3ab8d6
-
-func NewAnchor_ProcSpec(s *capnp.Segment) (Anchor_ProcSpec, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
-	return Anchor_ProcSpec{st}, err
-}
-
-func NewRootAnchor_ProcSpec(s *capnp.Segment) (Anchor_ProcSpec, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
-	return Anchor_ProcSpec{st}, err
-}
-
-func ReadRootAnchor_ProcSpec(msg *capnp.Message) (Anchor_ProcSpec, error) {
-	root, err := msg.RootPtr()
-	return Anchor_ProcSpec{root.Struct()}, err
-}
-
-func (s Anchor_ProcSpec) String() string {
-	str, _ := text.Marshal(0xb87b8be74e3ab8d6, s.Struct)
-	return str
-}
-
-func (s Anchor_ProcSpec) Which() Anchor_ProcSpec_Which {
-	return Anchor_ProcSpec_Which(s.Struct.Uint16(0))
-}
-func (s Anchor_ProcSpec) Goroutine() (Anchor_ProcSpec_Goroutine, error) {
-	if s.Struct.Uint16(0) != 0 {
-		panic("Which() != goroutine")
-	}
-	p, err := s.Struct.Ptr(0)
-	return Anchor_ProcSpec_Goroutine{Struct: p.Struct()}, err
-}
-
-func (s Anchor_ProcSpec) HasGoroutine() bool {
-	if s.Struct.Uint16(0) != 0 {
-		return false
-	}
-	p, err := s.Struct.Ptr(0)
-	return p.IsValid() || err != nil
-}
-
-func (s Anchor_ProcSpec) SetGoroutine(v Anchor_ProcSpec_Goroutine) error {
-	s.Struct.SetUint16(0, 0)
-	return s.Struct.SetPtr(0, v.Struct.ToPtr())
-}
-
-// NewGoroutine sets the goroutine field to a newly
-// allocated Anchor_ProcSpec_Goroutine struct, preferring placement in s's segment.
-func (s Anchor_ProcSpec) NewGoroutine() (Anchor_ProcSpec_Goroutine, error) {
-	s.Struct.SetUint16(0, 0)
-	ss, err := NewAnchor_ProcSpec_Goroutine(s.Struct.Segment())
-	if err != nil {
-		return Anchor_ProcSpec_Goroutine{}, err
-	}
-	err = s.Struct.SetPtr(0, ss.Struct.ToPtr())
-	return ss, err
-}
-
-func (s Anchor_ProcSpec) OsProc() (Anchor_ProcSpec_OSProc, error) {
-	if s.Struct.Uint16(0) != 1 {
-		panic("Which() != osProc")
-	}
-	p, err := s.Struct.Ptr(0)
-	return Anchor_ProcSpec_OSProc{Struct: p.Struct()}, err
-}
-
-func (s Anchor_ProcSpec) HasOsProc() bool {
-	if s.Struct.Uint16(0) != 1 {
-		return false
-	}
-	p, err := s.Struct.Ptr(0)
-	return p.IsValid() || err != nil
-}
-
-func (s Anchor_ProcSpec) SetOsProc(v Anchor_ProcSpec_OSProc) error {
-	s.Struct.SetUint16(0, 1)
-	return s.Struct.SetPtr(0, v.Struct.ToPtr())
-}
-
-// NewOsProc sets the osProc field to a newly
-// allocated Anchor_ProcSpec_OSProc struct, preferring placement in s's segment.
-func (s Anchor_ProcSpec) NewOsProc() (Anchor_ProcSpec_OSProc, error) {
-	s.Struct.SetUint16(0, 1)
-	ss, err := NewAnchor_ProcSpec_OSProc(s.Struct.Segment())
-	if err != nil {
-		return Anchor_ProcSpec_OSProc{}, err
-	}
-	err = s.Struct.SetPtr(0, ss.Struct.ToPtr())
-	return ss, err
-}
-
-func (s Anchor_ProcSpec) Docker() (Anchor_ProcSpec_Docker, error) {
-	if s.Struct.Uint16(0) != 2 {
-		panic("Which() != docker")
-	}
-	p, err := s.Struct.Ptr(0)
-	return Anchor_ProcSpec_Docker{Struct: p.Struct()}, err
-}
-
-func (s Anchor_ProcSpec) HasDocker() bool {
-	if s.Struct.Uint16(0) != 2 {
-		return false
-	}
-	p, err := s.Struct.Ptr(0)
-	return p.IsValid() || err != nil
-}
-
-func (s Anchor_ProcSpec) SetDocker(v Anchor_ProcSpec_Docker) error {
-	s.Struct.SetUint16(0, 2)
-	return s.Struct.SetPtr(0, v.Struct.ToPtr())
-}
-
-// NewDocker sets the docker field to a newly
-// allocated Anchor_ProcSpec_Docker struct, preferring placement in s's segment.
-func (s Anchor_ProcSpec) NewDocker() (Anchor_ProcSpec_Docker, error) {
-	s.Struct.SetUint16(0, 2)
-	ss, err := NewAnchor_ProcSpec_Docker(s.Struct.Segment())
-	if err != nil {
-		return Anchor_ProcSpec_Docker{}, err
-	}
-	err = s.Struct.SetPtr(0, ss.Struct.ToPtr())
-	return ss, err
-}
-
-// Anchor_ProcSpec_List is a list of Anchor_ProcSpec.
-type Anchor_ProcSpec_List struct{ capnp.List }
-
-// NewAnchor_ProcSpec creates a new list of Anchor_ProcSpec.
-func NewAnchor_ProcSpec_List(s *capnp.Segment, sz int32) (Anchor_ProcSpec_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1}, sz)
-	return Anchor_ProcSpec_List{l}, err
-}
-
-func (s Anchor_ProcSpec_List) At(i int) Anchor_ProcSpec { return Anchor_ProcSpec{s.List.Struct(i)} }
-
-func (s Anchor_ProcSpec_List) Set(i int, v Anchor_ProcSpec) error {
-	return s.List.SetStruct(i, v.Struct)
-}
-
-func (s Anchor_ProcSpec_List) String() string {
-	str, _ := text.MarshalList(0xb87b8be74e3ab8d6, s.List)
-	return str
-}
-
-// Anchor_ProcSpec_Promise is a wrapper for a Anchor_ProcSpec promised by a client call.
-type Anchor_ProcSpec_Promise struct{ *capnp.Pipeline }
-
-func (p Anchor_ProcSpec_Promise) Struct() (Anchor_ProcSpec, error) {
-	s, err := p.Pipeline.Struct()
-	return Anchor_ProcSpec{s}, err
-}
-
-func (p Anchor_ProcSpec_Promise) Goroutine() Anchor_ProcSpec_Goroutine_Promise {
-	return Anchor_ProcSpec_Goroutine_Promise{Pipeline: p.Pipeline.GetPipeline(0)}
-}
-
-func (p Anchor_ProcSpec_Promise) OsProc() Anchor_ProcSpec_OSProc_Promise {
-	return Anchor_ProcSpec_OSProc_Promise{Pipeline: p.Pipeline.GetPipeline(0)}
-}
-
-func (p Anchor_ProcSpec_Promise) Docker() Anchor_ProcSpec_Docker_Promise {
-	return Anchor_ProcSpec_Docker_Promise{Pipeline: p.Pipeline.GetPipeline(0)}
-}
-
-type Anchor_ProcSpec_Goroutine struct{ capnp.Struct }
-
-// Anchor_ProcSpec_Goroutine_TypeID is the unique identifier for the type Anchor_ProcSpec_Goroutine.
-const Anchor_ProcSpec_Goroutine_TypeID = 0xe87cb3e2d38251c8
-
-func NewAnchor_ProcSpec_Goroutine(s *capnp.Segment) (Anchor_ProcSpec_Goroutine, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Anchor_ProcSpec_Goroutine{st}, err
-}
-
-func NewRootAnchor_ProcSpec_Goroutine(s *capnp.Segment) (Anchor_ProcSpec_Goroutine, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Anchor_ProcSpec_Goroutine{st}, err
-}
-
-func ReadRootAnchor_ProcSpec_Goroutine(msg *capnp.Message) (Anchor_ProcSpec_Goroutine, error) {
-	root, err := msg.RootPtr()
-	return Anchor_ProcSpec_Goroutine{root.Struct()}, err
-}
-
-func (s Anchor_ProcSpec_Goroutine) String() string {
-	str, _ := text.Marshal(0xe87cb3e2d38251c8, s.Struct)
-	return str
-}
-
-func (s Anchor_ProcSpec_Goroutine) Value() (Value, error) {
-	p, err := s.Struct.Ptr(0)
-	return Value{Struct: p.Struct()}, err
-}
-
-func (s Anchor_ProcSpec_Goroutine) HasValue() bool {
-	p, err := s.Struct.Ptr(0)
-	return p.IsValid() || err != nil
-}
-
-func (s Anchor_ProcSpec_Goroutine) SetValue(v Value) error {
-	return s.Struct.SetPtr(0, v.Struct.ToPtr())
-}
-
-// NewValue sets the value field to a newly
-// allocated Value struct, preferring placement in s's segment.
-func (s Anchor_ProcSpec_Goroutine) NewValue() (Value, error) {
-	ss, err := NewValue(s.Struct.Segment())
-	if err != nil {
-		return Value{}, err
-	}
-	err = s.Struct.SetPtr(0, ss.Struct.ToPtr())
-	return ss, err
-}
-
-// Anchor_ProcSpec_Goroutine_List is a list of Anchor_ProcSpec_Goroutine.
-type Anchor_ProcSpec_Goroutine_List struct{ capnp.List }
-
-// NewAnchor_ProcSpec_Goroutine creates a new list of Anchor_ProcSpec_Goroutine.
-func NewAnchor_ProcSpec_Goroutine_List(s *capnp.Segment, sz int32) (Anchor_ProcSpec_Goroutine_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return Anchor_ProcSpec_Goroutine_List{l}, err
-}
-
-func (s Anchor_ProcSpec_Goroutine_List) At(i int) Anchor_ProcSpec_Goroutine {
-	return Anchor_ProcSpec_Goroutine{s.List.Struct(i)}
-}
-
-func (s Anchor_ProcSpec_Goroutine_List) Set(i int, v Anchor_ProcSpec_Goroutine) error {
-	return s.List.SetStruct(i, v.Struct)
-}
-
-func (s Anchor_ProcSpec_Goroutine_List) String() string {
-	str, _ := text.MarshalList(0xe87cb3e2d38251c8, s.List)
-	return str
-}
-
-// Anchor_ProcSpec_Goroutine_Promise is a wrapper for a Anchor_ProcSpec_Goroutine promised by a client call.
-type Anchor_ProcSpec_Goroutine_Promise struct{ *capnp.Pipeline }
-
-func (p Anchor_ProcSpec_Goroutine_Promise) Struct() (Anchor_ProcSpec_Goroutine, error) {
-	s, err := p.Pipeline.Struct()
-	return Anchor_ProcSpec_Goroutine{s}, err
-}
-
-func (p Anchor_ProcSpec_Goroutine_Promise) Value() Value_Promise {
-	return Value_Promise{Pipeline: p.Pipeline.GetPipeline(0)}
-}
-
-type Anchor_ProcSpec_OSProc struct{ capnp.Struct }
-
-// Anchor_ProcSpec_OSProc_TypeID is the unique identifier for the type Anchor_ProcSpec_OSProc.
-const Anchor_ProcSpec_OSProc_TypeID = 0xa366d24cbe2dca1c
-
-func NewAnchor_ProcSpec_OSProc(s *capnp.Segment) (Anchor_ProcSpec_OSProc, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 3})
-	return Anchor_ProcSpec_OSProc{st}, err
-}
-
-func NewRootAnchor_ProcSpec_OSProc(s *capnp.Segment) (Anchor_ProcSpec_OSProc, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 3})
-	return Anchor_ProcSpec_OSProc{st}, err
-}
-
-func ReadRootAnchor_ProcSpec_OSProc(msg *capnp.Message) (Anchor_ProcSpec_OSProc, error) {
-	root, err := msg.RootPtr()
-	return Anchor_ProcSpec_OSProc{root.Struct()}, err
-}
-
-func (s Anchor_ProcSpec_OSProc) String() string {
-	str, _ := text.Marshal(0xa366d24cbe2dca1c, s.Struct)
-	return str
-}
-
-func (s Anchor_ProcSpec_OSProc) Args() (capnp.TextList, error) {
-	p, err := s.Struct.Ptr(0)
-	return capnp.TextList{List: p.List()}, err
-}
-
-func (s Anchor_ProcSpec_OSProc) HasArgs() bool {
-	p, err := s.Struct.Ptr(0)
-	return p.IsValid() || err != nil
-}
-
-func (s Anchor_ProcSpec_OSProc) SetArgs(v capnp.TextList) error {
-	return s.Struct.SetPtr(0, v.List.ToPtr())
-}
-
-// NewArgs sets the args field to a newly
-// allocated capnp.TextList, preferring placement in s's segment.
-func (s Anchor_ProcSpec_OSProc) NewArgs(n int32) (capnp.TextList, error) {
-	l, err := capnp.NewTextList(s.Struct.Segment(), n)
-	if err != nil {
-		return capnp.TextList{}, err
-	}
-	err = s.Struct.SetPtr(0, l.List.ToPtr())
-	return l, err
-}
-
-func (s Anchor_ProcSpec_OSProc) Env() (Anchor_ProcSpec_EnvVar_List, error) {
-	p, err := s.Struct.Ptr(1)
-	return Anchor_ProcSpec_EnvVar_List{List: p.List()}, err
-}
-
-func (s Anchor_ProcSpec_OSProc) HasEnv() bool {
-	p, err := s.Struct.Ptr(1)
-	return p.IsValid() || err != nil
-}
-
-func (s Anchor_ProcSpec_OSProc) SetEnv(v Anchor_ProcSpec_EnvVar_List) error {
-	return s.Struct.SetPtr(1, v.List.ToPtr())
-}
-
-// NewEnv sets the env field to a newly
-// allocated Anchor_ProcSpec_EnvVar_List, preferring placement in s's segment.
-func (s Anchor_ProcSpec_OSProc) NewEnv(n int32) (Anchor_ProcSpec_EnvVar_List, error) {
-	l, err := NewAnchor_ProcSpec_EnvVar_List(s.Struct.Segment(), n)
-	if err != nil {
-		return Anchor_ProcSpec_EnvVar_List{}, err
-	}
-	err = s.Struct.SetPtr(1, l.List.ToPtr())
-	return l, err
-}
-
-func (s Anchor_ProcSpec_OSProc) Dir() (string, error) {
-	p, err := s.Struct.Ptr(2)
-	return p.Text(), err
-}
-
-func (s Anchor_ProcSpec_OSProc) HasDir() bool {
-	p, err := s.Struct.Ptr(2)
-	return p.IsValid() || err != nil
-}
-
-func (s Anchor_ProcSpec_OSProc) DirBytes() ([]byte, error) {
-	p, err := s.Struct.Ptr(2)
-	return p.TextBytes(), err
-}
-
-func (s Anchor_ProcSpec_OSProc) SetDir(v string) error {
-	return s.Struct.SetText(2, v)
-}
-
-// Anchor_ProcSpec_OSProc_List is a list of Anchor_ProcSpec_OSProc.
-type Anchor_ProcSpec_OSProc_List struct{ capnp.List }
-
-// NewAnchor_ProcSpec_OSProc creates a new list of Anchor_ProcSpec_OSProc.
-func NewAnchor_ProcSpec_OSProc_List(s *capnp.Segment, sz int32) (Anchor_ProcSpec_OSProc_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 3}, sz)
-	return Anchor_ProcSpec_OSProc_List{l}, err
-}
-
-func (s Anchor_ProcSpec_OSProc_List) At(i int) Anchor_ProcSpec_OSProc {
-	return Anchor_ProcSpec_OSProc{s.List.Struct(i)}
-}
-
-func (s Anchor_ProcSpec_OSProc_List) Set(i int, v Anchor_ProcSpec_OSProc) error {
-	return s.List.SetStruct(i, v.Struct)
-}
-
-func (s Anchor_ProcSpec_OSProc_List) String() string {
-	str, _ := text.MarshalList(0xa366d24cbe2dca1c, s.List)
-	return str
-}
-
-// Anchor_ProcSpec_OSProc_Promise is a wrapper for a Anchor_ProcSpec_OSProc promised by a client call.
-type Anchor_ProcSpec_OSProc_Promise struct{ *capnp.Pipeline }
-
-func (p Anchor_ProcSpec_OSProc_Promise) Struct() (Anchor_ProcSpec_OSProc, error) {
-	s, err := p.Pipeline.Struct()
-	return Anchor_ProcSpec_OSProc{s}, err
-}
-
-type Anchor_ProcSpec_Docker struct{ capnp.Struct }
-
-// Anchor_ProcSpec_Docker_TypeID is the unique identifier for the type Anchor_ProcSpec_Docker.
-const Anchor_ProcSpec_Docker_TypeID = 0xe74e2c4efe10bad2
-
-func NewAnchor_ProcSpec_Docker(s *capnp.Segment) (Anchor_ProcSpec_Docker, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Anchor_ProcSpec_Docker{st}, err
-}
-
-func NewRootAnchor_ProcSpec_Docker(s *capnp.Segment) (Anchor_ProcSpec_Docker, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Anchor_ProcSpec_Docker{st}, err
-}
-
-func ReadRootAnchor_ProcSpec_Docker(msg *capnp.Message) (Anchor_ProcSpec_Docker, error) {
-	root, err := msg.RootPtr()
-	return Anchor_ProcSpec_Docker{root.Struct()}, err
-}
-
-func (s Anchor_ProcSpec_Docker) String() string {
-	str, _ := text.Marshal(0xe74e2c4efe10bad2, s.Struct)
-	return str
-}
-
-// Anchor_ProcSpec_Docker_List is a list of Anchor_ProcSpec_Docker.
-type Anchor_ProcSpec_Docker_List struct{ capnp.List }
-
-// NewAnchor_ProcSpec_Docker creates a new list of Anchor_ProcSpec_Docker.
-func NewAnchor_ProcSpec_Docker_List(s *capnp.Segment, sz int32) (Anchor_ProcSpec_Docker_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return Anchor_ProcSpec_Docker_List{l}, err
-}
-
-func (s Anchor_ProcSpec_Docker_List) At(i int) Anchor_ProcSpec_Docker {
-	return Anchor_ProcSpec_Docker{s.List.Struct(i)}
-}
-
-func (s Anchor_ProcSpec_Docker_List) Set(i int, v Anchor_ProcSpec_Docker) error {
-	return s.List.SetStruct(i, v.Struct)
-}
-
-func (s Anchor_ProcSpec_Docker_List) String() string {
-	str, _ := text.MarshalList(0xe74e2c4efe10bad2, s.List)
-	return str
-}
-
-// Anchor_ProcSpec_Docker_Promise is a wrapper for a Anchor_ProcSpec_Docker promised by a client call.
-type Anchor_ProcSpec_Docker_Promise struct{ *capnp.Pipeline }
-
-func (p Anchor_ProcSpec_Docker_Promise) Struct() (Anchor_ProcSpec_Docker, error) {
-	s, err := p.Pipeline.Struct()
-	return Anchor_ProcSpec_Docker{s}, err
-}
-
-type Anchor_ProcSpec_EnvVar struct{ capnp.Struct }
-
-// Anchor_ProcSpec_EnvVar_TypeID is the unique identifier for the type Anchor_ProcSpec_EnvVar.
-const Anchor_ProcSpec_EnvVar_TypeID = 0xc94611cb6e5eac88
-
-func NewAnchor_ProcSpec_EnvVar(s *capnp.Segment) (Anchor_ProcSpec_EnvVar, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
-	return Anchor_ProcSpec_EnvVar{st}, err
-}
-
-func NewRootAnchor_ProcSpec_EnvVar(s *capnp.Segment) (Anchor_ProcSpec_EnvVar, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
-	return Anchor_ProcSpec_EnvVar{st}, err
-}
-
-func ReadRootAnchor_ProcSpec_EnvVar(msg *capnp.Message) (Anchor_ProcSpec_EnvVar, error) {
-	root, err := msg.RootPtr()
-	return Anchor_ProcSpec_EnvVar{root.Struct()}, err
-}
-
-func (s Anchor_ProcSpec_EnvVar) String() string {
-	str, _ := text.Marshal(0xc94611cb6e5eac88, s.Struct)
-	return str
-}
-
-func (s Anchor_ProcSpec_EnvVar) Name() (string, error) {
-	p, err := s.Struct.Ptr(0)
-	return p.Text(), err
-}
-
-func (s Anchor_ProcSpec_EnvVar) HasName() bool {
-	p, err := s.Struct.Ptr(0)
-	return p.IsValid() || err != nil
-}
-
-func (s Anchor_ProcSpec_EnvVar) NameBytes() ([]byte, error) {
-	p, err := s.Struct.Ptr(0)
-	return p.TextBytes(), err
-}
-
-func (s Anchor_ProcSpec_EnvVar) SetName(v string) error {
-	return s.Struct.SetText(0, v)
-}
-
-func (s Anchor_ProcSpec_EnvVar) Value() (string, error) {
-	p, err := s.Struct.Ptr(1)
-	return p.Text(), err
-}
-
-func (s Anchor_ProcSpec_EnvVar) HasValue() bool {
-	p, err := s.Struct.Ptr(1)
-	return p.IsValid() || err != nil
-}
-
-func (s Anchor_ProcSpec_EnvVar) ValueBytes() ([]byte, error) {
-	p, err := s.Struct.Ptr(1)
-	return p.TextBytes(), err
-}
-
-func (s Anchor_ProcSpec_EnvVar) SetValue(v string) error {
-	return s.Struct.SetText(1, v)
-}
-
-// Anchor_ProcSpec_EnvVar_List is a list of Anchor_ProcSpec_EnvVar.
-type Anchor_ProcSpec_EnvVar_List struct{ capnp.List }
-
-// NewAnchor_ProcSpec_EnvVar creates a new list of Anchor_ProcSpec_EnvVar.
-func NewAnchor_ProcSpec_EnvVar_List(s *capnp.Segment, sz int32) (Anchor_ProcSpec_EnvVar_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2}, sz)
-	return Anchor_ProcSpec_EnvVar_List{l}, err
-}
-
-func (s Anchor_ProcSpec_EnvVar_List) At(i int) Anchor_ProcSpec_EnvVar {
-	return Anchor_ProcSpec_EnvVar{s.List.Struct(i)}
-}
-
-func (s Anchor_ProcSpec_EnvVar_List) Set(i int, v Anchor_ProcSpec_EnvVar) error {
-	return s.List.SetStruct(i, v.Struct)
-}
-
-func (s Anchor_ProcSpec_EnvVar_List) String() string {
-	str, _ := text.MarshalList(0xc94611cb6e5eac88, s.List)
-	return str
-}
-
-// Anchor_ProcSpec_EnvVar_Promise is a wrapper for a Anchor_ProcSpec_EnvVar promised by a client call.
-type Anchor_ProcSpec_EnvVar_Promise struct{ *capnp.Pipeline }
-
-func (p Anchor_ProcSpec_EnvVar_Promise) Struct() (Anchor_ProcSpec_EnvVar, error) {
-	s, err := p.Pipeline.Struct()
-	return Anchor_ProcSpec_EnvVar{s}, err
 }
 
 type Anchor_ls_Params struct{ capnp.Struct }
@@ -1936,29 +1425,29 @@ func (s Anchor_go_Params) String() string {
 	return str
 }
 
-func (s Anchor_go_Params) Spec() (Anchor_ProcSpec, error) {
+func (s Anchor_go_Params) Args() (Value_List, error) {
 	p, err := s.Struct.Ptr(0)
-	return Anchor_ProcSpec{Struct: p.Struct()}, err
+	return Value_List{List: p.List()}, err
 }
 
-func (s Anchor_go_Params) HasSpec() bool {
+func (s Anchor_go_Params) HasArgs() bool {
 	p, err := s.Struct.Ptr(0)
 	return p.IsValid() || err != nil
 }
 
-func (s Anchor_go_Params) SetSpec(v Anchor_ProcSpec) error {
-	return s.Struct.SetPtr(0, v.Struct.ToPtr())
+func (s Anchor_go_Params) SetArgs(v Value_List) error {
+	return s.Struct.SetPtr(0, v.List.ToPtr())
 }
 
-// NewSpec sets the spec field to a newly
-// allocated Anchor_ProcSpec struct, preferring placement in s's segment.
-func (s Anchor_go_Params) NewSpec() (Anchor_ProcSpec, error) {
-	ss, err := NewAnchor_ProcSpec(s.Struct.Segment())
+// NewArgs sets the args field to a newly
+// allocated Value_List, preferring placement in s's segment.
+func (s Anchor_go_Params) NewArgs(n int32) (Value_List, error) {
+	l, err := NewValue_List(s.Struct.Segment(), n)
 	if err != nil {
-		return Anchor_ProcSpec{}, err
+		return Value_List{}, err
 	}
-	err = s.Struct.SetPtr(0, ss.Struct.ToPtr())
-	return ss, err
+	err = s.Struct.SetPtr(0, l.List.ToPtr())
+	return l, err
 }
 
 // Anchor_go_Params_List is a list of Anchor_go_Params.
@@ -1989,22 +1478,18 @@ func (p Anchor_go_Params_Promise) Struct() (Anchor_go_Params, error) {
 	return Anchor_go_Params{s}, err
 }
 
-func (p Anchor_go_Params_Promise) Spec() Anchor_ProcSpec_Promise {
-	return Anchor_ProcSpec_Promise{Pipeline: p.Pipeline.GetPipeline(0)}
-}
-
 type Anchor_go_Results struct{ capnp.Struct }
 
 // Anchor_go_Results_TypeID is the unique identifier for the type Anchor_go_Results.
 const Anchor_go_Results_TypeID = 0x9fb80cccef72e8de
 
 func NewAnchor_go_Results(s *capnp.Segment) (Anchor_go_Results, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
 	return Anchor_go_Results{st}, err
 }
 
 func NewRootAnchor_go_Results(s *capnp.Segment) (Anchor_go_Results, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
 	return Anchor_go_Results{st}, err
 }
 
@@ -2018,12 +1503,31 @@ func (s Anchor_go_Results) String() string {
 	return str
 }
 
+func (s Anchor_go_Results) Proc() Proc {
+	p, _ := s.Struct.Ptr(0)
+	return Proc{Client: p.Interface().Client()}
+}
+
+func (s Anchor_go_Results) HasProc() bool {
+	p, err := s.Struct.Ptr(0)
+	return p.IsValid() || err != nil
+}
+
+func (s Anchor_go_Results) SetProc(v Proc) error {
+	if v.Client == nil {
+		return s.Struct.SetPtr(0, capnp.Ptr{})
+	}
+	seg := s.Segment()
+	in := capnp.NewInterface(seg, seg.Message().AddCap(v.Client))
+	return s.Struct.SetPtr(0, in.ToPtr())
+}
+
 // Anchor_go_Results_List is a list of Anchor_go_Results.
 type Anchor_go_Results_List struct{ capnp.List }
 
 // NewAnchor_go_Results creates a new list of Anchor_go_Results.
 func NewAnchor_go_Results_List(s *capnp.Segment, sz int32) (Anchor_go_Results_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
 	return Anchor_go_Results_List{l}, err
 }
 
@@ -2046,6 +1550,183 @@ type Anchor_go_Results_Promise struct{ *capnp.Pipeline }
 func (p Anchor_go_Results_Promise) Struct() (Anchor_go_Results, error) {
 	s, err := p.Pipeline.Struct()
 	return Anchor_go_Results{s}, err
+}
+
+func (p Anchor_go_Results_Promise) Proc() Proc {
+	return Proc{Client: p.Pipeline.GetPipeline(0).Client()}
+}
+
+type Proc struct{ Client capnp.Client }
+
+// Proc_TypeID is the unique identifier for the type Proc.
+const Proc_TypeID = 0xb561ad669b43cc65
+
+func (c Proc) Wait(ctx context.Context, params func(Proc_wait_Params) error, opts ...capnp.CallOption) Proc_wait_Results_Promise {
+	if c.Client == nil {
+		return Proc_wait_Results_Promise{Pipeline: capnp.NewPipeline(capnp.ErrorAnswer(capnp.ErrNullClient))}
+	}
+	call := &capnp.Call{
+		Ctx: ctx,
+		Method: capnp.Method{
+			InterfaceID:   0xb561ad669b43cc65,
+			MethodID:      0,
+			InterfaceName: "api/api.capnp:Proc",
+			MethodName:    "wait",
+		},
+		Options: capnp.NewCallOptions(opts),
+	}
+	if params != nil {
+		call.ParamsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
+		call.ParamsFunc = func(s capnp.Struct) error { return params(Proc_wait_Params{Struct: s}) }
+	}
+	return Proc_wait_Results_Promise{Pipeline: capnp.NewPipeline(c.Client.Call(call))}
+}
+
+type Proc_Server interface {
+	Wait(Proc_wait) error
+}
+
+func Proc_ServerToClient(s Proc_Server) Proc {
+	c, _ := s.(server.Closer)
+	return Proc{Client: server.New(Proc_Methods(nil, s), c)}
+}
+
+func Proc_Methods(methods []server.Method, s Proc_Server) []server.Method {
+	if cap(methods) == 0 {
+		methods = make([]server.Method, 0, 1)
+	}
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xb561ad669b43cc65,
+			MethodID:      0,
+			InterfaceName: "api/api.capnp:Proc",
+			MethodName:    "wait",
+		},
+		Impl: func(c context.Context, opts capnp.CallOptions, p, r capnp.Struct) error {
+			call := Proc_wait{c, opts, Proc_wait_Params{Struct: p}, Proc_wait_Results{Struct: r}}
+			return s.Wait(call)
+		},
+		ResultsSize: capnp.ObjectSize{DataSize: 0, PointerCount: 0},
+	})
+
+	return methods
+}
+
+// Proc_wait holds the arguments for a server call to Proc.wait.
+type Proc_wait struct {
+	Ctx     context.Context
+	Options capnp.CallOptions
+	Params  Proc_wait_Params
+	Results Proc_wait_Results
+}
+
+type Proc_wait_Params struct{ capnp.Struct }
+
+// Proc_wait_Params_TypeID is the unique identifier for the type Proc_wait_Params.
+const Proc_wait_Params_TypeID = 0xd805d12cefe22b70
+
+func NewProc_wait_Params(s *capnp.Segment) (Proc_wait_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Proc_wait_Params{st}, err
+}
+
+func NewRootProc_wait_Params(s *capnp.Segment) (Proc_wait_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Proc_wait_Params{st}, err
+}
+
+func ReadRootProc_wait_Params(msg *capnp.Message) (Proc_wait_Params, error) {
+	root, err := msg.RootPtr()
+	return Proc_wait_Params{root.Struct()}, err
+}
+
+func (s Proc_wait_Params) String() string {
+	str, _ := text.Marshal(0xd805d12cefe22b70, s.Struct)
+	return str
+}
+
+// Proc_wait_Params_List is a list of Proc_wait_Params.
+type Proc_wait_Params_List struct{ capnp.List }
+
+// NewProc_wait_Params creates a new list of Proc_wait_Params.
+func NewProc_wait_Params_List(s *capnp.Segment, sz int32) (Proc_wait_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	return Proc_wait_Params_List{l}, err
+}
+
+func (s Proc_wait_Params_List) At(i int) Proc_wait_Params { return Proc_wait_Params{s.List.Struct(i)} }
+
+func (s Proc_wait_Params_List) Set(i int, v Proc_wait_Params) error {
+	return s.List.SetStruct(i, v.Struct)
+}
+
+func (s Proc_wait_Params_List) String() string {
+	str, _ := text.MarshalList(0xd805d12cefe22b70, s.List)
+	return str
+}
+
+// Proc_wait_Params_Promise is a wrapper for a Proc_wait_Params promised by a client call.
+type Proc_wait_Params_Promise struct{ *capnp.Pipeline }
+
+func (p Proc_wait_Params_Promise) Struct() (Proc_wait_Params, error) {
+	s, err := p.Pipeline.Struct()
+	return Proc_wait_Params{s}, err
+}
+
+type Proc_wait_Results struct{ capnp.Struct }
+
+// Proc_wait_Results_TypeID is the unique identifier for the type Proc_wait_Results.
+const Proc_wait_Results_TypeID = 0xcf49dc7714f7eebd
+
+func NewProc_wait_Results(s *capnp.Segment) (Proc_wait_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Proc_wait_Results{st}, err
+}
+
+func NewRootProc_wait_Results(s *capnp.Segment) (Proc_wait_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Proc_wait_Results{st}, err
+}
+
+func ReadRootProc_wait_Results(msg *capnp.Message) (Proc_wait_Results, error) {
+	root, err := msg.RootPtr()
+	return Proc_wait_Results{root.Struct()}, err
+}
+
+func (s Proc_wait_Results) String() string {
+	str, _ := text.Marshal(0xcf49dc7714f7eebd, s.Struct)
+	return str
+}
+
+// Proc_wait_Results_List is a list of Proc_wait_Results.
+type Proc_wait_Results_List struct{ capnp.List }
+
+// NewProc_wait_Results creates a new list of Proc_wait_Results.
+func NewProc_wait_Results_List(s *capnp.Segment, sz int32) (Proc_wait_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	return Proc_wait_Results_List{l}, err
+}
+
+func (s Proc_wait_Results_List) At(i int) Proc_wait_Results {
+	return Proc_wait_Results{s.List.Struct(i)}
+}
+
+func (s Proc_wait_Results_List) Set(i int, v Proc_wait_Results) error {
+	return s.List.SetStruct(i, v.Struct)
+}
+
+func (s Proc_wait_Results_List) String() string {
+	str, _ := text.MarshalList(0xcf49dc7714f7eebd, s.List)
+	return str
+}
+
+// Proc_wait_Results_Promise is a wrapper for a Proc_wait_Results promised by a client call.
+type Proc_wait_Results_Promise struct{ *capnp.Pipeline }
+
+func (p Proc_wait_Results_Promise) Struct() (Proc_wait_Results, error) {
+	s, err := p.Pipeline.Struct()
+	return Proc_wait_Results{s}, err
 }
 
 type Frac struct{ capnp.Struct }
@@ -2503,122 +2184,107 @@ func (p Vector_Node_Promise) Struct() (Vector_Node, error) {
 	return Vector_Node{s}, err
 }
 
-const schema_c8aa6d83e0c03a9d = "x\xda\xacW\x7fl\x1b\xf5\x15\x7f\x9f\xef\x9d}\x89\xe3" +
-	"\xc4\xbe\x9e#VX\x17\x0du\x1bdk\xd6\xa6\xa5Z" +
-	"\xad1'(i\x97.Msq\xa9:\xa9 .\xf6" +
-	"%\xb1j\xfb\xa2\xb3\xd3.\x82j\xedZ\x04h0\xc1" +
-	"4D;\x81\xf8\xb9\xa9T\x81\x81\xba?\xdaJ\xa0\xb1" +
-	"\x1f\x8c\xc1\xd0D\x99\x90&M\xdb\x8a\x84\x0ah\x13\x1b" +
-	"\xeb\xa0\x94\x92\xef\xf4\xce\xf6\xdd\xc5iJ'\xed?\xfb" +
-	">\xef\xfb\xde\xe7\xde{\xdf\xcf{\xb7\xfa&\xb5O\xac" +
-	"\x89<\xa0\x11\x99;\"Q\xf9\xf7\x96\x0b\xf1m\x03\xb7" +
-	"\xec#\xb3\x13\x90\xdf\xa8<\xbd\xfa\x1f\x0f\xff\xeac\x1a" +
-	"\x84&\x88\x8cg\x95S\xc6s\x8aFd\x9cP\xf6\x10" +
-	"\xa4\xbb\xfe\xb7#\x07\xe7\xfe\xf5\x03\xd2;A\x14\x81F" +
-	"\xb4v\x83\xba\x0c\x04\xa3_\xcd\x10\xe4\xd9\x9d\xe7v|" +
-	"\xa6c\xe3\xfda\x03\xabfP\xf0\x0c\xfe\xf2\xb6\xfb\xde" +
-	"\xef\xe3\xc7\x1f\xae\x19\xa8\x8c\xdf\xa5\x0a\x90*?\xfb\xf2" +
-	"\xaa\xe7\x87OM<N\xfa\xe7 \xdf8\x9e\x1e9\xf3" +
-	"\xfd[\x8fS\x84\xa3\xaf-\xa9\xdd0\xf6\xb2\xb51\xab" +
-	"\xfe\x8c _|u\xd9\xde\x15\xcb\x0e\xfc\x94\xcc\x0e@" +
-	">\x94\xfe\xc5\xdf\x0e\x94\x8e\xbeD\x11\xc1&k\"/" +
-	"\x1b\xd7G\xf8\xd7\x86\x08\x1b\xf7\xfd\xfa\xc2\xc4\x8d\x1f\x0e" +
-	"?\x19\x8a\xf9Z$\xc61\x97\xf7\xbcx\xe4\x87\x1f\\" +
-	"x6L\xf7\x04C0^\x880\xddg\x127?\xbe" +
-	"\xbe\x07\xc7\xc2\x06\xa7#\xde\xfb\xbc\xe3\x19\xf8D\xbd\xfc" +
-	"\x8d\xfd\xf1\xc0\xab\xe2\xe4\xdcY\xce\x9fBd\xb4F\xdf" +
-	"7:\xa3\x9b\x88\x8c\xc1(3y\xec\x95[\xf7\xbe{" +
-	"t\xc3I\xa6-\x02\xda\x83\xd0:\x88\x8c\xd3\xd1\xc7\x8c" +
-	"w\xa2\x1c\xe2\xad\xe8\x15\x0aA\x1e\xfe\xe7\xb1\x8e\xfdW" +
-	"\xad\xfce8zgLp\xf4\xe51\x8e\xfe\xf4\x8e\xcc" +
-	"\x17\xff\xda7\xf4\x9b\xd0\x9bm\x89]\xc9ov\xe7\xdc" +
-	"\xcd\xe5W\xf4\x8d\xbfk\xca&\xe7g\xedu\xb1n\x18" +
-	"\x831NP\x7f\x8c\xcb\xfa\xf9?(\x9d\x9b\xba\x06_" +
-	"\x0f\xc51\x1e\x8a\x9d'\x18\x8fzaN\x9dL\xce\x8f" +
-	"|e\xe4\xccBg^\xb8\x17\xd8\xd7k1\x8d\x14\xf9" +
-	"\x92\xf9\xbd\xd7\xdf<v\xdb\xdbM!=\xd6O\xc5n" +
-	"\x80\xf1\x9c\x17\xf2\x84\xe7r\xd5=w\xbc9\xfd\xc6\x97" +
-	"\xdfm\xce\x9b\xf0\xfa\xeeO\xb1\xf3\xc6[\x9e\xf5\xe9\x18" +
-	"\xe7\xed\x81\x8f\xe6\xb3W\x1d\xda\xfe^\xf0\x9e\xc6l\xdb" +
-	"yR\x83\x83z\x87\x12\xe4\x93`\xdc\xd4v\xd4\xb0\xdb" +
-	"\xbeD\xb4v\x7f\xdb&\x18Cq\x8dHn\xbd\xe3\xf9" +
-	"\x9e?\xb7}\xeb\x1c\xe9\x1d\x8b\x9b&\xfecc\x03[" +
-	"\x19\xd7\xc59'\xfeU\xb8X\x87\xdd\x17?j\x1c\x8e" +
-	"_Ad<\x1a?C\x90\xd6t\xe1\xab\xd6t\xa1G" +
-	"\xe4\xac\xe9\xf2tz\xbb\x9d\xab:n\xcf\x88\x93\x87=" +
-	"\x0a\x98-\x8a\x1a\x97R\x05\x91~\xedf\"\xf3\x1a\x05" +
-	"\xe6\x80@;\xe6e\x0a\xfc\xb4?Md~]\x81\xb9" +
-	"C@\x8e\xbbV97eW\x88\x08\x1d\x84Q\x05H" +
-	"\x06\xf7\x94\xc0\x0f3\xbb\xad\xe2\x8c]\x09p\xbf\xb3j" +
-	"\xb8\xcfH\xa91\xea/\xe7\xa6\x1c\xb7\xa7Ru\\{" +
-	"\xe5\xa8\xe5Z%TLUQ\x89<V\xed\xbdDf" +
-	"\x8b\x023%\xd0\xe5\xb9nr\x99\\\xd2\xe5\x1e\xab\xb8" +
-	"k\xe5\x98]\x99)V\x17\xbaL\x07.3\x96g\x0b" +
-	"=\xa8\x17\x01z\xc8\xa7\xb6\xc0\xe7\xa4S\xf7X\xa1\x86" +
-	"\xc1\x02|\xd4ur\xd9i;\xd7\xb35\x9b\xe0\xdf\x9c" +
-	"\xe3\xb8\x1fy\xb0\x9b\xc8\xecS`\xee\x14\xd0\x81Z\x86" +
-	"\xbf}5\x91\xb9M\x819-\xa0\x0b\x91\x82 \xd2K" +
-	"\xfcpJ\x81Y\x15HX\xee\xa4\x9f\xcf8\x09\xfe\xa9" +
-	"\xd9\xe5\xddA\x8a\xfd+UK\xb1\x96/\xb8\x9ea|" +
-	"q\x03\x0c\x17\xca\xbb\xec\xfcp\xa1R%j\"\xd7[" +
-	"'7,\xd0\xe06\xc4\x84\x07\x14\x98\xa3\xcc\x0d5n" +
-	"[\xf8\xe17\x15\x98\xdb\x04\xbar\xceL\xb9\x8a\x16\x12" +
-	"h!$\xa6l+\xbf\xb8>\x89\xaaU(^v\xd9" +
-	"\x8a\x8e\x95\xaf5B\x85\xe8R\xa5m\xd8\x84K\xdb\x1d" +
-	"\x9461mU\xa7\x16\xa5\xe1\"\xb1.\xd6\"\xffK" +
-	"\xd7\x89\xe6\x0e\xe8\xf2Z\xc0L\x02!\xe5Y>\x16\x9a" +
-	"#\xcb\xd3!\xe5\xeaL\x874QO\xcbM\x8e\xeb\xcc" +
-	"T\x0be\x82\x9d\xd9\x9a\xe5.\xca\x0c8\xb9]\xb6\x9b" +
-	"\x19,\xef\xden\xb9\\\xb3\xc6\xa5\x1d\x1c\x0b\x0a\x14\\" +
-	"\xda-\xe9\xa0B\xed\xe2\x13Y\xab\x9b\xc9O\x87\xebW" +
-	"y2\x08\x82d@\xb3\xf6j\x19\xa7\xc2a\x91\x0c(" +
-	"\xd7\x81\xbcG\x04\xc9\x80~S2P\xd7\x19K+\xce" +
-	"x\x0a\xf35\x9f\xac1\x8b\xab\x89\xb2U(\xc8\xee\x83" +
-	"\xc0\x0a\xcc\xcb\xa4G\xd8\xd8\x8bn\xa2\xecw\x189\xc8" +
-	"\x88\xf8D\xd6\x9a\xcd\xd8\xef\x9d\xb9\x8d\x91;!\xd0\xae" +
-	"\\\x90)\xf0\x00\xbb\x1di\xa2\xec>\x06\xee\xe6#\xea" +
-	"\xc7|D%2\xee\xf2\x8e\x1cd\xe4^>\x129/" +
-	"S\x88\x10\x19\xf7`3Q\xf6n\x06\x0e1\x10\xfdH" +
-	"\xa6\x10%2\xee\xf7\xc2\xdf\xcb\xc0\x83\xecK;'E" +
-	"\xca\x9b5\x87=\xe4G\x8c<\xc2GZ>\x94)\xb4" +
-	"\xf0\x10\xf2\x82\x1cb\xe0\x09\x06Z?\x90)\xb4\xb2\xec" +
-	"\xe2\x06\xa2\xec\x83\x0c\x1ca \xf6\x1f\x99B\x8c\xc8\xf8" +
-	"\x89G\xf8\x11\x06\xe6\x18h;+Sh#2\x9e\xf4" +
-	"b<\xc1\xc03\x0c\xc4\xff-S\x88\x13\x19Oy\xc0" +
-	"\x11\x06~\xce@\xfb\xfb2\x85v^~<Ws\x0c" +
-	"\x1c\x87\x80V.\x14)\x9a\x18w\x9c\"@\x02 h" +
-	"\x85\xf5\xeb\x10!\x81\x08!3^\x98\x1c*W\xd1N" +
-	"\x02\xed\x04mb\xfd:\xb4\x91@\x1bA\x8e\x17&7" +
-	"\x16\x1d\xab\xca\x8a^\xbf*\x89\x09\xd7\xe2\xd2\xfb#\xa9" +
-	"~\x89sS\x96\x0b\x95\x04T\x82V\xa9\xfa\x0a\xf3\xdd" +
-	"]\xf6\xec\x1e\xc7\xcd7\xfeg*\xb3\xa5q\xa7\xe8\xbb" +
-	"\x0b_\xc3D\xb1P\xa9\"\x19,I\xf5\xb6\xda\xed\x8d" +
-	"%$\x83\xd9vi\x89\xa8\xf8*\x1c\xbe\xb4<\xc0\xe2" +
-	"\x0a\xcck\x04dn\xaaP\xcc\xbbvy\xc1\xa8\xf2G" +
-	"\xfbe\x8c\"/\x80R\xad,a\xe4\x0b\xfd`9\xc1" +
-	"\x97\xb2>L\xebT\xaee\x1dZ\xa9\xc0\\\x1d\x12\xfa" +
-	"U\xbd\xf5\x01\xbbN Q\xb6Jv#+u\x85Y" +
-	"B\xb1\x83\xc9\x93\xa9)\xdeRzW\x99\xb6\xb9n\xfe" +
-	"~s\xc9\x14\xfa\xfc\x07\x9c\x04_\xe9Q\x04\x96\xea\xc5" +
-	"-\x1b\xbad{\x83\xe3\xff\"\x96\xd9\x99\xf1L\xed\xe7" +
-	"\x12\x83r\x98eM\xca\xc5\xd3h\x85\x98\x97\x8dy\x14" +
-	"R\xbb\x85\xdd\xe6:N\x95\xa2\x9f>\xe3Esw\xd5" +
-	"3\xdd\xacj\xfd\xe5\x04[\x98-\x08\xad\x89z\xebX" +
-	"\x90s\xbdu\xb3\xcc\xce\x8c{\x9e\x08\xael$\x8f\x88" +
-	"\xcc\x94\x12!\xf2\x17F4Vh\xfd\xbe+I\xe8\xb7" +
-	"k\x80\xbf\xf4\xa3\xf1\xb1\xa2\xcfv\x93\xd0K\x1a\x84\xff" +
-	"\xa9\x80\xc6\xe2\xaf[\x8c\xdd\xa8A\xf1?~\xd0\xd8\xba" +
-	"\xf5\xa1^\x12\xfa\xf5\x1aT\x7f\x83F\xe3\xfbF_\xc3" +
-	"\xf1\xbe\xa0)\xc5J\x1f\x12<I\xfb\x90\xe0A\xd8\x87" +
-	".\xaf\xf5\xfb\xa0L:}\x08wD\xfd\xfd7\xba\x8a" +
-	"\x95k\xea\xf4\xdeO\xe9\xf4\xae\xf2L\xc9v\x1b\xe2\xd3" +
-	"\x95\xb7\xcbN\xa9\xf1o\xd1\xd4\xb0\x13\xac\x03\xa6\x0a\x04" +
-	"k\xa5\x8e\xee\xc4\x88\x93\xb7\xcd\xa4\x1f\xd4b\xff;\x15" +
-	"\x98S\x1cT\xad\x05\xb5\xf9\xe1-\x0a\xcc\xa2\x00\xeak" +
-	"T\x81;&_\xdf\xad\x14x\x93C/u\xd7w\xab" +
-	"\x83\xcd\xfbKWe\xaa0QE\x94\x04\xa2\xf5\xf6i" +
-	"Zp\xfdmf\xa9\xf5\xf6\xbf\x01\x00\x00\xff\xff\xb49" +
-	"\xdb\xd8"
+const schema_c8aa6d83e0c03a9d = "x\xda\x94V\x7f\x8c\\U\x15>\xdf\xbd\xef\xcd\xcc\xce" +
+	"\xce\xec\xec\xe3N\x83@\x9a\x8df5\xb0\xd8\xb5\xbfh" +
+	"\xe2\x06\x9d\xa9v[\x17k\xd9\xd7\xa1M\x9b\xa0\xe1\xed" +
+	"\xcc\xdb\x9dIg\xe7m\xde\xcc\xb2iL\xa3\xa6\x10\xfe" +
+	"\xd2\xa8\x91\x08\x08\x01\xf1GJS\x91\x06\x9a\x14\x02\xa6" +
+	"j\xc1\xaam\xb0\x8a\x06\x13\xfcEb\xb0D\xadh\xa1" +
+	"\xa5\xd4^s\xde\xcc{o:\xbb\x85\xfa\xdf\xcc\xfd\xce" +
+	"\xf9\xcey\xf7\x9c\xf3\xdd\xb3\xf2\x88,\x8aU\xe6k\x09" +
+	"\"{\xd2L\xe8\xbf\xa7.dn\xdbp\xc7\x17\xc9^" +
+	"\x06\xe8\x8f7\x1f_\xf9\x8f\x87\x7f\xfa\x0e\x8d#)\x88" +
+	"\xd4N\xf9k\xe5\xca$\x91r\xe4\x02A\xfb\xeb~\xb6" +
+	"\xe5\xae\x03o|\x85\xace 2\x91$Z\xf3\x17y" +
+	"\x15\x08\xea\x94,\x10\xf4\x99\xdb\xcf\xedx\xdf\xc0\xc6{" +
+	"\xbb\x0d\xfa\x8c\xc0\xc02\xd8\xe0\x8f\x7f\xf3O\x1f\xcf\x1c" +
+	"~\xb8\xdb`\x95!\xd8\xe0\xa6\xc0\xe0\x85\x13W\xedY" +
+	"~\xd5\xde\xef\x93=\x00\xe8\x87\xc6\x8e\xfcy\xef\xec\xfe" +
+	"cd\x0a\xceb\x9b\xf1\x0b\xe5\x18\xfc\xeb\xb3\xc6\x0f\x09" +
+	"\xbax\xf4\xc2\xf4\xb6\xb3\x9b\x1fk\xb31\xb0\xe6M#" +
+	"\x0d2\xf45\xa3/\xec\xfb\xfa[\x17\x0ev\xc7\xf9\x03" +
+	"CP\x7f\x0d\xe2<\x91\xfb\xdcw\xd6\x8d\xe2\xc9n\x03" +
+	"\xd3\x0c2\xcd\x9al\xe0\x1e\xff\xe4\xb7\xa6\x7f\xe0\x1c\"" +
+	"k@\xc6y\x10\xd4\x0a\xf3\x01u\x93\xc9I\xac27" +
+	"\xa9\x9d\xfcK?\xfa\xcb\xcf\xefy}\xffG\x9f\xe1\xac" +
+	"El=\x8ed\x8eH\xad7\x1fU\x13l\xb7f\xdc" +
+	"\xbcU\x12\xf4\xfd\xffzr\xe0K\xd7\x0d\xff\xa4;\xf8" +
+	"\xc1Tp\x0b\x87R\x1c\xfc\xf1\x1d\x85\x0f\xfd\xa98\xf1" +
+	"|\xd7\x87\x9dJ]\xcb\x1f\xf6\xdc?\xcf\xe6\x17^\x99" +
+	"x\x91,\x15\"'\xd9\xd3\xd0\xef\x7fQ.\xdb44" +
+	"\xfe\x9b.Ru(u\x9e\xa0\x9e\x0e8\xe7n|\xf5" +
+	"\xf4\x87O\x9a/\xc7\x9e\xeaT\xea<\x19z\xc5\x97\xef" +
+	"yu\xeew7\xbe\xde\xee\x81\xad/\xed=!\x9e9" +
+	"p\x86\xc6E\xd0\x03'R\xe7\xd5\xefSl\xfd\xdb\x14" +
+	"\xdf\xf97\xdf\xbeX\xba\xee\xbe\xed\xa7\xe3\xd4\xd4l\x1f" +
+	"\xd3D\x8e\xbd\x17f\xf7\xedW;\xfb\xae&Z\xe3\xf6" +
+	"m\x82Z\x91\xe6\x1b\xbb\xf5\x9e\x1f\x8d\xbe\xd2\xff\xe9s" +
+	"d\x0d,*\xf3\xb2\xf4\x03j9[\xa9k\xd2\xdcv" +
+	"Q[.\xd5\x13\xf3\xe9\xfdjO\xfaj\"uw\xfa" +
+	"5\x82v\xe6j\x1fq\xe6j\xa3\xa2\xec\xcc5\xe6\xc6" +
+	"\xb6\xbb\xe5\x96\xe7\x8fn\xf1*p'\x01;%\x8d\x8c" +
+	"\xd6\x06\x88\xac\x1bn!\xb2\xaf\x97\xb07\x08dqQ" +
+	"\xe7\xc1\xa7\xeb\xc7\x88\xec\x9b%\xec\x1d\x02z\xcaw\x1a" +
+	"\xe5\xaa\xdb$\"\x0c\x10&%0\x18\xcf\x0c\x81\x0f\x0b" +
+	"w:\xf5y\xb7\x19\xe3Q3\xb4\xf1(#\xd9\xceh" +
+	"}\xa3\\\xf5\xfc\xd1f\xcb\xf3\xdd\xe1I\xc7wf\xd1" +
+	"\xb4\x0di\x10\x05YeW\x13\xd9)\x09;/0\x14" +
+	"P\xf7P\x0e^\x96r\xc1\xa9\xef\x1a\xde\xea6\xe7\xeb" +
+	"\xadK)\xc7b\xca\x82\x13\xd8\xc2\x8a\xebE\x80uY" +
+	"\xce\x19\xaf\xc3\xd8\xa4n\xc6\x91\x9817\xe7{eX" +
+	"\xf1\xc0\xf4\xf0u\x0a\xb1\xb9\xd6\xd8\xe5V6\xd7\x9a-" +
+	"\".D&\"\x1b\xe7/.J\xd8\x9b\x05\x80v\x15" +
+	"&8\xc0\x06\x09{R\xc0\x12\xc8C\x10Y\x9f\xe1\xc3" +
+	"OI\xd8\xb7\x09\x0c\x95\xbd\xf9F\x0b)\x12H\x11r" +
+	"U\xd7\xa9,\xbe\xa7\\\xcb\xa9\xd5\xaf\xf8\xfa\xea\x9eS" +
+	"i\x17\xa4I\xf4nW\x1c\xda\\\xf6B\x9cV\x15\x19" +
+	"\x12\xc8\xbc{\xac\xa5J\xf5\xffT\x1fm\xcaI_z" +
+	"e\xbeRC\x9aD\xd1\x9c#\x94\x0a\xcb\x1a!a\x99" +
+	"\xc9\xdc\x82Sk\x151\x89E\x0c\xdb\x9dd}>\x18" +
+	"\x8f\x9b\xa3\xf1P\xf7\xe2\x03D\xa5\xafB\xa2\xf4 \x04" +
+	"\x96\xe3\xa2\x1e\x0c\x8a\xa3\xee\xc7\x08Q\xe9\x1b\x8c<\xc2" +
+	"\x88\xf8\xafnWH=\x14\xf8\xdc\xc7\xc8w!\x90\x95" +
+	"\x17t\x1e\x92H}\x1bcD\xa5\x07\x19\xd8\xc7.\xc6" +
+	";\xecb\x10\xa9\xef\x05.\x8f0r\x80]\xcc\xf3:" +
+	"\x0f\x93H=\x86[\x88J\xfb\x18x\x8a\x81\xc4\xdb:" +
+	"\x8f\x04\x91:\x18\x84?\xc0\xc0a\xe6J\x9e\xd3\"\xdf" +
+	"\x96\xbb\x00y\x82\x91g\xd9%uV\xe7\x91\"RO" +
+	"\x07A\x9eb\xe0\x08\x03}o\xe9<\xfa\x88\xd4s\xf8" +
+	"\x04Q\xe90\x03G\x19H\xbf\xa9\xf3H\x13\xa9\x1f\x07" +
+	"\x09?\xcb\xc01\x06\xfa\xcf\xe8<\xfa\x89\xd4\xf3A\x8c" +
+	"#\x0c\x1cg \xf3\x1f\x9dG\x86H\xfd<\x00\x8e2" +
+	"\xf0+\x06\xb2\xff\xd6ydYA\x03\xaac\x0c\xbc\xc4" +
+	"\xc0\xc0\x1b:\x8f\x01\"u2\xf08\xce\xc0\xcb\x10H" +
+	"6juJ\xe4\xa6<\xaf\x0e\x90\x00\x08\xc9\xda\xba\xb5" +
+	"0I\xc0$\x14\xa6j3\x13\x8d\x16\xb2$\x90%$" +
+	"\xa7\xd7\xadE?\x09\xf4\x13\xf4Tmfc\xddsZ" +
+	"\xacS\x9d\xc6\xcbM\xfbN\x19\x83\xb1\xd0vF\xa2\\" +
+	"u|\x18$`\x10\x92\xcd\x96\x1f\xda\x7fa\x97\xbb{" +
+	"\xc1\xf3+\xe1\xffBs\xf7\xec\x94W\x8f\xe8\xba\x9b:" +
+	"W\xaf5[\x18\x8c\x1f\xeb6w\xe1\xce@l1\x18" +
+	"+v'\xe8{HD\xcfl4\x97\x94\x1cV\xeb\x8c" +
+	"\x84}\xbd\x80.Wk\xf5\x8a\xef6.\xd1\xe5\xe8\x1d" +
+	"\xbb\x02\xdd\x0d\x02\xc8V32J\x84\xb3\xe4\x95Gy" +
+	"N\xa2\x14B\x83^U,\xb4U`)\x0d\x18\x16\xc8" +
+	"9\xfe\xcc\x15<\x09\xa27j\x87\xb5\xd7\xa0\x13\xb64" +
+	"?Uh\xff\xecQ\xd0\x91XA\xb3\xd0z\xb1\x86." +
+	"\x17\x17u\xa8\xa2c\xb1\x8a^ZU\xdf\xf3Z\x94x" +
+	"\xef\x17B\xf4\x96\xab7k\x84\x069\xb6\xb0\x0d ." +
+	"\x8e\x85\xad\xba4?\x158\x13|;\x1f\x88V\xb8U" +
+	" \\\x8d\xac\xaf]K\xc2\xba;\x09D\xbb\x1c\xc2\xed" +
+	"\xd2\xda\xcd\x826\x9b\x84\x886@\x84\xfb\x9c\xe50\xb6" +
+	"-\x09\x19m\xab\x08\xb7)kb5\x09\xebcI\xc4" +
+	"\xcb\x12\xc2\x85\xd4Z\xc5\xf1>\x98\x94\xf5f\x119\x96" +
+	"\xf9\"r\xac\xd2E\x0c\x05-S\x84\x9c\xf1\x96T\xcf" +
+	"\x8d\xbet\xca\x9d\xdd\xa2S\x90\x1bX\xc6\x87%\xec\x95" +
+	"\x02V\xf8\xa6\xadX\xdd\xd97\xd6\x0a\x0c5\xe6g]" +
+	"?\x9c\xe5\xa1\x8a\xdb\xf0f\xc3\x7f\x8b\xd4\xd9\xcd\xf1X" +
+	"\x05\xd7\x18\xed\x1e\x16Fr[\xbc\x8ak\x0fFA\x1d" +
+	"\xe6\xbf]\xc2\xaerP\xa3\x1d\xd4\xe5\xc3;$\xec\xba" +
+	"\x00D\xbb\x03j\xdc\x18\x15\x09{N\xc0\x92\x08\x14\xda" +
+	"\x9a\xe5\xc3\xaa\x84}W\xef\xe3:\xd4\xac\xd6\xa6[H" +
+	"\x90@\xa2\xd3%=[P\xf4\xd4^\xae\xe1\xff\x17\x00" +
+	"\x00\xff\xff\xffo9\xa7"
 
 func init() {
 	schemas.Register(schema_c8aa6d83e0c03a9d,
@@ -2626,19 +2292,17 @@ func init() {
 		0x8ef1ac844ec73672,
 		0x95460e1858f85cf4,
 		0x9fb80cccef72e8de,
-		0xa366d24cbe2dca1c,
 		0xa683121d7d12cdc6,
 		0xa94cf75566fcc440,
 		0xb1fcf692a8c62e19,
 		0xb3012e36a35e0fb0,
-		0xb87b8be74e3ab8d6,
+		0xb561ad669b43cc65,
 		0xba39aaea7d7bcba2,
 		0xc2241b810eb3f099,
 		0xc54940df263f58ae,
-		0xc94611cb6e5eac88,
+		0xcf49dc7714f7eebd,
 		0xd3451f471503cf21,
-		0xe74e2c4efe10bad2,
-		0xe87cb3e2d38251c8,
+		0xd805d12cefe22b70,
 		0xea2bd670e2878d2d,
 		0xef56981b53fef997,
 		0xf4acba02cd83d452,

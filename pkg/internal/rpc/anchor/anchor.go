@@ -2,14 +2,17 @@ package anchor
 
 import (
 	"context"
-	"errors"
 
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/pkg/errors"
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/internal/rpc"
 	"github.com/wetware/ww/pkg/lang"
+	"github.com/wetware/ww/pkg/lang/proc"
 	"github.com/wetware/ww/pkg/mem"
 	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
+	capnp "zombiezen.com/go/capnproto2"
 )
 
 type anchor struct {
@@ -46,7 +49,7 @@ func (a anchor) Load(ctx context.Context) (ww.Any, error) {
 
 func (a anchor) Store(ctx context.Context, any ww.Any) error {
 	if _, err := a.Anchor().Store(ctx, func(p api.Anchor_store_Params) error {
-		return p.SetValue(any.Data().Raw)
+		return p.SetValue(any.MemVal().Raw)
 	}).Struct(); err != nil {
 		return err
 	}
@@ -54,29 +57,39 @@ func (a anchor) Store(ctx context.Context, any ww.Any) error {
 	return nil
 }
 
-func (a anchor) Go(ctx context.Context, s ww.ProcSpec) error {
-	_, err := a.Anchor().Go(ctx, s).Struct()
-	if err != nil {
-		return err
+func (a anchor) Go(ctx context.Context, args ...ww.Any) (ww.Proc, error) {
+	if len(args) == 0 {
+		return nil, errors.New("expected at least one argument, got 0")
 	}
 
-	return nil
+	res, err := a.Anchor().Go(ctx, procArgs(args).Set).Struct()
+	if err != nil {
+		return nil, err
+	}
+
+	return proc.New(capnp.SingleSegment(nil), res.Proc())
 }
 
 type hostAnchor struct {
-	d rpc.DialString
-	t rpc.Terminal
+	id peer.ID
+	t  rpc.Terminal
 }
 
-func (h hostAnchor) String() string { return string(h.d) }
-func (h hostAnchor) Path() []string { return []string{string(h.d)} }
+// NewHost returns an anchor corresponding to a physical host on the
+// network.
+func NewHost(t rpc.Terminal, id peer.ID) ww.Anchor {
+	return hostAnchor{id: id, t: t}
+}
+
+func (h hostAnchor) Name() string   { return h.id.String() }
+func (h hostAnchor) Path() []string { return []string{h.Name()} }
 
 func (h hostAnchor) Ls(ctx context.Context) ([]ww.Anchor, error) {
 	return h.Walk(ctx, h.Path()).Ls(ctx)
 }
 
 func (h hostAnchor) Walk(ctx context.Context, path []string) ww.Anchor {
-	return Walk(ctx, h.t, h.d, path)
+	return Walk(ctx, h.t, rpc.DialPeer(h.id), path)
 }
 
 func (hostAnchor) Load(ctx context.Context) (ww.Any, error) {
@@ -88,33 +101,40 @@ func (hostAnchor) Store(ctx context.Context, any ww.Any) error {
 	return errors.New("hostAnchor.Store NOT IMPLEMENTED")
 }
 
-func (hostAnchor) Go(ctx context.Context, s ww.ProcSpec) error {
+func (hostAnchor) Go(context.Context, ...ww.Any) (ww.Proc, error) {
 	// TODO(enhancement):  run goroutine in the background (i.e. not bound to anchor)
-	return errors.New("hostAnchor.Go NOT IMPLEMENTED")
+	return nil, errors.New("hostAnchor.Go NOT IMPLEMENTED")
 }
 
 type path []string
 
-func (a path) String() string {
-	if a == nil || anchorpath.Root(a) {
-		return "/"
+func (p path) Name() string {
+	if anchorpath.Root(nil) {
+		return ""
 	}
 
-	return a[len(a)-1]
+	return p[len(p)-1]
 }
 
-func (a path) Path() []string {
-	if a == nil {
-		return []string{}
-	}
-
-	return a
-}
-
-func (a path) Absolute() string {
-	return anchorpath.Join(a)
-}
+func (p path) Path() []string { return p }
 
 type anchorProvider interface {
 	Anchor() api.Anchor
+}
+
+type procArgs []ww.Any
+
+func (args procArgs) Set(p api.Anchor_go_Params) error {
+	vs, err := p.NewArgs(int32(len(args)))
+	if err != nil {
+		return err
+	}
+
+	for i, any := range args {
+		if err = vs.Set(i, any.MemVal().Raw); err != nil {
+			break
+		}
+	}
+
+	return err
 }

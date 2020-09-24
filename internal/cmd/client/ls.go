@@ -34,7 +34,7 @@ func lsAction() cli.ActionFunc {
 		}
 
 		for _, anchor := range cs {
-			fmt.Fprintf(c.App.Writer, "/%s\n", anchor)
+			_, _ = fmt.Fprintln(c.App.Writer, anchorpath.Join(anchor.Path()))
 		}
 
 		return nil

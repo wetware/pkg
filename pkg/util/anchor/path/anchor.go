@@ -55,7 +55,7 @@ func Clean(path string) string {
 
 // Root returns true if the path points to the root anchor.
 func Root(path []string) bool {
-	if len(path) == 0 {
+	if path == nil || len(path) == 0 {
 		return true
 	}
 

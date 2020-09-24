@@ -1,9 +1,11 @@
 package anchor
 
 import (
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/internal/rpc"
+	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
 )
 
 /*
@@ -34,10 +36,14 @@ func (h adaptHostAnchor) Adapt(a api.Anchor_SubAnchor) (ww.Anchor, error) {
 		return nil, err
 	}
 
-	return hostAnchor{
-		d: rpc.DialString(path),
-		t: rpc.Terminal(h),
-	}, nil
+	parts := anchorpath.Parts(path)
+
+	id, err := peer.Decode(parts[0])
+	if err != nil {
+		return nil, err
+	}
+
+	return NewHost(rpc.Terminal(h), id), nil
 }
 
 type adaptSubanchor []string

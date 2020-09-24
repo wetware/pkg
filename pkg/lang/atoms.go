@@ -3,7 +3,6 @@ package lang
 import (
 	"fmt"
 
-	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/mem"
 	capnp "zombiezen.com/go/capnproto2"
@@ -40,24 +39,20 @@ type Nil struct{}
 // SExpr returns a valid s-expression for nil.
 func (Nil) SExpr() (string, error) { return "nil", nil }
 
-// Data for the Nil type
-func (Nil) Data() mem.Value { return mem.NilValue }
+// MemVal returns the memory value.
+func (Nil) MemVal() mem.Value { return mem.NilValue }
 
 // Bool represents a boolean value.
 type Bool struct{ mem.Value }
 
 // NewBool .
-func NewBool(a capnp.Arena, b bool) (bl Bool, err error) {
-	var seg *capnp.Segment
-	if _, seg, err = capnp.NewMessage(a); err != nil {
-		return
+func NewBool(a capnp.Arena, b bool) (Bool, error) {
+	val, err := mem.NewValue(a)
+	if err == nil {
+		val.Raw.SetBool(b)
 	}
 
-	if bl.Raw, err = api.NewRootValue(seg); err == nil {
-		bl.Raw.SetBool(b)
-	}
-
-	return
+	return Bool{val}, err
 }
 
 // SExpr returns a valid s-expression representing Bool.
@@ -74,17 +69,13 @@ func (b Bool) SExpr() (string, error) {
 type Char struct{ mem.Value }
 
 // NewChar .
-func NewChar(a capnp.Arena, r rune) (c Char, err error) {
-	var seg *capnp.Segment
-	if _, seg, err = capnp.NewMessage(a); err != nil {
-		return
+func NewChar(a capnp.Arena, r rune) (Char, error) {
+	val, err := mem.NewValue(a)
+	if err == nil {
+		val.Raw.SetChar(r)
 	}
 
-	if c.Raw, err = api.NewRootValue(seg); err == nil {
-		c.Raw.SetChar(r)
-	}
-
-	return
+	return Char{val}, err
 }
 
 // SExpr returns a valid s-expression representing Char.
@@ -98,17 +89,13 @@ func (c Char) SExpr() (string, error) {
 type String struct{ mem.Value }
 
 // NewString .
-func NewString(a capnp.Arena, s string) (str String, err error) {
-	var seg *capnp.Segment
-	if _, seg, err = capnp.NewMessage(a); err != nil {
-		return
+func NewString(a capnp.Arena, s string) (String, error) {
+	val, err := mem.NewValue(a)
+	if err == nil {
+		err = val.Raw.SetStr(s)
 	}
 
-	if str.Raw, err = api.NewRootValue(seg); err == nil {
-		err = str.Raw.SetStr(s)
-	}
-
-	return
+	return String{val}, err
 }
 
 // SExpr returns a valid s-expression representing String.
@@ -124,17 +111,13 @@ func (str String) SExpr() (s string, err error) {
 type Keyword struct{ mem.Value }
 
 // NewKeyword .
-func NewKeyword(a capnp.Arena, s string) (kw Keyword, err error) {
-	var seg *capnp.Segment
-	if _, seg, err = capnp.NewMessage(a); err != nil {
-		return
+func NewKeyword(a capnp.Arena, s string) (Keyword, error) {
+	val, err := mem.NewValue(a)
+	if err == nil {
+		err = val.Raw.SetKeyword(s)
 	}
 
-	if kw.Raw, err = api.NewRootValue(seg); err == nil {
-		err = kw.Raw.SetKeyword(s)
-	}
-
-	return
+	return Keyword{val}, err
 }
 
 // SExpr returns a valid s-expression for the keyword
@@ -151,17 +134,13 @@ func (kw Keyword) SExpr() (string, error) {
 type Symbol struct{ mem.Value }
 
 // NewSymbol .
-func NewSymbol(a capnp.Arena, s string) (sym Symbol, err error) {
-	var seg *capnp.Segment
-	if _, seg, err = capnp.NewMessage(a); err != nil {
-		return
+func NewSymbol(a capnp.Arena, s string) (Symbol, error) {
+	val, err := mem.NewValue(a)
+	if err == nil {
+		err = val.Raw.SetSymbol(s)
 	}
 
-	if sym.Raw, err = api.NewRootValue(seg); err == nil {
-		err = sym.Raw.SetSymbol(s)
-	}
-
-	return
+	return Symbol{val}, err
 }
 
 // SExpr returns a valid s-expression for the symbol

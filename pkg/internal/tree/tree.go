@@ -8,6 +8,22 @@ import (
 	"github.com/wetware/ww/pkg/mem"
 )
 
+// Transaction groups multiple node operations into a single atomic commit.
+type Transaction Node
+
+// Load API value
+func (t Transaction) Load() mem.Value { return Node(t).val }
+
+// Store API value
+func (t Transaction) Store(val mem.Value) bool {
+	if val.Nil() || Node(t).val.Nil() {
+		Node(t).val = val
+		return true
+	}
+
+	return false
+}
+
 // Node in an anchor tree.
 type Node struct{ *nodeRef }
 
@@ -21,24 +37,24 @@ func newRootNode() *nodeRef {
 }
 
 // Path from root to the present Node
-func (a Node) Path() []string {
-	return a.nodeRef.Path()
+func (n Node) Path() []string {
+	return n.nodeRef.Path()
 }
 
 // Walk an anchor path
-func (a Node) Walk(path []string) Node {
-	return Node{a.nodeRef.Walk(path)}
+func (n Node) Walk(path []string) Node {
+	return Node{n.nodeRef.Walk(path)}
 }
 
 // List the anchor's children
-func (a Node) List() []Node {
+func (n Node) List() []Node {
 	// N.B.:  hard-lock because the List() operation may co-occur with a sub-anchor
 	//		  creation/deletion.
-	a.nodeRef.Hard().Lock()
-	defer a.nodeRef.Hard().Unlock()
+	n.nodeRef.Hard().Lock()
+	defer n.nodeRef.Hard().Unlock()
 
-	children := make([]Node, 0, len(a.nodeRef.children))
-	for _, child := range a.nodeRef.children {
+	children := make([]Node, 0, len(n.nodeRef.children))
+	for _, child := range n.nodeRef.children {
 		children = append(children, Node{child.ref()})
 	}
 
@@ -46,34 +62,36 @@ func (a Node) List() []Node {
 }
 
 // Load API value
-func (a Node) Load() mem.Value {
-	a.Tx().RLock()
-	defer a.Tx().RUnlock()
+func (n Node) Load() mem.Value {
+	n.tx.RLock()
+	defer n.tx.RUnlock()
 
-	return a.val
+	return n.val
 }
 
 // Store API value
-func (a Node) Store(val mem.Value) bool {
-	a.Tx().Lock()
-	defer a.Tx().Unlock()
+func (n Node) Store(val mem.Value) bool {
+	n.tx.Lock()
+	defer n.tx.Unlock()
 
-	if val.Nil() || a.val.Nil() {
-		a.val = val
+	if val.Nil() || n.val.Nil() {
+		n.val = val
 		return true
 	}
 
 	return false
 }
 
+// Txn starts a transaction.
+func (n Node) Txn(f func(t Transaction)) {
+	n.tx.Lock()
+	defer n.tx.Unlock()
+	f(Transaction(n))
+}
+
 // nodeRef is a proxy to a node that is responsible for implemented refcounting and gc
 // logic.  When anchor is GCed, the underlying node's refcount is decremented.
 type nodeRef struct{ *node }
-
-// transaction lock
-func (h nodeRef) Tx() *sync.RWMutex {
-	return &h.tx
-}
 
 // hard lock - prevents updates to children & counter states
 func (h nodeRef) Hard() *sync.Mutex {

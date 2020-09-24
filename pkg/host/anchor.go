@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/pkg/errors"
+	"github.com/spy16/parens"
 	"go.uber.org/fx"
 
 	capnp "zombiezen.com/go/capnproto2"
@@ -19,6 +20,7 @@ import (
 	"github.com/wetware/ww/pkg/internal/rpc/anchor"
 	"github.com/wetware/ww/pkg/internal/tree"
 	"github.com/wetware/ww/pkg/lang"
+	"github.com/wetware/ww/pkg/lang/proc"
 	"github.com/wetware/ww/pkg/mem"
 	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
 )
@@ -29,13 +31,17 @@ import (
 
 var (
 	_ ww.Anchor = (*rootAnchor)(nil)
-	_ ww.Anchor = (*hostAnchor)(nil)
+	_ ww.Anchor = (*localAnchor)(nil)
 
 	_ rpc.Capability = (*rootAnchorCap)(nil)
 
 	_ api.Anchor_Server = (*rootAnchorCap)(nil)
 	_ api.Anchor_Server = (*anchorCap)(nil)
 )
+
+type routingTable interface {
+	Peers() peer.IDSlice
+}
 
 type anchorParams struct {
 	fx.In
@@ -47,46 +53,50 @@ type anchorParams struct {
 type anchorOut struct {
 	fx.Out
 
-	Tree    tree.Node
 	Handler rpc.Capability `group:"rpc"`
-	Root    ww.Anchor
 }
 
 func newAnchor(ps anchorParams) (out anchorOut) {
-	out.Tree = tree.New()
 	out.Handler = rootAnchorCap{
-		id:           ps.Host.ID(),
-		routingTable: ps.Filter,
-		anchorCap:    anchorCap{root: out.Tree},
+		root: newRootAnchor(ps.Filter, ps.Host),
 	}
-	out.Root = rootAnchor{
-		local: ps.Host.ID().String(),
-		node:  out.Tree,
-		term:  rpc.NewTerminal(ps.Host),
-	}
+
 	return
 }
 
-type routingTable interface {
-	Peers() peer.IDSlice
-}
-
 type rootAnchor struct {
-	local string
-	node  tree.Node
-	term  rpc.Terminal
+	env *parens.Env
+	routingTable
+
+	localPath string
+	node      tree.Node
+	term      rpc.Terminal
 }
 
-func (rootAnchor) String() string {
-	return "/"
+func newRootAnchor(rt routingTable, h host.Host) *rootAnchor {
+	root := &rootAnchor{
+		routingTable: rt,
+		localPath:    h.ID().String(),
+		node:         tree.New(),
+		term:         rpc.NewTerminal(h),
+	}
+
+	root.env = lang.New(root)
+	return root
 }
 
-func (root rootAnchor) Path() []string {
-	return []string{}
-}
+func (rootAnchor) Name() string        { return "" }
+func (root rootAnchor) Path() []string { return []string{} } // TODO: return nil
 
 func (root rootAnchor) Ls(ctx context.Context) ([]ww.Anchor, error) {
-	return anchor.Ls(ctx, root.term, rpc.AutoDial{})
+	peers := root.Peers()
+
+	as := make([]ww.Anchor, len(peers))
+	for i, p := range peers {
+		as[i] = anchor.NewHost(root.term, p)
+	}
+
+	return as, nil
 }
 
 func (root rootAnchor) Walk(ctx context.Context, path []string) ww.Anchor {
@@ -95,7 +105,8 @@ func (root rootAnchor) Walk(ctx context.Context, path []string) ww.Anchor {
 	}
 
 	if root.isLocal(path) {
-		return hostAnchor{
+		return localAnchor{
+			env:  root.env,
 			root: path[0],
 			node: root.node.Walk(path[1:]),
 		}
@@ -113,45 +124,48 @@ func (root rootAnchor) Store(context.Context, ww.Any) error {
 	return errors.New("not implemented")
 }
 
-func (root rootAnchor) Go(context.Context, ww.ProcSpec) error {
-	return errors.New("not implemented")
+func (root rootAnchor) Go(context.Context, ...ww.Any) (ww.Proc, error) {
+	return nil, errors.New("not implemented")
 }
 
 func (root rootAnchor) isLocal(path []string) bool {
-	return !anchorpath.Root(path) && path[0] == root.local
+	return !anchorpath.Root(path) && path[0] == root.localPath
 }
 
-type hostAnchor struct {
+type localAnchor struct {
 	root string
 	node tree.Node
+	env  *parens.Env
 }
 
-func (a hostAnchor) String() string {
+func (a localAnchor) String() string {
 	return anchorpath.Join(a.Path())
 }
 
-func (a hostAnchor) Path() []string {
+func (a localAnchor) Path() []string {
 	return append([]string{a.root}, a.node.Path()...)
 }
 
-func (a hostAnchor) Ls(context.Context) ([]ww.Anchor, error) {
+func (a localAnchor) Name() string { return a.node.Name }
+
+func (a localAnchor) Ls(context.Context) ([]ww.Anchor, error) {
 	ns := a.node.List()
 	as := make([]ww.Anchor, len(ns))
 	for i, n := range ns {
-		as[i] = hostAnchor{root: a.root, node: n}
+		as[i] = localAnchor{root: a.root, node: n}
 	}
 
 	return as, nil
 }
 
-func (a hostAnchor) Walk(_ context.Context, path []string) ww.Anchor {
-	return hostAnchor{
+func (a localAnchor) Walk(_ context.Context, path []string) ww.Anchor {
+	return localAnchor{
 		root: a.root,
 		node: a.node.Walk(path),
 	}
 }
 
-func (a hostAnchor) Load(context.Context) (ww.Any, error) {
+func (a localAnchor) Load(context.Context) (ww.Any, error) {
 	if n := a.node.Load(); !n.Nil() {
 		return lang.AsAny(n)
 	}
@@ -159,117 +173,147 @@ func (a hostAnchor) Load(context.Context) (ww.Any, error) {
 	return lang.Nil{}, nil
 }
 
-func (a hostAnchor) Store(_ context.Context, any ww.Any) error {
-	if v := any.Data(); a.node.Store(v) {
+func (a localAnchor) Store(_ context.Context, any ww.Any) error {
+	if v := any.MemVal(); a.node.Store(v) {
 		return nil
 	}
 
 	return ww.ErrAnchorNotEmpty
 }
 
-func (a hostAnchor) Go(_ context.Context, s ww.ProcSpec) error {
-	panic("NOT IMPLEMENTED")
+func (a localAnchor) Go(_ context.Context, args ...ww.Any) (p ww.Proc, err error) {
+	a.node.Txn(func(t tree.Transaction) {
+		var p ww.Proc
+		if err = ww.ErrAnchorNotEmpty; t.Load().Nil() {
+			if p, err = proc.Spawn(a.env.Fork(), args...); err == nil {
+				_ = t.Store(p.MemVal())
+			}
+		}
+	})
+
+	return
 }
 
-type rootAnchorCap struct {
-	id peer.ID
-	routingTable
-	anchorCap
+type rootAnchorCap struct{ root *rootAnchor }
+
+func (rootAnchorCap) Loggable() map[string]interface{} {
+	return map[string]interface{}{"cap": "anchor"}
 }
 
-func (r rootAnchorCap) Loggable() map[string]interface{} {
-	return map[string]interface{}{"cap": "root_anchor"}
-}
-
-func (r rootAnchorCap) Protocol() protocol.ID {
+func (rootAnchorCap) Protocol() protocol.ID {
 	return ww.AnchorProtocol
 }
 
-func (r rootAnchorCap) Client() capnp.Client {
-	return api.Anchor_ServerToClient(r).Client
+func (a rootAnchorCap) Client() capnp.Client {
+	return api.Anchor_ServerToClient(a).Client
 }
 
-func (r rootAnchorCap) Ls(call api.Anchor_ls) error {
-	peers := r.Peers()
-
-	cs, err := call.Results.NewChildren(int32(len(peers)))
+func (a rootAnchorCap) Ls(call api.Anchor_ls) error {
+	hosts, err := a.root.Ls(call.Ctx)
 	if err != nil {
-		return errinternal(err)
+		return err
 	}
 
-	for i, p := range peers {
+	cs, err := call.Results.NewChildren(int32(len(hosts)))
+	if err != nil {
+		return errmem(err)
+	}
+
+	for i, h := range hosts {
 		_, seg, err := capnp.NewMessage(capnp.SingleSegment(nil))
 		if err != nil {
-			return errinternal(err)
+			return errmem(err)
 		}
 
 		a, err := api.NewAnchor_SubAnchor(seg)
 		if err != nil {
-			return errinternal(err)
+			return errmem(err)
 		}
 
 		a.SetRoot()
 
-		if err = a.SetPath(p.String()); err != nil {
-			return errinternal(err)
+		if err = a.SetPath(anchorpath.Join(h.Path())); err != nil {
+			return errmem(err)
 		}
 
 		if err = cs.Set(i, a); err != nil {
-			return errinternal(err)
+			return errmem(err)
 		}
 	}
 
 	return nil
 }
 
-func (r rootAnchorCap) Walk(call api.Anchor_walk) error {
+func (a rootAnchorCap) Walk(call api.Anchor_walk) error {
 	path, err := call.Params.Path()
 	if err != nil {
-		return errinternal(err)
+		return errmem(err)
 	}
 
 	parts := anchorpath.Parts(path)
-	if id := parts[0]; id != r.id.String() {
-		return errors.Errorf("bad request: id mismatch (expected %s, got %s)", r.id, id)
+
+	// belt-and-suspenders
+	if !a.root.isLocal(parts) {
+		return errors.Errorf("misrouted RPC: host %s received RPC at path %s",
+			a.root.localPath,
+			parts[0])
 	}
 
-	// pop the path head before passing the call down to the `anchorCap`.
-	if err = call.Params.SetPath(anchorpath.Join(parts[1:])); err != nil {
-		return errinternal(err)
+	err = call.Results.SetAnchor(api.Anchor_ServerToClient(
+		anchorCap{a.root.Walk(call.Ctx, parts[1:])},
+	))
+
+	return errmem(err)
+}
+
+func (a rootAnchorCap) Load(call api.Anchor_load) error {
+	any, err := a.root.Load(call.Ctx)
+	if err != nil {
+		return err
 	}
 
-	return r.anchorCap.Walk(call)
+	return call.Results.SetValue(any.MemVal().Raw)
 }
 
-func (r rootAnchorCap) Load(call api.Anchor_load) error {
-	return errors.New("NOT IMPLEMENTED")
+func (a rootAnchorCap) Store(call api.Anchor_store) error {
+	return a.root.Store(call.Ctx, nil)
 }
 
-func (r rootAnchorCap) Store(call api.Anchor_store) error {
-	return errors.New("NOT IMPLEMENTED")
+func (a rootAnchorCap) Go(call api.Anchor_go) error {
+	vs, err := call.Params.Args()
+	if err != nil {
+		return err
+	}
+
+	args := make([]ww.Any, vs.Len())
+	for i := 0; i < vs.Len(); i++ {
+		if args[i], err = lang.AsAny(mem.Value{Raw: vs.At(i)}); err != nil {
+			return err
+		}
+	}
+
+	p, err := a.root.Go(call.Ctx, args...)
+	if err != nil {
+		return err
+	}
+
+	return call.Results.SetProc(p.MemVal().Raw.Proc())
 }
 
-type anchorCap struct {
-	root tree.Node
-}
-
-func (a anchorCap) Loggable() map[string]interface{} {
-	return map[string]interface{}{"cap": "anchorCap"}
-}
-
-func (a anchorCap) Client() capnp.Client {
-	return api.Anchor_ServerToClient(a).Client
-}
+type anchorCap struct{ anchor ww.Anchor }
 
 func (a anchorCap) Ls(call api.Anchor_ls) error {
-	children := a.root.List()
-
-	cs, err := call.Results.NewChildren(int32(len(children)))
+	as, err := a.anchor.Ls(call.Ctx)
 	if err != nil {
-		return errinternal(err)
+		return err
 	}
 
-	for i, child := range a.root.List() {
+	cs, err := call.Results.NewChildren(int32(len(as)))
+	if err != nil {
+		return errmem(err)
+	}
+
+	for i, child := range as {
 		_, seg, err := capnp.NewMessage(capnp.SingleSegment(nil))
 		if err != nil {
 			break
@@ -280,11 +324,11 @@ func (a anchorCap) Ls(call api.Anchor_ls) error {
 			break
 		}
 
-		if err = item.SetPath(child.Name); err != nil {
+		if err = item.SetPath(child.Name()); err != nil {
 			break
 		}
 
-		if err = item.SetAnchor(a.subAnchor(child)); err != nil {
+		if err = item.SetAnchor(api.Anchor_ServerToClient(anchorCap{child})); err != nil {
 			break
 		}
 
@@ -293,67 +337,64 @@ func (a anchorCap) Ls(call api.Anchor_ls) error {
 		}
 	}
 
-	return errinternal(err)
+	return errmem(err)
 }
 
 func (a anchorCap) Walk(call api.Anchor_walk) error {
 	path, err := call.Params.Path()
 	if err != nil {
-		return errinternal(err)
+		return errmem(err)
 	}
 
-	child := a.subAnchor(a.root.Walk(anchorpath.Parts(path)))
-	return errinternal(call.Results.SetAnchor(child))
+	sub := a.anchor.Walk(nil, anchorpath.Parts(path))
+	err = call.Results.SetAnchor(api.Anchor_ServerToClient(anchorCap{sub}))
+	return errmem(err)
 }
 
 func (a anchorCap) Load(call api.Anchor_load) error {
-	if v := a.root.Load(); !v.Nil() {
-		return call.Results.SetValue(v.Raw)
-	}
-
-	return call.Results.SetValue(mem.NilValue.Raw)
-}
-
-func (a anchorCap) Store(call api.Anchor_store) (err error) {
-	var val mem.Value
-	if val.Raw, err = call.Params.Value(); err != nil {
-		return err
-	}
-
-	if a.root.Store(val) {
-		return nil
-	}
-
-	return ww.ErrAnchorNotEmpty
-}
-
-func (a anchorCap) subAnchor(node tree.Node) api.Anchor {
-	return api.Anchor_ServerToClient(anchorCap{
-		root: node,
-	})
-}
-
-func (a anchorCap) Go(call api.Anchor_go) error {
-	spec, err := call.Params.Spec()
+	any, err := a.anchor.Load(call.Ctx)
 	if err != nil {
 		return err
 	}
 
-	switch spec.Which() {
-	case api.Anchor_ProcSpec_Which_goroutine:
-		return errors.New("Goroutine NOT IMPLEMENTED")
-
-	case api.Anchor_ProcSpec_Which_osProc:
-		return errors.New("UnixProc NOT IMPLEMENTED")
-
-	case api.Anchor_ProcSpec_Which_docker:
-		return errors.New("Docker NOT IMPLEMENTED")
-
-	default:
-		return errors.New("invalid spec")
-	}
+	return call.Results.SetValue(any.MemVal().Raw)
 }
 
-func errinternal(err error) error {
-	return errors.Wrap(err, "internal server error")
+func (a anchorCap) Store(call api.Anchor_store) error {
+	raw, err := call.Params.Value()
+	if err == nil {
+		return err
+	}
+
+	any, err := lang.AsAny(mem.Value{Raw: raw})
+	if err != nil {
+		return err
+	}
+
+	return a.anchor.Store(call.Ctx, any)
+}
+
+func (a anchorCap) Go(call api.Anchor_go) error {
+	vs, err := call.Params.Args()
+	if err != nil {
+		return err
+	}
+
+	args := make([]ww.Any, vs.Len())
+	for i := 0; i < vs.Len(); i++ {
+		if args[i], err = lang.AsAny(mem.Value{Raw: vs.At(i)}); err != nil {
+			return err
+		}
+	}
+
+	p, err := a.anchor.Go(call.Ctx, args...)
+	if err != nil {
+		return err
+	}
+
+	return call.Results.SetProc(p.MemVal().Raw.Proc())
+}
+
+func errmem(err error) error {
+	return errors.Wrap(err, "remote memory error")
 }

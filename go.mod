@@ -18,6 +18,7 @@ require (
 	github.com/ipfs/go-ds-badger v0.2.4 // indirect
 	github.com/ipfs/go-ipfs-blockstore v1.0.1
 	github.com/ipfs/go-ipfs-exchange-interface v0.0.1
+	github.com/jbenet/goprocess v0.1.4
 	github.com/libp2p/go-eventbus v0.2.1
 	github.com/libp2p/go-libp2p v0.11.0
 	github.com/libp2p/go-libp2p-connmgr v0.2.4
@@ -36,7 +37,7 @@ require (
 	github.com/philhofer/fwd v1.0.0 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.6.0
-	github.com/spy16/parens v0.0.0-20200921121906-540f8ec777aa
+	github.com/spy16/parens v0.0.0-20200926170726-dc4209159fb8
 	github.com/stretchr/testify v1.6.1
 	github.com/tinylib/msgp v1.1.2 // indirect
 	github.com/urfave/cli/v2 v2.2.0
