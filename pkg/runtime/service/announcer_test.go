@@ -8,10 +8,10 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	mock_ww "github.com/wetware/ww/internal/test/mock/pkg"
 	mock_service "github.com/wetware/ww/internal/test/mock/pkg/runtime/service"
 
 	eventbus "github.com/libp2p/go-eventbus"
-	"github.com/wetware/ww/pkg/runtime"
 	"github.com/wetware/ww/pkg/runtime/service"
 )
 
@@ -21,11 +21,12 @@ func TestAnnouncerLogFields(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
+	logger := mock_ww.NewMockLogger(ctrl)
 	bus := eventbus.NewBus()
 	h := newMockHost(ctrl, bus)
 	p := mock_service.NewMockPublisher(ctrl)
 
-	a, err := service.Announcer(h, p, time.Second).Service()
+	a, err := service.Announcer(logger, h, p, time.Second).Service()
 	require.NoError(t, err)
 
 	require.Contains(t, a.Loggable(), "service")
@@ -42,11 +43,12 @@ func TestAnnouner(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
+	logger := mock_ww.NewMockLogger(ctrl)
 	bus := eventbus.NewBus()
 	h := newMockHost(ctrl, bus)
 	p := mock_service.NewMockPublisher(ctrl)
 
-	a, err := service.Announcer(h, p, time.Second).Service()
+	a, err := service.Announcer(logger, h, p, time.Second).Service()
 	require.NoError(t, err)
 
 	// the service publishes a heartbeat event when it starts
@@ -79,8 +81,6 @@ func TestAnnouner(t *testing.T) {
 
 		select {
 		case <-time.After(time.Millisecond):
-		case err := <-a.(runtime.ErrorStreamer).Errors():
-			t.Error(err)
 		case <-ctx.Done():
 			t.Error(ctx.Err())
 		}
@@ -112,8 +112,6 @@ func TestAnnouner(t *testing.T) {
 
 		select {
 		case <-time.After(time.Millisecond):
-		case err := <-a.(runtime.ErrorStreamer).Errors():
-			t.Error(err)
 		case <-ctx.Done():
 			t.Error(ctx.Err())
 		}

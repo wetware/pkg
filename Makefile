@@ -13,7 +13,7 @@ cleanmocks:
 
 mocks: cleanmocks
 	# This roundabout call to 'go generate' allows us to:
-	# 	- use modules
-	# 	- prevent grep missing (totally fine) from causing nonzero exit
-	#   - mirror the pkg/ structure under internal/test/mock
+	#  - use modules
+	#  - prevent grep missing (totally fine) from causing nonzero exit
+	#  - mirror the pkg/ structure under internal/test/mock
 	@find . -name '*.go' | xargs -I{} grep -l '//go:generate' {} | xargs -I{} -P 10 go generate {}

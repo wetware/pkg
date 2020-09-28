@@ -24,10 +24,9 @@ type Timer interface {
 func Filter(bus event.Bus, routing *pubsub.Topic, t Timer) ProviderFunc {
 	return func() (_ runtime.Service, err error) {
 		r := &router{
-			t:    t,
-			bus:  bus,
-			rt:   routing,
-			errs: make(chan error, 1),
+			t:   t,
+			bus: bus,
+			rt:  routing,
 		}
 
 		if r.ts, err = bus.Subscribe(new(EvtTimestep)); err != nil {
@@ -45,8 +44,6 @@ type router struct {
 
 	bus event.Bus
 	ts  event.Subscription
-
-	errs chan error
 }
 
 func (r router) Loggable() map[string]interface{} {
@@ -54,10 +51,6 @@ func (r router) Loggable() map[string]interface{} {
 		"service": "router",
 		"ns":      r.hb.Topic(),
 	}
-}
-
-func (r router) Errors() <-chan error {
-	return r.errs
 }
 
 func (r *router) Start(ctx context.Context) (err error) {

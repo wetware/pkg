@@ -456,8 +456,8 @@ github.com/libp2p/go-yamux v1.3.7 h1:v40A1eSPJDIZwz2AvrV3cxpTZEGDP11QJbukmEhYyQI
 github.com/libp2p/go-yamux v1.3.7/go.mod h1:fr7aVgmdNGJK+N1g+b6DW6VxzbRCjCOejR/hkmpooHE=
 github.com/lthibault/jitterbug v0.0.0-20200313035244-37ff5f417161 h1:mQGq+HLtDrr/+LXZCBCNcojKSb2jzF9WF6zq47ElXQE=
 github.com/lthibault/jitterbug v0.0.0-20200313035244-37ff5f417161/go.mod h1:UNNb1BaDpMESmC/+rTXiqOj/BXGzr+evo+sGNRCOMGo=
-github.com/lthibault/log v0.0.0-20200928190228-576fbd3574e4 h1:8o1Aa0QkeKXeGLXeJcXOcpHzPss4Nnt30EOdyPQZyEs=
-github.com/lthibault/log v0.0.0-20200928190228-576fbd3574e4/go.mod h1:VPrD2oBUYeSF/ypOd91/dXR3pditmr54cdWoOPSUV4g=
+github.com/lthibault/log v1.0.2 h1:8D3+Nhfr6Ekee+juL5f6HZF9H8oR5hc6VGC4qD1RGAg=
+github.com/lthibault/log v1.0.2/go.mod h1:VPrD2oBUYeSF/ypOd91/dXR3pditmr54cdWoOPSUV4g=
 github.com/lthibault/treap v0.1.0 h1:Gu8hUh2uzD1okJ72Rc/EFCNljIDRQG8Bdy0rz/RnS/g=
 github.com/lthibault/treap v0.1.0/go.mod h1:FSNOibKfDMwLHr79wollYJa1JVG2PLZuXJz/0UAko9U=
 github.com/magiconair/properties v1.8.0/go.mod h1:PppfXfuXeibc/6YijjN8zIbojt8czPbwD3XqdrwzmxQ=

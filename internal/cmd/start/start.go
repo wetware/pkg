@@ -5,19 +5,16 @@ import (
 
 	"github.com/urfave/cli/v2"
 
-	"github.com/lthibault/log"
 	ctxutil "github.com/wetware/ww/internal/util/ctx"
 	logutil "github.com/wetware/ww/internal/util/log"
+	ww "github.com/wetware/ww/pkg"
 
 	"github.com/wetware/ww/pkg/host"
-	"github.com/wetware/ww/pkg/runtime"
 )
 
 var (
-	h host.Host
-	l log.Logger
-
-	ctx = ctxutil.WithDefaultSignals(context.Background())
+	h      host.Host
+	logger ww.Logger
 )
 
 // Command constructor
@@ -33,9 +30,10 @@ func Command() *cli.Command {
 
 func setUp() cli.BeforeFunc {
 	return func(c *cli.Context) (err error) {
-		if h, err = host.New(); err == nil {
-			l = logutil.New(c).WithFields(h.Loggable())
-			l.Info("host started")
+		logger = logutil.New(c)
+
+		if h, err = host.New(host.WithLogger(logger)); err == nil {
+
 		}
 
 		return
@@ -50,30 +48,35 @@ func tearDown() cli.AfterFunc {
 
 func run() cli.ActionFunc {
 	return func(c *cli.Context) error {
-		defer l.Warn("host shutting down")
+		logger.With(h).Info("host started")
+		defer logger.With(h).Warn("host shutting down")
 
-		sub, err := h.EventBus().Subscribe([]interface{}{
-			new(runtime.Exception),
-			new(runtime.EvtServiceStateChanged),
-		})
-		if err != nil {
-			return err
-		}
-
-		go func() {
-			<-ctx.Done()
-			sub.Close()
-		}()
-
-		for v := range sub.Out() {
-			switch ev := v.(type) {
-			case runtime.Exception:
-				l.WithFields(ev.Loggable()).Error("runtime error")
-			case runtime.EvtServiceStateChanged:
-				l.WithFields(ev.Loggable()).Debug(ev.State)
-			}
-		}
+		<-ctxutil.WithDefaultSignals(context.Background()).Done()
 
 		return nil
+
+		// sub, err := h.EventBus().Subscribe([]interface{}{
+		// 	new(runtime.Exception),
+		// 	new(runtime.EvtServiceStateChanged),
+		// })
+		// if err != nil {
+		// 	return err
+		// }
+
+		// go func() {
+		// 	<-ctx.Done()
+		// 	sub.Close()
+		// }()
+
+		// for v := range sub.Out() {
+		// 	switch ev := v.(type) {
+		// 	case runtime.Exception:
+		// 		l.WithFields(ev.Loggable()).Error("runtime error")
+		// 	case runtime.EvtServiceStateChanged:
+		// 		l.WithFields(ev.Loggable()).Debug(ev.State)
+		// 	}
+		// }
+
+		// return nil
 	}
 }

@@ -1,9 +1,13 @@
+//go:generate mockgen -package mock_ww -destination ../internal/test/mock/pkg/mock_wetware.go github.com/wetware/ww/pkg Logger,Any,Anchor
+
+// Package ww contains core interfaces and symbols
 package ww
 
 import (
 	"context"
 
 	"github.com/libp2p/go-libp2p-core/protocol"
+	"github.com/lthibault/log"
 	"github.com/pkg/errors"
 	"github.com/wetware/ww/pkg/mem"
 )
@@ -27,6 +31,12 @@ var (
 	// anchor contains a value.
 	ErrAnchorNotEmpty = errors.New("anchor contains value")
 )
+
+// Logger is used throughout the Wetware codebase to provide
+// observability.
+//
+// See options for inidivdual packages to customize logging.
+type Logger interface{ log.Logger }
 
 // Any is a generic value type
 type Any interface {

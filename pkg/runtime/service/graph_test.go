@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	eventbus "github.com/libp2p/go-eventbus"
-	"github.com/wetware/ww/pkg/runtime"
+	mock_ww "github.com/wetware/ww/internal/test/mock/pkg"
 	"github.com/wetware/ww/pkg/runtime/service"
 )
 
@@ -20,10 +20,11 @@ func TestGraphLogFields(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
+	logger := mock_ww.NewMockLogger(ctrl)
 	bus := eventbus.NewBus()
 	h := newMockHost(ctrl, bus)
 
-	g, err := service.Graph(h).Service()
+	g, err := service.Graph(logger, h).Service()
 	require.NoError(t, err)
 
 	require.Contains(t, g.Loggable(), "service")
@@ -39,10 +40,11 @@ func TestGraph(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
+	logger := mock_ww.NewMockLogger(ctrl)
 	bus := eventbus.NewBus()
 	h := newMockHost(ctrl, bus)
 
-	g, err := service.Graph(h).Service()
+	g, err := service.Graph(logger, h).Service()
 	require.NoError(t, err)
 
 	// signal that network is ready; note that this must happen before
@@ -68,8 +70,6 @@ func TestGraph(t *testing.T) {
 
 		select {
 		case <-boot.Out():
-		case err := <-g.(runtime.ErrorStreamer).Errors():
-			t.Error(err)
 		case <-ctx.Done():
 			t.Error(ctx.Err())
 		}
@@ -85,8 +85,6 @@ func TestGraph(t *testing.T) {
 
 		select {
 		case <-graft.Out():
-		case err := <-g.(runtime.ErrorStreamer).Errors():
-			t.Error(err)
 		case <-ctx.Done():
 			t.Error(ctx.Err())
 		}
@@ -102,8 +100,6 @@ func TestGraph(t *testing.T) {
 
 		select {
 		case <-prune.Out():
-		case err := <-g.(runtime.ErrorStreamer).Errors():
-			t.Error(err)
 		case <-ctx.Done():
 			t.Error(ctx.Err())
 		}

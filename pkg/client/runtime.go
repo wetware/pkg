@@ -21,6 +21,7 @@ import (
 
 	ctxutil "github.com/wetware/ww/internal/util/ctx"
 	hostutil "github.com/wetware/ww/internal/util/host"
+	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/boot"
 	"github.com/wetware/ww/pkg/internal/p2p"
 	"github.com/wetware/ww/pkg/runtime"
@@ -35,18 +36,19 @@ const (
 
 func services(cfg serviceConfig) runtime.ServiceBundle {
 	return runtime.Bundle(
-		service.Ticker(cfg.Host.EventBus(), timestep),
+		service.Ticker(cfg.Log, cfg.Host.EventBus(), timestep),
 		service.ConnTracker(cfg.Host),
 		service.Neighborhood(cfg.Host.EventBus(), kmin, kmax),
-		service.Bootstrap(cfg.Host, cfg.Boot),
+		service.Bootstrap(cfg.Log, cfg.Host, cfg.Boot),
 		// service.Discover(cfg.EventBus, cfg.Namespace, cfg.Discovery),  // TODO:  initial advertisement
-		service.Graph(cfg.Host),
-		service.Joiner(cfg.Host),
+		service.Graph(cfg.Log, cfg.Host),
+		service.Joiner(cfg.Log, cfg.Host),
 	)
 }
 
 // Config contains user-supplied parameters used by Dial.
 type Config struct {
+	log ww.Logger
 	ns  string
 	psk pnet.PSK
 	ds  datastore.Batching
@@ -72,6 +74,7 @@ func (cfg Config) assemble(ctx context.Context, c *Client) {
 
 func (cfg Config) options(lx fx.Lifecycle) (mod module, err error) {
 	mod.Ctx = ctxutil.WithLifecycle(context.Background(), lx) // libp2p lifecycle
+	mod.Log = cfg.log.WithField("ns", cfg.ns)
 	mod.Namespace = cfg.ns
 	mod.Datastore = cfg.ds
 	mod.Boot = cfg.d
@@ -97,6 +100,7 @@ type module struct {
 	fx.Out
 
 	Ctx       context.Context
+	Log       ww.Logger
 	Namespace string `name:"ns"`
 
 	Datastore datastore.Batching
@@ -109,6 +113,7 @@ type module struct {
 type serviceConfig struct {
 	fx.In
 
+	Log       ww.Logger
 	Namespace string `name:"ns"`
 	Host      host.Host
 	Discovery discovery.Discovery

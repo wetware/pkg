@@ -7,17 +7,18 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
+	"github.com/lthibault/log"
 
 	eventbus "github.com/libp2p/go-eventbus"
 	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/peer"
 
+	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/internal/p2p"
-	"github.com/wetware/ww/pkg/runtime"
 	"github.com/wetware/ww/pkg/runtime/service"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	mock_ww "github.com/wetware/ww/internal/test/mock/pkg"
 	mock_vendor "github.com/wetware/ww/internal/test/mock/vendor"
 	testutil "github.com/wetware/ww/internal/test/util"
 )
@@ -32,10 +33,11 @@ func TestJoiner(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 		defer cancel()
 
+		logger := mock_ww.NewMockLogger(ctrl)
 		bus := eventbus.NewBus()
 		h := newMockHost(ctrl, bus)
 
-		j, err := service.Joiner(h).Service()
+		j, err := service.Joiner(logger, h).Service()
 		require.NoError(t, err)
 
 		// signal that the network is ready; note that this must happen before the
@@ -66,8 +68,6 @@ func TestJoiner(t *testing.T) {
 
 		select {
 		case <-called:
-		case err := <-j.(runtime.ErrorStreamer).Errors():
-			t.Error(err)
 		case <-ctx.Done():
 			t.Error(ctx.Err())
 		}
@@ -82,10 +82,25 @@ func TestJoiner(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 		defer cancel()
 
+		sync := make(chan struct{})
+		logger := mock_ww.NewMockLogger(ctrl)
+		logger.EXPECT().
+			With(gomock.Any()).
+			DoAndReturn(func(log.Loggable) ww.Logger { return logger }).
+			Times(1)
+		logger.EXPECT().
+			WithError(gomock.Any()).
+			DoAndReturn(func(error) ww.Logger { return logger }).
+			Times(1)
+		logger.EXPECT().
+			Debugf(gomock.Any(), gomock.Any()).
+			Do(func(string, interface{}) { close(sync) }).
+			Times(1)
+
 		bus := eventbus.NewBus()
 		h := newMockHost(ctrl, bus)
 
-		j, err := service.Joiner(h).Service()
+		j, err := service.Joiner(logger, h).Service()
 		require.NoError(t, err)
 
 		// signal that the network is ready; note that this must happen before the
@@ -111,8 +126,7 @@ func TestJoiner(t *testing.T) {
 		require.NoError(t, err)
 
 		select {
-		case err := <-j.(runtime.ErrorStreamer).Errors():
-			assert.EqualError(t, err, "[ TEST ERROR ]")
+		case <-sync:
 		case <-ctx.Done():
 			t.Error(ctx.Err())
 		}

@@ -8,6 +8,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	mock_ww "github.com/wetware/ww/internal/test/mock/pkg"
 	mock_vendor "github.com/wetware/ww/internal/test/mock/vendor"
 
 	eventbus "github.com/libp2p/go-eventbus"
@@ -22,10 +23,11 @@ func TestDiscoveryLogFields(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
+	logger := mock_ww.NewMockLogger(ctrl)
 	bus := eventbus.NewBus()
 	h := newMockHost(ctrl, bus)
 
-	d, err := service.Discover(h, ns, nil).Service()
+	d, err := service.Discover(logger, h, ns, nil).Service()
 	require.NoError(t, err)
 
 	require.Contains(t, d.Loggable(), "service")
@@ -42,12 +44,13 @@ func TestDiscovery(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
+	logger := mock_ww.NewMockLogger(ctrl)
 	bus := eventbus.NewBus()
 	h := newMockHost(ctrl, bus)
 
 	dy := mock_vendor.NewMockDiscovery(ctrl)
 
-	d, err := service.Discover(h, ns, dy).Service()
+	d, err := service.Discover(logger, h, ns, dy).Service()
 	require.NoError(t, err)
 
 	// signal that network is ready; note that this must happen before

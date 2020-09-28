@@ -9,7 +9,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/lthibault/jitterbug"
-	"github.com/pkg/errors"
+	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/runtime"
 	randutil "github.com/wetware/ww/pkg/util/rand"
 )
@@ -25,17 +25,17 @@ const adTTL = time.Hour * 2
 //
 // Emits:
 //  - EvtPeerDiscovered
-func Discover(h host.Host, ns string, d discovery.Discovery) ProviderFunc {
+func Discover(log ww.Logger, h host.Host, ns string, d discovery.Discovery) ProviderFunc {
 	return func() (_ runtime.Service, err error) {
 		ctx, cancel := context.WithCancel(context.Background())
 
 		d := discoverer{
+			log:    log,
 			h:      h,
 			ns:     ns,
 			d:      d,
 			ctx:    ctx,
 			cancel: cancel,
-			errs:   make(chan error, 1),
 			advert: make(chan struct{}),
 			disc:   make(chan struct{}),
 		}
@@ -56,6 +56,8 @@ func Discover(h host.Host, ns string, d discovery.Discovery) ProviderFunc {
 }
 
 type discoverer struct {
+	log ww.Logger
+
 	ns string
 	h  host.Host
 	d  discovery.Discovery
@@ -63,7 +65,6 @@ type discoverer struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	errs         chan error
 	advert, disc chan struct{}
 	sub          event.Subscription
 	e            event.Emitter
@@ -74,10 +75,6 @@ func (d discoverer) Loggable() map[string]interface{} {
 		"service": "discover",
 		"ns":      d.ns,
 	}
-}
-
-func (d discoverer) Errors() <-chan error {
-	return d.errs
 }
 
 func (d discoverer) Start(ctx context.Context) (err error) {
@@ -96,10 +93,7 @@ func (d discoverer) Start(ctx context.Context) (err error) {
 }
 
 func (d discoverer) Stop(ctx context.Context) error {
-	defer close(d.errs)
-
 	d.cancel()
-
 	return d.sub.Close()
 }
 
@@ -136,50 +130,34 @@ func (d discoverer) subloop() {
 
 func (d discoverer) adloop() {
 	for range d.advert {
-		d.raise(func() (err error) {
-			ctx, cancel := context.WithTimeout(d.ctx, time.Minute*2)
-			defer cancel()
+		ctx, cancel := context.WithTimeout(d.ctx, time.Minute*2)
+		defer cancel()
 
-			_, err = d.d.Advertise(ctx, d.ns, discovery.TTL(adTTL))
-			return
-		}())
+		if _, err := d.d.Advertise(ctx, d.ns, discovery.TTL(adTTL)); err != nil {
+			d.log.With(d).WithError(err).Warn("failed to advertise")
+		}
 	}
 }
 
 func (d discoverer) graftloop() {
 	for range d.disc {
-		d.raise(func() error {
-			ctx, cancel := context.WithTimeout(d.ctx, time.Second*30)
-			defer cancel()
+		ctx, cancel := context.WithTimeout(d.ctx, time.Second*30)
+		defer cancel()
 
-			// TODO(performance):  investigate ideal limit & consider making it dynamic.
-			ch, err := d.d.FindPeers(ctx, d.ns, discovery.Limit(3))
-			if err != nil {
-				return errors.Wrap(err, "find peers")
+		// TODO(performance):  investigate ideal limit & consider making it dynamic.
+		ch, err := d.d.FindPeers(ctx, d.ns, discovery.Limit(3))
+		if err != nil {
+			d.log.With(d).WithError(err).Debug("error finding peers")
+		}
+
+		for info := range ch {
+			if d.h.ID() == info.ID {
+				continue
 			}
 
-			for info := range ch {
-				if d.h.ID() == info.ID {
-					continue
-				}
-
-				if err = d.e.Emit(EvtPeerDiscovered(info)); err != nil {
-					return errors.Wrap(err, "emit")
-				}
+			if err = d.e.Emit(EvtPeerDiscovered(info)); err != nil {
+				d.log.With(d).WithError(err).Error("failed to emit EvtPeerDiscovered")
 			}
-
-			return nil
-		}())
-	}
-}
-
-func (d discoverer) raise(err error) {
-	if err == nil {
-		return
-	}
-
-	select {
-	case d.errs <- err:
-	case <-d.ctx.Done():
+		}
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/event"
+	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/runtime"
 )
 
@@ -17,7 +18,7 @@ type EvtTimestep struct {
 }
 
 // Ticker emits a timestep for consumption by downstream services.
-func Ticker(bus event.Bus, step time.Duration) ProviderFunc {
+func Ticker(log ww.Logger, bus event.Bus, step time.Duration) ProviderFunc {
 	return func() (runtime.Service, error) {
 		e, err := bus.Emitter(new(EvtTimestep))
 		if err != nil {
@@ -25,17 +26,17 @@ func Ticker(bus event.Bus, step time.Duration) ProviderFunc {
 		}
 
 		return &ticker{
+			log:  log,
 			step: step,
 			cq:   make(chan struct{}),
-			errs: make(chan error, 1),
 			e:    e,
 		}, nil
 	}
 }
 
 type ticker struct {
-	cq   chan struct{}
-	errs chan error
+	log ww.Logger
+	cq  chan struct{}
 
 	step time.Duration
 	t    *time.Ticker
@@ -49,10 +50,6 @@ func (t ticker) Loggable() map[string]interface{} {
 	}
 }
 
-func (t ticker) Errors() <-chan error {
-	return t.errs
-}
-
 func (t *ticker) Start(context.Context) error {
 	t.t = time.NewTicker(t.step)
 	go t.loop()
@@ -60,7 +57,6 @@ func (t *ticker) Start(context.Context) error {
 }
 
 func (t ticker) loop() {
-	defer close(t.errs)
 
 	var ts EvtTimestep
 	for tick := range t.t.C {
@@ -76,16 +72,7 @@ func (t ticker) Stop(context.Context) error {
 }
 
 func (t ticker) emit(ev EvtTimestep) {
-	t.raise(t.e.Emit(ev))
-}
-
-func (t ticker) raise(err error) {
-	if err == nil {
-		return
-	}
-
-	select {
-	case t.errs <- err:
-	case <-t.cq:
+	if err := t.e.Emit(ev); err != nil {
+		t.log.With(t).WithError(err).Error("failed to emit EvtTimestep")
 	}
 }

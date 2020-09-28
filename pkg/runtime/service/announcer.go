@@ -11,6 +11,7 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	"github.com/lthibault/jitterbug"
+	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/runtime"
 	randutil "github.com/wetware/ww/pkg/util/rand"
 )
@@ -25,7 +26,7 @@ type Publisher interface {
 // Consumes:
 //
 // Emits:
-func Announcer(h host.Host, p Publisher, ttl time.Duration) ProviderFunc {
+func Announcer(log ww.Logger, h host.Host, p Publisher, ttl time.Duration) ProviderFunc {
 	return func() (runtime.Service, error) {
 		tstep, err := h.EventBus().Subscribe(new(EvtTimestep))
 		if err != nil {
@@ -34,13 +35,13 @@ func Announcer(h host.Host, p Publisher, ttl time.Duration) ProviderFunc {
 
 		ctx, cancel := context.WithCancel(context.Background())
 		a := announcer{
+			log:      log,
 			h:        h,
 			ttl:      ttl,
 			p:        p,
 			ctx:      ctx,
 			cancel:   cancel,
 			tstep:    tstep,
-			errs:     make(chan error, 1),
 			announce: make(chan struct{}),
 		}
 
@@ -49,6 +50,8 @@ func Announcer(h host.Host, p Publisher, ttl time.Duration) ProviderFunc {
 }
 
 type announcer struct {
+	log ww.Logger
+
 	h   host.Host
 	ttl time.Duration
 	p   Publisher
@@ -57,7 +60,6 @@ type announcer struct {
 	cancel context.CancelFunc
 
 	tstep    event.Subscription
-	errs     chan error
 	announce chan struct{}
 }
 
@@ -83,10 +85,6 @@ func (a announcer) Stop(ctx context.Context) error {
 	a.cancel()
 
 	return a.tstep.Close()
-}
-
-func (a announcer) Errors() <-chan error {
-	return a.errs
 }
 
 func (a announcer) Announce(ctx context.Context) error {
@@ -129,14 +127,9 @@ func (a announcer) subloop() {
 }
 
 func (a announcer) announceloop() {
-	defer close(a.errs)
-
 	for range a.announce {
 		if err := a.Announce(a.ctx); err != nil && err != context.Canceled {
-			select {
-			case a.errs <- err:
-			case <-a.ctx.Done():
-			}
+			a.log.With(a).WithError(err).Warn("announcement failed")
 		}
 	}
 }

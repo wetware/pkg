@@ -8,6 +8,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/lthibault/jitterbug"
+	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/runtime"
 	randutil "github.com/wetware/ww/pkg/util/rand"
 	"go.uber.org/multierr"
@@ -40,14 +41,14 @@ type (
 //	- EvtBootRequested
 //  - EvtGraftRequested
 //  - EvtPruneRequested
-func Graph(h host.Host) ProviderFunc {
+func Graph(log ww.Logger, h host.Host) ProviderFunc {
 	return func() (_ runtime.Service, err error) {
 
 		g := graph{
+			log:       log,
 			bus:       h.EventBus(),
 			src:       randutil.FromPeer(h.ID()),
 			cq:        make(chan struct{}),
-			errs:      make(chan error, 1),
 			neighbors: make(chan EvtNeighborhoodChanged),
 		}
 
@@ -76,10 +77,10 @@ func Graph(h host.Host) ProviderFunc {
 }
 
 type graph struct {
+	log ww.Logger
 	src rand.Source
 
 	cq        chan struct{}
-	errs      chan error
 	neighbors chan EvtNeighborhoodChanged
 
 	bus                event.Bus
@@ -91,10 +92,6 @@ func (g graph) Loggable() map[string]interface{} {
 	return map[string]interface{}{
 		"service": "graph",
 	}
-}
-
-func (g graph) Errors() <-chan error {
-	return g.errs
 }
 
 func (g graph) Start(ctx context.Context) (err error) {
@@ -160,27 +157,23 @@ func (g graph) subloop() {
 }
 
 func (g graph) emitloop() {
-	defer close(g.errs)
-
 	for ev := range g.neighbors {
 		switch ev.To {
 		case PhaseOrphaned:
-			g.raise(g.boot.Emit(EvtBootRequested{}))
+			if err := g.boot.Emit(EvtBootRequested{}); err != nil {
+				g.log.With(g).WithError(err).Warn("failed to emit EvtBootRequested")
+			}
+
 		case PhasePartial:
-			g.raise(g.graft.Emit(EvtGraftRequested{}))
+			if err := g.graft.Emit(EvtGraftRequested{}); err != nil {
+				g.log.With(g).WithError(err).Warn("failed to emit EvtGraftRequested")
+			}
+
 		case PhaseOverloaded:
-			g.raise(g.prune.Emit(EvtPruneRequested{}))
+			if err := g.prune.Emit(EvtPruneRequested{}); err != nil {
+				g.log.With(g).WithError(err).Warn("failed to emit EvtPruneRequested")
+			}
+
 		}
-	}
-}
-
-func (g graph) raise(err error) {
-	if err == nil {
-		return
-	}
-
-	select {
-	case g.errs <- err:
-	case <-g.cq:
 	}
 }

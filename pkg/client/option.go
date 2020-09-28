@@ -1,13 +1,29 @@
 package client
 
 import (
+	"github.com/lthibault/log"
+
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/sync"
+
+	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/boot"
 )
 
 // Option type for Client
 type Option func(*Config) error
+
+// WithLogger sets the client logger
+func WithLogger(l ww.Logger) Option {
+	if l == nil {
+		l = log.New()
+	}
+
+	return func(c *Config) (err error) {
+		c.log = l
+		return
+	}
+}
 
 // WithNamespace sets the cluster namespace to connect to.
 func WithNamespace(ns string) Option {
@@ -42,6 +58,7 @@ func withDataStore(d datastore.Batching) Option {
 
 func withDefault(opt []Option) []Option {
 	return append([]Option{
+		WithLogger(nil),
 		WithNamespace("ww"),
 		WithStrategy(nil),
 		withDataStore(nil),

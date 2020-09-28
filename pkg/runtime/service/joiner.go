@@ -4,9 +4,13 @@ import (
 	"context"
 	"time"
 
+	"github.com/lthibault/log"
+
 	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
+
+	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/runtime"
 )
 
@@ -16,14 +20,14 @@ import (
 // Consumes:
 //	- p2p.EvtNetworkReady
 // 	- EvtPeerDiscovered
-func Joiner(h host.Host) ProviderFunc {
+func Joiner(log log.Logger, h host.Host) ProviderFunc {
 	return func() (_ runtime.Service, err error) {
 		ctx, cancel := context.WithCancel(context.Background())
 		j := &joiner{
+			log:    log,
 			h:      h,
 			ctx:    ctx,
 			cancel: cancel,
-			errs:   make(chan error, 1),
 			join:   make(chan EvtPeerDiscovered, 1),
 		}
 
@@ -36,12 +40,12 @@ func Joiner(h host.Host) ProviderFunc {
 }
 
 type joiner struct {
-	h host.Host
+	log ww.Logger
+	h   host.Host
 
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	errs chan error
 	join chan EvtPeerDiscovered
 	sub  event.Subscription
 }
@@ -73,11 +77,6 @@ func (j joiner) Stop(ctx context.Context) error {
 	return j.sub.Close()
 }
 
-// Errors .
-func (j joiner) Errors() <-chan error {
-	return j.errs
-}
-
 func (j joiner) subloop() {
 	defer close(j.join)
 
@@ -92,8 +91,6 @@ func (j joiner) subloop() {
 }
 
 func (j joiner) joinloop() {
-	defer close(j.errs)
-
 	for ev := range j.join {
 		// NOTE:  It is important that the joiner respond to _ALL_ events it receives
 		//		  on this channel.  Event validation (e.g. to avoid a connect-to-self)
@@ -112,16 +109,9 @@ func (j joiner) connect(info peer.AddrInfo) {
 	ctx, cancel := context.WithTimeout(j.ctx, time.Second*30)
 	defer cancel()
 
-	j.raise(j.h.Connect(ctx, info))
-}
-
-func (j joiner) raise(err error) {
-	if err == nil {
-		return
-	}
-
-	select {
-	case j.errs <- err:
-	case <-j.ctx.Done():
+	if err := j.h.Connect(ctx, info); err != nil {
+		j.log.With(j).
+			WithError(err).
+			Debugf("unable to connct to %s", info.ID)
 	}
 }

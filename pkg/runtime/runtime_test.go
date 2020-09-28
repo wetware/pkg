@@ -5,24 +5,45 @@ import (
 	"testing"
 	"time"
 
-	"github.com/libp2p/go-eventbus"
+	"github.com/golang/mock/gomock"
+	"github.com/lthibault/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	mock_ww "github.com/wetware/ww/internal/test/mock/pkg"
+	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/runtime"
 	"go.uber.org/fx"
 )
 
 func TestRuntime(t *testing.T) {
 	t.Run("Succeed", func(t *testing.T) {
+		t.Parallel()
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 		defer cancel()
 
 		var s mockService
 		b := runtime.Bundle(provide(&s))
-		bus := eventbus.NewBus()
+
+		// Ensure services are automatically logged
+		logger := mock_ww.NewMockLogger(ctrl)
+
+		// We expect one call to the logger at start.  There is no corresponding
+		// call at stop because the service finishes gracefully.
+		logger.EXPECT().
+			With(gomock.Any()).
+			DoAndReturn(func(log.Loggable) ww.Logger { return logger }).
+			Times(1)
+		logger.EXPECT().
+			Debug("service started").
+			Times(1)
 
 		app := fx.New(fx.NopLogger, fx.Invoke(func(lx fx.Lifecycle) error {
-			return runtime.Register(bus, b, lx)
+			return runtime.Register(logger, b, lx)
 		}))
 
 		require.NoError(t, app.Start(ctx))
@@ -46,7 +67,9 @@ type mockService struct {
 
 func (s *mockService) Loggable() map[string]interface{} {
 	return map[string]interface{}{
-		"service": "mockService",
+		"service":  "mockService",
+		"startErr": s.startErr,
+		"stopErr":  s.stopErr,
 	}
 }
 

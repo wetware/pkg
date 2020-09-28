@@ -14,7 +14,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/wetware/ww/pkg/runtime"
 	"github.com/wetware/ww/pkg/runtime/service"
 )
 
@@ -69,8 +68,6 @@ func TestNeighborhoodPhase(t *testing.T) {
 		require.Zero(t, ev.K)
 		require.Zero(t, ev.From)
 		require.Zero(t, ev.To)
-	case err := <-n.(runtime.ErrorStreamer).Errors():
-		t.Error(err)
 	case <-ctx.Done():
 		t.Error(ctx.Err())
 	}
@@ -121,8 +118,6 @@ func TestNeighborhoodPhase(t *testing.T) {
 					"expected previous phase %s, got %s", tC.From, ev.From)
 				assert.Equal(t, tC.To, ev.To,
 					"expected current phase %s, got %s", tC.To, ev.To)
-			case err := <-n.(runtime.ErrorStreamer).Errors():
-				t.Error(err)
 			case <-ctx.Done():
 				t.Error(ctx.Err())
 			}
@@ -165,8 +160,6 @@ func TestNeighborhoodPhase(t *testing.T) {
 					"expected previous phase %s, got %s", tC.From, ev.From)
 				assert.Equal(t, tC.To, ev.To,
 					"expected current phase %s, got %s", tC.To, ev.To)
-			case err := <-n.(runtime.ErrorStreamer).Errors():
-				t.Error(err)
 			case <-ctx.Done():
 				t.Error(ctx.Err())
 			}

@@ -11,7 +11,6 @@ import (
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	"github.com/libp2p/go-libp2p/config"
-	"github.com/lthibault/log"
 
 	// libp2p core interfaces
 	"github.com/libp2p/go-libp2p-core/discovery"
@@ -31,6 +30,7 @@ import (
 	// wetware utils
 	ctxutil "github.com/wetware/ww/internal/util/ctx"
 	hostutil "github.com/wetware/ww/internal/util/host"
+	ww "github.com/wetware/ww/pkg"
 
 	// wetware internal
 
@@ -47,22 +47,22 @@ const timestep = time.Millisecond * 100
 
 func services(cfg serviceConfig) runtime.ServiceBundle {
 	return runtime.Bundle(
-		service.Ticker(cfg.Host.EventBus(), timestep),
+		service.Ticker(cfg.Log, cfg.Host.EventBus(), timestep),
 		service.Filter(cfg.Host.EventBus(), cfg.RoutingTopic, cfg.Filter),
 		service.ConnTracker(cfg.Host),
 		service.Neighborhood(cfg.Host.EventBus(), cfg.Graph.KMin, cfg.Graph.KMax),
-		service.Bootstrap(cfg.Host, cfg.Boot),
+		service.Bootstrap(cfg.Log, cfg.Host, cfg.Boot),
 		service.Beacon(cfg.Host, cfg.Boot),
 		// service.Discover(cfg.Host, cfg.Namespace, cfg.Discovery),
-		service.Graph(cfg.Host),
-		service.Announcer(cfg.Host, cfg.RoutingTopic, cfg.TTL),
-		service.Joiner(cfg.Host),
+		service.Graph(cfg.Log, cfg.Host),
+		service.Announcer(cfg.Log, cfg.Host, cfg.RoutingTopic, cfg.TTL),
+		service.Joiner(cfg.Log, cfg.Host),
 	)
 }
 
 // Config for the server runtime.
 type Config struct {
-	log log.Level
+	log ww.Logger
 
 	ns         string
 	ttl        time.Duration
@@ -97,6 +97,7 @@ func (cfg Config) assemble(h *Host) *fx.App {
 
 func (cfg Config) options(lx fx.Lifecycle) (mod module, err error) {
 	mod.Ctx = ctxutil.WithLifecycle(context.Background(), lx) // libp2p lifecycle
+	mod.Log = cfg.log.WithField("ns", cfg.ns)
 	mod.Namespace = cfg.ns
 	mod.TTL = cfg.ttl
 	mod.Boot = cfg.boot
@@ -131,6 +132,7 @@ type module struct {
 	fx.Out
 
 	Ctx       context.Context
+	Log       ww.Logger
 	Namespace string        `name:"ns"`
 	TTL       time.Duration `name:"ttl"`
 
@@ -148,6 +150,7 @@ type module struct {
 type serviceConfig struct {
 	fx.In
 
+	Log          ww.Logger
 	Namespace    string `name:"ns"`
 	Graph        struct{ KMin, KMax int }
 	Host         host.Host

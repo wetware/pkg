@@ -8,6 +8,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
+	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/runtime"
 	"go.uber.org/multierr"
 )
@@ -44,7 +45,6 @@ func Neighborhood(bus event.Bus, kmin, kmax int) ProviderFunc {
 			sub:      sub,
 			e:        e,
 			cq:       make(chan struct{}),
-			errs:     make(chan error, 1),
 		}, nil
 	}
 }
@@ -53,21 +53,17 @@ func Neighborhood(bus event.Bus, kmin, kmax int) ProviderFunc {
 // hosts.  Neighborhood events do not concern themselves with the number of connections,
 // but rather the presence or absence of a direct link.
 type neighborhood struct {
+	log ww.Logger
 	phaseMap
 
-	bus  event.Bus
-	sub  event.Subscription
-	e    event.Emitter
-	cq   chan struct{}
-	errs chan error
+	bus event.Bus
+	sub event.Subscription
+	e   event.Emitter
+	cq  chan struct{}
 }
 
 func (n neighborhood) Loggable() map[string]interface{} {
 	return map[string]interface{}{"service": "neighborhood"}
-}
-
-func (n neighborhood) Errors() <-chan error {
-	return n.errs
 }
 
 func (n neighborhood) Start(ctx context.Context) (err error) {
@@ -108,18 +104,9 @@ func (n neighborhood) subloop() {
 		state.From = state.To
 		state.To = n.Phase(len(ps))
 
-		n.raise(n.e.Emit(state))
-	}
-}
-
-func (n neighborhood) raise(err error) {
-	if err == nil {
-		return
-	}
-
-	select {
-	case n.errs <- err:
-	case <-n.cq:
+		if err := n.e.Emit(state); err != nil {
+			n.log.With(n).WithError(err).Error("failed to emit EvtNeighborhoodChanged")
+		}
 	}
 }
 

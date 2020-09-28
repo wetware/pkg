@@ -5,6 +5,7 @@ import (
 
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/sync"
+	"github.com/lthibault/log"
 
 	"github.com/multiformats/go-multiaddr"
 
@@ -14,6 +15,18 @@ import (
 
 // Option type for Host
 type Option func(*Config) error
+
+// WithLogger sets the default logger for the Host.
+func WithLogger(l ww.Logger) Option {
+	if l == nil {
+		l = log.New()
+	}
+
+	return func(c *Config) (err error) {
+		c.log = l
+		return
+	}
+}
 
 // WithNamespace sets the cluster's namespace
 func WithNamespace(ns string) Option {
@@ -96,6 +109,7 @@ func withDataStore(d datastore.Batching) Option {
 }
 func withDefault(opt []Option) []Option {
 	return append([]Option{
+		WithLogger(nil),
 		WithNamespace(ww.DefaultNamespace),
 		WithListenAddrString(
 			"/ip4/127.0.0.1/tcp/0", // IPv4 loopback

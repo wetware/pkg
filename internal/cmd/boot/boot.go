@@ -5,18 +5,18 @@ import (
 	"encoding/json"
 	"net"
 
-	"github.com/lthibault/log"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 
 	ctxutil "github.com/wetware/ww/internal/util/ctx"
 	logutil "github.com/wetware/ww/internal/util/log"
+	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/boot"
 )
 
 var (
 	// initialized by `before` function
-	logger log.Logger
+	logger ww.Logger
 	d      boot.Strategy
 
 	ctx = ctxutil.WithDefaultSignals(context.Background())

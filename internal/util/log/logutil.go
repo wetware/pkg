@@ -5,10 +5,11 @@ import (
 	"github.com/lthibault/log"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
+	ww "github.com/wetware/ww/pkg"
 )
 
 // New logger from a cli context
-func New(c *cli.Context) log.Logger {
+func New(c *cli.Context) ww.Logger {
 	return log.New(WithLevel(c), WithFormat(c))
 }
 

@@ -8,6 +8,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	logutil "github.com/wetware/ww/internal/util/log"
+	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/boot"
 	"github.com/wetware/ww/pkg/runtime"
 )
@@ -22,15 +23,15 @@ type EvtPeerDiscovered peer.AddrInfo
 //
 // Emits:
 //  - EvtPeerDiscovered
-func Bootstrap(h host.Host, s boot.Strategy) ProviderFunc {
+func Bootstrap(log ww.Logger, h host.Host, s boot.Strategy) ProviderFunc {
 	return func() (_ runtime.Service, err error) {
 		ctx, cancel := context.WithCancel(context.Background())
 		b := &bootstrapper{
+			log:      log,
 			s:        s,
 			h:        h,
 			ctx:      ctx,
 			cancel:   cancel,
-			errs:     make(chan error, 1),
 			discover: make(chan struct{}, 1),
 		}
 
@@ -47,13 +48,14 @@ func Bootstrap(h host.Host, s boot.Strategy) ProviderFunc {
 }
 
 type bootstrapper struct {
+	log ww.Logger
+
 	s boot.Strategy
 	h host.Host
 
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	errs      chan error
 	discover  chan struct{}
 	sub       event.Subscription
 	foundPeer event.Emitter
@@ -83,10 +85,6 @@ func (b bootstrapper) Stop(context.Context) error {
 	return b.sub.Close()
 }
 
-func (b bootstrapper) Errors() <-chan error {
-	return b.errs
-}
-
 func (b bootstrapper) subloop() {
 	defer close(b.discover)
 
@@ -105,13 +103,12 @@ func (b bootstrapper) subloop() {
 }
 
 func (b bootstrapper) queryloop() {
-	defer close(b.errs)
 	defer b.foundPeer.Close() // see b.emit()
 
 	for range b.discover {
 		ch, err := b.s.DiscoverPeers(b.ctx, boot.WithLimit(3))
 		if err != nil {
-			b.raise(err)
+			b.log.With(b).WithError(err).Debug("error discovering peers")
 			continue
 		}
 
@@ -126,17 +123,8 @@ func (b bootstrapper) queryloop() {
 }
 
 func (b bootstrapper) emit(info peer.AddrInfo) {
-	b.raise(b.foundPeer.Emit(EvtPeerDiscovered(info)))
-}
-
-func (b bootstrapper) raise(err error) {
-	if err == nil {
-		return
-	}
-
-	select {
-	case b.errs <- err:
-	case <-b.ctx.Done():
+	if err := b.foundPeer.Emit(EvtPeerDiscovered(info)); err != nil {
+		b.log.With(b).WithError(err).Error("failed to emit EvtPeerDiscovered")
 	}
 }
 

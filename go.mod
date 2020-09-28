@@ -28,7 +28,7 @@ require (
 	github.com/libp2p/go-libp2p-pubsub v0.3.5
 	github.com/libp2p/go-sockaddr v0.1.0 // indirect
 	github.com/lthibault/jitterbug v0.0.0-20200313035244-37ff5f417161
-	github.com/lthibault/log v0.0.0-20200928190228-576fbd3574e4
+	github.com/lthibault/log v1.0.2
 	github.com/lthibault/treap v0.1.0
 	github.com/mr-tron/base58 v1.2.0
 	github.com/multiformats/go-multiaddr v0.3.1
