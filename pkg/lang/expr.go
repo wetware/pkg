@@ -17,6 +17,35 @@ var (
 	_ parens.Invokable = (*PathExpr)(nil)
 )
 
+// IfExpr represents the if-then-else form.
+type IfExpr struct{ Test, Then, Else parens.Expr }
+
+// Eval the expression
+func (ife IfExpr) Eval() (parens.Any, error) {
+	var target = ife.Else
+	if ife.Test != nil {
+		test, err := ife.Test.Eval()
+		if err != nil {
+			return nil, err
+		}
+
+		ok, err := IsTruthy(test.(ww.Any))
+		if err != nil {
+			return nil, err
+		}
+
+		if ok {
+			target = ife.Then
+		}
+	}
+
+	if target == nil {
+		return Nil{}, nil
+	}
+
+	return target.Eval()
+}
+
 // PathExpr binds a path to an Anchor
 type PathExpr struct {
 	Root ww.Anchor

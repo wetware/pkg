@@ -65,7 +65,7 @@ func parseIfExpr(env *parens.Env, args parens.Seq) (parens.Expr, error) {
 		}
 	}
 
-	return &parens.IfExpr{
+	return IfExpr{
 		Test: exprs[0],
 		Then: exprs[1],
 		Else: exprs[2],

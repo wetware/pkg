@@ -3,6 +3,7 @@ package lang
 
 import (
 	"bytes"
+	"reflect"
 
 	"github.com/pkg/errors"
 	"github.com/spy16/parens"
@@ -75,6 +76,11 @@ func AsAny(v mem.Value) (val ww.Any, err error) {
 	return
 }
 
+// Boolable values can be evaluated as true or false
+type Boolable interface {
+	Bool() (bool, error)
+}
+
 // Comparable type.
 type Comparable interface {
 	// Comp compares the magnitude of the comparable c with that of other.
@@ -137,5 +143,76 @@ func Conj(col ww.Any, vs parens.Seq) (parens.Any, error) {
 			Message: col.MemVal().Type().String(),
 		}
 
+	}
+}
+
+// IsTruthy returns true if the value has a logical vale of `true`.
+func IsTruthy(any ww.Any) (bool, error) {
+	if any == nil {
+		return false, nil
+	}
+
+	switch any.MemVal().Type() {
+	case api.Value_Which_nil:
+		return false, nil
+
+	case api.Value_Which_bool:
+		return any.MemVal().Raw.Bool(), nil
+
+	case api.Value_Which_keyword, api.Value_Which_symbol, api.Value_Which_char, api.Value_Which_proc, api.Value_Which_path:
+		return true, nil
+
+	case api.Value_Which_str:
+		s, err := any.MemVal().Raw.Str()
+		if err != nil {
+			return false, err
+		}
+
+		return len(s) > 0, nil
+
+	case api.Value_Which_list:
+		l, err := any.MemVal().Raw.List()
+		if err != nil {
+			return false, nil
+		}
+
+		return l.Count() > 0, nil
+
+	case api.Value_Which_vector:
+		vec, err := any.MemVal().Raw.Vector()
+		if err != nil {
+			return false, nil
+		}
+
+		return vec.Count() > 0, nil
+
+	case api.Value_Which_i64:
+		return any.MemVal().Raw.I64() != 0, nil
+
+	case api.Value_Which_f64:
+		return any.MemVal().Raw.F64() != 0, nil
+
+	case api.Value_Which_bigInt:
+		buf, err := any.MemVal().Raw.BigInt()
+		if err != nil {
+			return false, err
+		}
+
+		return len(buf) != 0, nil
+
+	case api.Value_Which_bigFloat:
+		return any.(BigFloat).f.Sign() == 0, nil
+
+	case api.Value_Which_frac:
+		return any.(Frac).r.Sign() == 0, nil
+
+	default:
+		if b, ok := any.(Boolable); ok {
+			return b.Bool()
+		}
+
+		return false, parens.Error{
+			Cause: errors.Errorf("non-boolean type %s", reflect.TypeOf(any)),
+		}
 	}
 }

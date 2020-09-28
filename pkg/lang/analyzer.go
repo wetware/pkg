@@ -37,11 +37,10 @@ func analyzer(root ww.Anchor) formAnalyzer {
 // Analyze performs syntactic analysis of given form and returns an Expr
 // that can be evaluated for result against an Env.
 func (a formAnalyzer) Analyze(env *parens.Env, form parens.Any) (parens.Expr, error) {
-	if parens.IsNil(form) {
-		return &parens.ConstExpr{Const: Nil{}}, nil
-	}
-
 	switch f := form.(type) {
+	case nil, Nil:
+		return parens.ConstExpr{Const: Nil{}}, nil
+
 	case Path:
 		return PathExpr{
 			Root: a.root,
@@ -49,13 +48,12 @@ func (a formAnalyzer) Analyze(env *parens.Env, form parens.Any) (parens.Expr, er
 		}, nil
 
 	case Symbol:
-		sym, err := f.Raw.Symbol()
+		sym, err := f.SExpr()
 		if err != nil {
 			return nil, err
 		}
 
-		v := env.Resolve(sym)
-		if v == nil {
+		if v := env.Resolve(sym); v == nil {
 			// If the symbol maps to a special form, continue.
 			// It will be treated as a ConstExpr.
 			if _, ok := a.specialForms[sym]; !ok {
