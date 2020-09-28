@@ -97,7 +97,7 @@ func (c Client) Store(context.Context, ww.Any) error {
 }
 
 // Go is a nop that always returns an error.
-func (c Client) Go(context.Context, ...ww.Any) (ww.Proc, error) {
+func (c Client) Go(context.Context, ...ww.Any) (ww.Any, error) {
 	return nil, errors.New("not implemented")
 }
 

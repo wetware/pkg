@@ -3,7 +3,6 @@ module github.com/wetware/ww
 go 1.14
 
 require (
-	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/chzyer/logex v1.1.10 // indirect
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
 	github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1 // indirect
@@ -15,7 +14,7 @@ require (
 	github.com/ipfs/go-bitswap v0.2.20
 	github.com/ipfs/go-blockservice v0.1.3
 	github.com/ipfs/go-datastore v0.4.5
-	github.com/ipfs/go-ds-badger v0.2.4 // indirect
+	github.com/ipfs/go-ds-badger v0.2.5 // indirect
 	github.com/ipfs/go-ipfs-blockstore v1.0.1
 	github.com/ipfs/go-ipfs-exchange-interface v0.0.1
 	github.com/jbenet/goprocess v0.1.4
@@ -29,14 +28,14 @@ require (
 	github.com/libp2p/go-libp2p-pubsub v0.3.5
 	github.com/libp2p/go-sockaddr v0.1.0 // indirect
 	github.com/lthibault/jitterbug v0.0.0-20200313035244-37ff5f417161
-	github.com/lthibault/log v0.0.0-20190513014217-f549b3a28a20
+	github.com/lthibault/log v0.0.0-20200928190228-576fbd3574e4
 	github.com/lthibault/treap v0.1.0
 	github.com/mr-tron/base58 v1.2.0
 	github.com/multiformats/go-multiaddr v0.3.1
 	github.com/multiformats/go-multihash v0.0.14
 	github.com/philhofer/fwd v1.0.0 // indirect
 	github.com/pkg/errors v0.9.1
-	github.com/sirupsen/logrus v1.6.0
+	github.com/sirupsen/logrus v1.7.0
 	github.com/spy16/parens v0.0.0-20200926170726-dc4209159fb8
 	github.com/stretchr/testify v1.6.1
 	github.com/tinylib/msgp v1.1.2 // indirect
@@ -45,7 +44,7 @@ require (
 	go.uber.org/fx v1.13.1
 	go.uber.org/multierr v1.6.0
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
-	golang.org/x/net v0.0.0-20200904194848-62affa334b73
+	golang.org/x/net v0.0.0-20200927032502-5d4f70055728
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208 // indirect
 	gopkg.in/yaml.v2 v2.3.0 // indirect
 	zombiezen.com/go/capnproto2 v2.18.0+incompatible

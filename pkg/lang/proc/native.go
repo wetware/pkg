@@ -1,59 +1,91 @@
 package proc
 
-// func init() { Register(":go", parseGoroutine) }
+import (
+	"context"
+	"strings"
+	"sync/atomic"
 
-// func parseGoroutine(args parens.Seq) (ww.ProcSpec, error) {
-// 	target, err := args.First()
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	"github.com/jbenet/goprocess"
+	"github.com/spy16/parens"
+	"github.com/wetware/ww/internal/api"
+	ww "github.com/wetware/ww/pkg"
+	"github.com/wetware/ww/pkg/mem"
+	capnp "zombiezen.com/go/capnproto2"
+)
 
-// 	return goroutineSpec{target.(ww.Any)}, nil
-// }
+func init() { Register(":go", goroutineFactory) }
 
-// type goroutineSpec struct{ ww.Any }
+func goroutineFactory(env *parens.Env, args []ww.Any) (Proc, error) {
+	var err error
+	var any parens.Any
 
-// func (spec goroutineSpec) Start(env *parens.Env) (ww.Proc, error) {
-// 	var g goroutine
+	target := args[0]
+	g := &goroutine{
+		args: args,
+		proc: goprocess.Go(func(p goprocess.Process) {
+			any, err = env.Eval(target)
+		}),
+	}
 
-// 	// We need to ensure the new process is successfully allocated before spawning the
-// 	// goroutine.
-// 	proc, err := New(capnp.SingleSegment(nil), api.Proc_ServerToClient(&g))
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	g.proc.SetTeardown(func() error {
+		g.res.Store(any.(ww.Any))
+		return err
+	})
 
-// 	// Now that allocation happened successfully, start the goroutine and assign the
-// 	// process to g.
-// 	g.Process = goprocess.Go(func(p goprocess.Process) {
-// 		// TODO(enhancement):  process should be able to recover this value.
-// 		_, _ = env.Eval(spec.Any)
-// 	})
+	return g, nil
+}
 
-// 	return proc, nil
-// }
+type goroutine struct {
+	res  atomic.Value
+	proc goprocess.Process
+	args []ww.Any
+}
 
-// func (spec goroutineSpec) Params(p api.Anchor_go_Params) error {
-// 	pspec, err := p.NewSpec()
-// 	if err != nil {
-// 		return err
-// 	}
+func (g goroutine) MemVal() mem.Value {
+	val, err := mem.NewValue(capnp.SingleSegment(nil))
+	if err != nil {
+		panic(err)
+	}
 
-// 	gspec, err := pspec.NewGoroutine()
-// 	if err != nil {
-// 		return err
-// 	}
+	if err := val.Raw.SetProc(api.Proc_ServerToClient(procCap{g})); err != nil {
+		panic(err)
+	}
 
-// 	return gspec.SetTarget(spec.MemVal().Raw)
-// }
+	return val
+}
 
-// type goroutine struct{ goprocess.Process }
+func (g goroutine) SExpr() (string, error) {
+	var b strings.Builder
+	b.WriteString("(go ")
 
-// func (g goroutine) Wait(call api.Proc_wait) error {
-// 	select {
-// 	case <-call.Ctx.Done():
-// 		return call.Ctx.Err()
-// 	case <-g.Closed():
-// 		return g.Err()
-// 	}
-// }
+	for i, arg := range g.args {
+		if i > 0 {
+			if i%2 == 1 {
+				b.WriteString("\n    ")
+			} else {
+				b.WriteRune(' ')
+			}
+		}
+
+		s, err := arg.SExpr()
+		if err != nil {
+			return "", err
+		}
+
+		b.WriteString(s)
+	}
+
+	b.WriteRune(')')
+	return b.String(), nil
+}
+
+func (g goroutine) Wait(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-g.proc.Closed():
+		return g.proc.Err()
+	}
+}
+
+func (g goroutine) Result() ww.Any { return g.res.Load().(ww.Any) }

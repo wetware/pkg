@@ -10,7 +10,7 @@ import (
 
 	"github.com/urfave/cli/v2"
 
-	log "github.com/lthibault/log/pkg"
+	"github.com/lthibault/log"
 
 	"github.com/wetware/ww/internal/cmd/boot"
 	"github.com/wetware/ww/internal/cmd/client"

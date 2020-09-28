@@ -68,7 +68,7 @@ func AsAny(v mem.Value) (val ww.Any, err error) {
 	case api.Value_Which_vector:
 		val = Vector{v}
 	case api.Value_Which_proc:
-		val = proc.Proc{Value: v}
+		val = proc.FromValue(v)
 	default:
 		err = errors.Errorf("unknown value type '%s'", v.Type())
 	}

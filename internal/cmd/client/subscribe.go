@@ -6,7 +6,7 @@ import (
 	"io"
 	"time"
 
-	log "github.com/lthibault/log/pkg"
+	"github.com/lthibault/log"
 	"github.com/urfave/cli/v2"
 
 	"github.com/libp2p/go-libp2p-core/peer"

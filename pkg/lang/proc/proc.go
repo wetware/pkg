@@ -3,146 +3,112 @@ package proc
 
 import (
 	"context"
-	"errors"
 
+	"github.com/pkg/errors"
 	"github.com/spy16/parens"
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/mem"
-	capnp "zombiezen.com/go/capnproto2"
 )
-
-// import (
-// 	"context"
-
-// 	"github.com/pkg/errors"
-// 	"github.com/spy16/parens"
-// 	"github.com/wetware/ww/internal/api"
-// 	ww "github.com/wetware/ww/pkg"
-// 	"github.com/wetware/ww/pkg/mem"
-// 	capnp "zombiezen.com/go/capnproto2"
-// )
 
 var (
-	// 	registry = map[string]SpecParser{}
+	registry = processRegistry{}
 
-	// 	// ErrNotFound is returned by ParseSpec when the the requested
-	// 	// parser could not be found.
-	// 	ErrNotFound = errors.New("not found")
-
-	_ ww.Proc = (*Proc)(nil)
-	// _ ww.ProcSpec = (*goroutineSpec)(nil)
+	_ ww.Any = (Proc)(nil)
 )
 
-// Spawn configures a process based on the supplied arguments and then starts it.
-func Spawn(env *parens.Env, args ...ww.Any) (ww.Proc, error) {
+// ProcessFactory constructs a process from arguments, and starts it in the
+// background.
+type ProcessFactory func(env *parens.Env, args []ww.Any) (Proc, error)
 
-	// TODO(YOU ARE HERE)
+// Register a process implementation by mapping a process type to a ProcessFactory.
+// Types MUST follow keyword syntax, e.g. ":go" or ":unix".
+// If f is nil, the corresponding tag is deleted from the registry.
+// Duplicate factories for a given process type will be overwritten.
+func Register(procType string, f ProcessFactory) {
+	if err := validateProcType(procType); err != nil {
+		panic(err)
+	}
 
-	return Proc{}, errors.New("proc.Spawn() NOT IMPLEMENTED")
+	if f == nil {
+		delete(registry, procType)
+	} else {
+		registry[procType] = f
+	}
 }
 
 // Proc is a generic asynchronous process
-type Proc struct{ mem.Value }
+type Proc interface {
+	ww.Any
+	Wait(context.Context) error
+}
 
-// New process
-func New(a capnp.Arena, p api.Proc) (Proc, error) {
-	val, err := mem.NewValue(a)
-	if err == nil {
-		err = val.Raw.SetProc(p)
+// Spawn configures a process based on the supplied arguments and then starts it.
+func Spawn(env *parens.Env, args ...ww.Any) (Proc, error) {
+	if len(args) == 0 {
+		return nil, errors.New("expected at least 1 argument, got 0")
 	}
 
-	return Proc{val}, err
+	tag, err := args[0].SExpr()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := validateProcType(tag); err != nil {
+		return nil, err
+	}
+
+	return registry.Spawn(env, tag, args[1:])
 }
 
-// SExpr returns a valid s-expression for proc.
-func (p Proc) SExpr() (string, error) {
-	return "TODO:  sexpr for proc", nil
+// FromValue lifts a mem.Value into a first-class Proc type.
+// It performs no type-checking, so callers MUST ensure v is a valid Proc.
+func FromValue(v mem.Value) Proc { return remoteProc{v} }
+
+type remoteProc struct{ mem.Value }
+
+func (p remoteProc) SExpr() (string, error) {
+	// TODO(performance):  we should probably fetch the SExpr from the remote cap _once_
+	// 					   and then cache it locally.
+
+	return "remoteProc.SExpr() NOT IMPLEMENTED", nil
 }
 
-// Wait for the process to terminate.  If ctx is cancelled, Wait returns.
-func (p Proc) Wait(ctx context.Context) error {
+func (p remoteProc) Wait(ctx context.Context) error {
 	_, err := p.Raw.Proc().Wait(ctx, func(api.Proc_wait_Params) error { return nil }).Struct()
 	return err
 }
 
-// // SpecParser can produce a process specification from
-// // a sequence of arguments.
-// type SpecParser func(parens.Seq) (ww.ProcSpec, error)
+type procCap struct{ Proc }
 
-// // Register a SpecParser.  Duplicate names will be overwritten.
-// func Register(name string, p SpecParser) {
-// 	if len(name) == 0 {
-// 		panic("process name cannot be empty")
-// 	}
+func (p procCap) Wait(call api.Proc_wait) error { return p.Proc.Wait(call.Ctx) }
 
-// 	if name[0] != ':' {
-// 		panic("process names must start with ':'")
-// 	}
+type processRegistry map[string]ProcessFactory
 
-// 	registry[name] = p
-// }
+func (r processRegistry) Spawn(env *parens.Env, procType string, args []ww.Any) (Proc, error) {
+	f, ok := r[procType]
+	if !ok {
+		return nil, parens.Error{
+			Cause:   errors.New("no factory registered for process type"),
+			Message: procType,
+		}
+	}
 
-// // ParseSpec a stream of arguments into a process specification.
-// // The name string must be a keyword-formatted string (e.g. ":unix").
-// func ParseSpec(name string, args parens.Seq) (ww.ProcSpec, error) {
-// 	p, ok := registry[name]
-// 	if !ok {
-// 		return nil, ErrNotFound
-// 	}
+	return f(env, args)
+}
 
-// 	return p(args)
-// }
+func validateProcType(procType string) error {
+	if procType[0] != ':' {
+		return parens.Error{
+			Cause:   errors.New("invalid process type"),
+			Message: procType,
+		}
+	}
 
-// type keywordArgs map[string]ww.Any
+	// procType is ":" ?
+	if len(procType) == 1 {
+		return parens.Error{Cause: errors.New("empty process type")}
+	}
 
-// func (kw keywordArgs) Get(any ww.Any) (ww.Any, bool, error) {
-// 	// keys must be Keyword types
-// 	if any.MemVal().Type() != api.Value_Which_keyword {
-// 		return nil, false, nil
-// 	}
-
-// 	key, err := any.SExpr()
-// 	if err != nil {
-// 		return nil, false, err
-// 	}
-
-// 	val, ok := kw[key]
-// 	return val, ok, nil
-// }
-
-// func seqToKwargs(seq parens.Seq) (keywordArgs, error) {
-// 	n, err := seq.Count()
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	if n == 0 {
-// 		return nil, nil
-// 	}
-
-// 	if n%2 == 1 {
-// 		return nil, errors.New("odd number of arguments")
-// 	}
-
-// 	n = 0
-// 	var key string
-// 	var m map[string]ww.Any
-
-// 	return m, parens.ForEach(seq, func(item parens.Any) (halt bool, err error) {
-// 		if n%2 == 0 {
-// 			if key, err = item.SExpr(); err != nil {
-// 				return
-// 			}
-
-// 			if len(key) == 0 || key[0] != ':' {
-// 				return false, errors.New("key must be of type 'Keyword'")
-// 			}
-// 		} else {
-// 			m[key] = item.(ww.Any)
-// 		}
-
-// 		n++
-// 		return
-// 	})
-// }
+	return nil
+}

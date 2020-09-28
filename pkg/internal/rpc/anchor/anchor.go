@@ -57,7 +57,7 @@ func (a anchor) Store(ctx context.Context, any ww.Any) error {
 	return nil
 }
 
-func (a anchor) Go(ctx context.Context, args ...ww.Any) (ww.Proc, error) {
+func (a anchor) Go(ctx context.Context, args ...ww.Any) (ww.Any, error) {
 	if len(args) == 0 {
 		return nil, errors.New("expected at least one argument, got 0")
 	}
@@ -67,7 +67,16 @@ func (a anchor) Go(ctx context.Context, args ...ww.Any) (ww.Proc, error) {
 		return nil, err
 	}
 
-	return proc.New(capnp.SingleSegment(nil), res.Proc())
+	val, err := mem.NewValue(capnp.SingleSegment(nil))
+	if err != nil {
+		return nil, err
+	}
+
+	if err = val.Raw.SetProc(res.Proc()); err != nil {
+		return nil, err
+	}
+
+	return proc.FromValue(val), nil
 }
 
 type hostAnchor struct {
@@ -101,7 +110,7 @@ func (hostAnchor) Store(ctx context.Context, any ww.Any) error {
 	return errors.New("hostAnchor.Store NOT IMPLEMENTED")
 }
 
-func (hostAnchor) Go(context.Context, ...ww.Any) (ww.Proc, error) {
+func (hostAnchor) Go(context.Context, ...ww.Any) (ww.Any, error) {
 	// TODO(enhancement):  run goroutine in the background (i.e. not bound to anchor)
 	return nil, errors.New("hostAnchor.Go NOT IMPLEMENTED")
 }

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"net"
 
-	log "github.com/lthibault/log/pkg"
+	"github.com/lthibault/log"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 

@@ -5,7 +5,7 @@ import (
 
 	"github.com/urfave/cli/v2"
 
-	log "github.com/lthibault/log/pkg"
+	"github.com/lthibault/log"
 	ctxutil "github.com/wetware/ww/internal/util/ctx"
 	logutil "github.com/wetware/ww/internal/util/log"
 

@@ -229,6 +229,6 @@ func (a nopAnchor) Store(context.Context, ww.Any) error {
 	return errors.New("not found")
 }
 
-func (a nopAnchor) Go(context.Context, ...ww.Any) (ww.Proc, error) {
+func (a nopAnchor) Go(context.Context, ...ww.Any) (ww.Any, error) {
 	return nil, errors.New("not implemented")
 }

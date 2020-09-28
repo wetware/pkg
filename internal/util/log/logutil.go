@@ -2,7 +2,7 @@
 package logutil
 
 import (
-	log "github.com/lthibault/log/pkg"
+	"github.com/lthibault/log"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
@@ -14,9 +14,9 @@ func New(c *cli.Context) log.Logger {
 
 // WithLevel returns a log.Option that configures a logger's level.
 func WithLevel(c *cli.Context) (opt log.Option) {
-	var level = log.NullLevel
+	var level = log.FatalLevel
 	defer func() {
-		opt = log.OptLevel(level)
+		opt = log.WithLevel(level)
 	}()
 
 	if c.Bool("trace") {
@@ -60,7 +60,7 @@ func WithFormat(c *cli.Context) log.Option {
 		fmt = new(logrus.TextFormatter)
 	}
 
-	return log.OptFormatter(fmt)
+	return log.WithFormatter(fmt)
 }
 
 // JoinFields returns a new map[string]interface{} that is the union of all field maps.

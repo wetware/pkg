@@ -11,6 +11,7 @@ import (
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	"github.com/libp2p/go-libp2p/config"
+	"github.com/lthibault/log"
 
 	// libp2p core interfaces
 	"github.com/libp2p/go-libp2p-core/discovery"
@@ -61,6 +62,8 @@ func services(cfg serviceConfig) runtime.ServiceBundle {
 
 // Config for the server runtime.
 type Config struct {
+	log log.Level
+
 	ns         string
 	ttl        time.Duration
 	kmin, kmax int

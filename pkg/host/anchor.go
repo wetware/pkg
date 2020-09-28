@@ -124,7 +124,7 @@ func (root rootAnchor) Store(context.Context, ww.Any) error {
 	return errors.New("not implemented")
 }
 
-func (root rootAnchor) Go(context.Context, ...ww.Any) (ww.Proc, error) {
+func (root rootAnchor) Go(context.Context, ...ww.Any) (ww.Any, error) {
 	return nil, errors.New("not implemented")
 }
 
@@ -181,9 +181,8 @@ func (a localAnchor) Store(_ context.Context, any ww.Any) error {
 	return ww.ErrAnchorNotEmpty
 }
 
-func (a localAnchor) Go(_ context.Context, args ...ww.Any) (p ww.Proc, err error) {
+func (a localAnchor) Go(_ context.Context, args ...ww.Any) (p ww.Any, err error) {
 	a.node.Txn(func(t tree.Transaction) {
-		var p ww.Proc
 		if err = ww.ErrAnchorNotEmpty; t.Load().Nil() {
 			if p, err = proc.Spawn(a.env.Fork(), args...); err == nil {
 				_ = t.Store(p.MemVal())

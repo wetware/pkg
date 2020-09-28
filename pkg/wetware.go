@@ -34,14 +34,6 @@ type Any interface {
 	MemVal() mem.Value
 }
 
-// Proc is a generic asynchronous process.
-type Proc interface {
-	Any
-
-	// Wait for the process to terminate.
-	Wait(context.Context) error
-}
-
 // Anchor is a node in a cluster-wide, hierarchical namespace.
 type Anchor interface {
 	Name() string
@@ -50,6 +42,6 @@ type Anchor interface {
 	Walk(context.Context, []string) Anchor
 	Load(context.Context) (Any, error)
 	Store(context.Context, Any) error
-	Go(context.Context, ...Any) (Proc, error)
+	Go(context.Context, ...Any) (Any, error)
 	// Resolve() (Anchor, error)
 }
