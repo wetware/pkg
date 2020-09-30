@@ -12,23 +12,23 @@ import (
 )
 
 var (
-	_ ww.Any = (*Int64)(nil)
-	_ ww.Any = (*Float64)(nil)
-	_ ww.Any = (*BigInt)(nil)
-	_ ww.Any = (*BigFloat)(nil)
-	_ ww.Any = (*Frac)(nil)
-
-	_ Comparable = (*Int64)(nil)
-	_ Comparable = (*Float64)(nil)
-	_ Comparable = (*BigInt)(nil)
-	_ Comparable = (*BigFloat)(nil)
-	_ Comparable = (*Frac)(nil)
+	_ Numerical = (*Int64)(nil)
+	_ Numerical = (*Float64)(nil)
+	_ Numerical = (*BigInt)(nil)
+	_ Numerical = (*BigFloat)(nil)
+	_ Numerical = (*Frac)(nil)
 
 	unit big.Int
 )
 
 func init() {
 	unit.SetInt64(1)
+}
+
+// Numerical value
+type Numerical interface {
+	ww.Any
+	Comparable
 }
 
 // Int64 represents a 64-bit signed integer.
