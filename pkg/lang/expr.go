@@ -81,7 +81,10 @@ func (pex PathExpr) Invoke(_ *parens.Env, args ...parens.Any) (parens.Any, error
 }
 
 // PathListExpr fetches subanchors for a path
-type PathListExpr struct{ PathExpr }
+type PathListExpr struct {
+	PathExpr
+	Args []ww.Any
+}
 
 // Eval calls ww.Anchor.Ls
 func (plx PathListExpr) Eval() (parens.Any, error) {

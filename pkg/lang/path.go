@@ -10,8 +10,17 @@ import (
 )
 
 var (
+	rootPath Path
+
 	_ ww.Any = (*Path)(nil)
 )
+
+func init() {
+	var err error
+	if rootPath, err = NewPath(capnp.SingleSegment(nil), "/"); err != nil {
+		panic(err)
+	}
+}
 
 // Path points to an anchor
 type Path struct{ mem.Value }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spy16/parens"
+	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
 )
 
@@ -142,28 +143,31 @@ func parseDefExpr(env *parens.Env, args parens.Seq) (parens.Expr, error) {
 
 type anchorClient struct{ root ww.Anchor }
 
-func (c anchorClient) Ls(_ *parens.Env, args parens.Seq) (parens.Expr, error) {
-	v, err := args.First()
-	if err != nil {
+func (c anchorClient) Ls(_ *parens.Env, seq parens.Seq) (parens.Expr, error) {
+	var args []ww.Any
+	if err := parens.ForEach(seq, func(item parens.Any) (bool, error) {
+		args = append(args, item.(ww.Any))
+		return false, nil
+	}); err != nil {
 		return nil, err
-	} else if v == nil {
-		return nil, parens.Error{
-			Cause: errors.New("ls expr requires a path argument"),
-		}
 	}
 
-	p, ok := v.(Path)
-	if !ok {
-		return nil, parens.Error{
-			Cause:   errors.New("arg 0 must be path"),
-			Message: fmt.Sprintf("got %s", reflect.TypeOf(v)),
+	pexpr := PathExpr{Root: c.root, Path: rootPath}
+	for _, arg := range args {
+		if arg.MemVal().Type() == api.Value_Which_path {
+			pexpr.Path = args[0].(Path)
+			args = args[1:]
 		}
+
+		break
 	}
 
-	return PathListExpr{PathExpr: PathExpr{
-		Root: c.root,
-		Path: p,
-	}}, nil
+	// TODO(enhancement):  other args like `:long` or `:recursive`
+
+	return PathListExpr{
+		PathExpr: pexpr,
+		Args:     args,
+	}, nil
 }
 
 func (c anchorClient) Go(env *parens.Env, args parens.Seq) (parens.Expr, error) {
