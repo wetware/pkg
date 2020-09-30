@@ -2,6 +2,7 @@ package proc
 
 import (
 	"context"
+	"fmt"
 	"sync/atomic"
 
 	"github.com/jbenet/goprocess"
@@ -45,8 +46,17 @@ type goroutine struct {
 }
 
 func (g goroutine) String() string {
-	// TODO(enhancement):  provide more details.  Current value? Error?
-	return "<Goroutine>"
+	select {
+	case <-g.proc.Closed():
+		if err := g.proc.Err(); err != nil {
+			return fmt.Sprintf("<Goroutine [ERR: %s]>", err)
+		}
+
+		return fmt.Sprintf("<Goroutine [%#v]>", g.res.Load())
+
+	default:
+		return "<Goroutine [running]>"
+	}
 }
 
 func (g goroutine) MemVal() mem.Value {
