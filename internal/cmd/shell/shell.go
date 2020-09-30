@@ -6,6 +6,7 @@ import (
 	"context"
 	"runtime"
 	"text/template"
+	"time"
 
 	"github.com/chzyer/readline"
 	"github.com/pkg/errors"
@@ -62,6 +63,11 @@ var (
 			Usage:   "dial into a cluster using -join and -discover",
 			EnvVars: []string{"WW_AUTODIAL"},
 		},
+		&cli.DurationFlag{
+			Name:  "timeout",
+			Usage: "timeout for -dial",
+			Value: time.Second * 10,
+		},
 	}
 )
 
@@ -99,6 +105,9 @@ func before() cli.BeforeFunc {
 	return func(c *cli.Context) (err error) {
 		if c.Bool("dial") {
 			ctx := ctxutil.WithDefaultSignals(context.Background())
+			ctx, cancel := context.WithTimeout(ctx, c.Duration("timeout"))
+			defer cancel()
+
 			root, err = clientutil.Dial(ctx, c)
 		}
 

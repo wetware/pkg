@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"time"
 
 	"github.com/urfave/cli/v2"
 
@@ -13,8 +14,7 @@ import (
 
 var (
 	root client.Client // see before()
-
-	ctx = ctxutil.WithDefaultSignals(context.Background())
+	ctx  = ctxutil.WithDefaultSignals(context.Background())
 
 	flags = []cli.Flag{
 		&cli.StringSliceFlag{
@@ -37,6 +37,11 @@ var (
 			Value:   "ww",
 			EnvVars: []string{"WW_NAMESPACE"},
 		},
+		&cli.DurationFlag{
+			Name:  "timeout",
+			Usage: "timeout for -dial",
+			Value: time.Second * 10,
+		},
 	}
 )
 
@@ -55,6 +60,9 @@ func Command() *cli.Command {
 // before the wetware client
 func before() cli.BeforeFunc {
 	return func(c *cli.Context) (err error) {
+		ctx, cancel := context.WithTimeout(ctx, c.Duration("timeout"))
+		defer cancel()
+
 		root, err = clientutil.Dial(ctx, c)
 		return
 	}
