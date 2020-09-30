@@ -42,9 +42,7 @@ To make matters worse, they're [notoriously fragile](https://k8s.af/), require s
 
 ### The Problem
 
-Instead of empowering you to react to your environment, existing cloud management systems hide problems behind various layers of routing, caching and indirection.  By hiding too much, they take power *away* from developers, and corner them into writing broken systems.
-
-They don't just hide the boring bits, **they hide distribution itself**.
+Instead of empowering you to react to your environment, existing cloud management systems hide problems behind various layers of routing, caching and indirection.  By hiding too much, they take power *away* from developers, and corner them into writing broken systems.  They don't just hide the boring bits, they hide distribution itself.
 
 ### The Wetware Way
 
