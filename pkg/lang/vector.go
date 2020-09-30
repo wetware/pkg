@@ -31,11 +31,9 @@ var (
 	// ErrInvalidVectorNode is returned when a node in the vector trie is invalid.
 	ErrInvalidVectorNode = errors.New("invalid VectorNode")
 
-	emptyVector Vector
+	emptyVector vector
 
-	_ ww.Any = (*Vector)(nil)
-	// _ parens.Vector    = (*Vector)(nil)
-	// _ parens.Seq       = (*vectorSeq)(nil)
+	_ Vector = (*vector)(nil)
 )
 
 func init() {
@@ -67,7 +65,17 @@ func init() {
 
 // Vector is a persistent, ordered collection of values with fast random lookups and
 // insertions.
-type Vector struct{ mem.Value }
+type Vector interface {
+	ww.Any
+	parens.SExpressable
+	Count() (int, error)
+	Conj(items ...parens.Any) (Vector, error)
+	EntryAt(i int) (parens.Any, error)
+	Assoc(i int, val parens.Any) (Vector, error)
+	Pop() (Vector, error)
+}
+
+type vector struct{ mem.Value }
 
 // NewVector creates a vector containing the supplied values.
 func NewVector(a capnp.Arena, vs ...ww.Any) (_ Vector, err error) {
@@ -89,7 +97,7 @@ func NewVector(a capnp.Arena, vs ...ww.Any) (_ Vector, err error) {
 	return b.Vector()
 }
 
-func (v Vector) String() string {
+func (v vector) String() string {
 	s, err := v.SExpr()
 	if err != nil {
 		panic(err)
@@ -99,7 +107,7 @@ func (v Vector) String() string {
 }
 
 // SExpr returns a valid s-expression for vector
-func (v Vector) SExpr() (string, error) {
+func (v vector) SExpr() (string, error) {
 	cnt, err := v.Count()
 	if err != nil {
 		return "", err
@@ -129,17 +137,17 @@ func (v Vector) SExpr() (string, error) {
 }
 
 // Count returns the number of elements in the vector.
-func (v Vector) Count() (cnt int, err error) {
+func (v vector) Count() (cnt int, err error) {
 	_, cnt, err = v.count()
 	return
 }
 
-func (v Vector) count() (api.Vector, int, error) {
+func (v vector) count() (api.Vector, int, error) {
 	return vectorCount(v.Value)
 }
 
 // Conj returns a new vector with items appended.
-func (v Vector) Conj(items ...parens.Any) (Vector, error) {
+func (v vector) Conj(items ...parens.Any) (Vector, error) {
 	/*
 		TODO(performance):  lots of room for improvement here. A good solution should:
 
@@ -159,12 +167,12 @@ func (v Vector) Conj(items ...parens.Any) (Vector, error) {
 	*/
 	vec, cnt, err := v.count()
 	if err != nil {
-		return Vector{}, err
+		return nil, err
 	}
 
 	for i, val := range items {
 		if v, err = vectorCons(vec, cnt+i, val.(ww.Any)); err != nil {
-			return Vector{}, err
+			return nil, err
 		}
 	}
 
@@ -172,7 +180,7 @@ func (v Vector) Conj(items ...parens.Any) (Vector, error) {
 }
 
 // // Seq returns the implementing value as a sequence.
-// func (v Vector) Seq() runtime.Seq {
+// func (v vector) Seq() runtime.Seq {
 // 	s, err := newVectorSeq(v, 0, 0)
 // 	if err != nil {
 // 		panic(err)
@@ -183,7 +191,7 @@ func (v Vector) Conj(items ...parens.Any) (Vector, error) {
 
 // EntryAt returns the item at given index. Returns error if the index
 // is out of range.
-func (v Vector) EntryAt(i int) (parens.Any, error) {
+func (v vector) EntryAt(i int) (parens.Any, error) {
 	vs, err := vectorArrayFor(v.Value, i)
 	if err != nil {
 		return nil, err
@@ -194,12 +202,12 @@ func (v Vector) EntryAt(i int) (parens.Any, error) {
 
 // Assoc returns a new vector with the value at given index updated.
 // Returns error if the index is out of range.
-func (v Vector) Assoc(i int, val parens.Any) (Vector, error) {
+func (v vector) Assoc(i int, val parens.Any) (Vector, error) {
 	// https://github.com/clojure/clojure/blob/0b73494c3c855e54b1da591eeb687f24f608f346/src/jvm/clojure/lang/PersistentVector.java#L121
 
 	vec, cnt, err := v.count()
 	if err != nil {
-		return Vector{}, err
+		return nil, err
 	}
 
 	// update?
@@ -212,11 +220,11 @@ func (v Vector) Assoc(i int, val parens.Any) (Vector, error) {
 		return vectorCons(vec, cnt, val.(ww.Any))
 	}
 
-	return Vector{}, ErrIndexOutOfBounds
+	return nil, ErrIndexOutOfBounds
 }
 
 // Pop returns a new vector without the last item in v
-func (v Vector) Pop() (Vector, error) {
+func (v vector) Pop() (Vector, error) {
 	_, vec, err := vectorPop(v.Value)
 	return vec, err
 }
@@ -315,12 +323,12 @@ func vectorArrayFor(v mem.Value, i int) (api.Value_List, error) {
 func vectorUpdate(vec api.Vector, cnt, i int, any ww.Any) (Vector, error) {
 	root, err := vec.Root()
 	if err != nil {
-		return Vector{}, err
+		return nil, err
 	}
 
 	tail, err := vec.Tail()
 	if err != nil {
-		return Vector{}, err
+		return nil, err
 	}
 
 	// room in tail?
@@ -328,16 +336,16 @@ func vectorUpdate(vec api.Vector, cnt, i int, any ww.Any) (Vector, error) {
 		// Object[] newTail = new Object[tail.length];
 		// System.arraycopy(tail, 0, newTail, 0, tail.length);
 		if tail, err = cloneValueList(capnp.SingleSegment(nil), tail); err != nil {
-			return Vector{}, err
+			return nil, err
 		}
 
 		// newTail[i & 0x01f] = any;
 		if err = tail.Set(i&mask, any.MemVal().Raw); err != nil {
-			return Vector{}, err
+			return nil, err
 		}
 	} else {
 		if root, err = vectorAssoc(int(vec.Shift()), root, i, any); err != nil {
-			return Vector{}, err
+			return nil, err
 		}
 	}
 
@@ -350,7 +358,7 @@ func vectorUpdate(vec api.Vector, cnt, i int, any ww.Any) (Vector, error) {
 	return res, err
 }
 
-func vectorCons(vec api.Vector, cnt int, any ww.Any) (_ Vector, err error) {
+func vectorCons(vec api.Vector, cnt int, any ww.Any) (_ vector, err error) {
 	shift := int(vec.Shift())
 
 	var root api.Vector_Node
@@ -721,24 +729,24 @@ func getChild(p api.Vector_Node, i int) (api.Vector_Node, error) {
 	vector utils
 */
 
-func newVector(a capnp.Arena, cnt, shift int, root api.Vector_Node, t api.Value_List) (api.Vector, Vector, error) {
+func newVector(a capnp.Arena, cnt, shift int, root api.Vector_Node, t api.Value_List) (api.Vector, vector, error) {
 	val, vec, err := newVectorValue(a)
 	if err != nil {
-		return api.Vector{}, Vector{}, err
+		return api.Vector{}, vector{}, err
 	}
 
 	if err = vec.SetRoot(root); err != nil {
-		return api.Vector{}, Vector{}, err
+		return api.Vector{}, vector{}, err
 	}
 
 	if err = vec.SetTail(t); err != nil {
-		return api.Vector{}, Vector{}, err
+		return api.Vector{}, vector{}, err
 	}
 
 	vec.SetCount(uint32(cnt))
 	vec.SetShift(uint8(shift))
 
-	return vec, Vector{val}, nil
+	return vec, vector{val}, nil
 }
 
 func newVectorValue(a capnp.Arena) (val mem.Value, vec api.Vector, err error) {

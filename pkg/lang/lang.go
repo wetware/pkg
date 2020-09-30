@@ -66,7 +66,7 @@ func AsAny(v mem.Value) (val ww.Any, err error) {
 	case api.Value_Which_list:
 		val = list{v}
 	case api.Value_Which_vector:
-		val = Vector{v}
+		val = vector{v}
 	case api.Value_Which_proc:
 		val = proc.FromValue(v)
 	default:

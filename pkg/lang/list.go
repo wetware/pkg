@@ -36,6 +36,7 @@ type List interface {
 	ww.Any
 	parens.Seq
 	parens.SExpressable
+	Count() (int, error)
 	Cons(any parens.Any) (List, error)
 }
 
