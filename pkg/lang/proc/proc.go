@@ -3,6 +3,7 @@ package proc
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pkg/errors"
 	"github.com/spy16/parens"
@@ -15,6 +16,8 @@ var (
 	registry = processRegistry{}
 
 	_ ww.Any = (Proc)(nil)
+
+	_ Proc = (*remoteProc)(nil)
 )
 
 // ProcessFactory constructs a process from arguments, and starts it in the
@@ -26,10 +29,6 @@ type ProcessFactory func(env *parens.Env, args []ww.Any) (Proc, error)
 // If f is nil, the corresponding tag is deleted from the registry.
 // Duplicate factories for a given process type will be overwritten.
 func Register(procType string, f ProcessFactory) {
-	if err := validateProcType(procType); err != nil {
-		panic(err)
-	}
-
 	if f == nil {
 		delete(registry, procType)
 	} else {
@@ -45,20 +44,20 @@ type Proc interface {
 
 // Spawn configures a process based on the supplied arguments and then starts it.
 func Spawn(env *parens.Env, args ...ww.Any) (Proc, error) {
-	if len(args) == 0 {
+	if len(args) < 2 {
 		return nil, errors.New("expected at least 1 argument, got 0")
 	}
 
-	tag, err := args[0].SExpr()
+	if args[0].MemVal().Type() != api.Value_Which_keyword {
+		return nil, errors.New("process-type argument must be of type 'Keyword'")
+	}
+
+	procType, err := args[0].MemVal().Raw.Keyword()
 	if err != nil {
 		return nil, err
 	}
 
-	if err := validateProcType(tag); err != nil {
-		return nil, err
-	}
-
-	return registry.Spawn(env, tag, args[1:])
+	return registry.Spawn(env, procType, args[1:])
 }
 
 // FromValue lifts a mem.Value into a first-class Proc type.
@@ -67,11 +66,9 @@ func FromValue(v mem.Value) Proc { return remoteProc{v} }
 
 type remoteProc struct{ mem.Value }
 
-func (p remoteProc) SExpr() (string, error) {
-	// TODO(performance):  we should probably fetch the SExpr from the remote cap _once_
-	// 					   and then cache it locally.
-
-	return "remoteProc.SExpr() NOT IMPLEMENTED", nil
+func (p remoteProc) String() string {
+	// TODO(enhancement): provide more info.  Proces ID? Remote host ID?  Current value?
+	return fmt.Sprintf("<RemoteProc>")
 }
 
 func (p remoteProc) Wait(ctx context.Context) error {
@@ -95,20 +92,4 @@ func (r processRegistry) Spawn(env *parens.Env, procType string, args []ww.Any) 
 	}
 
 	return f(env, args)
-}
-
-func validateProcType(procType string) error {
-	if procType[0] != ':' {
-		return parens.Error{
-			Cause:   errors.New("invalid process type"),
-			Message: procType,
-		}
-	}
-
-	// procType is ":" ?
-	if len(procType) == 1 {
-		return parens.Error{Cause: errors.New("empty process type")}
-	}
-
-	return nil
 }

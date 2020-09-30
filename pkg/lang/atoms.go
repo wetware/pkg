@@ -36,8 +36,7 @@ func init() {
 // Nil represents a null value.
 type Nil struct{}
 
-// SExpr returns a valid s-expression for nil.
-func (Nil) SExpr() (string, error) { return "nil", nil }
+func (Nil) String() string { return "nil" }
 
 // MemVal returns the memory value.
 func (Nil) MemVal() mem.Value { return mem.NilValue }
@@ -55,12 +54,11 @@ func NewBool(a capnp.Arena, b bool) (Bool, error) {
 	return Bool{val}, err
 }
 
-// SExpr returns a valid s-expression representing Bool.
-func (b Bool) SExpr() (string, error) {
+func (b Bool) String() string {
 	if b.Raw.Bool() {
-		return "true", nil
+		return "true"
 	}
-	return "false", nil
+	return "false"
 }
 
 // Char represents a character literal.  For example, \a, \b, \1, \∂ etc are
@@ -78,9 +76,8 @@ func NewChar(a capnp.Arena, r rune) (Char, error) {
 	return Char{val}, err
 }
 
-// SExpr returns a valid s-expression representing Char.
-func (c Char) SExpr() (string, error) {
-	return fmt.Sprintf("\\%c", c.Raw.Char()), nil
+func (c Char) String() string {
+	return fmt.Sprintf("\\%c", c.Raw.Char())
 }
 
 // String represents double-quoted string literals. String Form represents
@@ -96,6 +93,15 @@ func NewString(a capnp.Arena, s string) (String, error) {
 	}
 
 	return String{val}, err
+}
+
+func (str String) String() string {
+	s, err := str.SExpr()
+	if err != nil {
+		panic(err)
+	}
+
+	return s
 }
 
 // SExpr returns a valid s-expression representing String.
@@ -118,6 +124,15 @@ func NewKeyword(a capnp.Arena, s string) (Keyword, error) {
 	}
 
 	return Keyword{val}, err
+}
+
+func (kw Keyword) String() string {
+	s, err := kw.SExpr()
+	if err != nil {
+		panic(err)
+	}
+
+	return s
 }
 
 // SExpr returns a valid s-expression for the keyword
@@ -143,12 +158,14 @@ func NewSymbol(a capnp.Arena, s string) (Symbol, error) {
 	return Symbol{val}, err
 }
 
-// SExpr returns a valid s-expression for the symbol
-func (s Symbol) SExpr() (string, error) {
-	sym, err := s.Raw.Symbol()
+func (sym Symbol) String() string {
+	s, err := sym.SExpr()
 	if err != nil {
-		return "", err
+		panic(err)
 	}
 
-	return sym, nil
+	return s
 }
+
+// SExpr returns a valid s-expression for the symbol
+func (sym Symbol) SExpr() (string, error) { return sym.Raw.Symbol() }

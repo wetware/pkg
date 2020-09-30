@@ -54,6 +54,15 @@ func NewList(a capnp.Arena, vs ...ww.Any) (l List, err error) {
 	return
 }
 
+func (l List) String() string {
+	s, err := l.SExpr()
+	if err != nil {
+		panic(err)
+	}
+
+	return s
+}
+
 // Count returns the number of the list.
 func (l List) Count() (int, error) {
 	ll, _, err := listIsNull(l.Raw)

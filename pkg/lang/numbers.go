@@ -48,9 +48,8 @@ func NewInt64(a capnp.Arena, i int64) (i64 Int64, err error) {
 	return
 }
 
-// SExpr returns a valid s-expression for Int64
-func (i64 Int64) SExpr() (string, error) {
-	return fmt.Sprintf("%d", i64.Raw.I64()), nil
+func (i64 Int64) String() string {
+	return fmt.Sprintf("%d", i64.Raw.I64())
 }
 
 // Comp returns 0 if the v == other, -1 if v < other, and 1 if v > other.
@@ -113,10 +112,7 @@ func asBigInt(v mem.Value) (bi BigInt, err error) {
 	return
 }
 
-// SExpr returns a valid s-expression for BigInt.
-func (bi BigInt) SExpr() (string, error) {
-	return bi.i.String(), nil
-}
+func (bi BigInt) String() string { return bi.i.String() }
 
 // Comp returns 0 if the v == other, -1 if v < other, and 1 if v > other.
 func (bi BigInt) Comp(other ww.Any) (int, error) {
@@ -161,9 +157,8 @@ func NewFloat64(a capnp.Arena, f float64) (f64 Float64, err error) {
 	return
 }
 
-// SExpr returns a valid s-expression for Float64
-func (f64 Float64) SExpr() (string, error) {
-	return strconv.FormatFloat(f64.Raw.F64(), 'g', -1, 64), nil
+func (f64 Float64) String() string {
+	return strconv.FormatFloat(f64.Raw.F64(), 'g', -1, 64)
 }
 
 // Comp returns 0 if the v == other, -1 if v < other, and 1 if v > other.
@@ -233,8 +228,8 @@ func asBigFloat(v mem.Value) (bf BigFloat, err error) {
 }
 
 // SExpr returns a valid s-expression for Float64
-func (bf BigFloat) SExpr() (string, error) {
-	return bf.f.Text('g', -1), nil
+func (bf BigFloat) String() string {
+	return bf.f.Text('g', -1)
 }
 
 // Comp returns 0 if the v == other, -1 if v < other, and 1 if v > other.
@@ -324,10 +319,7 @@ func asFrac(v mem.Value) (f Frac, err error) {
 	return
 }
 
-// SExpr returns a valid s-expression for frac.
-func (f Frac) SExpr() (string, error) {
-	return f.r.String(), nil
-}
+func (f Frac) String() string { return f.r.String() }
 
 // Comp returns true if the other value is numerical and has the same value.
 func (f Frac) Comp(other ww.Any) (int, error) {

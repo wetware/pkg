@@ -89,6 +89,15 @@ func NewVector(a capnp.Arena, vs ...ww.Any) (_ Vector, err error) {
 	return b.Vector()
 }
 
+func (v Vector) String() string {
+	s, err := v.SExpr()
+	if err != nil {
+		panic(err)
+	}
+
+	return s
+}
+
 // SExpr returns a valid s-expression for vector
 func (v Vector) SExpr() (string, error) {
 	cnt, err := v.Count()
@@ -104,7 +113,7 @@ func (v Vector) SExpr() (string, error) {
 			return "", err
 		}
 
-		sexpr, err := val.SExpr()
+		sexpr, err := val.(parens.SExpressable).SExpr()
 		if err != nil {
 			return "", err
 		}

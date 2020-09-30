@@ -46,6 +46,7 @@ type routingTable interface {
 type anchorParams struct {
 	fx.In
 
+	Log    ww.Logger
 	Host   host.Host
 	Filter filter.Filter
 }
@@ -58,13 +59,14 @@ type anchorOut struct {
 
 func newAnchor(ps anchorParams) (out anchorOut) {
 	out.Handler = rootAnchorCap{
-		root: newRootAnchor(ps.Filter, ps.Host),
+		root: newRootAnchor(ps.Log, ps.Filter, ps.Host),
 	}
 
 	return
 }
 
 type rootAnchor struct {
+	log ww.Logger
 	env *parens.Env
 	routingTable
 
@@ -73,8 +75,9 @@ type rootAnchor struct {
 	term      rpc.Terminal
 }
 
-func newRootAnchor(rt routingTable, h host.Host) *rootAnchor {
+func newRootAnchor(log ww.Logger, rt routingTable, h host.Host) *rootAnchor {
 	root := &rootAnchor{
+		log:          log.WithField("path", "/"),
 		routingTable: rt,
 		localPath:    h.ID().String(),
 		node:         tree.New(),
@@ -106,6 +109,7 @@ func (root rootAnchor) Walk(ctx context.Context, path []string) ww.Anchor {
 
 	if root.isLocal(path) {
 		return localAnchor{
+			log:  root.log.WithField("path", anchorpath.Join(path)),
 			env:  root.env,
 			root: path[0],
 			node: root.node.Walk(path[1:]),
@@ -133,6 +137,7 @@ func (root rootAnchor) isLocal(path []string) bool {
 }
 
 type localAnchor struct {
+	log  ww.Logger
 	root string
 	node tree.Node
 	env  *parens.Env
@@ -186,6 +191,7 @@ func (a localAnchor) Go(_ context.Context, args ...ww.Any) (p ww.Any, err error)
 		if err = ww.ErrAnchorNotEmpty; t.Load().Nil() {
 			if p, err = proc.Spawn(a.env.Fork(), args...); err == nil {
 				_ = t.Store(p.MemVal())
+				a.log.WithField("args", args).Info("process started")
 			}
 		}
 	})
@@ -259,7 +265,7 @@ func (a rootAnchorCap) Walk(call api.Anchor_walk) error {
 	}
 
 	err = call.Results.SetAnchor(api.Anchor_ServerToClient(
-		anchorCap{a.root.Walk(call.Ctx, parts[1:])},
+		anchorCap{a.root.Walk(call.Ctx, parts)},
 	))
 
 	return errmem(err)

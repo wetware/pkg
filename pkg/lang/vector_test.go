@@ -356,7 +356,7 @@ func assertVectEq(t *testing.T, want, got lang.Vector) (ok bool) {
 }
 
 func mustSExpr(v parens.Any) string {
-	sexpr, err := v.SExpr()
+	sexpr, err := v.(parens.SExpressable).SExpr()
 	if err != nil {
 		panic(err)
 	}

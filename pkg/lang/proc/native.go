@@ -2,7 +2,6 @@ package proc
 
 import (
 	"context"
-	"strings"
 	"sync/atomic"
 
 	"github.com/jbenet/goprocess"
@@ -13,7 +12,11 @@ import (
 	capnp "zombiezen.com/go/capnproto2"
 )
 
-func init() { Register(":go", goroutineFactory) }
+var (
+	_ Proc = (*goroutine)(nil)
+)
+
+func init() { Register("go", goroutineFactory) }
 
 func goroutineFactory(env *parens.Env, args []ww.Any) (Proc, error) {
 	var err error
@@ -41,6 +44,11 @@ type goroutine struct {
 	args []ww.Any
 }
 
+func (g goroutine) String() string {
+	// TODO(enhancement):  provide more details.  Current value? Error?
+	return "<Goroutine>"
+}
+
 func (g goroutine) MemVal() mem.Value {
 	val, err := mem.NewValue(capnp.SingleSegment(nil))
 	if err != nil {
@@ -52,31 +60,6 @@ func (g goroutine) MemVal() mem.Value {
 	}
 
 	return val
-}
-
-func (g goroutine) SExpr() (string, error) {
-	var b strings.Builder
-	b.WriteString("(go ")
-
-	for i, arg := range g.args {
-		if i > 0 {
-			if i%2 == 1 {
-				b.WriteString("\n    ")
-			} else {
-				b.WriteRune(' ')
-			}
-		}
-
-		s, err := arg.SExpr()
-		if err != nil {
-			return "", err
-		}
-
-		b.WriteString(s)
-	}
-
-	b.WriteRune(')')
-	return b.String(), nil
 }
 
 func (g goroutine) Wait(ctx context.Context) error {

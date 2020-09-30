@@ -40,7 +40,7 @@ type Logger interface{ log.Logger }
 
 // Any is a generic value type
 type Any interface {
-	SExpr() (string, error)
+	String() string
 	MemVal() mem.Value
 }
 

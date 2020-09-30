@@ -65,7 +65,7 @@ func TestSExpr(t *testing.T) {
 		want: `("hello" "world")`,
 	}} {
 		t.Run(reflect.TypeOf(tt.val).String(), func(t *testing.T) {
-			sexpr, err := tt.val.SExpr()
+			sexpr, err := tt.val.(parens.SExpressable).SExpr()
 			require.NoError(t, err)
 
 			assert.Equal(t, tt.want, sexpr)
@@ -118,8 +118,8 @@ func TestConj(t *testing.T) {
 	}
 }
 
-func mustSexpr(any interface{ SExpr() (string, error) }) string {
-	s, err := any.SExpr()
+func mustSexpr(any interface{}) string {
+	s, err := any.(parens.SExpressable).SExpr()
 	if err != nil {
 		panic(err)
 	}
