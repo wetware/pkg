@@ -64,7 +64,7 @@ func AsAny(v mem.Value) (val ww.Any, err error) {
 	case api.Value_Which_path:
 		val = Path{v}
 	case api.Value_Which_list:
-		val = List{v}
+		val = list{v}
 	case api.Value_Which_vector:
 		val = Vector{v}
 	case api.Value_Which_proc:
@@ -120,22 +120,20 @@ func Pop(col ww.Any) (ww.Any, error) {
 // 'added'. (conj nil item) returns (item).  The 'addition' may
 // happen at different 'places' depending on the concrete type.
 func Conj(col ww.Any, vs parens.Seq) (parens.Any, error) {
-	switch col.MemVal().Type() {
-	case api.Value_Which_list:
-		l := List{col.MemVal()}
-		err := parens.ForEach(vs, func(v parens.Any) (_ bool, err error) {
-			l, err = l.Cons(v)
+	switch v := col.(type) {
+	case List:
+		err := parens.ForEach(vs, func(item parens.Any) (_ bool, err error) {
+			v, err = v.Cons(item)
 			return
 		})
-		return l, err
+		return v, err
 
-	case api.Value_Which_vector:
-		vec := Vector{col.MemVal()}
-		err := parens.ForEach(vs, func(v parens.Any) (_ bool, err error) {
-			vec, err = vec.Conj(v)
+	case Vector:
+		err := parens.ForEach(vs, func(item parens.Any) (_ bool, err error) {
+			v, err = v.Conj(item)
 			return
 		})
-		return vec, err
+		return v, err
 
 	default:
 		return nil, parens.Error{
@@ -144,6 +142,7 @@ func Conj(col ww.Any, vs parens.Seq) (parens.Any, error) {
 		}
 
 	}
+
 }
 
 // IsTruthy returns true if the value has a logical vale of `true`.
