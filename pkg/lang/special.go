@@ -171,10 +171,20 @@ func (c anchorClient) Ls(_ *parens.Env, seq parens.Seq) (parens.Expr, error) {
 }
 
 func (c anchorClient) Go(env *parens.Env, args parens.Seq) (parens.Expr, error) {
-	as, err := newProcArgs(args)
+	n, err := args.Count()
 	if err != nil {
 		return nil, err
 	}
+
+	if n == 0 {
+		return nil, errors.Errorf("expected at least one argument, got %d", n)
+	}
+
+	as := make(procArgs, 0, n)
+	parens.ForEach(args, func(item parens.Any) (bool, error) {
+		as = append(as, item.(ww.Any))
+		return false, nil
+	})
 
 	if p, ok := as.Global(); ok {
 		return GlobalGoExpr{
