@@ -1,6 +1,7 @@
 package lang
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -121,12 +122,16 @@ func (v vector) SExpr() (string, error) {
 			return "", err
 		}
 
-		sexpr, err := val.(parens.SExpressable).SExpr()
-		if err != nil {
-			return "", err
-		}
+		if sx, ok := val.(parens.SExpressable); ok {
+			s, err := sx.SExpr()
+			if err != nil {
+				return "", err
+			}
 
-		b.WriteString(sexpr)
+			b.WriteString(s)
+		} else {
+			b.WriteString(fmt.Sprintf("%s", val))
+		}
 
 		if i < cnt-1 {
 			b.WriteRune(' ')
