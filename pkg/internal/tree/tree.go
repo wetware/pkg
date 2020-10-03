@@ -2,7 +2,7 @@
 package tree
 
 import (
-	goruntime "runtime"
+	"runtime"
 	"sync"
 
 	"github.com/wetware/ww/pkg/mem"
@@ -178,7 +178,7 @@ func (n *node) ref() *nodeRef {
 
 	n.ctr++
 	ref := &nodeRef{n}
-	goruntime.SetFinalizer(ref, gc)
+	runtime.SetFinalizer(ref, gc)
 
 	return ref
 }

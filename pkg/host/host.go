@@ -13,6 +13,7 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 
+	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/internal/filter"
 	"github.com/wetware/ww/pkg/internal/rpc"
 )
@@ -111,6 +112,8 @@ func start(r interface{ Start(context.Context) error }) error {
 type hostParams struct {
 	fx.In
 
+	Log ww.Logger
+
 	Namespace string `name:"ns"`
 
 	Host     host.Host
@@ -119,23 +122,21 @@ type hostParams struct {
 }
 
 func newHost(ctx context.Context, lx fx.Lifecycle, ps hostParams) Host {
-	// export capabilities
+	h := Host{ns: ps.Namespace, host: ps.Host, r: ps.Filter}
+
 	for _, cap := range ps.Handlers {
-		ps.Host.SetStreamHandler(cap.Protocol(), handler(cap))
+		h.host.SetStreamHandler(cap.Protocol(), h.handler(ctx, ps.Log, cap))
 	}
 
-	return Host{ns: ps.Namespace, host: ps.Host, r: ps.Filter}
+	return h
 }
 
-func handler(cap rpc.Capability) network.StreamHandler {
+func (h Host) handler(ctx context.Context, log ww.Logger, cap rpc.Capability) network.StreamHandler {
 	return func(s network.Stream) {
 		defer s.Reset()
 
-		if err := rpc.Handle(cap, s); err != nil {
-			panic(err) // TODO(easy): emit to event bus
-			// log.WithFields(cap.Loggable()).
-			// 	WithError(err).
-			// 	Debug("connection aborted")
+		if err := rpc.Handle(ctx, log.With(h), cap, s); err != nil {
+			log.WithError(err).Debug("failed to terminate connection gracefully")
 		}
 	}
 }

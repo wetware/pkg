@@ -2,6 +2,7 @@ package anchor
 
 import (
 	"context"
+	"runtime"
 
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
@@ -25,16 +26,31 @@ func (a anchor) Ls(ctx context.Context) ([]ww.Anchor, error) {
 }
 
 func (a anchor) Walk(ctx context.Context, path []string) ww.Anchor {
+	f, done := a.Anchor().Walk(ctx, func(p api.Anchor_walk_Params) error {
+		return p.SetPath(anchorpath.Join(path))
+	})
+
+	runtime.SetFinalizer(&f, func(*api.Anchor_walk_Results_Future) {
+		done()
+	})
+
 	return anchor{
-		path: append(a.path, path...),
-		anchorProvider: a.Anchor().Walk(ctx, func(p api.Anchor_walk_Params) error {
-			return p.SetPath(anchorpath.Join(path))
-		}),
+		path:           append(a.path, path...),
+		anchorProvider: f,
 	}
 }
 
 func (a anchor) Load(ctx context.Context) (ww.Any, error) {
-	res, err := a.Anchor().Load(ctx, func(api.Anchor_load_Params) error { return nil }).Struct()
+	f, done := a.Anchor().Load(ctx, func(api.Anchor_load_Params) error { return nil })
+	defer done()
+
+	select {
+	case <-f.Done():
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+
+	res, err := f.Struct()
 	if err != nil {
 		return nil, err
 	}
@@ -48,9 +64,18 @@ func (a anchor) Load(ctx context.Context) (ww.Any, error) {
 }
 
 func (a anchor) Store(ctx context.Context, any ww.Any) error {
-	if _, err := a.Anchor().Store(ctx, func(p api.Anchor_store_Params) error {
+	f, done := a.Anchor().Store(ctx, func(p api.Anchor_store_Params) error {
 		return p.SetValue(any.MemVal().Raw)
-	}).Struct(); err != nil {
+	})
+	defer done()
+
+	select {
+	case <-f.Done():
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+
+	if _, err := f.Struct(); err != nil {
 		return err
 	}
 
@@ -62,7 +87,16 @@ func (a anchor) Go(ctx context.Context, args ...ww.Any) (ww.Any, error) {
 		return nil, errors.New("expected at least one argument, got 0")
 	}
 
-	res, err := a.Anchor().Go(ctx, procArgs(args).Set).Struct()
+	f, done := a.Anchor().Go(ctx, procArgs(args).Set)
+	defer done()
+
+	select {
+	case <-f.Done():
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+
+	res, err := f.Struct()
 	if err != nil {
 		return nil, err
 	}

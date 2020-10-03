@@ -11,6 +11,7 @@ import (
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/mem"
 	capnp "zombiezen.com/go/capnproto2"
+	"zombiezen.com/go/capnproto2/server"
 )
 
 var (
@@ -65,7 +66,7 @@ func (g goroutine) MemVal() mem.Value {
 		panic(err)
 	}
 
-	if err := val.Raw.SetProc(api.Proc_ServerToClient(procCap{g})); err != nil {
+	if err := val.Raw.SetProc(api.Proc_ServerToClient(procCap{g}, &server.Policy{})); err != nil {
 		panic(err)
 	}
 

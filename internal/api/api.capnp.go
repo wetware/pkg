@@ -3,7 +3,7 @@
 package api
 
 import (
-	context "golang.org/x/net/context"
+	context "context"
 	math "math"
 	strconv "strconv"
 	capnp "zombiezen.com/go/capnproto2"
@@ -85,7 +85,7 @@ func NewRootValue(s *capnp.Segment) (Value, error) {
 }
 
 func ReadRootValue(msg *capnp.Message) (Value, error) {
-	root, err := msg.RootPtr()
+	root, err := msg.Root()
 	return Value{root.Struct()}, err
 }
 
@@ -138,8 +138,7 @@ func (s Value) HasBigInt() bool {
 	if s.Struct.Uint16(0) != 3 {
 		return false
 	}
-	p, err := s.Struct.Ptr(0)
-	return p.IsValid() || err != nil
+	return s.Struct.HasPtr(0)
 }
 
 func (s Value) SetBigInt(v []byte) error {
@@ -171,8 +170,7 @@ func (s Value) HasBigFloat() bool {
 	if s.Struct.Uint16(0) != 5 {
 		return false
 	}
-	p, err := s.Struct.Ptr(0)
-	return p.IsValid() || err != nil
+	return s.Struct.HasPtr(0)
 }
 
 func (s Value) BigFloatBytes() ([]byte, error) {
@@ -197,8 +195,7 @@ func (s Value) HasFrac() bool {
 	if s.Struct.Uint16(0) != 6 {
 		return false
 	}
-	p, err := s.Struct.Ptr(0)
-	return p.IsValid() || err != nil
+	return s.Struct.HasPtr(0)
 }
 
 func (s Value) SetFrac(v Frac) error {
@@ -242,8 +239,7 @@ func (s Value) HasStr() bool {
 	if s.Struct.Uint16(0) != 8 {
 		return false
 	}
-	p, err := s.Struct.Ptr(0)
-	return p.IsValid() || err != nil
+	return s.Struct.HasPtr(0)
 }
 
 func (s Value) StrBytes() ([]byte, error) {
@@ -268,8 +264,7 @@ func (s Value) HasKeyword() bool {
 	if s.Struct.Uint16(0) != 9 {
 		return false
 	}
-	p, err := s.Struct.Ptr(0)
-	return p.IsValid() || err != nil
+	return s.Struct.HasPtr(0)
 }
 
 func (s Value) KeywordBytes() ([]byte, error) {
@@ -294,8 +289,7 @@ func (s Value) HasSymbol() bool {
 	if s.Struct.Uint16(0) != 10 {
 		return false
 	}
-	p, err := s.Struct.Ptr(0)
-	return p.IsValid() || err != nil
+	return s.Struct.HasPtr(0)
 }
 
 func (s Value) SymbolBytes() ([]byte, error) {
@@ -320,8 +314,7 @@ func (s Value) HasPath() bool {
 	if s.Struct.Uint16(0) != 11 {
 		return false
 	}
-	p, err := s.Struct.Ptr(0)
-	return p.IsValid() || err != nil
+	return s.Struct.HasPtr(0)
 }
 
 func (s Value) PathBytes() ([]byte, error) {
@@ -346,8 +339,7 @@ func (s Value) HasList() bool {
 	if s.Struct.Uint16(0) != 12 {
 		return false
 	}
-	p, err := s.Struct.Ptr(0)
-	return p.IsValid() || err != nil
+	return s.Struct.HasPtr(0)
 }
 
 func (s Value) SetList(v LinkedList) error {
@@ -379,8 +371,7 @@ func (s Value) HasVector() bool {
 	if s.Struct.Uint16(0) != 13 {
 		return false
 	}
-	p, err := s.Struct.Ptr(0)
-	return p.IsValid() || err != nil
+	return s.Struct.HasPtr(0)
 }
 
 func (s Value) SetVector(v Vector) error {
@@ -412,13 +403,12 @@ func (s Value) HasProc() bool {
 	if s.Struct.Uint16(0) != 14 {
 		return false
 	}
-	p, err := s.Struct.Ptr(0)
-	return p.IsValid() || err != nil
+	return s.Struct.HasPtr(0)
 }
 
 func (s Value) SetProc(v Proc) error {
 	s.Struct.SetUint16(0, 14)
-	if v.Client == nil {
+	if !v.Client.IsValid() {
 		return s.Struct.SetPtr(0, capnp.Ptr{})
 	}
 	seg := s.Segment()
@@ -444,153 +434,143 @@ func (s Value_List) String() string {
 	return str
 }
 
-// Value_Promise is a wrapper for a Value promised by a client call.
-type Value_Promise struct{ *capnp.Pipeline }
+// Value_Future is a wrapper for a Value promised by a client call.
+type Value_Future struct{ *capnp.Future }
 
-func (p Value_Promise) Struct() (Value, error) {
-	s, err := p.Pipeline.Struct()
+func (p Value_Future) Struct() (Value, error) {
+	s, err := p.Future.Struct()
 	return Value{s}, err
 }
 
-func (p Value_Promise) Frac() Frac_Promise {
-	return Frac_Promise{Pipeline: p.Pipeline.GetPipeline(0)}
+func (p Value_Future) Frac() Frac_Future {
+	return Frac_Future{Future: p.Future.Field(0, nil)}
 }
 
-func (p Value_Promise) List() LinkedList_Promise {
-	return LinkedList_Promise{Pipeline: p.Pipeline.GetPipeline(0)}
+func (p Value_Future) List() LinkedList_Future {
+	return LinkedList_Future{Future: p.Future.Field(0, nil)}
 }
 
-func (p Value_Promise) Vector() Vector_Promise {
-	return Vector_Promise{Pipeline: p.Pipeline.GetPipeline(0)}
+func (p Value_Future) Vector() Vector_Future {
+	return Vector_Future{Future: p.Future.Field(0, nil)}
 }
 
-func (p Value_Promise) Proc() Proc {
-	return Proc{Client: p.Pipeline.GetPipeline(0).Client()}
+func (p Value_Future) Proc() Proc {
+	return Proc{Client: p.Future.Field(0, nil).Client()}
 }
 
-type Anchor struct{ Client capnp.Client }
+type Anchor struct{ Client *capnp.Client }
 
 // Anchor_TypeID is the unique identifier for the type Anchor.
 const Anchor_TypeID = 0xf4acba02cd83d452
 
-func (c Anchor) Ls(ctx context.Context, params func(Anchor_ls_Params) error, opts ...capnp.CallOption) Anchor_ls_Results_Promise {
-	if c.Client == nil {
-		return Anchor_ls_Results_Promise{Pipeline: capnp.NewPipeline(capnp.ErrorAnswer(capnp.ErrNullClient))}
-	}
-	call := &capnp.Call{
-		Ctx: ctx,
+func (c Anchor) Ls(ctx context.Context, params func(Anchor_ls_Params) error) (Anchor_ls_Results_Future, capnp.ReleaseFunc) {
+	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xf4acba02cd83d452,
 			MethodID:      0,
 			InterfaceName: "api/api.capnp:Anchor",
 			MethodName:    "ls",
 		},
-		Options: capnp.NewCallOptions(opts),
 	}
 	if params != nil {
-		call.ParamsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		call.ParamsFunc = func(s capnp.Struct) error { return params(Anchor_ls_Params{Struct: s}) }
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Anchor_ls_Params{Struct: s}) }
 	}
-	return Anchor_ls_Results_Promise{Pipeline: capnp.NewPipeline(c.Client.Call(call))}
+	ans, release := c.Client.SendCall(ctx, s)
+	return Anchor_ls_Results_Future{Future: ans.Future()}, release
 }
-func (c Anchor) Walk(ctx context.Context, params func(Anchor_walk_Params) error, opts ...capnp.CallOption) Anchor_walk_Results_Promise {
-	if c.Client == nil {
-		return Anchor_walk_Results_Promise{Pipeline: capnp.NewPipeline(capnp.ErrorAnswer(capnp.ErrNullClient))}
-	}
-	call := &capnp.Call{
-		Ctx: ctx,
+func (c Anchor) Walk(ctx context.Context, params func(Anchor_walk_Params) error) (Anchor_walk_Results_Future, capnp.ReleaseFunc) {
+	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xf4acba02cd83d452,
 			MethodID:      1,
 			InterfaceName: "api/api.capnp:Anchor",
 			MethodName:    "walk",
 		},
-		Options: capnp.NewCallOptions(opts),
 	}
 	if params != nil {
-		call.ParamsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		call.ParamsFunc = func(s capnp.Struct) error { return params(Anchor_walk_Params{Struct: s}) }
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Anchor_walk_Params{Struct: s}) }
 	}
-	return Anchor_walk_Results_Promise{Pipeline: capnp.NewPipeline(c.Client.Call(call))}
+	ans, release := c.Client.SendCall(ctx, s)
+	return Anchor_walk_Results_Future{Future: ans.Future()}, release
 }
-func (c Anchor) Load(ctx context.Context, params func(Anchor_load_Params) error, opts ...capnp.CallOption) Anchor_load_Results_Promise {
-	if c.Client == nil {
-		return Anchor_load_Results_Promise{Pipeline: capnp.NewPipeline(capnp.ErrorAnswer(capnp.ErrNullClient))}
-	}
-	call := &capnp.Call{
-		Ctx: ctx,
+func (c Anchor) Load(ctx context.Context, params func(Anchor_load_Params) error) (Anchor_load_Results_Future, capnp.ReleaseFunc) {
+	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xf4acba02cd83d452,
 			MethodID:      2,
 			InterfaceName: "api/api.capnp:Anchor",
 			MethodName:    "load",
 		},
-		Options: capnp.NewCallOptions(opts),
 	}
 	if params != nil {
-		call.ParamsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		call.ParamsFunc = func(s capnp.Struct) error { return params(Anchor_load_Params{Struct: s}) }
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Anchor_load_Params{Struct: s}) }
 	}
-	return Anchor_load_Results_Promise{Pipeline: capnp.NewPipeline(c.Client.Call(call))}
+	ans, release := c.Client.SendCall(ctx, s)
+	return Anchor_load_Results_Future{Future: ans.Future()}, release
 }
-func (c Anchor) Store(ctx context.Context, params func(Anchor_store_Params) error, opts ...capnp.CallOption) Anchor_store_Results_Promise {
-	if c.Client == nil {
-		return Anchor_store_Results_Promise{Pipeline: capnp.NewPipeline(capnp.ErrorAnswer(capnp.ErrNullClient))}
-	}
-	call := &capnp.Call{
-		Ctx: ctx,
+func (c Anchor) Store(ctx context.Context, params func(Anchor_store_Params) error) (Anchor_store_Results_Future, capnp.ReleaseFunc) {
+	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xf4acba02cd83d452,
 			MethodID:      3,
 			InterfaceName: "api/api.capnp:Anchor",
 			MethodName:    "store",
 		},
-		Options: capnp.NewCallOptions(opts),
 	}
 	if params != nil {
-		call.ParamsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		call.ParamsFunc = func(s capnp.Struct) error { return params(Anchor_store_Params{Struct: s}) }
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Anchor_store_Params{Struct: s}) }
 	}
-	return Anchor_store_Results_Promise{Pipeline: capnp.NewPipeline(c.Client.Call(call))}
+	ans, release := c.Client.SendCall(ctx, s)
+	return Anchor_store_Results_Future{Future: ans.Future()}, release
 }
-func (c Anchor) Go(ctx context.Context, params func(Anchor_go_Params) error, opts ...capnp.CallOption) Anchor_go_Results_Promise {
-	if c.Client == nil {
-		return Anchor_go_Results_Promise{Pipeline: capnp.NewPipeline(capnp.ErrorAnswer(capnp.ErrNullClient))}
-	}
-	call := &capnp.Call{
-		Ctx: ctx,
+func (c Anchor) Go(ctx context.Context, params func(Anchor_go_Params) error) (Anchor_go_Results_Future, capnp.ReleaseFunc) {
+	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xf4acba02cd83d452,
 			MethodID:      4,
 			InterfaceName: "api/api.capnp:Anchor",
 			MethodName:    "go",
 		},
-		Options: capnp.NewCallOptions(opts),
 	}
 	if params != nil {
-		call.ParamsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		call.ParamsFunc = func(s capnp.Struct) error { return params(Anchor_go_Params{Struct: s}) }
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Anchor_go_Params{Struct: s}) }
 	}
-	return Anchor_go_Results_Promise{Pipeline: capnp.NewPipeline(c.Client.Call(call))}
+	ans, release := c.Client.SendCall(ctx, s)
+	return Anchor_go_Results_Future{Future: ans.Future()}, release
 }
 
+// A Anchor_Server is a Anchor with a local implementation.
 type Anchor_Server interface {
-	Ls(Anchor_ls) error
+	Ls(context.Context, Anchor_ls) error
 
-	Walk(Anchor_walk) error
+	Walk(context.Context, Anchor_walk) error
 
-	Load(Anchor_load) error
+	Load(context.Context, Anchor_load) error
 
-	Store(Anchor_store) error
+	Store(context.Context, Anchor_store) error
 
-	Go(Anchor_go) error
+	Go(context.Context, Anchor_go) error
 }
 
-func Anchor_ServerToClient(s Anchor_Server) Anchor {
-	c, _ := s.(server.Closer)
-	return Anchor{Client: server.New(Anchor_Methods(nil, s), c)}
+// Anchor_NewServer creates a new Server from an implementation of Anchor_Server.
+func Anchor_NewServer(s Anchor_Server, policy *server.Policy) *server.Server {
+	c, _ := s.(server.Shutdowner)
+	return server.New(Anchor_Methods(nil, s), s, c, policy)
 }
 
+// Anchor_ServerToClient creates a new Client from an implementation of Anchor_Server.
+// The caller is responsible for calling Release on the returned Client.
+func Anchor_ServerToClient(s Anchor_Server, policy *server.Policy) Anchor {
+	return Anchor{Client: capnp.NewClient(Anchor_NewServer(s, policy))}
+}
+
+// Anchor_Methods appends Methods to a slice that invoke the methods on s.
+// This can be used to create a more complicated Server.
 func Anchor_Methods(methods []server.Method, s Anchor_Server) []server.Method {
 	if cap(methods) == 0 {
 		methods = make([]server.Method, 0, 5)
@@ -603,11 +583,9 @@ func Anchor_Methods(methods []server.Method, s Anchor_Server) []server.Method {
 			InterfaceName: "api/api.capnp:Anchor",
 			MethodName:    "ls",
 		},
-		Impl: func(c context.Context, opts capnp.CallOptions, p, r capnp.Struct) error {
-			call := Anchor_ls{c, opts, Anchor_ls_Params{Struct: p}, Anchor_ls_Results{Struct: r}}
-			return s.Ls(call)
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Ls(ctx, Anchor_ls{call})
 		},
-		ResultsSize: capnp.ObjectSize{DataSize: 0, PointerCount: 1},
 	})
 
 	methods = append(methods, server.Method{
@@ -617,11 +595,9 @@ func Anchor_Methods(methods []server.Method, s Anchor_Server) []server.Method {
 			InterfaceName: "api/api.capnp:Anchor",
 			MethodName:    "walk",
 		},
-		Impl: func(c context.Context, opts capnp.CallOptions, p, r capnp.Struct) error {
-			call := Anchor_walk{c, opts, Anchor_walk_Params{Struct: p}, Anchor_walk_Results{Struct: r}}
-			return s.Walk(call)
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Walk(ctx, Anchor_walk{call})
 		},
-		ResultsSize: capnp.ObjectSize{DataSize: 0, PointerCount: 1},
 	})
 
 	methods = append(methods, server.Method{
@@ -631,11 +607,9 @@ func Anchor_Methods(methods []server.Method, s Anchor_Server) []server.Method {
 			InterfaceName: "api/api.capnp:Anchor",
 			MethodName:    "load",
 		},
-		Impl: func(c context.Context, opts capnp.CallOptions, p, r capnp.Struct) error {
-			call := Anchor_load{c, opts, Anchor_load_Params{Struct: p}, Anchor_load_Results{Struct: r}}
-			return s.Load(call)
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Load(ctx, Anchor_load{call})
 		},
-		ResultsSize: capnp.ObjectSize{DataSize: 0, PointerCount: 1},
 	})
 
 	methods = append(methods, server.Method{
@@ -645,11 +619,9 @@ func Anchor_Methods(methods []server.Method, s Anchor_Server) []server.Method {
 			InterfaceName: "api/api.capnp:Anchor",
 			MethodName:    "store",
 		},
-		Impl: func(c context.Context, opts capnp.CallOptions, p, r capnp.Struct) error {
-			call := Anchor_store{c, opts, Anchor_store_Params{Struct: p}, Anchor_store_Results{Struct: r}}
-			return s.Store(call)
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Store(ctx, Anchor_store{call})
 		},
-		ResultsSize: capnp.ObjectSize{DataSize: 0, PointerCount: 0},
 	})
 
 	methods = append(methods, server.Method{
@@ -659,54 +631,97 @@ func Anchor_Methods(methods []server.Method, s Anchor_Server) []server.Method {
 			InterfaceName: "api/api.capnp:Anchor",
 			MethodName:    "go",
 		},
-		Impl: func(c context.Context, opts capnp.CallOptions, p, r capnp.Struct) error {
-			call := Anchor_go{c, opts, Anchor_go_Params{Struct: p}, Anchor_go_Results{Struct: r}}
-			return s.Go(call)
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Go(ctx, Anchor_go{call})
 		},
-		ResultsSize: capnp.ObjectSize{DataSize: 0, PointerCount: 1},
 	})
 
 	return methods
 }
 
-// Anchor_ls holds the arguments for a server call to Anchor.ls.
+// Anchor_ls holds the state for a server call to Anchor.ls.
+// See server.Call for documentation.
 type Anchor_ls struct {
-	Ctx     context.Context
-	Options capnp.CallOptions
-	Params  Anchor_ls_Params
-	Results Anchor_ls_Results
+	*server.Call
 }
 
-// Anchor_walk holds the arguments for a server call to Anchor.walk.
+// Args returns the call's arguments.
+func (c Anchor_ls) Args() Anchor_ls_Params {
+	return Anchor_ls_Params{Struct: c.Call.Args()}
+}
+
+// AllocResults allocates the results struct.
+func (c Anchor_ls) AllocResults() (Anchor_ls_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Anchor_ls_Results{Struct: r}, err
+}
+
+// Anchor_walk holds the state for a server call to Anchor.walk.
+// See server.Call for documentation.
 type Anchor_walk struct {
-	Ctx     context.Context
-	Options capnp.CallOptions
-	Params  Anchor_walk_Params
-	Results Anchor_walk_Results
+	*server.Call
 }
 
-// Anchor_load holds the arguments for a server call to Anchor.load.
+// Args returns the call's arguments.
+func (c Anchor_walk) Args() Anchor_walk_Params {
+	return Anchor_walk_Params{Struct: c.Call.Args()}
+}
+
+// AllocResults allocates the results struct.
+func (c Anchor_walk) AllocResults() (Anchor_walk_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Anchor_walk_Results{Struct: r}, err
+}
+
+// Anchor_load holds the state for a server call to Anchor.load.
+// See server.Call for documentation.
 type Anchor_load struct {
-	Ctx     context.Context
-	Options capnp.CallOptions
-	Params  Anchor_load_Params
-	Results Anchor_load_Results
+	*server.Call
 }
 
-// Anchor_store holds the arguments for a server call to Anchor.store.
+// Args returns the call's arguments.
+func (c Anchor_load) Args() Anchor_load_Params {
+	return Anchor_load_Params{Struct: c.Call.Args()}
+}
+
+// AllocResults allocates the results struct.
+func (c Anchor_load) AllocResults() (Anchor_load_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Anchor_load_Results{Struct: r}, err
+}
+
+// Anchor_store holds the state for a server call to Anchor.store.
+// See server.Call for documentation.
 type Anchor_store struct {
-	Ctx     context.Context
-	Options capnp.CallOptions
-	Params  Anchor_store_Params
-	Results Anchor_store_Results
+	*server.Call
 }
 
-// Anchor_go holds the arguments for a server call to Anchor.go.
+// Args returns the call's arguments.
+func (c Anchor_store) Args() Anchor_store_Params {
+	return Anchor_store_Params{Struct: c.Call.Args()}
+}
+
+// AllocResults allocates the results struct.
+func (c Anchor_store) AllocResults() (Anchor_store_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Anchor_store_Results{Struct: r}, err
+}
+
+// Anchor_go holds the state for a server call to Anchor.go.
+// See server.Call for documentation.
 type Anchor_go struct {
-	Ctx     context.Context
-	Options capnp.CallOptions
-	Params  Anchor_go_Params
-	Results Anchor_go_Results
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c Anchor_go) Args() Anchor_go_Params {
+	return Anchor_go_Params{Struct: c.Call.Args()}
+}
+
+// AllocResults allocates the results struct.
+func (c Anchor_go) AllocResults() (Anchor_go_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Anchor_go_Results{Struct: r}, err
 }
 
 type Anchor_SubAnchor struct{ capnp.Struct }
@@ -743,7 +758,7 @@ func NewRootAnchor_SubAnchor(s *capnp.Segment) (Anchor_SubAnchor, error) {
 }
 
 func ReadRootAnchor_SubAnchor(msg *capnp.Message) (Anchor_SubAnchor, error) {
-	root, err := msg.RootPtr()
+	root, err := msg.Root()
 	return Anchor_SubAnchor{root.Struct()}, err
 }
 
@@ -761,8 +776,7 @@ func (s Anchor_SubAnchor) Path() (string, error) {
 }
 
 func (s Anchor_SubAnchor) HasPath() bool {
-	p, err := s.Struct.Ptr(0)
-	return p.IsValid() || err != nil
+	return s.Struct.HasPtr(0)
 }
 
 func (s Anchor_SubAnchor) PathBytes() ([]byte, error) {
@@ -791,13 +805,12 @@ func (s Anchor_SubAnchor) HasAnchor() bool {
 	if s.Struct.Uint16(0) != 1 {
 		return false
 	}
-	p, err := s.Struct.Ptr(1)
-	return p.IsValid() || err != nil
+	return s.Struct.HasPtr(1)
 }
 
 func (s Anchor_SubAnchor) SetAnchor(v Anchor) error {
 	s.Struct.SetUint16(0, 1)
-	if v.Client == nil {
+	if !v.Client.IsValid() {
 		return s.Struct.SetPtr(1, capnp.Ptr{})
 	}
 	seg := s.Segment()
@@ -825,16 +838,16 @@ func (s Anchor_SubAnchor_List) String() string {
 	return str
 }
 
-// Anchor_SubAnchor_Promise is a wrapper for a Anchor_SubAnchor promised by a client call.
-type Anchor_SubAnchor_Promise struct{ *capnp.Pipeline }
+// Anchor_SubAnchor_Future is a wrapper for a Anchor_SubAnchor promised by a client call.
+type Anchor_SubAnchor_Future struct{ *capnp.Future }
 
-func (p Anchor_SubAnchor_Promise) Struct() (Anchor_SubAnchor, error) {
-	s, err := p.Pipeline.Struct()
+func (p Anchor_SubAnchor_Future) Struct() (Anchor_SubAnchor, error) {
+	s, err := p.Future.Struct()
 	return Anchor_SubAnchor{s}, err
 }
 
-func (p Anchor_SubAnchor_Promise) Anchor() Anchor {
-	return Anchor{Client: p.Pipeline.GetPipeline(1).Client()}
+func (p Anchor_SubAnchor_Future) Anchor() Anchor {
+	return Anchor{Client: p.Future.Field(1, nil).Client()}
 }
 
 type Anchor_ls_Params struct{ capnp.Struct }
@@ -853,7 +866,7 @@ func NewRootAnchor_ls_Params(s *capnp.Segment) (Anchor_ls_Params, error) {
 }
 
 func ReadRootAnchor_ls_Params(msg *capnp.Message) (Anchor_ls_Params, error) {
-	root, err := msg.RootPtr()
+	root, err := msg.Root()
 	return Anchor_ls_Params{root.Struct()}, err
 }
 
@@ -882,11 +895,11 @@ func (s Anchor_ls_Params_List) String() string {
 	return str
 }
 
-// Anchor_ls_Params_Promise is a wrapper for a Anchor_ls_Params promised by a client call.
-type Anchor_ls_Params_Promise struct{ *capnp.Pipeline }
+// Anchor_ls_Params_Future is a wrapper for a Anchor_ls_Params promised by a client call.
+type Anchor_ls_Params_Future struct{ *capnp.Future }
 
-func (p Anchor_ls_Params_Promise) Struct() (Anchor_ls_Params, error) {
-	s, err := p.Pipeline.Struct()
+func (p Anchor_ls_Params_Future) Struct() (Anchor_ls_Params, error) {
+	s, err := p.Future.Struct()
 	return Anchor_ls_Params{s}, err
 }
 
@@ -906,7 +919,7 @@ func NewRootAnchor_ls_Results(s *capnp.Segment) (Anchor_ls_Results, error) {
 }
 
 func ReadRootAnchor_ls_Results(msg *capnp.Message) (Anchor_ls_Results, error) {
-	root, err := msg.RootPtr()
+	root, err := msg.Root()
 	return Anchor_ls_Results{root.Struct()}, err
 }
 
@@ -921,8 +934,7 @@ func (s Anchor_ls_Results) Children() (Anchor_SubAnchor_List, error) {
 }
 
 func (s Anchor_ls_Results) HasChildren() bool {
-	p, err := s.Struct.Ptr(0)
-	return p.IsValid() || err != nil
+	return s.Struct.HasPtr(0)
 }
 
 func (s Anchor_ls_Results) SetChildren(v Anchor_SubAnchor_List) error {
@@ -962,11 +974,11 @@ func (s Anchor_ls_Results_List) String() string {
 	return str
 }
 
-// Anchor_ls_Results_Promise is a wrapper for a Anchor_ls_Results promised by a client call.
-type Anchor_ls_Results_Promise struct{ *capnp.Pipeline }
+// Anchor_ls_Results_Future is a wrapper for a Anchor_ls_Results promised by a client call.
+type Anchor_ls_Results_Future struct{ *capnp.Future }
 
-func (p Anchor_ls_Results_Promise) Struct() (Anchor_ls_Results, error) {
-	s, err := p.Pipeline.Struct()
+func (p Anchor_ls_Results_Future) Struct() (Anchor_ls_Results, error) {
+	s, err := p.Future.Struct()
 	return Anchor_ls_Results{s}, err
 }
 
@@ -986,7 +998,7 @@ func NewRootAnchor_walk_Params(s *capnp.Segment) (Anchor_walk_Params, error) {
 }
 
 func ReadRootAnchor_walk_Params(msg *capnp.Message) (Anchor_walk_Params, error) {
-	root, err := msg.RootPtr()
+	root, err := msg.Root()
 	return Anchor_walk_Params{root.Struct()}, err
 }
 
@@ -1001,8 +1013,7 @@ func (s Anchor_walk_Params) Path() (string, error) {
 }
 
 func (s Anchor_walk_Params) HasPath() bool {
-	p, err := s.Struct.Ptr(0)
-	return p.IsValid() || err != nil
+	return s.Struct.HasPtr(0)
 }
 
 func (s Anchor_walk_Params) PathBytes() ([]byte, error) {
@@ -1036,11 +1047,11 @@ func (s Anchor_walk_Params_List) String() string {
 	return str
 }
 
-// Anchor_walk_Params_Promise is a wrapper for a Anchor_walk_Params promised by a client call.
-type Anchor_walk_Params_Promise struct{ *capnp.Pipeline }
+// Anchor_walk_Params_Future is a wrapper for a Anchor_walk_Params promised by a client call.
+type Anchor_walk_Params_Future struct{ *capnp.Future }
 
-func (p Anchor_walk_Params_Promise) Struct() (Anchor_walk_Params, error) {
-	s, err := p.Pipeline.Struct()
+func (p Anchor_walk_Params_Future) Struct() (Anchor_walk_Params, error) {
+	s, err := p.Future.Struct()
 	return Anchor_walk_Params{s}, err
 }
 
@@ -1060,7 +1071,7 @@ func NewRootAnchor_walk_Results(s *capnp.Segment) (Anchor_walk_Results, error) {
 }
 
 func ReadRootAnchor_walk_Results(msg *capnp.Message) (Anchor_walk_Results, error) {
-	root, err := msg.RootPtr()
+	root, err := msg.Root()
 	return Anchor_walk_Results{root.Struct()}, err
 }
 
@@ -1075,12 +1086,11 @@ func (s Anchor_walk_Results) Anchor() Anchor {
 }
 
 func (s Anchor_walk_Results) HasAnchor() bool {
-	p, err := s.Struct.Ptr(0)
-	return p.IsValid() || err != nil
+	return s.Struct.HasPtr(0)
 }
 
 func (s Anchor_walk_Results) SetAnchor(v Anchor) error {
-	if v.Client == nil {
+	if !v.Client.IsValid() {
 		return s.Struct.SetPtr(0, capnp.Ptr{})
 	}
 	seg := s.Segment()
@@ -1110,16 +1120,16 @@ func (s Anchor_walk_Results_List) String() string {
 	return str
 }
 
-// Anchor_walk_Results_Promise is a wrapper for a Anchor_walk_Results promised by a client call.
-type Anchor_walk_Results_Promise struct{ *capnp.Pipeline }
+// Anchor_walk_Results_Future is a wrapper for a Anchor_walk_Results promised by a client call.
+type Anchor_walk_Results_Future struct{ *capnp.Future }
 
-func (p Anchor_walk_Results_Promise) Struct() (Anchor_walk_Results, error) {
-	s, err := p.Pipeline.Struct()
+func (p Anchor_walk_Results_Future) Struct() (Anchor_walk_Results, error) {
+	s, err := p.Future.Struct()
 	return Anchor_walk_Results{s}, err
 }
 
-func (p Anchor_walk_Results_Promise) Anchor() Anchor {
-	return Anchor{Client: p.Pipeline.GetPipeline(0).Client()}
+func (p Anchor_walk_Results_Future) Anchor() Anchor {
+	return Anchor{Client: p.Future.Field(0, nil).Client()}
 }
 
 type Anchor_load_Params struct{ capnp.Struct }
@@ -1138,7 +1148,7 @@ func NewRootAnchor_load_Params(s *capnp.Segment) (Anchor_load_Params, error) {
 }
 
 func ReadRootAnchor_load_Params(msg *capnp.Message) (Anchor_load_Params, error) {
-	root, err := msg.RootPtr()
+	root, err := msg.Root()
 	return Anchor_load_Params{root.Struct()}, err
 }
 
@@ -1169,11 +1179,11 @@ func (s Anchor_load_Params_List) String() string {
 	return str
 }
 
-// Anchor_load_Params_Promise is a wrapper for a Anchor_load_Params promised by a client call.
-type Anchor_load_Params_Promise struct{ *capnp.Pipeline }
+// Anchor_load_Params_Future is a wrapper for a Anchor_load_Params promised by a client call.
+type Anchor_load_Params_Future struct{ *capnp.Future }
 
-func (p Anchor_load_Params_Promise) Struct() (Anchor_load_Params, error) {
-	s, err := p.Pipeline.Struct()
+func (p Anchor_load_Params_Future) Struct() (Anchor_load_Params, error) {
+	s, err := p.Future.Struct()
 	return Anchor_load_Params{s}, err
 }
 
@@ -1193,7 +1203,7 @@ func NewRootAnchor_load_Results(s *capnp.Segment) (Anchor_load_Results, error) {
 }
 
 func ReadRootAnchor_load_Results(msg *capnp.Message) (Anchor_load_Results, error) {
-	root, err := msg.RootPtr()
+	root, err := msg.Root()
 	return Anchor_load_Results{root.Struct()}, err
 }
 
@@ -1208,8 +1218,7 @@ func (s Anchor_load_Results) Value() (Value, error) {
 }
 
 func (s Anchor_load_Results) HasValue() bool {
-	p, err := s.Struct.Ptr(0)
-	return p.IsValid() || err != nil
+	return s.Struct.HasPtr(0)
 }
 
 func (s Anchor_load_Results) SetValue(v Value) error {
@@ -1249,16 +1258,16 @@ func (s Anchor_load_Results_List) String() string {
 	return str
 }
 
-// Anchor_load_Results_Promise is a wrapper for a Anchor_load_Results promised by a client call.
-type Anchor_load_Results_Promise struct{ *capnp.Pipeline }
+// Anchor_load_Results_Future is a wrapper for a Anchor_load_Results promised by a client call.
+type Anchor_load_Results_Future struct{ *capnp.Future }
 
-func (p Anchor_load_Results_Promise) Struct() (Anchor_load_Results, error) {
-	s, err := p.Pipeline.Struct()
+func (p Anchor_load_Results_Future) Struct() (Anchor_load_Results, error) {
+	s, err := p.Future.Struct()
 	return Anchor_load_Results{s}, err
 }
 
-func (p Anchor_load_Results_Promise) Value() Value_Promise {
-	return Value_Promise{Pipeline: p.Pipeline.GetPipeline(0)}
+func (p Anchor_load_Results_Future) Value() Value_Future {
+	return Value_Future{Future: p.Future.Field(0, nil)}
 }
 
 type Anchor_store_Params struct{ capnp.Struct }
@@ -1277,7 +1286,7 @@ func NewRootAnchor_store_Params(s *capnp.Segment) (Anchor_store_Params, error) {
 }
 
 func ReadRootAnchor_store_Params(msg *capnp.Message) (Anchor_store_Params, error) {
-	root, err := msg.RootPtr()
+	root, err := msg.Root()
 	return Anchor_store_Params{root.Struct()}, err
 }
 
@@ -1292,8 +1301,7 @@ func (s Anchor_store_Params) Value() (Value, error) {
 }
 
 func (s Anchor_store_Params) HasValue() bool {
-	p, err := s.Struct.Ptr(0)
-	return p.IsValid() || err != nil
+	return s.Struct.HasPtr(0)
 }
 
 func (s Anchor_store_Params) SetValue(v Value) error {
@@ -1333,16 +1341,16 @@ func (s Anchor_store_Params_List) String() string {
 	return str
 }
 
-// Anchor_store_Params_Promise is a wrapper for a Anchor_store_Params promised by a client call.
-type Anchor_store_Params_Promise struct{ *capnp.Pipeline }
+// Anchor_store_Params_Future is a wrapper for a Anchor_store_Params promised by a client call.
+type Anchor_store_Params_Future struct{ *capnp.Future }
 
-func (p Anchor_store_Params_Promise) Struct() (Anchor_store_Params, error) {
-	s, err := p.Pipeline.Struct()
+func (p Anchor_store_Params_Future) Struct() (Anchor_store_Params, error) {
+	s, err := p.Future.Struct()
 	return Anchor_store_Params{s}, err
 }
 
-func (p Anchor_store_Params_Promise) Value() Value_Promise {
-	return Value_Promise{Pipeline: p.Pipeline.GetPipeline(0)}
+func (p Anchor_store_Params_Future) Value() Value_Future {
+	return Value_Future{Future: p.Future.Field(0, nil)}
 }
 
 type Anchor_store_Results struct{ capnp.Struct }
@@ -1361,7 +1369,7 @@ func NewRootAnchor_store_Results(s *capnp.Segment) (Anchor_store_Results, error)
 }
 
 func ReadRootAnchor_store_Results(msg *capnp.Message) (Anchor_store_Results, error) {
-	root, err := msg.RootPtr()
+	root, err := msg.Root()
 	return Anchor_store_Results{root.Struct()}, err
 }
 
@@ -1392,11 +1400,11 @@ func (s Anchor_store_Results_List) String() string {
 	return str
 }
 
-// Anchor_store_Results_Promise is a wrapper for a Anchor_store_Results promised by a client call.
-type Anchor_store_Results_Promise struct{ *capnp.Pipeline }
+// Anchor_store_Results_Future is a wrapper for a Anchor_store_Results promised by a client call.
+type Anchor_store_Results_Future struct{ *capnp.Future }
 
-func (p Anchor_store_Results_Promise) Struct() (Anchor_store_Results, error) {
-	s, err := p.Pipeline.Struct()
+func (p Anchor_store_Results_Future) Struct() (Anchor_store_Results, error) {
+	s, err := p.Future.Struct()
 	return Anchor_store_Results{s}, err
 }
 
@@ -1416,7 +1424,7 @@ func NewRootAnchor_go_Params(s *capnp.Segment) (Anchor_go_Params, error) {
 }
 
 func ReadRootAnchor_go_Params(msg *capnp.Message) (Anchor_go_Params, error) {
-	root, err := msg.RootPtr()
+	root, err := msg.Root()
 	return Anchor_go_Params{root.Struct()}, err
 }
 
@@ -1431,8 +1439,7 @@ func (s Anchor_go_Params) Args() (Value_List, error) {
 }
 
 func (s Anchor_go_Params) HasArgs() bool {
-	p, err := s.Struct.Ptr(0)
-	return p.IsValid() || err != nil
+	return s.Struct.HasPtr(0)
 }
 
 func (s Anchor_go_Params) SetArgs(v Value_List) error {
@@ -1470,11 +1477,11 @@ func (s Anchor_go_Params_List) String() string {
 	return str
 }
 
-// Anchor_go_Params_Promise is a wrapper for a Anchor_go_Params promised by a client call.
-type Anchor_go_Params_Promise struct{ *capnp.Pipeline }
+// Anchor_go_Params_Future is a wrapper for a Anchor_go_Params promised by a client call.
+type Anchor_go_Params_Future struct{ *capnp.Future }
 
-func (p Anchor_go_Params_Promise) Struct() (Anchor_go_Params, error) {
-	s, err := p.Pipeline.Struct()
+func (p Anchor_go_Params_Future) Struct() (Anchor_go_Params, error) {
+	s, err := p.Future.Struct()
 	return Anchor_go_Params{s}, err
 }
 
@@ -1494,7 +1501,7 @@ func NewRootAnchor_go_Results(s *capnp.Segment) (Anchor_go_Results, error) {
 }
 
 func ReadRootAnchor_go_Results(msg *capnp.Message) (Anchor_go_Results, error) {
-	root, err := msg.RootPtr()
+	root, err := msg.Root()
 	return Anchor_go_Results{root.Struct()}, err
 }
 
@@ -1509,12 +1516,11 @@ func (s Anchor_go_Results) Proc() Proc {
 }
 
 func (s Anchor_go_Results) HasProc() bool {
-	p, err := s.Struct.Ptr(0)
-	return p.IsValid() || err != nil
+	return s.Struct.HasPtr(0)
 }
 
 func (s Anchor_go_Results) SetProc(v Proc) error {
-	if v.Client == nil {
+	if !v.Client.IsValid() {
 		return s.Struct.SetPtr(0, capnp.Ptr{})
 	}
 	seg := s.Segment()
@@ -1544,53 +1550,59 @@ func (s Anchor_go_Results_List) String() string {
 	return str
 }
 
-// Anchor_go_Results_Promise is a wrapper for a Anchor_go_Results promised by a client call.
-type Anchor_go_Results_Promise struct{ *capnp.Pipeline }
+// Anchor_go_Results_Future is a wrapper for a Anchor_go_Results promised by a client call.
+type Anchor_go_Results_Future struct{ *capnp.Future }
 
-func (p Anchor_go_Results_Promise) Struct() (Anchor_go_Results, error) {
-	s, err := p.Pipeline.Struct()
+func (p Anchor_go_Results_Future) Struct() (Anchor_go_Results, error) {
+	s, err := p.Future.Struct()
 	return Anchor_go_Results{s}, err
 }
 
-func (p Anchor_go_Results_Promise) Proc() Proc {
-	return Proc{Client: p.Pipeline.GetPipeline(0).Client()}
+func (p Anchor_go_Results_Future) Proc() Proc {
+	return Proc{Client: p.Future.Field(0, nil).Client()}
 }
 
-type Proc struct{ Client capnp.Client }
+type Proc struct{ Client *capnp.Client }
 
 // Proc_TypeID is the unique identifier for the type Proc.
 const Proc_TypeID = 0xb561ad669b43cc65
 
-func (c Proc) Wait(ctx context.Context, params func(Proc_wait_Params) error, opts ...capnp.CallOption) Proc_wait_Results_Promise {
-	if c.Client == nil {
-		return Proc_wait_Results_Promise{Pipeline: capnp.NewPipeline(capnp.ErrorAnswer(capnp.ErrNullClient))}
-	}
-	call := &capnp.Call{
-		Ctx: ctx,
+func (c Proc) Wait(ctx context.Context, params func(Proc_wait_Params) error) (Proc_wait_Results_Future, capnp.ReleaseFunc) {
+	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xb561ad669b43cc65,
 			MethodID:      0,
 			InterfaceName: "api/api.capnp:Proc",
 			MethodName:    "wait",
 		},
-		Options: capnp.NewCallOptions(opts),
 	}
 	if params != nil {
-		call.ParamsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		call.ParamsFunc = func(s capnp.Struct) error { return params(Proc_wait_Params{Struct: s}) }
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Proc_wait_Params{Struct: s}) }
 	}
-	return Proc_wait_Results_Promise{Pipeline: capnp.NewPipeline(c.Client.Call(call))}
+	ans, release := c.Client.SendCall(ctx, s)
+	return Proc_wait_Results_Future{Future: ans.Future()}, release
 }
 
+// A Proc_Server is a Proc with a local implementation.
 type Proc_Server interface {
-	Wait(Proc_wait) error
+	Wait(context.Context, Proc_wait) error
 }
 
-func Proc_ServerToClient(s Proc_Server) Proc {
-	c, _ := s.(server.Closer)
-	return Proc{Client: server.New(Proc_Methods(nil, s), c)}
+// Proc_NewServer creates a new Server from an implementation of Proc_Server.
+func Proc_NewServer(s Proc_Server, policy *server.Policy) *server.Server {
+	c, _ := s.(server.Shutdowner)
+	return server.New(Proc_Methods(nil, s), s, c, policy)
 }
 
+// Proc_ServerToClient creates a new Client from an implementation of Proc_Server.
+// The caller is responsible for calling Release on the returned Client.
+func Proc_ServerToClient(s Proc_Server, policy *server.Policy) Proc {
+	return Proc{Client: capnp.NewClient(Proc_NewServer(s, policy))}
+}
+
+// Proc_Methods appends Methods to a slice that invoke the methods on s.
+// This can be used to create a more complicated Server.
 func Proc_Methods(methods []server.Method, s Proc_Server) []server.Method {
 	if cap(methods) == 0 {
 		methods = make([]server.Method, 0, 1)
@@ -1603,22 +1615,29 @@ func Proc_Methods(methods []server.Method, s Proc_Server) []server.Method {
 			InterfaceName: "api/api.capnp:Proc",
 			MethodName:    "wait",
 		},
-		Impl: func(c context.Context, opts capnp.CallOptions, p, r capnp.Struct) error {
-			call := Proc_wait{c, opts, Proc_wait_Params{Struct: p}, Proc_wait_Results{Struct: r}}
-			return s.Wait(call)
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Wait(ctx, Proc_wait{call})
 		},
-		ResultsSize: capnp.ObjectSize{DataSize: 0, PointerCount: 0},
 	})
 
 	return methods
 }
 
-// Proc_wait holds the arguments for a server call to Proc.wait.
+// Proc_wait holds the state for a server call to Proc.wait.
+// See server.Call for documentation.
 type Proc_wait struct {
-	Ctx     context.Context
-	Options capnp.CallOptions
-	Params  Proc_wait_Params
-	Results Proc_wait_Results
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c Proc_wait) Args() Proc_wait_Params {
+	return Proc_wait_Params{Struct: c.Call.Args()}
+}
+
+// AllocResults allocates the results struct.
+func (c Proc_wait) AllocResults() (Proc_wait_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Proc_wait_Results{Struct: r}, err
 }
 
 type Proc_wait_Params struct{ capnp.Struct }
@@ -1637,7 +1656,7 @@ func NewRootProc_wait_Params(s *capnp.Segment) (Proc_wait_Params, error) {
 }
 
 func ReadRootProc_wait_Params(msg *capnp.Message) (Proc_wait_Params, error) {
-	root, err := msg.RootPtr()
+	root, err := msg.Root()
 	return Proc_wait_Params{root.Struct()}, err
 }
 
@@ -1666,11 +1685,11 @@ func (s Proc_wait_Params_List) String() string {
 	return str
 }
 
-// Proc_wait_Params_Promise is a wrapper for a Proc_wait_Params promised by a client call.
-type Proc_wait_Params_Promise struct{ *capnp.Pipeline }
+// Proc_wait_Params_Future is a wrapper for a Proc_wait_Params promised by a client call.
+type Proc_wait_Params_Future struct{ *capnp.Future }
 
-func (p Proc_wait_Params_Promise) Struct() (Proc_wait_Params, error) {
-	s, err := p.Pipeline.Struct()
+func (p Proc_wait_Params_Future) Struct() (Proc_wait_Params, error) {
+	s, err := p.Future.Struct()
 	return Proc_wait_Params{s}, err
 }
 
@@ -1690,7 +1709,7 @@ func NewRootProc_wait_Results(s *capnp.Segment) (Proc_wait_Results, error) {
 }
 
 func ReadRootProc_wait_Results(msg *capnp.Message) (Proc_wait_Results, error) {
-	root, err := msg.RootPtr()
+	root, err := msg.Root()
 	return Proc_wait_Results{root.Struct()}, err
 }
 
@@ -1721,11 +1740,11 @@ func (s Proc_wait_Results_List) String() string {
 	return str
 }
 
-// Proc_wait_Results_Promise is a wrapper for a Proc_wait_Results promised by a client call.
-type Proc_wait_Results_Promise struct{ *capnp.Pipeline }
+// Proc_wait_Results_Future is a wrapper for a Proc_wait_Results promised by a client call.
+type Proc_wait_Results_Future struct{ *capnp.Future }
 
-func (p Proc_wait_Results_Promise) Struct() (Proc_wait_Results, error) {
-	s, err := p.Pipeline.Struct()
+func (p Proc_wait_Results_Future) Struct() (Proc_wait_Results, error) {
+	s, err := p.Future.Struct()
 	return Proc_wait_Results{s}, err
 }
 
@@ -1745,7 +1764,7 @@ func NewRootFrac(s *capnp.Segment) (Frac, error) {
 }
 
 func ReadRootFrac(msg *capnp.Message) (Frac, error) {
-	root, err := msg.RootPtr()
+	root, err := msg.Root()
 	return Frac{root.Struct()}, err
 }
 
@@ -1760,8 +1779,7 @@ func (s Frac) Numer() ([]byte, error) {
 }
 
 func (s Frac) HasNumer() bool {
-	p, err := s.Struct.Ptr(0)
-	return p.IsValid() || err != nil
+	return s.Struct.HasPtr(0)
 }
 
 func (s Frac) SetNumer(v []byte) error {
@@ -1774,8 +1792,7 @@ func (s Frac) Denom() ([]byte, error) {
 }
 
 func (s Frac) HasDenom() bool {
-	p, err := s.Struct.Ptr(1)
-	return p.IsValid() || err != nil
+	return s.Struct.HasPtr(1)
 }
 
 func (s Frac) SetDenom(v []byte) error {
@@ -1800,11 +1817,11 @@ func (s Frac_List) String() string {
 	return str
 }
 
-// Frac_Promise is a wrapper for a Frac promised by a client call.
-type Frac_Promise struct{ *capnp.Pipeline }
+// Frac_Future is a wrapper for a Frac promised by a client call.
+type Frac_Future struct{ *capnp.Future }
 
-func (p Frac_Promise) Struct() (Frac, error) {
-	s, err := p.Pipeline.Struct()
+func (p Frac_Future) Struct() (Frac, error) {
+	s, err := p.Future.Struct()
 	return Frac{s}, err
 }
 
@@ -1824,7 +1841,7 @@ func NewRootLinkedList(s *capnp.Segment) (LinkedList, error) {
 }
 
 func ReadRootLinkedList(msg *capnp.Message) (LinkedList, error) {
-	root, err := msg.RootPtr()
+	root, err := msg.Root()
 	return LinkedList{root.Struct()}, err
 }
 
@@ -1847,8 +1864,7 @@ func (s LinkedList) Head() (Value, error) {
 }
 
 func (s LinkedList) HasHead() bool {
-	p, err := s.Struct.Ptr(0)
-	return p.IsValid() || err != nil
+	return s.Struct.HasPtr(0)
 }
 
 func (s LinkedList) SetHead(v Value) error {
@@ -1872,8 +1888,7 @@ func (s LinkedList) Tail() (Value, error) {
 }
 
 func (s LinkedList) HasTail() bool {
-	p, err := s.Struct.Ptr(1)
-	return p.IsValid() || err != nil
+	return s.Struct.HasPtr(1)
 }
 
 func (s LinkedList) SetTail(v Value) error {
@@ -1909,20 +1924,20 @@ func (s LinkedList_List) String() string {
 	return str
 }
 
-// LinkedList_Promise is a wrapper for a LinkedList promised by a client call.
-type LinkedList_Promise struct{ *capnp.Pipeline }
+// LinkedList_Future is a wrapper for a LinkedList promised by a client call.
+type LinkedList_Future struct{ *capnp.Future }
 
-func (p LinkedList_Promise) Struct() (LinkedList, error) {
-	s, err := p.Pipeline.Struct()
+func (p LinkedList_Future) Struct() (LinkedList, error) {
+	s, err := p.Future.Struct()
 	return LinkedList{s}, err
 }
 
-func (p LinkedList_Promise) Head() Value_Promise {
-	return Value_Promise{Pipeline: p.Pipeline.GetPipeline(0)}
+func (p LinkedList_Future) Head() Value_Future {
+	return Value_Future{Future: p.Future.Field(0, nil)}
 }
 
-func (p LinkedList_Promise) Tail() Value_Promise {
-	return Value_Promise{Pipeline: p.Pipeline.GetPipeline(1)}
+func (p LinkedList_Future) Tail() Value_Future {
+	return Value_Future{Future: p.Future.Field(1, nil)}
 }
 
 type Vector struct{ capnp.Struct }
@@ -1941,7 +1956,7 @@ func NewRootVector(s *capnp.Segment) (Vector, error) {
 }
 
 func ReadRootVector(msg *capnp.Message) (Vector, error) {
-	root, err := msg.RootPtr()
+	root, err := msg.Root()
 	return Vector{root.Struct()}, err
 }
 
@@ -1972,8 +1987,7 @@ func (s Vector) Root() (Vector_Node, error) {
 }
 
 func (s Vector) HasRoot() bool {
-	p, err := s.Struct.Ptr(0)
-	return p.IsValid() || err != nil
+	return s.Struct.HasPtr(0)
 }
 
 func (s Vector) SetRoot(v Vector_Node) error {
@@ -1997,8 +2011,7 @@ func (s Vector) Tail() (Value_List, error) {
 }
 
 func (s Vector) HasTail() bool {
-	p, err := s.Struct.Ptr(1)
-	return p.IsValid() || err != nil
+	return s.Struct.HasPtr(1)
 }
 
 func (s Vector) SetTail(v Value_List) error {
@@ -2034,16 +2047,16 @@ func (s Vector_List) String() string {
 	return str
 }
 
-// Vector_Promise is a wrapper for a Vector promised by a client call.
-type Vector_Promise struct{ *capnp.Pipeline }
+// Vector_Future is a wrapper for a Vector promised by a client call.
+type Vector_Future struct{ *capnp.Future }
 
-func (p Vector_Promise) Struct() (Vector, error) {
-	s, err := p.Pipeline.Struct()
+func (p Vector_Future) Struct() (Vector, error) {
+	s, err := p.Future.Struct()
 	return Vector{s}, err
 }
 
-func (p Vector_Promise) Root() Vector_Node_Promise {
-	return Vector_Node_Promise{Pipeline: p.Pipeline.GetPipeline(0)}
+func (p Vector_Future) Root() Vector_Node_Future {
+	return Vector_Node_Future{Future: p.Future.Field(0, nil)}
 }
 
 type Vector_Node struct{ capnp.Struct }
@@ -2080,7 +2093,7 @@ func NewRootVector_Node(s *capnp.Segment) (Vector_Node, error) {
 }
 
 func ReadRootVector_Node(msg *capnp.Message) (Vector_Node, error) {
-	root, err := msg.RootPtr()
+	root, err := msg.Root()
 	return Vector_Node{root.Struct()}, err
 }
 
@@ -2104,8 +2117,7 @@ func (s Vector_Node) HasBranches() bool {
 	if s.Struct.Uint16(0) != 0 {
 		return false
 	}
-	p, err := s.Struct.Ptr(0)
-	return p.IsValid() || err != nil
+	return s.Struct.HasPtr(0)
 }
 
 func (s Vector_Node) SetBranches(v Vector_Node_List) error {
@@ -2137,8 +2149,7 @@ func (s Vector_Node) HasValues() bool {
 	if s.Struct.Uint16(0) != 1 {
 		return false
 	}
-	p, err := s.Struct.Ptr(0)
-	return p.IsValid() || err != nil
+	return s.Struct.HasPtr(0)
 }
 
 func (s Vector_Node) SetValues(v Value_List) error {
@@ -2176,115 +2187,115 @@ func (s Vector_Node_List) String() string {
 	return str
 }
 
-// Vector_Node_Promise is a wrapper for a Vector_Node promised by a client call.
-type Vector_Node_Promise struct{ *capnp.Pipeline }
+// Vector_Node_Future is a wrapper for a Vector_Node promised by a client call.
+type Vector_Node_Future struct{ *capnp.Future }
 
-func (p Vector_Node_Promise) Struct() (Vector_Node, error) {
-	s, err := p.Pipeline.Struct()
+func (p Vector_Node_Future) Struct() (Vector_Node, error) {
+	s, err := p.Future.Struct()
 	return Vector_Node{s}, err
 }
 
-const schema_c8aa6d83e0c03a9d = "x\xda\x94V\x7f\x8c\\U\x15>\xdf\xbd\xef\xcd\xcc\xce" +
-	"\xce\xec\xec\xe3N\x83@\x9a\x8df5\xb0\xd8\xb5\xbfh" +
-	"\xe2\x06\x9d\xa9v[\x17k\xd9\xd7\xa1M\x9b\xa0\xe1\xed" +
-	"\xcc\xdb\x9dIg\xe7m\xde\xcc\xb2iL\xa3\xa6\x10\xfe" +
-	"\xd2\xa8\x91\x08\x08\x01\xf1GJS\x91\x06\x9a\x14\x02\xa6" +
-	"j\xc1\xaam\xb0\x8a\x06\x13\xfcEb\xb0D\xadh\xa1" +
-	"\xa5\xd4^s\xde\xcc{o:\xbb\x85\xfa\xdf\xcc\xfd\xce" +
-	"\xf9\xcey\xf7\x9c\xf3\xdd\xb3\xf2\x88,\x8aU\xe6k\x09" +
-	"\"{\xd2L\xe8\xbf\xa7.dn\xdbp\xc7\x17\xc9^" +
-	"\x06\xe8\x8f7\x1f_\xf9\x8f\x87\x7f\xfa\x0e\x8d#)\x88" +
-	"\xd4N\xf9k\xe5\xca$\x91r\xe4\x02A\xfb\xeb~\xb6" +
-	"\xe5\xae\x03o|\x85\xace 2\x91$Z\xf3\x17y" +
-	"\x15\x08\xea\x94,\x10\xf4\x99\xdb\xcf\xedx\xdf\xc0\xc6{" +
-	"\xbb\x0d\xfa\x8c\xc0\xc02\xd8\xe0\x8f\x7f\xf3O\x1f\xcf\x1c" +
-	"~\xb8\xdb`\x95!\xd8\xe0\xa6\xc0\xe0\x85\x13W\xedY" +
-	"~\xd5\xde\xef\x93=\x00\xe8\x87\xc6\x8e\xfcy\xef\xec\xfe" +
-	"cd\x0a\xceb\x9b\xf1\x0b\xe5\x18\xfc\xeb\xb3\xc6\x0f\x09" +
-	"\xbax\xf4\xc2\xf4\xb6\xb3\x9b\x1fk\xb31\xb0\xe6M#" +
-	"\x0d2\xf45\xa3/\xec\xfb\xfa[\x17\x0ev\xc7\xf9\x03" +
-	"CP\x7f\x0d\xe2<\x91\xfb\xdcw\xd6\x8d\xe2\xc9n\x03" +
-	"\xd3\x0c2\xcd\x9al\xe0\x1e\xff\xe4\xb7\xa6\x7f\xe0\x1c\"" +
-	"k@\xc6y\x10\xd4\x0a\xf3\x01u\x93\xc9I\xac27" +
-	"\xa9\x9d\xfcK?\xfa\xcb\xcf\xefy}\xffG\x9f\xe1\xac" +
-	"El=\x8ed\x8eH\xad7\x1fU\x13l\xb7f\xdc" +
-	"\xbcU\x12\xf4\xfd\xffzr\xe0K\xd7\x0d\xff\xa4;\xf8" +
-	"\xc1Tp\x0b\x87R\x1c\xfc\xf1\x1d\x85\x0f\xfd\xa98\xf1" +
-	"|\xd7\x87\x9dJ]\xcb\x1f\xf6\xdc?\xcf\xe6\x17^\x99" +
-	"x\x91,\x15\"'\xd9\xd3\xd0\xef\x7fQ.\xdb44" +
-	"\xfe\x9b.Ru(u\x9e\xa0\x9e\x0e8\xe7n|\xf5" +
-	"\xf4\x87O\x9a/\xc7\x9e\xeaT\xea<\x19z\xc5\x97\xef" +
-	"yu\xeew7\xbe\xde\xee\x81\xad/\xed=!\x9e9" +
-	"p\x86\xc6E\xd0\x03'R\xe7\xd5\xefSl\xfd\xdb\x14" +
-	"\xdf\xf97\xdf\xbeX\xba\xee\xbe\xed\xa7\xe3\xd4\xd4l\x1f" +
-	"\xd3D\x8e\xbd\x17f\xf7\xedW;\xfb\xae&Z\xe3\xf6" +
-	"m\x82Z\x91\xe6\x1b\xbb\xf5\x9e\x1f\x8d\xbe\xd2\xff\xe9s" +
-	"d\x0d,*\xf3\xb2\xf4\x03j9[\xa9k\xd2\xdcv" +
-	"Q[.\xd5\x13\xf3\xe9\xfdjO\xfaj\"uw\xfa" +
-	"5\x82v\xe6j\x1fq\xe6j\xa3\xa2\xec\xcc5\xe6\xc6" +
-	"\xb6\xbb\xe5\x96\xe7\x8fn\xf1*p'\x01;%\x8d\x8c" +
-	"\xd6\x06\x88\xac\x1bn!\xb2\xaf\x97\xb07\x08dqQ" +
-	"\xe7\xc1\xa7\xeb\xc7\x88\xec\x9b%\xec\x1d\x02z\xcaw\x1a" +
-	"\xe5\xaa\xdb$\"\x0c\x10&%0\x18\xcf\x0c\x81\x0f\x0b" +
-	"w:\xf5y\xb7\x19\xe3Q3\xb4\xf1(#\xd9\xceh" +
-	"}\xa3\\\xf5\xfc\xd1f\xcb\xf3\xdd\xe1I\xc7wf\xd1" +
-	"\xb4\x0di\x10\x05YeW\x13\xd9)\x09;/0\x14" +
-	"P\xf7P\x0e^\x96r\xc1\xa9\xef\x1a\xde\xea6\xe7\xeb" +
-	"\xadK)\xc7b\xca\x82\x13\xd8\xc2\x8a\xebE\x80uY" +
-	"\xce\x19\xaf\xc3\xd8\xa4n\xc6\x91\x9817\xe7{eX" +
-	"\xf1\xc0\xf4\xf0u\x0a\xb1\xb9\xd6\xd8\xe5V6\xd7\x9a-" +
-	"\".D&\"\x1b\xe7/.J\xd8\x9b\x05\x80v\x15" +
-	"&8\xc0\x06\x09{R\xc0\x12\xc8C\x10Y\x9f\xe1\xc3" +
-	"OI\xd8\xb7\x09\x0c\x95\xbd\xf9F\x0b)\x12H\x11r" +
-	"U\xd7\xa9,\xbe\xa7\\\xcb\xa9\xd5\xaf\xf8\xfa\xea\x9eS" +
-	"i\x17\xa4I\xf4nW\x1c\xda\\\xf6B\x9cV\x15\x19" +
-	"\x12\xc8\xbc{\xac\xa5J\xf5\xffT\x1fm\xcaI_z" +
-	"e\xbeRC\x9aD\xd1\x9c#\x94\x0a\xcb\x1a!a\x99" +
-	"\xc9\xdc\x82Sk\x151\x89E\x0c\xdb\x9dd}>\x18" +
-	"\x8f\x9b\xa3\xf1P\xf7\xe2\x03D\xa5\xafB\xa2\xf4 \x04" +
-	"\x96\xe3\xa2\x1e\x0c\x8a\xa3\xee\xc7\x08Q\xe9\x1b\x8c<\xc2" +
-	"\x88\xf8\xafnWH=\x14\xf8\xdc\xc7\xc8w!\x90\x95" +
-	"\x17t\x1e\x92H}\x1bcD\xa5\x07\x19\xd8\xc7.\xc6" +
-	";\xecb\x10\xa9\xef\x05.\x8f0r\x80]\xcc\xf3:" +
-	"\x0f\x93H=\x86[\x88J\xfb\x18x\x8a\x81\xc4\xdb:" +
-	"\x8f\x04\x91:\x18\x84?\xc0\xc0a\xe6J\x9e\xd3\"\xdf" +
-	"\x96\xbb\x00y\x82\x91g\xd9%uV\xe7\x91\"RO" +
-	"\x07A\x9eb\xe0\x08\x03}o\xe9<\xfa\x88\xd4s\xf8" +
-	"\x04Q\xe90\x03G\x19H\xbf\xa9\xf3H\x13\xa9\x1f\x07" +
-	"\x09?\xcb\xc01\x06\xfa\xcf\xe8<\xfa\x89\xd4\xf3A\x8c" +
-	"#\x0c\x1cg \xf3\x1f\x9dG\x86H\xfd<\x00\x8e2" +
-	"\xf0+\x06\xb2\xff\xd6ydYA\x03\xaac\x0c\xbc\xc4" +
-	"\xc0\xc0\x1b:\x8f\x01\"u2\xf08\xce\xc0\xcb\x10H" +
-	"6juJ\xe4\xa6<\xaf\x0e\x90\x00\x08\xc9\xda\xba\xb5" +
-	"0I\xc0$\x14\xa6j3\x13\x8d\x16\xb2$\x90%$" +
-	"\xa7\xd7\xadE?\x09\xf4\x13\xf4Tmfc\xddsZ" +
-	"\xacS\x9d\xc6\xcbM\xfbN\x19\x83\xb1\xd0vF\xa2\\" +
-	"u|\x18$`\x10\x92\xcd\x96\x1f\xda\x7fa\x97\xbb{" +
-	"\xc1\xf3+\xe1\xffBs\xf7\xec\x94W\x8f\xe8\xba\x9b:" +
-	"W\xaf5[\x18\x8c\x1f\xeb6w\xe1\xce@l1\x18" +
-	"+v'\xe8{HD\xcfl4\x97\x94\x1cV\xeb\x8c" +
-	"\x84}\xbd\x80.Wk\xf5\x8a\xef6.\xd1\xe5\xe8\x1d" +
-	"\xbb\x02\xdd\x0d\x02\xc8V32J\x84\xb3\xe4\x95Gy" +
-	"N\xa2\x14B\x83^U,\xb4U`)\x0d\x18\x16\xc8" +
-	"9\xfe\xcc\x15<\x09\xa27j\x87\xb5\xd7\xa0\x13\xb64" +
-	"?Uh\xff\xecQ\xd0\x91XA\xb3\xd0z\xb1\x86." +
-	"\x17\x17u\xa8\xa2c\xb1\x8a^ZU\xdf\xf3Z\x94x" +
-	"\xef\x17B\xf4\x96\xab7k\x84\x069\xb6\xb0\x0d ." +
-	"\x8e\x85\xad\xba4?\x158\x13|;\x1f\x88V\xb8U" +
-	" \\\x8d\xac\xaf]K\xc2\xba;\x09D\xbb\x1c\xc2\xed" +
-	"\xd2\xda\xcd\x826\x9b\x84\x886@\x84\xfb\x9c\xe50\xb6" +
-	"-\x09\x19m\xab\x08\xb7)kb5\x09\xebcI\xc4" +
-	"\xcb\x12\xc2\x85\xd4Z\xc5\xf1>\x98\x94\xf5f\x119\x96" +
-	"\xf9\"r\xac\xd2E\x0c\x05-S\x84\x9c\xf1\x96T\xcf" +
-	"\x8d\xbet\xca\x9d\xdd\xa2S\x90\x1bX\xc6\x87%\xec\x95" +
-	"\x02V\xf8\xa6\xadX\xdd\xd97\xd6\x0a\x0c5\xe6g]" +
-	"?\x9c\xe5\xa1\x8a\xdb\xf0f\xc3\x7f\x8b\xd4\xd9\xcd\xf1X" +
-	"\x05\xd7\x18\xed\x1e\x16Fr[\xbc\x8ak\x0fFA\x1d" +
-	"\xe6\xbf]\xc2\xaerP\xa3\x1d\xd4\xe5\xc3;$\xec\xba" +
-	"\x00D\xbb\x03j\xdc\x18\x15\x09{N\xc0\x92\x08\x14\xda" +
-	"\x9a\xe5\xc3\xaa\x84}W\xef\xe3:\xd4\xac\xd6\xa6[H" +
-	"\x90@\xa2\xd3%=[P\xf4\xd4^\xae\xe1\xff\x17\x00" +
-	"\x00\xff\xff\xffo9\xa7"
+const schema_c8aa6d83e0c03a9d = "x\xda\x94Vo\x8c\\U\x15?\xbf\xfb\xde\x9b\xb73" +
+	";\xb3\xb3\xafw6(\xa4\xd9h\x16\x03\x8b]K[" +
+	"\x9b\xb8Ag\xd0n\xebb-\xfb:\xd0\xf4\x031}" +
+	";\xf3vg\xd2\xd9y\x9b7\xb3l\x1a\xd3()\x84" +
+	"\xf8\x01#\xc6F\x16! \x8a)ME\x084)\x84" +
+	"\x9a\xa2\x05\xab\xb6A\x94\x18>\x80\x0a\x09\xd1\x10\xb4V" +
+	"\x0b\xfdC\xed5\xe7\xcd\xbc\xf7\xa6\xb3\xbb\xb4|\x9b\xb9" +
+	"\xbfs~\xe7\xbc{\xce\xf9\xdd\xb3\xfa=\xad n4" +
+	"6\xf5\x10\xd9;\x8c\x84z\xaf\xe7B\xfa\xb6\x0d;\xbe" +
+	"M\xf6\x00\xa0\xbe\xd4xr\xf5?\x1f\xf9\xf5\x874\x06" +
+	"S\x10\xc9\xa4\xfeG9\xa0\x9bD\xd2\xd2\xe7\x09\xca_" +
+	"\xff\x9b-w\x1f8\xf5]\xb2\x06@d\xc0$Z{" +
+	"\xbf\xbe\x02\x04\xb9\xa0\xe7\x09\xea\xf4\x1dg\xb7\x7f\xa2o" +
+	"\xe3\xdeN\x83\xe7Z\x06/\x06\x06\x7f\xf9\x87\x7f\xf2x" +
+	"\xfa\xd0#\x9d\x06o\xe9\x82\x0d\xde\x09\x0c^>\xb1b" +
+	"\xf7\xca\x15{~Fv\x1f\xa0\x1e\x1e=\xf2\xb7=3" +
+	"\xfb\x8f\x91!8\x0b\xc3\xf8\x9d\xb4\x0c\xfe\x951~A" +
+	"P\x85\xa3\x17\xa6n?\xb3\xf9\x89\x16\x1b'\xba\xf6q" +
+	"#\x05\xd2\xd5'G^\xde\xf7\xfd\x0f.<\xdd\x19\xe7" +
+	">\x86 \xf7\x1a\x1c\xe7\xa9\xec7~\xb2~\x04\xcft" +
+	"\x1a\x1c4\x82L\x0f\x07\x06\xee\xf1\xaf\xfch\xea\xe7\xce" +
+	"A\xb2\xfa\xb48\x0f\x82|\xd3xP\xbe\x13$\xf1\x96" +
+	"\xb1I&\x13&\x91z\xec\xf7\xdf\xdc\xfd\xee\xfe/<" +
+	"\xcfY\x8b\xd8z\x0cf\x96H\x9e2\x1e\x93\xe7\xd8c" +
+	"\xed\xfb\xc6\xad\x1aA-\xfc\xfb\x99\xbe\xbb\xae\x19\xfaU" +
+	"gp'\x19\xdc\x82\x9b\xe4\xe0On\xcf\x7f\xe6\xaf\x85" +
+	"\xf1\x97:>l!y5\x7f\xd8\xe1\x7f\x9d\xc9\xcd\xbf" +
+	"1\xfe\x0aY2D\xeebO]}\xea\x15m`\xd3" +
+	"\xe0\xd8\x9f:H\xa5\x9b<O\x90\xd5\x80s\xf6\x86\xb7" +
+	"O~\xf6U\xe3\xf5\xd8S.$\xcf\x93\xaeV\xddw" +
+	"\xef\xdb\xb3\x7f\xbe\xe1\xddV\x0fl}m\xcf\x09\xf1\xfc" +
+	"\x81\xd34&\x82\x1e\xd8\x9d</\xbf\x93d\xeb{\x92" +
+	"|\xe7?<w\xb1x\xcd\x03\xdbN\xc6\xa9\xc9\x95)" +
+	"\xa6\x89\x1c\xbb/\x0c\xa9\xfd2\x99\xba\x8ah\xed@j" +
+	"\x13\xe4\x9b)\xbe\xb1[\xef\xfd\xe5\xc8\x1b\xbd_;K" +
+	"V\xdf\xa22\xbf\x94zP\x9e`+\xf9\xdb\x14\xb7]" +
+	"\xd4\x96K\xf5\xc4\xb5\xbd\xfb\xe5\xaa\xde\xab\x88\xe4\xe7{" +
+	"\xffN\xab\x943[\xfd\x9c3[\x1d\x11%g\xb6>" +
+	";\xba\xcd-5=\x7fd\x8bW\x86;\x01\xd8=\x9a" +
+	"\x9eVJ\x07\x91u\xfd-D\xf6u\x1a\xec\x0d\x02\x19" +
+	"\\T9\xf0\xe9\xcd\xa3D\xf6M\x1a\xec\xed\x02j\xd2" +
+	"w\xea\xa5\x8a\xdb \"\xf4\x11&4\xa0?\x9e\x19\x02" +
+	"\x1f\xe6\xeftjsn#\xc6\xa3fh\xe1QFZ" +
+	"+\xa3\x9b\xeb\xa5\x8a\xe7\x8f4\x9a\x9e\xef\x0eM8\xbe" +
+	"3\x83\x86\xadk:Q\x90Uf\x0d\x91\xdd\xa3\xc1\xce" +
+	"\x09\x0c\x06\xd4]\x94\xfd\xcbR\xce;\xb5\x9dC[\xdd" +
+	"\xc6\\\xady)\xe5hL\x99w\x02[Xq\xbd\x08" +
+	"\xb0\x96\xe5\x9c\xf6\xda\x8c\x0d\xead\x1c\x8e\x19\xb3\xb3\xbe" +
+	"W\x82\x15\x0fL\x17_\xbb\x10\x9b\xab\xf5\x9dnys" +
+	"\xb5\xd1$\xe2B\xa4#\xb21\xfe\xe2\x82\x06{\xb3\x00" +
+	"\xd0\xaa\xc28\x07\xd8\xa0\xc1\x9e\x10\xb0\x04r\x10D\xd6" +
+	"\xd7\xf9\xf0\xab\x1a\xec\xdb\x04\x06K\xde\\\xbd\x89\x1e\x12" +
+	"\xe8!d+\xaeS^|O\xd9\xa6S\xad]\xf1\xf5" +
+	"\xd5<\xa7\xdc*H\x83\xe8\xa3\xae8\xb4Y\xf6B\x9c" +
+	"f\x05i\x12H\x7ft\xac\xa5J\xf5q\xaa\x8f\x16\xe5" +
+	"\x84\xafy%\xbeR]3\x88\xa29G(\x15\x965" +
+	"L\xc22\xcc\xec\xbcSm\x160\x81E\x0c\xdb\x1c\xb3" +
+	"6\x17\x8c\xc7M\xd1x\xc8\xbd\xf84Q\xf1{\xd0P" +
+	"|\x08\x02+qQ\xf5\x07\xc5\x91\x0b\x18&*\xfe\x80" +
+	"\x91G\x19\x11\xffS\xad\x0a\xc9\x87\x03\x9f\x07\x18\xf9)" +
+	"\x042\xda\x05\x95\x83F$\x7f\x8cQ\xa2\xe2C\x0c\xec" +
+	"c\x17\xfdCv\xd1\x89\xe4\xe3\x81\xcb\xa3\x8c\x1c`\x17" +
+	"\xe3\xbc\xca\xc1 \x92O\xe0\x16\xa2\xe2>\x06\x9ee " +
+	"qN\xe5\x90 \x92O\x07\xe1\x0f0p\x88\xb9\xcc\xb3" +
+	"J\xe4\x02\xb9;\x18 O1\xf2\x02\xbb\xf4\x9cQ9" +
+	"\xf4\x10\xc9\xe7\x82 \xcf2p\x84\x81\xe4\x07*\x87$" +
+	"\x91<\x8c/\x13\x15\x0f1p\x94\x81\xd4\xfb*\x87\x14" +
+	"\x91|1H\xf8\x05\x06\x8e1\xd0{Z\xe5\xd0\xcb\xe2" +
+	"\x14\xc48\xc2\xc0q\x06\xd2\xffU9\xa4Y\xab\x02\xe0" +
+	"(\x03\x7f` \xf3\x1f\x95C\x86H\x9e\x08\xa8\x8e1" +
+	"\xf0\x1a\x03}\xa7T\x0e}D\xf2\xd5\xc0\xe38\x03\xaf" +
+	"C\xc0\xacWk\x94\xc8Nz^\x0d \x01\x10\xcc\xea" +
+	"\xfau0H\xc0 \xe4'\xab\xd3\xe3\xf5&2$\x90" +
+	"!\x98S\xeb\xd7\xa1\x97\x04z\x09j\xb2:\xbd\xb1\xe6" +
+	"9M\xd6\xa9v\xe3e\xa7|\xa7\x84\xfeXh\xdb#" +
+	"Q\xaa8>t\x12\xd0\x09f\xa3\xe9\x87\xf6\xdf\xda\xe9" +
+	"\xee\x9a\xf7\xfcr\xf8?\xdf\xd853\xe9\xd5\"\xba\xce" +
+	"\xa6\xce\xd6\xaa\x8d&\xfa\xe3\xc7\xba\xc5\x9d\xbf3\x10[" +
+	"\xf4\xc7\x8a\xdd\x0ez\x19\x89\xe8\x9a\x8d\xc6\x92\x92\xc3j" +
+	"\x9d\xd6`_'\xa0J\x95j\xad\xec\xbb\xf5Kt9" +
+	"z\xc7\xae@w\x83\x00Z\xb3\x11\x19%\xc2Y\xf2J" +
+	"#<'Q\x0a\xa1A\xb7*\xe6[*\xb0\x94\x06\x0c" +
+	"\x09d\x1d\x7f\xfa\x0a\x9e\x04\xd1\x1d\xb5\xcd\xdam\xd0\x0e" +
+	"[\x9c\x9b\xcc\xb7~v)\xe8p\xac\xa0\x19(\xb5X" +
+	"CW\x8a\x8b*T\xd1\xd1XE/\xad\xaa\xefyM" +
+	"J\\\xfe\x85\x10\xdd\xe5\xea\xce\x1a\xa1A\x96-l\x1d" +
+	"\x88\x8bca\xab*\xceM\x06\xce\x04\xdf\xce\x05\xa2\x15" +
+	"n\x15\x08W#\xeb\xfe\xabIX\xf7\x98@\xb4\xcb!" +
+	"\xdc.\xad],h3&D\xb4\x01\"\xdc\xe7,\x87" +
+	"\xb1\xdbMh\xd1\xb6\x8ap\x9b\xb2\xc6\xd7\x90\xb0\xbeh" +
+	"\"^\x96\x10.\xa4\xd6\x8d\x1c\xefZS\xab5\x0a\xc8" +
+	"\xb2\xcc\x17\x90e\x95.`0h\x99\x02\xb4ioI" +
+	"\xf5\xdc\xe8kN\xa9\xbd[\xb4\x0br=\xcb\xf8\x90\x06" +
+	"{\xb5\x80\x15\xbei\xab\xd6\xb4\xf7\x8du\x02\x83\xf5\xb9" +
+	"\x19\xd7\x0fgy\xb0\xec\xd6\xbd\x99\xf0\xdf\"uv\xb3" +
+	"<V\xc15F\xbb\x87\x85\xe1\xec\x16\xaf\xec\xda\xfdQ" +
+	"P\x87\xf9\xef\xd0`W8\xa8\xde\x0a\xea\xf2\xe1\x0e\x0d" +
+	"vM\x00\xa2\xd5\x01Un\x8c\xb2\x06{V\xc0\xd2\x10" +
+	"(\xb45\xc3\x87\x15\x0d\xf6\xdd\xdd\x8f\xeb`\xa3R\x9d" +
+	"j\"A\x02\x89v\x97tmA\xd1S\xbb\\\xc3\xff" +
+	"?\x00\x00\xff\xff\x8d\xb4;~"
 
 func init() {
 	schemas.Register(schema_c8aa6d83e0c03a9d,

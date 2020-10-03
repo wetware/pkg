@@ -72,13 +72,24 @@ func (p remoteProc) String() string {
 }
 
 func (p remoteProc) Wait(ctx context.Context) error {
-	_, err := p.Raw.Proc().Wait(ctx, func(api.Proc_wait_Params) error { return nil }).Struct()
+	f, done := p.Raw.Proc().Wait(ctx, func(api.Proc_wait_Params) error { return nil })
+	defer done()
+
+	select {
+	case <-f.Done():
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+
+	_, err := f.Struct()
 	return err
 }
 
 type procCap struct{ Proc }
 
-func (p procCap) Wait(call api.Proc_wait) error { return p.Proc.Wait(call.Ctx) }
+func (p procCap) Wait(ctx context.Context, call api.Proc_wait) error {
+	return p.Proc.Wait(ctx)
+}
 
 type processRegistry map[string]ProcessFactory
 

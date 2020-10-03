@@ -14,7 +14,7 @@ import (
 // Client tags a capnp.Client with the remote endpoint's peer.ID.
 type Client struct {
 	Peer peer.ID
-	capnp.Client
+	*capnp.Client
 }
 
 // Terminal provides a low-level API for interacting with remote hosts over RPC.
@@ -46,7 +46,7 @@ func (t Terminal) HangUp(c Client) {
 		TODO(performance):  caching
 	*/
 
-	c.Close() // NOTE:  change this when implementing caching.
+	c.Release()
 }
 
 // Session binds a client to a Terminal, allowing it to be returned to a free list when

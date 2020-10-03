@@ -38,6 +38,9 @@ var (
 // See options for inidivdual packages to customize logging.
 type Logger interface{ log.Logger }
 
+// Loggable representation of an arbitrary type.
+type Loggable interface{ log.Loggable }
+
 // Any is a generic value type
 type Any interface {
 	String() string

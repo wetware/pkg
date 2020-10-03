@@ -18,6 +18,7 @@ require (
 	github.com/ipfs/go-ipfs-blockstore v1.0.1
 	github.com/ipfs/go-ipfs-exchange-interface v0.0.1
 	github.com/jbenet/goprocess v0.1.4
+	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/libp2p/go-eventbus v0.2.1
 	github.com/libp2p/go-libp2p v0.11.0
 	github.com/libp2p/go-libp2p-connmgr v0.2.4
@@ -36,7 +37,7 @@ require (
 	github.com/philhofer/fwd v1.0.0 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.7.0
-	github.com/spy16/parens v0.0.0-20200929220539-47c476118efe
+	github.com/spy16/parens v0.0.0-20200930044516-d6766c63ec7b
 	github.com/stretchr/testify v1.6.1
 	github.com/tinylib/msgp v1.1.2 // indirect
 	github.com/urfave/cli/v2 v2.2.0
@@ -44,8 +45,8 @@ require (
 	go.uber.org/fx v1.13.1
 	go.uber.org/multierr v1.6.0
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
-	golang.org/x/net v0.0.0-20200927032502-5d4f70055728
+	golang.org/x/net v0.0.0-20200927032502-5d4f70055728 // indirect
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208 // indirect
 	gopkg.in/yaml.v2 v2.3.0 // indirect
-	zombiezen.com/go/capnproto2 v2.18.0+incompatible
+	zombiezen.com/go/capnproto2 v2.17.1-0.20200824221555-5246e512e430+incompatible
 )

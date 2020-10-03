@@ -8,6 +8,7 @@ import (
 	"go.uber.org/fx"
 
 	capnp "zombiezen.com/go/capnproto2"
+	"zombiezen.com/go/capnproto2/server"
 
 	host "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -209,17 +210,22 @@ func (rootAnchorCap) Protocol() protocol.ID {
 	return ww.AnchorProtocol
 }
 
-func (a rootAnchorCap) Client() capnp.Client {
-	return api.Anchor_ServerToClient(a).Client
+func (a rootAnchorCap) Client() *capnp.Client {
+	return api.Anchor_ServerToClient(a, &server.Policy{}).Client
 }
 
-func (a rootAnchorCap) Ls(call api.Anchor_ls) error {
-	hosts, err := a.root.Ls(call.Ctx)
+func (a rootAnchorCap) Ls(ctx context.Context, call api.Anchor_ls) error {
+	hosts, err := a.root.Ls(ctx)
 	if err != nil {
 		return err
 	}
 
-	cs, err := call.Results.NewChildren(int32(len(hosts)))
+	res, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	cs, err := res.NewChildren(int32(len(hosts)))
 	if err != nil {
 		return errmem(err)
 	}
@@ -249,8 +255,8 @@ func (a rootAnchorCap) Ls(call api.Anchor_ls) error {
 	return nil
 }
 
-func (a rootAnchorCap) Walk(call api.Anchor_walk) error {
-	path, err := call.Params.Path()
+func (a rootAnchorCap) Walk(ctx context.Context, call api.Anchor_walk) error {
+	path, err := call.Args().Path()
 	if err != nil {
 		return errmem(err)
 	}
@@ -264,28 +270,39 @@ func (a rootAnchorCap) Walk(call api.Anchor_walk) error {
 			parts[0])
 	}
 
-	err = call.Results.SetAnchor(api.Anchor_ServerToClient(
-		anchorCap{a.root.Walk(call.Ctx, parts)},
+	res, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	err = res.SetAnchor(api.Anchor_ServerToClient(
+		anchorCap{a.root.Walk(ctx, parts)},
+		&server.Policy{},
 	))
 
 	return errmem(err)
 }
 
-func (a rootAnchorCap) Load(call api.Anchor_load) error {
-	any, err := a.root.Load(call.Ctx)
+func (a rootAnchorCap) Load(ctx context.Context, call api.Anchor_load) error {
+	any, err := a.root.Load(ctx)
 	if err != nil {
 		return err
 	}
 
-	return call.Results.SetValue(any.MemVal().Raw)
+	res, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	return res.SetValue(any.MemVal().Raw)
 }
 
-func (a rootAnchorCap) Store(call api.Anchor_store) error {
-	return a.root.Store(call.Ctx, nil)
+func (a rootAnchorCap) Store(ctx context.Context, call api.Anchor_store) error {
+	return a.root.Store(ctx, nil)
 }
 
-func (a rootAnchorCap) Go(call api.Anchor_go) error {
-	vs, err := call.Params.Args()
+func (a rootAnchorCap) Go(ctx context.Context, call api.Anchor_go) error {
+	vs, err := call.Args().Args()
 	if err != nil {
 		return err
 	}
@@ -297,23 +314,33 @@ func (a rootAnchorCap) Go(call api.Anchor_go) error {
 		}
 	}
 
-	p, err := a.root.Go(call.Ctx, args...)
+	p, err := a.root.Go(ctx, args...)
 	if err != nil {
 		return err
 	}
 
-	return call.Results.SetProc(p.MemVal().Raw.Proc())
+	res, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	return res.SetProc(p.MemVal().Raw.Proc())
 }
 
 type anchorCap struct{ anchor ww.Anchor }
 
-func (a anchorCap) Ls(call api.Anchor_ls) error {
-	as, err := a.anchor.Ls(call.Ctx)
+func (a anchorCap) Ls(ctx context.Context, call api.Anchor_ls) error {
+	as, err := a.anchor.Ls(ctx)
 	if err != nil {
 		return err
 	}
 
-	cs, err := call.Results.NewChildren(int32(len(as)))
+	res, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	cs, err := res.NewChildren(int32(len(as)))
 	if err != nil {
 		return errmem(err)
 	}
@@ -333,7 +360,7 @@ func (a anchorCap) Ls(call api.Anchor_ls) error {
 			break
 		}
 
-		if err = item.SetAnchor(api.Anchor_ServerToClient(anchorCap{child})); err != nil {
+		if err = item.SetAnchor(api.Anchor_ServerToClient(anchorCap{child}, &server.Policy{})); err != nil {
 			break
 		}
 
@@ -345,28 +372,39 @@ func (a anchorCap) Ls(call api.Anchor_ls) error {
 	return errmem(err)
 }
 
-func (a anchorCap) Walk(call api.Anchor_walk) error {
-	path, err := call.Params.Path()
+func (a anchorCap) Walk(ctx context.Context, call api.Anchor_walk) error {
+	path, err := call.Args().Path()
 	if err != nil {
 		return errmem(err)
 	}
 
 	sub := a.anchor.Walk(nil, anchorpath.Parts(path))
-	err = call.Results.SetAnchor(api.Anchor_ServerToClient(anchorCap{sub}))
-	return errmem(err)
-}
 
-func (a anchorCap) Load(call api.Anchor_load) error {
-	any, err := a.anchor.Load(call.Ctx)
+	res, err := call.AllocResults()
 	if err != nil {
 		return err
 	}
 
-	return call.Results.SetValue(any.MemVal().Raw)
+	err = res.SetAnchor(api.Anchor_ServerToClient(anchorCap{sub}, &server.Policy{}))
+	return errmem(err)
 }
 
-func (a anchorCap) Store(call api.Anchor_store) error {
-	raw, err := call.Params.Value()
+func (a anchorCap) Load(ctx context.Context, call api.Anchor_load) error {
+	any, err := a.anchor.Load(ctx)
+	if err != nil {
+		return err
+	}
+
+	res, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	return res.SetValue(any.MemVal().Raw)
+}
+
+func (a anchorCap) Store(ctx context.Context, call api.Anchor_store) error {
+	raw, err := call.Args().Value()
 	if err == nil {
 		return err
 	}
@@ -376,11 +414,11 @@ func (a anchorCap) Store(call api.Anchor_store) error {
 		return err
 	}
 
-	return a.anchor.Store(call.Ctx, any)
+	return a.anchor.Store(ctx, any)
 }
 
-func (a anchorCap) Go(call api.Anchor_go) error {
-	vs, err := call.Params.Args()
+func (a anchorCap) Go(ctx context.Context, call api.Anchor_go) error {
+	vs, err := call.Args().Args()
 	if err != nil {
 		return err
 	}
@@ -392,12 +430,17 @@ func (a anchorCap) Go(call api.Anchor_go) error {
 		}
 	}
 
-	p, err := a.anchor.Go(call.Ctx, args...)
+	p, err := a.anchor.Go(ctx, args...)
 	if err != nil {
 		return err
 	}
 
-	return call.Results.SetProc(p.MemVal().Raw.Proc())
+	res, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	return res.SetProc(p.MemVal().Raw.Proc())
 }
 
 func errmem(err error) error {
