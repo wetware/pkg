@@ -4,14 +4,18 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/SentimensRG/ctx?style=flat-square)](https://goreportcard.com/report/github.com/wetware/ww)
 ![tests](https://github.com/wetware/ww/workflows/Go/badge.svg)
 
-Wetware is a programming language for the cloud.  It's like adding an interactive shell to [Mesos](https://mesos.apache.org/), or a systems language for [Kubernetes](https://kubernetes.io/).
+Wetware is a language for the cloud.  It is an alternative to [Kubernetes](https://kubernetes.io/), [Mesos](https://mesos.apache.org/) and [OpenShift](https://www.openshift.com/) that turns any group of networked computers -- including cloud-based instances -- into a programmable IaaS/PaaS cluster.
 
-But that's where the comparison ends.  Wetware is a whole new way of writing cloud applications that is simpler, safer, more reliable and more productive than anything you've seen before.
+**Developers** use wetware to write distributed applications that can be instantly ported from a single laptop to the datacenter, cloud, or a hybrid of both.
+
+**Managers** love Wetware for its organizational benefits, which include a unified API for coordinating access to resources across teams, cloud-agnostic services that avoid vendor lock-in, and a small learning curve that onboards developers faster.
+
+But there's more.  Wetware is a full-fledged distributed systems language, complete with a batteries-included standard library, and a rich ecosystem that your team will never outgrow.
 
 - [Wetware](#wetware)
   - [Quickstart](#quickstart)
   - [Motivation](#motivation)
-    - [The Problem](#the-problem)
+    - [Fear, uncertainty, and declarative config](#fear-uncertainty-and-declarative-config)
     - [The Wetware Way](#the-wetware-way)
   - [How it Works](#how-it-works)
   - [Getting Started](#getting-started)
@@ -32,70 +36,26 @@ For all other documentation, including installation, worked examples, and suppor
 
 ## Motivation
 
->I am a developer and I find Kubernetes frustrating. To me, its documentation is confusing and scattered among too many places (best example: overlay networks). I have read multiple books and gazillions of articles and yet I have the feeling that **I am lacking the bigger picture.**
->
->    — [cygned](https://news.ycombinator.com/item?id=18955326)
+### Fear, uncertainty, and declarative config
 
-Writing distributed software is hard, and existing tools aren't helping.  Existing cloud management systems are slow, cumbersome, and confusing by design.
+Existing IaaS/PaaS like Kubernetes try to hide cluster state behind *declarative config*, often written in a high-level markup language like YAML, TOML or JSON.  Instead of *programming* your infrastructure, you *declare* the desired state of your cluster in a configuration file, and the software tries to figure out a way to reach that state.  Declarative approaches work well for applications like database queries, but cause serious problems in a IaaS/PaaS setting.
 
-To make matters worse, they're [notoriously fragile](https://k8s.af/), require specialized teams to operate, and have a steep learning curve.
+This declarative paradigm is good for querying databases, but it gets cluster-management exactly backwards.  In a datacenter or cloud environment, you need to keep track of two things at all times:
 
-### The Problem
+1. What is the current configuration of my cluster? (state)
+2. How do I get to the desired state?  (strategy)
 
-Instead of empowering you to react to your environment, existing cloud management systems hide problems behind various layers of routing, caching and indirection.  By hiding too much, they take power *away* from developers, and corner them into writing broken systems.  They don't just hide the boring bits, they hide distribution itself.
+But with IaaS/PaaS systems like Kubernetes and Mesos, this information is burried under multiple layers of configuration, indirection and abstract interfaces.  With these systems, you know where you want to go (*i.e.*, the state described by your YAML config), but can never be totally sure are right now, much less how the system is plans on getting to its destination.
+
+When you encounter a problem, it's hard to diagnose what went wrong.  It's also hard to apply localized hotfixes.  All you can really do is grapple with configuration, restart services, and and make educated guesses.  This whack-a-mole approach to debugging works, but it's tedious, and it makes it virtually impossible to discover the root cause of bugs or service outages.  Worse, the current generation of IaaS/PaaS infrastructure incomprehensibly complex, and it can degenerate into inconsistent states that require you to reboot the entire cluster.  When you do that, you lose valuable debugging information that might have prevented the next incident.  This problem is exacerbated at scale.
 
 ### The Wetware Way
 
-Wetware takes the opposite approach.  It embraces distribution, bringing problems to the surface, and equipping you with a rich standard library to handle failures gracefully.
+Wetware breaks this vicious cycle by turning IaaS/PaaS on its head.  Instead of static configuration, you're given a powerful language for querying and programming your cluster.  Wetware's comes with a REPL to interactively run code on your cluster, high-performance datastructures and synchronization primitives that make concurrency simple, and a rich standard library for writing distributed systems, batteries included.
 
-Drawing inspiration from proven paradigms such as Lisp and UNIX, Wetware empowers you to write software that is understandable, scalable and fault-tolerant from the ground up, without compromizing on usability and ergonomics.
+Drawing inspiration from proven paradigms such as UNIX, Wetware will feel familiar to junior devs and CTOs alike, empowering them to _finally_ treat infrastructure as code.
 
-Wetware's design abides by the following principles:
-
-- **Small is better than large**
-
-  Wetware is distributed as a single static binary that weighs less than a mobile app.  It uses network connections sparingly, employs low-chatter protocols, and is optimized for small CPU and memory usage, making it ideal for datacenters as well as IoT.
-
-  As a language, Wetware features simple syntax, concise idioms, and a small set of built-in features to ensures your codebase stays lean, clear, and performant.
-  
-- **Simple is better than complex**
-  
-  TODO
-
-  <!-- // handful of moving parts => understandable/adoptable by all -->
-
-  <!-- With airtight abstractions and only a handful of moving parts, Wetware is understandable and adoptable by all. -->
-
-
-<!-- - **Libraries, not frameworks**   -->
-  
-- **Dynamic programming over static configuration**
-
-  >It's just YAML until you need multi-tenancy, auto-scaling, security auditing, automated os/container patching, multi-tenant self-service route/ingress management, multi-tenant self-service logging, monitoring and alerting, multi-tenant self-service databases, and so on...
-  >
-  > — [ukoki](https://news.ycombinator.com/item?id=18963198)
-
-  Cloud management systems often configure behaviors using using languages for _data_.  In YAML, TOML or JSON-based configuration, behaviors are implicit, which obscures dataflow, hides dependencies and introduces vulnerabilities.  Developers struggle to reuse configuration, discover useful settings, extend working systems, and track down config errors.  Templates only compound the problem by spreading configuration state across multiple locations, introducing new dependencies, and increasing cognitive overhead.
-  
-  Wetware solves this issue at the root by representing behavior as code.  With its code-as-data philosophy, powerful macro system, and fast-staring REPL, Wetware unlocks your most powerful tools:  composition, abstraction and testing.
-  
-- **Systems, not hacks**
-
-  TODO
-
-  <!-- // harmony, symbiosis, gestalt, data-layer as unification
-
-
-
-  Wetware combines multiple technologies that complement each other.
-
-  Wetware's peer-to-peer cluster protocol is self-healing and [antifragile](https://en.wikipedia.org/wiki/Antifragility), its BitSwap protocol efficiently streams terabytes of data across your cluster, securely, and its location-aware DHT ensures you're always fetching data from the nearest source, avoiding egress costs in hybrid and multicloud setups.
-
-  All of this happens out-of-the box, with zero additional configuration or user intervention, making Wetware truly greater than the sum of its parts. -->
-
-- **Ergonomics matter**.
-
-  // TODO  <!-- iso environments, REPL, herokuness, zeroconf -->
+For managers and devops, Wetware's intuitive cluster API provides a clear, accountable and safe interface between the various engineering roles in a technology company, increasing iteration speed and reducing time-to-value.
 
 ## How it Works
 
