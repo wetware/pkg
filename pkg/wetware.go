@@ -43,7 +43,6 @@ type Loggable interface{ log.Loggable }
 
 // Any is a generic value type
 type Any interface {
-	String() string
 	MemVal() mem.Value
 }
 

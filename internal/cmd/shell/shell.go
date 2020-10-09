@@ -4,6 +4,8 @@ package shell
 import (
 	"bytes"
 	"context"
+	"fmt"
+	"io"
 	"runtime"
 	"text/template"
 	"time"
@@ -96,6 +98,7 @@ func run() cli.ActionFunc {
 			repl.WithPrompts("ww »", "   ›"),
 			repl.WithInput(lr, nil),
 			repl.WithOutput(c.App.Writer),
+			repl.WithPrinter(printer{}),
 		).Loop(context.Background())
 	}
 }
@@ -202,6 +205,23 @@ func (l linereader) Readline() (line string, err error) {
 
 func (l linereader) Close() error {
 	return l.r.Close()
+}
+
+type printer struct{}
+
+func (printer) Fprintln(w io.Writer, val interface{}) error {
+	if err, ok := val.(error); ok {
+		_, err = fmt.Fprintf(w, "%+v\n", err)
+		return err
+	}
+
+	s, err := lang.Render(val.(ww.Any))
+	if err != nil {
+		return err
+	}
+
+	_, err = fmt.Fprintln(w, s)
+	return err
 }
 
 type nopAnchor []string

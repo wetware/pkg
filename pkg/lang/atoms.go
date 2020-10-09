@@ -38,6 +38,9 @@ type Nil struct{}
 
 func (Nil) String() string { return "nil" }
 
+// SExpr returns a valid s-expression for Nil
+func (Nil) SExpr() (string, error) { return "nil", nil }
+
 // MemVal returns the memory value.
 func (Nil) MemVal() mem.Value { return mem.NilValue }
 
@@ -61,6 +64,9 @@ func (b Bool) String() string {
 	return "false"
 }
 
+// SExpr returns a valid s-expression for Bool
+func (b Bool) SExpr() (string, error) { return b.String(), nil }
+
 // Char represents a character literal.  For example, \a, \b, \1, \∂ etc are
 // valid character literals. In addition, special literals like \newline, \space
 // etc are supported by the reader.
@@ -76,9 +82,10 @@ func NewChar(a capnp.Arena, r rune) (Char, error) {
 	return Char{val}, err
 }
 
-func (c Char) String() string {
-	return fmt.Sprintf("\\%c", c.Raw.Char())
-}
+func (c Char) String() string { return fmt.Sprintf("\\%c", c.Raw.Char()) }
+
+// SExpr returns a valid s-expression for Char
+func (c Char) SExpr() (string, error) { return c.String(), nil }
 
 // String represents double-quoted string literals. String Form represents
 // the true string value obtained from the reader. Escape sequences are not
@@ -93,15 +100,6 @@ func NewString(a capnp.Arena, s string) (String, error) {
 	}
 
 	return String{val}, err
-}
-
-func (str String) String() string {
-	s, err := str.SExpr()
-	if err != nil {
-		panic(err)
-	}
-
-	return s
 }
 
 // SExpr returns a valid s-expression representing String.
@@ -126,15 +124,6 @@ func NewKeyword(a capnp.Arena, s string) (Keyword, error) {
 	return Keyword{val}, err
 }
 
-func (kw Keyword) String() string {
-	s, err := kw.SExpr()
-	if err != nil {
-		panic(err)
-	}
-
-	return s
-}
-
 // SExpr returns a valid s-expression for the keyword
 func (kw Keyword) SExpr() (string, error) {
 	s, err := kw.Raw.Keyword()
@@ -156,15 +145,6 @@ func NewSymbol(a capnp.Arena, s string) (Symbol, error) {
 	}
 
 	return Symbol{val}, err
-}
-
-func (sym Symbol) String() string {
-	s, err := sym.SExpr()
-	if err != nil {
-		panic(err)
-	}
-
-	return s
 }
 
 // SExpr returns a valid s-expression for the symbol

@@ -1,7 +1,7 @@
 package lang
 
 import (
-	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -68,7 +68,7 @@ func init() {
 // insertions.
 type Vector interface {
 	ww.Any
-	parens.SExpressable
+	SymbolProvider
 	Count() (int, error)
 	Conj(items ...parens.Any) (Vector, error)
 	EntryAt(i int) (parens.Any, error)
@@ -98,17 +98,25 @@ func NewVector(a capnp.Arena, vs ...ww.Any) (_ Vector, err error) {
 	return b.Vector()
 }
 
-func (v vector) String() string {
-	s, err := v.SExpr()
-	if err != nil {
-		panic(err)
-	}
-
-	return s
+// Render the vector in a human-readable format.
+func (v vector) Render() (string, error) {
+	return v.render(func(any parens.Any) (string, error) {
+		return Render(any.(ww.Any))
+	})
 }
 
 // SExpr returns a valid s-expression for vector
 func (v vector) SExpr() (string, error) {
+	return v.render(func(any parens.Any) (string, error) {
+		if r, ok := any.(SymbolProvider); ok {
+			return r.SExpr()
+		}
+
+		return "", errors.Errorf("%s is not a symbol provider", reflect.TypeOf(any))
+	})
+}
+
+func (v vector) render(f func(parens.Any) (string, error)) (string, error) {
 	cnt, err := v.Count()
 	if err != nil {
 		return "", err
@@ -116,27 +124,25 @@ func (v vector) SExpr() (string, error) {
 
 	var b strings.Builder
 	b.WriteRune('[')
+
 	for i := 0; i < cnt; i++ {
 		val, err := v.EntryAt(i)
 		if err != nil {
-			return "", err
+			return "", errors.Wrapf(err, "index %d", i)
 		}
 
-		if sx, ok := val.(parens.SExpressable); ok {
-			s, err := sx.SExpr()
-			if err != nil {
-				return "", err
-			}
-
-			b.WriteString(s)
-		} else {
-			b.WriteString(fmt.Sprintf("%s", val))
+		s, err := f(val)
+		if err != nil {
+			return "", errors.Wrapf(err, "index %d", i)
 		}
+
+		b.WriteString(s)
 
 		if i < cnt-1 {
 			b.WriteRune(' ')
 		}
 	}
+
 	b.WriteRune(']')
 	return b.String(), nil
 }

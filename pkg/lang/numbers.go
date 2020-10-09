@@ -28,6 +28,7 @@ func init() {
 // Numerical value
 type Numerical interface {
 	ww.Any
+	SymbolProvider
 	Comparable
 }
 
@@ -51,6 +52,9 @@ func NewInt64(a capnp.Arena, i int64) (i64 Int64, err error) {
 func (i64 Int64) String() string {
 	return fmt.Sprintf("%d", i64.Raw.I64())
 }
+
+// SExpr returns a valid s-expression for Int64
+func (i64 Int64) SExpr() (string, error) { return i64.String(), nil }
 
 // Comp returns 0 if the v == other, -1 if v < other, and 1 if v > other.
 func (i64 Int64) Comp(other ww.Any) (int, error) {
@@ -114,6 +118,9 @@ func asBigInt(v mem.Value) (bi BigInt, err error) {
 
 func (bi BigInt) String() string { return bi.i.String() }
 
+// SExpr returns a valid s-expression for BigInt
+func (bi BigInt) SExpr() (string, error) { return bi.String(), nil }
+
 // Comp returns 0 if the v == other, -1 if v < other, and 1 if v > other.
 func (bi BigInt) Comp(other ww.Any) (int, error) {
 	switch o := other.MemVal(); o.Type() {
@@ -160,6 +167,9 @@ func NewFloat64(a capnp.Arena, f float64) (f64 Float64, err error) {
 func (f64 Float64) String() string {
 	return strconv.FormatFloat(f64.Raw.F64(), 'g', -1, 64)
 }
+
+// SExpr returns a valid s-expression for Float64
+func (f64 Float64) SExpr() (string, error) { return f64.String(), nil }
 
 // Comp returns 0 if the v == other, -1 if v < other, and 1 if v > other.
 func (f64 Float64) Comp(other ww.Any) (int, error) {
@@ -227,10 +237,10 @@ func asBigFloat(v mem.Value) (bf BigFloat, err error) {
 	return
 }
 
+func (bf BigFloat) String() string { return bf.f.Text('g', -1) }
+
 // SExpr returns a valid s-expression for Float64
-func (bf BigFloat) String() string {
-	return bf.f.Text('g', -1)
-}
+func (bf BigFloat) SExpr() (string, error) { return bf.String(), nil }
 
 // Comp returns 0 if the v == other, -1 if v < other, and 1 if v > other.
 func (bf BigFloat) Comp(other ww.Any) (int, error) {
@@ -320,6 +330,9 @@ func asFrac(v mem.Value) (f Frac, err error) {
 }
 
 func (f Frac) String() string { return f.r.String() }
+
+// SExpr returns a valid s-expression for Frac
+func (f Frac) SExpr() (string, error) { return f.String(), nil }
 
 // Comp returns true if the other value is numerical and has the same value.
 func (f Frac) Comp(other ww.Any) (int, error) {

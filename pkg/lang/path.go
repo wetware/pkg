@@ -39,19 +39,8 @@ func NewPath(a capnp.Arena, s string) (p Path, err error) {
 	return
 }
 
-func (p Path) String() string {
-	s, err := p.SExpr()
-	if err != nil {
-		panic(err)
-	}
-
-	return s
-}
-
 // SExpr returns a valid s-expression for path.
-func (p Path) SExpr() (string, error) {
-	return p.Raw.Path()
-}
+func (p Path) SExpr() (string, error) { return p.Raw.Path() }
 
 // Parts returns split path for p
 func (p Path) Parts() ([]string, error) {

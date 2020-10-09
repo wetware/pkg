@@ -3,6 +3,7 @@ package lang
 
 import (
 	"bytes"
+	"fmt"
 	"reflect"
 
 	"github.com/pkg/errors"
@@ -86,6 +87,40 @@ type Comparable interface {
 	// Comp compares the magnitude of the comparable c with that of other.
 	// It returns 0 if the magnitudes are equal, -1 if c < other, and 1 if c > other.
 	Comp(other ww.Any) (int, error)
+}
+
+// Renderable values implement the Render method, which returns a human-readable
+// representation of the data.
+type Renderable interface {
+	// Render returns a string representation of the value that is intended for human
+	// consumption.  Strings returned by Render MAY be valid s-expressions, but this is
+	// not guaranteed.
+	Render() (string, error)
+}
+
+// SymbolProvider can provide a symbolic expression for a value.  Symbolic expressions
+// are guaranteed to be parseable by a Reader.  Not all values can be represented as an
+// s-expression.
+type SymbolProvider interface {
+	// SExpr returns the symbolic expression for the unerlying value.  Note that in the
+	// case of composite values, the resulting s-expression can be very long.  For a
+	// human-readable representation, see Renderable.
+	SExpr() (string, error)
+}
+
+// Render a value into a human-readable representation.
+// To serialize a value into a parseable s-expression, see SymbolProvider.
+func Render(any ww.Any) (string, error) {
+	switch v := any.(type) {
+	case Renderable:
+		return v.Render()
+	case SymbolProvider:
+		return v.SExpr()
+	case fmt.Stringer:
+		return v.String(), nil
+	default:
+		return fmt.Sprintf("%#v", v), nil
+	}
 }
 
 // Eq returns true is the two values are equal

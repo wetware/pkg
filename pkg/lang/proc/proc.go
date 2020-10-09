@@ -3,7 +3,6 @@ package proc
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/pkg/errors"
 	"github.com/spy16/parens"
@@ -65,11 +64,6 @@ func Spawn(env *parens.Env, args ...ww.Any) (Proc, error) {
 func FromValue(v mem.Value) Proc { return remoteProc{v} }
 
 type remoteProc struct{ mem.Value }
-
-func (p remoteProc) String() string {
-	// TODO(enhancement): provide more info.  Proces ID? Remote host ID?  Current value?
-	return fmt.Sprintf("<RemoteProc>")
-}
 
 func (p remoteProc) Wait(ctx context.Context) error {
 	f, done := p.Raw.Proc().Wait(ctx, func(api.Proc_wait_Params) error { return nil })

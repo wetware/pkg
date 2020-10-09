@@ -1,6 +1,10 @@
 package lang
 
 import (
+	"reflect"
+	"strings"
+
+	"github.com/pkg/errors"
 	"github.com/spy16/parens"
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
@@ -35,7 +39,7 @@ func init() {
 type List interface {
 	ww.Any
 	parens.Seq
-	parens.SExpressable
+	SymbolProvider
 	Count() (int, error)
 	Cons(any parens.Any) (List, error)
 }
@@ -63,24 +67,68 @@ func NewList(a capnp.Arena, vs ...ww.Any) (List, error) {
 	return l, err
 }
 
-func (l list) String() string {
-	s, err := l.SExpr()
-	if err != nil {
-		panic(err)
-	}
-
-	return s
-}
-
 // Count returns the number of the list.
 func (l list) Count() (int, error) {
 	ll, _, err := listIsNull(l.Raw)
 	return int(ll.Count()), err
 }
 
+// Render the list into human-readable form
+func (l list) Render() (string, error) {
+	return l.render(func(any parens.Any) (string, error) {
+		return Render(any.(ww.Any))
+	})
+}
+
 // SExpr returns a valid s-expression for List
 func (l list) SExpr() (string, error) {
-	return parens.SeqString(l, "(", ")", " ")
+	return l.render(func(any parens.Any) (string, error) {
+		if r, ok := any.(SymbolProvider); ok {
+			return r.SExpr()
+		}
+
+		return "", errors.Errorf("%s is not a symbol provider", reflect.TypeOf(any))
+	})
+}
+
+func (l list) render(f func(parens.Any) (string, error)) (string, error) {
+	cnt, err := l.Count()
+	if err != nil {
+		return "", err
+	}
+
+	if cnt == 0 {
+		return "()", nil
+	}
+
+	var b strings.Builder
+	b.WriteRune('(')
+
+	seq := parens.Seq(l)
+	for i := 0; i < cnt; i++ {
+		if i > 0 {
+			b.WriteRune(' ')
+		}
+
+		v, err := seq.First()
+		if err != nil {
+			return "", err
+		}
+
+		s, err := f(v)
+		if err != nil {
+			return "", err
+		}
+
+		b.WriteString(s)
+
+		if seq, err = seq.Next(); err != nil {
+			return "", err
+		}
+	}
+
+	b.WriteRune(')')
+	return b.String(), nil
 }
 
 // Conj returns a new list with all the items added at the head of the list.
