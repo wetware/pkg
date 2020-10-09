@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/lang"
 )
 
@@ -37,7 +38,10 @@ func TestEmptyList(t *testing.T) {
 
 		v, err := seq.First()
 		assert.NoError(t, err)
-		assert.Equal(t, mustSExpr(lang.True), mustSexpr(v))
+
+		eq, err := lang.Eq(lang.True, v.(ww.Any))
+		require.NoError(t, err)
+		assert.True(t, eq)
 	})
 }
 
@@ -66,8 +70,10 @@ func TestListEquality(t *testing.T) {
 		},
 	} {
 		t.Run(tt.desc, func(t *testing.T) {
-			assert.True(t, lang.Eq(tt.l, tt.newList()),
-				"expected %s, got %s", mustSexpr(tt.l), mustSexpr(tt.newList()))
+			eq, err := lang.Eq(tt.l, tt.newList())
+			require.NoError(t, err)
+
+			assert.True(t, eq)
 		})
 	}
 }

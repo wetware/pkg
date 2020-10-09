@@ -12,6 +12,41 @@ import (
 	capnp "zombiezen.com/go/capnproto2"
 )
 
+func TestEmptyVector(t *testing.T) {
+	t.Run("count", func(t *testing.T) {
+		cnt, err := lang.EmptyVector.Count()
+		assert.NoError(t, err)
+		assert.Zero(t, cnt)
+	})
+
+	t.Run("build_empty_vector", func(t *testing.T) {
+		v, err := lang.NewVector(nil)
+		assert.NoError(t, err)
+
+		eq, err := lang.Eq(lang.EmptyVector, v)
+		require.NoError(t, err)
+		assert.True(t, eq)
+	})
+
+	t.Run("build_from_empty", func(t *testing.T) {
+		v, err := lang.EmptyVector.Conj(mustInt(0))
+		assert.NoError(t, err)
+
+		v2, err := lang.NewVector(nil)
+		assert.NoError(t, err)
+		v2, err = v2.Conj(mustInt(0))
+		assert.NoError(t, err)
+
+		h, err := lang.Hashable(v)
+		require.NoError(t, err)
+
+		h2, err := lang.Hashable(v2)
+		require.NoError(t, err)
+
+		assert.Equal(t, h, h2)
+	})
+}
+
 func TestNewVector(t *testing.T) {
 	t.Parallel()
 
@@ -292,8 +327,11 @@ func TestVectorEquality(t *testing.T) {
 		},
 	} {
 		t.Run(tt.desc, func(t *testing.T) {
-			assert.True(t, lang.Eq(tt.v, tt.newVector()),
-				"expected %s, got %s", mustSexpr(tt.v), mustSexpr(tt.newVector()))
+			eq, err := lang.Eq(tt.v, tt.newVector())
+			require.NoError(t, err)
+
+			assert.True(t, eq,
+				"expected %s, got %s", mustSExpr(tt.v), mustSExpr(tt.newVector()))
 		})
 	}
 }
@@ -353,13 +391,4 @@ func assertVectEq(t *testing.T, want, got lang.Vector) (ok bool) {
 	}
 
 	return true
-}
-
-func mustSExpr(v parens.Any) string {
-	sexpr, err := v.(parens.SExpressable).SExpr()
-	if err != nil {
-		panic(err)
-	}
-
-	return sexpr
 }

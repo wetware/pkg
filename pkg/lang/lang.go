@@ -12,6 +12,7 @@ import (
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/lang/proc"
 	"github.com/wetware/ww/pkg/mem"
+	capnp "zombiezen.com/go/capnproto2"
 )
 
 var (
@@ -123,9 +124,24 @@ func Render(any ww.Any) (string, error) {
 	}
 }
 
+// Hashable representation of an arbitrary value.
+func Hashable(any ww.Any) ([]byte, error) {
+	return capnp.Canonicalize(any.MemVal().Raw.Struct)
+}
+
 // Eq returns true is the two values are equal
-func Eq(a, b ww.Any) bool {
-	return bytes.Equal(a.MemVal().Bytes(), b.MemVal().Bytes())
+func Eq(a, b ww.Any) (bool, error) {
+	ba, err := Hashable(a)
+	if err != nil {
+		return false, err
+	}
+
+	bb, err := Hashable(b)
+	if err != nil {
+		return false, err
+	}
+
+	return bytes.Equal(ba, bb), nil
 }
 
 // Pop returns a collection without one item.  For a list, Pop
@@ -164,8 +180,9 @@ func Conj(col ww.Any, vs parens.Seq) (parens.Any, error) {
 		return v, err
 
 	case Vector:
+		// TODO(performance): implement `v.Transient()`, returning *VectorBuilder.
 		err := parens.ForEach(vs, func(item parens.Any) (_ bool, err error) {
-			v, err = v.Conj(item)
+			v, err = v.Conj(item.(ww.Any))
 			return
 		})
 		return v, err

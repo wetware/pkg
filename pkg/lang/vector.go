@@ -32,36 +32,25 @@ var (
 	// ErrInvalidVectorNode is returned when a node in the vector trie is invalid.
 	ErrInvalidVectorNode = errors.New("invalid VectorNode")
 
-	emptyVector vector
+	// EmptyVector is the zero-value vector.
+	EmptyVector vector
 
 	_ Vector = (*vector)(nil)
 )
 
 func init() {
-	_, seg, err := capnp.NewMessage(capnp.SingleSegment(nil))
+	root, _, err := newVectorNode(capnp.SingleSegment([]byte{}))
 	if err != nil {
 		panic(err)
 	}
 
-	val, err := api.NewRootValue(seg)
+	tail, err := newVectorTail(capnp.SingleSegment([]byte{}), 0)
 	if err != nil {
 		panic(err)
 	}
 
-	vec, err := val.NewVector()
-	if err != nil {
-		panic(err)
-	}
-
-	if _, err = vec.NewRoot(); err != nil {
-		panic(err)
-	}
-
-	if _, err = vec.NewTail(0); err != nil {
-		panic(err)
-	}
-
-	emptyVector.Raw = val
+	_, vec, err := newVector(capnp.SingleSegment(nil), 0, bits, root, tail)
+	EmptyVector.Raw = vec.Raw
 }
 
 // Vector is a persistent, ordered collection of values with fast random lookups and
@@ -70,7 +59,7 @@ type Vector interface {
 	ww.Any
 	SymbolProvider
 	Count() (int, error)
-	Conj(items ...parens.Any) (Vector, error)
+	Conj(ww.Any) (Vector, error)
 	EntryAt(i int) (parens.Any, error)
 	Assoc(i int, val parens.Any) (Vector, error)
 	Pop() (Vector, error)
@@ -81,7 +70,7 @@ type vector struct{ mem.Value }
 // NewVector creates a vector containing the supplied values.
 func NewVector(a capnp.Arena, vs ...ww.Any) (_ Vector, err error) {
 	if len(vs) == 0 {
-		return emptyVector, nil
+		return EmptyVector, nil
 	}
 
 	var b *VectorBuilder
@@ -158,36 +147,13 @@ func (v vector) count() (api.Vector, int, error) {
 }
 
 // Conj returns a new vector with items appended.
-func (v vector) Conj(items ...parens.Any) (Vector, error) {
-	/*
-		TODO(performance):  lots of room for improvement here. A good solution should:
-
-		(1) provide lots of structural sharing
-		(2) use mutable semantics using a transient datastructure (e.g. VectorBuilder).
-
-		A simple approach might be:
-
-		1. instantiate a VectorBuilder, b
-		2. assign a _shallow clone_ of v's root node to b.root (i.e. copy the root, but
-		   not its children)
-		3. append node's in v.tail to b.tail
-		4. call b.conj repeatedly
-		5. return b.Vector()
-
-		Resist the urge to implement this before writing adequate benchmarks.
-	*/
+func (v vector) Conj(item ww.Any) (Vector, error) {
 	vec, cnt, err := v.count()
 	if err != nil {
 		return nil, err
 	}
 
-	for i, val := range items {
-		if v, err = vectorCons(vec, cnt+i, val.(ww.Any)); err != nil {
-			return nil, err
-		}
-	}
-
-	return v, nil
+	return vectorCons(vec, cnt, item)
 }
 
 // // Seq returns the implementing value as a sequence.
@@ -504,7 +470,7 @@ func vectorPop(v mem.Value) (vec api.Vector, _ Vector, err error) {
 		err = errors.New("can't pop empty vector")
 		return
 	case 1:
-		return vec, emptyVector, nil
+		return vec, EmptyVector, nil
 	}
 
 	var root api.Vector_Node
@@ -605,7 +571,7 @@ func NewVectorBuilder(a capnp.Arena) (*VectorBuilder, error) {
 // Vector returns the accumulated vector.
 func (b *VectorBuilder) Vector() (vec Vector, err error) {
 	if b.cnt == 0 {
-		return emptyVector, nil
+		return EmptyVector, nil
 	}
 
 	var tail api.Value_List

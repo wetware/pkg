@@ -95,10 +95,10 @@ func TestConj(t *testing.T) {
 		},
 		// vector
 		{
-			desc: "(conj [] 0 1 2 3)",
+			desc: "(conj [] 0)",
 			col:  mustVector(),
-			vs:   []ww.Any{mustInt(0), mustInt(1), mustInt(2), mustInt(3)},
-			want: mustVector(mustInt(0), mustInt(1), mustInt(2), mustInt(3)),
+			vs:   []ww.Any{mustInt(0)},
+			want: mustVector(mustInt(0)),
 		},
 		{
 			desc: "(conj [0] 1 2 3)",
@@ -112,18 +112,25 @@ func TestConj(t *testing.T) {
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else if assert.NoError(t, err) {
-				assert.Equal(t, mustSExpr(tt.want), mustSexpr(got))
+				bgot, err := lang.Hashable(got.(ww.Any))
+				require.NoError(t, err)
+
+				bwant, err := lang.Hashable(tt.want)
+				require.NoError(t, err)
+
+				assert.Equal(t, bwant, bgot)
 			}
 		})
 	}
 }
 
-func mustSexpr(any interface{}) string {
-	s, err := any.(parens.SExpressable).SExpr()
+func mustSExpr(v parens.Any) string {
+	sexpr, err := v.(lang.SymbolProvider).SExpr()
 	if err != nil {
 		panic(err)
 	}
-	return s
+
+	return sexpr
 }
 
 func mustSymbol(s string) lang.Symbol {
