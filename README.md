@@ -4,7 +4,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/SentimensRG/ctx?style=flat-square)](https://goreportcard.com/report/github.com/wetware/ww)
 ![tests](https://github.com/wetware/ww/workflows/Go/badge.svg)
 
-Wetware is a language for the cloud.  It is an alternative to [Kubernetes](https://kubernetes.io/), [Mesos](https://mesos.apache.org/) and [OpenShift](https://www.openshift.com/) that turns any group of networked computers -- including cloud-based instances -- into a programmable IaaS/PaaS cluster.
+**Wetware is the language of the cloud.**  It is an alternative to [Kubernetes](https://kubernetes.io/), [Mesos](https://mesos.apache.org/) and [OpenShift](https://www.openshift.com/) that turns any group of networked computers -- including cloud-based instances -- into a programmable IaaS/PaaS cluster.
 
 **Developers** use wetware to write distributed applications that can be instantly ported from a single laptop to the datacenter, cloud, or a hybrid of both.
 
@@ -40,14 +40,14 @@ For all other documentation, including installation, worked examples, and suppor
 
 Existing IaaS/PaaS like Kubernetes try to hide cluster state behind *declarative config*, often written in a high-level markup language like YAML, TOML or JSON.  Instead of *programming* your infrastructure, you *declare* the desired state of your cluster in a configuration file, and the software tries to figure out a way to reach that state.  Declarative approaches work well for applications like database queries, but cause serious problems in a IaaS/PaaS setting.
 
-This declarative paradigm is good for querying databases, but it gets cluster-management exactly backwards.  In a datacenter or cloud environment, you need to keep track of two things at all times:
+The problem is that declarative syntax gets datacenters exactly backwards.  In a datacenter or cloud environment, you need to keep track of two things at all times:
 
 1. What is the current configuration of my cluster? (state)
 2. How do I get to the desired state?  (strategy)
 
-But with IaaS/PaaS systems like Kubernetes and Mesos, this information is burried under multiple layers of configuration, indirection and abstract interfaces.  With these systems, you know where you want to go (*i.e.*, the state described by your YAML config), but can never be totally sure are right now, much less how the system is plans on getting to its destination.
+But with IaaS/PaaS systems like Kubernetes and Mesos, both 1 & 2 are burried under multiple layers of configuration, indirection and abstract interfaces.  And although you know where you want to go (*i.e.*, the state described by your YAML config), you can't be sure where are right now, nor how your config translates into execution.
 
-When you encounter a problem, it's hard to diagnose what went wrong.  It's also hard to apply localized hotfixes.  All you can really do is grapple with configuration, restart services, and and make educated guesses.  This whack-a-mole approach to debugging works, but it's tedious, and it makes it virtually impossible to discover the root cause of bugs or service outages.  Worse, the current generation of IaaS/PaaS infrastructure incomprehensibly complex, and it can degenerate into inconsistent states that require you to reboot the entire cluster.  When you do that, you lose valuable debugging information that might have prevented the next incident.  This problem is exacerbated at scale.
+When you encounter a problem, it's hard to diagnose what went wrong.  It's also hard to apply localized hotfixes.  All you can really do is grapple with configuration, restart services, and make educated guesses.  This whack-a-mole approach to debugging works, but it's tedious, and gets in the way of root-cause analysis.  Worse, existing IaaS/PaaS systems are incomprehensibly complex, and easily degenerate into inconsistent states that force you to reboot the entire cluster.  When you do that, you lose valuable debugging information that might have prevented the next incident... and it gets worse as you scale.
 
 ### The Wetware Way
 
