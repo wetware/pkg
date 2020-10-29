@@ -66,7 +66,7 @@ func FromValue(v mem.Value) Proc { return remoteProc{v} }
 type remoteProc struct{ mem.Value }
 
 func (p remoteProc) Wait(ctx context.Context) error {
-	f, done := p.Raw.Proc().Wait(ctx, func(api.Proc_wait_Params) error { return nil })
+	f, done := p.Raw.Proc().Wait(ctx, nil)
 	defer done()
 
 	select {

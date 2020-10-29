@@ -19,7 +19,7 @@ func Ls(ctx context.Context, t rpc.Terminal, d rpc.Dialer) ([]ww.Anchor, error) 
 }
 
 func ls(ctx context.Context, a api.Anchor, ad adapter) ([]ww.Anchor, error) {
-	f, done := a.Ls(ctx, func(api.Anchor_ls_Params) error { return nil })
+	f, done := a.Ls(ctx, nil)
 	defer done()
 
 	select {

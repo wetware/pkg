@@ -41,7 +41,7 @@ func (a anchor) Walk(ctx context.Context, path []string) ww.Anchor {
 }
 
 func (a anchor) Load(ctx context.Context) (ww.Any, error) {
-	f, done := a.Anchor().Load(ctx, func(api.Anchor_load_Params) error { return nil })
+	f, done := a.Anchor().Load(ctx, nil)
 	defer done()
 
 	select {
