@@ -22,13 +22,13 @@ func analyzer(root ww.Anchor) formAnalyzer {
 	// c := anchorClient{root}
 
 	return formAnalyzer{
-		root:         root,
+		root: root,
 		specialForms: map[string]builtin.ParseSpecial{
-			// "go":    c.Go,
-			// "do":    parseDoExpr,
-			// "if":    parseIfExpr,
-			// "def":   parseDefExpr,
-			// "quote": parseQuoteExpr,
+			"do":    parseDo,
+			"if":    parseIf,
+			"quote": parseQuote,
+			"def":   parseDef,
+			// "go": c.Go,
 			// "ls":    c.Ls,
 			// "pop":   parsePop,
 			// "conj":  parseConj,

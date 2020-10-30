@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/spy16/slurp/core"
+	capnp "zombiezen.com/go/capnproto2"
 )
 
 // ResolveExpr resolves a symbol from the given environment.
@@ -30,6 +31,32 @@ func (re ResolveExpr) Eval(env core.Env) (v core.Any, err error) {
 	}
 
 	return
+}
+
+// DefExpr represents the (def name value) binding form.
+type DefExpr struct {
+	Name  string
+	Value core.Expr
+}
+
+// Eval creates the binding with the name and value in Root env.
+func (de DefExpr) Eval(env core.Env) (core.Any, error) {
+	var val core.Any
+	var err error
+	if de.Value != nil {
+		val, err = de.Value.Eval(env)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		val = Nil{}
+	}
+
+	if err := core.Root(env).Bind(de.Name, val); err != nil {
+		return nil, err
+	}
+
+	return NewSymbol(capnp.SingleSegment(nil), de.Name)
 }
 
 // var (

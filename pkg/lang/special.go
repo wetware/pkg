@@ -1,135 +1,147 @@
 package lang
 
-var (
-// _ = parens.ParseSpecial(parseDoExpr)
-// _ = parens.ParseSpecial(parseIfExpr)
-// _ = parens.ParseSpecial(parseDefExpr)
-// _ = parens.ParseSpecial(parseQuoteExpr)
-// _ = parens.ParseSpecial(parsePop)
-// _ = parens.ParseSpecial(parseConj)
+import (
+	"fmt"
+	"reflect"
 
-// _ = parens.ParseSpecial(anchorClient{}.Ls)
-// _ = parens.ParseSpecial(anchorClient{}.Go)
+	"github.com/spy16/slurp"
+	"github.com/spy16/slurp/builtin"
+	"github.com/spy16/slurp/core"
 )
 
-// func parseDoExpr(env *parens.Env, args parens.Seq) (parens.Expr, error) {
-// 	var de parens.DoExpr
-// 	err := parens.ForEach(args, func(item parens.Any) (bool, error) {
-// 		expr, err := env.Analyze(item)
-// 		if err != nil {
-// 			return true, err
-// 		}
-// 		de.Exprs = append(de.Exprs, expr)
-// 		return false, nil
-// 	})
+var (
+	_ = builtin.ParseSpecial(parseDo)
+	_ = builtin.ParseSpecial(parseIf)
+	_ = builtin.ParseSpecial(parseQuote)
+	_ = builtin.ParseSpecial(parseDef)
 
-// 	return de, err
-// }
+// _ = builtin.ParseSpecial(parsePop)
+// _ = builtin.ParseSpecial(parseConj)
 
-// func parseIfExpr(env *parens.Env, args parens.Seq) (parens.Expr, error) {
-// 	count, err := args.Count()
-// 	if err != nil {
-// 		return nil, err
-// 	} else if count != 2 && count != 3 {
-// 		return nil, core.Error{
-// 			Cause:   errors.New("invalid if form"),
-// 			Message: fmt.Sprintf("requires 2 or 3 arguments, got %d", count),
-// 		}
-// 	}
+// _ = builtin.ParseSpecial(anchorClient{}.Ls)
+// _ = builtin.ParseSpecial(anchorClient{}.Go)
+)
 
-// 	exprs := [3]parens.Expr{}
-// 	for i := 0; i < count; i++ {
-// 		f, err := args.First()
-// 		if err != nil {
-// 			return nil, err
-// 		}
+func parseDo(a core.Analyzer, env core.Env, args core.Seq) (core.Expr, error) {
+	var de builtin.DoExpr
+	err := core.ForEach(args, func(item core.Any) (bool, error) {
+		expr, err := a.Analyze(env, item)
+		if err != nil {
+			return true, err
+		}
+		de.Exprs = append(de.Exprs, expr)
+		return false, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return de, nil
+}
 
-// 		expr, err := env.Analyze(f)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		exprs[i] = expr
+func parseIf(a core.Analyzer, env core.Env, args core.Seq) (core.Expr, error) {
+	count, err := args.Count()
+	if err != nil {
+		return nil, err
+	} else if count != 2 && count != 3 {
+		return nil, core.Error{
+			Cause:   fmt.Errorf("%w: if", slurp.ErrParseSpecial),
+			Message: fmt.Sprintf("requires 2 or 3 arguments, got %d", count),
+		}
+	}
 
-// 		args, err = args.Next()
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 	}
+	exprs := [3]core.Expr{}
+	for i := 0; i < count; i++ {
+		f, err := args.First()
+		if err != nil {
+			return nil, err
+		}
 
-// 	return IfExpr{
-// 		Test: exprs[0],
-// 		Then: exprs[1],
-// 		Else: exprs[2],
-// 	}, nil
-// }
+		expr, err := a.Analyze(env, f)
+		if err != nil {
+			return nil, err
+		}
+		exprs[i] = expr
 
-// func parseQuoteExpr(_ *parens.Env, args parens.Seq) (parens.Expr, error) {
-// 	if count, err := args.Count(); err != nil {
-// 		return nil, err
-// 	} else if count != 1 {
-// 		return nil, core.Error{
-// 			Cause:   errors.New("invalid quote form"),
-// 			Message: fmt.Sprintf("requires exactly 1 argument, got %d", count),
-// 		}
-// 	}
+		args, err = args.Next()
+		if err != nil {
+			return nil, err
+		}
+	}
 
-// 	form, err := args.First()
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	return builtin.IfExpr{
+		Test: exprs[0],
+		Then: exprs[1],
+		Else: exprs[2],
+	}, nil
+}
+func parseQuote(a core.Analyzer, _ core.Env, args core.Seq) (core.Expr, error) {
+	if count, err := args.Count(); err != nil {
+		return nil, err
+	} else if count != 1 {
+		return nil, core.Error{
+			Cause:   fmt.Errorf("%w: quote", slurp.ErrParseSpecial),
+			Message: fmt.Sprintf("requires exactly 1 argument, got %d", count),
+		}
+	}
 
-// 	return parens.QuoteExpr{Form: form}, nil
-// }
+	first, err := args.First()
+	if err != nil {
+		return nil, err
+	}
 
-// func parseDefExpr(env *parens.Env, args parens.Seq) (parens.Expr, error) {
-// 	if count, err := args.Count(); err != nil {
-// 		return nil, err
-// 	} else if count != 2 {
-// 		return nil, core.Error{
-// 			Cause:   errors.New("invalid def form"),
-// 			Message: fmt.Sprintf("requires exactly 2 arguments, got %d", count),
-// 		}
-// 	}
+	return builtin.QuoteExpr{Form: first}, nil
+}
 
-// 	first, err := args.First()
-// 	if err != nil {
-// 		return nil, err
-// 	}
+func parseDef(a core.Analyzer, env core.Env, args core.Seq) (core.Expr, error) {
+	e := core.Error{Cause: fmt.Errorf("%w: def", slurp.ErrParseSpecial)}
 
-// 	sym, ok := first.(Symbol)
-// 	if !ok {
-// 		return nil, core.Error{
-// 			Cause:   errors.New("invalid def form"),
-// 			Message: fmt.Sprintf("first arg must be symbol, not '%s'", reflect.TypeOf(first)),
-// 		}
-// 	}
+	if args == nil {
+		return nil, e.With("requires exactly 2 args, got 0")
+	}
 
-// 	rest, err := args.Next()
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	if count, err := args.Count(); err != nil {
+		return nil, err
+	} else if count != 2 {
+		return nil, e.With(fmt.Sprintf(
+			"requires exactly 2 arguments, got %d", count))
+	}
 
-// 	second, err := rest.First()
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	first, err := args.First()
+	if err != nil {
+		return nil, err
+	}
 
-// 	res, err := env.Analyze(second)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	sym, ok := first.(Symbol)
+	if !ok {
+		return nil, e.With(fmt.Sprintf(
+			"first arg must be symbol, not '%s'", reflect.TypeOf(first)))
+	}
 
-// 	name, err := sym.Raw.Symbol()
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	symStr, err := sym.Raw.Symbol()
+	if err != nil {
+		return nil, err
+	}
 
-// 	return &parens.DefExpr{
-// 		Env:   env,
-// 		Name:  name,
-// 		Value: res,
-// 	}, nil
-// }
+	rest, err := args.Next()
+	if err != nil {
+		return nil, err
+	}
+
+	second, err := rest.First()
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := a.Analyze(env, second)
+	if err != nil {
+		return nil, err
+	}
+
+	return DefExpr{
+		Name:  symStr,
+		Value: res,
+	}, nil
+}
 
 // type anchorClient struct{ root ww.Anchor }
 
