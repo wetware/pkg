@@ -54,11 +54,10 @@ func (a formAnalyzer) Analyze(env core.Env, form core.Any) (core.Expr, error) {
 
 	switch expr := exp.(type) {
 	case Path:
-		panic("PathExpr{} NOT IMPLEMENTED")
-		// return PathExpr{
-		// 	Root: a.root,
-		// 	Path: expr,
-		// }, nil
+		return PathExpr{
+			Root: a.root,
+			Path: expr,
+		}, nil
 
 	case Symbol:
 		return ResolveExpr{Symbol: expr}, nil

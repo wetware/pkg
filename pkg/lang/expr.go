@@ -1,11 +1,25 @@
 package lang
 
 import (
+	"context"
 	"errors"
 
 	"github.com/spy16/slurp/core"
 	ww "github.com/wetware/ww/pkg"
+	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
 	capnp "zombiezen.com/go/capnproto2"
+)
+
+var (
+	_ core.Expr = (*IfExpr)(nil)
+	_ core.Expr = (*ResolveExpr)(nil)
+	_ core.Expr = (*DefExpr)(nil)
+	_ core.Expr = (*PathExpr)(nil)
+	// _ core.Expr = (*)(nil)
+	// _ core.Expr = (*)(nil)
+	// _ core.Expr = (*)(nil)
+
+	_ core.Invokable = (*PathExpr)(nil)
 )
 
 // IfExpr represents the if-then-else form.
@@ -125,39 +139,39 @@ func (de DefExpr) Eval(env core.Env) (core.Any, error) {
 // 	return target.Eval(env)
 // }
 
-// // PathExpr binds a path to an Anchor
-// type PathExpr struct {
-// 	Root ww.Anchor
-// 	Path
-// }
+// PathExpr binds a path to an Anchor
+type PathExpr struct {
+	Root ww.Anchor
+	Path Path
+}
 
-// // Eval returns the PathExpr unmodified
-// func (pex PathExpr) Eval(core.Env) (core.Any, error) { return pex, nil }
+// Eval returns the PathExpr unmodified
+func (pex PathExpr) Eval(core.Env) (core.Any, error) { return pex.Path, nil }
 
-// // Invoke is the data selector for the Path type.  It gets/sets the value at the anchor
-// // path.
-// func (pex PathExpr) Invoke(args ...core.Any) (core.Any, error) {
-// 	path, err := pex.Parts()
-// 	if err != nil {
-// 		return nil, err
-// 	}
+// Invoke is the data selector for the Path type.  It gets/sets the value at the anchor
+// path.
+func (pex PathExpr) Invoke(args ...core.Any) (core.Any, error) {
+	path, err := pex.Path.Parts()
+	if err != nil {
+		return nil, err
+	}
 
-// 	anchor := pex.Root.Walk(context.Background(), path)
+	anchor := pex.Root.Walk(context.Background(), path)
 
-// 	if len(args) == 0 {
-// 		return anchor.Load(context.Background())
-// 	}
+	if len(args) == 0 {
+		return anchor.Load(context.Background())
+	}
 
-// 	err = anchor.Store(context.Background(), args[0].(ww.Any))
-// 	if err != nil {
-// 		return nil, core.Error{
-// 			Cause:   err,
-// 			Message: anchorpath.Join(path),
-// 		}
-// 	}
+	err = anchor.Store(context.Background(), args[0].(ww.Any))
+	if err != nil {
+		return nil, core.Error{
+			Cause:   err,
+			Message: anchorpath.Join(path),
+		}
+	}
 
-// 	return nil, nil
-// }
+	return nil, nil
+}
 
 // // PathListExpr fetches subanchors for a path
 // type PathListExpr struct {
