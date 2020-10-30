@@ -68,7 +68,7 @@ func parseIf(a core.Analyzer, env core.Env, args core.Seq) (core.Expr, error) {
 		}
 	}
 
-	return builtin.IfExpr{
+	return IfExpr{
 		Test: exprs[0],
 		Then: exprs[1],
 		Else: exprs[2],

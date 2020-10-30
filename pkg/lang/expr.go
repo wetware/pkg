@@ -4,8 +4,38 @@ import (
 	"errors"
 
 	"github.com/spy16/slurp/core"
+	ww "github.com/wetware/ww/pkg"
 	capnp "zombiezen.com/go/capnproto2"
 )
+
+// IfExpr represents the if-then-else form.
+type IfExpr struct{ Test, Then, Else core.Expr }
+
+// Eval evaluates the then or else expr based on truthiness of the test
+// expr result.
+func (ife IfExpr) Eval(env core.Env) (core.Any, error) {
+	target := ife.Else
+	if ife.Test != nil {
+		test, err := ife.Test.Eval(env)
+		if err != nil {
+			return nil, err
+		}
+
+		ok, err := IsTruthy(test.(ww.Any))
+		if err != nil {
+			return nil, err
+		}
+
+		if ok {
+			target = ife.Then
+		}
+	}
+
+	if target == nil {
+		return Nil{}, nil
+	}
+	return target.Eval(env)
+}
 
 // ResolveExpr resolves a symbol from the given environment.
 type ResolveExpr struct{ Symbol Symbol }
