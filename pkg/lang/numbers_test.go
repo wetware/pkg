@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/spy16/parens"
+	"github.com/spy16/slurp/core"
 	"github.com/stretchr/testify/assert"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/lang"
@@ -539,12 +539,12 @@ func compDesc(tt struct {
 		sym = ">"
 	}
 
-	aname, err := tt.a.(parens.SExpressable).SExpr()
+	aname, err := tt.a.(core.SExpressable).SExpr()
 	if err != nil {
 		panic(err)
 	}
 
-	bname, err := tt.b.(parens.SExpressable).SExpr()
+	bname, err := tt.b.(core.SExpressable).SExpr()
 	if err != nil {
 		panic(err)
 	}

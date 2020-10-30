@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/spy16/parens"
+	"github.com/spy16/slurp/core"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	ww "github.com/wetware/ww/pkg"
@@ -16,7 +16,7 @@ func TestSExpr(t *testing.T) {
 	t.Parallel()
 
 	for _, tt := range []struct {
-		val  parens.Any
+		val  core.Any
 		want string
 	}{{
 		val:  lang.Nil{},
@@ -65,7 +65,7 @@ func TestSExpr(t *testing.T) {
 		want: `("hello" "world")`,
 	}} {
 		t.Run(reflect.TypeOf(tt.val).String(), func(t *testing.T) {
-			sexpr, err := tt.val.(parens.SExpressable).SExpr()
+			sexpr, err := tt.val.(core.SExpressable).SExpr()
 			require.NoError(t, err)
 
 			assert.Equal(t, tt.want, sexpr)
@@ -124,7 +124,7 @@ func TestConj(t *testing.T) {
 	}
 }
 
-func mustSExpr(v parens.Any) string {
+func mustSExpr(v core.Any) string {
 	sexpr, err := v.(lang.SymbolProvider).SExpr()
 	if err != nil {
 		panic(err)

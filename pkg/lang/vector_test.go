@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/spy16/parens"
+	"github.com/spy16/slurp/core"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	ww "github.com/wetware/ww/pkg"
@@ -142,7 +142,7 @@ func TestAssoc(t *testing.T) {
 		for _, tt := range []struct {
 			desc, want string
 			vec        lang.Vector
-			add        parens.Any
+			add        core.Any
 		}{{
 			desc: "empty",
 			vec:  mustVector(),
@@ -181,7 +181,7 @@ func TestAssoc(t *testing.T) {
 		for _, tt := range []struct {
 			want string
 			vec  lang.Vector
-			add  parens.Any
+			add  core.Any
 			idx  int
 		}{{
 			vec: mustVector(

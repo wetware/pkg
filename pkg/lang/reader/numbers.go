@@ -9,13 +9,13 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/spy16/parens"
-	"github.com/spy16/parens/reader"
+	"github.com/spy16/slurp/core"
+	"github.com/spy16/slurp/reader"
 	"github.com/wetware/ww/pkg/lang"
 	capnp "zombiezen.com/go/capnproto2"
 )
 
-func readNumber(rd *reader.Reader, init rune) (v parens.Any, err error) {
+func readNumber(rd *reader.Reader, init rune) (v core.Any, err error) {
 	beginPos := rd.Position()
 
 	numStr, err := readNumToken(rd, init)
@@ -56,7 +56,7 @@ func readNumber(rd *reader.Reader, init rune) (v parens.Any, err error) {
 	return
 }
 
-func parseInt(numStr string) (parens.Any, error) {
+func parseInt(numStr string) (core.Any, error) {
 	v, err := strconv.ParseInt(numStr, 0, 64)
 	switch {
 	case err == nil:
@@ -77,7 +77,7 @@ func parseInt(numStr string) (parens.Any, error) {
 	}
 }
 
-func parseFloat(numStr string) (parens.Any, error) {
+func parseFloat(numStr string) (core.Any, error) {
 	v, err := strconv.ParseFloat(numStr, 64)
 	switch {
 	case err == nil:
@@ -99,15 +99,15 @@ func parseFloat(numStr string) (parens.Any, error) {
 	}
 }
 
-func parseRadix(numStr string) (parens.Int64, error) {
+func parseRadix(numStr string) (lang.Int64, error) {
 	parts := strings.Split(numStr, "r")
 	if len(parts) != 2 {
-		return 0, fmt.Errorf("%w (radix notation): '%s'", reader.ErrNumberFormat, numStr)
+		return lang.Int64{}, fmt.Errorf("%w (radix notation): '%s'", reader.ErrNumberFormat, numStr)
 	}
 
 	base, err := strconv.ParseInt(parts[0], 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("%w (radix notation): '%s'", reader.ErrNumberFormat, numStr)
+		return lang.Int64{}, fmt.Errorf("%w (radix notation): '%s'", reader.ErrNumberFormat, numStr)
 	}
 
 	repr := parts[1]
@@ -118,13 +118,13 @@ func parseRadix(numStr string) (parens.Int64, error) {
 
 	v, err := strconv.ParseInt(repr, int(base), 64)
 	if err != nil {
-		return 0, fmt.Errorf("%w (radix notation): '%s'", reader.ErrNumberFormat, numStr)
+		return lang.Int64{}, fmt.Errorf("%w (radix notation): '%s'", reader.ErrNumberFormat, numStr)
 	}
 
-	return parens.Int64(v), nil
+	return lang.NewInt64(capnp.SingleSegment(nil), v)
 }
 
-func parseScientific(numStr string) (parens.Any, error) {
+func parseScientific(numStr string) (core.Any, error) {
 	parts := strings.Split(numStr, "e")
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("%w (scientific notation): '%s'", reader.ErrNumberFormat, numStr)
@@ -154,7 +154,7 @@ func parseScientific(numStr string) (parens.Any, error) {
 	return lang.NewFloat64(capnp.SingleSegment(nil), f)
 }
 
-func parseFrac(numStr string) (parens.Any, error) { // TODO:  return lang.Frac
+func parseFrac(numStr string) (core.Any, error) { // TODO:  return lang.Frac
 	parts := strings.Split(numStr, "/")
 	if len(parts) != 2 || parts[1] == "" {
 		return nil, fmt.Errorf("%w (fractional notation): '%s'", reader.ErrNumberFormat, numStr)

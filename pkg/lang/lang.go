@@ -7,7 +7,8 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
-	"github.com/spy16/parens"
+	"github.com/spy16/slurp"
+	"github.com/spy16/slurp/core"
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/lang/proc"
@@ -16,7 +17,7 @@ import (
 )
 
 var (
-	globals = map[string]parens.Any{
+	globals = map[string]core.Any{
 		"nil":   Nil{},
 		"true":  True,
 		"false": False,
@@ -27,15 +28,15 @@ var (
 // compared to each other.
 var ErrIncomparableTypes = errors.New("incomparable types")
 
-// New returns a new root environment.
-func New(a ww.Anchor) *parens.Env {
+// New returns a new root interpreter.
+func New(a ww.Anchor) *slurp.Interpreter {
 	if a == nil {
 		panic("nil Anchor")
 	}
 
-	return parens.New(
-		parens.WithAnalyzer(analyzer(a)),
-		parens.WithGlobals(globals, nil))
+	return slurp.New(
+		slurp.WithAnalyzer(analyzer(a)),
+		slurp.WithEnv(core.New(globals)))
 }
 
 // AsAny lifts a mem.Value to a ww.Any.
@@ -159,7 +160,7 @@ func Pop(col ww.Any) (ww.Any, error) {
 		return vec, err
 
 	default:
-		return nil, parens.Error{
+		return nil, core.Error{
 			Cause:   errors.New("unordered collection or atom"),
 			Message: col.MemVal().Type().String(),
 		}
@@ -170,10 +171,10 @@ func Pop(col ww.Any) (ww.Any, error) {
 // Conj returns a new collection with the xs
 // 'added'. (conj nil item) returns (item).  The 'addition' may
 // happen at different 'places' depending on the concrete type.
-func Conj(col ww.Any, vs parens.Seq) (parens.Any, error) {
+func Conj(col ww.Any, vs core.Seq) (core.Any, error) {
 	switch v := col.(type) {
 	case List:
-		err := parens.ForEach(vs, func(item parens.Any) (_ bool, err error) {
+		err := core.ForEach(vs, func(item core.Any) (_ bool, err error) {
 			v, err = v.Cons(item)
 			return
 		})
@@ -181,14 +182,14 @@ func Conj(col ww.Any, vs parens.Seq) (parens.Any, error) {
 
 	case Vector:
 		// TODO(performance): implement `v.Transient()`, returning *VectorBuilder.
-		err := parens.ForEach(vs, func(item parens.Any) (_ bool, err error) {
+		err := core.ForEach(vs, func(item core.Any) (_ bool, err error) {
 			v, err = v.Conj(item.(ww.Any))
 			return
 		})
 		return v, err
 
 	default:
-		return nil, parens.Error{
+		return nil, core.Error{
 			Cause:   errors.New("unordered collection or atom"),
 			Message: col.MemVal().Type().String(),
 		}
@@ -262,8 +263,17 @@ func IsTruthy(any ww.Any) (bool, error) {
 			return b.Bool()
 		}
 
-		return false, parens.Error{
+		return false, core.Error{
 			Cause: errors.Errorf("non-boolean type %s", reflect.TypeOf(any)),
 		}
 	}
+}
+
+// IsNil returns true if value is native go `nil` or `Nil{}`.
+func IsNil(v core.Any) bool {
+	if v == nil {
+		return true
+	}
+	_, isNilType := v.(Nil)
+	return isNilType
 }

@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/spy16/parens"
+	"github.com/spy16/slurp/core"
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/mem"
@@ -16,8 +16,8 @@ var (
 	// EmptyList is a zero-value List
 	EmptyList list
 
-	_ ww.Any     = (*list)(nil)
-	_ parens.Seq = (*list)(nil)
+	_ ww.Any   = (*list)(nil)
+	_ core.Seq = (*list)(nil)
 )
 
 func init() {
@@ -38,10 +38,10 @@ func init() {
 // List is a persistent, singly-linked list with fast insertions/pops to its head.
 type List interface {
 	ww.Any
-	parens.Seq
+	core.Seq
 	SymbolProvider
 	Count() (int, error)
-	Cons(any parens.Any) (List, error)
+	Cons(any core.Any) (List, error)
 }
 
 type list struct{ mem.Value }
@@ -75,14 +75,14 @@ func (l list) Count() (int, error) {
 
 // Render the list into human-readable form
 func (l list) Render() (string, error) {
-	return l.render(func(any parens.Any) (string, error) {
+	return l.render(func(any core.Any) (string, error) {
 		return Render(any.(ww.Any))
 	})
 }
 
 // SExpr returns a valid s-expression for List
 func (l list) SExpr() (string, error) {
-	return l.render(func(any parens.Any) (string, error) {
+	return l.render(func(any core.Any) (string, error) {
 		if r, ok := any.(SymbolProvider); ok {
 			return r.SExpr()
 		}
@@ -91,7 +91,7 @@ func (l list) SExpr() (string, error) {
 	})
 }
 
-func (l list) render(f func(parens.Any) (string, error)) (string, error) {
+func (l list) render(f func(core.Any) (string, error)) (string, error) {
 	cnt, err := l.Count()
 	if err != nil {
 		return "", err
@@ -104,7 +104,7 @@ func (l list) render(f func(parens.Any) (string, error)) (string, error) {
 	var b strings.Builder
 	b.WriteRune('(')
 
-	seq := parens.Seq(l)
+	seq := core.Seq(l)
 	for i := 0; i < cnt; i++ {
 		if i > 0 {
 			b.WriteRune(' ')
@@ -132,7 +132,7 @@ func (l list) render(f func(parens.Any) (string, error)) (string, error) {
 }
 
 // Conj returns a new list with all the items added at the head of the list.
-func (l list) Conj(items ...parens.Any) (parens.Seq, error) {
+func (l list) Conj(items ...core.Any) (core.Seq, error) {
 	null, err := l.isNull()
 	if err != nil {
 		return nil, err
@@ -155,12 +155,12 @@ func (l list) Conj(items ...parens.Any) (parens.Seq, error) {
 }
 
 // Cons returns a new list with the item added at the head of the list.
-func (l list) Cons(any parens.Any) (List, error) {
+func (l list) Cons(any core.Any) (List, error) {
 	return listCons(capnp.SingleSegment(nil), any.(ww.Any).MemVal(), l)
 }
 
 // First returns the head or first item of the list.
-func (l list) First() (v parens.Any, err error) {
+func (l list) First() (v core.Any, err error) {
 	var null bool
 	if null, err = l.isNull(); err == nil && !null {
 		_, v, err = l.head()
@@ -170,7 +170,7 @@ func (l list) First() (v parens.Any, err error) {
 }
 
 // Next returns the tail of the list.
-func (l list) Next() (parens.Seq, error) {
+func (l list) Next() (core.Seq, error) {
 	_, next, err := listNext(l.Raw)
 	return next, err
 }
@@ -183,7 +183,7 @@ func (l list) count() (ll api.LinkedList, cnt int, err error) {
 	return
 }
 
-func (l list) head() (ll api.LinkedList, v parens.Any, err error) {
+func (l list) head() (ll api.LinkedList, v core.Any, err error) {
 	if ll, err = l.Raw.List(); err != nil {
 		return
 	}
@@ -210,9 +210,9 @@ func listTail(v mem.Value) (ll api.LinkedList, tail list, err error) {
 	return
 }
 
-// func listToSlice(l List, sizeHint int) ([]parens.Any, error) {
-// 	slice := make([]parens.Any, 0, sizeHint)
-// 	err := parens.ForEach(l, func(item parens.Any) (bool, error) {
+// func listToSlice(l List, sizeHint int) ([]core.Any, error) {
+// 	slice := make([]core.Any, 0, sizeHint)
+// 	err := core.ForEach(l, func(item core.Any) (bool, error) {
 // 		slice = append(slice, item)
 // 		return false, nil
 // 	})
@@ -257,7 +257,7 @@ func listIsNull(v api.Value) (l api.LinkedList, null bool, err error) {
 	return
 }
 
-func listNext(v api.Value) (api.LinkedList, parens.Seq, error) {
+func listNext(v api.Value) (api.LinkedList, core.Seq, error) {
 	ll, null, err := listIsNull(v)
 	if err != nil || null {
 		return ll, nil, err

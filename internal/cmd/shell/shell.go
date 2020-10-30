@@ -12,7 +12,7 @@ import (
 
 	"github.com/chzyer/readline"
 	"github.com/pkg/errors"
-	"github.com/spy16/parens/repl"
+	"github.com/spy16/slurp/repl"
 	"github.com/urfave/cli/v2"
 
 	ww "github.com/wetware/ww/pkg"

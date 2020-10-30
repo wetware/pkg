@@ -1,149 +1,170 @@
 package lang
 
 import (
-	"context"
+	"errors"
 
-	"github.com/spy16/parens"
-	ww "github.com/wetware/ww/pkg"
-	"github.com/wetware/ww/pkg/lang/proc"
-	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
-	capnp "zombiezen.com/go/capnproto2"
+	"github.com/spy16/slurp/core"
 )
 
-var (
-	_ parens.Expr = (*PathExpr)(nil)
-	_ parens.Expr = (*PathListExpr)(nil)
+// ResolveExpr resolves a symbol from the given environment.
+type ResolveExpr struct{ Symbol Symbol }
 
-	_ parens.Invokable = (*PathExpr)(nil)
-)
+// Eval resolves the symbol in the given environment or its parent env
+// and returns the result. Returns ErrNotFound if the symbol was not
+// found in the entire hierarchy.
+func (re ResolveExpr) Eval(env core.Env) (v core.Any, err error) {
+	var sym string
+	if sym, err = re.Symbol.Raw.Symbol(); err != nil {
+		return
+	}
 
-// IfExpr represents the if-then-else form.
-type IfExpr struct{ Test, Then, Else parens.Expr }
-
-// Eval the expression
-func (ife IfExpr) Eval() (parens.Any, error) {
-	var target = ife.Else
-	if ife.Test != nil {
-		test, err := ife.Test.Eval()
-		if err != nil {
-			return nil, err
+	for env != nil {
+		if v, err = env.Resolve(sym); errors.Is(err, core.ErrNotFound) {
+			// not found in the current frame. check parent.
+			env = env.Parent()
+			continue
 		}
 
-		ok, err := IsTruthy(test.(ww.Any))
-		if err != nil {
-			return nil, err
-		}
-
-		if ok {
-			target = ife.Then
-		}
+		// found the symbol or there was some unexpected error.
+		break
 	}
 
-	if target == nil {
-		return Nil{}, nil
-	}
-
-	return target.Eval()
+	return
 }
 
-// PathExpr binds a path to an Anchor
-type PathExpr struct {
-	Root ww.Anchor
-	Path
-}
+// var (
+// 	_ core.Expr = (*PathExpr)(nil)
+// 	_ core.Expr = (*PathListExpr)(nil)
 
-// Eval returns the PathExpr unmodified
-func (pex PathExpr) Eval() (parens.Any, error) { return pex, nil }
+// 	_ core.Invokable = (*PathExpr)(nil)
+// )
 
-// Invoke is the data selector for the Path type.  It gets/sets the value at the anchor
-// path.
-func (pex PathExpr) Invoke(_ *parens.Env, args ...parens.Any) (parens.Any, error) {
-	path, err := pex.Parts()
-	if err != nil {
-		return nil, err
-	}
+// // IfExpr represents the if-then-else form.
+// type IfExpr struct{ Test, Then, Else core.Expr }
 
-	anchor := pex.Root.Walk(context.Background(), path)
+// // Eval the expression
+// func (ife IfExpr) Eval(env core.Env) (core.Any, error) {
+// 	var target = ife.Else
+// 	if ife.Test != nil {
+// 		test, err := ife.Test.Eval(env)
+// 		if err != nil {
+// 			return nil, err
+// 		}
 
-	if len(args) == 0 {
-		return anchor.Load(context.Background())
-	}
+// 		ok, err := IsTruthy(test.(ww.Any))
+// 		if err != nil {
+// 			return nil, err
+// 		}
 
-	err = anchor.Store(context.Background(), args[0].(ww.Any))
-	if err != nil {
-		return nil, parens.Error{
-			Cause:   err,
-			Message: anchorpath.Join(path),
-		}
-	}
+// 		if ok {
+// 			target = ife.Then
+// 		}
+// 	}
 
-	return nil, nil
-}
+// 	if target == nil {
+// 		return Nil{}, nil
+// 	}
 
-// PathListExpr fetches subanchors for a path
-type PathListExpr struct {
-	PathExpr
-	Args []ww.Any
-}
+// 	return target.Eval(env)
+// }
 
-// Eval calls ww.Anchor.Ls
-func (plx PathListExpr) Eval() (parens.Any, error) {
-	path, err := plx.Parts()
-	if err != nil {
-		return nil, err
-	}
+// // PathExpr binds a path to an Anchor
+// type PathExpr struct {
+// 	Root ww.Anchor
+// 	Path
+// }
 
-	as, err := plx.Root.Walk(context.Background(), path).Ls(context.Background())
-	if err != nil {
-		return nil, err
-	}
+// // Eval returns the PathExpr unmodified
+// func (pex PathExpr) Eval(core.Env) (core.Any, error) { return pex, nil }
 
-	b, err := NewVectorBuilder(capnp.SingleSegment(nil))
-	if err != nil {
-		return nil, err
-	}
+// // Invoke is the data selector for the Path type.  It gets/sets the value at the anchor
+// // path.
+// func (pex PathExpr) Invoke(args ...core.Any) (core.Any, error) {
+// 	path, err := pex.Parts()
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	for _, a := range as {
-		// TODO(performance):  cache the anchors.
-		p, err := NewPath(capnp.SingleSegment(nil), anchorpath.Join(a.Path()))
-		if err != nil {
-			return nil, err
-		}
+// 	anchor := pex.Root.Walk(context.Background(), path)
 
-		if err = b.Conj(p); err != nil {
-			return nil, err
-		}
-	}
+// 	if len(args) == 0 {
+// 		return anchor.Load(context.Background())
+// 	}
 
-	return b.Vector()
-}
+// 	err = anchor.Store(context.Background(), args[0].(ww.Any))
+// 	if err != nil {
+// 		return nil, core.Error{
+// 			Cause:   err,
+// 			Message: anchorpath.Join(path),
+// 		}
+// 	}
 
-// LocalGoExpr starts a local process.  Local processes cannot be addressed by remote
-// hosts.
-type LocalGoExpr struct {
-	Env  *parens.Env
-	Args []ww.Any
-}
+// 	return nil, nil
+// }
 
-// Eval resolves starts the process.
-func (lx LocalGoExpr) Eval() (parens.Any, error) {
-	return proc.Spawn(lx.Env.Fork(), lx.Args...)
-}
+// // PathListExpr fetches subanchors for a path
+// type PathListExpr struct {
+// 	PathExpr
+// 	Args []ww.Any
+// }
 
-// GlobalGoExpr starts a global process.  Global processes may be bound to an Anchor,
-// rendering them addressable by remote hosts.
-type GlobalGoExpr struct {
-	Root ww.Anchor
-	Path Path
-	Args []ww.Any
-}
+// // Eval calls ww.Anchor.Ls
+// func (plx PathListExpr) Eval(core.Env) (core.Any, error) {
+// 	path, err := plx.Parts()
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-// Eval resolves the anchor and starts the process.
-func (gx GlobalGoExpr) Eval() (parens.Any, error) {
-	path, err := gx.Path.Parts()
-	if err != nil {
-		return nil, err
-	}
+// 	as, err := plx.Root.Walk(context.Background(), path).Ls(context.Background())
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	return gx.Root.Walk(context.Background(), path).Go(context.Background(), gx.Args...)
-}
+// 	b, err := NewVectorBuilder(capnp.SingleSegment(nil))
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	for _, a := range as {
+// 		// TODO(performance):  cache the anchors.
+// 		p, err := NewPath(capnp.SingleSegment(nil), anchorpath.Join(a.Path()))
+// 		if err != nil {
+// 			return nil, err
+// 		}
+
+// 		if err = b.Conj(p); err != nil {
+// 			return nil, err
+// 		}
+// 	}
+
+// 	return b.Vector()
+// }
+
+// // LocalGoExpr starts a local process.  Local processes cannot be addressed by remote
+// // hosts.
+// type LocalGoExpr struct {
+// 	Args []ww.Any
+// }
+
+// // Eval resolves starts the process.
+// func (lx LocalGoExpr) Eval(env core.Env) (core.Any, error) {
+// 	return proc.Spawn(env.Fork(), lx.Args...)
+// }
+
+// // GlobalGoExpr starts a global process.  Global processes may be bound to an Anchor,
+// // rendering them addressable by remote hosts.
+// type GlobalGoExpr struct {
+// 	Root ww.Anchor
+// 	Path Path
+// 	Args []ww.Any
+// }
+
+// // Eval resolves the anchor and starts the process.
+// func (gx GlobalGoExpr) Eval(core.Env) (core.Any, error) {
+// 	path, err := gx.Path.Parts()
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	return gx.Root.Walk(context.Background(), path).Go(context.Background(), gx.Args...)
+// }

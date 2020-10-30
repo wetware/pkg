@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/spy16/parens"
+	"github.com/spy16/slurp/core"
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/mem"
@@ -63,8 +63,8 @@ type Vector interface {
 	SymbolProvider
 	Count() (int, error)
 	Conj(ww.Any) (Vector, error)
-	EntryAt(i int) (parens.Any, error)
-	Assoc(i int, val parens.Any) (Vector, error)
+	EntryAt(i int) (core.Any, error)
+	Assoc(i int, val core.Any) (Vector, error)
 	Pop() (Vector, error)
 }
 
@@ -92,14 +92,14 @@ func NewVector(a capnp.Arena, vs ...ww.Any) (_ Vector, err error) {
 
 // Render the vector in a human-readable format.
 func (v vector) Render() (string, error) {
-	return v.render(func(any parens.Any) (string, error) {
+	return v.render(func(any core.Any) (string, error) {
 		return Render(any.(ww.Any))
 	})
 }
 
 // SExpr returns a valid s-expression for vector
 func (v vector) SExpr() (string, error) {
-	return v.render(func(any parens.Any) (string, error) {
+	return v.render(func(any core.Any) (string, error) {
 		if r, ok := any.(SymbolProvider); ok {
 			return r.SExpr()
 		}
@@ -108,7 +108,7 @@ func (v vector) SExpr() (string, error) {
 	})
 }
 
-func (v vector) render(f func(parens.Any) (string, error)) (string, error) {
+func (v vector) render(f func(core.Any) (string, error)) (string, error) {
 	cnt, err := v.Count()
 	if err != nil {
 		return "", err
@@ -171,7 +171,7 @@ func (v vector) Conj(item ww.Any) (Vector, error) {
 
 // EntryAt returns the item at given index. Returns error if the index
 // is out of range.
-func (v vector) EntryAt(i int) (parens.Any, error) {
+func (v vector) EntryAt(i int) (core.Any, error) {
 	vs, err := vectorArrayFor(v.Value, i)
 	if err != nil {
 		return nil, err
@@ -182,7 +182,7 @@ func (v vector) EntryAt(i int) (parens.Any, error) {
 
 // Assoc returns a new vector with the value at given index updated.
 // Returns error if the index is out of range.
-func (v vector) Assoc(i int, val parens.Any) (Vector, error) {
+func (v vector) Assoc(i int, val core.Any) (Vector, error) {
 	// https://github.com/clojure/clojure/blob/0b73494c3c855e54b1da591eeb687f24f608f346/src/jvm/clojure/lang/PersistentVector.java#L121
 
 	vec, cnt, err := v.count()
@@ -277,7 +277,7 @@ func vectorArrayFor(v mem.Value, i int) (api.Value_List, error) {
 	var bs api.Vector_Node_List
 	for level := vec.Shift(); level > 0; level -= bits {
 		if !n.HasBranches() {
-			return api.Value_List{}, parens.Error{
+			return api.Value_List{}, core.Error{
 				Cause:   ErrInvalidVectorNode,
 				Message: "non-leaf node must branch",
 			}
@@ -291,7 +291,7 @@ func vectorArrayFor(v mem.Value, i int) (api.Value_List, error) {
 	}
 
 	if !n.HasValues() {
-		return api.Value_List{}, parens.Error{
+		return api.Value_List{}, core.Error{
 			Cause:   ErrInvalidVectorNode,
 			Message: "leaf node must contain values",
 		}
@@ -597,7 +597,7 @@ func (b *VectorBuilder) Vector() (vec Vector, err error) {
 }
 
 // Conj appends the values to the vector under construction.
-func (b *VectorBuilder) Conj(v parens.Any) (err error) {
+func (b *VectorBuilder) Conj(v core.Any) (err error) {
 	// room in tail?
 	if len(b.tail) < width {
 		b.tail = append(b.tail, v.(ww.Any))
@@ -827,7 +827,7 @@ func setNodeValue(n api.Vector_Node, i int, any ww.Any) error {
 	return vs.Set(i&mask, any.MemVal().Raw)
 }
 
-// func setValueListAt(vs api.Value_List, i int, v parens.Any) error {
+// func setValueListAt(vs api.Value_List, i int, v core.Any) error {
 // 	return
 // }
 
@@ -972,7 +972,7 @@ func copyVectorTail(dst, src api.Value_List, lim int) (err error) {
 // 	return nil
 // }
 
-// func (s vectorSeq) First() parens.Any {
+// func (s vectorSeq) First() core.Any {
 // 	val, err := ValueOf(s.vs.At(s.offset))
 // 	if err != nil {
 // 		panic(err)
@@ -989,6 +989,6 @@ func copyVectorTail(dst, src api.Value_List, lim int) (err error) {
 // 	return s.ChunkedNext()
 // }
 
-// func (s vectorSeq) Conj(vs ...parens.Any) runtime.Seq {
+// func (s vectorSeq) Conj(vs ...core.Any) runtime.Seq {
 // 	panic("core.vectorSeq.Conj() NOT IMPLEMENTED")
 // }

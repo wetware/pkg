@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/pkg/errors"
-	"github.com/spy16/parens"
+	"github.com/spy16/slurp/core"
 	"go.uber.org/fx"
 
 	capnp "zombiezen.com/go/capnproto2"
@@ -20,7 +20,6 @@ import (
 	"github.com/wetware/ww/pkg/internal/rpc/anchor"
 	"github.com/wetware/ww/pkg/internal/tree"
 	"github.com/wetware/ww/pkg/lang"
-	"github.com/wetware/ww/pkg/lang/proc"
 	"github.com/wetware/ww/pkg/mem"
 	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
 )
@@ -63,7 +62,7 @@ func newAnchor(ps anchorParams) (out anchorOut) {
 
 type rootAnchor struct {
 	log ww.Logger
-	env *parens.Env
+	// env *parens.Env
 	peerProvider
 
 	localPath string
@@ -80,7 +79,7 @@ func newRootAnchor(log ww.Logger, ps peerProvider, h host.Host) *rootAnchor {
 		term:         rpc.NewTerminal(h),
 	}
 
-	root.env = lang.New(root)
+	// root.env = lang.New(root)
 	return root
 }
 
@@ -105,8 +104,8 @@ func (root rootAnchor) Walk(ctx context.Context, path []string) ww.Anchor {
 
 	if root.isLocal(path) {
 		return localAnchor{
-			log:  root.log.WithField("path", anchorpath.Join(path)),
-			env:  root.env,
+			log: root.log.WithField("path", anchorpath.Join(path)),
+			// env:  root.env,
 			root: path[0],
 			node: root.node.Walk(path[1:]),
 		}
@@ -136,7 +135,7 @@ type localAnchor struct {
 	log  ww.Logger
 	root string
 	node tree.Node
-	env  *parens.Env
+	env  core.Env
 }
 
 func (a localAnchor) String() string {
@@ -183,16 +182,17 @@ func (a localAnchor) Store(_ context.Context, any ww.Any) error {
 }
 
 func (a localAnchor) Go(_ context.Context, args ...ww.Any) (p ww.Any, err error) {
-	a.node.Txn(func(t tree.Transaction) {
-		if err = ww.ErrAnchorNotEmpty; t.Load().Nil() {
-			if p, err = proc.Spawn(a.env.Fork(), args...); err == nil {
-				_ = t.Store(p.MemVal())
-				a.log.WithField("args", args).Info("process started")
-			}
-		}
-	})
-
-	return
+	return nil, errors.New("Host Interpreter NOT IMPLEMENTED (pkg/host/anchor.go")
+	// a.node.Txn(func(t tree.Transaction) {
+	// 	if err = ww.ErrAnchorNotEmpty; t.Load().Nil() {
+	// 		if p, err = proc.Spawn(a.env.Fork(), args...); err == nil {
+	// 			_ = t.Store(p.MemVal())
+	// 			a.log.WithField("args", args).Info("process started")
+	// 		}
+	// 	}
+	// })
+	//
+	// return
 }
 
 type rootAnchorCap struct{ root *rootAnchor }

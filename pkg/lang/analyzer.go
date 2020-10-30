@@ -1,85 +1,84 @@
 package lang
 
 import (
+	"errors"
 	"fmt"
 
-	"github.com/spy16/parens"
+	"github.com/spy16/slurp/builtin"
+	"github.com/spy16/slurp/core"
 	ww "github.com/wetware/ww/pkg"
 )
 
 var (
-	_ parens.Analyzer = formAnalyzer{}
+	_ core.Analyzer = formAnalyzer{}
 )
 
 type formAnalyzer struct {
 	root         ww.Anchor
-	specialForms map[string]parens.ParseSpecial
+	specialForms map[string]builtin.ParseSpecial
 }
 
 func analyzer(root ww.Anchor) formAnalyzer {
-	c := anchorClient{root}
+	// c := anchorClient{root}
 
 	return formAnalyzer{
-		root: root,
-		specialForms: map[string]parens.ParseSpecial{
-			"go":    c.Go,
-			"do":    parseDoExpr,
-			"if":    parseIfExpr,
-			"def":   parseDefExpr,
-			"quote": parseQuoteExpr,
-			"ls":    c.Ls,
-			"pop":   parsePop,
-			"conj":  parseConj,
+		root:         root,
+		specialForms: map[string]builtin.ParseSpecial{
+			// "go":    c.Go,
+			// "do":    parseDoExpr,
+			// "if":    parseIfExpr,
+			// "def":   parseDefExpr,
+			// "quote": parseQuoteExpr,
+			// "ls":    c.Ls,
+			// "pop":   parsePop,
+			// "conj":  parseConj,
 		},
 	}
 }
 
 // Analyze performs syntactic analysis of given form and returns an Expr
 // that can be evaluated for result against an Env.
-func (a formAnalyzer) Analyze(env *parens.Env, form parens.Any) (parens.Expr, error) {
-	switch f := form.(type) {
-	case nil, Nil:
-		return parens.ConstExpr{Const: Nil{}}, nil
+func (a formAnalyzer) Analyze(env core.Env, form core.Any) (core.Expr, error) {
+	if IsNil(form) {
+		return builtin.ConstExpr{Const: Nil{}}, nil
+	}
 
-	case Path:
-		return PathExpr{
-			Root: a.root,
-			Path: f,
-		}, nil
-
-	case Symbol:
-		sym, err := f.SExpr()
-		if err != nil {
+	exp, err := macroExpand(a, env, form)
+	if err != nil {
+		if !errors.Is(err, builtin.ErrNoExpand) {
 			return nil, err
 		}
 
-		if v := env.Resolve(sym); v == nil {
-			// If the symbol maps to a special form, continue.
-			// It will be treated as a ConstExpr.
-			if _, ok := a.specialForms[sym]; !ok {
-				return nil, parens.Error{
-					Cause:   parens.ErrNotFound,
-					Message: sym,
-				}
-			}
-		}
+		exp = form // no expansion; use raw form
+	}
 
-	case parens.Seq:
-		cnt, err := f.Count()
+	switch expr := exp.(type) {
+	case Path:
+		panic("PathExpr{} NOT IMPLEMENTED")
+		// return PathExpr{
+		// 	Root: a.root,
+		// 	Path: expr,
+		// }, nil
+
+	case Symbol:
+		return ResolveExpr{Symbol: expr}, nil
+
+	case core.Seq:
+		cnt, err := expr.Count()
 		if err != nil {
 			return nil, err
 		} else if cnt == 0 {
 			break
 		}
 
-		return a.analyzeSeq(env, f)
+		return a.analyzeSeq(env, expr)
 	}
 
-	return parens.ConstExpr{Const: form}, nil
+	return builtin.ConstExpr{Const: form}, nil
 }
 
-func (a formAnalyzer) analyzeSeq(env *parens.Env, seq parens.Seq) (parens.Expr, error) {
-	//	Analyze the call target.  This is the first item in the sequence.
+func (a formAnalyzer) analyzeSeq(env core.Env, seq core.Seq) (core.Expr, error) {
+	// Analyze the call target.  This is the first item in the sequence.
 	first, err := seq.First()
 	if err != nil {
 		return nil, err
@@ -100,24 +99,62 @@ func (a formAnalyzer) analyzeSeq(env *parens.Env, seq parens.Seq) (parens.Expr, 
 				return nil, err
 			}
 
-			return parse(env, next)
+			return parse(a, env, next)
 		}
 	}
 
 	// Call target is not a special form and must be a Invokable.  Analyze
 	// the arguments and create an InvokeExpr.
-	ie := parens.InvokeExpr{Name: fmt.Sprintf("%s", first)}
-	err = parens.ForEach(seq, func(item parens.Any) (done bool, err error) {
+	ie := builtin.InvokeExpr{Name: fmt.Sprintf("%s", first)}
+	err = core.ForEach(seq, func(item core.Any) (done bool, err error) {
 		if ie.Target == nil {
 			ie.Target, err = a.Analyze(env, first)
 			return
 		}
 
-		var arg parens.Expr
+		var arg core.Expr
 		if arg, err = a.Analyze(env, item); err == nil {
 			ie.Args = append(ie.Args, arg)
 		}
 		return
 	})
 	return ie, err
+}
+
+func macroExpand(a core.Analyzer, env core.Env, form core.Any) (core.Any, error) {
+	lst, ok := form.(core.Seq)
+	if !ok {
+		return nil, builtin.ErrNoExpand
+	}
+
+	first, err := lst.First()
+	if err != nil {
+		return nil, err
+	}
+
+	var target core.Any
+	sym, ok := first.(Symbol)
+	if ok {
+		v, err := ResolveExpr{Symbol: sym}.Eval(env)
+		if err != nil {
+			return nil, builtin.ErrNoExpand
+		}
+		target = v
+	}
+
+	fn, ok := target.(builtin.Fn) // TODO(XXX):  how can builtin.Fn be capnp compatible?
+	if !ok || !fn.Macro {
+		return nil, builtin.ErrNoExpand
+	}
+
+	sl, err := core.ToSlice(lst)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := fn.Invoke(sl[1:]...)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
 }

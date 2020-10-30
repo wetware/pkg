@@ -6,6 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spy16/parens"
+	"github.com/spy16/slurp/core"
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/mem"
@@ -90,7 +91,7 @@ type processRegistry map[string]ProcessFactory
 func (r processRegistry) Spawn(env *parens.Env, procType string, args []ww.Any) (Proc, error) {
 	f, ok := r[procType]
 	if !ok {
-		return nil, parens.Error{
+		return nil, core.Error{
 			Cause:   errors.New("no factory registered for process type"),
 			Message: procType,
 		}
