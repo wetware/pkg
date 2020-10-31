@@ -45,6 +45,14 @@ func WithStrategy(d boot.Strategy) Option {
 	}
 }
 
+func withCardinality(k, highwater int) Option {
+	return func(c *Config) (err error) {
+		c.kmin = k
+		c.kmax = highwater
+		return
+	}
+}
+
 func withDataStore(d datastore.Batching) Option {
 	if d == nil {
 		d = sync.MutexWrap(datastore.NewMapDatastore())
@@ -61,6 +69,7 @@ func withDefault(opt []Option) []Option {
 		WithLogger(nil),
 		WithNamespace("ww"),
 		WithStrategy(nil),
+		withCardinality(3, 64),
 		withDataStore(nil),
 	}, opt...)
 }

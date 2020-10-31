@@ -23,9 +23,7 @@ type Filter interface {
 }
 
 // New filter
-func New() Filter {
-	return &filter{}
-}
+func New() Filter { return &filter{} }
 
 // TODO(performance): replace lock-based CAS with a proper sync/atomic CAS loop.
 // See `atomic.Value` for implementation hints (especially wrt unsafe.Pointer magic).

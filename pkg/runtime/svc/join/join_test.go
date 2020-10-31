@@ -1,4 +1,4 @@
-package service_test
+package joiner_test
 
 import (
 	"context"
@@ -15,15 +15,38 @@ import (
 
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/internal/p2p"
-	"github.com/wetware/ww/pkg/runtime/service"
+	boot_service "github.com/wetware/ww/pkg/runtime/svc/boot"
+	join_service "github.com/wetware/ww/pkg/runtime/svc/join"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	mock_ww "github.com/wetware/ww/internal/test/mock/pkg"
 	mock_vendor "github.com/wetware/ww/internal/test/mock/vendor"
 	testutil "github.com/wetware/ww/internal/test/util"
 )
 
+func TestLoggable(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	bus := eventbus.NewBus()
+	h := newMockHost(ctrl, bus)
+
+	j, err := join_service.New(join_service.Config{
+		Log:  mock_ww.NewMockLogger(ctrl),
+		Host: h,
+	}).Factory.NewService()
+	require.NoError(t, err)
+
+	assert.Equal(t, "join", j.Loggable()["service"])
+	assert.Equal(t, h.ID(), j.Loggable()["host"])
+}
+
 func TestJoiner(t *testing.T) {
+	t.Parallel()
+
 	t.Run("EvtPeerDiscovered triggers connection", func(t *testing.T) {
 		t.Parallel()
 
@@ -37,7 +60,10 @@ func TestJoiner(t *testing.T) {
 		bus := eventbus.NewBus()
 		h := newMockHost(ctrl, bus)
 
-		j, err := service.Joiner(logger, h).Service()
+		j, err := join_service.New(join_service.Config{
+			Log:  logger,
+			Host: h,
+		}).Factory.NewService()
 		require.NoError(t, err)
 
 		// signal that the network is ready; note that this must happen before the
@@ -59,11 +85,11 @@ func TestJoiner(t *testing.T) {
 			}).
 			Times(1)
 
-		e, err := bus.Emitter(new(service.EvtPeerDiscovered))
+		e, err := bus.Emitter(new(boot_service.EvtPeerDiscovered))
 		require.NoError(t, err)
 		defer e.Close()
 
-		err = e.Emit(service.EvtPeerDiscovered{})
+		err = e.Emit(boot_service.EvtPeerDiscovered{})
 		require.NoError(t, err)
 
 		select {
@@ -100,7 +126,10 @@ func TestJoiner(t *testing.T) {
 		bus := eventbus.NewBus()
 		h := newMockHost(ctrl, bus)
 
-		j, err := service.Joiner(logger, h).Service()
+		j, err := join_service.New(join_service.Config{
+			Log:  logger,
+			Host: h,
+		}).Factory.NewService()
 		require.NoError(t, err)
 
 		// signal that the network is ready; note that this must happen before the
@@ -118,11 +147,11 @@ func TestJoiner(t *testing.T) {
 			Return(errors.New("[ TEST ERROR ]")).
 			Times(1)
 
-		e, err := bus.Emitter(new(service.EvtPeerDiscovered))
+		e, err := bus.Emitter(new(boot_service.EvtPeerDiscovered))
 		require.NoError(t, err)
 		defer e.Close()
 
-		err = e.Emit(service.EvtPeerDiscovered{})
+		err = e.Emit(boot_service.EvtPeerDiscovered{})
 		require.NoError(t, err)
 
 		select {

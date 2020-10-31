@@ -1,4 +1,4 @@
-package service
+package discover
 
 import (
 	"context"
@@ -11,13 +11,63 @@ import (
 	"github.com/lthibault/jitterbug"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/runtime"
+	boot_service "github.com/wetware/ww/pkg/runtime/svc/boot"
+	graph_service "github.com/wetware/ww/pkg/runtime/svc/graph"
+	"github.com/wetware/ww/pkg/runtime/svc/internal"
+	tick_service "github.com/wetware/ww/pkg/runtime/svc/ticker"
 	randutil "github.com/wetware/ww/pkg/util/rand"
+	"go.uber.org/fx"
 )
 
 // TODO(config): parametrize (?)
 const adTTL = time.Hour * 2
 
-// Discover service queries the graph for peers.
+// Config for Boot service.
+type Config struct {
+	fx.In
+
+	Log       ww.Logger
+	Host      host.Host
+	Namespace string `name:"ns"`
+	Discovery discovery.Discovery
+}
+
+// NewService satisfies runtime.ServiceFactory
+func (cfg Config) NewService() (_ runtime.Service, err error) {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	d := discoverer{
+		log:    cfg.Log,
+		h:      cfg.Host,
+		ns:     cfg.Namespace,
+		d:      cfg.Discovery,
+		ctx:    ctx,
+		cancel: cancel,
+		advert: make(chan struct{}),
+		disc:   make(chan struct{}),
+	}
+
+	if d.sub, err = cfg.Host.EventBus().Subscribe([]interface{}{
+		new(tick_service.EvtTimestep),
+		new(graph_service.EvtGraftRequested),
+	}); err != nil {
+		return
+	}
+
+	if d.e, err = cfg.Host.EventBus().Emitter(new(boot_service.EvtPeerDiscovered)); err != nil {
+		return
+	}
+
+	return d, nil
+}
+
+// Module for Boot service.
+type Module struct {
+	fx.Out
+	Factory runtime.ServiceFactory `group:"runtime"`
+}
+
+// New Discovery service.  Queries the graph for peers.
 //
 // Consumes:
 //  - EvtTimestep
@@ -25,35 +75,7 @@ const adTTL = time.Hour * 2
 //
 // Emits:
 //  - EvtPeerDiscovered
-func Discover(log ww.Logger, h host.Host, ns string, d discovery.Discovery) ProviderFunc {
-	return func() (_ runtime.Service, err error) {
-		ctx, cancel := context.WithCancel(context.Background())
-
-		d := discoverer{
-			log:    log,
-			h:      h,
-			ns:     ns,
-			d:      d,
-			ctx:    ctx,
-			cancel: cancel,
-			advert: make(chan struct{}),
-			disc:   make(chan struct{}),
-		}
-
-		if d.sub, err = h.EventBus().Subscribe([]interface{}{
-			new(EvtTimestep),
-			new(EvtGraftRequested),
-		}); err != nil {
-			return
-		}
-
-		if d.e, err = h.EventBus().Emitter(new(EvtPeerDiscovered)); err != nil {
-			return
-		}
-
-		return d, nil
-	}
-}
+func New(cfg Config) Module { return Module{Factory: cfg} }
 
 type discoverer struct {
 	log ww.Logger
@@ -78,8 +100,8 @@ func (d discoverer) Loggable() map[string]interface{} {
 }
 
 func (d discoverer) Start(ctx context.Context) (err error) {
-	if err = waitNetworkReady(ctx, d.h.EventBus()); err == nil {
-		startBackground(
+	if err = internal.WaitNetworkReady(ctx, d.h.EventBus()); err == nil {
+		internal.StartBackground(
 			d.adloop,
 			d.graftloop,
 			d.subloop,
@@ -101,14 +123,14 @@ func (d discoverer) subloop() {
 	defer close(d.advert)
 	defer close(d.disc)
 
-	sched := newScheduler(adTTL, jitterbug.Uniform{
+	sched := internal.NewScheduler(adTTL, jitterbug.Uniform{
 		Min:    time.Minute * 90,
 		Source: rand.New(randutil.FromPeer(d.h.ID())),
 	})
 
 	for v := range d.sub.Out() {
 		switch ev := v.(type) {
-		case EvtTimestep:
+		case tick_service.EvtTimestep:
 			if !sched.Advance(ev.Delta) {
 				continue
 			}
@@ -119,7 +141,7 @@ func (d discoverer) subloop() {
 			case d.advert <- struct{}{}:
 			default:
 			}
-		case EvtGraftRequested:
+		case graph_service.EvtGraftRequested:
 			select {
 			case d.disc <- struct{}{}:
 			default:
@@ -155,7 +177,7 @@ func (d discoverer) graftloop() {
 				continue
 			}
 
-			if err = d.e.Emit(EvtPeerDiscovered(info)); err != nil {
+			if err = d.e.Emit(boot_service.EvtPeerDiscovered(info)); err != nil {
 				d.log.With(d).WithError(err).Error("failed to emit EvtPeerDiscovered")
 			}
 		}

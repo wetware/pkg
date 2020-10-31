@@ -2,10 +2,11 @@ package client
 
 import (
 	"context"
-	"time"
 
+	"github.com/pkg/errors"
 	"go.uber.org/fx"
 
+	// libp2p / ipfs
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-eventbus"
 	"github.com/libp2p/go-libp2p"
@@ -13,46 +14,49 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/pnet"
 	"github.com/libp2p/go-libp2p-core/routing"
-	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	"github.com/libp2p/go-libp2p/config"
-	"github.com/pkg/errors"
 
+	// wetware internal
 	ctxutil "github.com/wetware/ww/internal/util/ctx"
 	hostutil "github.com/wetware/ww/internal/util/host"
+	"github.com/wetware/ww/pkg/internal/p2p"
+
+	// wetware public
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/boot"
-	"github.com/wetware/ww/pkg/internal/p2p"
 	"github.com/wetware/ww/pkg/runtime"
-	"github.com/wetware/ww/pkg/runtime/service"
+
+	// runtime services
+	boot_service "github.com/wetware/ww/pkg/runtime/svc/boot"
+	graph_service "github.com/wetware/ww/pkg/runtime/svc/graph"
+	join_service "github.com/wetware/ww/pkg/runtime/svc/join"
+	neighborhood_service "github.com/wetware/ww/pkg/runtime/svc/neighborhood"
+	tick_service "github.com/wetware/ww/pkg/runtime/svc/ticker"
+	tracker_service "github.com/wetware/ww/pkg/runtime/svc/tracker"
 )
 
-const (
-	kmin     = 3
-	kmax     = 64
-	timestep = time.Millisecond * 100
-)
-
-func services(cfg serviceConfig) runtime.ServiceBundle {
-	return runtime.Bundle(
-		service.Ticker(cfg.Log, cfg.Host.EventBus(), timestep),
-		service.ConnTracker(cfg.Host),
-		service.Neighborhood(cfg.Host.EventBus(), kmin, kmax),
-		service.Bootstrap(cfg.Log, cfg.Host, cfg.Boot),
-		// service.Discover(cfg.EventBus, cfg.Namespace, cfg.Discovery),  // TODO:  initial advertisement
-		service.Graph(cfg.Log, cfg.Host),
-		service.Joiner(cfg.Log, cfg.Host),
+func services() fx.Option {
+	return fx.Provide(
+		tick_service.New,
+		tracker_service.New,
+		neighborhood_service.New,
+		boot_service.New,
+		// discovery_service.New,  // TODO:  initial advertisement
+		graph_service.New,
+		join_service.New,
 	)
 }
 
 // Config contains user-supplied parameters used by Dial.
 type Config struct {
-	log ww.Logger
-	ns  string
-	psk pnet.PSK
-	ds  datastore.Batching
-	d   boot.Strategy
+	log        ww.Logger
+	ns         string
+	psk        pnet.PSK
+	ds         datastore.Batching
+	d          boot.Strategy
+	kmin, kmax int
 }
 
 func (cfg Config) assemble(ctx context.Context, c *Client) {
@@ -62,11 +66,11 @@ func (cfg Config) assemble(ctx context.Context, c *Client) {
 		fx.Provide(
 			cfg.options,
 			p2p.New,
-			services,
 			newClient,
 		),
+		services(),
 		fx.Invoke(
-			runtime.Register,
+			runtime.Start,
 			dial,
 		),
 	)
@@ -78,6 +82,8 @@ func (cfg Config) options(lx fx.Lifecycle) (mod module, err error) {
 	mod.Namespace = cfg.ns
 	mod.Datastore = cfg.ds
 	mod.Boot = cfg.d
+	mod.KMin = cfg.kmin
+	mod.KMax = cfg.kmax
 
 	// options for host.Host
 	mod.HostOpt = []config.Option{
@@ -102,22 +108,14 @@ type module struct {
 	Ctx       context.Context
 	Log       ww.Logger
 	Namespace string `name:"ns"`
+	KMin      int    `name:"kmin"`
+	KMax      int    `name:"kmax"`
 
 	Datastore datastore.Batching
 	Boot      boot.Strategy
 
 	HostOpt []config.Option
 	DHTOpt  []dual.Option
-}
-
-type serviceConfig struct {
-	fx.In
-
-	Log       ww.Logger
-	Namespace string `name:"ns"`
-	Host      host.Host
-	Discovery discovery.Discovery
-	Boot      boot.Strategy
 }
 
 func dial(h host.Host, dht routing.Routing, lx fx.Lifecycle) error {
@@ -135,7 +133,7 @@ func dial(h host.Host, dht routing.Routing, lx fx.Lifecycle) error {
 func dialhook(bus event.Bus, dht interface{ Bootstrap(context.Context) error }) fx.Hook {
 	return fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			sub, err := bus.Subscribe(new(service.EvtNeighborhoodChanged))
+			sub, err := bus.Subscribe(new(neighborhood_service.EvtNeighborhoodChanged))
 			if err != nil {
 				return err
 			}
@@ -144,7 +142,7 @@ func dialhook(bus event.Bus, dht interface{ Bootstrap(context.Context) error }) 
 			for {
 				select {
 				case v := <-sub.Out():
-					if v.(service.EvtNeighborhoodChanged).To == service.PhaseOrphaned {
+					if v.(neighborhood_service.EvtNeighborhoodChanged).To == neighborhood_service.PhaseOrphaned {
 						continue
 					}
 

@@ -1,4 +1,4 @@
-package service_test
+package neighborhood_test
 
 import (
 	"context"
@@ -14,7 +14,8 @@ import (
 	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/wetware/ww/pkg/runtime/service"
+	"github.com/wetware/ww/pkg/internal/p2p"
+	neighborhood_service "github.com/wetware/ww/pkg/runtime/svc/neighborhood"
 )
 
 const (
@@ -26,7 +27,11 @@ func TestNeighborhoodLogFields(t *testing.T) {
 	t.Parallel()
 	bus := eventbus.NewBus()
 
-	n, err := service.Neighborhood(bus, kmin, kmax).Service()
+	n, err := neighborhood_service.New(neighborhood_service.Config{
+		Bus:  bus,
+		KMin: kmin,
+		KMax: kmax,
+	}).Factory.NewService()
 	require.NoError(t, err)
 
 	require.Contains(t, n.Loggable(), "service")
@@ -44,7 +49,11 @@ func TestNeighborhoodPhase(t *testing.T) {
 
 	bus := eventbus.NewBus()
 
-	n, err := service.Neighborhood(bus, kmin, kmax).Service()
+	n, err := neighborhood_service.New(neighborhood_service.Config{
+		Bus:  bus,
+		KMin: kmin,
+		KMax: kmax,
+	}).Factory.NewService()
 	require.NoError(t, err)
 
 	// signal that network is ready; note that this must happen before
@@ -56,7 +65,7 @@ func TestNeighborhoodPhase(t *testing.T) {
 		require.NoError(t, n.Stop(ctx))
 	}()
 
-	sub, err := bus.Subscribe(new(service.EvtNeighborhoodChanged))
+	sub, err := bus.Subscribe(new(neighborhood_service.EvtNeighborhoodChanged))
 	require.NoError(t, err)
 	defer sub.Close()
 
@@ -64,7 +73,7 @@ func TestNeighborhoodPhase(t *testing.T) {
 	// initial state is expected.
 	select {
 	case v := <-sub.Out():
-		ev := v.(service.EvtNeighborhoodChanged)
+		ev := v.(neighborhood_service.EvtNeighborhoodChanged)
 		require.Zero(t, ev.K)
 		require.Zero(t, ev.From)
 		require.Zero(t, ev.To)
@@ -85,34 +94,34 @@ func TestNeighborhoodPhase(t *testing.T) {
 	t.Run("Peers connecting", func(t *testing.T) {
 		for i, tC := range []struct {
 			K        int
-			From, To service.Phase
+			From, To neighborhood_service.Phase
 		}{{
-			From: service.PhaseOrphaned,
+			From: neighborhood_service.PhaseOrphaned,
 			K:    1, // 0 => 1
-			To:   service.PhasePartial,
+			To:   neighborhood_service.PhasePartial,
 		}, {
-			From: service.PhasePartial,
+			From: neighborhood_service.PhasePartial,
 			K:    2, // 1 => 2
-			To:   service.PhasePartial,
+			To:   neighborhood_service.PhasePartial,
 		}, {
-			From: service.PhasePartial,
+			From: neighborhood_service.PhasePartial,
 			K:    3, // 2 => 3
-			To:   service.PhaseComplete,
+			To:   neighborhood_service.PhaseComplete,
 		}, {
-			From: service.PhaseComplete,
+			From: neighborhood_service.PhaseComplete,
 			K:    4, // 3 => 4
-			To:   service.PhaseComplete,
+			To:   neighborhood_service.PhaseComplete,
 		}, {
-			From: service.PhaseComplete,
+			From: neighborhood_service.PhaseComplete,
 			K:    5, // 4 => 5
-			To:   service.PhaseOverloaded,
+			To:   neighborhood_service.PhaseOverloaded,
 		}} {
 			err = e.Emit(evtPeerConnectednessChanged(pids[i], network.Connected))
 			require.NoError(t, err)
 
 			select {
 			case v := <-sub.Out():
-				ev := v.(service.EvtNeighborhoodChanged)
+				ev := v.(neighborhood_service.EvtNeighborhoodChanged)
 				assert.Equal(t, tC.K, ev.K)
 				assert.Equal(t, tC.From, ev.From,
 					"expected previous phase %s, got %s", tC.From, ev.From)
@@ -127,34 +136,34 @@ func TestNeighborhoodPhase(t *testing.T) {
 	t.Run("Peers disconnecting", func(t *testing.T) {
 		for i, tC := range []struct {
 			K        int
-			From, To service.Phase
+			From, To neighborhood_service.Phase
 		}{{
-			From: service.PhaseOverloaded,
+			From: neighborhood_service.PhaseOverloaded,
 			K:    4,
-			To:   service.PhaseComplete,
+			To:   neighborhood_service.PhaseComplete,
 		}, {
-			From: service.PhaseComplete,
+			From: neighborhood_service.PhaseComplete,
 			K:    3,
-			To:   service.PhaseComplete,
+			To:   neighborhood_service.PhaseComplete,
 		}, {
-			From: service.PhaseComplete,
+			From: neighborhood_service.PhaseComplete,
 			K:    2,
-			To:   service.PhasePartial,
+			To:   neighborhood_service.PhasePartial,
 		}, {
-			From: service.PhasePartial,
+			From: neighborhood_service.PhasePartial,
 			K:    1,
-			To:   service.PhasePartial,
+			To:   neighborhood_service.PhasePartial,
 		}, {
-			From: service.PhasePartial,
+			From: neighborhood_service.PhasePartial,
 			K:    0,
-			To:   service.PhaseOrphaned,
+			To:   neighborhood_service.PhaseOrphaned,
 		}} {
 			err = e.Emit(evtPeerConnectednessChanged(pids[i], network.NotConnected))
 			require.NoError(t, err)
 
 			select {
 			case v := <-sub.Out():
-				ev := v.(service.EvtNeighborhoodChanged)
+				ev := v.(neighborhood_service.EvtNeighborhoodChanged)
 				assert.Equal(t, tC.K, ev.K)
 				assert.Equal(t, tC.From, ev.From,
 					"expected previous phase %s, got %s", tC.From, ev.From)
@@ -172,4 +181,14 @@ func evtPeerConnectednessChanged(id peer.ID, c network.Connectedness) event.EvtP
 		Peer:          id,
 		Connectedness: c,
 	}
+}
+
+// netReady emits p2p.EvtNetworkReady
+func netReady(bus event.Bus) error {
+	e, err := bus.Emitter(new(p2p.EvtNetworkReady), eventbus.Stateful)
+	if err != nil {
+		return err
+	}
+
+	return e.Emit(p2p.EvtNetworkReady{})
 }

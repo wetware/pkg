@@ -1,10 +1,10 @@
-package service
+package joiner
 
 import (
 	"context"
 	"time"
 
-	"github.com/lthibault/log"
+	"go.uber.org/fx"
 
 	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -12,32 +12,50 @@ import (
 
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/runtime"
+	boot_service "github.com/wetware/ww/pkg/runtime/svc/boot"
+	"github.com/wetware/ww/pkg/runtime/svc/internal"
 )
 
-// Joiner performs a JOIN operation against the cluster graph, resulting in the merger
-// of the local peer's graph and the remote peer's graph.
+// Config for Graph service.
+type Config struct {
+	fx.In
+
+	Log  ww.Logger
+	Host host.Host
+}
+
+// NewService satisfies runtime.ServiceFactory.
+func (cfg Config) NewService() (_ runtime.Service, err error) {
+	ctx, cancel := context.WithCancel(context.Background())
+	j := &joiner{
+		log:    cfg.Log,
+		h:      cfg.Host,
+		ctx:    ctx,
+		cancel: cancel,
+		join:   make(chan boot_service.EvtPeerDiscovered, 1),
+	}
+
+	if j.sub, err = j.h.EventBus().Subscribe(new(boot_service.EvtPeerDiscovered)); err != nil {
+		return
+	}
+
+	return j, nil
+}
+
+// Module for Graph service.
+type Module struct {
+	fx.Out
+
+	Factory runtime.ServiceFactory `group:"runtime"`
+}
+
+// New Joiner service.  Performs a JOIN operation against the cluster graph, resulting
+// in the merger of the local peer's graph and the remote peer's graph.
 //
 // Consumes:
 //	- p2p.EvtNetworkReady
 // 	- EvtPeerDiscovered
-func Joiner(log log.Logger, h host.Host) ProviderFunc {
-	return func() (_ runtime.Service, err error) {
-		ctx, cancel := context.WithCancel(context.Background())
-		j := &joiner{
-			log:    log,
-			h:      h,
-			ctx:    ctx,
-			cancel: cancel,
-			join:   make(chan EvtPeerDiscovered, 1),
-		}
-
-		if j.sub, err = j.h.EventBus().Subscribe(new(EvtPeerDiscovered)); err != nil {
-			return
-		}
-
-		return j, nil
-	}
-}
+func New(cfg Config) Module { return Module{Factory: cfg} }
 
 type joiner struct {
 	log ww.Logger
@@ -46,22 +64,22 @@ type joiner struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	join chan EvtPeerDiscovered
+	join chan boot_service.EvtPeerDiscovered
 	sub  event.Subscription
 }
 
 // Loggable representation
 func (j joiner) Loggable() map[string]interface{} {
 	return map[string]interface{}{
-		"service": "joiner",
+		"service": "join",
 		"host":    j.h.ID(),
 	}
 }
 
 // Start service
 func (j *joiner) Start(ctx context.Context) (err error) {
-	if err = waitNetworkReady(ctx, j.h.EventBus()); err == nil {
-		startBackground(
+	if err = internal.WaitNetworkReady(ctx, j.h.EventBus()); err == nil {
+		internal.StartBackground(
 			j.subloop,
 			j.joinloop,
 		)
@@ -82,7 +100,7 @@ func (j joiner) subloop() {
 
 	for v := range j.sub.Out() {
 		select {
-		case j.join <- v.(EvtPeerDiscovered):
+		case j.join <- v.(boot_service.EvtPeerDiscovered):
 		case <-j.ctx.Done():
 		default:
 			// there's already a join in progress

@@ -1,4 +1,4 @@
-package service
+package bootstrapper
 
 import (
 	"context"
@@ -6,46 +6,66 @@ import (
 	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"go.uber.org/fx"
 
 	logutil "github.com/wetware/ww/internal/util/log"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/boot"
 	"github.com/wetware/ww/pkg/runtime"
+	"github.com/wetware/ww/pkg/runtime/svc/internal"
+	neighborhood_service "github.com/wetware/ww/pkg/runtime/svc/neighborhood"
 )
 
 // EvtPeerDiscovered .
 type EvtPeerDiscovered peer.AddrInfo
 
-// Bootstrap performs bootstrap peer discovery.
+// Config for Boot service.
+type Config struct {
+	fx.In
+
+	Log      ww.Logger
+	Host     host.Host
+	Strategy boot.Strategy
+}
+
+// NewService satisfies runtime.ServiceFactory
+func (cfg Config) NewService() (_ runtime.Service, err error) {
+	ctx, cancel := context.WithCancel(context.Background())
+	b := &bootstrapper{
+		log:      cfg.Log,
+		s:        cfg.Strategy,
+		h:        cfg.Host,
+		ctx:      ctx,
+		cancel:   cancel,
+		discover: make(chan struct{}, 1),
+	}
+
+	if b.sub, err = cfg.Host.EventBus().Subscribe(new(neighborhood_service.EvtNeighborhoodChanged)); err != nil {
+		return
+	}
+
+	if b.foundPeer, err = cfg.Host.EventBus().Emitter(new(EvtPeerDiscovered)); err != nil {
+		return
+	}
+
+	return b, nil
+}
+
+// Module for Boot service.
+type Module struct {
+	fx.Out
+
+	Factory runtime.ServiceFactory `group:"runtime"`
+}
+
+// New Boot service.  Performs bootstrap peer discovery.
 //
 // Consumes:
 //	- EvtNeighborhoodChanged
 //
 // Emits:
 //  - EvtPeerDiscovered
-func Bootstrap(log ww.Logger, h host.Host, s boot.Strategy) ProviderFunc {
-	return func() (_ runtime.Service, err error) {
-		ctx, cancel := context.WithCancel(context.Background())
-		b := &bootstrapper{
-			log:      log,
-			s:        s,
-			h:        h,
-			ctx:      ctx,
-			cancel:   cancel,
-			discover: make(chan struct{}, 1),
-		}
-
-		if b.sub, err = h.EventBus().Subscribe(new(EvtNeighborhoodChanged)); err != nil {
-			return
-		}
-
-		if b.foundPeer, err = h.EventBus().Emitter(new(EvtPeerDiscovered)); err != nil {
-			return
-		}
-
-		return b, nil
-	}
-}
+func New(cfg Config) Module { return Module{Factory: cfg} }
 
 type bootstrapper struct {
 	log ww.Logger
@@ -69,8 +89,8 @@ func (b bootstrapper) Loggable() map[string]interface{} {
 }
 
 func (b *bootstrapper) Start(ctx context.Context) (err error) {
-	if err = waitNetworkReady(ctx, b.h.EventBus()); err == nil {
-		startBackground(
+	if err = internal.WaitNetworkReady(ctx, b.h.EventBus()); err == nil {
+		internal.StartBackground(
 			b.queryloop,
 			b.subloop,
 		)
@@ -90,7 +110,7 @@ func (b bootstrapper) subloop() {
 
 	for v := range b.sub.Out() {
 		// Only use bootstrap discovery if the local node is orphaned.
-		if notOrphaned(v.(EvtNeighborhoodChanged)) {
+		if notOrphaned(v.(neighborhood_service.EvtNeighborhoodChanged)) {
 			continue
 		}
 
@@ -128,6 +148,6 @@ func (b bootstrapper) emit(info peer.AddrInfo) {
 	}
 }
 
-func notOrphaned(ev EvtNeighborhoodChanged) bool {
-	return ev.To != PhaseOrphaned
+func notOrphaned(ev neighborhood_service.EvtNeighborhoodChanged) bool {
+	return ev.To != neighborhood_service.PhaseOrphaned
 }

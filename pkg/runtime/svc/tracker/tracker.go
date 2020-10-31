@@ -1,10 +1,12 @@
-package service
+// Package tracker_service is a shim for libp2p's EvtPeerConnectednessChanged
+package tracker
 
 import (
 	"context"
 	"fmt"
 	"sync"
 
+	"go.uber.org/fx"
 	"go.uber.org/multierr"
 
 	"github.com/libp2p/go-libp2p-core/event"
@@ -14,6 +16,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/wetware/ww/pkg/runtime"
+	"github.com/wetware/ww/pkg/runtime/svc/internal"
 )
 
 /*
@@ -39,6 +42,62 @@ type (
 	}
 )
 
+// Config for Tracker service.
+type Config struct {
+	fx.In
+
+	Host host.Host
+}
+
+// NewService satisfies runtime.ServiceFactory
+func (cfg Config) NewService() (svc runtime.Service, err error) {
+	t := &conntracker{
+		m:    cfg.Host.Peerstore(),
+		sync: make(map[peer.ID]chan bool),
+		cq:   make(chan struct{}),
+	}
+
+	bus := cfg.Host.EventBus()
+
+	//
+	// Stream and connection counting
+	if t.idsub, err = bus.Subscribe([]interface{}{
+		new(event.EvtPeerIdentificationCompleted),
+		new(event.EvtPeerIdentificationFailed),
+	}); err != nil {
+		return
+	}
+
+	if t.emitConn, err = bus.Emitter(new(EvtConnectionChanged)); err != nil {
+		return
+	}
+
+	if t.emitStream, err = bus.Emitter(new(EvtStreamChanged)); err != nil {
+		return
+	}
+
+	//
+	// Peer connectedness
+	if t.connsub, err = bus.Subscribe(new(EvtConnectionChanged)); err != nil {
+		return
+	}
+
+	if t.emitPeer, err = bus.Emitter(new(event.EvtPeerConnectednessChanged)); err != nil {
+		return
+	}
+
+	cfg.Host.Network().Notify(t.notifiee())
+
+	return t, nil
+}
+
+// Module for Tracker service
+type Module struct {
+	fx.Out
+
+	Factory runtime.ServiceFactory `group:"runtime"`
+}
+
 // conntracker emits events whenever connections are created or destroyed.
 type conntracker struct {
 	m peerstore.PeerMetadata
@@ -51,7 +110,7 @@ type conntracker struct {
 	cq   chan struct{}
 }
 
-// ConnTracker produces a conntracker service.
+// New Tracker service.  Monitors peer connections.
 //
 // consumes:
 // 	- event.EvtPeerIdentificationCompleted  [ libp2p ]
@@ -61,48 +120,7 @@ type conntracker struct {
 //  - EvtPeerConnectednessChanged [ libp2p ]
 //  - EvtConnectionChanged
 //  - EvtStreamChanged
-func ConnTracker(h host.Host) ProviderFunc {
-	return func() (_ runtime.Service, err error) {
-		t := &conntracker{
-			m:    h.Peerstore(),
-			sync: make(map[peer.ID]chan bool),
-			cq:   make(chan struct{}),
-		}
-
-		bus := h.EventBus()
-
-		//
-		// Stream and connection counting
-		if t.idsub, err = bus.Subscribe([]interface{}{
-			new(event.EvtPeerIdentificationCompleted),
-			new(event.EvtPeerIdentificationFailed),
-		}); err != nil {
-			return
-		}
-
-		if t.emitConn, err = bus.Emitter(new(EvtConnectionChanged)); err != nil {
-			return
-		}
-
-		if t.emitStream, err = bus.Emitter(new(EvtStreamChanged)); err != nil {
-			return
-		}
-
-		//
-		// Peer connectedness
-		if t.connsub, err = bus.Subscribe(new(EvtConnectionChanged)); err != nil {
-			return
-		}
-
-		if t.emitPeer, err = bus.Emitter(new(event.EvtPeerConnectednessChanged)); err != nil {
-			return
-		}
-
-		h.Network().Notify(t.notifiee())
-
-		return t, nil
-	}
-}
+func New(cfg Config) Module { return Module{Factory: cfg} }
 
 // Loggable representation of conntracker
 func (t *conntracker) Loggable() map[string]interface{} {
@@ -111,7 +129,7 @@ func (t *conntracker) Loggable() map[string]interface{} {
 
 // Start service
 func (t *conntracker) Start(context.Context) error {
-	startBackground(
+	internal.StartBackground(
 		t.idloop,
 		t.connloop,
 	)

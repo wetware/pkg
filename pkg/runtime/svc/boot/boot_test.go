@@ -1,4 +1,4 @@
-package service_test
+package bootstrapper_test
 
 import (
 	"context"
@@ -10,12 +10,16 @@ import (
 	"github.com/stretchr/testify/require"
 	mock_ww "github.com/wetware/ww/internal/test/mock/pkg"
 	mock_boot "github.com/wetware/ww/internal/test/mock/pkg/boot"
+	mock_vendor "github.com/wetware/ww/internal/test/mock/vendor"
 	testutil "github.com/wetware/ww/internal/test/util"
 
 	eventbus "github.com/libp2p/go-eventbus"
+	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/wetware/ww/pkg/boot"
-	"github.com/wetware/ww/pkg/runtime/service"
+	"github.com/wetware/ww/pkg/internal/p2p"
+	boot_service "github.com/wetware/ww/pkg/runtime/svc/boot"
+	neighborhood_service "github.com/wetware/ww/pkg/runtime/svc/neighborhood"
 )
 
 func TestBootstrapperLogFields(t *testing.T) {
@@ -28,11 +32,15 @@ func TestBootstrapperLogFields(t *testing.T) {
 	bus := eventbus.NewBus()
 	h := newMockHost(ctrl, bus)
 
-	n, err := service.Bootstrap(logger, h, boot.StaticAddrs{}).Service()
+	b, err := boot_service.New(boot_service.Config{
+		Log:      logger,
+		Host:     h,
+		Strategy: boot.StaticAddrs{},
+	}).Factory.NewService()
 	require.NoError(t, err)
 
-	require.Contains(t, n.Loggable(), "service")
-	assert.Equal(t, n.Loggable()["service"], "boot")
+	require.Contains(t, b.Loggable(), "service")
+	assert.Equal(t, b.Loggable()["service"], "boot")
 }
 
 func TestBootstrapper(t *testing.T) {
@@ -50,7 +58,11 @@ func TestBootstrapper(t *testing.T) {
 
 	s := mock_boot.NewMockStrategy(ctrl)
 
-	b, err := service.Bootstrap(logger, h, s).Service()
+	b, err := boot_service.New(boot_service.Config{
+		Log:      logger,
+		Host:     h,
+		Strategy: s,
+	}).Factory.NewService()
 	require.NoError(t, err)
 
 	// signal that network is ready; note that this must happen before
@@ -62,11 +74,11 @@ func TestBootstrapper(t *testing.T) {
 		require.NoError(t, b.Stop(ctx))
 	}()
 
-	sub, err := bus.Subscribe(new(service.EvtPeerDiscovered))
+	sub, err := bus.Subscribe(new(boot_service.EvtPeerDiscovered))
 	require.NoError(t, err)
 	defer sub.Close()
 
-	e, err := bus.Emitter(new(service.EvtNeighborhoodChanged))
+	e, err := bus.Emitter(new(neighborhood_service.EvtNeighborhoodChanged))
 	require.NoError(t, err)
 	defer e.Close()
 
@@ -74,8 +86,8 @@ func TestBootstrapper(t *testing.T) {
 		ctx, cancel := context.WithTimeout(ctx, time.Millisecond*50)
 		defer cancel()
 
-		require.NoError(t, e.Emit(service.EvtNeighborhoodChanged{
-			To: service.PhasePartial,
+		require.NoError(t, e.Emit(neighborhood_service.EvtNeighborhoodChanged{
+			To: neighborhood_service.PhasePartial,
 		}))
 
 		select {
@@ -96,15 +108,40 @@ func TestBootstrapper(t *testing.T) {
 			Return((<-chan peer.AddrInfo)(ch), nil).
 			Times(1)
 
-		require.NoError(t, e.Emit(service.EvtNeighborhoodChanged{
-			To: service.PhaseOrphaned,
+		require.NoError(t, e.Emit(neighborhood_service.EvtNeighborhoodChanged{
+			To: neighborhood_service.PhaseOrphaned,
 		}))
 
 		select {
 		case v := <-sub.Out():
-			assert.Equal(t, service.EvtPeerDiscovered(info), v.(service.EvtPeerDiscovered))
+			assert.Equal(t, boot_service.EvtPeerDiscovered(info), v.(boot_service.EvtPeerDiscovered))
 		case <-ctx.Done():
 			t.Error(ctx.Err())
 		}
 	})
+}
+
+func newMockHost(ctrl *gomock.Controller, bus event.Bus) *mock_vendor.MockHost {
+	h := mock_vendor.NewMockHost(ctrl)
+	h.EXPECT().
+		EventBus().
+		Return(bus).
+		AnyTimes()
+
+	h.EXPECT().
+		ID().
+		Return(testutil.RandID()).
+		AnyTimes()
+
+	return h
+}
+
+// netReady emits p2p.EvtNetworkReady
+func netReady(bus event.Bus) error {
+	e, err := bus.Emitter(new(p2p.EvtNetworkReady), eventbus.Stateful)
+	if err != nil {
+		return err
+	}
+
+	return e.Emit(p2p.EvtNetworkReady{})
 }

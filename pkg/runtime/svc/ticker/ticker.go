@@ -1,4 +1,4 @@
-package service
+package ticker
 
 import (
 	"context"
@@ -7,7 +7,43 @@ import (
 	"github.com/libp2p/go-libp2p-core/event"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/runtime"
+	"go.uber.org/fx"
 )
+
+// Config for Ticker service
+type Config struct {
+	fx.In
+
+	Log  ww.Logger
+	Bus  event.Bus
+	Step time.Duration `name:"tick" optional:"true"`
+}
+
+// NewService satisfies runtime.ServiceFactory
+func (cfg Config) NewService() (runtime.Service, error) {
+	e, err := cfg.Bus.Emitter(new(EvtTimestep))
+	if err != nil {
+		return nil, err
+	}
+
+	if cfg.Step == 0 {
+		cfg.Step = time.Millisecond * 100
+	}
+
+	return &ticker{
+		log:  cfg.Log,
+		step: cfg.Step,
+		cq:   make(chan struct{}),
+		e:    e,
+	}, nil
+}
+
+// Module for Ticker service
+type Module struct {
+	fx.Out
+
+	Factory runtime.ServiceFactory `group:"runtime"`
+}
 
 // EvtTimestep represents an increment in the runtime's logical clock.
 // To ensure reproducible tests, Services should consume EvtTimestep instead of
@@ -17,22 +53,8 @@ type EvtTimestep struct {
 	Delta time.Duration
 }
 
-// Ticker emits a timestep for consumption by downstream services.
-func Ticker(log ww.Logger, bus event.Bus, step time.Duration) ProviderFunc {
-	return func() (runtime.Service, error) {
-		e, err := bus.Emitter(new(EvtTimestep))
-		if err != nil {
-			return nil, err
-		}
-
-		return &ticker{
-			log:  log,
-			step: step,
-			cq:   make(chan struct{}),
-			e:    e,
-		}, nil
-	}
-}
+// New Ticker service.  Emits a timestep for consumption by downstream services.
+func New(cfg Config) Module { return Module{Factory: cfg} }
 
 type ticker struct {
 	log ww.Logger

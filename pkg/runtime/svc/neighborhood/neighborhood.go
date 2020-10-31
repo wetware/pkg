@@ -1,4 +1,4 @@
-package service
+package neighborhood
 
 import (
 	"context"
@@ -10,8 +10,47 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/runtime"
+	"github.com/wetware/ww/pkg/runtime/svc/internal"
+	"go.uber.org/fx"
 	"go.uber.org/multierr"
 )
+
+// Config for Neighborhood service
+type Config struct {
+	fx.In
+
+	Bus  event.Bus
+	KMin int `name:"kmin"`
+	KMax int `name:"kmax"`
+}
+
+// NewService satisfies runtime.ServiceFactory
+func (cfg Config) NewService() (runtime.Service, error) {
+	sub, err := cfg.Bus.Subscribe(new(event.EvtPeerConnectednessChanged))
+	if err != nil {
+		return nil, err
+	}
+
+	e, err := cfg.Bus.Emitter(new(EvtNeighborhoodChanged), eventbus.Stateful)
+	if err != nil {
+		return nil, err
+	}
+
+	return neighborhood{
+		phaseMap: phasemap(cfg.KMin, cfg.KMax),
+		bus:      cfg.Bus,
+		sub:      sub,
+		e:        e,
+		cq:       make(chan struct{}),
+	}, nil
+}
+
+// Module for Neighborhood service
+type Module struct {
+	fx.Out
+
+	Factory runtime.ServiceFactory `group:"runtime"`
+}
 
 // EvtNeighborhoodChanged fires when a graph edge is created or destroyed
 type EvtNeighborhoodChanged struct {
@@ -19,7 +58,7 @@ type EvtNeighborhoodChanged struct {
 	From, To Phase
 }
 
-// Neighborhood produces a neighborhood service.
+// New Neighborhood service.  Maintains graph connectivity.
 //
 // Consumes:
 //  - p2p.EvtNetworkReady
@@ -27,27 +66,7 @@ type EvtNeighborhoodChanged struct {
 //
 // Emits:
 //	- EvtNeighborhoodChanged
-func Neighborhood(bus event.Bus, kmin, kmax int) ProviderFunc {
-	return func() (runtime.Service, error) {
-		sub, err := bus.Subscribe(new(event.EvtPeerConnectednessChanged))
-		if err != nil {
-			return nil, err
-		}
-
-		e, err := bus.Emitter(new(EvtNeighborhoodChanged), eventbus.Stateful)
-		if err != nil {
-			return nil, err
-		}
-
-		return neighborhood{
-			phaseMap: phasemap(kmin, kmax),
-			bus:      bus,
-			sub:      sub,
-			e:        e,
-			cq:       make(chan struct{}),
-		}, nil
-	}
-}
+func New(cfg Config) Module { return Module{Factory: cfg} }
 
 // neighborhood notifies subscribers of changes in direct connectivity to remote
 // hosts.  Neighborhood events do not concern themselves with the number of connections,
@@ -67,8 +86,8 @@ func (n neighborhood) Loggable() map[string]interface{} {
 }
 
 func (n neighborhood) Start(ctx context.Context) (err error) {
-	if err = waitNetworkReady(ctx, n.bus); err == nil {
-		startBackground(n.subloop)
+	if err = internal.WaitNetworkReady(ctx, n.bus); err == nil {
+		internal.StartBackground(n.subloop)
 
 		// signal initial state - PhaseOrphaned
 		err = n.e.Emit(EvtNeighborhoodChanged{})

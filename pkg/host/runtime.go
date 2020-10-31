@@ -13,7 +13,7 @@ import (
 	"github.com/libp2p/go-libp2p/config"
 
 	// libp2p core interfaces
-	"github.com/libp2p/go-libp2p-core/discovery"
+
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/pnet"
@@ -21,7 +21,6 @@ import (
 	// libp2p core implementations
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	// libp2p/IPFS misc.
 	"github.com/ipfs/go-datastore"
@@ -32,31 +31,40 @@ import (
 	hostutil "github.com/wetware/ww/internal/util/host"
 	ww "github.com/wetware/ww/pkg"
 
-	// wetware internal
-
+	// wetware internal deps
 	"github.com/wetware/ww/pkg/internal/filter"
 	"github.com/wetware/ww/pkg/internal/p2p"
 
-	// wetware public
+	// wetware public APIs
 	"github.com/wetware/ww/pkg/boot"
 	"github.com/wetware/ww/pkg/runtime"
-	"github.com/wetware/ww/pkg/runtime/service"
+
+	// runtime services
+	announcer_service "github.com/wetware/ww/pkg/runtime/svc/announcer"
+	beacon_service "github.com/wetware/ww/pkg/runtime/svc/beacon"
+	boot_service "github.com/wetware/ww/pkg/runtime/svc/boot"
+	filter_service "github.com/wetware/ww/pkg/runtime/svc/filter"
+	graph_service "github.com/wetware/ww/pkg/runtime/svc/graph"
+	join_service "github.com/wetware/ww/pkg/runtime/svc/join"
+	neighborhood_service "github.com/wetware/ww/pkg/runtime/svc/neighborhood"
+	tick_service "github.com/wetware/ww/pkg/runtime/svc/ticker"
+	tracker_service "github.com/wetware/ww/pkg/runtime/svc/tracker"
 )
 
 const timestep = time.Millisecond * 100
 
-func services(cfg serviceConfig) runtime.ServiceBundle {
-	return runtime.Bundle(
-		service.Ticker(cfg.Log, cfg.Host.EventBus(), timestep),
-		service.Filter(cfg.Host.EventBus(), cfg.RoutingTopic, cfg.Filter),
-		service.ConnTracker(cfg.Host),
-		service.Neighborhood(cfg.Host.EventBus(), cfg.Graph.KMin, cfg.Graph.KMax),
-		service.Bootstrap(cfg.Log, cfg.Host, cfg.Boot),
-		service.Beacon(cfg.Host, cfg.Boot),
-		// service.Discover(cfg.Host, cfg.Namespace, cfg.Discovery),
-		service.Graph(cfg.Log, cfg.Host),
-		service.Announcer(cfg.Log, cfg.Host, cfg.RoutingTopic, cfg.TTL),
-		service.Joiner(cfg.Log, cfg.Host),
+func services() fx.Option {
+	return fx.Provide(
+		tick_service.New,
+		filter_service.New,
+		tracker_service.New,
+		neighborhood_service.New,
+		boot_service.New,
+		beacon_service.New,
+		// discover_service.New,
+		graph_service.New,
+		announcer_service.New,
+		join_service.New,
 	)
 }
 
@@ -84,12 +92,12 @@ func (cfg Config) assemble(h *Host) *fx.App {
 			routingTopic,
 			// block.New,
 			filter.New,
-			services,
 			newAnchor,
 			newHost,
 		),
+		services(),
 		fx.Invoke(
-			runtime.Register,
+			runtime.Start,
 			listen,
 		),
 	)
@@ -102,7 +110,8 @@ func (cfg Config) options(lx fx.Lifecycle) (mod module, err error) {
 	mod.TTL = cfg.ttl
 	mod.Boot = cfg.boot
 	mod.ListenAddrs = cfg.addrs
-	mod.Graph = graphParams(cfg.kmin, cfg.kmax)
+	mod.KMin = cfg.kmin
+	mod.KMax = cfg.kmax
 
 	var ps peerstore.Peerstore
 	if ps, err = pstoreds.NewPeerstore(mod.Ctx, cfg.ds, pstoreds.DefaultOpts()); err != nil {
@@ -136,7 +145,8 @@ type module struct {
 	Namespace string        `name:"ns"`
 	TTL       time.Duration `name:"ttl"`
 
-	Graph struct{ KMin, KMax int }
+	KMin int `name:"kmin"`
+	KMax int `name:"kmax"`
 
 	ListenAddrs []multiaddr.Multiaddr
 	Boot        boot.Strategy
@@ -145,20 +155,6 @@ type module struct {
 	DHTOpt  []dual.Option
 
 	Datastore datastore.Batching
-}
-
-type serviceConfig struct {
-	fx.In
-
-	Log          ww.Logger
-	Namespace    string `name:"ns"`
-	Graph        struct{ KMin, KMax int }
-	Host         host.Host
-	Boot         boot.Strategy
-	Filter       filter.Filter
-	RoutingTopic *pubsub.Topic
-	TTL          time.Duration `name:"ttl"`
-	Discovery    discovery.Discovery
 }
 
 func graphParams(kmin, kmax int) (ps struct{ KMin, KMax int }) {

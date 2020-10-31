@@ -1,4 +1,4 @@
-package service
+package announcer
 
 import (
 	"context"
@@ -9,45 +9,67 @@ import (
 	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/host"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"go.uber.org/fx"
 
 	"github.com/lthibault/jitterbug"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/runtime"
+	"github.com/wetware/ww/pkg/runtime/svc/internal"
+	tick_service "github.com/wetware/ww/pkg/runtime/svc/ticker"
 	randutil "github.com/wetware/ww/pkg/util/rand"
 )
+
+// Config for Announcer service.
+type Config struct {
+	fx.In
+
+	Log           ww.Logger
+	Host          host.Host
+	Announcements *pubsub.Topic
+	TTL           time.Duration `name:"ttl"`
+}
+
+// NewService satisfies runtime.ServiceFactory.
+func (cfg Config) NewService() (runtime.Service, error) {
+	tstep, err := cfg.Host.EventBus().Subscribe(new(tick_service.EvtTimestep))
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	a := announcer{
+		log:      cfg.Log,
+		h:        cfg.Host,
+		ttl:      cfg.TTL,
+		p:        cfg.Announcements,
+		ctx:      ctx,
+		cancel:   cancel,
+		tstep:    tstep,
+		announce: make(chan struct{}),
+	}
+
+	return a, nil
+}
+
+// Module for Announcer service.
+type Module struct {
+	fx.Out
+
+	Factory runtime.ServiceFactory `group:"runtime"`
+}
 
 // Publisher can publish messages to a pubsub topic.
 type Publisher interface {
 	Publish(context.Context, []byte, ...pubsub.PubOpt) error
 }
 
-// Announcer publishes cluster-wise heartbeats that announces the local host to peers.
+// New Announcer service.  Publishes cluster-wise heartbeats that announces the local
+// host to peers.
 //
 // Consumes:
 //
 // Emits:
-func Announcer(log ww.Logger, h host.Host, p Publisher, ttl time.Duration) ProviderFunc {
-	return func() (runtime.Service, error) {
-		tstep, err := h.EventBus().Subscribe(new(EvtTimestep))
-		if err != nil {
-			return nil, err
-		}
-
-		ctx, cancel := context.WithCancel(context.Background())
-		a := announcer{
-			log:      log,
-			h:        h,
-			ttl:      ttl,
-			p:        p,
-			ctx:      ctx,
-			cancel:   cancel,
-			tstep:    tstep,
-			announce: make(chan struct{}),
-		}
-
-		return a, nil
-	}
-}
+func New(cfg Config) Module { return Module{Factory: cfg} }
 
 type announcer struct {
 	log ww.Logger
@@ -71,7 +93,7 @@ func (a announcer) Loggable() map[string]interface{} {
 }
 
 func (a announcer) Start(ctx context.Context) (err error) {
-	if err = waitNetworkReady(ctx, a.h.EventBus()); err == nil {
+	if err = internal.WaitNetworkReady(ctx, a.h.EventBus()); err == nil {
 		if err = a.Announce(ctx); err == nil {
 			go a.subloop()
 			go a.announceloop()
@@ -108,13 +130,13 @@ func (a announcer) subloop() {
 	// Clusters operating in low-latency settings such as datacenters may wish
 	// to reduce the TTL.  Doing so will increase the cluster's responsiveness
 	// at the expense of an O(n) increase in bandwidth consumption.
-	s := newScheduler(a.ttl/2, jitterbug.Uniform{
+	s := internal.NewScheduler(a.ttl/2, jitterbug.Uniform{
 		Min:    a.ttl / 4,
 		Source: rand.New(randutil.FromPeer(a.h.ID())),
 	})
 
 	for v := range a.tstep.Out() {
-		if s.Advance(v.(EvtTimestep).Delta) {
+		if s.Advance(v.(tick_service.EvtTimestep).Delta) {
 			select {
 			case a.announce <- struct{}{}:
 			default:

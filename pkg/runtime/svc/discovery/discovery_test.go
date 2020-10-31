@@ -1,4 +1,4 @@
-package service_test
+package discover_test
 
 import (
 	"context"
@@ -10,9 +10,12 @@ import (
 	"github.com/stretchr/testify/require"
 	mock_ww "github.com/wetware/ww/internal/test/mock/pkg"
 	mock_vendor "github.com/wetware/ww/internal/test/mock/vendor"
+	testutil "github.com/wetware/ww/internal/test/util"
 
 	eventbus "github.com/libp2p/go-eventbus"
-	"github.com/wetware/ww/pkg/runtime/service"
+	"github.com/libp2p/go-libp2p-core/event"
+	"github.com/wetware/ww/pkg/internal/p2p"
+	discovery_service "github.com/wetware/ww/pkg/runtime/svc/discovery"
 )
 
 const ns = "ww.test"
@@ -27,7 +30,12 @@ func TestDiscoveryLogFields(t *testing.T) {
 	bus := eventbus.NewBus()
 	h := newMockHost(ctrl, bus)
 
-	d, err := service.Discover(logger, h, ns, nil).Service()
+	d, err := discovery_service.New(discovery_service.Config{
+		Log:       logger,
+		Host:      h,
+		Namespace: ns,
+		Discovery: nil,
+	}).Factory.NewService()
 	require.NoError(t, err)
 
 	require.Contains(t, d.Loggable(), "service")
@@ -50,7 +58,12 @@ func TestDiscovery(t *testing.T) {
 
 	dy := mock_vendor.NewMockDiscovery(ctrl)
 
-	d, err := service.Discover(logger, h, ns, dy).Service()
+	d, err := discovery_service.New(discovery_service.Config{
+		Log:       logger,
+		Host:      h,
+		Namespace: ns,
+		Discovery: dy,
+	}).Factory.NewService()
 	require.NoError(t, err)
 
 	// signal that network is ready; note that this must happen before
@@ -65,4 +78,29 @@ func TestDiscovery(t *testing.T) {
 	/*
 		TODO(testing):  add discover-specific tests here.
 	*/
+}
+
+func newMockHost(ctrl *gomock.Controller, bus event.Bus) *mock_vendor.MockHost {
+	h := mock_vendor.NewMockHost(ctrl)
+	h.EXPECT().
+		EventBus().
+		Return(bus).
+		AnyTimes()
+
+	h.EXPECT().
+		ID().
+		Return(testutil.RandID()).
+		AnyTimes()
+
+	return h
+}
+
+// netReady emits p2p.EvtNetworkReady
+func netReady(bus event.Bus) error {
+	e, err := bus.Emitter(new(p2p.EvtNetworkReady), eventbus.Stateful)
+	if err != nil {
+		return err
+	}
+
+	return e.Emit(p2p.EvtNetworkReady{})
 }

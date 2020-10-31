@@ -7,33 +7,33 @@ import (
 	"go.uber.org/fx"
 )
 
-// Bundle services to define application-specific configurations
-// (see pkg/client/runtime.go for a simple example).
-func Bundle(ps ...ServiceProvider) ServiceBundle {
-	return ps
+// Config specifies a set of runtime services.
+type Config struct {
+	fx.In
+
+	Log      ww.Logger
+	Services []ServiceFactory `group:"runtime"`
 }
 
-// Register runtime
-func Register(log ww.Logger, b ServiceBundle, lx fx.Lifecycle) (err error) {
+// Start a runtime in the background
+func Start(cfg Config, lx fx.Lifecycle) (err error) {
 	var svc Service
-	for _, p := range b {
-		if svc, err = p.Service(); err != nil {
+	for _, factory := range cfg.Services {
+		if svc, err = factory.NewService(); err != nil {
 			break
 		}
 
-		lx.Append(hook(log, svc))
+		lx.Append(hook(cfg.Log, svc))
 	}
 
 	return
 }
 
-// ServiceBundle is a set of ServiceFactories that are started/stopped in a
-// well-orchestrated manner.
-type ServiceBundle []ServiceProvider
-
-// ServiceProvider is a constructor for a service.
-type ServiceProvider interface {
-	Service() (Service, error)
+// ServiceFactory is a constructor for a service.
+type ServiceFactory interface {
+	NewService() (Service, error)
+	// Consumes() []interface{}
+	// Emits() []interface{}
 }
 
 // Service is a process that runs in the background.
