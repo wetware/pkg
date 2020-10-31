@@ -45,6 +45,20 @@ func (cfg Config) NewService() (runtime.Service, error) {
 	}, nil
 }
 
+// Produces EvtNeighborhoodChanged.
+func (cfg Config) Produces() []interface{} {
+	return []interface{}{
+		EvtNeighborhoodChanged{},
+	}
+}
+
+// Consumes event.EvtPeerConnectednessChanged.
+func (cfg Config) Consumes() []interface{} {
+	return []interface{}{
+		event.EvtPeerConnectednessChanged{}, // see comment in tracker service
+	}
+}
+
 // Module for Neighborhood service
 type Module struct {
 	fx.Out

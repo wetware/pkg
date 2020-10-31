@@ -11,10 +11,10 @@ import (
 	"github.com/lthibault/jitterbug"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/runtime"
-	boot_service "github.com/wetware/ww/pkg/runtime/svc/boot"
-	graph_service "github.com/wetware/ww/pkg/runtime/svc/graph"
+	"github.com/wetware/ww/pkg/runtime/svc/boot"
+	"github.com/wetware/ww/pkg/runtime/svc/graph"
 	"github.com/wetware/ww/pkg/runtime/svc/internal"
-	tick_service "github.com/wetware/ww/pkg/runtime/svc/ticker"
+	"github.com/wetware/ww/pkg/runtime/svc/ticker"
 	randutil "github.com/wetware/ww/pkg/util/rand"
 	"go.uber.org/fx"
 )
@@ -48,17 +48,32 @@ func (cfg Config) NewService() (_ runtime.Service, err error) {
 	}
 
 	if d.sub, err = cfg.Host.EventBus().Subscribe([]interface{}{
-		new(tick_service.EvtTimestep),
-		new(graph_service.EvtGraftRequested),
+		new(ticker.EvtTimestep),
+		new(graph.EvtGraftRequested),
 	}); err != nil {
 		return
 	}
 
-	if d.e, err = cfg.Host.EventBus().Emitter(new(boot_service.EvtPeerDiscovered)); err != nil {
+	if d.e, err = cfg.Host.EventBus().Emitter(new(boot.EvtPeerDiscovered)); err != nil {
 		return
 	}
 
 	return d, nil
+}
+
+// Produces boot.EvtPeerDiscovered.
+func (cfg Config) Produces() []interface{} {
+	return []interface{}{
+		boot.EvtPeerDiscovered{},
+	}
+}
+
+// Consumes ticker.EvtTimestep & graph.EvtGraftRequested.
+func (cfg Config) Consumes() []interface{} {
+	return []interface{}{
+		ticker.EvtTimestep{},
+		graph.EvtGraftRequested{},
+	}
 }
 
 // Module for Boot service.
@@ -130,7 +145,7 @@ func (d discoverer) subloop() {
 
 	for v := range d.sub.Out() {
 		switch ev := v.(type) {
-		case tick_service.EvtTimestep:
+		case ticker.EvtTimestep:
 			if !sched.Advance(ev.Delta) {
 				continue
 			}
@@ -141,7 +156,7 @@ func (d discoverer) subloop() {
 			case d.advert <- struct{}{}:
 			default:
 			}
-		case graph_service.EvtGraftRequested:
+		case graph.EvtGraftRequested:
 			select {
 			case d.disc <- struct{}{}:
 			default:
@@ -177,7 +192,7 @@ func (d discoverer) graftloop() {
 				continue
 			}
 
-			if err = d.e.Emit(boot_service.EvtPeerDiscovered(info)); err != nil {
+			if err = d.e.Emit(boot.EvtPeerDiscovered(info)); err != nil {
 				d.log.With(d).WithError(err).Error("failed to emit EvtPeerDiscovered")
 			}
 		}

@@ -1,4 +1,4 @@
-package bootstrapper
+package boot
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 	"github.com/wetware/ww/pkg/boot"
 	"github.com/wetware/ww/pkg/runtime"
 	"github.com/wetware/ww/pkg/runtime/svc/internal"
-	neighborhood_service "github.com/wetware/ww/pkg/runtime/svc/neighborhood"
+	"github.com/wetware/ww/pkg/runtime/svc/neighborhood"
 )
 
 // EvtPeerDiscovered .
@@ -40,7 +40,7 @@ func (cfg Config) NewService() (_ runtime.Service, err error) {
 		discover: make(chan struct{}, 1),
 	}
 
-	if b.sub, err = cfg.Host.EventBus().Subscribe(new(neighborhood_service.EvtNeighborhoodChanged)); err != nil {
+	if b.sub, err = cfg.Host.EventBus().Subscribe(new(neighborhood.EvtNeighborhoodChanged)); err != nil {
 		return
 	}
 
@@ -51,6 +51,20 @@ func (cfg Config) NewService() (_ runtime.Service, err error) {
 	return b, nil
 }
 
+// Produces EvtPeerDiscovered.
+func (cfg Config) Produces() []interface{} {
+	return []interface{}{
+		EvtPeerDiscovered{},
+	}
+}
+
+// Consumes neighborhood.EvtNeighborhoodChanged.
+func (cfg Config) Consumes() []interface{} {
+	return []interface{}{
+		neighborhood.EvtNeighborhoodChanged{},
+	}
+}
+
 // Module for Boot service.
 type Module struct {
 	fx.Out
@@ -59,12 +73,6 @@ type Module struct {
 }
 
 // New Boot service.  Performs bootstrap peer discovery.
-//
-// Consumes:
-//	- EvtNeighborhoodChanged
-//
-// Emits:
-//  - EvtPeerDiscovered
 func New(cfg Config) Module { return Module{Factory: cfg} }
 
 type bootstrapper struct {
@@ -110,7 +118,7 @@ func (b bootstrapper) subloop() {
 
 	for v := range b.sub.Out() {
 		// Only use bootstrap discovery if the local node is orphaned.
-		if notOrphaned(v.(neighborhood_service.EvtNeighborhoodChanged)) {
+		if notOrphaned(v.(neighborhood.EvtNeighborhoodChanged)) {
 			continue
 		}
 
@@ -148,6 +156,6 @@ func (b bootstrapper) emit(info peer.AddrInfo) {
 	}
 }
 
-func notOrphaned(ev neighborhood_service.EvtNeighborhoodChanged) bool {
-	return ev.To != neighborhood_service.PhaseOrphaned
+func notOrphaned(ev neighborhood.EvtNeighborhoodChanged) bool {
+	return ev.To != neighborhood.PhaseOrphaned
 }

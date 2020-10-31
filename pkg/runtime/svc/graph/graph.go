@@ -11,8 +11,8 @@ import (
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/runtime"
 	"github.com/wetware/ww/pkg/runtime/svc/internal"
-	neighborhood_service "github.com/wetware/ww/pkg/runtime/svc/neighborhood"
-	tick_service "github.com/wetware/ww/pkg/runtime/svc/ticker"
+	"github.com/wetware/ww/pkg/runtime/svc/neighborhood"
+	"github.com/wetware/ww/pkg/runtime/svc/ticker"
 	randutil "github.com/wetware/ww/pkg/util/rand"
 	"go.uber.org/fx"
 	"go.uber.org/multierr"
@@ -50,14 +50,14 @@ func (cfg Config) NewService() (_ runtime.Service, err error) {
 		bus:       cfg.Host.EventBus(),
 		src:       randutil.FromPeer(cfg.Host.ID()),
 		cq:        make(chan struct{}),
-		neighbors: make(chan neighborhood_service.EvtNeighborhoodChanged),
+		neighbors: make(chan neighborhood.EvtNeighborhoodChanged),
 	}
 
-	if g.tstep, err = g.bus.Subscribe(new(tick_service.EvtTimestep)); err != nil {
+	if g.tstep, err = g.bus.Subscribe(new(ticker.EvtTimestep)); err != nil {
 		return
 	}
 
-	if g.nhood, err = g.bus.Subscribe(new(neighborhood_service.EvtNeighborhoodChanged)); err != nil {
+	if g.nhood, err = g.bus.Subscribe(new(neighborhood.EvtNeighborhoodChanged)); err != nil {
 		return
 	}
 
@@ -74,6 +74,23 @@ func (cfg Config) NewService() (_ runtime.Service, err error) {
 	}
 
 	return g, nil
+}
+
+// Produces EvtBootRequested, EvtGraftRequested & EvtPruneRequested.
+func (cfg Config) Produces() []interface{} {
+	return []interface{}{
+		EvtBootRequested{},
+		EvtGraftRequested{},
+		EvtPruneRequested{},
+	}
+}
+
+// Consumes ticker.EvtTimestep & neighborhood.EvtNeighborhoodChanged.
+func (cfg Config) Consumes() []interface{} {
+	return []interface{}{
+		ticker.EvtTimestep{},
+		neighborhood.EvtNeighborhoodChanged{},
+	}
 }
 
 // Module for Graph service.
@@ -100,7 +117,7 @@ type graph struct {
 	src rand.Source
 
 	cq        chan struct{}
-	neighbors chan neighborhood_service.EvtNeighborhoodChanged
+	neighbors chan neighborhood.EvtNeighborhoodChanged
 
 	bus                event.Bus
 	tstep, nhood       event.Subscription
@@ -138,7 +155,7 @@ func (g graph) Stop(context.Context) error {
 func (g graph) subloop() {
 	defer close(g.neighbors)
 
-	var ev neighborhood_service.EvtNeighborhoodChanged
+	var ev neighborhood.EvtNeighborhoodChanged
 	sched := internal.NewScheduler(time.Minute, jitterbug.Uniform{
 		Min:    time.Second * 15,
 		Source: rand.New(g.src),
@@ -151,7 +168,7 @@ func (g graph) subloop() {
 				return
 			}
 
-			if !sched.Advance(v.(tick_service.EvtTimestep).Delta) {
+			if !sched.Advance(v.(ticker.EvtTimestep).Delta) {
 				continue
 			}
 
@@ -162,7 +179,7 @@ func (g graph) subloop() {
 				return
 			}
 
-			ev = v.(neighborhood_service.EvtNeighborhoodChanged)
+			ev = v.(neighborhood.EvtNeighborhoodChanged)
 		case <-g.cq:
 			return
 		}
@@ -178,17 +195,17 @@ func (g graph) subloop() {
 func (g graph) emitloop() {
 	for ev := range g.neighbors {
 		switch ev.To {
-		case neighborhood_service.PhaseOrphaned:
+		case neighborhood.PhaseOrphaned:
 			if err := g.boot.Emit(EvtBootRequested{}); err != nil {
 				g.log.With(g).WithError(err).Warn("failed to emit EvtBootRequested")
 			}
 
-		case neighborhood_service.PhasePartial:
+		case neighborhood.PhasePartial:
 			if err := g.graft.Emit(EvtGraftRequested{}); err != nil {
 				g.log.With(g).WithError(err).Warn("failed to emit EvtGraftRequested")
 			}
 
-		case neighborhood_service.PhaseOverloaded:
+		case neighborhood.PhaseOverloaded:
 			if err := g.prune.Emit(EvtPruneRequested{}); err != nil {
 				g.log.With(g).WithError(err).Warn("failed to emit EvtPruneRequested")
 			}

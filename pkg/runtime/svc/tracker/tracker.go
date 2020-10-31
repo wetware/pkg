@@ -1,4 +1,4 @@
-// Package tracker_service is a shim for libp2p's EvtPeerConnectednessChanged
+// Package tracker is a shim for libp2p's EvtPeerConnectednessChanged
 package tracker
 
 import (
@@ -89,6 +89,27 @@ func (cfg Config) NewService() (svc runtime.Service, err error) {
 	cfg.Host.Network().Notify(t.notifiee())
 
 	return t, nil
+}
+
+// Produces EvtConnectionChanged, EvtStreamChanged & event.EvtPeerConnectednessChanged.
+func (cfg Config) Produces() []interface{} {
+	return []interface{}{
+		EvtConnectionChanged{},
+		EvtStreamChanged{},
+
+		// We're emmitting this until https://github.com/libp2p/go-libp2p-swarm/pull/177
+		// gets merged.  Track it.
+		event.EvtPeerConnectednessChanged{},
+	}
+}
+
+// Consumes event.EvtPeerIdentificationCompleted, event.EvtPeerIdentificationFailed & EvtConnectionChanged
+func (cfg Config) Consumes() []interface{} {
+	// We don't export events dispatched by libp2p since these are available by default
+	// (i.e.:  the dependency is always satisfied.)
+	return []interface{}{
+		EvtConnectionChanged{},
+	}
 }
 
 // Module for Tracker service

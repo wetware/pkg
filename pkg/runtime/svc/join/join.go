@@ -12,7 +12,7 @@ import (
 
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/runtime"
-	boot_service "github.com/wetware/ww/pkg/runtime/svc/boot"
+	"github.com/wetware/ww/pkg/runtime/svc/boot"
 	"github.com/wetware/ww/pkg/runtime/svc/internal"
 )
 
@@ -32,14 +32,21 @@ func (cfg Config) NewService() (_ runtime.Service, err error) {
 		h:      cfg.Host,
 		ctx:    ctx,
 		cancel: cancel,
-		join:   make(chan boot_service.EvtPeerDiscovered, 1),
+		join:   make(chan boot.EvtPeerDiscovered, 1),
 	}
 
-	if j.sub, err = j.h.EventBus().Subscribe(new(boot_service.EvtPeerDiscovered)); err != nil {
+	if j.sub, err = j.h.EventBus().Subscribe(new(boot.EvtPeerDiscovered)); err != nil {
 		return
 	}
 
 	return j, nil
+}
+
+// Consumes boot.EvtPeerDiscovered.
+func (cfg Config) Consumes() []interface{} {
+	return []interface{}{
+		boot.EvtPeerDiscovered{},
+	}
 }
 
 // Module for Graph service.
@@ -64,7 +71,7 @@ type joiner struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	join chan boot_service.EvtPeerDiscovered
+	join chan boot.EvtPeerDiscovered
 	sub  event.Subscription
 }
 
@@ -100,7 +107,7 @@ func (j joiner) subloop() {
 
 	for v := range j.sub.Out() {
 		select {
-		case j.join <- v.(boot_service.EvtPeerDiscovered):
+		case j.join <- v.(boot.EvtPeerDiscovered):
 		case <-j.ctx.Done():
 		default:
 			// there's already a join in progress

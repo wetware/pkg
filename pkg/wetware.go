@@ -1,4 +1,4 @@
-//go:generate mockgen -package mock_ww -destination ../internal/test/mock/pkg/mock_wetware.go github.com/wetware/ww/pkg Logger,Any,Anchor
+//go:generate mockgen -package mock_ww -destination ../internal/test/mock/pkg/mock_wetware.go github.com/wetware/ww/pkg Logger,Loggable,Any,Anchor
 
 // Package ww contains core interfaces and symbols
 package ww

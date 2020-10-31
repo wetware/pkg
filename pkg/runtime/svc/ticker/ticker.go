@@ -38,6 +38,13 @@ func (cfg Config) NewService() (runtime.Service, error) {
 	}, nil
 }
 
+// Produces EvtTimestep
+func (cfg Config) Produces() []interface{} {
+	return []interface{}{
+		EvtTimestep{},
+	}
+}
+
 // Module for Ticker service
 type Module struct {
 	fx.Out

@@ -14,7 +14,7 @@ import (
 	"github.com/wetware/ww/pkg/cluster"
 	"github.com/wetware/ww/pkg/runtime"
 	"github.com/wetware/ww/pkg/runtime/svc/internal"
-	tick_service "github.com/wetware/ww/pkg/runtime/svc/ticker"
+	"github.com/wetware/ww/pkg/runtime/svc/ticker"
 	randutil "github.com/wetware/ww/pkg/util/rand"
 )
 
@@ -30,7 +30,7 @@ type Config struct {
 
 // NewService satisfies runtime.ServiceFactory.
 func (cfg Config) NewService() (runtime.Service, error) {
-	tstep, err := cfg.Host.EventBus().Subscribe(new(tick_service.EvtTimestep))
+	tstep, err := cfg.Host.EventBus().Subscribe(new(ticker.EvtTimestep))
 	if err != nil {
 		return nil, err
 	}
@@ -50,6 +50,13 @@ func (cfg Config) NewService() (runtime.Service, error) {
 	return a, nil
 }
 
+// Consumes ticker.EvtTimestep
+func (cfg Config) Consumes() []interface{} {
+	return []interface{}{
+		ticker.EvtTimestep{},
+	}
+}
+
 // Module for Announcer service.
 type Module struct {
 	fx.Out
@@ -59,10 +66,6 @@ type Module struct {
 
 // New Announcer service.  Publishes cluster-wise heartbeats that announces the local
 // host to peers.
-//
-// Consumes:
-//
-// Emits:
 func New(cfg Config) Module { return Module{Factory: cfg} }
 
 type announcer struct {
@@ -125,7 +128,7 @@ func (a announcer) subloop() {
 	})
 
 	for v := range a.tstep.Out() {
-		if s.Advance(v.(tick_service.EvtTimestep).Delta) {
+		if s.Advance(v.(ticker.EvtTimestep).Delta) {
 			select {
 			case a.announce <- struct{}{}:
 			default:

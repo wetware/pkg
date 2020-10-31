@@ -1,4 +1,4 @@
-package bootstrapper_test
+package boot_test
 
 import (
 	"context"

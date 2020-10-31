@@ -9,7 +9,7 @@ import (
 	"github.com/wetware/ww/pkg/cluster"
 	"github.com/wetware/ww/pkg/runtime"
 	"github.com/wetware/ww/pkg/runtime/svc/internal"
-	tick_service "github.com/wetware/ww/pkg/runtime/svc/ticker"
+	"github.com/wetware/ww/pkg/runtime/svc/ticker"
 )
 
 // Config for Filter service.
@@ -22,7 +22,7 @@ type Config struct {
 
 // NewService satisfies runtime.ServiceFactory.
 func (cfg Config) NewService() (runtime.Service, error) {
-	sub, err := cfg.Bus.Subscribe(new(tick_service.EvtTimestep))
+	sub, err := cfg.Bus.Subscribe(new(ticker.EvtTimestep))
 	if err != nil {
 		return nil, err
 	}
@@ -34,6 +34,13 @@ func (cfg Config) NewService() (runtime.Service, error) {
 	}, nil
 }
 
+// Consumes ticker.EvtTimestep.
+func (cfg Config) Consumes() []interface{} {
+	return []interface{}{
+		ticker.EvtTimestep{},
+	}
+}
+
 // Module for Filter service
 type Module struct {
 	fx.Out
@@ -42,11 +49,6 @@ type Module struct {
 }
 
 // New Filter service.  Updates the routing filter, allowing it to "forget" stale peers.
-//
-// Consumes:
-//  - EvtTimestep
-//
-// Emits:
 func New(cfg Config) Module { return Module{Factory: cfg} }
 
 type router struct {
@@ -74,6 +76,6 @@ func (r router) Stop(context.Context) error { return r.ts.Close() }
 
 func (r router) tickloop() {
 	for v := range r.ts.Out() {
-		r.epoch.Advance(v.(tick_service.EvtTimestep).Time)
+		r.epoch.Advance(v.(ticker.EvtTimestep).Time)
 	}
 }
