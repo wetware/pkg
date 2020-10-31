@@ -32,18 +32,18 @@ import (
 	ww "github.com/wetware/ww/pkg"
 
 	// wetware internal deps
-	"github.com/wetware/ww/pkg/internal/filter"
 	"github.com/wetware/ww/pkg/internal/p2p"
 
 	// wetware public APIs
 	"github.com/wetware/ww/pkg/boot"
+	"github.com/wetware/ww/pkg/cluster"
 	"github.com/wetware/ww/pkg/runtime"
 
 	// runtime services
 	announcer_service "github.com/wetware/ww/pkg/runtime/svc/announcer"
 	beacon_service "github.com/wetware/ww/pkg/runtime/svc/beacon"
 	boot_service "github.com/wetware/ww/pkg/runtime/svc/boot"
-	filter_service "github.com/wetware/ww/pkg/runtime/svc/filter"
+	epoch_service "github.com/wetware/ww/pkg/runtime/svc/epoch"
 	graph_service "github.com/wetware/ww/pkg/runtime/svc/graph"
 	join_service "github.com/wetware/ww/pkg/runtime/svc/join"
 	neighborhood_service "github.com/wetware/ww/pkg/runtime/svc/neighborhood"
@@ -56,7 +56,7 @@ const timestep = time.Millisecond * 100
 func services() fx.Option {
 	return fx.Provide(
 		tick_service.New,
-		filter_service.New,
+		epoch_service.New,
 		tracker_service.New,
 		neighborhood_service.New,
 		boot_service.New,
@@ -89,9 +89,8 @@ func (cfg Config) assemble(h *Host) *fx.App {
 		fx.Provide(
 			cfg.options,
 			p2p.New,
-			routingTopic,
+			cluster.New,
 			// block.New,
-			filter.New,
 			newAnchor,
 			newHost,
 		),

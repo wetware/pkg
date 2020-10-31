@@ -1,4 +1,4 @@
-package filter
+package cluster
 
 import (
 	"sync"
@@ -13,17 +13,6 @@ var handle = treap.Handle{
 	CompareKeys:    pidComparator,
 	CompareWeights: treap.TimeComparator,
 }
-
-// Filter tracks the liveliness of hosts in a cluster.
-type Filter interface {
-	Peers() peer.IDSlice
-	Contains(peer.ID) bool
-	Advance(time.Time)
-	Upsert(peer.ID, uint64, time.Duration) bool
-}
-
-// New filter
-func New() Filter { return &filter{} }
 
 // TODO(performance): replace lock-based CAS with a proper sync/atomic CAS loop.
 // See `atomic.Value` for implementation hints (especially wrt unsafe.Pointer magic).

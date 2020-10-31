@@ -34,7 +34,7 @@ type Module struct {
 	Discovery discovery.Discovery
 }
 
-// New p2p module
+// New p2p module.
 func New(ctx context.Context, cfg Config, lx fx.Lifecycle) (mod Module, err error) {
 	if mod.Host, err = newHost(ctx, lx, cfg.HostOpt...); err != nil {
 		return

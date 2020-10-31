@@ -1,4 +1,4 @@
-package filter_test
+package cluster
 
 import (
 	"math/rand"
@@ -9,22 +9,17 @@ import (
 	"github.com/mr-tron/base58"
 	"github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/assert"
-	"github.com/wetware/ww/pkg/internal/filter"
 )
-
-const ttl = time.Second
 
 var t0 = time.Date(2020, 4, 9, 8, 0, 0, 0, time.UTC)
 
 func TestFilter(t *testing.T) {
-	t.Run("AdvanceNilFilter", func(t *testing.T) {
-		assert.NotPanics(t, func() {
-			filter.New().Advance(t0)
-		}, "advancing an empty filter should not panic.")
-	})
 
 	id := randID()
-	f := filter.New()
+	f := new(filter)
+
+	assert.NotPanics(t, func() { f.Advance(t0) },
+		"advancing an empty filter should not panic.")
 
 	assert.False(t, f.Contains(id),
 		"canary failed:  ID should not be present in empty filter.")
@@ -50,11 +45,11 @@ func TestFilter(t *testing.T) {
 	assert.Contains(t, f.Peers(), id,
 		"ID should appear in peer.IDSlice")
 
-	// f.Advance(t0.Add(time.Millisecond * 100))
-	// assert.True(t, f.Contains(id),
-	// 	"advancing by less than the TTL amount should NOT cause eviction.")
+	f.Advance(t0.Add(time.Millisecond * 100))
+	assert.True(t, f.Contains(id),
+		"advancing by less than the TTL amount should NOT cause eviction.")
 
-	f.Advance(t0.Add(time.Millisecond * 1050))
+	f.Advance(t0.Add(time.Second))
 	assert.False(t, f.Contains(id),
 		"advancing by more than the TTL amount should cause eviction")
 }

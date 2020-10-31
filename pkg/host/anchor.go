@@ -11,12 +11,11 @@ import (
 	"zombiezen.com/go/capnproto2/server"
 
 	host "github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
 
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
-	"github.com/wetware/ww/pkg/internal/filter"
+	"github.com/wetware/ww/pkg/cluster"
 	"github.com/wetware/ww/pkg/internal/rpc"
 	"github.com/wetware/ww/pkg/internal/rpc/anchor"
 	"github.com/wetware/ww/pkg/internal/tree"
@@ -40,16 +39,12 @@ var (
 	_ api.Anchor_Server = (*anchorCap)(nil)
 )
 
-type routingTable interface {
-	Peers() peer.IDSlice
-}
-
 type anchorParams struct {
 	fx.In
 
-	Log    ww.Logger
-	Host   host.Host
-	Filter filter.Filter
+	Log     ww.Logger
+	Host    host.Host
+	Cluster cluster.PeerSet
 }
 
 type anchorOut struct {
@@ -60,7 +55,7 @@ type anchorOut struct {
 
 func newAnchor(ps anchorParams) (out anchorOut) {
 	out.Handler = rootAnchorCap{
-		root: newRootAnchor(ps.Log, ps.Filter, ps.Host),
+		root: newRootAnchor(ps.Log, ps.Cluster, ps.Host),
 	}
 
 	return
@@ -69,17 +64,17 @@ func newAnchor(ps anchorParams) (out anchorOut) {
 type rootAnchor struct {
 	log ww.Logger
 	env *parens.Env
-	routingTable
+	peerProvider
 
 	localPath string
 	node      tree.Node
 	term      rpc.Terminal
 }
 
-func newRootAnchor(log ww.Logger, rt routingTable, h host.Host) *rootAnchor {
+func newRootAnchor(log ww.Logger, ps peerProvider, h host.Host) *rootAnchor {
 	root := &rootAnchor{
 		log:          log.WithField("path", "/"),
-		routingTable: rt,
+		peerProvider: ps,
 		localPath:    h.ID().String(),
 		node:         tree.New(),
 		term:         rpc.NewTerminal(h),

@@ -2,17 +2,16 @@ package announcer
 
 import (
 	"context"
-	"encoding/binary"
 	"math/rand"
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/host"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"go.uber.org/fx"
 
 	"github.com/lthibault/jitterbug"
 	ww "github.com/wetware/ww/pkg"
+	"github.com/wetware/ww/pkg/cluster"
 	"github.com/wetware/ww/pkg/runtime"
 	"github.com/wetware/ww/pkg/runtime/svc/internal"
 	tick_service "github.com/wetware/ww/pkg/runtime/svc/ticker"
@@ -23,10 +22,10 @@ import (
 type Config struct {
 	fx.In
 
-	Log           ww.Logger
-	Host          host.Host
-	Announcements *pubsub.Topic
-	TTL           time.Duration `name:"ttl"`
+	Log       ww.Logger
+	Host      host.Host
+	Announcer cluster.Announcer
+	TTL       time.Duration `name:"ttl"`
 }
 
 // NewService satisfies runtime.ServiceFactory.
@@ -41,7 +40,7 @@ func (cfg Config) NewService() (runtime.Service, error) {
 		log:      cfg.Log,
 		h:        cfg.Host,
 		ttl:      cfg.TTL,
-		p:        cfg.Announcements,
+		cluster:  cfg.Announcer,
 		ctx:      ctx,
 		cancel:   cancel,
 		tstep:    tstep,
@@ -58,11 +57,6 @@ type Module struct {
 	Factory runtime.ServiceFactory `group:"runtime"`
 }
 
-// Publisher can publish messages to a pubsub topic.
-type Publisher interface {
-	Publish(context.Context, []byte, ...pubsub.PubOpt) error
-}
-
 // New Announcer service.  Publishes cluster-wise heartbeats that announces the local
 // host to peers.
 //
@@ -74,9 +68,9 @@ func New(cfg Config) Module { return Module{Factory: cfg} }
 type announcer struct {
 	log ww.Logger
 
-	h   host.Host
-	ttl time.Duration
-	p   Publisher
+	h       host.Host
+	ttl     time.Duration
+	cluster cluster.Announcer
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -94,7 +88,7 @@ func (a announcer) Loggable() map[string]interface{} {
 
 func (a announcer) Start(ctx context.Context) (err error) {
 	if err = internal.WaitNetworkReady(ctx, a.h.EventBus()); err == nil {
-		if err = a.Announce(ctx); err == nil {
+		if err = a.cluster.Announce(ctx, a.ttl); err == nil {
 			go a.subloop()
 			go a.announceloop()
 		}
@@ -107,11 +101,6 @@ func (a announcer) Stop(ctx context.Context) error {
 	a.cancel()
 
 	return a.tstep.Close()
-}
-
-func (a announcer) Announce(ctx context.Context) error {
-	b := make([]byte, binary.MaxVarintLen64)
-	return a.p.Publish(ctx, b[:binary.PutUvarint(b, uint64(a.ttl))])
 }
 
 func (a announcer) subloop() {
@@ -150,7 +139,7 @@ func (a announcer) subloop() {
 
 func (a announcer) announceloop() {
 	for range a.announce {
-		if err := a.Announce(a.ctx); err != nil && err != context.Canceled {
+		if err := a.cluster.Announce(a.ctx, a.ttl); err != nil && err != context.Canceled {
 			a.log.With(a).WithError(err).Warn("announcement failed")
 		}
 	}

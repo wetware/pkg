@@ -1,14 +1,12 @@
-package filter
+package epoch
 
 import (
 	"context"
-	"time"
 
 	"github.com/libp2p/go-libp2p-core/event"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"go.uber.org/fx"
 
-	"github.com/wetware/ww/pkg/internal/filter"
+	"github.com/wetware/ww/pkg/cluster"
 	"github.com/wetware/ww/pkg/runtime"
 	"github.com/wetware/ww/pkg/runtime/svc/internal"
 	tick_service "github.com/wetware/ww/pkg/runtime/svc/ticker"
@@ -18,9 +16,8 @@ import (
 type Config struct {
 	fx.In
 
-	Bus     event.Bus
-	Routing *pubsub.Topic
-	Filter  filter.Filter
+	Bus   event.Bus
+	Epoch cluster.EpochController
 }
 
 // NewService satisfies runtime.ServiceFactory.
@@ -31,10 +28,9 @@ func (cfg Config) NewService() (runtime.Service, error) {
 	}
 
 	return &router{
-		t:   cfg.Filter,
-		bus: cfg.Bus,
-		rt:  cfg.Routing,
-		ts:  sub,
+		epoch: cfg.Epoch,
+		bus:   cfg.Bus,
+		ts:    sub,
 	}, nil
 }
 
@@ -54,9 +50,7 @@ type Module struct {
 func New(cfg Config) Module { return Module{Factory: cfg} }
 
 type router struct {
-	t  interface{ Advance(time.Time) } // monotonically increasing
-	rt *pubsub.Topic
-	hb *pubsub.Subscription
+	epoch cluster.EpochController
 
 	bus event.Bus
 	ts  event.Subscription
@@ -65,41 +59,21 @@ type router struct {
 func (r router) Loggable() map[string]interface{} {
 	return map[string]interface{}{
 		"service": "router",
-		"ns":      r.hb.Topic(),
 	}
 }
 
 func (r *router) Start(ctx context.Context) (err error) {
 	if err = internal.WaitNetworkReady(ctx, r.bus); err == nil {
-		if r.hb, err = r.rt.Subscribe(); err == nil {
-			internal.StartBackground(
-				r.tickloop,
-				r.sinkloop,
-			)
-		}
+		go r.tickloop()
 	}
 
 	return
 }
 
-func (r router) Stop(context.Context) error {
-	r.hb.Cancel()
-
-	return r.ts.Close()
-}
+func (r router) Stop(context.Context) error { return r.ts.Close() }
 
 func (r router) tickloop() {
 	for v := range r.ts.Out() {
-		r.t.Advance(v.(tick_service.EvtTimestep).Time)
-	}
-}
-
-// consumes and discards topic messages
-func (r router) sinkloop() {
-	for {
-		_, err := r.hb.Next(context.Background())
-		if err != nil {
-			break
-		}
+		r.epoch.Advance(v.(tick_service.EvtTimestep).Time)
 	}
 }

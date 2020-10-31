@@ -423,21 +423,6 @@ func (mr *MockAnyMockRecorder) MemVal() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MemVal", reflect.TypeOf((*MockAny)(nil).MemVal))
 }
 
-// SExpr mocks base method
-func (m *MockAny) SExpr() (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SExpr")
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// SExpr indicates an expected call of SExpr
-func (mr *MockAnyMockRecorder) SExpr() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SExpr", reflect.TypeOf((*MockAny)(nil).SExpr))
-}
-
 // MockAnchor is a mock of Anchor interface
 type MockAnchor struct {
 	ctrl     *gomock.Controller

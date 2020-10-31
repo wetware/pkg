@@ -14,14 +14,14 @@ import (
 	"github.com/pkg/errors"
 
 	ww "github.com/wetware/ww/pkg"
-	"github.com/wetware/ww/pkg/internal/filter"
+	"github.com/wetware/ww/pkg/cluster"
 	"github.com/wetware/ww/pkg/internal/rpc"
 )
 
 // Host .
 type Host struct {
 	ns   string
-	r    routingTable
+	ps   peerProvider
 	host host.Host
 
 	runtime interface {
@@ -71,7 +71,7 @@ func (h Host) InterfaceListenAddrs() ([]multiaddr.Multiaddr, error) {
 
 // Peers in the cluster
 func (h Host) Peers() peer.IDSlice {
-	return append(h.r.Peers(), h.host.ID()) // TODO(xxx):  is the append necessary?
+	return append(h.ps.Peers(), h.host.ID()) // TODO(xxx):  is the append necessary?
 }
 
 // Join the cluster via the specified peer information.
@@ -109,6 +109,10 @@ func start(r interface{ Start(context.Context) error }) error {
 	go.uber.org/fx
 */
 
+type peerProvider interface {
+	Peers() peer.IDSlice
+}
+
 type hostParams struct {
 	fx.In
 
@@ -117,12 +121,12 @@ type hostParams struct {
 	Namespace string `name:"ns"`
 
 	Host     host.Host
-	Filter   filter.Filter
+	Cluster  cluster.PeerSet
 	Handlers []rpc.Capability `group:"rpc"`
 }
 
 func newHost(ctx context.Context, lx fx.Lifecycle, ps hostParams) Host {
-	h := Host{ns: ps.Namespace, host: ps.Host, r: ps.Filter}
+	h := Host{ns: ps.Namespace, host: ps.Host, ps: ps.Cluster}
 
 	for _, cap := range ps.Handlers {
 		h.host.SetStreamHandler(cap.Protocol(), h.handler(ctx, ps.Log, cap))
