@@ -50,6 +50,9 @@ func init() {
 	}
 
 	_, vec, err := newVector(capnp.SingleSegment(nil), 0, bits, root, tail)
+	if err != nil {
+		panic(err)
+	}
 	EmptyVector.Raw = vec.Raw
 }
 

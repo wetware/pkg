@@ -97,7 +97,7 @@ func (cfg Config) Produces() []interface{} {
 		EvtConnectionChanged{},
 		EvtStreamChanged{},
 
-		// We're emmitting this until https://github.com/libp2p/go-libp2p-swarm/pull/177
+		// We're emitting this until https://github.com/libp2p/go-libp2p-swarm/pull/177
 		// gets merged.  Track it.
 		event.EvtPeerConnectednessChanged{},
 	}
