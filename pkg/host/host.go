@@ -39,7 +39,7 @@ func New(opt ...Option) (h Host, err error) {
 		}
 	}
 
-	h.runtime = cfg.assemble(&h)
+	h.runtime = fx.New(cfg.export(), fx.Populate(&h))
 	return h, start(h.runtime)
 }
 

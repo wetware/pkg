@@ -82,10 +82,9 @@ type Config struct {
 	boot  boot.Strategy
 }
 
-func (cfg Config) assemble(h *Host) *fx.App {
-	return fx.New(
+func (cfg Config) export() fx.Option {
+	return fx.Options(
 		fx.NopLogger,
-		fx.Populate(h),
 		fx.Provide(
 			cfg.options,
 			p2p.New,

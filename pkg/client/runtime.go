@@ -59,10 +59,9 @@ type Config struct {
 	kmin, kmax int
 }
 
-func (cfg Config) assemble(ctx context.Context, c *Client) {
-	c.app = fx.New(
+func (cfg Config) export(ctx context.Context) fx.Option {
+	return fx.Options(
 		fx.NopLogger,
-		fx.Populate(c),
 		fx.Provide(
 			cfg.options,
 			p2p.New,

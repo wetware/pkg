@@ -39,7 +39,7 @@ func Dial(ctx context.Context, opt ...Option) (c Client, err error) {
 		}
 	}
 
-	cfg.assemble(ctx, &c)
+	c.app = fx.New(cfg.export(ctx), fx.Populate(&c))
 	if err = c.app.Start(ctx); err != nil {
 		err = errors.Wrap(err, "dial")
 	}
