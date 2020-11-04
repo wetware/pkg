@@ -8,7 +8,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 	mock_ww "github.com/wetware/ww/internal/test/mock/pkg"
 	mock_runtime "github.com/wetware/ww/internal/test/mock/pkg/runtime"
 	ww "github.com/wetware/ww/pkg"
@@ -23,61 +23,44 @@ var (
 	errTest = errors.New("test")
 )
 
-func TestRuntime(t *testing.T) {
-	t.Parallel()
+/*
+	Test Functions
+*/
 
-	for desc, factory := range map[string]func(*gomock.Controller) testSpec{
-		"Nop":                     testNop,
-		"Success":                 testSuccess,
-		"SuccessWithDependencies": testSuccessWithDependencies,
-		"FactoryError":            testFactoryError,
-		"MissingEventProvider":    testMissingEventProvider,
-		"StartFailure":            testStartFailure,
-		"StopFailure":             testStopFailure,
-		"UncleanShutdown":         testUncleanShutdown,
-	} {
-		t.Run(desc, func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
+func TestLifecycleSuccessSuite(t *testing.T) { suite.Run(t, new(LifecycleSuccess)) }
+func TestLifecycleFailureSuite(t *testing.T) { suite.Run(t, new(LifecycleFailure)) }
+func TestFactoryFailureSuite(t *testing.T)   { suite.Run(t, new(FactoryFailure)) }
 
-			tt := factory(ctrl)
-			tt.run(t, fxtest.NewLifecycle(t), runtime.Config{
-				Log:      tt.log,
-				Services: tt.ss,
-			})
-		})
-	}
+/*
+	Test Suites
+*/
+
+type LifecycleSuccess struct{ runtimeTestSuite }
+
+func (suite *LifecycleSuccess) AfterTest(_, _ string) {
+	defer suite.ctrl.Finish()
+
+	ctx, cancel := suite.Context()
+	defer cancel()
+
+	suite.Require().NoError(suite.Exec())
+	suite.NoError(suite.lx.Start(ctx), "lifecycle start failed")
+	suite.NoError(suite.lx.Stop(ctx), "lifecycle stop failed")
 }
 
-type testSpec struct {
-	ss  []runtime.ServiceFactory
-	log *mock_ww.MockLogger
-	run func(t *testing.T, lx *fxtest.Lifecycle, cfg runtime.Config)
-}
+func (suite *LifecycleSuccess) TestNoServices() { /* no services */ }
 
-func testNop(*gomock.Controller) testSpec {
-	return testSpec{
-		run: func(t *testing.T, lx *fxtest.Lifecycle, cfg runtime.Config) {
-			if assert.NoError(t, runtime.Start(cfg, lx)) {
-				lx.RequireStart().RequireStop()
-			}
-		},
-	}
-}
-
-func testSuccess(ctrl *gomock.Controller) testSpec {
-	log := mock_ww.NewMockLogger(ctrl)
-
-	log.EXPECT().
+func (suite *LifecycleSuccess) TestNoDependencies() {
+	suite.log.EXPECT().
 		With(matchLoggable).
-		Return(log).
+		Return(suite.log).
 		Times(1)
 
-	log.EXPECT().
+	suite.log.EXPECT().
 		Debug("service started").
 		Times(1)
 
-	svc := mock_runtime.NewMockService(ctrl)
+	svc := mock_runtime.NewMockService(suite.ctrl)
 	svc.EXPECT().
 		Start(matchContext).
 		Return(nil).
@@ -88,30 +71,20 @@ func testSuccess(ctrl *gomock.Controller) testSpec {
 		Return(nil).
 		Times(1)
 
-	return testSpec{
-		ss:  []runtime.ServiceFactory{factoryFor(svc)},
-		log: log,
-		run: func(t *testing.T, lx *fxtest.Lifecycle, cfg runtime.Config) {
-			if assert.NoError(t, runtime.Start(cfg, lx)) {
-				lx.RequireStart().RequireStop()
-			}
-		},
-	}
+	suite.AddFactories(factoryFor(svc))
 }
 
-func testSuccessWithDependencies(ctrl *gomock.Controller) testSpec {
-	log := mock_ww.NewMockLogger(ctrl)
-
-	log.EXPECT().
+func (suite *LifecycleSuccess) TestDependencies() {
+	suite.log.EXPECT().
 		With(matchLoggable).
-		Return(log).
+		Return(suite.log).
 		Times(2)
 
-	log.EXPECT().
+	suite.log.EXPECT().
 		Debug("service started").
 		Times(2)
 
-	svc := mock_runtime.NewMockService(ctrl)
+	svc := mock_runtime.NewMockService(suite.ctrl)
 	svc.EXPECT().
 		Start(matchContext).
 		Return(nil).
@@ -122,89 +95,118 @@ func testSuccessWithDependencies(ctrl *gomock.Controller) testSpec {
 		Return(nil).
 		Times(2)
 
-	return testSpec{
-		ss: []runtime.ServiceFactory{
-			produces(ctrl, svc, struct{}{}),
-			consumes(ctrl, svc, struct{}{}),
-		},
-		log: log,
-		run: func(t *testing.T, lx *fxtest.Lifecycle, cfg runtime.Config) {
-			if assert.NoError(t, runtime.Start(cfg, lx)) {
-				lx.RequireStart().RequireStop()
-			}
-		},
+	suite.AddFactories(
+		produces(suite.ctrl, svc, struct{}{}),
+		consumes(suite.ctrl, svc, struct{}{}),
+	)
+}
+
+type FactoryFailure struct {
+	runtimeTestSuite
+	expect error
+}
+
+func (suite *FactoryFailure) TearDownTest() { suite.expect = nil }
+
+func (suite *FactoryFailure) AfterTest(_, _ string) {
+	defer suite.ctrl.Finish()
+
+	// check that the test is properly defined.
+	if suite.expect == nil {
+		suite.T().Error("TEST NOT IMPLEMENTED (expected error not specified)")
+	}
+
+	assert.EqualError(suite.T(),
+		suite.Exec(),
+		suite.expect.Error(),
+		"unexpected factory error")
+}
+
+func (suite *FactoryFailure) TestFactoryError() {
+	suite.expect = errTest
+	suite.AddFactories(
+		errFactory(errTest),
+		factoryFor(mock_runtime.NewMockService(suite.ctrl)),
+	)
+}
+
+func (suite *FactoryFailure) TestUnresolvedDependency() {
+	suite.expect = runtime.DependencyError{reflect.TypeOf(struct{}{})}
+	suite.AddFactories(
+		consumes(suite.ctrl, mock_runtime.NewMockService(suite.ctrl), struct{}{}),
+	)
+}
+
+type LifecycleFailure struct {
+	runtimeTestSuite
+	startErr, stopErr error
+}
+
+func (suite *LifecycleFailure) TearDownTest() {
+	suite.startErr = nil
+	suite.stopErr = nil
+}
+
+func (suite *LifecycleFailure) AfterTest(_, _ string) {
+	defer suite.ctrl.Finish()
+
+	ctx, cancel := suite.Context()
+	defer cancel()
+
+	// check that the test is properly defined.
+	if suite.startErr == nil && suite.stopErr == nil {
+		suite.T().Error("TEST NOT IMPLEMENTED (must define startErr and/or stopErr)")
+	}
+
+	suite.Require().NoError(suite.Exec())
+
+	if err := suite.lx.Start(ctx); suite.startErr != nil {
+		suite.EqualError(err, suite.startErr.Error(),
+			"unexpected lifecycle start error")
+	} else {
+		suite.NoError(err, "unexpected lifecycle start error")
+	}
+
+	if suite.stopErr != nil {
+		suite.EqualError(suite.lx.Stop(ctx), suite.stopErr.Error(),
+			"unexpected lifecycle stop error")
 	}
 }
 
-func testFactoryError(ctrl *gomock.Controller) testSpec {
-	return testSpec{
-		ss: []runtime.ServiceFactory{
-			errFactory(errTest),
-			factoryFor(mock_runtime.NewMockService(ctrl)),
-		},
-		log: mock_ww.NewMockLogger(ctrl),
-		run: func(t *testing.T, lx *fxtest.Lifecycle, cfg runtime.Config) {
-			assert.EqualError(t, runtime.Start(cfg, lx), errTest.Error(),
-				"error from ServiceFactory.NewService() not reported")
-		},
-	}
-}
+func (suite *LifecycleFailure) TestStartError() {
+	suite.startErr = errTest
 
-func testMissingEventProvider(ctrl *gomock.Controller) testSpec {
-	return testSpec{
-		ss: []runtime.ServiceFactory{
-			consumes(ctrl, mock_runtime.NewMockService(ctrl), struct{}{}),
-		},
-		log: mock_ww.NewMockLogger(ctrl),
-		run: func(t *testing.T, lx *fxtest.Lifecycle, cfg runtime.Config) {
-			assert.EqualError(t,
-				runtime.Start(cfg, lx),
-				runtime.DependencyError{reflect.TypeOf(struct{}{})}.Error(),
-				"error from unresolved dependency not reported")
-		},
-	}
-}
-
-func testStartFailure(ctrl *gomock.Controller) testSpec {
-	svc := mock_runtime.NewMockService(ctrl)
+	svc := mock_runtime.NewMockService(suite.ctrl)
 	svc.EXPECT().
 		Start(matchContext).
 		Return(errTest).
 		Times(1)
 
-	return testSpec{
-		ss:  []runtime.ServiceFactory{factoryFor(svc)},
-		log: mock_ww.NewMockLogger(ctrl),
-		run: func(t *testing.T, lx *fxtest.Lifecycle, cfg runtime.Config) {
-			require.NoError(t, runtime.Start(cfg, lx))
-			assert.EqualError(t, lx.Start(context.Background()), errTest.Error(),
-				"start error was not reported")
-		},
-	}
+	suite.AddFactories(factoryFor(svc))
 }
 
-func testStopFailure(ctrl *gomock.Controller) testSpec {
-	log := mock_ww.NewMockLogger(ctrl)
+func (suite *LifecycleFailure) TestStopError() {
+	suite.stopErr = errTest
 
-	log.EXPECT().
+	suite.log.EXPECT().
 		With(matchLoggable).
-		Return(log).
+		Return(suite.log).
 		Times(2)
 
-	log.EXPECT().
+	suite.log.EXPECT().
 		Debug("service started").
 		Times(1)
 
-	log.EXPECT().
+	suite.log.EXPECT().
 		WithError(errTest).
-		Return(log).
+		Return(suite.log).
 		Times(1)
 
-	log.EXPECT().
+	suite.log.EXPECT().
 		Debug("unclean shutdown").
 		Times(1)
 
-	svc := mock_runtime.NewMockService(ctrl)
+	svc := mock_runtime.NewMockService(suite.ctrl)
 	svc.EXPECT().
 		Start(matchContext).
 		Return(nil).
@@ -215,38 +217,31 @@ func testStopFailure(ctrl *gomock.Controller) testSpec {
 		Return(errTest).
 		Times(1)
 
-	return testSpec{
-		ss:  []runtime.ServiceFactory{factoryFor(svc)},
-		log: log,
-		run: func(t *testing.T, lx *fxtest.Lifecycle, cfg runtime.Config) {
-			require.NoError(t, runtime.Start(cfg, lx))
-			assert.EqualError(t, lx.RequireStart().Stop(context.Background()), errTest.Error(),
-				"stop error was not reported")
-		},
-	}
+	suite.AddFactories(factoryFor(svc))
 }
 
-func testUncleanShutdown(ctrl *gomock.Controller) testSpec {
-	log := mock_ww.NewMockLogger(ctrl)
-	log.EXPECT().
+func (suite *LifecycleFailure) TestUncleanShutdown() {
+	suite.stopErr = errTest
+
+	suite.log.EXPECT().
 		With(matchLoggable).
-		Return(log).
+		Return(suite.log).
 		Times(2)
 
-	log.EXPECT().
+	suite.log.EXPECT().
 		Debug("service started").
 		Times(1)
 
-	log.EXPECT().
+	suite.log.EXPECT().
 		WithError(errTest).
-		Return(log).
+		Return(suite.log).
 		Times(1)
 
-	log.EXPECT().
+	suite.log.EXPECT().
 		Debug("unclean shutdown").
 		Times(1)
 
-	svc := mock_runtime.NewMockService(ctrl)
+	svc := mock_runtime.NewMockService(suite.ctrl)
 	svc.EXPECT().
 		Start(matchContext).
 		Return(nil).
@@ -257,15 +252,44 @@ func testUncleanShutdown(ctrl *gomock.Controller) testSpec {
 		Return(errTest).
 		Times(1)
 
-	return testSpec{
-		ss:  []runtime.ServiceFactory{factoryFor(svc)},
-		log: log,
-		run: func(t *testing.T, lx *fxtest.Lifecycle, cfg runtime.Config) {
-			require.NoError(t, runtime.Start(cfg, lx))
-			assert.EqualError(t, lx.RequireStart().Stop(context.Background()), errTest.Error(),
-				"error from Service.Stop() was not reported")
-		},
+	suite.AddFactories(factoryFor(svc))
+}
+
+/*
+	Utilities
+*/
+
+type runtimeTestSuite struct {
+	suite.Suite
+
+	ctrl *gomock.Controller
+	log  *mock_ww.MockLogger
+
+	lx  *fxtest.Lifecycle
+	cfg runtime.Config
+}
+
+func (suite *runtimeTestSuite) Context() (context.Context, context.CancelFunc) {
+	t, ok := suite.T().Deadline()
+	if !ok {
+		return context.WithCancel(context.Background())
 	}
+
+	return context.WithDeadline(context.Background(), t)
+}
+
+func (suite *runtimeTestSuite) SetupTest() {
+	suite.ctrl = gomock.NewController(suite.T())
+	suite.log = mock_ww.NewMockLogger(suite.ctrl)
+
+	suite.lx = fxtest.NewLifecycle(suite.T())
+	suite.cfg = runtime.Config{Log: suite.log}
+}
+
+func (suite *runtimeTestSuite) Exec() error { return runtime.Start(suite.cfg, suite.lx) }
+
+func (suite *runtimeTestSuite) AddFactories(fs ...runtime.ServiceFactory) {
+	suite.cfg.Services = append(suite.cfg.Services, fs...)
 }
 
 type factoryFunc func() (runtime.Service, error)
