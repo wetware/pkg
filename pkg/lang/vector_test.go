@@ -13,13 +13,12 @@ import (
 )
 
 func TestEmptyVector(t *testing.T) {
-	t.Run("count", func(t *testing.T) {
-		cnt, err := lang.EmptyVector.Count()
-		assert.NoError(t, err)
-		assert.Zero(t, cnt)
-	})
+	t.Parallel()
 
-	t.Run("build_empty_vector", func(t *testing.T) {
+	require.NotZero(t, lang.EmptyVector,
+		"zero-value empty vector is invalid (shift is missing)")
+
+	t.Run("NewVector", func(t *testing.T) {
 		v, err := lang.NewVector(nil)
 		assert.NoError(t, err)
 
@@ -28,7 +27,21 @@ func TestEmptyVector(t *testing.T) {
 		assert.True(t, eq)
 	})
 
-	t.Run("build_from_empty", func(t *testing.T) {
+	t.Run("Count", func(t *testing.T) {
+		cnt, err := lang.EmptyVector.Count()
+		assert.NoError(t, err)
+		assert.Zero(t, cnt)
+	})
+
+	t.Run("EntryAt", func(t *testing.T) {
+		t.Parallel()
+
+		v, err := lang.EmptyVector.EntryAt(0)
+		assert.EqualError(t, err, lang.ErrIndexOutOfBounds.Error())
+		assert.Nil(t, v)
+	})
+
+	t.Run("Conj", func(t *testing.T) {
 		v, err := lang.EmptyVector.Conj(mustInt(0))
 		assert.NoError(t, err)
 
