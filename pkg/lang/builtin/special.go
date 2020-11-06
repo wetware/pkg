@@ -1,30 +1,44 @@
-package lang
+package builtin
 
 import (
 	"fmt"
 	"reflect"
 
 	"github.com/spy16/slurp"
-	"github.com/spy16/slurp/builtin"
-	"github.com/spy16/slurp/core"
+	"github.com/wetware/ww/internal/api"
+	ww "github.com/wetware/ww/pkg"
+	"github.com/wetware/ww/pkg/lang/core"
+	capnp "zombiezen.com/go/capnproto2"
 )
 
 var (
-	_ = builtin.ParseSpecial(parseDo)
-	_ = builtin.ParseSpecial(parseIf)
-	_ = builtin.ParseSpecial(parseQuote)
-	_ = builtin.ParseSpecial(parseDef)
+	_ = SpecialParser(parseDo)
+	_ = SpecialParser(parseIf)
+	_ = SpecialParser(parseQuote)
+	_ = SpecialParser(parseDef)
 
-// _ = builtin.ParseSpecial(parsePop)
-// _ = builtin.ParseSpecial(parseConj)
+	// _ = SpecialParser(parseFn)
+	// _ = SpecialParser(parseMacro)
 
-// _ = builtin.ParseSpecial(anchorClient{}.Ls)
-// _ = builtin.ParseSpecial(anchorClient{}.Go)
+	// _ = ParseSpecial(parsePop)
+	// _ = ParseSpecial(parseConj)
+
+	// _ = ParseSpecial(anchorClient{}.Ls)
+	// _ = ParseSpecial(anchorClient{}.Go)
+
+	doSymbol Symbol
 )
 
-func parseDo(a core.Analyzer, env core.Env, args core.Seq) (core.Expr, error) {
-	var de builtin.DoExpr
-	err := core.ForEach(args, func(item core.Any) (bool, error) {
+func init() {
+	var err error
+	if doSymbol, err = NewSymbol(capnp.SingleSegment(nil), "do"); err != nil {
+		panic(err)
+	}
+}
+
+func parseDo(a *Analyzer, env core.Env, args core.Seq) (core.Expr, error) {
+	var de DoExpr
+	err := core.ForEach(args, func(item ww.Any) (bool, error) {
 		expr, err := a.Analyze(env, item)
 		if err != nil {
 			return true, err
@@ -38,7 +52,7 @@ func parseDo(a core.Analyzer, env core.Env, args core.Seq) (core.Expr, error) {
 	return de, nil
 }
 
-func parseIf(a core.Analyzer, env core.Env, args core.Seq) (core.Expr, error) {
+func parseIf(a *Analyzer, env core.Env, args core.Seq) (core.Expr, error) {
 	count, err := args.Count()
 	if err != nil {
 		return nil, err
@@ -74,7 +88,7 @@ func parseIf(a core.Analyzer, env core.Env, args core.Seq) (core.Expr, error) {
 		Else: exprs[2],
 	}, nil
 }
-func parseQuote(a core.Analyzer, _ core.Env, args core.Seq) (core.Expr, error) {
+func parseQuote(a *Analyzer, _ core.Env, args core.Seq) (core.Expr, error) {
 	if count, err := args.Count(); err != nil {
 		return nil, err
 	} else if count != 1 {
@@ -89,10 +103,10 @@ func parseQuote(a core.Analyzer, _ core.Env, args core.Seq) (core.Expr, error) {
 		return nil, err
 	}
 
-	return builtin.QuoteExpr{Form: first}, nil
+	return QuoteExpr{Form: first}, nil
 }
 
-func parseDef(a core.Analyzer, env core.Env, args core.Seq) (core.Expr, error) {
+func parseDef(a *Analyzer, env core.Env, args core.Seq) (core.Expr, error) {
 	e := core.Error{Cause: fmt.Errorf("%w: def", slurp.ErrParseSpecial)}
 
 	if args == nil {
@@ -111,13 +125,13 @@ func parseDef(a core.Analyzer, env core.Env, args core.Seq) (core.Expr, error) {
 		return nil, err
 	}
 
-	sym, ok := first.(Symbol)
+	sym, ok := first.(core.Symbol)
 	if !ok {
 		return nil, e.With(fmt.Sprintf(
 			"first arg must be symbol, not '%s'", reflect.TypeOf(first)))
 	}
 
-	symStr, err := sym.Raw.Symbol()
+	symStr, err := sym.Symbol()
 	if err != nil {
 		return nil, err
 	}
@@ -143,34 +157,32 @@ func parseDef(a core.Analyzer, env core.Env, args core.Seq) (core.Expr, error) {
 	}, nil
 }
 
-// type anchorClient struct{ root ww.Anchor }
+func parseLs(a *Analyzer, _ core.Env, seq core.Seq) (core.Expr, error) {
+	var args []ww.Any
+	if err := core.ForEach(seq, func(item ww.Any) (bool, error) {
+		args = append(args, item.(ww.Any))
+		return false, nil
+	}); err != nil {
+		return nil, err
+	}
 
-// func (c anchorClient) Ls(_ *parens.Env, seq parens.Seq) (parens.Expr, error) {
-// 	var args []ww.Any
-// 	if err := parens.ForEach(seq, func(item parens.Any) (bool, error) {
-// 		args = append(args, item.(ww.Any))
-// 		return false, nil
-// 	}); err != nil {
-// 		return nil, err
-// 	}
+	pexpr := PathExpr{Root: a.root, Path: rootPath}
+	for _, arg := range args {
+		if arg.MemVal().Type() == api.Value_Which_path {
+			pexpr.Path = args[0].(Path)
+			args = args[1:]
+		}
 
-// 	pexpr := PathExpr{Root: c.root, Path: rootPath}
-// 	for _, arg := range args {
-// 		if arg.MemVal().Type() == api.Value_Which_path {
-// 			pexpr.Path = args[0].(Path)
-// 			args = args[1:]
-// 		}
+		break
+	}
 
-// 		break
-// 	}
+	// TODO(enhancement):  other args like `:long` or `:recursive`
 
-// 	// TODO(enhancement):  other args like `:long` or `:recursive`
-
-// 	return PathListExpr{
-// 		PathExpr: pexpr,
-// 		Args:     args,
-// 	}, nil
-// }
+	return PathListExpr{
+		PathExpr: pexpr,
+		Args:     args,
+	}, nil
+}
 
 // func (c anchorClient) Go(env *parens.Env, args parens.Seq) (parens.Expr, error) {
 // 	n, err := args.Count()

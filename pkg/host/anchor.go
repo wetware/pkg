@@ -19,7 +19,7 @@ import (
 	"github.com/wetware/ww/pkg/internal/rpc"
 	"github.com/wetware/ww/pkg/internal/rpc/anchor"
 	"github.com/wetware/ww/pkg/internal/tree"
-	"github.com/wetware/ww/pkg/lang"
+	"github.com/wetware/ww/pkg/lang/builtin"
 	"github.com/wetware/ww/pkg/mem"
 	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
 )
@@ -167,10 +167,10 @@ func (a localAnchor) Walk(_ context.Context, path []string) ww.Anchor {
 
 func (a localAnchor) Load(context.Context) (ww.Any, error) {
 	if n := a.node.Load(); !n.Nil() {
-		return lang.AsAny(n)
+		return builtin.AsAny(n)
 	}
 
-	return lang.Nil{}, nil
+	return builtin.Nil{}, nil
 }
 
 func (a localAnchor) Store(_ context.Context, any ww.Any) error {
@@ -304,7 +304,7 @@ func (a rootAnchorCap) Go(ctx context.Context, call api.Anchor_go) error {
 
 	args := make([]ww.Any, vs.Len())
 	for i := 0; i < vs.Len(); i++ {
-		if args[i], err = lang.AsAny(mem.Value{Raw: vs.At(i)}); err != nil {
+		if args[i], err = builtin.AsAny(mem.Value{Raw: vs.At(i)}); err != nil {
 			return err
 		}
 	}
@@ -404,7 +404,7 @@ func (a anchorCap) Store(ctx context.Context, call api.Anchor_store) error {
 		return err
 	}
 
-	any, err := lang.AsAny(mem.Value{Raw: raw})
+	any, err := builtin.AsAny(mem.Value{Raw: raw})
 	if err != nil {
 		return err
 	}
@@ -420,7 +420,7 @@ func (a anchorCap) Go(ctx context.Context, call api.Anchor_go) error {
 
 	args := make([]ww.Any, vs.Len())
 	for i := 0; i < vs.Len(); i++ {
-		if args[i], err = lang.AsAny(mem.Value{Raw: vs.At(i)}); err != nil {
+		if args[i], err = builtin.AsAny(mem.Value{Raw: vs.At(i)}); err != nil {
 			return err
 		}
 	}

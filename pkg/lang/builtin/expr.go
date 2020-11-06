@@ -1,16 +1,20 @@
-package lang
+package builtin
 
 import (
 	"context"
 	"errors"
 
-	"github.com/spy16/slurp/core"
+	"github.com/spy16/slurp/builtin"
+	score "github.com/spy16/slurp/core"
+	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
+	"github.com/wetware/ww/pkg/lang/core"
 	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
 	capnp "zombiezen.com/go/capnproto2"
 )
 
 var (
+	_ core.Expr = (*ConstExpr)(nil)
 	_ core.Expr = (*IfExpr)(nil)
 	_ core.Expr = (*ResolveExpr)(nil)
 	_ core.Expr = (*DefExpr)(nil)
@@ -22,12 +26,41 @@ var (
 	_ core.Invokable = (*PathExpr)(nil)
 )
 
+type (
+	// DoExpr represents the (do expr*) form.
+	DoExpr = builtin.DoExpr
+
+	// QuoteExpr expression represents a quoted form
+	QuoteExpr = builtin.QuoteExpr
+)
+
+// ConstExpr returns the Const value wrapped inside when evaluated. It has
+// no side-effect on the VM.
+type ConstExpr struct {
+	Const ww.Any
+	Deref func(string) (ww.Any, error)
+}
+
+// Eval returns the constant value unmodified.
+func (ce ConstExpr) Eval(_ core.Env) (score.Any, error) {
+	if val := ce.Const.MemVal(); val.Raw.Which() == api.Value_Which_native {
+		key, err := val.Raw.Native()
+		if err != nil {
+			return nil, err
+		}
+
+		return ce.Deref(key)
+	}
+
+	return ce.Const, nil
+}
+
 // IfExpr represents the if-then-else form.
 type IfExpr struct{ Test, Then, Else core.Expr }
 
 // Eval evaluates the then or else expr based on truthiness of the test
 // expr result.
-func (ife IfExpr) Eval(env core.Env) (core.Any, error) {
+func (ife IfExpr) Eval(env core.Env) (score.Any, error) {
 	target := ife.Else
 	if ife.Test != nil {
 		test, err := ife.Test.Eval(env)
@@ -57,7 +90,7 @@ type ResolveExpr struct{ Symbol Symbol }
 // Eval resolves the symbol in the given environment or its parent env
 // and returns the result. Returns ErrNotFound if the symbol was not
 // found in the entire hierarchy.
-func (re ResolveExpr) Eval(env core.Env) (v core.Any, err error) {
+func (re ResolveExpr) Eval(env core.Env) (v score.Any, err error) {
 	var sym string
 	if sym, err = re.Symbol.Raw.Symbol(); err != nil {
 		return
@@ -84,8 +117,8 @@ type DefExpr struct {
 }
 
 // Eval creates the binding with the name and value in Root env.
-func (de DefExpr) Eval(env core.Env) (core.Any, error) {
-	var val core.Any
+func (de DefExpr) Eval(env core.Env) (score.Any, error) {
+	var val score.Any
 	var err error
 	if de.Value != nil {
 		val, err = de.Value.Eval(env)
@@ -96,7 +129,7 @@ func (de DefExpr) Eval(env core.Env) (core.Any, error) {
 		val = Nil{}
 	}
 
-	if err := core.Root(env).Bind(de.Name, val); err != nil {
+	if err := score.Root(env).Bind(de.Name, val); err != nil {
 		return nil, err
 	}
 
@@ -114,7 +147,7 @@ func (de DefExpr) Eval(env core.Env) (core.Any, error) {
 // type IfExpr struct{ Test, Then, Else core.Expr }
 
 // // Eval the expression
-// func (ife IfExpr) Eval(env core.Env) (core.Any, error) {
+// func (ife IfExpr) Eval(env core.Env) (score.Any, error) {
 // 	var target = ife.Else
 // 	if ife.Test != nil {
 // 		test, err := ife.Test.Eval(env)
@@ -146,11 +179,11 @@ type PathExpr struct {
 }
 
 // Eval returns the PathExpr unmodified
-func (pex PathExpr) Eval(core.Env) (core.Any, error) { return pex.Path, nil }
+func (pex PathExpr) Eval(core.Env) (score.Any, error) { return pex.Path, nil }
 
 // Invoke is the data selector for the Path type.  It gets/sets the value at the anchor
 // path.
-func (pex PathExpr) Invoke(args ...core.Any) (core.Any, error) {
+func (pex PathExpr) Invoke(args ...score.Any) (score.Any, error) {
 	path, err := pex.Path.Parts()
 	if err != nil {
 		return nil, err
@@ -173,43 +206,43 @@ func (pex PathExpr) Invoke(args ...core.Any) (core.Any, error) {
 	return nil, nil
 }
 
-// // PathListExpr fetches subanchors for a path
-// type PathListExpr struct {
-// 	PathExpr
-// 	Args []ww.Any
-// }
+// PathListExpr fetches subanchors for a path
+type PathListExpr struct {
+	PathExpr
+	Args []ww.Any
+}
 
-// // Eval calls ww.Anchor.Ls
-// func (plx PathListExpr) Eval(core.Env) (core.Any, error) {
-// 	path, err := plx.Parts()
-// 	if err != nil {
-// 		return nil, err
-// 	}
+// Eval calls ww.Anchor.Ls
+func (plx PathListExpr) Eval(core.Env) (score.Any, error) {
+	path, err := plx.Path.Parts()
+	if err != nil {
+		return nil, err
+	}
 
-// 	as, err := plx.Root.Walk(context.Background(), path).Ls(context.Background())
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	as, err := plx.Root.Walk(context.Background(), path).Ls(context.Background())
+	if err != nil {
+		return nil, err
+	}
 
-// 	b, err := NewVectorBuilder(capnp.SingleSegment(nil))
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	b, err := NewVectorBuilder(capnp.SingleSegment(nil))
+	if err != nil {
+		return nil, err
+	}
 
-// 	for _, a := range as {
-// 		// TODO(performance):  cache the anchors.
-// 		p, err := NewPath(capnp.SingleSegment(nil), anchorpath.Join(a.Path()))
-// 		if err != nil {
-// 			return nil, err
-// 		}
+	for _, a := range as {
+		// TODO(performance):  cache the anchors.
+		p, err := NewPath(capnp.SingleSegment(nil), anchorpath.Join(a.Path()))
+		if err != nil {
+			return nil, err
+		}
 
-// 		if err = b.Conj(p); err != nil {
-// 			return nil, err
-// 		}
-// 	}
+		if err = b.Conj(p); err != nil {
+			return nil, err
+		}
+	}
 
-// 	return b.Vector()
-// }
+	return b.Vector()
+}
 
 // // LocalGoExpr starts a local process.  Local processes cannot be addressed by remote
 // // hosts.
@@ -218,7 +251,7 @@ func (pex PathExpr) Invoke(args ...core.Any) (core.Any, error) {
 // }
 
 // // Eval resolves starts the process.
-// func (lx LocalGoExpr) Eval(env core.Env) (core.Any, error) {
+// func (lx LocalGoExpr) Eval(env core.Env) (score.Any, error) {
 // 	return proc.Spawn(env.Fork(), lx.Args...)
 // }
 
@@ -231,7 +264,7 @@ func (pex PathExpr) Invoke(args ...core.Any) (core.Any, error) {
 // }
 
 // // Eval resolves the anchor and starts the process.
-// func (gx GlobalGoExpr) Eval(core.Env) (core.Any, error) {
+// func (gx GlobalGoExpr) Eval(core.Env) (score.Any, error) {
 // 	path, err := gx.Path.Parts()
 // 	if err != nil {
 // 		return nil, err

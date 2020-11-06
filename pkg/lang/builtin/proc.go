@@ -1,4 +1,4 @@
-package lang
+package builtin
 
 import (
 	"github.com/wetware/ww/internal/api"

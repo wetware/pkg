@@ -9,7 +9,7 @@ import (
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/internal/rpc"
-	"github.com/wetware/ww/pkg/lang"
+	"github.com/wetware/ww/pkg/lang/builtin"
 	"github.com/wetware/ww/pkg/lang/proc"
 	"github.com/wetware/ww/pkg/mem"
 	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
@@ -60,7 +60,7 @@ func (a anchor) Load(ctx context.Context) (ww.Any, error) {
 		return nil, err
 	}
 
-	return lang.AsAny(mem.Value{Raw: v})
+	return builtin.AsAny(mem.Value{Raw: v})
 }
 
 func (a anchor) Store(ctx context.Context, any ww.Any) error {

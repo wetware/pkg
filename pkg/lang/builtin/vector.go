@@ -1,13 +1,13 @@
-package lang
+package builtin
 
 import (
 	"reflect"
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/spy16/slurp/core"
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
+	"github.com/wetware/ww/pkg/lang/core"
 	"github.com/wetware/ww/pkg/mem"
 	capnp "zombiezen.com/go/capnproto2"
 )
@@ -26,16 +26,13 @@ const (
 )
 
 var (
-	// ErrIndexOutOfBounds is returned when a sequence's index is out of range.
-	ErrIndexOutOfBounds = errors.New("index out of bounds")
-
 	// ErrInvalidVectorNode is returned when a node in the vector trie is invalid.
 	ErrInvalidVectorNode = errors.New("invalid VectorNode")
 
 	// EmptyVector is the zero-value vector.
 	EmptyVector vector
 
-	_ Vector = (*vector)(nil)
+	_ core.Vector = (*vector)(nil)
 )
 
 func init() {
@@ -56,22 +53,10 @@ func init() {
 	EmptyVector.Raw = vec.Raw
 }
 
-// Vector is a persistent, ordered collection of values with fast random lookups and
-// insertions.
-type Vector interface {
-	ww.Any
-	SymbolProvider
-	Count() (int, error)
-	Conj(ww.Any) (Vector, error)
-	EntryAt(i int) (core.Any, error)
-	Assoc(i int, val core.Any) (Vector, error)
-	Pop() (Vector, error)
-}
-
 type vector struct{ mem.Value }
 
 // NewVector creates a vector containing the supplied values.
-func NewVector(a capnp.Arena, vs ...ww.Any) (_ Vector, err error) {
+func NewVector(a capnp.Arena, vs ...ww.Any) (_ core.Vector, err error) {
 	if len(vs) == 0 {
 		return EmptyVector, nil
 	}
@@ -92,15 +77,15 @@ func NewVector(a capnp.Arena, vs ...ww.Any) (_ Vector, err error) {
 
 // Render the vector in a human-readable format.
 func (v vector) Render() (string, error) {
-	return v.render(func(any core.Any) (string, error) {
-		return Render(any.(ww.Any))
+	return v.render(func(any ww.Any) (string, error) {
+		return Render(any)
 	})
 }
 
 // SExpr returns a valid s-expression for vector
 func (v vector) SExpr() (string, error) {
-	return v.render(func(any core.Any) (string, error) {
-		if r, ok := any.(SymbolProvider); ok {
+	return v.render(func(any ww.Any) (string, error) {
+		if r, ok := any.(core.SExpressable); ok {
 			return r.SExpr()
 		}
 
@@ -108,7 +93,7 @@ func (v vector) SExpr() (string, error) {
 	})
 }
 
-func (v vector) render(f func(core.Any) (string, error)) (string, error) {
+func (v vector) render(f func(ww.Any) (string, error)) (string, error) {
 	cnt, err := v.Count()
 	if err != nil {
 		return "", err
@@ -150,7 +135,7 @@ func (v vector) count() (api.Vector, int, error) {
 }
 
 // Conj returns a new vector with items appended.
-func (v vector) Conj(item ww.Any) (Vector, error) {
+func (v vector) Conj(item ww.Any) (core.Vector, error) {
 	vec, cnt, err := v.count()
 	if err != nil {
 		return nil, err
@@ -171,7 +156,7 @@ func (v vector) Conj(item ww.Any) (Vector, error) {
 
 // EntryAt returns the item at given index. Returns error if the index
 // is out of range.
-func (v vector) EntryAt(i int) (core.Any, error) {
+func (v vector) EntryAt(i int) (ww.Any, error) {
 	vs, err := vectorArrayFor(v.Value, i)
 	if err != nil {
 		return nil, err
@@ -182,7 +167,7 @@ func (v vector) EntryAt(i int) (core.Any, error) {
 
 // Assoc returns a new vector with the value at given index updated.
 // Returns error if the index is out of range.
-func (v vector) Assoc(i int, val core.Any) (Vector, error) {
+func (v vector) Assoc(i int, val ww.Any) (core.Vector, error) {
 	// https://github.com/clojure/clojure/blob/0b73494c3c855e54b1da591eeb687f24f608f346/src/jvm/clojure/lang/PersistentVector.java#L121
 
 	vec, cnt, err := v.count()
@@ -192,19 +177,19 @@ func (v vector) Assoc(i int, val core.Any) (Vector, error) {
 
 	// update?
 	if i >= 0 && i < cnt {
-		return vectorUpdate(vec, cnt, i, val.(ww.Any))
+		return vectorUpdate(vec, cnt, i, val)
 	}
 
 	// append?
 	if i == cnt {
-		return vectorCons(vec, cnt, val.(ww.Any))
+		return vectorCons(vec, cnt, val)
 	}
 
-	return nil, ErrIndexOutOfBounds
+	return nil, core.ErrIndexOutOfBounds
 }
 
 // Pop returns a new vector without the last item in v
-func (v vector) Pop() (Vector, error) {
+func (v vector) Pop() (core.Vector, error) {
 	_, vec, err := vectorPop(v.Value)
 	return vec, err
 }
@@ -256,7 +241,7 @@ func vectorArrayFor(v mem.Value, i int) (api.Value_List, error) {
 	vec, cnt, err := vectorCount(v)
 	if err == nil {
 		if i < 0 || i >= cnt {
-			return api.Value_List{}, ErrIndexOutOfBounds
+			return api.Value_List{}, core.ErrIndexOutOfBounds
 		}
 	}
 
@@ -300,7 +285,7 @@ func vectorArrayFor(v mem.Value, i int) (api.Value_List, error) {
 	return n.Values()
 }
 
-func vectorUpdate(vec api.Vector, cnt, i int, any ww.Any) (Vector, error) {
+func vectorUpdate(vec api.Vector, cnt, i int, any ww.Any) (core.Vector, error) {
 	root, err := vec.Root()
 	if err != nil {
 		return nil, err
@@ -462,7 +447,7 @@ func vectorCount(v mem.Value) (vec api.Vector, cnt int, err error) {
 	return
 }
 
-func vectorPop(v mem.Value) (vec api.Vector, _ Vector, err error) {
+func vectorPop(v mem.Value) (vec api.Vector, _ core.Vector, err error) {
 	var cnt int
 	if vec, cnt, err = vectorCount(v); err != nil {
 		return
@@ -572,7 +557,7 @@ func NewVectorBuilder(a capnp.Arena) (*VectorBuilder, error) {
 }
 
 // Vector returns the accumulated vector.
-func (b *VectorBuilder) Vector() (vec Vector, err error) {
+func (b *VectorBuilder) Vector() (vec core.Vector, err error) {
 	if b.cnt == 0 {
 		return EmptyVector, nil
 	}
@@ -597,10 +582,10 @@ func (b *VectorBuilder) Vector() (vec Vector, err error) {
 }
 
 // Conj appends the values to the vector under construction.
-func (b *VectorBuilder) Conj(v core.Any) (err error) {
+func (b *VectorBuilder) Conj(v ww.Any) (err error) {
 	// room in tail?
 	if len(b.tail) < width {
-		b.tail = append(b.tail, v.(ww.Any))
+		b.tail = append(b.tail, v)
 		b.cnt++
 		return
 	}
@@ -608,7 +593,7 @@ func (b *VectorBuilder) Conj(v core.Any) (err error) {
 	// full tail; push into tree
 	if err = b.insertTail(); err == nil {
 		// shove v into the tail
-		b.tail = append(b.tail[:0], v.(ww.Any))
+		b.tail = append(b.tail[:0], v)
 		b.cnt++
 	}
 
@@ -827,7 +812,7 @@ func setNodeValue(n api.Vector_Node, i int, any ww.Any) error {
 	return vs.Set(i&mask, any.MemVal().Raw)
 }
 
-// func setValueListAt(vs api.Value_List, i int, v core.Any) error {
+// func setValueListAt(vs api.Value_List, i int, v ww.Any) error {
 // 	return
 // }
 
@@ -926,69 +911,3 @@ func copyVectorTail(dst, src api.Value_List, lim int) (err error) {
 
 	return
 }
-
-// /*
-// 	seq
-// */
-
-// type vectorSeq struct {
-// 	v         Vector
-// 	vs        api.Value_List
-// 	i, offset int
-// }
-
-// func newVectorSeq(v Vector, i, offset int) (vectorSeq, error) {
-// 	vs, err := v.arrayFor(i)
-// 	if err != nil {
-// 		return vectorSeq{}, err
-// 	}
-
-// 	return vectorSeq{
-// 		v:      v,
-// 		i:      i,
-// 		offset: offset,
-// 		vs:     vs,
-// 	}, nil
-// }
-
-// func (s vectorSeq) String() string {
-// 	return fmt.Sprintf("(seq %s)", s.v)
-// }
-
-// func (s vectorSeq) Count() int {
-// 	return s.v.Count() - (s.i + s.offset)
-// }
-
-// func (s vectorSeq) ChunkedNext() runtime.Seq {
-// 	if s.i+s.vs.Len() < s.v.Count() {
-// 		s, err := newVectorSeq(s.v, s.i+s.vs.Len(), 0)
-// 		if err != nil {
-// 			panic(err)
-// 		}
-
-// 		return s
-// 	}
-
-// 	return nil
-// }
-
-// func (s vectorSeq) First() core.Any {
-// 	val, err := ValueOf(s.vs.At(s.offset))
-// 	if err != nil {
-// 		panic(err)
-// 	}
-
-// 	return val
-// }
-
-// func (s vectorSeq) Next() runtime.Seq {
-// 	if s.offset+1 < s.vs.Len() {
-// 		return vectorSeq{v: s.v, vs: s.vs, i: s.i, offset: s.offset + 1}
-// 	}
-
-// 	return s.ChunkedNext()
-// }
-
-// func (s vectorSeq) Conj(vs ...core.Any) runtime.Seq {
-// 	panic("core.vectorSeq.Conj() NOT IMPLEMENTED")
-// }

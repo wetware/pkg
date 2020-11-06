@@ -10,9 +10,24 @@ import (
 	"strings"
 
 	"github.com/spy16/slurp/reader"
-	"github.com/wetware/ww/pkg/lang"
+	"github.com/wetware/ww/pkg/lang/builtin"
+	"github.com/wetware/ww/pkg/lang/core"
 	capnp "zombiezen.com/go/capnproto2"
 )
+
+// import (
+// 	"bytes"
+// 	"fmt"
+// 	"io"
+// 	"net"
+// 	"os"
+// 	"reflect"
+// 	"strings"
+
+// 	"github.com/spy16/slurp/reader"
+// 	"github.com/wetware/ww/pkg/lang"
+// 	capnp "zombiezen.com/go/capnproto2"
+// )
 
 var (
 	escapeMap = map[rune]rune{
@@ -42,7 +57,7 @@ var (
 		'/':  {fn: readPath},
 	}
 
-	charLiterals = make(map[string]lang.Char, 6)
+	charLiterals = make(map[string]core.Char, 6)
 )
 
 func init() {
@@ -54,7 +69,7 @@ func init() {
 		"backspace": '\b',
 		"formfeed":  '\f',
 	} {
-		c, err := lang.NewChar(capnp.SingleSegment(nil), v)
+		c, err := builtin.NewChar(capnp.SingleSegment(nil), v)
 		if err != nil {
 			panic(err)
 		}

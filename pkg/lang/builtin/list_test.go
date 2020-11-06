@@ -1,4 +1,4 @@
-package lang_test
+package builtin_test
 
 import (
 	"testing"
@@ -6,30 +6,32 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	ww "github.com/wetware/ww/pkg"
-	"github.com/wetware/ww/pkg/lang"
+	"github.com/wetware/ww/pkg/lang/builtin"
+	"github.com/wetware/ww/pkg/lang/core"
+	capnp "zombiezen.com/go/capnproto2"
 )
 
 func TestEmptyList(t *testing.T) {
 	t.Run("Count", func(t *testing.T) {
-		cnt, err := lang.EmptyList.Count()
+		cnt, err := builtin.EmptyList.Count()
 		assert.NoError(t, err)
 		assert.Zero(t, cnt)
 	})
 
 	t.Run("First", func(t *testing.T) {
-		v, err := lang.EmptyList.First()
+		v, err := builtin.EmptyList.First()
 		assert.NoError(t, err)
 		assert.Nil(t, v)
 	})
 
 	t.Run("Next", func(t *testing.T) {
-		tail, err := lang.EmptyList.Next()
+		tail, err := builtin.EmptyList.Next()
 		assert.NoError(t, err)
 		assert.Nil(t, tail)
 	})
 
 	t.Run("Conj", func(t *testing.T) {
-		seq, err := lang.EmptyList.Conj(lang.True)
+		seq, err := builtin.EmptyList.Conj(builtin.True)
 		assert.NoError(t, err)
 
 		cnt, err := seq.Count()
@@ -39,7 +41,7 @@ func TestEmptyList(t *testing.T) {
 		v, err := seq.First()
 		assert.NoError(t, err)
 
-		eq, err := lang.Eq(lang.True, v.(ww.Any))
+		eq, err := builtin.Eq(builtin.True, v.(ww.Any))
 		require.NoError(t, err)
 		assert.True(t, eq)
 	})
@@ -48,20 +50,20 @@ func TestEmptyList(t *testing.T) {
 func TestListEquality(t *testing.T) {
 	for _, tt := range []struct {
 		desc    string
-		l       lang.List
-		newList func() lang.List
+		l       core.List
+		newList func() core.List
 	}{
 		{
 			desc: "basic",
 			l:    mustList(mustInt(0), mustInt(1), mustInt(2)),
-			newList: func() lang.List {
+			newList: func() core.List {
 				return mustList(mustInt(0), mustInt(1), mustInt(2))
 			},
 		},
 		{
 			desc: "shared tail",
 			l:    mustList(mustInt(0), mustInt(1), mustInt(2), mustInt(3)),
-			newList: func() lang.List {
+			newList: func() core.List {
 				l := mustList(mustInt(1), mustInt(2), mustInt(3))
 				l, err := l.Cons(mustInt(0))
 				require.NoError(t, err)
@@ -70,10 +72,19 @@ func TestListEquality(t *testing.T) {
 		},
 	} {
 		t.Run(tt.desc, func(t *testing.T) {
-			eq, err := lang.Eq(tt.l, tt.newList())
+			eq, err := builtin.Eq(tt.l, tt.newList())
 			require.NoError(t, err)
 
 			assert.True(t, eq)
 		})
 	}
+}
+
+func mustList(vs ...ww.Any) core.List {
+	l, err := builtin.NewList(capnp.SingleSegment(nil), vs...)
+	if err != nil {
+		panic(err)
+	}
+
+	return l
 }

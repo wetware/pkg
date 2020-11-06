@@ -1,13 +1,11 @@
-package lang
+package builtin
 
 import (
-	"reflect"
 	"strings"
 
-	"github.com/pkg/errors"
-	"github.com/spy16/slurp/core"
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
+	"github.com/wetware/ww/pkg/lang/core"
 	"github.com/wetware/ww/pkg/mem"
 	capnp "zombiezen.com/go/capnproto2"
 )
@@ -35,19 +33,10 @@ func init() {
 	}
 }
 
-// List is a persistent, singly-linked list with fast insertions/pops to its head.
-type List interface {
-	ww.Any
-	core.Seq
-	SymbolProvider
-	Count() (int, error)
-	Cons(any core.Any) (List, error)
-}
-
 type list struct{ mem.Value }
 
 // NewList returns a new list containing given values.
-func NewList(a capnp.Arena, vs ...ww.Any) (List, error) {
+func NewList(a capnp.Arena, vs ...ww.Any) (core.List, error) {
 	if len(vs) == 0 {
 		return EmptyList, nil
 	}
@@ -75,23 +64,23 @@ func (l list) Count() (int, error) {
 
 // Render the list into human-readable form
 func (l list) Render() (string, error) {
-	return l.render(func(any core.Any) (string, error) {
+	return l.render(func(any ww.Any) (string, error) {
 		return Render(any.(ww.Any))
 	})
 }
 
-// SExpr returns a valid s-expression for List
-func (l list) SExpr() (string, error) {
-	return l.render(func(any core.Any) (string, error) {
-		if r, ok := any.(SymbolProvider); ok {
-			return r.SExpr()
-		}
+// // SExpr returns a valid s-expression for List
+// func (l list) SExpr() (string, error) {
+// 	return l.render(func(any ww.Any) (string, error) {
+// 		if r, ok := any.(core.SExpressable); ok {
+// 			return r.SExpr()
+// 		}
 
-		return "", errors.Errorf("%s is not a symbol provider", reflect.TypeOf(any))
-	})
-}
+// 		return "", errors.Errorf("%s is not a symbol provider", reflect.TypeOf(any))
+// 	})
+// }
 
-func (l list) render(f func(core.Any) (string, error)) (string, error) {
+func (l list) render(f func(ww.Any) (string, error)) (string, error) {
 	cnt, err := l.Count()
 	if err != nil {
 		return "", err
@@ -132,13 +121,13 @@ func (l list) render(f func(core.Any) (string, error)) (string, error) {
 }
 
 // Conj returns a new list with all the items added at the head of the list.
-func (l list) Conj(items ...core.Any) (core.Seq, error) {
+func (l list) Conj(items ...ww.Any) (core.Seq, error) {
 	null, err := l.isNull()
 	if err != nil {
 		return nil, err
 	}
 
-	var res List
+	var res core.List
 	if null {
 		res = l
 	} else {
@@ -155,12 +144,12 @@ func (l list) Conj(items ...core.Any) (core.Seq, error) {
 }
 
 // Cons returns a new list with the item added at the head of the list.
-func (l list) Cons(any core.Any) (List, error) {
+func (l list) Cons(any ww.Any) (core.List, error) {
 	return listCons(capnp.SingleSegment(nil), any.(ww.Any).MemVal(), l)
 }
 
 // First returns the head or first item of the list.
-func (l list) First() (v core.Any, err error) {
+func (l list) First() (v ww.Any, err error) {
 	var null bool
 	if null, err = l.isNull(); err == nil && !null {
 		_, v, err = l.head()
@@ -183,7 +172,7 @@ func (l list) count() (ll api.LinkedList, cnt int, err error) {
 	return
 }
 
-func (l list) head() (ll api.LinkedList, v core.Any, err error) {
+func (l list) head() (ll api.LinkedList, v ww.Any, err error) {
 	if ll, err = l.Raw.List(); err != nil {
 		return
 	}
@@ -210,9 +199,9 @@ func listTail(v mem.Value) (ll api.LinkedList, tail list, err error) {
 	return
 }
 
-// func listToSlice(l List, sizeHint int) ([]core.Any, error) {
-// 	slice := make([]core.Any, 0, sizeHint)
-// 	err := core.ForEach(l, func(item core.Any) (bool, error) {
+// func listToSlice(l List, sizeHint int) ([]ww.Any, error) {
+// 	slice := make([]ww.Any, 0, sizeHint)
+// 	err := core.ForEach(l, func(item ww.Any) (bool, error) {
 // 		slice = append(slice, item)
 // 		return false, nil
 // 	})

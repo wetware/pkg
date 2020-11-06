@@ -1,14 +1,14 @@
-package lang_test
+package builtin_test
 
 import (
 	"fmt"
 	"math/big"
 	"testing"
 
-	"github.com/spy16/slurp/core"
 	"github.com/stretchr/testify/assert"
 	ww "github.com/wetware/ww/pkg"
-	"github.com/wetware/ww/pkg/lang"
+	"github.com/wetware/ww/pkg/lang/builtin"
+	"github.com/wetware/ww/pkg/lang/core"
 	capnp "zombiezen.com/go/capnproto2"
 )
 
@@ -90,12 +90,12 @@ func TestInt(t *testing.T) {
 		},
 		{
 			a:       mustInt(5),
-			b:       lang.Nil{},
+			b:       builtin.Nil{},
 			wantErr: true,
 		},
 	} {
 		t.Run(compDesc(tt), func(t *testing.T) {
-			got, err := tt.a.(lang.Comparable).Comp(tt.b)
+			got, err := tt.a.(core.Comparable).Comp(tt.b)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
@@ -184,12 +184,12 @@ func TestFloat(t *testing.T) {
 		},
 		{
 			a:       mustFloat(1.2345),
-			b:       lang.Nil{},
+			b:       builtin.Nil{},
 			wantErr: true,
 		},
 	} {
 		t.Run(compDesc(tt), func(t *testing.T) {
-			got, err := tt.a.(lang.Comparable).Comp(tt.b)
+			got, err := tt.a.(core.Comparable).Comp(tt.b)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
@@ -278,12 +278,12 @@ func TestBigInt(t *testing.T) {
 		},
 		{
 			a:       mustBigInt(5),
-			b:       lang.Nil{},
+			b:       builtin.Nil{},
 			wantErr: true,
 		},
 	} {
 		t.Run(compDesc(tt), func(t *testing.T) {
-			got, err := tt.a.(lang.Comparable).Comp(tt.b)
+			got, err := tt.a.(core.Comparable).Comp(tt.b)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
@@ -372,12 +372,12 @@ func TestBigFloat(t *testing.T) {
 		},
 		{
 			a:       mustBigFloat(1.2345),
-			b:       lang.Nil{},
+			b:       builtin.Nil{},
 			wantErr: true,
 		},
 	} {
 		t.Run(compDesc(tt), func(t *testing.T) {
-			got, err := tt.a.(lang.Comparable).Comp(tt.b)
+			got, err := tt.a.(core.Comparable).Comp(tt.b)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
@@ -466,12 +466,12 @@ func TestFrac(t *testing.T) {
 		},
 		{
 			a:       mustFrac(1, 2),
-			b:       lang.Nil{},
+			b:       builtin.Nil{},
 			wantErr: true,
 		},
 	} {
 		t.Run(compDesc(tt), func(t *testing.T) {
-			got, err := tt.a.(lang.Comparable).Comp(tt.b)
+			got, err := tt.a.(core.Comparable).Comp(tt.b)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
@@ -482,8 +482,8 @@ func TestFrac(t *testing.T) {
 	}
 }
 
-func mustFloat(f float64) lang.Float64 {
-	f64, err := lang.NewFloat64(capnp.SingleSegment(nil), f)
+func mustFloat(f float64) core.Float64 {
+	f64, err := builtin.NewFloat64(capnp.SingleSegment(nil), f)
 	if err != nil {
 		panic(err)
 	}
@@ -491,8 +491,8 @@ func mustFloat(f float64) lang.Float64 {
 	return f64
 }
 
-func mustInt(i int64) lang.Int64 {
-	i64, err := lang.NewInt64(capnp.SingleSegment(nil), i)
+func mustInt(i int64) core.Int64 {
+	i64, err := builtin.NewInt64(capnp.SingleSegment(nil), i)
 	if err != nil {
 		panic(err)
 	}
@@ -500,8 +500,8 @@ func mustInt(i int64) lang.Int64 {
 	return i64
 }
 
-func mustFrac(numer, denom int64) lang.Frac {
-	f, err := lang.NewFrac(capnp.SingleSegment(nil), big.NewRat(numer, denom))
+func mustFrac(numer, denom int64) core.Fraction {
+	f, err := builtin.NewFrac(capnp.SingleSegment(nil), big.NewRat(numer, denom))
 	if err != nil {
 		panic(err)
 	}
@@ -509,8 +509,8 @@ func mustFrac(numer, denom int64) lang.Frac {
 	return f
 }
 
-func mustBigFloat(f float64) lang.BigFloat {
-	bf, err := lang.NewBigFloat(capnp.SingleSegment(nil), big.NewFloat(f))
+func mustBigFloat(f float64) core.BigFloat {
+	bf, err := builtin.NewBigFloat(capnp.SingleSegment(nil), big.NewFloat(f))
 	if err != nil {
 		panic(err)
 	}
@@ -518,8 +518,8 @@ func mustBigFloat(f float64) lang.BigFloat {
 	return bf
 }
 
-func mustBigInt(i int64) lang.BigInt {
-	bi, err := lang.NewBigInt(capnp.SingleSegment(nil), big.NewInt(i))
+func mustBigInt(i int64) core.BigInt {
+	bi, err := builtin.NewBigInt(capnp.SingleSegment(nil), big.NewInt(i))
 	if err != nil {
 		panic(err)
 	}
@@ -539,12 +539,12 @@ func compDesc(tt struct {
 		sym = ">"
 	}
 
-	aname, err := tt.a.(core.SExpressable).SExpr()
+	aname, err := builtin.Render(tt.a)
 	if err != nil {
 		panic(err)
 	}
 
-	bname, err := tt.b.(core.SExpressable).SExpr()
+	bname, err := builtin.Render(tt.b)
 	if err != nil {
 		panic(err)
 	}

@@ -1,34 +1,34 @@
-package lang_test
+package builtin_test
 
 import (
 	"fmt"
 	"testing"
 
-	"github.com/spy16/slurp/core"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	ww "github.com/wetware/ww/pkg"
-	"github.com/wetware/ww/pkg/lang"
+	"github.com/wetware/ww/pkg/lang/builtin"
+	"github.com/wetware/ww/pkg/lang/core"
 	capnp "zombiezen.com/go/capnproto2"
 )
 
 func TestEmptyVector(t *testing.T) {
 	t.Parallel()
 
-	require.NotZero(t, lang.EmptyVector,
+	require.NotZero(t, builtin.EmptyVector,
 		"zero-value empty vector is invalid (shift is missing)")
 
 	t.Run("NewVector", func(t *testing.T) {
-		v, err := lang.NewVector(nil)
+		v, err := builtin.NewVector(nil)
 		assert.NoError(t, err)
 
-		eq, err := lang.Eq(lang.EmptyVector, v)
+		eq, err := builtin.Eq(builtin.EmptyVector, v)
 		require.NoError(t, err)
 		assert.True(t, eq)
 	})
 
 	t.Run("Count", func(t *testing.T) {
-		cnt, err := lang.EmptyVector.Count()
+		cnt, err := builtin.EmptyVector.Count()
 		assert.NoError(t, err)
 		assert.Zero(t, cnt)
 	})
@@ -36,24 +36,24 @@ func TestEmptyVector(t *testing.T) {
 	t.Run("EntryAt", func(t *testing.T) {
 		t.Parallel()
 
-		v, err := lang.EmptyVector.EntryAt(0)
-		assert.EqualError(t, err, lang.ErrIndexOutOfBounds.Error())
+		v, err := builtin.EmptyVector.EntryAt(0)
+		assert.EqualError(t, err, core.ErrIndexOutOfBounds.Error())
 		assert.Nil(t, v)
 	})
 
 	t.Run("Conj", func(t *testing.T) {
-		v, err := lang.EmptyVector.Conj(mustInt(0))
+		v, err := builtin.EmptyVector.Conj(mustInt(0))
 		assert.NoError(t, err)
 
-		v2, err := lang.NewVector(nil)
+		v2, err := builtin.NewVector(nil)
 		assert.NoError(t, err)
 		v2, err = v2.Conj(mustInt(0))
 		assert.NoError(t, err)
 
-		h, err := lang.Hashable(v)
+		h, err := builtin.Hashable(v)
 		require.NoError(t, err)
 
-		h2, err := lang.Hashable(v2)
+		h2, err := builtin.Hashable(v2)
 		require.NoError(t, err)
 
 		assert.Equal(t, h, h2)
@@ -87,7 +87,7 @@ func TestNewVector(t *testing.T) {
 		vs:   valueRange(1025), // tree w/ single branch-node => max size of 1024
 	}} {
 		t.Run(tt.desc, func(t *testing.T) {
-			vec, err := lang.NewVector(capnp.SingleSegment(nil), tt.vs...)
+			vec, err := builtin.NewVector(capnp.SingleSegment(nil), tt.vs...)
 			if !assert.NoError(t, err) {
 				return
 			}
@@ -98,8 +98,8 @@ func TestNewVector(t *testing.T) {
 					break
 				}
 
-				assert.Equal(t, mustSExpr(want), mustSExpr(got),
-					"expected %s, got %s", mustSExpr(want), mustSExpr(got))
+				assert.Equal(t, mustRender(want), mustRender(got),
+					"expected %s, got %s", mustRender(want), mustRender(got))
 			}
 		})
 	}
@@ -110,7 +110,7 @@ func TestVectorStringer(t *testing.T) {
 
 	for _, tt := range []struct {
 		desc, want string
-		vec        lang.Vector
+		vec        core.Vector
 	}{{
 		desc: "empty",
 		vec:  mustVector(),
@@ -129,8 +129,8 @@ func TestVectorStringer(t *testing.T) {
 		want: "[:keyword \"string\" symbol \\🧠]",
 	}} {
 		t.Run(tt.desc, func(t *testing.T) {
-			assert.Equal(t, tt.want, mustSExpr(tt.vec),
-				"expected %s, got %s", tt.want, mustSExpr(tt.vec))
+			assert.Equal(t, tt.want, mustRender(tt.vec),
+				"expected %s, got %s", tt.want, mustRender(tt.vec))
 		})
 	}
 }
@@ -141,8 +141,8 @@ func TestAssoc(t *testing.T) {
 	t.Run("Append", func(t *testing.T) {
 		for _, tt := range []struct {
 			desc, want string
-			vec        lang.Vector
-			add        core.Any
+			vec        core.Vector
+			add        ww.Any
 		}{{
 			desc: "empty",
 			vec:  mustVector(),
@@ -159,9 +159,9 @@ func TestAssoc(t *testing.T) {
 			want: "[:keyword \"string\" symbol \\🧠 :added]",
 		}} {
 			t.Run(tt.desc, func(t *testing.T) {
-				orig := mustSExpr(tt.vec)
+				orig := mustRender(tt.vec)
 				defer func() {
-					require.Equal(t, orig, mustSExpr(tt.vec),
+					require.Equal(t, orig, mustRender(tt.vec),
 						"IMMUTABILITY VIOLATION")
 				}()
 
@@ -170,8 +170,8 @@ func TestAssoc(t *testing.T) {
 
 				got, err := tt.vec.Assoc(cnt, tt.add)
 				if assert.NoError(t, err) {
-					assert.Equal(t, tt.want, mustSExpr(got),
-						"expected %s, got %s", tt.want, mustSExpr(tt.vec))
+					assert.Equal(t, tt.want, mustRender(got),
+						"expected %s, got %s", tt.want, mustRender(tt.vec))
 				}
 			})
 		}
@@ -180,8 +180,8 @@ func TestAssoc(t *testing.T) {
 	t.Run("Update", func(t *testing.T) {
 		for _, tt := range []struct {
 			want string
-			vec  lang.Vector
-			add  core.Any
+			vec  core.Vector
+			add  ww.Any
 			idx  int
 		}{{
 			vec: mustVector(
@@ -212,16 +212,16 @@ func TestAssoc(t *testing.T) {
 			idx:  3,
 		}} {
 			t.Run(fmt.Sprintf("%d", tt.idx), func(t *testing.T) {
-				orig := mustSExpr(tt.vec)
+				orig := mustRender(tt.vec)
 				defer func() {
-					require.Equal(t, orig, mustSExpr(tt.vec),
+					require.Equal(t, orig, mustRender(tt.vec),
 						"IMMUTABILITY VIOLATION")
 				}()
 
 				got, err := tt.vec.Assoc(tt.idx, tt.add)
 				if assert.NoError(t, err) {
-					assert.Equal(t, tt.want, mustSExpr(got),
-						"expected %s, got %s", tt.want, mustSExpr(got))
+					assert.Equal(t, tt.want, mustRender(got),
+						"expected %s, got %s", tt.want, mustRender(got))
 				}
 			})
 		}
@@ -231,7 +231,7 @@ func TestAssoc(t *testing.T) {
 func TestVectorPop(t *testing.T) {
 	for _, tt := range []struct {
 		desc      string
-		vec, want lang.Vector
+		vec, want core.Vector
 		wantErr   bool
 	}{{
 		desc:    "empty",
@@ -276,49 +276,49 @@ func TestVectorPop(t *testing.T) {
 func TestVectorEquality(t *testing.T) {
 	for _, tt := range []struct {
 		desc      string
-		v         lang.Vector
-		newVector func() lang.Vector
+		v         core.Vector
+		newVector func() core.Vector
 	}{
 		{
 			desc: "basic",
 			v:    mustVector(mustInt(0), mustInt(1), mustInt(2)),
-			newVector: func() lang.Vector {
+			newVector: func() core.Vector {
 				return mustVector(mustInt(0), mustInt(1), mustInt(2))
 			},
 		},
 		{
 			desc: "pop from tail",
 			v:    mustVector(mustInt(0), mustInt(1), mustInt(2)),
-			newVector: func() lang.Vector {
+			newVector: func() core.Vector {
 				v := mustVector(mustInt(0), mustInt(1), mustInt(2), mustInt(3))
-				any, err := lang.Pop(v)
+				any, err := builtin.Pop(v)
 				require.NoError(t, err)
-				return any.(lang.Vector)
+				return any.(core.Vector)
 			},
 		},
 		{
 			desc: "pop from leaf",
 			v:    vectorRange(32),
-			newVector: func() lang.Vector {
+			newVector: func() core.Vector {
 				v := vectorRange(33)
-				any, err := lang.Pop(v)
+				any, err := builtin.Pop(v)
 				require.NoError(t, err)
-				return any.(lang.Vector)
+				return any.(core.Vector)
 			},
 		},
 		{
 			desc: "pop multiple across tail boundary",
 			v:    vectorRange(30),
-			newVector: func() lang.Vector {
+			newVector: func() core.Vector {
 				var err error
 				var any ww.Any = vectorRange(35)
 				for i := 0; i < 5; i++ {
-					if any, err = lang.Pop(any); err != nil {
+					if any, err = builtin.Pop(any); err != nil {
 						panic(err)
 					}
 				}
 
-				return any.(lang.Vector)
+				return any.(core.Vector)
 			},
 		},
 		{
@@ -328,7 +328,7 @@ func TestVectorEquality(t *testing.T) {
 				mustFrac(1, 32),
 				mustVector(mustFloat(3.14), mustString("string")),
 			),
-			newVector: func() lang.Vector {
+			newVector: func() core.Vector {
 				var err error
 				v := mustVector(mustKeyword("keyword"), mustFrac(1, 32))
 				v, err = v.Assoc(2, mustVector(mustFloat(3.14), mustString("string")))
@@ -340,17 +340,17 @@ func TestVectorEquality(t *testing.T) {
 		},
 	} {
 		t.Run(tt.desc, func(t *testing.T) {
-			eq, err := lang.Eq(tt.v, tt.newVector())
+			eq, err := builtin.Eq(tt.v, tt.newVector())
 			require.NoError(t, err)
 
 			assert.True(t, eq,
-				"expected %s, got %s", mustSExpr(tt.v), mustSExpr(tt.newVector()))
+				"expected %s, got %s", mustRender(tt.v), mustRender(tt.newVector()))
 		})
 	}
 }
 
-func mustVector(vs ...ww.Any) lang.Vector {
-	vec, err := lang.NewVector(capnp.SingleSegment(nil), vs...)
+func mustVector(vs ...ww.Any) core.Vector {
+	vec, err := builtin.NewVector(capnp.SingleSegment(nil), vs...)
 	if err != nil {
 		panic(err)
 	}
@@ -358,8 +358,8 @@ func mustVector(vs ...ww.Any) lang.Vector {
 	return vec
 }
 
-func vectorRange(n int) lang.Vector {
-	v, err := lang.NewVector(capnp.SingleSegment(nil), valueRange(n)...)
+func vectorRange(n int) core.Vector {
+	v, err := builtin.NewVector(capnp.SingleSegment(nil), valueRange(n)...)
 	if err != nil {
 		panic(err)
 	}
@@ -375,7 +375,7 @@ func valueRange(n int) []ww.Any {
 	return vs
 }
 
-func assertVectEq(t *testing.T, want, got lang.Vector) (ok bool) {
+func assertVectEq(t *testing.T, want, got core.Vector) (ok bool) {
 	wantcnt, err := want.Count()
 	assert.NoError(t, err)
 
@@ -398,7 +398,7 @@ func assertVectEq(t *testing.T, want, got lang.Vector) (ok bool) {
 			return
 		}
 
-		if !assert.Equal(t, mustSExpr(w), mustSExpr(g)) {
+		if !assert.Equal(t, mustRender(w), mustRender(g)) {
 			return
 		}
 	}

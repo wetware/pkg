@@ -8,21 +8,22 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/spy16/slurp/core"
+	score "github.com/spy16/slurp/core"
 	"github.com/spy16/slurp/reader"
 	capnp "zombiezen.com/go/capnproto2"
 
 	ww "github.com/wetware/ww/pkg"
-	"github.com/wetware/ww/pkg/lang"
+	"github.com/wetware/ww/pkg/lang/builtin"
+	"github.com/wetware/ww/pkg/lang/core"
 )
 
-var symbols = map[string]core.Any{
-	"nil":   lang.Nil{},
-	"false": lang.False,
-	"true":  lang.True,
+var symbols = map[string]score.Any{
+	"nil":   builtin.Nil{},
+	"false": builtin.False,
+	"true":  builtin.True,
 }
 
-func readSymbol(rd *reader.Reader, init rune) (core.Any, error) {
+func readSymbol(rd *reader.Reader, init rune) (score.Any, error) {
 	beginPos := rd.Position()
 
 	s, err := rd.Token(init)
@@ -35,10 +36,10 @@ func readSymbol(rd *reader.Reader, init rune) (core.Any, error) {
 	}
 
 	// TODO(performance):  pre-allocate
-	return lang.NewSymbol(capnp.SingleSegment(nil), s)
+	return builtin.NewSymbol(capnp.SingleSegment(nil), s)
 }
 
-func readString(rd *reader.Reader, init rune) (core.Any, error) {
+func readString(rd *reader.Reader, init rune) (score.Any, error) {
 	beginPos := rd.Position()
 
 	var b strings.Builder
@@ -77,10 +78,10 @@ func readString(rd *reader.Reader, init rune) (core.Any, error) {
 
 	// TODO(performance):  pre-allocate the arena based on the string length +
 	// header length.
-	return lang.NewString(capnp.SingleSegment(nil), b.String())
+	return builtin.NewString(capnp.SingleSegment(nil), b.String())
 }
 
-func readComment(rd *reader.Reader, _ rune) (core.Any, error) {
+func readComment(rd *reader.Reader, _ rune) (score.Any, error) {
 	for {
 		r, err := rd.NextRune()
 		if err != nil {
@@ -95,7 +96,7 @@ func readComment(rd *reader.Reader, _ rune) (core.Any, error) {
 	return nil, reader.ErrSkip
 }
 
-func readKeyword(rd *reader.Reader, init rune) (core.Any, error) {
+func readKeyword(rd *reader.Reader, init rune) (score.Any, error) {
 	beginPos := rd.Position()
 
 	token, err := rd.Token(-1)
@@ -105,10 +106,10 @@ func readKeyword(rd *reader.Reader, init rune) (core.Any, error) {
 
 	// TODO(performance):  pre-allocate the arena based on the token length +
 	// header length.
-	return lang.NewKeyword(capnp.SingleSegment(nil), token)
+	return builtin.NewKeyword(capnp.SingleSegment(nil), token)
 }
 
-func readCharacter(rd *reader.Reader, _ rune) (core.Any, error) {
+func readCharacter(rd *reader.Reader, _ rune) (score.Any, error) {
 	beginPos := rd.Position()
 
 	r, err := rd.NextRune()
@@ -125,7 +126,7 @@ func readCharacter(rd *reader.Reader, _ rune) (core.Any, error) {
 	if len(runes) == 1 {
 		// TODO(performance):  pre-allocate the arena based on segment header length + 2.
 		// 					   N.B.:  rune = int32 => [2]byte
-		return lang.NewChar(capnp.SingleSegment(nil), runes[0])
+		return builtin.NewChar(capnp.SingleSegment(nil), runes[0])
 	}
 
 	chr, found := charLiterals[token]
@@ -140,13 +141,13 @@ func readCharacter(rd *reader.Reader, _ rune) (core.Any, error) {
 	return nil, fmt.Errorf("unsupported character: '\\%s'", token)
 }
 
-func readList(rd *reader.Reader, _ rune) (core.Any, error) {
+func readList(rd *reader.Reader, _ rune) (score.Any, error) {
 	const listEnd = ')'
 
 	beginPos := rd.Position()
 
 	forms := make([]ww.Any, 0, 32) // pre-allocate to improve performance on small lists
-	if err := rd.Container(listEnd, "list", func(val core.Any) error {
+	if err := rd.Container(listEnd, "list", func(val score.Any) error {
 		forms = append(forms, val.(ww.Any))
 		return nil
 	}); err != nil {
@@ -154,20 +155,22 @@ func readList(rd *reader.Reader, _ rune) (core.Any, error) {
 	}
 
 	// TODO(performance):  can we pre-allocate here?
-	return lang.NewList(capnp.SingleSegment(nil), forms...)
+	return builtin.NewList(capnp.SingleSegment(nil), forms...)
 }
 
-func readVector(rd *reader.Reader, _ rune) (core.Any, error) {
+func readVector(rd *reader.Reader, _ rune) (score.Any, error) {
 	const vecEnd = ']'
 
 	beginPos := rd.Position()
 
-	b, err := lang.NewVectorBuilder(capnp.SingleSegment(nil))
+	b, err := builtin.NewVectorBuilder(capnp.SingleSegment(nil))
 	if err != nil {
 		return nil, err
 	}
 
-	if err := rd.Container(vecEnd, "vector", b.Conj); err != nil {
+	if err := rd.Container(vecEnd, "vector", func(val score.Any) error {
+		return b.Conj(val.(ww.Any))
+	}); err != nil {
 		return nil, annotateErr(rd, err, beginPos, "")
 	}
 
@@ -175,12 +178,12 @@ func readVector(rd *reader.Reader, _ rune) (core.Any, error) {
 }
 
 func quoteFormReader(expandFunc string) reader.Macro {
-	sym, err := lang.NewSymbol(capnp.SingleSegment(nil), expandFunc)
+	sym, err := builtin.NewSymbol(capnp.SingleSegment(nil), expandFunc)
 	if err != nil {
 		panic(err)
 	}
 
-	return func(rd *reader.Reader, _ rune) (core.Any, error) {
+	return func(rd *reader.Reader, _ rune) (score.Any, error) {
 		expr, err := rd.One()
 		if err != nil {
 			if err == io.EOF {
@@ -197,11 +200,11 @@ func quoteFormReader(expandFunc string) reader.Macro {
 			return nil, err
 		}
 
-		return lang.NewList(capnp.SingleSegment(nil), sym, expr.(ww.Any))
+		return builtin.NewList(capnp.SingleSegment(nil), sym, expr.(ww.Any))
 	}
 }
 
-func readPath(rd *reader.Reader, char rune) (_ core.Any, err error) {
+func readPath(rd *reader.Reader, char rune) (_ score.Any, err error) {
 	var b strings.Builder
 	for {
 		b.WriteRune(char)
@@ -217,21 +220,21 @@ func readPath(rd *reader.Reader, char rune) (_ core.Any, err error) {
 	}
 
 	// TODO(performance): pre-allocate the arena
-	return lang.NewPath(capnp.SingleSegment(nil), b.String())
+	return builtin.NewPath(capnp.SingleSegment(nil), b.String())
 }
 
-func readUnicodeChar(token string, base int) (lang.Char, error) {
+func readUnicodeChar(token string, base int) (core.Char, error) {
 	num, err := strconv.ParseInt(token, base, 64)
 	if err != nil {
-		return lang.Char{}, fmt.Errorf("invalid unicode character: '\\%s'", token)
+		return nil, fmt.Errorf("invalid unicode character: '\\%s'", token)
 	}
 
 	if num < 0 || num >= unicode.MaxRune {
-		return lang.Char{}, fmt.Errorf("invalid unicode character: '\\%s'", token)
+		return nil, fmt.Errorf("invalid unicode character: '\\%s'", token)
 	}
 
 	// TODO(performance):  pre-allocate arena
-	return lang.NewChar(capnp.SingleSegment(nil), rune(num))
+	return builtin.NewChar(capnp.SingleSegment(nil), rune(num))
 }
 
 func getEscape(r rune) (rune, error) {

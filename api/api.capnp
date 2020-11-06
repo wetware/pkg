@@ -13,21 +13,22 @@ $Go.import("github.com/wetware/ww/internal/api");
 struct Value {
     union {
         nil @0 :Void;
-        bool @1 :Bool;
-        i64 @2 :Int64;
-        bigInt @3 :Data;
-        f64 @4 :Float64;
-        bigFloat @5 :Text;
-        frac @6 :Frac;
-        char @7 :Int32;
-        str @8 :Text;
-        keyword @9 :Text;
-        symbol @10 :Text;
-        path @11 :Text;
-        list @12 :LinkedList;
-        vector @13 :Vector;
-        # map @14 :CHAMP;
-        proc @14 :Proc;
+        native @1 :Text;
+        bool @2 :Bool;
+        i64 @3 :Int64;
+        bigInt @4 :Data;
+        f64 @5 :Float64;
+        bigFloat @6 :Text;
+        frac @7 :Frac;
+        char @8 :Int32;
+        str @9 :Text;
+        keyword @10 :Text;
+        symbol @11 :Text;
+        path @12 :Text;
+        list @13 :LinkedList;
+        vector @14 :Vector;
+        # map @15 :CHAMP;
+        proc @15 :Proc;
     }
 }
 

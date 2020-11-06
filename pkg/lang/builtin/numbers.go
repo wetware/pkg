@@ -1,4 +1,4 @@
-package lang
+package builtin
 
 import (
 	"fmt"
@@ -7,29 +7,23 @@ import (
 
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
+	"github.com/wetware/ww/pkg/lang/core"
 	"github.com/wetware/ww/pkg/mem"
 	capnp "zombiezen.com/go/capnproto2"
 )
 
 var (
-	_ Numerical = (*Int64)(nil)
-	_ Numerical = (*Float64)(nil)
-	_ Numerical = (*BigInt)(nil)
-	_ Numerical = (*BigFloat)(nil)
-	_ Numerical = (*Frac)(nil)
+	_ core.Int64    = (*Int64)(nil)
+	_ core.Float64  = (*Float64)(nil)
+	_ core.BigInt   = (*BigInt)(nil)
+	_ core.BigFloat = (*BigFloat)(nil)
+	_ core.Fraction = (*Frac)(nil)
 
 	unit big.Int
 )
 
 func init() {
 	unit.SetInt64(1)
-}
-
-// Numerical value
-type Numerical interface {
-	ww.Any
-	SymbolProvider
-	Comparable
 }
 
 // Int64 represents a 64-bit signed integer.
@@ -49,8 +43,11 @@ func NewInt64(a capnp.Arena, i int64) (i64 Int64, err error) {
 	return
 }
 
+// Int64 satsifies core.Int64
+func (i64 Int64) Int64() int64 { return i64.Raw.I64() }
+
 func (i64 Int64) String() string {
-	return fmt.Sprintf("%d", i64.Raw.I64())
+	return fmt.Sprintf("%d", i64.Int64())
 }
 
 // SExpr returns a valid s-expression for Int64
@@ -60,25 +57,25 @@ func (i64 Int64) SExpr() (string, error) { return i64.String(), nil }
 func (i64 Int64) Comp(other ww.Any) (int, error) {
 	switch o := other.MemVal(); o.Type() {
 	case api.Value_Which_i64:
-		return compI64(i64.Raw.I64(), o.Raw.I64()), nil
+		return compI64(i64.Int64(), o.Raw.I64()), nil
 
 	case api.Value_Which_f64:
 		var f big.Float
-		return f.SetInt64(i64.Raw.I64()).Cmp(big.NewFloat(o.Raw.F64())), nil
+		return f.SetInt64(i64.Int64()).Cmp(big.NewFloat(o.Raw.F64())), nil
 
 	case api.Value_Which_bigInt:
-		return big.NewInt(i64.Raw.I64()).Cmp(other.(BigInt).i), nil
+		return big.NewInt(i64.Int64()).Cmp(other.(BigInt).i), nil
 
 	case api.Value_Which_bigFloat:
 		var f big.Float
-		return f.SetInt64(i64.Raw.I64()).Cmp(other.(BigFloat).f), nil
+		return f.SetInt64(i64.Int64()).Cmp(other.(BigFloat).f), nil
 
 	case api.Value_Which_frac:
 		var r big.Rat
-		return r.SetInt64(i64.Raw.I64()).Cmp(other.(Frac).r), nil
+		return r.SetInt64(i64.Int64()).Cmp(other.(Frac).r), nil
 
 	default:
-		return 0, ErrIncomparableTypes
+		return 0, core.ErrIncomparableTypes
 
 	}
 }
@@ -116,10 +113,10 @@ func asBigInt(v mem.Value) (bi BigInt, err error) {
 	return
 }
 
-func (bi BigInt) String() string { return bi.i.String() }
+// BigInt satisfies core.BigInt
+func (bi BigInt) BigInt() *big.Int { return bi.i }
 
-// SExpr returns a valid s-expression for BigInt
-func (bi BigInt) SExpr() (string, error) { return bi.String(), nil }
+func (bi BigInt) String() string { return bi.i.String() }
 
 // Comp returns 0 if the v == other, -1 if v < other, and 1 if v > other.
 func (bi BigInt) Comp(other ww.Any) (int, error) {
@@ -143,7 +140,7 @@ func (bi BigInt) Comp(other ww.Any) (int, error) {
 		return r.SetFrac(bi.i, &unit).Cmp(other.(Frac).r), nil
 
 	default:
-		return 0, ErrIncomparableTypes
+		return 0, core.ErrIncomparableTypes
 	}
 }
 
@@ -164,8 +161,11 @@ func NewFloat64(a capnp.Arena, f float64) (f64 Float64, err error) {
 	return
 }
 
+// Float64 satisfies core.Float64
+func (f64 Float64) Float64() float64 { return f64.Raw.F64() }
+
 func (f64 Float64) String() string {
-	return strconv.FormatFloat(f64.Raw.F64(), 'g', -1, 64)
+	return strconv.FormatFloat(f64.Float64(), 'g', -1, 64)
 }
 
 // SExpr returns a valid s-expression for Float64
@@ -176,27 +176,27 @@ func (f64 Float64) Comp(other ww.Any) (int, error) {
 	switch o := other.MemVal(); o.Type() {
 	case api.Value_Which_i64:
 		var f big.Float
-		return big.NewFloat(f64.Raw.F64()).Cmp(f.SetInt64(o.Raw.I64())), nil
+		return big.NewFloat(f64.Float64()).Cmp(f.SetInt64(o.Raw.I64())), nil
 
 	case api.Value_Which_f64:
-		return compF64(f64.Raw.F64(), o.Raw.F64()), nil
+		return compF64(f64.Float64(), o.Raw.F64()), nil
 
 	case api.Value_Which_bigInt:
 		var f big.Float
-		return big.NewFloat(f64.Raw.F64()).Cmp(f.SetInt(other.(BigInt).i)), nil
+		return big.NewFloat(f64.Float64()).Cmp(f.SetInt(other.(BigInt).i)), nil
 
 	case api.Value_Which_bigFloat:
 		var bi big.Float
-		bi.SetFloat64(f64.Raw.F64())
+		bi.SetFloat64(f64.Float64())
 		return bi.Cmp(other.(BigFloat).f), nil
 
 	case api.Value_Which_frac:
 		var r big.Rat
-		r.SetFloat64(f64.Raw.F64())
+		r.SetFloat64(f64.Float64())
 		return r.Cmp(other.(Frac).r), nil
 
 	default:
-		return 0, ErrIncomparableTypes
+		return 0, core.ErrIncomparableTypes
 
 	}
 }
@@ -237,6 +237,9 @@ func asBigFloat(v mem.Value) (bf BigFloat, err error) {
 	return
 }
 
+// BigFloat satisfies core.BigFloat
+func (bf BigFloat) BigFloat() *big.Float { return bf.f }
+
 func (bf BigFloat) String() string { return bf.f.Text('g', -1) }
 
 // SExpr returns a valid s-expression for Float64
@@ -263,7 +266,7 @@ func (bf BigFloat) Comp(other ww.Any) (int, error) {
 		return r.Cmp(other.(Frac).r), nil
 
 	default:
-		return 0, ErrIncomparableTypes
+		return 0, core.ErrIncomparableTypes
 
 	}
 }
@@ -329,6 +332,9 @@ func asFrac(v mem.Value) (f Frac, err error) {
 	return
 }
 
+// Rat satisfies core.Fraction
+func (f Frac) Rat() *big.Rat { return f.r }
+
 func (f Frac) String() string { return f.r.String() }
 
 // SExpr returns a valid s-expression for Frac
@@ -358,7 +364,7 @@ func (f Frac) Comp(other ww.Any) (int, error) {
 		return f.r.Cmp(other.(Frac).r), nil
 
 	default:
-		return 0, ErrIncomparableTypes
+		return 0, core.ErrIncomparableTypes
 
 	}
 }

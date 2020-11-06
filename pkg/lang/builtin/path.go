@@ -1,4 +1,4 @@
-package lang
+package builtin
 
 import (
 	capnp "zombiezen.com/go/capnproto2"
