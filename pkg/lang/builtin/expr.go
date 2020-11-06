@@ -142,16 +142,16 @@ func (de DefExpr) Eval(env core.Env) (score.Any, error) {
 // PathExpr binds a path to an Anchor
 type PathExpr struct {
 	Root ww.Anchor
-	Path Path
+	Path
 }
 
 // Eval returns the PathExpr unmodified
-func (pex PathExpr) Eval(core.Env) (score.Any, error) { return pex.Path, nil }
+func (pex PathExpr) Eval(core.Env) (score.Any, error) { return pex, nil }
 
 // Invoke is the data selector for the Path type.  It gets/sets the value at the anchor
 // path.
 func (pex PathExpr) Invoke(args ...score.Any) (score.Any, error) {
-	path, err := pex.Path.Parts()
+	path, err := pex.Parts()
 	if err != nil {
 		return nil, err
 	}
