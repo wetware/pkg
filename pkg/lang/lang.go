@@ -4,8 +4,11 @@ package lang
 import (
 	"github.com/spy16/slurp"
 	score "github.com/spy16/slurp/core"
+
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/lang/builtin"
+
+	_ "github.com/wetware/ww/pkg/lang/builtin/proc" // register default process types
 )
 
 // New returns a new root interpreter.

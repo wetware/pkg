@@ -7,28 +7,31 @@ import (
 
 	"github.com/jbenet/goprocess"
 	"github.com/spy16/parens"
-	"github.com/wetware/ww/internal/api"
-	ww "github.com/wetware/ww/pkg"
-	"github.com/wetware/ww/pkg/mem"
 	capnp "zombiezen.com/go/capnproto2"
 	"zombiezen.com/go/capnproto2/server"
+
+	"github.com/wetware/ww/internal/api"
+	ww "github.com/wetware/ww/pkg"
+	"github.com/wetware/ww/pkg/lang/core"
+	"github.com/wetware/ww/pkg/mem"
 )
 
 var (
-	_ Proc = (*goroutine)(nil)
+	_ core.Process = (*goroutine)(nil)
 )
 
-func init() { Register("go", goroutineFactory) }
+func init() { core.RegisterProcessFactory("go", goroutineFactory) }
 
-func goroutineFactory(env *parens.Env, args []ww.Any) (Proc, error) {
+func goroutineFactory(env core.Env, args []ww.Any) (core.Process, error) {
 	var err error
 	var any parens.Any
 
-	target := args[0]
+	// target := args[0]
 	g := &goroutine{
 		args: args,
 		proc: goprocess.Go(func(p goprocess.Process) {
-			any, err = env.Eval(target)
+			panic("FIXME")
+			// any, err = env.Eval(target)
 		}),
 	}
 
@@ -66,7 +69,7 @@ func (g goroutine) MemVal() mem.Value {
 		panic(err)
 	}
 
-	if err := val.Raw.SetProc(api.Proc_ServerToClient(procCap{g}, &server.Policy{})); err != nil {
+	if err := val.Raw.SetProc(api.Proc_ServerToClient(gCap{g}, &server.Policy{})); err != nil {
 		panic(err)
 	}
 
@@ -83,3 +86,9 @@ func (g goroutine) Wait(ctx context.Context) error {
 }
 
 func (g goroutine) Result() ww.Any { return g.res.Load().(ww.Any) }
+
+type gCap struct{ core.Process }
+
+func (p gCap) Wait(ctx context.Context, call api.Proc_wait) error {
+	return p.Process.Wait(ctx)
+}

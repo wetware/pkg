@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/pkg/errors"
 	"github.com/spy16/slurp"
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
@@ -20,11 +21,8 @@ var (
 	// _ = SpecialParser(parseFn)
 	// _ = SpecialParser(parseMacro)
 
-	// _ = ParseSpecial(parsePop)
-	// _ = ParseSpecial(parseConj)
-
-	// _ = ParseSpecial(anchorClient{}.Ls)
-	// _ = ParseSpecial(anchorClient{}.Go)
+	_ = SpecialParser(parseLs)
+	_ = SpecialParser(parseGo)
 
 	doSymbol Symbol
 )
@@ -158,11 +156,8 @@ func parseDef(a *Analyzer, env core.Env, args core.Seq) (core.Expr, error) {
 }
 
 func parseLs(a *Analyzer, _ core.Env, seq core.Seq) (core.Expr, error) {
-	var args []ww.Any
-	if err := core.ForEach(seq, func(item ww.Any) (bool, error) {
-		args = append(args, item.(ww.Any))
-		return false, nil
-	}); err != nil {
+	args, err := core.ToSlice(seq)
+	if err != nil {
 		return nil, err
 	}
 
@@ -184,68 +179,25 @@ func parseLs(a *Analyzer, _ core.Env, seq core.Seq) (core.Expr, error) {
 	}, nil
 }
 
-// func (c anchorClient) Go(env *parens.Env, args parens.Seq) (parens.Expr, error) {
-// 	n, err := args.Count()
-// 	if err != nil {
-// 		return nil, err
-// 	}
+func parseGo(a *Analyzer, env core.Env, seq core.Seq) (core.Expr, error) {
+	args, err := core.ToSlice(seq)
+	if err != nil {
+		return nil, err
+	}
 
-// 	if n == 0 {
-// 		return nil, errors.Errorf("expected at least one argument, got %d", n)
-// 	}
+	if len(args) == 0 {
+		return nil, errors.Errorf("expected at least one argument, got %d", len(args))
+	}
 
-// 	as := make(procArgs, 0, n)
-// 	parens.ForEach(args, func(item parens.Any) (bool, error) {
-// 		as = append(as, item.(ww.Any))
-// 		return false, nil
-// 	})
+	if p, ok := procArgs(args).Remote(); ok {
+		return RemoteGoExpr{
+			Root: a.root,
+			Path: p,
+			Args: procArgs(args).Args(),
+		}, nil
+	}
 
-// 	if p, ok := as.Global(); ok {
-// 		return GlobalGoExpr{
-// 			Root: c.root,
-// 			Path: p,
-// 			Args: as.Args(),
-// 		}, nil
-// 	}
-
-// 	return LocalGoExpr{
-// 		Env:  env,
-// 		Args: as.Args(),
-// 	}, nil
-// }
-
-// func parsePop(_ *parens.Env, args parens.Seq) (parens.Expr, error) {
-// 	v, err := args.First()
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	if v == nil {
-// 		return nil, core.Error{
-// 			Cause: errors.New("pop requires exactly one argument"),
-// 		}
-// 	}
-
-// 	v, err = Pop(v.(ww.Any))
-// 	return parens.ConstExpr{Const: v}, err
-// }
-
-// func parseConj(_ *parens.Env, args parens.Seq) (parens.Expr, error) {
-// 	v, err := args.First()
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	if v == nil {
-// 		return nil, core.Error{
-// 			Cause: errors.New("pop requires at least one argument"),
-// 		}
-// 	}
-
-// 	if args, err = args.Next(); err != nil {
-// 		return nil, err
-// 	}
-
-// 	v, err = Conj(v.(ww.Any), args)
-// 	return parens.ConstExpr{Const: v}, err
-// }
+	return LocalGoExpr{
+		Args: procArgs(args).Args(),
+	}, nil
+}

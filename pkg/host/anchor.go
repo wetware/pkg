@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/pkg/errors"
-	"github.com/spy16/slurp/core"
 	"go.uber.org/fx"
 
 	capnp "zombiezen.com/go/capnproto2"
@@ -62,7 +61,7 @@ func newAnchor(ps anchorParams) (out anchorOut) {
 
 type rootAnchor struct {
 	log ww.Logger
-	// env *parens.Env
+	// env core.Env
 	peerProvider
 
 	localPath string
@@ -135,7 +134,7 @@ type localAnchor struct {
 	log  ww.Logger
 	root string
 	node tree.Node
-	env  core.Env
+	// env  core.Env
 }
 
 func (a localAnchor) String() string {

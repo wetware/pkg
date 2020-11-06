@@ -10,7 +10,6 @@ import (
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/internal/rpc"
 	"github.com/wetware/ww/pkg/lang/builtin"
-	"github.com/wetware/ww/pkg/lang/proc"
 	"github.com/wetware/ww/pkg/mem"
 	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
 	capnp "zombiezen.com/go/capnproto2"
@@ -110,7 +109,7 @@ func (a anchor) Go(ctx context.Context, args ...ww.Any) (ww.Any, error) {
 		return nil, err
 	}
 
-	return proc.FromValue(val), nil
+	return builtin.RemoteProcess{Value: val}, nil
 }
 
 type hostAnchor struct {

@@ -19,8 +19,8 @@ var (
 	_ core.Expr = (*ResolveExpr)(nil)
 	_ core.Expr = (*DefExpr)(nil)
 	_ core.Expr = (*PathExpr)(nil)
-	// _ core.Expr = (*)(nil)
-	// _ core.Expr = (*)(nil)
+	_ core.Expr = (*LocalGoExpr)(nil)
+	_ core.Expr = (*RemoteGoExpr)(nil)
 	// _ core.Expr = (*)(nil)
 
 	_ core.Invokable = (*PathExpr)(nil)
@@ -32,6 +32,9 @@ type (
 
 	// QuoteExpr expression represents a quoted form
 	QuoteExpr = builtin.QuoteExpr
+
+	// InvokeExpr performs invocation of target when evaluated.
+	InvokeExpr = builtin.InvokeExpr
 )
 
 // ConstExpr returns the Const value wrapped inside when evaluated. It has
@@ -136,42 +139,6 @@ func (de DefExpr) Eval(env core.Env) (score.Any, error) {
 	return NewSymbol(capnp.SingleSegment(nil), de.Name)
 }
 
-// var (
-// 	_ core.Expr = (*PathExpr)(nil)
-// 	_ core.Expr = (*PathListExpr)(nil)
-
-// 	_ core.Invokable = (*PathExpr)(nil)
-// )
-
-// // IfExpr represents the if-then-else form.
-// type IfExpr struct{ Test, Then, Else core.Expr }
-
-// // Eval the expression
-// func (ife IfExpr) Eval(env core.Env) (score.Any, error) {
-// 	var target = ife.Else
-// 	if ife.Test != nil {
-// 		test, err := ife.Test.Eval(env)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-
-// 		ok, err := IsTruthy(test.(ww.Any))
-// 		if err != nil {
-// 			return nil, err
-// 		}
-
-// 		if ok {
-// 			target = ife.Then
-// 		}
-// 	}
-
-// 	if target == nil {
-// 		return Nil{}, nil
-// 	}
-
-// 	return target.Eval(env)
-// }
-
 // PathExpr binds a path to an Anchor
 type PathExpr struct {
 	Root ww.Anchor
@@ -244,31 +211,32 @@ func (plx PathListExpr) Eval(core.Env) (score.Any, error) {
 	return b.Vector()
 }
 
-// // LocalGoExpr starts a local process.  Local processes cannot be addressed by remote
-// // hosts.
-// type LocalGoExpr struct {
-// 	Args []ww.Any
-// }
+// LocalGoExpr starts a local process.  Local processes cannot be addressed by remote
+// hosts.
+type LocalGoExpr struct {
+	Args []ww.Any
+}
 
-// // Eval resolves starts the process.
-// func (lx LocalGoExpr) Eval(env core.Env) (score.Any, error) {
-// 	return proc.Spawn(env.Fork(), lx.Args...)
-// }
+// Eval resolves starts the process.
+func (lx LocalGoExpr) Eval(env core.Env) (score.Any, error) {
+	return core.Spawn(env.Child("<goroutine>", nil), lx.Args...)
+}
 
-// // GlobalGoExpr starts a global process.  Global processes may be bound to an Anchor,
-// // rendering them addressable by remote hosts.
-// type GlobalGoExpr struct {
-// 	Root ww.Anchor
-// 	Path Path
-// 	Args []ww.Any
-// }
+// RemoteGoExpr starts a global process.  Global processes may be bound to an Anchor,
+// rendering them addressable by remote hosts.
+type RemoteGoExpr struct {
+	Root ww.Anchor
+	Path Path
+	Args []ww.Any
+}
 
-// // Eval resolves the anchor and starts the process.
-// func (gx GlobalGoExpr) Eval(core.Env) (score.Any, error) {
-// 	path, err := gx.Path.Parts()
-// 	if err != nil {
-// 		return nil, err
-// 	}
+// Eval resolves the anchor and starts the process.
+func (rx RemoteGoExpr) Eval(core.Env) (score.Any, error) {
+	path, err := rx.Path.Parts()
+	if err != nil {
+		return nil, err
+	}
 
-// 	return gx.Root.Walk(context.Background(), path).Go(context.Background(), gx.Args...)
-// }
+	return rx.Root.Walk(context.Background(), path).
+		Go(context.Background(), rx.Args...)
+}

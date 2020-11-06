@@ -4,7 +4,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
-	"github.com/wetware/ww/pkg/lang/proc"
 	"github.com/wetware/ww/pkg/mem"
 )
 
@@ -40,7 +39,7 @@ func AsAny(v mem.Value) (val ww.Any, err error) {
 	case api.Value_Which_vector:
 		val = vector{v}
 	case api.Value_Which_proc:
-		val = proc.FromValue(v)
+		val = RemoteProcess{v}
 	default:
 		err = errors.Errorf("unknown value type '%s'", v.Type())
 	}
