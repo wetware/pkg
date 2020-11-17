@@ -3,6 +3,8 @@ package builtin
 import (
 	"context"
 	"errors"
+	"fmt"
+	"reflect"
 
 	"github.com/spy16/slurp/builtin"
 	score "github.com/spy16/slurp/core"
@@ -32,9 +34,6 @@ type (
 
 	// QuoteExpr expression represents a quoted form
 	QuoteExpr = builtin.QuoteExpr
-
-	// InvokeExpr performs invocation of target when evaluated.
-	InvokeExpr = builtin.InvokeExpr
 )
 
 // ConstExpr returns the Const value wrapped inside when evaluated. It has
@@ -139,6 +138,42 @@ func (de DefExpr) Eval(env core.Env) (score.Any, error) {
 	return NewSymbol(capnp.SingleSegment(nil), de.Name)
 }
 
+// InvokeExpr performs invocation of target when evaluated.
+type InvokeExpr struct {
+	Name   string
+	Target core.Expr
+	Args   []core.Expr
+}
+
+// Eval evaluates the target expr and invokes the result if it is an
+// Invokable  Returns error otherwise.
+func (ie InvokeExpr) Eval(env core.Env) (score.Any, error) {
+	val, err := ie.Target.Eval(env)
+	if err != nil {
+		return nil, err
+	}
+
+	fn, ok := val.(core.Invokable)
+	if !ok {
+		return nil, core.Error{
+			Cause:   core.ErrNotInvokable,
+			Message: fmt.Sprintf("value of type '%s' is not invokable", reflect.TypeOf(val)),
+		}
+	}
+
+	var any score.Any
+	args := make([]ww.Any, len(ie.Args))
+	for i, ae := range ie.Args {
+		if any, err = ae.Eval(env); err != nil {
+			return nil, err
+		}
+
+		args[i] = any.(ww.Any) // TODO(performance): can we use unsafe.Pointer here?
+	}
+
+	return fn.Invoke(args...)
+}
+
 // PathExpr binds a path to an Anchor
 type PathExpr struct {
 	Root ww.Anchor
@@ -150,7 +185,7 @@ func (pex PathExpr) Eval(core.Env) (score.Any, error) { return pex, nil }
 
 // Invoke is the data selector for the Path type.  It gets/sets the value at the anchor
 // path.
-func (pex PathExpr) Invoke(args ...score.Any) (score.Any, error) {
+func (pex PathExpr) Invoke(args ...ww.Any) (ww.Any, error) {
 	path, err := pex.Parts()
 	if err != nil {
 		return nil, err
@@ -162,7 +197,7 @@ func (pex PathExpr) Invoke(args ...score.Any) (score.Any, error) {
 		return anchor.Load(context.Background())
 	}
 
-	err = anchor.Store(context.Background(), args[0].(ww.Any))
+	err = anchor.Store(context.Background(), args[0])
 	if err != nil {
 		return nil, core.Error{
 			Cause:   err,

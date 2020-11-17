@@ -22,6 +22,9 @@ var (
 	// ErrArity is returned when an Invokable is invoked with wrong number
 	// of arguments.
 	ErrArity = core.ErrArity
+
+	// ErrNotInvokable is returned by InvokeExpr when the target is not invokable.
+	ErrNotInvokable = core.ErrNotInvokable
 )
 
 type (

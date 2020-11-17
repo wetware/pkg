@@ -1,12 +1,15 @@
 package core
 
 import (
-	"github.com/spy16/slurp/core"
 	ww "github.com/wetware/ww/pkg"
 )
 
-// Invokable represents a value that can be invoked for result.
-type Invokable = core.Invokable
+// Invokable represents a value that can be invoked as a function.
+type Invokable interface {
+	// Invoke is called if this value appears as the first argument of
+	// invocation form (i.e., list).
+	Invoke(args ...ww.Any) (ww.Any, error)
+}
 
 // List is a persistent, singly-linked list with fast insertions/pops to its head.
 type List interface {

@@ -1,9 +1,10 @@
 package builtin
 
 import (
+	"errors"
+	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/lang/core"
@@ -76,6 +77,28 @@ func NewVector(a capnp.Arena, vs ...ww.Any) (_ core.Vector, err error) {
 	return b.Vector()
 }
 
+// Invoking the vector is equivalent to calling `EntryAt`.
+func (v vector) Invoke(args ...ww.Any) (ww.Any, error) {
+	if nargs := len(args); nargs != 1 {
+		return nil, fmt.Errorf("%w: got %d, want at-least 1", core.ErrArity, nargs)
+	}
+
+	switch idx := args[0]; idx.MemVal().Type() {
+	case api.Value_Which_i64:
+		return v.EntryAt(int(idx.MemVal().Raw.I64()))
+	case api.Value_Which_bigInt:
+		// TODO(performance):  can we use unsafe.Pointer here?
+		if bi := idx.(core.BigInt).BigInt(); bi.IsInt64() {
+			return v.EntryAt(int(bi.Int64()))
+		}
+
+		fallthrough
+
+	default:
+		return nil, fmt.Errorf("%s is not an integer type", idx.MemVal().Type())
+	}
+}
+
 // Render the vector in a human-readable format.
 func (v vector) Render() (string, error) {
 	return v.render(func(any ww.Any) (string, error) {
@@ -95,12 +118,12 @@ func (v vector) render(f func(ww.Any) (string, error)) (string, error) {
 	for i := 0; i < cnt; i++ {
 		val, err := v.EntryAt(i)
 		if err != nil {
-			return "", errors.Wrapf(err, "index %d", i)
+			return "", fmt.Errorf("%w: index %d", err, i)
 		}
 
 		s, err := f(val)
 		if err != nil {
-			return "", errors.Wrapf(err, "index %d", i)
+			return "", fmt.Errorf("%w: index %d", err, i)
 		}
 
 		b.WriteString(s)

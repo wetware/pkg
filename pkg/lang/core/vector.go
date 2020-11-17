@@ -8,6 +8,7 @@ import (
 // insertions.
 type Vector interface {
 	ww.Any
+	Invokable
 	Count() (int, error)
 	Conj(ww.Any) (Vector, error)
 	EntryAt(i int) (ww.Any, error)

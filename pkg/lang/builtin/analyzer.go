@@ -108,7 +108,7 @@ func (a *Analyzer) analyzeSeq(env core.Env, seq core.Seq) (core.Expr, error) {
 
 	// Call target is not a special form and must be a Invokable. Analyze
 	// the arguments and create an InvokeExpr.
-	ie := builtin.InvokeExpr{
+	ie := InvokeExpr{
 		Name: fmt.Sprintf("%v", first),
 	}
 	err = core.ForEach(seq, func(item ww.Any) (done bool, err error) {
