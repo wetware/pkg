@@ -1,4 +1,4 @@
-//go:generate mockgen -destination ../../internal/test/mock/pkg/cluster/mock_cluster.go github.com/wetware/ww/pkg/cluster Announcer,EpochController,PeerSet
+//go:generate mockgen -destination ../../internal/test/mock/pkg/cluster/mock_cluster.go github.com/wetware/ww/pkg/cluster Announcer,Clock,PeerSet
 
 // Package cluster contains primitives for Wetware's pubsub-based clustering protocol.
 package cluster
@@ -18,9 +18,10 @@ type Announcer interface {
 	Announce(ctx context.Context, ttl time.Duration) error
 }
 
-// EpochController advances the host's local epoch, which is used to
-// track liveliness of peers on the network.
-type EpochController interface {
+// Clock tracks the host's local epoch.
+// If the current epoch exceeds a remote peer's TTL,
+// the peer will be removed from the peerset.
+type Clock interface {
 	// Advance the timer to the current epoch.  Implementations SHOULD panic if the
 	// current epoch <= the previous epoch.
 	Advance(epoch time.Time)
@@ -46,7 +47,7 @@ type Module struct {
 	fx.Out
 
 	Announcer Announcer
-	Epoch     EpochController
+	Clock     Clock
 	Cluster   PeerSet
 }
 
@@ -70,7 +71,7 @@ func New(ctx context.Context, cfg Config, lx fx.Lifecycle) (Module, error) {
 
 	return Module{
 		Announcer: announcer{t},
-		Epoch:     &f,
+		Clock:     &f,
 		Cluster:   &f,
 	}, nil
 }

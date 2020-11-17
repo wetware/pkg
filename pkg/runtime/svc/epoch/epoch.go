@@ -17,7 +17,7 @@ type Config struct {
 	fx.In
 
 	Bus   event.Bus
-	Epoch cluster.EpochController
+	Clock cluster.Clock
 }
 
 // NewService satisfies runtime.ServiceFactory.
@@ -28,7 +28,7 @@ func (cfg Config) NewService() (runtime.Service, error) {
 	}
 
 	return &router{
-		epoch: cfg.Epoch,
+		epoch: cfg.Clock,
 		bus:   cfg.Bus,
 		ts:    sub,
 	}, nil
@@ -52,7 +52,7 @@ type Module struct {
 func New(cfg Config) Module { return Module{Factory: cfg} }
 
 type router struct {
-	epoch cluster.EpochController
+	epoch cluster.Clock
 
 	bus event.Bus
 	ts  event.Subscription
