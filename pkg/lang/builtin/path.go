@@ -39,8 +39,8 @@ func NewPath(a capnp.Arena, s string) (p Path, err error) {
 	return
 }
 
-// SExpr returns a valid s-expression for path.
-func (p Path) SExpr() (string, error) { return p.Raw.Path() }
+// Render the path into a parseable s-expression.
+func (p Path) Render() (string, error) { return p.Raw.Path() }
 
 // Parts returns split path for p
 func (p Path) Parts() ([]string, error) {

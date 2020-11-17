@@ -44,7 +44,7 @@ func mustChar(r rune) core.Char {
 }
 
 func mustRender(v ww.Any) string {
-	sexpr, err := builtin.Render(v)
+	sexpr, err := core.Render(v)
 	if err != nil {
 		panic(err)
 	}

@@ -539,12 +539,12 @@ func compDesc(tt struct {
 		sym = ">"
 	}
 
-	aname, err := builtin.Render(tt.a)
+	aname, err := core.Render(tt.a)
 	if err != nil {
 		panic(err)
 	}
 
-	bname, err := builtin.Render(tt.b)
+	bname, err := core.Render(tt.b)
 	if err != nil {
 		panic(err)
 	}

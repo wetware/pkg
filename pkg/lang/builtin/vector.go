@@ -1,7 +1,6 @@
 package builtin
 
 import (
-	"reflect"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -14,6 +13,8 @@ import (
 
 /*
 	vector.go contains a persistent bit-partitioned vector implementation.
+
+	TODO(performance):  implement transients.
 
 	TODO(performance):  investigate RRB tree for fast concats/prepends
 						http://infoscience.epfl.ch/record/169879/files/RMTrees.pdf
@@ -78,18 +79,7 @@ func NewVector(a capnp.Arena, vs ...ww.Any) (_ core.Vector, err error) {
 // Render the vector in a human-readable format.
 func (v vector) Render() (string, error) {
 	return v.render(func(any ww.Any) (string, error) {
-		return Render(any)
-	})
-}
-
-// SExpr returns a valid s-expression for vector
-func (v vector) SExpr() (string, error) {
-	return v.render(func(any ww.Any) (string, error) {
-		if r, ok := any.(core.SExpressable); ok {
-			return r.SExpr()
-		}
-
-		return "", errors.Errorf("%s is not a symbol provider", reflect.TypeOf(any))
+		return core.Render(any)
 	})
 }
 

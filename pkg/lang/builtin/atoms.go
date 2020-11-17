@@ -42,9 +42,6 @@ func (Nil) Nil() {}
 
 func (Nil) String() string { return "nil" }
 
-// SExpr returns a valid s-expression for Nil
-func (Nil) SExpr() (string, error) { return "nil", nil }
-
 // MemVal returns the memory value.
 func (Nil) MemVal() mem.Value { return mem.NilValue }
 
@@ -71,9 +68,6 @@ func (b Bool) String() string {
 	return "false"
 }
 
-// SExpr returns a parseable s-expression for Bool.
-func (b Bool) SExpr() (string, error) { return sxprFromStringer(b) }
-
 // Char represents a character literal.  For example, \a, \b, \1, \∂ etc are
 // valid character literals. In addition, special literals like \newline, \space
 // etc are supported by the reader.
@@ -93,9 +87,6 @@ func NewChar(a capnp.Arena, r rune) (Char, error) {
 func (c Char) Char() rune { return c.Raw.Char() }
 
 func (c Char) String() string { return fmt.Sprintf("\\%c", c.Char()) }
-
-// SExpr returns a parseable s-expression for Char.
-func (c Char) SExpr() (string, error) { return sxprFromStringer(c) }
 
 // String represents text. Escape sequences are not applicable at this level.
 type String struct{ mem.Value }
@@ -118,8 +109,8 @@ func (str String) String() (s string, err error) {
 	return
 }
 
-// SExpr returns a parseable s-expression for the string.
-func (str String) SExpr() (string, error) { return str.String() }
+// Render the string into a parseable s-expression.
+func (str String) Render() (string, error) { return str.String() }
 
 // Keyword represents a keyword literal.
 type Keyword struct{ mem.Value }
@@ -137,8 +128,8 @@ func NewKeyword(a capnp.Arena, s string) (Keyword, error) {
 // Keyword satisfies core.Keyword.
 func (kw Keyword) Keyword() (string, error) { return kw.Raw.Keyword() }
 
-// SExpr returns a valid s-expression for the keyword
-func (kw Keyword) SExpr() (string, error) {
+// Render the keyword into a parseable s-expression.
+func (kw Keyword) Render() (string, error) {
 	s, err := kw.Keyword()
 	if err != nil {
 		return "", err
@@ -163,7 +154,5 @@ func NewSymbol(a capnp.Arena, s string) (Symbol, error) {
 // Symbol satisfies core.Symbol.
 func (sym Symbol) Symbol() (string, error) { return sym.Raw.Symbol() }
 
-// SExpr returns a valid s-expression for the symbol
-func (sym Symbol) SExpr() (string, error) { return sym.Symbol() }
-
-func sxprFromStringer(s fmt.Stringer) (string, error) { return s.String(), nil }
+// Render the symbol into a parseable s-expression.
+func (sym Symbol) Render() (string, error) { return sym.Symbol() }

@@ -18,7 +18,7 @@ import (
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/client"
 	"github.com/wetware/ww/pkg/lang"
-	"github.com/wetware/ww/pkg/lang/builtin"
+	"github.com/wetware/ww/pkg/lang/core"
 	"github.com/wetware/ww/pkg/lang/reader"
 	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
 
@@ -216,7 +216,7 @@ func (printer) Fprintln(w io.Writer, val interface{}) error {
 		return err
 	}
 
-	s, err := builtin.Render(val.(ww.Any))
+	s, err := core.Render(val.(ww.Any))
 	if err != nil {
 		return err
 	}

@@ -65,7 +65,7 @@ func (l list) Count() (int, error) {
 // Render the list into human-readable form
 func (l list) Render() (string, error) {
 	return l.render(func(any ww.Any) (string, error) {
-		return Render(any.(ww.Any))
+		return core.Render(any.(ww.Any))
 	})
 }
 

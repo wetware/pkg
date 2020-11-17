@@ -2,7 +2,6 @@ package builtin
 
 import (
 	"bytes"
-	"fmt"
 	"reflect"
 
 	"github.com/pkg/errors"
@@ -12,19 +11,6 @@ import (
 	"github.com/wetware/ww/pkg/lang/core"
 	capnp "zombiezen.com/go/capnproto2"
 )
-
-// Render a value into a human-readable representation.
-// To serialize a value into a parseable s-expression, see core.SExpressable.
-func Render(any ww.Any) (string, error) {
-	switch v := any.(type) {
-	case core.SExpressable:
-		return v.SExpr()
-	case fmt.Stringer:
-		return v.String(), nil
-	default:
-		return fmt.Sprintf("%#v", v), nil
-	}
-}
 
 // Hashable representation of an arbitrary value.
 func Hashable(any ww.Any) ([]byte, error) {

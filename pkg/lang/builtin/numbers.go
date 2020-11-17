@@ -46,12 +46,7 @@ func NewInt64(a capnp.Arena, i int64) (i64 Int64, err error) {
 // Int64 satsifies core.Int64
 func (i64 Int64) Int64() int64 { return i64.Raw.I64() }
 
-func (i64 Int64) String() string {
-	return fmt.Sprintf("%d", i64.Int64())
-}
-
-// SExpr returns a valid s-expression for Int64
-func (i64 Int64) SExpr() (string, error) { return i64.String(), nil }
+func (i64 Int64) String() string { return fmt.Sprintf("%d", i64.Int64()) }
 
 // Comp returns 0 if the v == other, -1 if v < other, and 1 if v > other.
 func (i64 Int64) Comp(other ww.Any) (int, error) {
@@ -164,12 +159,7 @@ func NewFloat64(a capnp.Arena, f float64) (f64 Float64, err error) {
 // Float64 satisfies core.Float64
 func (f64 Float64) Float64() float64 { return f64.Raw.F64() }
 
-func (f64 Float64) String() string {
-	return strconv.FormatFloat(f64.Float64(), 'g', -1, 64)
-}
-
-// SExpr returns a valid s-expression for Float64
-func (f64 Float64) SExpr() (string, error) { return f64.String(), nil }
+func (f64 Float64) String() string { return strconv.FormatFloat(f64.Float64(), 'g', -1, 64) }
 
 // Comp returns 0 if the v == other, -1 if v < other, and 1 if v > other.
 func (f64 Float64) Comp(other ww.Any) (int, error) {
@@ -241,9 +231,6 @@ func asBigFloat(v mem.Value) (bf BigFloat, err error) {
 func (bf BigFloat) BigFloat() *big.Float { return bf.f }
 
 func (bf BigFloat) String() string { return bf.f.Text('g', -1) }
-
-// SExpr returns a valid s-expression for Float64
-func (bf BigFloat) SExpr() (string, error) { return bf.String(), nil }
 
 // Comp returns 0 if the v == other, -1 if v < other, and 1 if v > other.
 func (bf BigFloat) Comp(other ww.Any) (int, error) {
@@ -336,9 +323,6 @@ func asFrac(v mem.Value) (f Frac, err error) {
 func (f Frac) Rat() *big.Rat { return f.r }
 
 func (f Frac) String() string { return f.r.String() }
-
-// SExpr returns a valid s-expression for Frac
-func (f Frac) SExpr() (string, error) { return f.String(), nil }
 
 // Comp returns true if the other value is numerical and has the same value.
 func (f Frac) Comp(other ww.Any) (int, error) {

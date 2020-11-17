@@ -2,6 +2,7 @@ package core
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/spy16/slurp/core"
 	ww "github.com/wetware/ww/pkg"
@@ -37,9 +38,6 @@ type (
 	// Error is returned by all slurp operations. Cause indicates the underlying
 	// error type. Use errors.Is() with Cause to check for specific errors.
 	Error = core.Error
-
-	// SExpressable forms can be rendered as s-expressions.
-	SExpressable = core.SExpressable
 )
 
 // Boolable values can be evaluated as true or false
@@ -57,4 +55,22 @@ type Comparable interface {
 // EqualityProvider can test for equality.
 type EqualityProvider interface {
 	Eq(ww.Any) (bool, error)
+}
+
+// Renderable types provide a human-readable representation.
+type Renderable interface {
+	Render() (string, error)
+}
+
+// Render a value into a human-readable representation.
+// To serialize a value into a parseable s-expression, see core.SExpressable.
+func Render(any ww.Any) (string, error) {
+	switch v := any.(type) {
+	case Renderable:
+		return v.Render()
+	case fmt.Stringer:
+		return v.String(), nil
+	default:
+		return fmt.Sprintf("%#v", v), nil
+	}
 }

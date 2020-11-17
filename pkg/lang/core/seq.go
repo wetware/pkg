@@ -1,10 +1,8 @@
 package core
 
 import (
-	"fmt"
 	"strings"
 
-	"github.com/spy16/slurp/core"
 	ww "github.com/wetware/ww/pkg"
 )
 
@@ -67,25 +65,16 @@ func ForEach(seq Seq, call func(item ww.Any) (bool, error)) (err error) {
 func SeqString(seq Seq, begin, end, sep string) (string, error) {
 	var b strings.Builder
 	b.WriteString(begin)
-	err := ForEach(seq, func(item ww.Any) (bool, error) {
-		if se, ok := item.(core.SExpressable); ok {
-			s, err := se.SExpr()
-			if err != nil {
-				return false, err
-			}
-			b.WriteString(s)
 
-		} else {
-			b.WriteString(fmt.Sprintf("%v", item))
+	err := ForEach(seq, func(item ww.Any) (bool, error) {
+		str, err := Render(item)
+		if err == nil {
+			b.WriteString(str)
+			b.WriteString(sep)
 		}
 
-		b.WriteString(sep)
-		return false, nil
+		return false, err
 	})
-
-	if err != nil {
-		return "", err
-	}
 
 	return strings.TrimRight(b.String(), sep) + end, err
 }
