@@ -45,6 +45,8 @@ func AsAny(v mem.Value) (val ww.Any, err error) {
 		val = vector{v}
 	case api.Value_Which_proc:
 		val = RemoteProcess{v}
+	case api.Value_Which_native:
+		val = v
 	default:
 		err = errors.Errorf("unknown value type '%s'", v.Type())
 	}

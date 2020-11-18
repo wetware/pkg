@@ -8,7 +8,6 @@ import (
 
 	"github.com/spy16/slurp/builtin"
 	score "github.com/spy16/slurp/core"
-	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/lang/core"
 	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
@@ -23,6 +22,7 @@ var (
 	_ core.Expr = (*PathExpr)(nil)
 	_ core.Expr = (*LocalGoExpr)(nil)
 	_ core.Expr = (*RemoteGoExpr)(nil)
+	_ core.Expr = (*InvokeExpr)(nil)
 	// _ core.Expr = (*)(nil)
 
 	_ core.Invokable = (*PathExpr)(nil)
@@ -39,22 +39,22 @@ type (
 // ConstExpr returns the Const value wrapped inside when evaluated. It has
 // no side-effect on the VM.
 type ConstExpr struct {
-	Const ww.Any
-	Deref func(string) (ww.Any, error)
+	form ww.Any
+	link *linker
 }
 
 // Eval returns the constant value unmodified.
 func (ce ConstExpr) Eval(_ core.Env) (score.Any, error) {
-	if val := ce.Const.MemVal(); val.Raw.Which() == api.Value_Which_native {
+	if val := ce.form.MemVal(); val.Native() {
 		key, err := val.Raw.Native()
 		if err != nil {
 			return nil, err
 		}
 
-		return ce.Deref(key)
+		return ce.link.Resolve(key)
 	}
 
-	return ce.Const, nil
+	return ce.form, nil
 }
 
 // IfExpr represents the if-then-else form.

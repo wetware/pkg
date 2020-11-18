@@ -44,19 +44,7 @@ type (
 )
 
 // New returns a root Env that can be used to execute forms.
-func New(globals map[string]ww.Any) Env {
-	gs := make(map[string]core.Any, len(globals))
-	for symbol, value := range globals {
-		gs[symbol] = value
-	}
-
-	return core.New(gs)
-}
-
-// Boolable values can be evaluated as true or false
-type Boolable interface {
-	Bool() (bool, error)
-}
+func New() Env { return core.New(nil) }
 
 // Comparable type.
 type Comparable interface {

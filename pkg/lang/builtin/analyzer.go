@@ -22,16 +22,21 @@ type SpecialParser func(*Analyzer, core.Env, core.Seq) (core.Expr, error)
 // Analyzer for wetware.
 type Analyzer struct {
 	root    ww.Anchor
-	linker  linker
+	link    *linker
 	special map[string]SpecialParser
 }
 
 // New analyzer.
 func New(root ww.Anchor, opt ...Option) *Analyzer {
-	a := &Analyzer{root: root}
+	a := &Analyzer{
+		root: root,
+		link: &linker{},
+	}
+
 	for _, f := range withDefault(opt) {
 		f(a)
 	}
+
 	return a
 }
 
@@ -75,8 +80,8 @@ func (a *Analyzer) Analyze(env core.Env, rawForm score.Any) (core.Expr, error) {
 	}
 
 	return ConstExpr{
-		Const: form.(ww.Any),
-		Deref: a.linker.Resolve,
+		form: form.(ww.Any),
+		link: a.link,
 	}, nil
 }
 
@@ -172,16 +177,16 @@ type linker struct {
 	vs map[string]ww.Any
 }
 
-func (l *linker) Resolve(key string) (ww.Any, error) {
+func (l *linker) Resolve(link string) (ww.Any, error) {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
 
-	if v, ok := l.vs[key]; ok {
+	if v, ok := l.vs[link]; ok {
 		return v, nil
 	}
 
 	return nil, core.Error{
-		Message: key,
+		Message: link,
 		Cause:   core.ErrNotFound,
 	}
 }

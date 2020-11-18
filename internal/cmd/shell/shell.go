@@ -93,7 +93,12 @@ func run() cli.ActionFunc {
 		}
 		defer lr.Close()
 
-		return repl.New(lang.New(root),
+		eval, err := lang.New(root)
+		if err != nil {
+			return err
+		}
+
+		return repl.New(eval,
 			repl.WithBanner(banner(c)),
 			repl.WithReaderFactory(readerFactory()),
 			repl.WithPrompts("ww »", "   ›"),

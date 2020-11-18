@@ -34,3 +34,6 @@ func (v Value) MemVal() Value { return v }
 
 // Nil returns true if the Value is nil.
 func (v Value) Nil() bool { return v.Type() == api.Value_Which_nil }
+
+// Native returns true if the Value is a reference to a native Go value.
+func (v Value) Native() bool { return v.Type() == api.Value_Which_native }
