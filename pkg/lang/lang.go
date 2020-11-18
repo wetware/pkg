@@ -3,10 +3,10 @@ package lang
 
 import (
 	"github.com/spy16/slurp"
-	score "github.com/spy16/slurp/core"
 
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/lang/builtin"
+	"github.com/wetware/ww/pkg/lang/core"
 
 	_ "github.com/wetware/ww/pkg/lang/builtin/proc" // register default process types
 )
@@ -17,11 +17,7 @@ func New(root ww.Anchor) *slurp.Interpreter {
 		panic("nil Anchor")
 	}
 
-	env := score.New(nil)
-
-	a := builtin.New(root)
-
 	return slurp.New(
-		slurp.WithEnv(env),
-		slurp.WithAnalyzer(a))
+		slurp.WithEnv(core.New(nil)),
+		slurp.WithAnalyzer(builtin.New(root)))
 }

@@ -4,6 +4,7 @@ package shell
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"runtime"
@@ -11,7 +12,6 @@ import (
 	"time"
 
 	"github.com/chzyer/readline"
-	"github.com/pkg/errors"
 	"github.com/spy16/slurp/repl"
 	"github.com/urfave/cli/v2"
 

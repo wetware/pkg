@@ -5,7 +5,6 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
-	score "github.com/spy16/slurp/core"
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/lang/core"
@@ -117,7 +116,7 @@ func Conj(col ww.Any, vs core.Seq) (ww.Any, error) {
 		return v, err
 
 	default:
-		return nil, score.Error{
+		return nil, core.Error{
 			Cause:   errors.New("unordered collection or atom"),
 			Message: col.MemVal().Type().String(),
 		}
