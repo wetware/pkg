@@ -2,11 +2,13 @@ package rpc
 
 import (
 	"context"
+	"errors"
 	"io"
 
 	capnp "zombiezen.com/go/capnproto2"
 	"zombiezen.com/go/capnproto2/rpc"
 
+	"github.com/libp2p/go-libp2p-core/mux"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	ww "github.com/wetware/ww/pkg"
 )
@@ -50,5 +52,14 @@ func rpcOpts(log ww.Logger, cap Capability) *rpc.Options {
 type errReporter struct{ ww.Logger }
 
 func (r errReporter) ReportError(err error) {
-	r.WithError(err).Error("error receiving messages from remote vat")
+	if errors.Is(err, mux.ErrReset) {
+		r.Debug("stream reset")
+		return
+	}
+
+	// TODO:  capnp seems to flatten the error chain by formatting with %s.
+	//		  Fix this upstream, then uncomment.
+
+	// r.WithError(err).Error("error receiving message from remote vat")
+	r.WithError(err).Debug("stream error")
 }
