@@ -46,7 +46,15 @@ type (
 )
 
 // New returns a root Env that can be used to execute forms.
-func New() Env { return core.New(nil) }
+// It binds the prelude to the environment before returning.
+func New() (Env, error) {
+	globals, err := prelude()
+	if err != nil {
+		return nil, err
+	}
+
+	return core.New(globals), nil
+}
 
 // Invokable represents a value that can be invoked as a function.
 type Invokable interface {
