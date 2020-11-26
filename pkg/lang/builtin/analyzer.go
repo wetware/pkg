@@ -45,11 +45,11 @@ func New(root ww.Anchor, opt ...Option) *Analyzer {
 func (a *Analyzer) Analyze(env core.Env, rawForm score.Any) (core.Expr, error) {
 	form := rawForm.(ww.Any)
 
-	if IsNil(form.(ww.Any)) {
+	if core.IsNil(form) {
 		return builtin.ConstExpr{Const: Nil{}}, nil
 	}
 
-	exp, err := macroExpand(a, env, form.(ww.Any))
+	exp, err := macroExpand(a, env, form)
 	if err != nil {
 		if !errors.Is(err, builtin.ErrNoExpand) {
 			return nil, err
@@ -80,7 +80,7 @@ func (a *Analyzer) Analyze(env core.Env, rawForm score.Any) (core.Expr, error) {
 	}
 
 	return ConstExpr{
-		form: form.(ww.Any),
+		form: form,
 		link: a.link,
 	}, nil
 }

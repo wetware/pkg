@@ -75,3 +75,12 @@ func Render(any ww.Any) (string, error) {
 		return fmt.Sprintf("%#v", v), nil
 	}
 }
+
+// IsNil returns true if value is native go `nil` or `Nil{}`.
+func IsNil(v ww.Any) bool {
+	if v == nil {
+		return true
+	}
+
+	return v.MemVal().Nil()
+}
