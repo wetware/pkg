@@ -112,6 +112,12 @@ func (str String) String() (s string, err error) {
 // Render the string into a parseable s-expression.
 func (str String) Render() (string, error) { return str.String() }
 
+// Count the number of characters in the string.
+func (str String) Count() (int, error) {
+	s, err := str.Raw.Str()
+	return len(s), err
+}
+
 // Keyword represents a keyword literal.
 type Keyword struct{ mem.Value }
 

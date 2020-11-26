@@ -10,6 +10,7 @@ import (
 type Numerical interface {
 	ww.Any
 	Comparable
+	Zero() bool
 }
 
 // Int64 is a fixed-size, 64-bit integer.

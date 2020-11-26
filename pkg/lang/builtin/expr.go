@@ -70,7 +70,7 @@ func (ife IfExpr) Eval(env core.Env) (score.Any, error) {
 			return nil, err
 		}
 
-		ok, err := IsTruthy(test.(ww.Any))
+		ok, err := core.IsTruthy(test.(ww.Any))
 		if err != nil {
 			return nil, err
 		}

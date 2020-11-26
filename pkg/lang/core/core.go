@@ -65,14 +65,14 @@ type Renderable interface {
 
 // Render a value into a human-readable representation.
 // To serialize a value into a parseable s-expression, see core.SExpressable.
-func Render(any ww.Any) (string, error) {
-	switch v := any.(type) {
+func Render(v ww.Any) (string, error) {
+	switch val := v.(type) {
 	case Renderable:
-		return v.Render()
+		return val.Render()
 	case fmt.Stringer:
-		return v.String(), nil
+		return val.String(), nil
 	default:
-		return fmt.Sprintf("%#v", v), nil
+		return fmt.Sprintf("%#v", val), nil
 	}
 }
 
@@ -83,4 +83,27 @@ func IsNil(v ww.Any) bool {
 	}
 
 	return v.MemVal().Nil()
+}
+
+// IsTruthy returns true if the value has a logical vale of `true`.
+func IsTruthy(v ww.Any) (bool, error) {
+	if IsNil(v) {
+		return false, nil
+	}
+
+	switch val := v.(type) {
+	case Bool:
+		return val.Bool(), nil
+
+	case Numerical:
+		return !val.Zero(), nil
+
+	case interface{ Count() (int, error) }: // container types
+		i, err := val.Count()
+		return i == 0, err
+
+	default:
+		return true, nil
+
+	}
 }

@@ -75,6 +75,9 @@ func (i64 Int64) Comp(other ww.Any) (int, error) {
 	}
 }
 
+// Zero returns true if the value is 0.
+func (i64 Int64) Zero() bool { return i64.Int64() == 0 }
+
 // BigInt represents an arbitrary-length signed integer
 type BigInt struct {
 	i *big.Int
@@ -139,6 +142,9 @@ func (bi BigInt) Comp(other ww.Any) (int, error) {
 	}
 }
 
+// Zero returns true if the value is 0.
+func (bi BigInt) Zero() bool { return bi.i.Sign() == 0 }
+
 // Float64 represents a 64-bit floating-point number
 type Float64 struct{ mem.Value }
 
@@ -190,6 +196,9 @@ func (f64 Float64) Comp(other ww.Any) (int, error) {
 
 	}
 }
+
+// Zero returns true if the value is 0.
+func (f64 Float64) Zero() bool { return f64.Float64() == 0 }
 
 // BigFloat represents an arbitrary-precision floating-point number.
 type BigFloat struct {
@@ -257,6 +266,9 @@ func (bf BigFloat) Comp(other ww.Any) (int, error) {
 
 	}
 }
+
+// Zero returns true if the value is 0.
+func (bf BigFloat) Zero() bool { return bf.f.Sign() == 0 }
 
 // Frac represents a rational number a/b of arbitrary precision.
 type Frac struct {
@@ -352,6 +364,9 @@ func (f Frac) Comp(other ww.Any) (int, error) {
 
 	}
 }
+
+// Zero returns true if the value is 0.
+func (f Frac) Zero() bool { return f.r.Sign() == 0 }
 
 func compI64(a, b int64) int {
 	switch {
