@@ -74,58 +74,58 @@ func Eq(a, b ww.Any) (bool, error) {
 	return bytes.Equal(ba, bb), nil
 }
 
-// Pop returns a collection without one item.  For a list, Pop
-// returns a new list/queue without the first item, for a vector,
-// returns a new vector without the last item. If the collection
-// is empty, returns an error.
-func Pop(col ww.Any) (ww.Any, error) {
-	switch col.MemVal().Type() {
-	case api.Value_Which_list:
-		_, tail, err := listTail(col.MemVal())
-		return tail, err
+// // Pop returns a collection without one item.  For a list, Pop
+// // returns a new list/queue without the first item, for a vector,
+// // returns a new vector without the last item. If the collection
+// // is empty, returns an error.
+// func Pop(col ww.Any) (ww.Any, error) {
+// 	switch col.MemVal().Type() {
+// 	case api.Value_Which_list:
+// 		_, tail, err := listTail(col.MemVal())
+// 		return tail, err
 
-	case api.Value_Which_vector:
-		_, vec, err := vectorPop(col.MemVal())
-		return vec, err
+// 	case api.Value_Which_vector:
+// 		_, vec, err := vectorPop(col.MemVal())
+// 		return vec, err
 
-	default:
-		return nil, core.Error{
-			Cause:   errors.New("unordered collection or atom"),
-			Message: col.MemVal().Type().String(),
-		}
+// 	default:
+// 		return nil, core.Error{
+// 			Cause:   errors.New("unordered collection or atom"),
+// 			Message: col.MemVal().Type().String(),
+// 		}
 
-	}
-}
+// 	}
+// }
 
-// Conj returns a new collection with the xs
-// 'added'. (conj nil item) returns (item).  The 'addition' may
-// happen at different 'places' depending on the concrete type.
-func Conj(col ww.Any, vs core.Seq) (ww.Any, error) {
-	switch v := col.(type) {
-	case core.List:
-		err := core.ForEach(vs, func(item ww.Any) (_ bool, err error) {
-			v, err = v.Cons(item)
-			return
-		})
-		return v, err
+// // Conj returns a new collection with the xs
+// // 'added'. (conj nil item) returns (item).  The 'addition' may
+// // happen at different 'places' depending on the concrete type.
+// func Conj(col ww.Any, vs core.Seq) (ww.Any, error) {
+// 	switch v := col.(type) {
+// 	case core.List:
+// 		err := core.ForEach(vs, func(item ww.Any) (_ bool, err error) {
+// 			v, err = v.Cons(item)
+// 			return
+// 		})
+// 		return v, err
 
-	case core.Vector:
-		// TODO(performance): implement `v.Transient()`, returning *VectorBuilder.
-		err := core.ForEach(vs, func(item ww.Any) (_ bool, err error) {
-			v, err = v.Conj(item.(ww.Any))
-			return
-		})
-		return v, err
+// 	case core.Vector:
+// 		// TODO(performance): implement `v.Transient()`, returning *VectorBuilder.
+// 		err := core.ForEach(vs, func(item ww.Any) (_ bool, err error) {
+// 			v, err = v.Conj(item.(ww.Any))
+// 			return
+// 		})
+// 		return v, err
 
-	default:
-		return nil, core.Error{
-			Cause:   errors.New("unordered collection or atom"),
-			Message: col.MemVal().Type().String(),
-		}
+// 	default:
+// 		return nil, core.Error{
+// 			Cause:   errors.New("unordered collection or atom"),
+// 			Message: col.MemVal().Type().String(),
+// 		}
 
-	}
+// 	}
 
-}
+// }
 
 // IsTruthy returns true if the value has a logical vale of `true`.
 func IsTruthy(any ww.Any) (bool, error) {

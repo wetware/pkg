@@ -291,9 +291,9 @@ func TestVectorEquality(t *testing.T) {
 			v:    mustVector(mustInt(0), mustInt(1), mustInt(2)),
 			newVector: func() core.Vector {
 				v := mustVector(mustInt(0), mustInt(1), mustInt(2), mustInt(3))
-				any, err := builtin.Pop(v)
+				v, err := v.Pop()
 				require.NoError(t, err)
-				return any.(core.Vector)
+				return v
 			},
 		},
 		{
@@ -301,9 +301,9 @@ func TestVectorEquality(t *testing.T) {
 			v:    vectorRange(32),
 			newVector: func() core.Vector {
 				v := vectorRange(33)
-				any, err := builtin.Pop(v)
+				v, err := v.Pop()
 				require.NoError(t, err)
-				return any.(core.Vector)
+				return v
 			},
 		},
 		{
@@ -311,14 +311,14 @@ func TestVectorEquality(t *testing.T) {
 			v:    vectorRange(30),
 			newVector: func() core.Vector {
 				var err error
-				var any ww.Any = vectorRange(35)
+				var v = vectorRange(35)
 				for i := 0; i < 5; i++ {
-					if any, err = builtin.Pop(any); err != nil {
+					if v, err = v.Pop(); err != nil {
 						panic(err)
 					}
 				}
 
-				return any.(core.Vector)
+				return v
 			},
 		},
 		{
