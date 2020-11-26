@@ -6,6 +6,14 @@ import (
 	ww "github.com/wetware/ww/pkg"
 )
 
+// List is a persistent, singly-linked list with fast insertions/pops to its head.
+type List interface {
+	ww.Any
+	Seq
+	Count() (int, error)
+	Cons(any ww.Any) (List, error)
+}
+
 // Seq represents a sequence of values.
 type Seq interface {
 	// Count returns the number of items in the sequence.

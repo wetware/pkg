@@ -48,6 +48,13 @@ type (
 // New returns a root Env that can be used to execute forms.
 func New() Env { return core.New(nil) }
 
+// Invokable represents a value that can be invoked as a function.
+type Invokable interface {
+	// Invoke is called if this value appears as the first argument of
+	// invocation form (i.e., list).
+	Invoke(args ...ww.Any) (ww.Any, error)
+}
+
 // Comparable type.
 type Comparable interface {
 	// Comp compares the magnitude of the comparable c with that of other.
