@@ -1,13 +1,10 @@
 package builtin
 
 import (
-	"bytes"
-
 	"github.com/pkg/errors"
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/mem"
-	capnp "zombiezen.com/go/capnproto2"
 )
 
 // AsAny lifts a mem.Value to a ww.Any.
@@ -50,24 +47,4 @@ func AsAny(v mem.Value) (val ww.Any, err error) {
 	}
 
 	return
-}
-
-// Hashable representation of an arbitrary value.
-func Hashable(any ww.Any) ([]byte, error) {
-	return capnp.Canonicalize(any.MemVal().Raw.Struct)
-}
-
-// Eq returns true is the two values are equal
-func Eq(a, b ww.Any) (bool, error) {
-	ba, err := Hashable(a)
-	if err != nil {
-		return false, err
-	}
-
-	bb, err := Hashable(b)
-	if err != nil {
-		return false, err
-	}
-
-	return bytes.Equal(ba, bb), nil
 }

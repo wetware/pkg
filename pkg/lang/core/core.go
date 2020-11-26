@@ -1,11 +1,13 @@
 package core
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 
 	"github.com/spy16/slurp/core"
 	ww "github.com/wetware/ww/pkg"
+	capnp "zombiezen.com/go/capnproto2"
 )
 
 var (
@@ -106,4 +108,57 @@ func IsTruthy(v ww.Any) (bool, error) {
 		return true, nil
 
 	}
+}
+
+// Eq returns true is the two values are equal
+func Eq(a, b ww.Any) (bool, error) {
+	// Nil is only equal to itself
+	if IsNil(a) && IsNil(b) {
+		return true, nil
+	}
+
+	// Check for usable interfaces on object A
+	switch val := a.(type) {
+	case Comparable:
+		i, err := val.Comp(b)
+		return i == 0, err
+
+	case EqualityProvider:
+		return val.Eq(b)
+
+	}
+
+	// Check for usable interfaces on object B
+	switch val := b.(type) {
+	case Comparable:
+		i, err := val.Comp(b)
+		return i == 0, err
+
+	case EqualityProvider:
+		return val.Eq(b)
+
+	}
+
+	// Identical types with the same canonical representation are equal.
+	if a.MemVal().Type() == b.MemVal().Type() {
+		ca, err := Canonical(a)
+		if err != nil {
+			return false, err
+		}
+
+		cb, err := Canonical(b)
+		if err != nil {
+			return false, err
+		}
+
+		return bytes.Equal(ca, cb), nil
+	}
+
+	// Disparate types are unequal by default.
+	return false, nil
+}
+
+// Canonical representation of an arbitrary value.
+func Canonical(any ww.Any) ([]byte, error) {
+	return capnp.Canonicalize(any.MemVal().Raw.Struct)
 }

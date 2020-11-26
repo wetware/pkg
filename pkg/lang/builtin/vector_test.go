@@ -22,7 +22,7 @@ func TestEmptyVector(t *testing.T) {
 		v, err := builtin.NewVector(nil)
 		assert.NoError(t, err)
 
-		eq, err := builtin.Eq(builtin.EmptyVector, v)
+		eq, err := core.Eq(builtin.EmptyVector, v)
 		require.NoError(t, err)
 		assert.True(t, eq)
 	})
@@ -50,13 +50,10 @@ func TestEmptyVector(t *testing.T) {
 		v2, err = v2.Conj(mustInt(0))
 		assert.NoError(t, err)
 
-		h, err := builtin.Hashable(v)
+		eq, err := core.Eq(v, v2)
 		require.NoError(t, err)
 
-		h2, err := builtin.Hashable(v2)
-		require.NoError(t, err)
-
-		assert.Equal(t, h, h2)
+		assert.True(t, eq, "vector v should be equal to v2.")
 	})
 }
 
@@ -340,7 +337,7 @@ func TestVectorEquality(t *testing.T) {
 		},
 	} {
 		t.Run(tt.desc, func(t *testing.T) {
-			eq, err := builtin.Eq(tt.v, tt.newVector())
+			eq, err := core.Eq(tt.v, tt.newVector())
 			require.NoError(t, err)
 
 			assert.True(t, eq,

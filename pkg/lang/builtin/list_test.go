@@ -41,7 +41,7 @@ func TestEmptyList(t *testing.T) {
 		v, err := seq.First()
 		assert.NoError(t, err)
 
-		eq, err := builtin.Eq(builtin.True, v.(ww.Any))
+		eq, err := core.Eq(builtin.True, v.(ww.Any))
 		require.NoError(t, err)
 		assert.True(t, eq)
 	})
@@ -72,7 +72,7 @@ func TestListEquality(t *testing.T) {
 		},
 	} {
 		t.Run(tt.desc, func(t *testing.T) {
-			eq, err := builtin.Eq(tt.l, tt.newList())
+			eq, err := core.Eq(tt.l, tt.newList())
 			require.NoError(t, err)
 
 			assert.True(t, eq)
