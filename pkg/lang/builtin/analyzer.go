@@ -22,16 +22,16 @@ type SpecialParser func(*Analyzer, core.Env, core.Seq) (core.Expr, error)
 // Analyzer for wetware.
 type Analyzer struct {
 	root    ww.Anchor
-	link    *linker
 	special map[string]SpecialParser
 }
 
 // New analyzer.
 func New(root ww.Anchor, opt ...Option) *Analyzer {
-	a := &Analyzer{
-		root: root,
-		link: &linker{},
+	if root == nil {
+		panic("nil root")
 	}
+
+	a := &Analyzer{root: root}
 
 	for _, f := range withDefault(opt) {
 		f(a)
@@ -79,10 +79,7 @@ func (a *Analyzer) Analyze(env core.Env, rawForm score.Any) (core.Expr, error) {
 		return a.analyzeSeq(env, expr)
 	}
 
-	return ConstExpr{
-		form: form,
-		link: a.link,
-	}, nil
+	return ConstExpr{form}, nil
 }
 
 func (a *Analyzer) analyzeSeq(env core.Env, seq core.Seq) (core.Expr, error) {

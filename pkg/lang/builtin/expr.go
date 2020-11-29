@@ -38,24 +38,10 @@ type (
 
 // ConstExpr returns the Const value wrapped inside when evaluated. It has
 // no side-effect on the VM.
-type ConstExpr struct {
-	form ww.Any
-	link *linker
-}
+type ConstExpr struct{ form ww.Any }
 
 // Eval returns the constant value unmodified.
-func (ce ConstExpr) Eval(_ core.Env) (score.Any, error) {
-	if val := ce.form.MemVal(); val.Native() {
-		key, err := val.Raw.Native()
-		if err != nil {
-			return nil, err
-		}
-
-		return ce.link.Resolve(key)
-	}
-
-	return ce.form, nil
-}
+func (ce ConstExpr) Eval(_ core.Env) (score.Any, error) { return ce.form, nil }
 
 // IfExpr represents the if-then-else form.
 type IfExpr struct{ Test, Then, Else core.Expr }
