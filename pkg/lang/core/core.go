@@ -166,6 +166,15 @@ func Eq(a, b ww.Any) (bool, error) {
 	return false, nil
 }
 
+// // Sum of numerical values.
+// func Sum(ns ...Numerical) (n Numerical, err error) {
+// 	if len(ns) == 0 {
+
+// 	}
+
+// 	n, ns := ns[0], ns[1:]
+// }
+
 // Canonical representation of an arbitrary value.
 func Canonical(any ww.Any) ([]byte, error) {
 	return capnp.Canonicalize(any.MemVal().Raw.Struct)
