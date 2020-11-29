@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/spy16/slurp"
+	capnp "zombiezen.com/go/capnproto2"
 
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/lang/builtin"
@@ -54,6 +55,14 @@ func prelude() bindFunc {
 				}
 
 				return builtin.True, err
+			}),
+			function("len", "__len__", func(cnt core.Countable) (core.Int64, error) {
+				i, err := cnt.Count()
+				if err != nil {
+					return nil, err
+				}
+
+				return builtin.NewInt64(capnp.SingleSegment(nil), int64(i))
 			}))
 	}
 }

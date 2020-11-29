@@ -56,6 +56,12 @@ type Invokable interface {
 	Invoke(args ...ww.Any) (ww.Any, error)
 }
 
+// Countable types can report the number of elements they contain.
+type Countable interface {
+	// Count provides the number of elements contained.
+	Count() (int, error)
+}
+
 // Comparable type.
 type Comparable interface {
 	// Comp compares the magnitude of the comparable c with that of other.
@@ -108,7 +114,7 @@ func IsTruthy(v ww.Any) (bool, error) {
 	case Numerical:
 		return !val.Zero(), nil
 
-	case interface{ Count() (int, error) }: // container types
+	case Countable:
 		i, err := val.Count()
 		return i == 0, err
 
