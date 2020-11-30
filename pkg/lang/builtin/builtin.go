@@ -37,7 +37,7 @@ func AsAny(v mem.Value) (val ww.Any, err error) {
 	case api.Value_Which_list:
 		val = list{v}
 	case api.Value_Which_vector:
-		val = vector{v}
+		val = PersistentVector{v}
 	case api.Value_Which_proc:
 		val = RemoteProcess{v}
 	case api.Value_Which_native:

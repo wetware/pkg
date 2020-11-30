@@ -32,9 +32,9 @@ var (
 	ErrInvalidVectorNode = errors.New("invalid VectorNode")
 
 	// EmptyVector is the zero-value vector.
-	EmptyVector vector
+	EmptyVector PersistentVector
 
-	_ core.Vector = (*vector)(nil)
+	_ core.Vector = (*PersistentVector)(nil)
 )
 
 func init() {
@@ -55,7 +55,8 @@ func init() {
 	EmptyVector.Raw = vec.Raw
 }
 
-type vector struct{ mem.Value }
+// PersistentVector provides constant-time indexing and append operations.
+type PersistentVector struct{ mem.Value }
 
 // NewVector creates a vector containing the supplied values.
 func NewVector(a capnp.Arena, vs ...ww.Any) (_ core.Vector, err error) {
@@ -77,8 +78,8 @@ func NewVector(a capnp.Arena, vs ...ww.Any) (_ core.Vector, err error) {
 	return b.Vector()
 }
 
-// Invoking the vector is equivalent to calling `EntryAt`.
-func (v vector) Invoke(args ...ww.Any) (ww.Any, error) {
+// Invoke is equivalent to `EntryAt`.
+func (v PersistentVector) Invoke(args ...ww.Any) (ww.Any, error) {
 	if nargs := len(args); nargs != 1 {
 		return nil, fmt.Errorf("%w: got %d, want at-least 1", core.ErrArity, nargs)
 	}
@@ -100,13 +101,13 @@ func (v vector) Invoke(args ...ww.Any) (ww.Any, error) {
 }
 
 // Render the vector in a human-readable format.
-func (v vector) Render() (string, error) {
+func (v PersistentVector) Render() (string, error) {
 	return v.render(func(any ww.Any) (string, error) {
 		return core.Render(any)
 	})
 }
 
-func (v vector) render(f func(ww.Any) (string, error)) (string, error) {
+func (v PersistentVector) render(f func(ww.Any) (string, error)) (string, error) {
 	cnt, err := v.Count()
 	if err != nil {
 		return "", err
@@ -138,17 +139,17 @@ func (v vector) render(f func(ww.Any) (string, error)) (string, error) {
 }
 
 // Count returns the number of elements in the vector.
-func (v vector) Count() (cnt int, err error) {
+func (v PersistentVector) Count() (cnt int, err error) {
 	_, cnt, err = v.count()
 	return
 }
 
-func (v vector) count() (api.Vector, int, error) {
+func (v PersistentVector) count() (api.Vector, int, error) {
 	return vectorCount(v.Value)
 }
 
 // Conj returns a new vector with items appended.
-func (v vector) Conj(item ww.Any) (core.Vector, error) {
+func (v PersistentVector) Conj(item ww.Any) (core.Vector, error) {
 	vec, cnt, err := v.count()
 	if err != nil {
 		return nil, err
@@ -169,7 +170,7 @@ func (v vector) Conj(item ww.Any) (core.Vector, error) {
 
 // EntryAt returns the item at given index. Returns error if the index
 // is out of range.
-func (v vector) EntryAt(i int) (ww.Any, error) {
+func (v PersistentVector) EntryAt(i int) (ww.Any, error) {
 	vs, err := vectorArrayFor(v.Value, i)
 	if err != nil {
 		return nil, err
@@ -180,7 +181,7 @@ func (v vector) EntryAt(i int) (ww.Any, error) {
 
 // Assoc returns a new vector with the value at given index updated.
 // Returns error if the index is out of range.
-func (v vector) Assoc(i int, val ww.Any) (core.Vector, error) {
+func (v PersistentVector) Assoc(i int, val ww.Any) (core.Vector, error) {
 	// https://github.com/clojure/clojure/blob/0b73494c3c855e54b1da591eeb687f24f608f346/src/jvm/clojure/lang/PersistentVector.java#L121
 
 	vec, cnt, err := v.count()
@@ -202,7 +203,7 @@ func (v vector) Assoc(i int, val ww.Any) (core.Vector, error) {
 }
 
 // Pop returns a new vector without the last item in v
-func (v vector) Pop() (core.Vector, error) {
+func (v PersistentVector) Pop() (core.Vector, error) {
 	_, vec, err := vectorPop(v.Value)
 	return vec, err
 }
@@ -336,7 +337,7 @@ func vectorUpdate(vec api.Vector, cnt, i int, any ww.Any) (core.Vector, error) {
 	return res, err
 }
 
-func vectorCons(vec api.Vector, cnt int, any ww.Any) (_ vector, err error) {
+func vectorCons(vec api.Vector, cnt int, any ww.Any) (_ PersistentVector, err error) {
 	shift := int(vec.Shift())
 
 	var root api.Vector_Node
@@ -707,24 +708,24 @@ func getChild(p api.Vector_Node, i int) (api.Vector_Node, error) {
 	vector utils
 */
 
-func newVector(a capnp.Arena, cnt, shift int, root api.Vector_Node, t api.Value_List) (api.Vector, vector, error) {
+func newVector(a capnp.Arena, cnt, shift int, root api.Vector_Node, t api.Value_List) (api.Vector, PersistentVector, error) {
 	val, vec, err := newVectorValue(a)
 	if err != nil {
-		return api.Vector{}, vector{}, err
+		return api.Vector{}, PersistentVector{}, err
 	}
 
 	if err = vec.SetRoot(root); err != nil {
-		return api.Vector{}, vector{}, err
+		return api.Vector{}, PersistentVector{}, err
 	}
 
 	if err = vec.SetTail(t); err != nil {
-		return api.Vector{}, vector{}, err
+		return api.Vector{}, PersistentVector{}, err
 	}
 
 	vec.SetCount(uint32(cnt))
 	vec.SetShift(uint8(shift))
 
-	return vec, vector{val}, nil
+	return vec, PersistentVector{val}, nil
 }
 
 func newVectorValue(a capnp.Arena) (val mem.Value, vec api.Vector, err error) {
