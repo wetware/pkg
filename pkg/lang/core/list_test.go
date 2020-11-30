@@ -1,4 +1,4 @@
-package builtin_test
+package core_test
 
 import (
 	"testing"
@@ -6,32 +6,31 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	ww "github.com/wetware/ww/pkg"
-	"github.com/wetware/ww/pkg/lang/builtin"
 	"github.com/wetware/ww/pkg/lang/core"
 	capnp "zombiezen.com/go/capnproto2"
 )
 
 func TestEmptyList(t *testing.T) {
 	t.Run("Count", func(t *testing.T) {
-		cnt, err := builtin.EmptyList.Count()
+		cnt, err := core.EmptyList.Count()
 		assert.NoError(t, err)
 		assert.Zero(t, cnt)
 	})
 
 	t.Run("First", func(t *testing.T) {
-		v, err := builtin.EmptyList.First()
+		v, err := core.EmptyList.First()
 		assert.NoError(t, err)
 		assert.Nil(t, v)
 	})
 
 	t.Run("Next", func(t *testing.T) {
-		tail, err := builtin.EmptyList.Next()
+		tail, err := core.EmptyList.Next()
 		assert.NoError(t, err)
 		assert.Nil(t, tail)
 	})
 
 	t.Run("Conj", func(t *testing.T) {
-		seq, err := builtin.EmptyList.Conj(builtin.True)
+		seq, err := core.EmptyList.Conj(core.True)
 		assert.NoError(t, err)
 
 		cnt, err := seq.Count()
@@ -41,7 +40,7 @@ func TestEmptyList(t *testing.T) {
 		v, err := seq.First()
 		assert.NoError(t, err)
 
-		eq, err := core.Eq(builtin.True, v.(ww.Any))
+		eq, err := core.Eq(core.True, v.(ww.Any))
 		require.NoError(t, err)
 		assert.True(t, eq)
 	})
@@ -81,7 +80,7 @@ func TestListEquality(t *testing.T) {
 }
 
 func mustList(vs ...ww.Any) core.List {
-	l, err := builtin.NewList(capnp.SingleSegment(nil), vs...)
+	l, err := core.NewList(capnp.SingleSegment(nil), vs...)
 	if err != nil {
 		panic(err)
 	}

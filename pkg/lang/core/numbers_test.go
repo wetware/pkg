@@ -1,4 +1,4 @@
-package builtin_test
+package core_test
 
 import (
 	"fmt"
@@ -7,7 +7,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	ww "github.com/wetware/ww/pkg"
-	"github.com/wetware/ww/pkg/lang/builtin"
 	"github.com/wetware/ww/pkg/lang/core"
 	capnp "zombiezen.com/go/capnproto2"
 )
@@ -90,7 +89,7 @@ func TestInt(t *testing.T) {
 		},
 		{
 			a:       mustInt(5),
-			b:       builtin.Nil{},
+			b:       core.Nil{},
 			wantErr: true,
 		},
 	} {
@@ -184,7 +183,7 @@ func TestFloat(t *testing.T) {
 		},
 		{
 			a:       mustFloat(1.2345),
-			b:       builtin.Nil{},
+			b:       core.Nil{},
 			wantErr: true,
 		},
 	} {
@@ -278,7 +277,7 @@ func TestBigInt(t *testing.T) {
 		},
 		{
 			a:       mustBigInt(5),
-			b:       builtin.Nil{},
+			b:       core.Nil{},
 			wantErr: true,
 		},
 	} {
@@ -372,7 +371,7 @@ func TestBigFloat(t *testing.T) {
 		},
 		{
 			a:       mustBigFloat(1.2345),
-			b:       builtin.Nil{},
+			b:       core.Nil{},
 			wantErr: true,
 		},
 	} {
@@ -466,7 +465,7 @@ func TestFrac(t *testing.T) {
 		},
 		{
 			a:       mustFrac(1, 2),
-			b:       builtin.Nil{},
+			b:       core.Nil{},
 			wantErr: true,
 		},
 	} {
@@ -483,7 +482,7 @@ func TestFrac(t *testing.T) {
 }
 
 func mustFloat(f float64) core.Float64 {
-	f64, err := builtin.NewFloat64(capnp.SingleSegment(nil), f)
+	f64, err := core.NewFloat64(capnp.SingleSegment(nil), f)
 	if err != nil {
 		panic(err)
 	}
@@ -492,7 +491,7 @@ func mustFloat(f float64) core.Float64 {
 }
 
 func mustInt(i int64) core.Int64 {
-	i64, err := builtin.NewInt64(capnp.SingleSegment(nil), i)
+	i64, err := core.NewInt64(capnp.SingleSegment(nil), i)
 	if err != nil {
 		panic(err)
 	}
@@ -501,7 +500,7 @@ func mustInt(i int64) core.Int64 {
 }
 
 func mustFrac(numer, denom int64) core.Fraction {
-	f, err := builtin.NewFrac(capnp.SingleSegment(nil), big.NewRat(numer, denom))
+	f, err := core.NewFraction(capnp.SingleSegment(nil), big.NewRat(numer, denom))
 	if err != nil {
 		panic(err)
 	}
@@ -510,7 +509,7 @@ func mustFrac(numer, denom int64) core.Fraction {
 }
 
 func mustBigFloat(f float64) core.BigFloat {
-	bf, err := builtin.NewBigFloat(capnp.SingleSegment(nil), big.NewFloat(f))
+	bf, err := core.NewBigFloat(capnp.SingleSegment(nil), big.NewFloat(f))
 	if err != nil {
 		panic(err)
 	}
@@ -519,7 +518,7 @@ func mustBigFloat(f float64) core.BigFloat {
 }
 
 func mustBigInt(i int64) core.BigInt {
-	bi, err := builtin.NewBigInt(capnp.SingleSegment(nil), big.NewInt(i))
+	bi, err := core.NewBigInt(capnp.SingleSegment(nil), big.NewInt(i))
 	if err != nil {
 		panic(err)
 	}

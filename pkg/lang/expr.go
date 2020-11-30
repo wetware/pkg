@@ -1,4 +1,4 @@
-package builtin
+package lang
 
 import (
 	"context"
@@ -67,20 +67,20 @@ func (ife IfExpr) Eval(env core.Env) (score.Any, error) {
 	}
 
 	if target == nil {
-		return Nil{}, nil
+		return core.Nil{}, nil
 	}
 	return target.Eval(env)
 }
 
 // ResolveExpr resolves a symbol from the given environment.
-type ResolveExpr struct{ Symbol Symbol }
+type ResolveExpr struct{ symbol core.Symbol }
 
 // Eval resolves the symbol in the given environment or its parent env
 // and returns the result. Returns ErrNotFound if the symbol was not
 // found in the entire hierarchy.
 func (re ResolveExpr) Eval(env core.Env) (v score.Any, err error) {
 	var sym string
-	if sym, err = re.Symbol.Raw.Symbol(); err != nil {
+	if sym, err = re.symbol.Symbol(); err != nil {
 		return
 	}
 
@@ -114,14 +114,14 @@ func (de DefExpr) Eval(env core.Env) (score.Any, error) {
 			return nil, err
 		}
 	} else {
-		val = Nil{}
+		val = core.Nil{}
 	}
 
 	if err := score.Root(env).Bind(de.Name, val); err != nil {
 		return nil, err
 	}
 
-	return NewSymbol(capnp.SingleSegment(nil), de.Name)
+	return core.NewSymbol(capnp.SingleSegment(nil), de.Name)
 }
 
 // InvokeExpr performs invocation of target when evaluated.
@@ -163,7 +163,7 @@ func (ie InvokeExpr) Eval(env core.Env) (score.Any, error) {
 // PathExpr binds a path to an Anchor
 type PathExpr struct {
 	Root ww.Anchor
-	Path
+	core.Path
 }
 
 // Eval returns the PathExpr unmodified
@@ -212,14 +212,14 @@ func (plx PathListExpr) Eval(core.Env) (score.Any, error) {
 		return nil, err
 	}
 
-	b, err := NewVectorBuilder(capnp.SingleSegment(nil))
+	b, err := core.NewVectorBuilder(capnp.SingleSegment(nil))
 	if err != nil {
 		return nil, err
 	}
 
 	for _, a := range as {
 		// TODO(performance):  cache the anchors.
-		p, err := NewPath(capnp.SingleSegment(nil), anchorpath.Join(a.Path()))
+		p, err := core.NewPath(capnp.SingleSegment(nil), anchorpath.Join(a.Path()))
 		if err != nil {
 			return nil, err
 		}
@@ -240,14 +240,14 @@ type LocalGoExpr struct {
 
 // Eval resolves starts the process.
 func (lx LocalGoExpr) Eval(env core.Env) (score.Any, error) {
-	return core.Spawn(env.Child("<goroutine>", nil), lx.Args...)
+	return nil, errors.New("LocalGoExpr NOT IMPLEMENTED")
 }
 
 // RemoteGoExpr starts a global process.  Global processes may be bound to an Anchor,
 // rendering them addressable by remote hosts.
 type RemoteGoExpr struct {
 	Root ww.Anchor
-	Path Path
+	Path core.Path
 	Args []ww.Any
 }
 

@@ -1,4 +1,4 @@
-package builtin
+package lang
 
 import (
 	"errors"
@@ -25,8 +25,8 @@ type Analyzer struct {
 	special map[string]SpecialParser
 }
 
-// New analyzer.
-func New(root ww.Anchor, opt ...Option) *Analyzer {
+// NewAnalyzer .
+func NewAnalyzer(root ww.Anchor, opt ...Option) *Analyzer {
 	if root == nil {
 		panic("nil root")
 	}
@@ -46,7 +46,7 @@ func (a *Analyzer) Analyze(env core.Env, rawForm score.Any) (core.Expr, error) {
 	form := rawForm.(ww.Any)
 
 	if core.IsNil(form) {
-		return builtin.ConstExpr{Const: Nil{}}, nil
+		return builtin.ConstExpr{Const: core.Nil{}}, nil
 	}
 
 	exp, err := macroExpand(a, env, form)
@@ -59,14 +59,14 @@ func (a *Analyzer) Analyze(env core.Env, rawForm score.Any) (core.Expr, error) {
 	}
 
 	switch expr := exp.(type) {
-	case Path:
+	case core.Path:
 		return PathExpr{
 			Root: a.root,
 			Path: expr,
 		}, nil
 
-	case Symbol:
-		return ResolveExpr{Symbol: expr}, nil
+	case core.Symbol:
+		return ResolveExpr{expr}, nil
 
 	case core.Seq:
 		cnt, err := expr.Count()

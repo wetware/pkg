@@ -14,25 +14,8 @@ import (
 
 	capnp "zombiezen.com/go/capnproto2"
 
-	"github.com/wetware/ww/pkg/lang/builtin"
 	"github.com/wetware/ww/pkg/lang/core"
 )
-
-// import (
-// 	"fmt"
-// 	"io"
-// 	"math"
-// 	"math/big"
-// 	"strconv"
-// 	"strings"
-
-// 	"github.com/pkg/errors"
-//
-// 	"github.com/spy16/slurp/reader"
-// 	"github.com/wetware/ww/pkg/lang"
-// 	"github.com/wetware/ww/pkg/lang/builtin"
-// 	capnp "zombiezen.com/go/capnproto2"
-// )
 
 func readNumber(rd *reader.Reader, init rune) (v score.Any, err error) {
 	beginPos := rd.Position()
@@ -75,12 +58,12 @@ func readNumber(rd *reader.Reader, init rune) (v score.Any, err error) {
 	return
 }
 
-func parseInt(numStr string) (score.Any, error) {
+func parseInt(numStr string) (core.Numerical, error) {
 	v, err := strconv.ParseInt(numStr, 0, 64)
 	switch {
 	case err == nil:
 		// TODO(performance):  pre-allocate arena
-		return builtin.NewInt64(capnp.SingleSegment(nil), v)
+		return core.NewInt64(capnp.SingleSegment(nil), v)
 
 	case errors.Is(err, strconv.ErrRange):
 		var b big.Int
@@ -89,19 +72,19 @@ func parseInt(numStr string) (score.Any, error) {
 		}
 
 		// TODO(performance):  pre-allocate arena
-		return builtin.NewBigInt(capnp.SingleSegment(nil), &b)
+		return core.NewBigInt(capnp.SingleSegment(nil), &b)
 	default:
 		return nil, fmt.Errorf("%w (int64): '%s'", reader.ErrNumberFormat, numStr)
 
 	}
 }
 
-func parseFloat(numStr string) (score.Any, error) {
+func parseFloat(numStr string) (core.Numerical, error) {
 	v, err := strconv.ParseFloat(numStr, 64)
 	switch {
 	case err == nil:
 		// TODO(performance):  pre-allocate arena
-		return builtin.NewFloat64(capnp.SingleSegment(nil), v)
+		return core.NewFloat64(capnp.SingleSegment(nil), v)
 
 	case errors.Is(err, strconv.ErrRange):
 		var f big.Float
@@ -110,7 +93,7 @@ func parseFloat(numStr string) (score.Any, error) {
 		}
 
 		// TODO(performance):  pre-allocate arena
-		return builtin.NewBigFloat(capnp.SingleSegment(nil), &f)
+		return core.NewBigFloat(capnp.SingleSegment(nil), &f)
 
 	default:
 		return nil, reader.ErrNumberFormat
@@ -118,7 +101,7 @@ func parseFloat(numStr string) (score.Any, error) {
 	}
 }
 
-func parseRadix(numStr string) (core.Int64, error) {
+func parseRadix(numStr string) (core.Numerical, error) {
 	parts := strings.Split(numStr, "r")
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("%w (radix notation): '%s'", reader.ErrNumberFormat, numStr)
@@ -136,14 +119,22 @@ func parseRadix(numStr string) (core.Int64, error) {
 	}
 
 	v, err := strconv.ParseInt(repr, int(base), 64)
+	if errors.Is(err, strconv.ErrRange) {
+		var bi big.Int
+		if _, ok := bi.SetString(repr, int(base)); !ok {
+			return nil, fmt.Errorf("%w (radix notation): '%s'", reader.ErrNumberFormat, numStr)
+		}
+
+		return core.NewBigInt(capnp.SingleSegment(nil), &bi)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("%w (radix notation): '%s'", reader.ErrNumberFormat, numStr)
 	}
 
-	return builtin.NewInt64(capnp.SingleSegment(nil), v)
+	return core.NewInt64(capnp.SingleSegment(nil), v)
 }
 
-func parseScientific(numStr string) (score.Any, error) {
+func parseScientific(numStr string) (core.Numerical, error) {
 	parts := strings.Split(numStr, "e")
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("%w (scientific notation): '%s'", reader.ErrNumberFormat, numStr)
@@ -167,13 +158,13 @@ func parseScientific(numStr string) (score.Any, error) {
 			return nil, fmt.Errorf("%w (bigfloat): '%s'", reader.ErrNumberFormat, numStr)
 		}
 
-		return builtin.NewBigFloat(capnp.SingleSegment(nil), &bf)
+		return core.NewBigFloat(capnp.SingleSegment(nil), &bf)
 	}
 
-	return builtin.NewFloat64(capnp.SingleSegment(nil), f)
+	return core.NewFloat64(capnp.SingleSegment(nil), f)
 }
 
-func parseFrac(numStr string) (score.Any, error) { // TODO:  return lang.Frac
+func parseFrac(numStr string) (core.Numerical, error) {
 	parts := strings.Split(numStr, "/")
 	if len(parts) != 2 || parts[1] == "" {
 		return nil, fmt.Errorf("%w (fractional notation): '%s'", reader.ErrNumberFormat, numStr)
@@ -188,7 +179,7 @@ func parseFrac(numStr string) (score.Any, error) { // TODO:  return lang.Frac
 	}
 
 	var r big.Rat
-	return builtin.NewFrac(capnp.SingleSegment(nil), r.SetFrac(&numer, &denom))
+	return core.NewFraction(capnp.SingleSegment(nil), r.SetFrac(&numer, &denom))
 }
 
 // Token reads one token from the reader and returns. If init is not -1, it is included

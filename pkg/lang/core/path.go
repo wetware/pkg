@@ -1,4 +1,4 @@
-package builtin
+package core
 
 import (
 	capnp "zombiezen.com/go/capnproto2"
@@ -10,14 +10,15 @@ import (
 )
 
 var (
-	rootPath Path
+	// RootPath for Anchor hierarchy.
+	RootPath Path
 
 	_ ww.Any = (*Path)(nil)
 )
 
 func init() {
 	var err error
-	if rootPath, err = NewPath(capnp.SingleSegment(nil), "/"); err != nil {
+	if RootPath, err = NewPath(capnp.SingleSegment(nil), "/"); err != nil {
 		panic(err)
 	}
 }

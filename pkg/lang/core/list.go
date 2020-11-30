@@ -1,11 +1,10 @@
-package builtin
+package core
 
 import (
 	"strings"
 
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
-	"github.com/wetware/ww/pkg/lang/core"
 	"github.com/wetware/ww/pkg/mem"
 	capnp "zombiezen.com/go/capnproto2"
 )
@@ -14,8 +13,8 @@ var (
 	// EmptyList is a zero-value List
 	EmptyList list
 
-	_ ww.Any   = (*list)(nil)
-	_ core.Seq = (*list)(nil)
+	_ ww.Any = (*list)(nil)
+	_ Seq    = (*list)(nil)
 )
 
 func init() {
@@ -36,7 +35,7 @@ func init() {
 type list struct{ mem.Value }
 
 // NewList returns a new list containing given values.
-func NewList(a capnp.Arena, vs ...ww.Any) (core.List, error) {
+func NewList(a capnp.Arena, vs ...ww.Any) (List, error) {
 	if len(vs) == 0 {
 		return EmptyList, nil
 	}
@@ -65,14 +64,14 @@ func (l list) Count() (int, error) {
 // Render the list into human-readable form
 func (l list) Render() (string, error) {
 	return l.render(func(any ww.Any) (string, error) {
-		return core.Render(any.(ww.Any))
+		return Render(any.(ww.Any))
 	})
 }
 
 // // SExpr returns a valid s-expression for List
 // func (l list) SExpr() (string, error) {
 // 	return l.render(func(any ww.Any) (string, error) {
-// 		if r, ok := any.(core.SExpressable); ok {
+// 		if r, ok := any.(SExpressable); ok {
 // 			return r.SExpr()
 // 		}
 
@@ -93,7 +92,7 @@ func (l list) render(f func(ww.Any) (string, error)) (string, error) {
 	var b strings.Builder
 	b.WriteRune('(')
 
-	seq := core.Seq(l)
+	seq := Seq(l)
 	for i := 0; i < cnt; i++ {
 		if i > 0 {
 			b.WriteRune(' ')
@@ -121,13 +120,13 @@ func (l list) render(f func(ww.Any) (string, error)) (string, error) {
 }
 
 // Conj returns a new list with all the items added at the head of the list.
-func (l list) Conj(items ...ww.Any) (core.Seq, error) {
+func (l list) Conj(items ...ww.Any) (Seq, error) {
 	null, err := l.isNull()
 	if err != nil {
 		return nil, err
 	}
 
-	var res core.List
+	var res List
 	if null {
 		res = l
 	} else {
@@ -144,7 +143,7 @@ func (l list) Conj(items ...ww.Any) (core.Seq, error) {
 }
 
 // Cons returns a new list with the item added at the head of the list.
-func (l list) Cons(any ww.Any) (core.List, error) {
+func (l list) Cons(any ww.Any) (List, error) {
 	return listCons(capnp.SingleSegment(nil), any.(ww.Any).MemVal(), l)
 }
 
@@ -159,7 +158,7 @@ func (l list) First() (v ww.Any, err error) {
 }
 
 // Next returns the tail of the list.
-func (l list) Next() (core.Seq, error) {
+func (l list) Next() (Seq, error) {
 	_, next, err := listNext(l.Raw)
 	return next, err
 }
@@ -201,7 +200,7 @@ func listTail(v mem.Value) (ll api.LinkedList, tail list, err error) {
 
 // func listToSlice(l List, sizeHint int) ([]ww.Any, error) {
 // 	slice := make([]ww.Any, 0, sizeHint)
-// 	err := core.ForEach(l, func(item ww.Any) (bool, error) {
+// 	err := ForEach(l, func(item ww.Any) (bool, error) {
 // 		slice = append(slice, item)
 // 		return false, nil
 // 	})
@@ -246,7 +245,7 @@ func listIsNull(v api.Value) (l api.LinkedList, null bool, err error) {
 	return
 }
 
-func listNext(v api.Value) (api.LinkedList, core.Seq, error) {
+func listNext(v api.Value) (api.LinkedList, Seq, error) {
 	ll, null, err := listIsNull(v)
 	if err != nil || null {
 		return ll, nil, err

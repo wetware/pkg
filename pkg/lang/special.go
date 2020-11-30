@@ -1,4 +1,4 @@
-package builtin
+package lang
 
 import (
 	"fmt"
@@ -24,12 +24,12 @@ var (
 	_ = SpecialParser(parseLs)
 	_ = SpecialParser(parseGo)
 
-	doSymbol Symbol
+	doSymbol core.Symbol
 )
 
 func init() {
 	var err error
-	if doSymbol, err = NewSymbol(capnp.SingleSegment(nil), "do"); err != nil {
+	if doSymbol, err = core.NewSymbol(capnp.SingleSegment(nil), "do"); err != nil {
 		panic(err)
 	}
 }
@@ -161,10 +161,10 @@ func parseLs(a *Analyzer, _ core.Env, seq core.Seq) (core.Expr, error) {
 		return nil, err
 	}
 
-	pexpr := PathExpr{Root: a.root, Path: rootPath}
+	pexpr := PathExpr{Root: a.root, Path: core.RootPath}
 	for _, arg := range args {
 		if arg.MemVal().Type() == api.Value_Which_path {
-			pexpr.Path = args[0].(Path)
+			pexpr.Path = args[0].(core.Path)
 			args = args[1:]
 		}
 
@@ -180,24 +180,25 @@ func parseLs(a *Analyzer, _ core.Env, seq core.Seq) (core.Expr, error) {
 }
 
 func parseGo(a *Analyzer, env core.Env, seq core.Seq) (core.Expr, error) {
-	args, err := core.ToSlice(seq)
-	if err != nil {
-		return nil, err
-	}
+	return nil, errors.New("parseGo NOT IMPLEMENTED")
+	// args, err := core.ToSlice(seq)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	if len(args) == 0 {
-		return nil, errors.Errorf("expected at least one argument, got %d", len(args))
-	}
+	// if len(args) == 0 {
+	// 	return nil, errors.Errorf("expected at least one argument, got %d", len(args))
+	// }
 
-	if p, ok := procArgs(args).Remote(); ok {
-		return RemoteGoExpr{
-			Root: a.root,
-			Path: p,
-			Args: procArgs(args).Args(),
-		}, nil
-	}
+	// if p, ok := procArgs(args).Remote(); ok {
+	// 	return RemoteGoExpr{
+	// 		Root: a.root,
+	// 		Path: p,
+	// 		Args: procArgs(args).Args(),
+	// 	}, nil
+	// }
 
-	return LocalGoExpr{
-		Args: procArgs(args).Args(),
-	}, nil
+	// return LocalGoExpr{
+	// 	Args: procArgs(args).Args(),
+	// }, nil
 }

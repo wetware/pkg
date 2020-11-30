@@ -8,10 +8,8 @@ import (
 	capnp "zombiezen.com/go/capnproto2"
 
 	ww "github.com/wetware/ww/pkg"
-	"github.com/wetware/ww/pkg/lang/builtin"
 	"github.com/wetware/ww/pkg/lang/core"
-
-	_ "github.com/wetware/ww/pkg/lang/builtin/proc" // register default process types
+	// _ "github.com/wetware/ww/pkg/lang/core/proc" // register default process types
 )
 
 // New returns a new root interpreter.
@@ -27,7 +25,7 @@ func New(root ww.Anchor) (*slurp.Interpreter, error) {
 
 	return slurp.New(
 			slurp.WithEnv(env),
-			slurp.WithAnalyzer(builtin.New(root))),
+			slurp.WithAnalyzer(NewAnalyzer(root))),
 		nil
 }
 
@@ -43,18 +41,18 @@ func prelude() bindFunc {
 		return bindAll(env,
 			function("nil?", "__isnil__", func(any ww.Any) core.Bool {
 				if core.IsNil(any) {
-					return builtin.True
+					return core.True
 				}
 
-				return builtin.False
+				return core.False
 			}),
 			function("not", "__not__", func(any ww.Any) (core.Bool, error) {
 				ok, err := core.IsTruthy(any)
 				if ok {
-					return builtin.False, err
+					return core.False, err
 				}
 
-				return builtin.True, err
+				return core.True, err
 			}),
 			function("len", "__len__", func(cnt core.Countable) (core.Int64, error) {
 				i, err := cnt.Count()
@@ -62,7 +60,7 @@ func prelude() bindFunc {
 					return nil, err
 				}
 
-				return builtin.NewInt64(capnp.SingleSegment(nil), int64(i))
+				return core.NewInt64(capnp.SingleSegment(nil), int64(i))
 			}))
 	}
 }
@@ -73,42 +71,42 @@ func math() bindFunc {
 			function("=", "__eq__", func(a, b ww.Any) (core.Bool, error) {
 				ok, err := core.Eq(a, b)
 				if ok {
-					return builtin.True, err
+					return core.True, err
 				}
 
-				return builtin.False, err
+				return core.False, err
 			}),
 			function("<", "__lt__", func(a core.Comparable, b ww.Any) (core.Bool, error) {
 				i, err := a.Comp(b)
 				if i == -1 {
-					return builtin.True, err
+					return core.True, err
 				}
 
-				return builtin.False, err
+				return core.False, err
 			}),
 			function(">", "__gt__", func(a core.Comparable, b ww.Any) (core.Bool, error) {
 				i, err := a.Comp(b)
 				if i == 1 {
-					return builtin.True, err
+					return core.True, err
 				}
 
-				return builtin.False, err
+				return core.False, err
 			}),
 			function("<=", "__le__", func(a core.Comparable, b ww.Any) (core.Bool, error) {
 				i, err := a.Comp(b)
 				if i <= 0 {
-					return builtin.True, err
+					return core.True, err
 				}
 
-				return builtin.False, err
+				return core.False, err
 			}),
 			function(">=", "__ge__", func(a core.Comparable, b ww.Any) (core.Bool, error) {
 				i, err := a.Comp(b)
 				if i >= 0 {
-					return builtin.True, err
+					return core.True, err
 				}
 
-				return builtin.False, err
+				return core.False, err
 			}))
 	}
 }
@@ -133,7 +131,7 @@ func (bind bindFunc) Bind(env core.Env) error { return bind(env) }
 
 func function(symbol, name string, fn interface{}) bindFunc {
 	return func(env core.Env) error {
-		wrapped, err := builtin.Func(name, fn)
+		wrapped, err := core.Func(name, fn)
 		if err != nil {
 			return err
 		}

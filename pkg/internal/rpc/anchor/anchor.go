@@ -2,14 +2,14 @@ package anchor
 
 import (
 	"context"
+	"errors"
 	"runtime"
 
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/pkg/errors"
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/internal/rpc"
-	"github.com/wetware/ww/pkg/lang/builtin"
+	"github.com/wetware/ww/pkg/lang/core"
 	"github.com/wetware/ww/pkg/mem"
 	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
 	capnp "zombiezen.com/go/capnproto2"
@@ -59,7 +59,7 @@ func (a anchor) Load(ctx context.Context) (ww.Any, error) {
 		return nil, err
 	}
 
-	return builtin.AsAny(mem.Value{Raw: v})
+	return core.AsAny(mem.Value{Raw: v})
 }
 
 func (a anchor) Store(ctx context.Context, any ww.Any) error {
@@ -109,7 +109,8 @@ func (a anchor) Go(ctx context.Context, args ...ww.Any) (ww.Any, error) {
 		return nil, err
 	}
 
-	return builtin.RemoteProcess{Value: val}, nil
+	// return core.RemoteProcess{Value: val}, nil
+	return nil, errors.New("core.RemoteProcess NOT IMPLEMENTED")
 }
 
 type hostAnchor struct {

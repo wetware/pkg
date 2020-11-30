@@ -1,4 +1,4 @@
-package builtin_test
+package core_test
 
 import (
 	"fmt"
@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	ww "github.com/wetware/ww/pkg"
-	"github.com/wetware/ww/pkg/lang/builtin"
 	"github.com/wetware/ww/pkg/lang/core"
 	capnp "zombiezen.com/go/capnproto2"
 )
@@ -15,20 +14,20 @@ import (
 func TestEmptyVector(t *testing.T) {
 	t.Parallel()
 
-	require.NotZero(t, builtin.EmptyVector,
+	require.NotZero(t, core.EmptyVector,
 		"zero-value empty vector is invalid (shift is missing)")
 
 	t.Run("NewVector", func(t *testing.T) {
-		v, err := builtin.NewVector(nil)
+		v, err := core.NewVector(nil)
 		assert.NoError(t, err)
 
-		eq, err := core.Eq(builtin.EmptyVector, v)
+		eq, err := core.Eq(core.EmptyVector, v)
 		require.NoError(t, err)
 		assert.True(t, eq)
 	})
 
 	t.Run("Count", func(t *testing.T) {
-		cnt, err := builtin.EmptyVector.Count()
+		cnt, err := core.EmptyVector.Count()
 		assert.NoError(t, err)
 		assert.Zero(t, cnt)
 	})
@@ -36,16 +35,16 @@ func TestEmptyVector(t *testing.T) {
 	t.Run("EntryAt", func(t *testing.T) {
 		t.Parallel()
 
-		v, err := builtin.EmptyVector.EntryAt(0)
+		v, err := core.EmptyVector.EntryAt(0)
 		assert.EqualError(t, err, core.ErrIndexOutOfBounds.Error())
 		assert.Nil(t, v)
 	})
 
 	t.Run("Conj", func(t *testing.T) {
-		v, err := builtin.EmptyVector.Conj(mustInt(0))
+		v, err := core.EmptyVector.Conj(mustInt(0))
 		assert.NoError(t, err)
 
-		v2, err := builtin.NewVector(nil)
+		v2, err := core.NewVector(nil)
 		assert.NoError(t, err)
 		v2, err = v2.Conj(mustInt(0))
 		assert.NoError(t, err)
@@ -84,7 +83,7 @@ func TestNewVector(t *testing.T) {
 		vs:   valueRange(1025), // tree w/ single branch-node => max size of 1024
 	}} {
 		t.Run(tt.desc, func(t *testing.T) {
-			vec, err := builtin.NewVector(capnp.SingleSegment(nil), tt.vs...)
+			vec, err := core.NewVector(capnp.SingleSegment(nil), tt.vs...)
 			if !assert.NoError(t, err) {
 				return
 			}
@@ -347,7 +346,7 @@ func TestVectorEquality(t *testing.T) {
 }
 
 func mustVector(vs ...ww.Any) core.Vector {
-	vec, err := builtin.NewVector(capnp.SingleSegment(nil), vs...)
+	vec, err := core.NewVector(capnp.SingleSegment(nil), vs...)
 	if err != nil {
 		panic(err)
 	}
@@ -356,7 +355,7 @@ func mustVector(vs ...ww.Any) core.Vector {
 }
 
 func vectorRange(n int) core.Vector {
-	v, err := builtin.NewVector(capnp.SingleSegment(nil), valueRange(n)...)
+	v, err := core.NewVector(capnp.SingleSegment(nil), valueRange(n)...)
 	if err != nil {
 		panic(err)
 	}

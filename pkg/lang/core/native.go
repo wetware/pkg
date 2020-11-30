@@ -1,4 +1,4 @@
-package builtin
+package core
 
 import (
 	"fmt"
@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	ww "github.com/wetware/ww/pkg"
-	"github.com/wetware/ww/pkg/lang/core"
 	"github.com/wetware/ww/pkg/mem"
 	capnp "zombiezen.com/go/capnproto2"
 )
@@ -15,11 +14,11 @@ var (
 	anyType = reflect.TypeOf((*ww.Any)(nil)).Elem()
 	errType = reflect.TypeOf((*error)(nil)).Elem()
 
-	_ core.Invokable = (*funcWrapper)(nil)
+	_ Invokable = (*funcWrapper)(nil)
 )
 
 // Func converts the given Go func to a ww.Any that is guaranteed
-// to satisfy core.Invokable.
+// to satisfy Invokable.
 func Func(name string, v interface{}) (ww.Any, error) {
 	rv := reflect.ValueOf(v)
 	rt := rv.Type()
@@ -69,7 +68,7 @@ type funcWrapper struct {
 	lastOutIdx int
 }
 
-func (fw *funcWrapper) MemVal() mem.Value { return fw.sym.Value }
+func (fw *funcWrapper) MemVal() mem.Value { return fw.sym.MemVal() }
 
 func (fw *funcWrapper) Invoke(args ...ww.Any) (ww.Any, error) {
 	// allocate argument slice.

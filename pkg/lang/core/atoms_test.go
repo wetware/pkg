@@ -1,14 +1,13 @@
-package builtin_test
+package core_test
 
 import (
 	ww "github.com/wetware/ww/pkg"
-	"github.com/wetware/ww/pkg/lang/builtin"
 	"github.com/wetware/ww/pkg/lang/core"
 	capnp "zombiezen.com/go/capnproto2"
 )
 
 func mustSymbol(s string) core.Symbol {
-	sym, err := builtin.NewSymbol(capnp.SingleSegment(nil), s)
+	sym, err := core.NewSymbol(capnp.SingleSegment(nil), s)
 	if err != nil {
 		panic(err)
 	}
@@ -17,7 +16,7 @@ func mustSymbol(s string) core.Symbol {
 }
 
 func mustKeyword(s string) core.Keyword {
-	kw, err := builtin.NewKeyword(capnp.SingleSegment(nil), s)
+	kw, err := core.NewKeyword(capnp.SingleSegment(nil), s)
 	if err != nil {
 		panic(err)
 	}
@@ -26,7 +25,7 @@ func mustKeyword(s string) core.Keyword {
 }
 
 func mustString(s string) core.String {
-	str, err := builtin.NewString(capnp.SingleSegment(nil), s)
+	str, err := core.NewString(capnp.SingleSegment(nil), s)
 	if err != nil {
 		panic(err)
 	}
@@ -35,7 +34,7 @@ func mustString(s string) core.String {
 }
 
 func mustChar(r rune) core.Char {
-	c, err := builtin.NewChar(capnp.SingleSegment(nil), r)
+	c, err := core.NewChar(capnp.SingleSegment(nil), r)
 	if err != nil {
 		panic(err)
 	}

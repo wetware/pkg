@@ -6,7 +6,9 @@ import (
 	"fmt"
 
 	"github.com/spy16/slurp/core"
+	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
+	"github.com/wetware/ww/pkg/mem"
 	capnp "zombiezen.com/go/capnproto2"
 )
 
@@ -184,4 +186,46 @@ func Eq(a, b ww.Any) (bool, error) {
 // Canonical representation of an arbitrary value.
 func Canonical(any ww.Any) ([]byte, error) {
 	return capnp.Canonicalize(any.MemVal().Raw.Struct)
+}
+
+// AsAny lifts a mem.Value to a ww.Any.
+func AsAny(v mem.Value) (val ww.Any, err error) {
+	switch v.Type() {
+	case api.Value_Which_nil:
+		val = Nil{}
+	case api.Value_Which_bool:
+		val = boolValue{v}
+	case api.Value_Which_i64:
+		val = i64{v}
+	case api.Value_Which_f64:
+		val = f64{v}
+	case api.Value_Which_bigInt:
+		val, err = asBigInt(v)
+	case api.Value_Which_bigFloat:
+		val, err = asBigFloat(v)
+	case api.Value_Which_frac:
+		val, err = asFrac(v)
+	case api.Value_Which_char:
+		val = charValue{v}
+	case api.Value_Which_str:
+		val = stringValue{v}
+	case api.Value_Which_keyword:
+		val = keywordValue{v}
+	case api.Value_Which_symbol:
+		val = symbolValue{v}
+	case api.Value_Which_path:
+		val = Path{v}
+	case api.Value_Which_list:
+		val = list{v}
+	case api.Value_Which_vector:
+		val = PersistentVector{v}
+	// case api.Value_Which_proc:
+	// 	val = RemoteProcess{v}
+	case api.Value_Which_native:
+		val = v
+	default:
+		err = fmt.Errorf("unknown value type '%s'", v.Type())
+	}
+
+	return
 }

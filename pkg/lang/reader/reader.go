@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/spy16/slurp/reader"
-	"github.com/wetware/ww/pkg/lang/builtin"
 	"github.com/wetware/ww/pkg/lang/core"
 	capnp "zombiezen.com/go/capnproto2"
 )
@@ -69,7 +68,7 @@ func init() {
 		"backspace": '\b',
 		"formfeed":  '\f',
 	} {
-		c, err := builtin.NewChar(capnp.SingleSegment(nil), v)
+		c, err := core.NewChar(capnp.SingleSegment(nil), v)
 		if err != nil {
 			panic(err)
 		}
