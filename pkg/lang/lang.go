@@ -25,7 +25,7 @@ func New(root ww.Anchor) (*slurp.Interpreter, error) {
 
 	return slurp.New(
 			slurp.WithEnv(env),
-			slurp.WithAnalyzer(NewAnalyzer(root))),
+			slurp.WithAnalyzer(newAnalyzer(root))),
 		nil
 }
 
@@ -40,19 +40,11 @@ func prelude() bindFunc {
 	return func(env core.Env) error {
 		return bindAll(env,
 			function("nil?", "__isnil__", func(any ww.Any) core.Bool {
-				if core.IsNil(any) {
-					return core.True
-				}
-
-				return core.False
+				return liftBool(core.IsNil(any))
 			}),
 			function("not", "__not__", func(any ww.Any) (core.Bool, error) {
-				ok, err := core.IsTruthy(any)
-				if ok {
-					return core.False, err
-				}
-
-				return core.True, err
+				b, err := core.IsTruthy(any)
+				return liftBool(!b), err
 			}),
 			function("len", "__len__", func(cnt core.Countable) (core.Int64, error) {
 				i, err := cnt.Count()
@@ -70,43 +62,23 @@ func math() bindFunc {
 		return bindAll(env,
 			function("=", "__eq__", func(a, b ww.Any) (core.Bool, error) {
 				ok, err := core.Eq(a, b)
-				if ok {
-					return core.True, err
-				}
-
-				return core.False, err
+				return liftBool(ok), err
 			}),
 			function("<", "__lt__", func(a core.Comparable, b ww.Any) (core.Bool, error) {
 				i, err := a.Comp(b)
-				if i == -1 {
-					return core.True, err
-				}
-
-				return core.False, err
+				return liftBool(i == -1), err
 			}),
 			function(">", "__gt__", func(a core.Comparable, b ww.Any) (core.Bool, error) {
 				i, err := a.Comp(b)
-				if i == 1 {
-					return core.True, err
-				}
-
-				return core.False, err
+				return liftBool(i == 1), err
 			}),
 			function("<=", "__le__", func(a core.Comparable, b ww.Any) (core.Bool, error) {
 				i, err := a.Comp(b)
-				if i <= 0 {
-					return core.True, err
-				}
-
-				return core.False, err
+				return liftBool(i <= 0), err
 			}),
 			function(">=", "__ge__", func(a core.Comparable, b ww.Any) (core.Bool, error) {
 				i, err := a.Comp(b)
-				if i >= 0 {
-					return core.True, err
-				}
-
-				return core.False, err
+				return liftBool(i >= 0), err
 			}))
 	}
 }
@@ -138,4 +110,12 @@ func function(symbol, name string, fn interface{}) bindFunc {
 
 		return env.Bind(symbol, wrapped)
 	}
+}
+
+func liftBool(b bool) core.Bool {
+	if b {
+		return core.True
+	}
+
+	return core.False
 }

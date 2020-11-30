@@ -12,37 +12,41 @@ import (
 	"github.com/wetware/ww/pkg/lang/core"
 )
 
-var (
-	_ core.Analyzer = (*Analyzer)(nil)
-)
+var _ core.Analyzer = (*analyzer)(nil)
 
 // SpecialParser defines a special form.
-type SpecialParser func(*Analyzer, core.Env, core.Seq) (core.Expr, error)
+type SpecialParser func(core.Analyzer, core.Env, core.Seq) (core.Expr, error)
 
-// Analyzer for wetware.
-type Analyzer struct {
+type analyzer struct {
 	root    ww.Anchor
 	special map[string]SpecialParser
 }
 
-// NewAnalyzer .
-func NewAnalyzer(root ww.Anchor, opt ...Option) *Analyzer {
+func newAnalyzer(root ww.Anchor) core.Analyzer {
 	if root == nil {
 		panic("nil root")
 	}
 
-	a := &Analyzer{root: root}
-
-	for _, f := range withDefault(opt) {
-		f(a)
+	return analyzer{
+		root: root,
+		special: map[string]SpecialParser{
+			"do": parseDo,
+			"if": parseIf,
+			// "fn":    parseFn,
+			"def": parseDef,
+			// "macro": parseMacro,
+			"quote": parseQuote,
+			// "go": c.Go,
+			"ls": lsParser(root),
+			// "pop":   parsePop,
+			// "conj":  parseConj,
+		},
 	}
-
-	return a
 }
 
 // Analyze performs syntactic analysis of given form and returns an Expr
 // that can be evaluated for result against an Env.
-func (a *Analyzer) Analyze(env core.Env, rawForm score.Any) (core.Expr, error) {
+func (a analyzer) Analyze(env core.Env, rawForm score.Any) (core.Expr, error) {
 	form := rawForm.(ww.Any)
 
 	if core.IsNil(form) {
@@ -82,7 +86,7 @@ func (a *Analyzer) Analyze(env core.Env, rawForm score.Any) (core.Expr, error) {
 	return ConstExpr{form}, nil
 }
 
-func (a *Analyzer) analyzeSeq(env core.Env, seq core.Seq) (core.Expr, error) {
+func (a analyzer) analyzeSeq(env core.Env, seq core.Seq) (core.Expr, error) {
 	// Analyze the call target.  This is the first item in the sequence.
 	first, err := seq.First()
 	if err != nil {

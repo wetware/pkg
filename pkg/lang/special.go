@@ -9,32 +9,9 @@ import (
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/lang/core"
-	capnp "zombiezen.com/go/capnproto2"
 )
 
-var (
-	_ = SpecialParser(parseDo)
-	_ = SpecialParser(parseIf)
-	_ = SpecialParser(parseQuote)
-	_ = SpecialParser(parseDef)
-
-	// _ = SpecialParser(parseFn)
-	// _ = SpecialParser(parseMacro)
-
-	_ = SpecialParser(parseLs)
-	_ = SpecialParser(parseGo)
-
-	doSymbol core.Symbol
-)
-
-func init() {
-	var err error
-	if doSymbol, err = core.NewSymbol(capnp.SingleSegment(nil), "do"); err != nil {
-		panic(err)
-	}
-}
-
-func parseDo(a *Analyzer, env core.Env, args core.Seq) (core.Expr, error) {
+func parseDo(a core.Analyzer, env core.Env, args core.Seq) (core.Expr, error) {
 	var de DoExpr
 	err := core.ForEach(args, func(item ww.Any) (bool, error) {
 		expr, err := a.Analyze(env, item)
@@ -50,7 +27,7 @@ func parseDo(a *Analyzer, env core.Env, args core.Seq) (core.Expr, error) {
 	return de, nil
 }
 
-func parseIf(a *Analyzer, env core.Env, args core.Seq) (core.Expr, error) {
+func parseIf(a core.Analyzer, env core.Env, args core.Seq) (core.Expr, error) {
 	count, err := args.Count()
 	if err != nil {
 		return nil, err
@@ -86,7 +63,7 @@ func parseIf(a *Analyzer, env core.Env, args core.Seq) (core.Expr, error) {
 		Else: exprs[2],
 	}, nil
 }
-func parseQuote(a *Analyzer, _ core.Env, args core.Seq) (core.Expr, error) {
+func parseQuote(a core.Analyzer, _ core.Env, args core.Seq) (core.Expr, error) {
 	if count, err := args.Count(); err != nil {
 		return nil, err
 	} else if count != 1 {
@@ -104,7 +81,7 @@ func parseQuote(a *Analyzer, _ core.Env, args core.Seq) (core.Expr, error) {
 	return QuoteExpr{Form: first}, nil
 }
 
-func parseDef(a *Analyzer, env core.Env, args core.Seq) (core.Expr, error) {
+func parseDef(a core.Analyzer, env core.Env, args core.Seq) (core.Expr, error) {
 	e := core.Error{Cause: fmt.Errorf("%w: def", slurp.ErrParseSpecial)}
 
 	if args == nil {
@@ -155,31 +132,33 @@ func parseDef(a *Analyzer, env core.Env, args core.Seq) (core.Expr, error) {
 	}, nil
 }
 
-func parseLs(a *Analyzer, _ core.Env, seq core.Seq) (core.Expr, error) {
-	args, err := core.ToSlice(seq)
-	if err != nil {
-		return nil, err
-	}
-
-	pexpr := PathExpr{Root: a.root, Path: core.RootPath}
-	for _, arg := range args {
-		if arg.MemVal().Type() == api.Value_Which_path {
-			pexpr.Path = args[0].(core.Path)
-			args = args[1:]
+func lsParser(root ww.Anchor) SpecialParser {
+	return func(a core.Analyzer, _ core.Env, seq core.Seq) (core.Expr, error) {
+		args, err := core.ToSlice(seq)
+		if err != nil {
+			return nil, err
 		}
 
-		break
+		pexpr := PathExpr{Root: root, Path: core.RootPath}
+		for _, arg := range args {
+			if arg.MemVal().Type() == api.Value_Which_path {
+				pexpr.Path = args[0].(core.Path)
+				args = args[1:]
+			}
+
+			break
+		}
+
+		// TODO(enhancement):  other args like `:long` or `:recursive`
+
+		return PathListExpr{
+			PathExpr: pexpr,
+			Args:     args,
+		}, nil
 	}
-
-	// TODO(enhancement):  other args like `:long` or `:recursive`
-
-	return PathListExpr{
-		PathExpr: pexpr,
-		Args:     args,
-	}, nil
 }
 
-func parseGo(a *Analyzer, env core.Env, seq core.Seq) (core.Expr, error) {
+func parseGo(a core.Analyzer, env core.Env, seq core.Seq) (core.Expr, error) {
 	return nil, errors.New("parseGo NOT IMPLEMENTED")
 	// args, err := core.ToSlice(seq)
 	// if err != nil {
