@@ -17,7 +17,6 @@ require (
 	github.com/ipfs/go-ds-badger v0.2.6 // indirect
 	github.com/ipfs/go-ipfs-blockstore v1.0.3
 	github.com/ipfs/go-ipfs-exchange-interface v0.0.1
-	github.com/jbenet/goprocess v0.1.4
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/libp2p/go-eventbus v0.2.1
 	github.com/libp2p/go-libp2p v0.12.0
@@ -36,7 +35,6 @@ require (
 	github.com/multiformats/go-multihash v0.0.14
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.7.0
-	github.com/spy16/parens v0.0.0-20200930044516-d6766c63ec7b
 	github.com/spy16/slurp v0.2.2
 	github.com/stretchr/testify v1.6.1
 	github.com/tinylib/msgp v1.1.5 // indirect
