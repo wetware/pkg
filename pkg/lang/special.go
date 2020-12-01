@@ -9,6 +9,7 @@ import (
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/lang/core"
+	capnp "zombiezen.com/go/capnproto2"
 )
 
 func parseDo(a core.Analyzer, env core.Env, args core.Seq) (core.Expr, error) {
@@ -130,6 +131,85 @@ func parseDef(a core.Analyzer, env core.Env, args core.Seq) (core.Expr, error) {
 		Name:  symStr,
 		Value: res,
 	}, nil
+}
+
+// parseFn parses the (fn name? [<params>*] <body>*) or
+// (fn name? ([<params>*] <body>*)+) special forms and returns a function value.
+func parseFn(a core.Analyzer, env core.Env, args core.Seq) (core.Expr, error) {
+	fn, err := parseFnDef(env, args, false)
+	return ConstExpr{fn}, err
+}
+
+// parseFn parses the (macro name? [<params>*] <body>*) or
+// (macro name? ([<params>*] <body>*)+) special forms and returns a macro value.
+func parseMacro(_ core.Analyzer, env core.Env, args core.Seq) (core.Expr, error) {
+	fn, err := parseFnDef(env, args, true)
+	return ConstExpr{fn}, err
+}
+
+func parseFnDef(env core.Env, args core.Seq, macro bool) (core.Fn, error) {
+	if args == nil {
+		return core.Fn{}, errors.New("nil argument sequence")
+	}
+
+	cnt, err := args.Count()
+	if err != nil {
+		return core.Fn{}, err
+	} else if cnt < 1 {
+		return core.Fn{}, fmt.Errorf("%w: got %d, want at-least 1", core.ErrArity, cnt)
+	}
+
+	var b core.FuncBuilder
+	b.Start(capnp.SingleSegment(nil))
+	b.SetMacro(macro)
+
+	first, err := args.First()
+	if err != nil {
+		return core.Fn{}, err
+	}
+
+	// Set function name?
+	if sym := first.MemVal(); sym.Type() == api.Value_Which_symbol {
+		name, err := sym.Raw.Symbol()
+		if err != nil {
+			return core.Fn{}, err
+		}
+
+		b.SetName(name)
+
+		// Advance the sequence ...
+		if args, err = args.Next(); err != nil {
+			return core.Fn{}, err
+		}
+
+		if first, err = args.First(); err != nil {
+			return core.Fn{}, err
+		}
+	}
+
+	// Set call signatures.
+	switch mv := first.MemVal(); mv.Type() {
+	case api.Value_Which_vector:
+		b.AddTarget(args)
+
+	case api.Value_Which_list:
+		if err = core.ForEach(args, func(item ww.Any) (bool, error) {
+			if t, ok := item.(core.Seq); ok {
+				b.AddTarget(t)
+				return false, nil
+			}
+
+			return false, fmt.Errorf("expected core.Seq, got %s", item.MemVal().Type())
+		}); err != nil {
+			return core.Fn{}, err
+		}
+
+	default:
+		return core.Fn{}, errors.New("syntax error")
+
+	}
+
+	return b.Commit()
 }
 
 func lsParser(root ww.Anchor) SpecialParser {

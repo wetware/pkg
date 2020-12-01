@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"reflect"
 
 	"github.com/spy16/slurp/core"
 	"github.com/wetware/ww/internal/api"
@@ -33,6 +34,9 @@ var (
 	// ErrIllegalState is returned when an operation is performed against a correct
 	// type with an invalid value.
 	ErrIllegalState = errors.New("illegal state")
+
+	errType = reflect.TypeOf((*error)(nil)).Elem()
+	anyType = reflect.TypeOf((*ww.Any)(nil)).Elem()
 )
 
 type (
@@ -57,8 +61,6 @@ func New() Env { return core.New(nil) }
 
 // Invokable represents a value that can be invoked as a function.
 type Invokable interface {
-	ww.Any
-
 	// Invoke is called if this value appears as the first argument of
 	// invocation form (i.e., list).
 	Invoke(args ...ww.Any) (ww.Any, error)
@@ -66,16 +68,18 @@ type Invokable interface {
 
 // Countable types can report the number of elements they contain.
 type Countable interface {
-	ww.Any
-
 	// Count provides the number of elements contained.
 	Count() (int, error)
 }
 
+// Container is an aggregate of values.
+type Container interface {
+	ww.Any
+	Countable
+}
+
 // Comparable type.
 type Comparable interface {
-	ww.Any
-
 	// Comp compares the magnitude of the comparable c with that of other.
 	// It returns 0 if the magnitudes are equal, -1 if c < other, and 1 if c > other.
 	Comp(other ww.Any) (int, error)
@@ -83,15 +87,11 @@ type Comparable interface {
 
 // EqualityProvider can test for equality.
 type EqualityProvider interface {
-	ww.Any
-
 	Eq(ww.Any) (bool, error)
 }
 
 // Renderable types provide a human-readable representation.
 type Renderable interface {
-	ww.Any
-
 	Render() (string, error)
 }
 
@@ -192,8 +192,8 @@ func Eq(a, b ww.Any) (bool, error) {
 // For a list, returns a new list without the first item.
 // For a vector, returns a new vector without the last item.
 // If the collection is empty, returns a wrapped ErrIllegalState.
-func Pop(cnt Countable) (Countable, error) {
-	n, err := cnt.Count()
+func Pop(cont Container) (ww.Any, error) {
+	n, err := cont.Count()
 	if err != nil {
 		return nil, err
 	}
@@ -201,19 +201,19 @@ func Pop(cnt Countable) (Countable, error) {
 	if n == 0 {
 		return nil, fmt.Errorf("%w: cannot pop from empty %s",
 			ErrIllegalState,
-			cnt.MemVal().Type())
+			cont.MemVal().Type())
 	}
 
-	switch v := cnt.(type) {
-	case Seq:
-		return v.Next()
-
+	switch v := cont.(type) {
 	case Vector:
 		return v.Pop()
 
-	default:
-		return nil, fmt.Errorf("cannot pop from %s", cnt.MemVal().Type())
+	case Seq:
+		return v.Next()
+
 	}
+
+	return nil, fmt.Errorf("cannot pop from %s", cont.MemVal().Type())
 }
 
 // Conj returns a new collection with the supplied
@@ -222,27 +222,21 @@ func Pop(cnt Countable) (Countable, error) {
 // For lists, the value is added at the head.
 // For vectors, the value is added at the tail.
 // `(conj nil item)` returns `(item)``.
-func Conj(any ww.Any, xs ...ww.Any) (Countable, error) {
+func Conj(any Container, xs ...ww.Any) (Container, error) {
 	if IsNil(any) {
 		return NewList(capnp.SingleSegment(nil), xs...)
 	}
 
-	switch v := any.(type) {
-	case List:
-		var err error
-		for _, x := range xs {
-			if v, err = v.Cons(x); err != nil {
-				break
-			}
-		}
-		return v, err
+	switch val := any.(type) {
+	case Seq:
+		return val.Conj(xs...)
 
 	case Vector:
-		return v.Conj(any)
+		return val.Conj(xs...)
 
-	default:
-		return nil, fmt.Errorf("cannot conj with %s", any.MemVal().Type())
 	}
+
+	return nil, fmt.Errorf("cannot conj with %s", any.MemVal().Type())
 }
 
 // Canonical representation of an arbitrary value.
@@ -256,7 +250,7 @@ func AsAny(v mem.Value) (val ww.Any, err error) {
 	case api.Value_Which_nil:
 		val = Nil{}
 	case api.Value_Which_bool:
-		val = boolValue{v}
+		val = Bool{v}
 	case api.Value_Which_i64:
 		val = i64{v}
 	case api.Value_Which_f64:
@@ -268,13 +262,13 @@ func AsAny(v mem.Value) (val ww.Any, err error) {
 	case api.Value_Which_frac:
 		val, err = asFrac(v)
 	case api.Value_Which_char:
-		val = charValue{v}
+		val = Char{v}
 	case api.Value_Which_str:
-		val = stringValue{v}
+		val = String{v}
 	case api.Value_Which_keyword:
-		val = keywordValue{v}
+		val = Keyword{v}
 	case api.Value_Which_symbol:
-		val = symbolValue{v}
+		val = Symbol{v}
 	case api.Value_Which_path:
 		val = Path{v}
 	case api.Value_Which_list:
@@ -283,8 +277,6 @@ func AsAny(v mem.Value) (val ww.Any, err error) {
 		val = PersistentVector{v}
 	// case api.Value_Which_proc:
 	// 	val = RemoteProcess{v}
-	case api.Value_Which_native:
-		val = v
 	default:
 		err = fmt.Errorf("unknown value type '%s'", v.Type())
 	}

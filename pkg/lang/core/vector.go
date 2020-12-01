@@ -60,7 +60,7 @@ type Vector interface {
 	ww.Any
 	// Invokable  // TODO(XXX)
 	Count() (int, error)
-	Conj(ww.Any) (Vector, error)
+	Conj(...ww.Any) (Vector, error)
 	EntryAt(i int) (ww.Any, error)
 	Assoc(i int, val ww.Any) (Vector, error)
 	Pop() (Vector, error)
@@ -160,13 +160,21 @@ func (v PersistentVector) count() (api.Vector, int, error) {
 }
 
 // Conj returns a new vector with items appended.
-func (v PersistentVector) Conj(item ww.Any) (Vector, error) {
-	vec, cnt, err := v.count()
-	if err != nil {
-		return nil, err
+func (v PersistentVector) Conj(items ...ww.Any) (Vector, error) { return v.conj(items...) }
+
+func (v PersistentVector) conj(items ...ww.Any) (PersistentVector, error) {
+	for _, item := range items {
+		vec, cnt, err := v.count()
+		if err != nil {
+			return PersistentVector{}, err
+		}
+
+		if v, err = vectorCons(vec, cnt, item); err != nil {
+			return PersistentVector{}, err
+		}
 	}
 
-	return vectorCons(vec, cnt, item)
+	return v, nil
 }
 
 // // Seq returns the implementing value as a sequence.

@@ -3,8 +3,6 @@ package lang
 import (
 	"context"
 	"errors"
-	"fmt"
-	"reflect"
 
 	"github.com/spy16/slurp/builtin"
 	score "github.com/spy16/slurp/core"
@@ -19,6 +17,7 @@ var (
 	_ core.Expr = (*IfExpr)(nil)
 	_ core.Expr = (*ResolveExpr)(nil)
 	_ core.Expr = (*DefExpr)(nil)
+	_ core.Expr = (*InvokeExpr)(nil)
 	_ core.Expr = (*PathExpr)(nil)
 	_ core.Expr = (*LocalGoExpr)(nil)
 	_ core.Expr = (*RemoteGoExpr)(nil)
@@ -38,10 +37,10 @@ type (
 
 // ConstExpr returns the Const value wrapped inside when evaluated. It has
 // no side-effect on the VM.
-type ConstExpr struct{ form ww.Any }
+type ConstExpr struct{ Form ww.Any }
 
 // Eval returns the constant value unmodified.
-func (ce ConstExpr) Eval(_ core.Env) (score.Any, error) { return ce.form, nil }
+func (ce ConstExpr) Eval(_ core.Env) (score.Any, error) { return ce.Form, nil }
 
 // IfExpr represents the if-then-else form.
 type IfExpr struct{ Test, Then, Else core.Expr }
@@ -73,14 +72,14 @@ func (ife IfExpr) Eval(env core.Env) (score.Any, error) {
 }
 
 // ResolveExpr resolves a symbol from the given environment.
-type ResolveExpr struct{ symbol core.Symbol }
+type ResolveExpr struct{ Symbol core.Symbol }
 
 // Eval resolves the symbol in the given environment or its parent env
 // and returns the result. Returns ErrNotFound if the symbol was not
 // found in the entire hierarchy.
 func (re ResolveExpr) Eval(env core.Env) (v score.Any, err error) {
 	var sym string
-	if sym, err = re.symbol.Symbol(); err != nil {
+	if sym, err = re.Symbol.Symbol(); err != nil {
 		return
 	}
 
@@ -124,41 +123,100 @@ func (de DefExpr) Eval(env core.Env) (score.Any, error) {
 	return core.NewSymbol(capnp.SingleSegment(nil), de.Name)
 }
 
+// CallExpr invokes a function body when evaluated.
+type CallExpr struct {
+	Fn       core.Fn
+	Analyzer core.Analyzer
+	Args     []core.Expr
+}
+
+// Eval calls the function.
+func (cex CallExpr) Eval(env core.Env) (score.Any, error) {
+	// Get the call target that corresponds to the number of
+	// arguments supplied.
+	ct, err := cex.Fn.Match(len(cex.Args))
+	if err != nil {
+		return nil, err
+	}
+
+	// Bind evaluated arguments to parameter names to build
+	// a map of local variables.
+	vars := make(map[string]score.Any, len(ct.Param))
+	for i, arg := range cex.Args {
+		if vars[ct.Param[i]], err = arg.Eval(env); err != nil {
+			return nil, err
+		}
+	}
+
+	// Analyze the call target's body to obtain evaluable expressions.
+	body := make([]core.Expr, len(ct.Body))
+	for i, form := range ct.Body {
+		if body[i], err = cex.Analyzer.Analyze(env, form); err != nil {
+			return nil, err
+		}
+	}
+
+	// Derive a child environment and evaluate the function body as a
+	// do expression.
+	return DoExpr{Exprs: body}.Eval(env.Child(ct.Name, vars))
+}
+
 // InvokeExpr performs invocation of target when evaluated.
 type InvokeExpr struct {
-	Name   string
-	Target core.Expr
+	Target core.Invokable
 	Args   []core.Expr
 }
 
 // Eval evaluates the target expr and invokes the result if it is an
 // Invokable  Returns error otherwise.
-func (ie InvokeExpr) Eval(env core.Env) (score.Any, error) {
-	val, err := ie.Target.Eval(env)
-	if err != nil {
-		return nil, err
-	}
-
-	fn, ok := val.(core.Invokable)
-	if !ok {
-		return nil, core.Error{
-			Cause:   core.ErrNotInvokable,
-			Message: fmt.Sprintf("value of type '%s' is not invokable", reflect.TypeOf(val)),
-		}
-	}
-
-	var any score.Any
+func (ie InvokeExpr) Eval(env core.Env) (any score.Any, err error) {
 	args := make([]ww.Any, len(ie.Args))
 	for i, ae := range ie.Args {
 		if any, err = ae.Eval(env); err != nil {
-			return nil, err
+			return
 		}
 
-		args[i] = any.(ww.Any) // TODO(performance): can we use unsafe.Pointer here?
+		args[i] = any.(ww.Any)
 	}
 
-	return fn.Invoke(args...)
+	return ie.Target.Invoke(args...)
 }
+
+// // FnExpr binds a function to an environment.
+// type FnExpr struct {
+// 	Env core.Env
+// 	a   core.Analyzer
+// 	core.Fn
+// }
+
+// // Eval returns the FnExpr unmodified.
+// func (fex FnExpr) Eval(core.Env) (score.Any, error) { return fex, nil }
+
+// // Invoke .
+// func (fex FnExpr) Invoke(args ...ww.Any) (ww.Any, error) {
+// 	f, err := fex.Match(fex.a, args)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	for i := 0; i < f.NumArgs(); i++ {
+// 		p, err := f.Arg(i)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+
+// 		if err = fex.Env.Bind(p, args[i]); err != nil {
+// 			return nil, err
+// 		}
+// 	}
+
+// 	res, err := DoExpr{Exprs: f.Body}.Eval(fex.Env)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	return res.(ww.Any), nil
+// }
 
 // PathExpr binds a path to an Anchor
 type PathExpr struct {

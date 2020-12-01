@@ -30,11 +30,11 @@ func newAnalyzer(root ww.Anchor) core.Analyzer {
 	return analyzer{
 		root: root,
 		special: map[string]SpecialParser{
-			"do": parseDo,
-			"if": parseIf,
-			// "fn":    parseFn,
-			"def": parseDef,
-			// "macro": parseMacro,
+			"do":    parseDo,
+			"if":    parseIf,
+			"def":   parseDef,
+			"fn":    parseFn,
+			"macro": parseMacro,
 			"quote": parseQuote,
 			// "go": c.Go,
 			"ls": lsParser(root),
@@ -47,48 +47,58 @@ func newAnalyzer(root ww.Anchor) core.Analyzer {
 // Analyze performs syntactic analysis of given form and returns an Expr
 // that can be evaluated for result against an Env.
 func (a analyzer) Analyze(env core.Env, rawForm score.Any) (core.Expr, error) {
-	form := rawForm.(ww.Any)
+	return a.analyze(env, rawForm.(ww.Any))
+}
 
-	if core.IsNil(form) {
+// analyze allows private methods of `analyzer` to by pass the initial
+// type assertion for `ww.Any`.
+func (a analyzer) analyze(env core.Env, any ww.Any) (core.Expr, error) {
+	if core.IsNil(any) {
 		return builtin.ConstExpr{Const: core.Nil{}}, nil
 	}
 
-	exp, err := macroExpand(a, env, form)
+	form, err := a.macroExpand(env, any)
 	if err != nil {
 		if !errors.Is(err, builtin.ErrNoExpand) {
 			return nil, err
 		}
 
-		exp = form // no expansion; use raw form
+		form = any // no expansion; use unmodified form
 	}
 
-	switch expr := exp.(type) {
+	switch f := form.(type) {
+	case core.Symbol:
+		return ResolveExpr{f}, nil
+
 	case core.Path:
 		return PathExpr{
 			Root: a.root,
-			Path: expr,
+			Path: f,
 		}, nil
 
-	case core.Symbol:
-		return ResolveExpr{expr}, nil
-
 	case core.Seq:
-		cnt, err := expr.Count()
-		if err != nil {
-			return nil, err
-		} else if cnt == 0 {
-			break
-		}
+		return a.analyzeSeq(env, f)
 
-		return a.analyzeSeq(env, expr)
 	}
 
 	return ConstExpr{form}, nil
 }
 
 func (a analyzer) analyzeSeq(env core.Env, seq core.Seq) (core.Expr, error) {
+	// Return an empty sequence unmodified.
+	cnt, err := seq.Count()
+	if err != nil || cnt == 0 {
+		return ConstExpr{seq}, err
+	}
+
 	// Analyze the call target.  This is the first item in the sequence.
-	first, err := seq.First()
+	// Call targets come in several flavors.
+	target, err := seq.First()
+	if err != nil {
+		return nil, err
+	}
+
+	args, err := seq.Next()
 	if err != nil {
 		return nil, err
 	}
@@ -96,46 +106,63 @@ func (a analyzer) analyzeSeq(env core.Env, seq core.Seq) (core.Expr, error) {
 	// The call target may be a special form.  In this case, we need to get the
 	// corresponding parser function, which will take care of parsing/analyzing
 	// the tail.
-	if mv := first.MemVal(); mv.Type() == api.Value_Which_symbol {
+	if mv := target.MemVal(); mv.Type() == api.Value_Which_symbol {
 		s, err := mv.Raw.Symbol()
 		if err != nil {
 			return nil, err
 		}
 
 		if parse, found := a.special[s]; found {
-			next, err := seq.Next()
-			if err != nil {
-				return nil, err
-			}
-
-			return parse(a, env, next)
+			return parse(a, env, args)
 		}
+
+		// symbol is not a special form; resolve.
+		expr, err := a.analyze(env, target)
+		if err != nil {
+			return nil, err
+		}
+
+		v, err := expr.Eval(env)
+		if err != nil {
+			return nil, err
+		}
+
+		target = v.(ww.Any)
 	}
 
-	// Call target is not a special form and must be a Invokable. Analyze
-	// the arguments and create an InvokeExpr.
-	ie := InvokeExpr{
-		Name: fmt.Sprintf("%v", first),
+	as := make([]core.Expr, 0, cnt-1)
+	if err = core.ForEach(args, func(item ww.Any) (bool, error) {
+		arg, err := a.analyze(env, item)
+		as = append(as, arg)
+		return false, err
+	}); err != nil {
+		return nil, err
 	}
-	err = core.ForEach(seq, func(item ww.Any) (done bool, err error) {
-		if ie.Target == nil {
-			ie.Target, err = a.Analyze(env, first)
-			return
-		}
 
-		var arg core.Expr
-		if arg, err = a.Analyze(env, item); err == nil {
-			ie.Args = append(ie.Args, arg)
-		}
-		return
-	})
-	return ie, err
+	switch t := target.(type) {
+	case core.Fn:
+		return CallExpr{
+			Fn:       t,
+			Analyzer: a,
+			Args:     as,
+		}, nil
+
+	case core.Invokable:
+		return InvokeExpr{
+			Target: t,
+			Args:   as,
+		}, nil
+
+	}
+
+	return nil, core.Error{
+		Cause:   core.ErrNotInvokable,
+		Message: fmt.Sprintf("'%s'", target.MemVal().Type()),
+	}
 }
 
-func macroExpand(a core.Analyzer, env core.Env, form ww.Any) (ww.Any, error) {
-	// TODO:  function calls
+func (a analyzer) macroExpand(env core.Env, form ww.Any) (ww.Any, error) {
 	return nil, builtin.ErrNoExpand
-
 	// lst, ok := form.(core.Seq)
 	// if !ok {
 	// 	return nil, builtin.ErrNoExpand
@@ -146,18 +173,17 @@ func macroExpand(a core.Analyzer, env core.Env, form ww.Any) (ww.Any, error) {
 	// 	return nil, err
 	// }
 
-	// var target ww.Any
-	// sym, ok := first.(Symbol)
-	// if ok {
-	// 	v, err := ResolveExpr{Symbol: sym}.Eval(env)
-	// 	if err != nil {
+	// var target interface{}
+	// if mv := first.MemVal(); mv.Type() == api.Value_Which_symbol {
+	// 	var rex ResolveExpr
+	// 	rex.Symbol.Raw = mv.Raw
+	// 	if target, err = rex.Eval(env); err != nil {
 	// 		return nil, builtin.ErrNoExpand
 	// 	}
-	// 	target = v.(ww.Any)
 	// }
 
-	// fn, ok := target.(Fn) // TODO(XXX):  how can builtin.Fn be capnp compatible?
-	// if !ok || !fn.Macro {
+	// fn, ok := target.(core.Fn)
+	// if !ok || !fn.Macro() {
 	// 	return nil, builtin.ErrNoExpand
 	// }
 
@@ -166,11 +192,7 @@ func macroExpand(a core.Analyzer, env core.Env, form ww.Any) (ww.Any, error) {
 	// 	return nil, err
 	// }
 
-	// res, err := fn.Invoke(sl[1:]...)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// return res, nil
+	// return fn.Invoke(sl[1:]...)
 }
 
 type linker struct {

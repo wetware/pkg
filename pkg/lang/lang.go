@@ -55,7 +55,10 @@ func prelude() bindFunc {
 				return core.NewInt64(capnp.SingleSegment(nil), int64(i))
 			}),
 			function("pop", "__pop__", core.Pop),
-			function("conj", "__conj__", core.Conj))
+			function("conj", "__conj__", core.Conj),
+			function("type", "__type__", func(a ww.Any) (core.Symbol, error) {
+				return core.NewSymbol(capnp.SingleSegment(nil), a.MemVal().Type().String())
+			}))
 
 	}
 }
@@ -106,7 +109,7 @@ func (bind bindFunc) Bind(env core.Env) error { return bind(env) }
 
 func function(symbol, name string, fn interface{}) bindFunc {
 	return func(env core.Env) error {
-		wrapped, err := core.Func(name, fn)
+		wrapped, err := Func(name, fn)
 		if err != nil {
 			return err
 		}

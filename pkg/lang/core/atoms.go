@@ -3,7 +3,6 @@ package core
 import (
 	"fmt"
 
-	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/mem"
 	capnp "zombiezen.com/go/capnproto2"
 )
@@ -36,10 +35,7 @@ func (Nil) String() string { return "nil" }
 func (Nil) MemVal() mem.Value { return mem.NilValue }
 
 // Bool represents a boolean type.
-type Bool interface {
-	ww.Any
-	Bool() bool
-}
+type Bool struct{ mem.Value }
 
 // NewBool using the built-in implementation.
 func NewBool(a capnp.Arena, b bool) (Bool, error) {
@@ -48,14 +44,13 @@ func NewBool(a capnp.Arena, b bool) (Bool, error) {
 		val.Raw.SetBool(b)
 	}
 
-	return boolValue{val}, err
+	return Bool{val}, err
 }
 
-type boolValue struct{ mem.Value }
+// Bool returns the boolean value.
+func (b Bool) Bool() bool { return b.Raw.Bool() }
 
-func (b boolValue) Bool() bool { return b.Raw.Bool() }
-
-func (b boolValue) String() string {
+func (b Bool) String() string {
 	if b.Bool() {
 		return "true"
 	}
@@ -65,12 +60,7 @@ func (b boolValue) String() string {
 // Char represents a character literal.  For example, \a, \b, \1, \∂ etc are
 // valid character literals. In addition, special literals like \newline, \space
 // etc are supported by the reader.
-type Char interface {
-	ww.Any
-	Char() rune
-}
-
-type charValue struct{ mem.Value }
+type Char struct{ mem.Value }
 
 // NewChar using the built-in implementation.
 func NewChar(a capnp.Arena, r rune) (Char, error) {
@@ -79,20 +69,16 @@ func NewChar(a capnp.Arena, r rune) (Char, error) {
 		val.Raw.SetChar(r)
 	}
 
-	return charValue{val}, err
+	return Char{val}, err
 }
 
-func (c charValue) Char() rune { return c.Raw.Char() }
+// Char returns the character as a native rune.
+func (c Char) Char() rune { return c.Raw.Char() }
 
-func (c charValue) String() string { return fmt.Sprintf("\\%c", c.Char()) }
+func (c Char) String() string { return fmt.Sprintf("\\%c", c.Char()) }
 
 // String represents text. Escape sequences are not applicable at this level.
-type String interface {
-	ww.Any
-	String() (string, error)
-}
-
-type stringValue struct{ mem.Value }
+type String struct{ mem.Value }
 
 // NewString using the built-in implementation
 func NewString(a capnp.Arena, s string) (String, error) {
@@ -101,10 +87,10 @@ func NewString(a capnp.Arena, s string) (String, error) {
 		err = val.Raw.SetStr(s)
 	}
 
-	return stringValue{val}, err
+	return String{val}, err
 }
 
-func (str stringValue) String() (s string, err error) {
+func (str String) String() (s string, err error) {
 	if s, err = str.Raw.Str(); err == nil {
 		s = "\"" + s + "\""
 	}
@@ -113,20 +99,16 @@ func (str stringValue) String() (s string, err error) {
 }
 
 // Render the string into a parseable s-expression.
-func (str stringValue) Render() (string, error) { return str.String() }
+func (str String) Render() (string, error) { return str.String() }
 
-func (str stringValue) Count() (int, error) {
+// Count returns the number of characters in the string.
+func (str String) Count() (int, error) {
 	s, err := str.Raw.Str()
 	return len(s), err
 }
 
 // Keyword represents a keyword literal.
-type Keyword interface {
-	ww.Any
-	Keyword() (string, error)
-}
-
-type keywordValue struct{ mem.Value }
+type Keyword struct{ mem.Value }
 
 // NewKeyword using the built-in implementation
 func NewKeyword(a capnp.Arena, s string) (Keyword, error) {
@@ -135,12 +117,14 @@ func NewKeyword(a capnp.Arena, s string) (Keyword, error) {
 		err = val.Raw.SetKeyword(s)
 	}
 
-	return keywordValue{val}, err
+	return Keyword{val}, err
 }
 
-func (kw keywordValue) Keyword() (string, error) { return kw.Raw.Keyword() }
+// Keyword returns the keyword's value as a native string.
+func (kw Keyword) Keyword() (string, error) { return kw.Raw.Keyword() }
 
-func (kw keywordValue) Render() (string, error) {
+// Render the keyword into a human-readable string.
+func (kw Keyword) Render() (string, error) {
 	s, err := kw.Keyword()
 	if err != nil {
 		return "", err
@@ -150,12 +134,7 @@ func (kw keywordValue) Render() (string, error) {
 }
 
 // Symbol represents a name given to a value in memory.
-type Symbol interface {
-	ww.Any
-	Symbol() (string, error)
-}
-
-type symbolValue struct{ mem.Value }
+type Symbol struct{ mem.Value }
 
 // NewSymbol .
 func NewSymbol(a capnp.Arena, s string) (Symbol, error) {
@@ -164,9 +143,11 @@ func NewSymbol(a capnp.Arena, s string) (Symbol, error) {
 		err = val.Raw.SetSymbol(s)
 	}
 
-	return symbolValue{val}, err
+	return Symbol{val}, err
 }
 
-func (sym symbolValue) Symbol() (string, error) { return sym.Raw.Symbol() }
+// Symbol returns the symbol's value as a native string.
+func (sym Symbol) Symbol() (string, error) { return sym.Raw.Symbol() }
 
-func (sym symbolValue) Render() (string, error) { return sym.Symbol() }
+// Render the symbol into a human-readable string.
+func (sym Symbol) Render() (string, error) { return sym.Symbol() }

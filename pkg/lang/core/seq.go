@@ -12,6 +12,7 @@ type List interface {
 	Seq
 	Count() (int, error)
 	Cons(any ww.Any) (List, error)
+	Pop() (List, error)
 }
 
 // Seq represents a sequence of values.

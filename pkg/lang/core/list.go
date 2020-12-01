@@ -157,11 +157,14 @@ func (l list) First() (v ww.Any, err error) {
 	return
 }
 
-// Next returns the tail of the list.
-func (l list) Next() (Seq, error) {
+// Pop returns the list tail.
+func (l list) Pop() (List, error) {
 	_, next, err := listNext(l.Raw)
 	return next, err
 }
+
+// Next returns the tail of the list.
+func (l list) Next() (Seq, error) { return l.Pop() }
 
 func (l list) count() (ll api.LinkedList, cnt int, err error) {
 	if ll, err = l.Raw.List(); err == nil {
@@ -245,15 +248,15 @@ func listIsNull(v api.Value) (l api.LinkedList, null bool, err error) {
 	return
 }
 
-func listNext(v api.Value) (api.LinkedList, Seq, error) {
+func listNext(v api.Value) (api.LinkedList, list, error) {
 	ll, null, err := listIsNull(v)
 	if err != nil || null {
-		return ll, nil, err
+		return ll, list{}, err
 	}
 
 	var l list
 	if l.Raw, err = ll.Tail(); err != nil {
-		return ll, nil, err
+		return ll, list{}, err
 	}
 
 	return ll, l, nil

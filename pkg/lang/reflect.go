@@ -1,4 +1,4 @@
-package core
+package lang
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	ww "github.com/wetware/ww/pkg"
+	"github.com/wetware/ww/pkg/lang/core"
 	"github.com/wetware/ww/pkg/mem"
 	capnp "zombiezen.com/go/capnproto2"
 )
@@ -14,7 +15,7 @@ var (
 	anyType = reflect.TypeOf((*ww.Any)(nil)).Elem()
 	errType = reflect.TypeOf((*error)(nil)).Elem()
 
-	_ Invokable = (*funcWrapper)(nil)
+	_ core.Invokable = (*funcWrapper)(nil)
 )
 
 // Func converts the given Go func to a ww.Any that is guaranteed
@@ -39,12 +40,12 @@ func Func(name string, v interface{}) (ww.Any, error) {
 
 	for i := 0; i <= lastOutIdx; i++ {
 		if !rt.Out(i).AssignableTo(anyType) {
-			return nil, fmt.Errorf("return value %d (%s) not assignable to %s",
-				i, rt.Out(i), anyType)
+			return nil, fmt.Errorf("%s: return value %d (%s) not assignable to %s",
+				name, i, rt.Out(i), anyType)
 		}
 	}
 
-	sym, err := NewSymbol(capnp.SingleSegment(nil), name)
+	sym, err := core.NewSymbol(capnp.SingleSegment(nil), name)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +61,7 @@ func Func(name string, v interface{}) (ww.Any, error) {
 }
 
 type funcWrapper struct {
-	sym        Symbol
+	sym        core.Symbol
 	rv         reflect.Value
 	rt         reflect.Type
 	minArgs    int
@@ -175,7 +176,7 @@ func (fw *funcWrapper) checkArgCount(count int) error {
 
 func (fw *funcWrapper) wrapReturns(vals ...reflect.Value) (ww.Any, error) {
 	if fw.rt.NumOut() == 0 {
-		return Nil{}, nil
+		return core.Nil{}, nil
 	}
 
 	if fw.returnsErr {
@@ -185,7 +186,7 @@ func (fw *funcWrapper) wrapReturns(vals ...reflect.Value) (ww.Any, error) {
 		}
 
 		if fw.rt.NumOut() == 1 {
-			return Nil{}, nil
+			return core.Nil{}, nil
 		}
 	}
 
@@ -199,7 +200,7 @@ func (fw *funcWrapper) wrapReturns(vals ...reflect.Value) (ww.Any, error) {
 		return wrapped[0], nil
 	}
 
-	return NewList(capnp.SingleSegment(nil), wrapped...)
+	return core.NewList(capnp.SingleSegment(nil), wrapped...)
 }
 
 func convertArgsTo(expected reflect.Type, args ...reflect.Value) ([]reflect.Value, error) {

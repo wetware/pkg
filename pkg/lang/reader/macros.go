@@ -222,7 +222,7 @@ func readPath(rd *reader.Reader, char rune) (_ score.Any, err error) {
 	return core.NewPath(capnp.SingleSegment(nil), b.String())
 }
 
-func readUnicodeChar(token string, base int) (core.Char, error) {
+func readUnicodeChar(token string, base int) (ww.Any, error) {
 	num, err := strconv.ParseInt(token, base, 64)
 	if err != nil {
 		return nil, fmt.Errorf("invalid unicode character: '\\%s'", token)
