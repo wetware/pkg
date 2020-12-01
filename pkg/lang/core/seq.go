@@ -16,6 +16,8 @@ type List interface {
 
 // Seq represents a sequence of values.
 type Seq interface {
+	ww.Any
+
 	// Count returns the number of items in the sequence.
 	Count() (int, error)
 

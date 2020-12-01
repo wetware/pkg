@@ -29,6 +29,10 @@ var (
 
 	// ErrNotInvokable is returned by InvokeExpr when the target is not invokable.
 	ErrNotInvokable = core.ErrNotInvokable
+
+	// ErrIllegalState is returned when an operation is performed against a correct
+	// type with an invalid value.
+	ErrIllegalState = errors.New("illegal state")
 )
 
 type (
@@ -53,6 +57,8 @@ func New() Env { return core.New(nil) }
 
 // Invokable represents a value that can be invoked as a function.
 type Invokable interface {
+	ww.Any
+
 	// Invoke is called if this value appears as the first argument of
 	// invocation form (i.e., list).
 	Invoke(args ...ww.Any) (ww.Any, error)
@@ -60,12 +66,16 @@ type Invokable interface {
 
 // Countable types can report the number of elements they contain.
 type Countable interface {
+	ww.Any
+
 	// Count provides the number of elements contained.
 	Count() (int, error)
 }
 
 // Comparable type.
 type Comparable interface {
+	ww.Any
+
 	// Comp compares the magnitude of the comparable c with that of other.
 	// It returns 0 if the magnitudes are equal, -1 if c < other, and 1 if c > other.
 	Comp(other ww.Any) (int, error)
@@ -73,11 +83,15 @@ type Comparable interface {
 
 // EqualityProvider can test for equality.
 type EqualityProvider interface {
+	ww.Any
+
 	Eq(ww.Any) (bool, error)
 }
 
 // Renderable types provide a human-readable representation.
 type Renderable interface {
+	ww.Any
+
 	Render() (string, error)
 }
 
@@ -174,14 +188,62 @@ func Eq(a, b ww.Any) (bool, error) {
 	return false, nil
 }
 
-// // Sum of numerical values.
-// func Sum(ns ...Numerical) (n Numerical, err error) {
-// 	if len(ns) == 0 {
+// Pop an item from an ordered collection.
+// For a list, returns a new list without the first item.
+// For a vector, returns a new vector without the last item.
+// If the collection is empty, returns a wrapped ErrIllegalState.
+func Pop(cnt Countable) (Countable, error) {
+	n, err := cnt.Count()
+	if err != nil {
+		return nil, err
+	}
 
-// 	}
+	if n == 0 {
+		return nil, fmt.Errorf("%w: cannot pop from empty %s",
+			ErrIllegalState,
+			cnt.MemVal().Type())
+	}
 
-// 	n, ns := ns[0], ns[1:]
-// }
+	switch v := cnt.(type) {
+	case Seq:
+		return v.Next()
+
+	case Vector:
+		return v.Pop()
+
+	default:
+		return nil, fmt.Errorf("cannot pop from %s", cnt.MemVal().Type())
+	}
+}
+
+// Conj returns a new collection with the supplied
+// values "conjoined".
+//
+// For lists, the value is added at the head.
+// For vectors, the value is added at the tail.
+// `(conj nil item)` returns `(item)``.
+func Conj(any ww.Any, xs ...ww.Any) (Countable, error) {
+	if IsNil(any) {
+		return NewList(capnp.SingleSegment(nil), xs...)
+	}
+
+	switch v := any.(type) {
+	case List:
+		var err error
+		for _, x := range xs {
+			if v, err = v.Cons(x); err != nil {
+				break
+			}
+		}
+		return v, err
+
+	case Vector:
+		return v.Conj(any)
+
+	default:
+		return nil, fmt.Errorf("cannot conj with %s", any.MemVal().Type())
+	}
+}
 
 // Canonical representation of an arbitrary value.
 func Canonical(any ww.Any) ([]byte, error) {

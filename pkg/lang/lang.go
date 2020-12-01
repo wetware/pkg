@@ -53,7 +53,10 @@ func prelude() bindFunc {
 				}
 
 				return core.NewInt64(capnp.SingleSegment(nil), int64(i))
-			}))
+			}),
+			function("pop", "__pop__", core.Pop),
+			function("conj", "__conj__", core.Conj))
+
 	}
 }
 
