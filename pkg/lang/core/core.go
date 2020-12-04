@@ -193,17 +193,6 @@ func Eq(a, b ww.Any) (bool, error) {
 // For a vector, returns a new vector without the last item.
 // If the collection is empty, returns a wrapped ErrIllegalState.
 func Pop(cont Container) (ww.Any, error) {
-	n, err := cont.Count()
-	if err != nil {
-		return nil, err
-	}
-
-	if n == 0 {
-		return nil, fmt.Errorf("%w: cannot pop from empty %s",
-			ErrIllegalState,
-			cont.MemVal().Type())
-	}
-
 	switch v := cont.(type) {
 	case Vector:
 		return v.Pop()
