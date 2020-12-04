@@ -1,6 +1,7 @@
 package core_test
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -38,6 +39,14 @@ func TestEmptyVector(t *testing.T) {
 		v, err := core.EmptyVector.EntryAt(0)
 		assert.EqualError(t, err, core.ErrIndexOutOfBounds.Error())
 		assert.Nil(t, v)
+	})
+
+	t.Run("Pop", func(t *testing.T) {
+		tail, err := core.EmptyVector.Pop()
+		assert.True(t, errors.Is(err, core.ErrIllegalState),
+			"'%s' is not ErrIllegalState", err)
+
+		assert.Nil(t, tail)
 	})
 
 	t.Run("Conj", func(t *testing.T) {
@@ -228,12 +237,7 @@ func TestVectorPop(t *testing.T) {
 	for _, tt := range []struct {
 		desc      string
 		vec, want core.Vector
-		wantErr   bool
 	}{{
-		desc:    "empty",
-		vec:     mustVector(),
-		wantErr: true,
-	}, {
 		desc: "single",
 		vec:  mustVector(mustKeyword("keyword")),
 		want: mustVector(),
@@ -259,11 +263,7 @@ func TestVectorPop(t *testing.T) {
 	}} {
 		t.Run(tt.desc, func(t *testing.T) {
 			got, err := tt.vec.Pop()
-			if err != nil && tt.wantErr {
-				assert.Error(t, err, "expected error, got nil")
-				return
-			}
-
+			assert.NoError(t, err)
 			assertVectEq(t, tt.want, got)
 		})
 	}

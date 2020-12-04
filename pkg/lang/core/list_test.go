@@ -1,6 +1,7 @@
 package core_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -26,6 +27,14 @@ func TestEmptyList(t *testing.T) {
 	t.Run("Next", func(t *testing.T) {
 		tail, err := core.EmptyList.Next()
 		assert.NoError(t, err)
+		assert.Nil(t, tail)
+	})
+
+	t.Run("Pop", func(t *testing.T) {
+		tail, err := core.EmptyList.Pop()
+		assert.True(t, errors.Is(err, core.ErrIllegalState),
+			"'%s' is not ErrIllegalState", err)
+
 		assert.Nil(t, tail)
 	})
 

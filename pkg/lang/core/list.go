@@ -1,6 +1,7 @@
 package core
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/wetware/ww/internal/api"
@@ -159,12 +160,22 @@ func (l list) First() (v ww.Any, err error) {
 
 // Pop returns the list tail.
 func (l list) Pop() (List, error) {
-	_, next, err := listNext(l.Raw)
-	return next, err
+	if _, next, err := listNext(l.Raw); err != ErrIllegalState {
+		return next, err
+	}
+
+	return nil, fmt.Errorf("%w: cannot pop from empty list", ErrIllegalState)
 }
 
 // Next returns the tail of the list.
-func (l list) Next() (Seq, error) { return l.Pop() }
+func (l list) Next() (Seq, error) {
+	_, next, err := listNext(l.Raw)
+	if err == ErrIllegalState { // (next ' ()) => nil
+		return nil, nil
+	}
+
+	return next, err
+}
 
 func (l list) count() (ll api.LinkedList, cnt int, err error) {
 	if ll, err = l.Raw.List(); err == nil {
@@ -248,13 +259,16 @@ func listIsNull(v api.Value) (l api.LinkedList, null bool, err error) {
 	return
 }
 
-func listNext(v api.Value) (api.LinkedList, list, error) {
-	ll, null, err := listIsNull(v)
-	if err != nil || null {
+func listNext(v api.Value) (ll api.LinkedList, l list, err error) {
+	var null bool
+	if ll, null, err = listIsNull(v); null {
+		err = ErrIllegalState
+	}
+
+	if err != nil {
 		return ll, list{}, err
 	}
 
-	var l list
 	if l.Raw, err = ll.Tail(); err != nil {
 		return ll, list{}, err
 	}

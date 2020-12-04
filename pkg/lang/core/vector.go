@@ -223,8 +223,11 @@ func (v PersistentVector) Assoc(i int, val ww.Any) (Vector, error) {
 
 // Pop returns a new vector without the last item in v
 func (v PersistentVector) Pop() (Vector, error) {
-	_, vec, err := vectorPop(v.Value)
-	return vec, err
+	if _, vec, err := vectorPop(v.Value); err != ErrIllegalState {
+		return vec, err
+	}
+
+	return nil, fmt.Errorf("%w: cannot pop from empty vector", ErrIllegalState)
 }
 
 func popVectorTail(level, cnt int, n api.Vector_Node) (ret api.Vector_Node, ok bool, err error) {
@@ -488,7 +491,7 @@ func vectorPop(v mem.Value) (vec api.Vector, _ Vector, err error) {
 
 	switch cnt {
 	case 0:
-		err = errors.New("can't pop empty vector")
+		err = ErrIllegalState
 		return
 	case 1:
 		return vec, EmptyVector, nil
