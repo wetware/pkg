@@ -166,37 +166,61 @@ func (a analyzer) analyzeSeq(env core.Env, seq core.Seq) (core.Expr, error) {
 }
 
 func (a analyzer) macroExpand(env core.Env, form ww.Any) (ww.Any, error) {
-	return nil, builtin.ErrNoExpand
-	// lst, ok := form.(core.Seq)
-	// if !ok {
-	// 	return nil, builtin.ErrNoExpand
-	// }
+	seq, ok := form.(core.Seq)
+	if !ok {
+		return nil, builtin.ErrNoExpand
+	}
 
-	// first, err := lst.First()
-	// if err != nil {
-	// 	return nil, err
-	// }
+	cnt, err := seq.Count()
+	if err != nil {
+		return nil, err
+	}
+	if cnt == 0 {
+		return nil, builtin.ErrNoExpand
+	}
 
-	// var target interface{}
-	// if mv := first.MemVal(); mv.Type() == api.Value_Which_symbol {
-	// 	var rex ResolveExpr
-	// 	rex.Symbol.Raw = mv.Raw
-	// 	if target, err = rex.Eval(env); err != nil {
-	// 		return nil, builtin.ErrNoExpand
-	// 	}
-	// }
+	first, err := seq.First()
+	if err != nil {
+		return nil, err
+	}
 
-	// fn, ok := target.(core.Fn)
-	// if !ok || !fn.Macro() {
-	// 	return nil, builtin.ErrNoExpand
-	// }
+	var v interface{}
+	if mv := first.MemVal(); mv.Type() == api.Value_Which_symbol {
+		var rex ResolveExpr
+		rex.Symbol.Raw = mv.Raw
+		if v, err = rex.Eval(env); err != nil {
+			return nil, builtin.ErrNoExpand
+		}
+	}
 
-	// sl, err := core.ToSlice(lst)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	fn, ok := v.(core.Fn)
+	if !ok || !fn.Macro() {
+		return nil, builtin.ErrNoExpand
+	}
 
-	// return fn.Invoke(sl[1:]...)
+	args, err := seq.Next()
+	if err != nil {
+		return nil, err
+	}
+
+	as := make([]core.Expr, 0, cnt-1)
+	if err = core.ForEach(args, func(item ww.Any) (bool, error) {
+		arg, err := a.analyze(env, item)
+		as = append(as, arg)
+		return false, err
+	}); err != nil {
+		return nil, err
+	}
+
+	if v, err = (CallExpr{
+		Fn:       fn,
+		Analyzer: a,
+		Args:     as,
+	}).Eval(env); err != nil {
+		return nil, err
+	}
+
+	return v.(ww.Any), nil
 }
 
 type linker struct {
