@@ -14,6 +14,9 @@ import (
 var (
 	anyType = reflect.TypeOf((*ww.Any)(nil)).Elem()
 	errType = reflect.TypeOf((*error)(nil)).Elem()
+	strType = reflect.TypeOf((*core.String)(nil)).Elem()
+	symType = reflect.TypeOf((*core.Symbol)(nil)).Elem()
+	kwType  = reflect.TypeOf((*core.Keyword)(nil)).Elem()
 
 	_ core.Invokable = (*funcWrapper)(nil)
 )
@@ -38,10 +41,10 @@ func Func(name string, v interface{}) (ww.Any, error) {
 		lastOutIdx-- // ignore error value from return values
 	}
 
-	for i := 0; i <= lastOutIdx; i++ {
-		if !rt.Out(i).AssignableTo(anyType) {
-			return nil, fmt.Errorf("%s: return value %d (%s) not assignable to %s",
-				name, i, rt.Out(i), anyType)
+	adapters := make([]adapter, lastOutIdx+1)
+	for i := range adapters {
+		if out := rt.Out(i); out != anyType {
+			adapters[i] = adapterFor(out)
 		}
 	}
 
@@ -57,6 +60,7 @@ func Func(name string, v interface{}) (ww.Any, error) {
 		minArgs:    minArgs,
 		returnsErr: returnsErr,
 		lastOutIdx: lastOutIdx,
+		adapters:   adapters,
 	}, nil
 }
 
@@ -67,6 +71,7 @@ type funcWrapper struct {
 	minArgs    int
 	returnsErr bool
 	lastOutIdx int
+	adapters   []adapter
 }
 
 func (fw *funcWrapper) MemVal() mem.Value { return fw.sym.MemVal() }
@@ -190,10 +195,13 @@ func (fw *funcWrapper) wrapReturns(vals ...reflect.Value) (ww.Any, error) {
 		}
 	}
 
+	var err error
 	retValCount := len(vals[0 : fw.lastOutIdx+1])
 	wrapped := make([]ww.Any, retValCount, retValCount)
 	for i := 0; i < retValCount; i++ {
-		wrapped[i] = vals[i].Interface().(ww.Any) // TODO(performance):  unsafe.Pointer?
+		if wrapped[i], err = adaptValue(fw.adapters[i], vals[i]); err != nil {
+			return nil, err
+		}
 	}
 
 	if retValCount == 1 {
@@ -223,4 +231,112 @@ func convertArgsTo(expected reflect.Type, args ...reflect.Value) ([]reflect.Valu
 	}
 
 	return converted, nil
+}
+
+type adapter func(reflect.Value) (ww.Any, error)
+
+func adaptValue(adapt adapter, v reflect.Value) (ww.Any, error) {
+	if adapt != nil {
+		return adapt(v)
+	}
+
+	if any, ok := v.Interface().(ww.Any); ok {
+		return any, nil
+	}
+
+	return nil, fmt.Errorf("%s is not ww.Any", v.Type())
+}
+
+func adapterFor(t reflect.Type) adapter {
+	switch t.Kind() {
+	case reflect.Bool:
+		return toBool
+
+	case reflect.Int, reflect.Uint:
+		return toInt
+
+	case reflect.Float32, reflect.Float64:
+		return toFloat
+
+	case reflect.String:
+		switch t {
+		case strType:
+			return toString
+
+		case symType:
+			return toSymbol
+
+		case kwType:
+			return toKeyword
+		}
+
+	case reflect.Slice:
+		return maybeNil(toVector)
+
+	case reflect.Array:
+		return toVector
+
+	case reflect.Ptr:
+		return adapterFor(t.Elem())
+	}
+
+	return nil
+}
+
+func toBool(v reflect.Value) (ww.Any, error) {
+	if v.Bool() {
+		return core.True, nil
+	}
+
+	return core.False, nil
+}
+
+func toInt(v reflect.Value) (ww.Any, error) {
+	return core.NewInt64(capnp.SingleSegment(nil), v.Int())
+}
+
+func toFloat(v reflect.Value) (ww.Any, error) {
+	return core.NewFloat64(capnp.SingleSegment(nil), v.Float())
+}
+
+func toString(v reflect.Value) (ww.Any, error) {
+	return core.NewString(capnp.SingleSegment(nil), v.String())
+}
+
+func toSymbol(v reflect.Value) (ww.Any, error) {
+	return core.NewSymbol(capnp.SingleSegment(nil), v.String())
+}
+
+func toKeyword(v reflect.Value) (ww.Any, error) {
+	return core.NewKeyword(capnp.SingleSegment(nil), v.String())
+}
+
+func toVector(v reflect.Value) (ww.Any, error) {
+	b, err := core.NewVectorBuilder(capnp.SingleSegment(nil))
+	if err != nil {
+		return nil, err
+	}
+
+	for i := 0; i < v.Len(); i++ {
+		any, ok := v.Index(i).Interface().(ww.Any)
+		if !ok {
+			return nil, fmt.Errorf("%s is not ww.Any", v.Type())
+		}
+
+		if err = b.Conj(any); err != nil {
+			return nil, err
+		}
+	}
+
+	return b.Vector()
+}
+
+func maybeNil(adapt adapter) adapter {
+	return func(v reflect.Value) (ww.Any, error) {
+		if v.IsNil() {
+			return core.Nil{}, nil
+		}
+
+		return adapt(v)
+	}
 }

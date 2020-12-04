@@ -39,25 +39,19 @@ func newEnv() (core.Env, error) {
 func prelude() bindFunc {
 	return func(env core.Env) error {
 		return bindAll(env,
-			function("nil?", "__isnil__", func(any ww.Any) core.Bool {
-				return liftBool(core.IsNil(any))
-			}),
-			function("not", "__not__", func(any ww.Any) (core.Bool, error) {
+			function("nil?", "__isnil__", core.IsNil),
+			function("not", "__not__", func(any ww.Any) (bool, error) {
 				b, err := core.IsTruthy(any)
-				return liftBool(!b), err
+				return !b, err
 			}),
-			function("len", "__len__", func(cnt core.Countable) (core.Int64, error) {
-				i, err := cnt.Count()
-				if err != nil {
-					return nil, err
-				}
-
-				return core.NewInt64(capnp.SingleSegment(nil), int64(i))
-			}),
+			function("len", "__len__", func(c core.Countable) (int, error) { return c.Count() }),
 			function("pop", "__pop__", core.Pop),
 			function("conj", "__conj__", core.Conj),
 			function("type", "__type__", func(a ww.Any) (core.Symbol, error) {
 				return core.NewSymbol(capnp.SingleSegment(nil), a.MemVal().Type().String())
+			}),
+			function("next", "__next__", func(seq core.Seq) (core.Seq, error) {
+				return seq.Next()
 			}))
 
 	}
@@ -66,25 +60,22 @@ func prelude() bindFunc {
 func math() bindFunc {
 	return func(env core.Env) error {
 		return bindAll(env,
-			function("=", "__eq__", func(a, b ww.Any) (core.Bool, error) {
-				ok, err := core.Eq(a, b)
-				return liftBool(ok), err
-			}),
-			function("<", "__lt__", func(a core.Comparable, b ww.Any) (core.Bool, error) {
+			function("=", "__eq__", core.Eq),
+			function("<", "__lt__", func(a core.Comparable, b ww.Any) (bool, error) {
 				i, err := a.Comp(b)
-				return liftBool(i == -1), err
+				return i == -1, err
 			}),
-			function(">", "__gt__", func(a core.Comparable, b ww.Any) (core.Bool, error) {
+			function(">", "__gt__", func(a core.Comparable, b ww.Any) (bool, error) {
 				i, err := a.Comp(b)
-				return liftBool(i == 1), err
+				return i == 1, err
 			}),
-			function("<=", "__le__", func(a core.Comparable, b ww.Any) (core.Bool, error) {
+			function("<=", "__le__", func(a core.Comparable, b ww.Any) (bool, error) {
 				i, err := a.Comp(b)
-				return liftBool(i <= 0), err
+				return i <= 0, err
 			}),
-			function(">=", "__ge__", func(a core.Comparable, b ww.Any) (core.Bool, error) {
+			function(">=", "__ge__", func(a core.Comparable, b ww.Any) (bool, error) {
 				i, err := a.Comp(b)
-				return liftBool(i >= 0), err
+				return i >= 0, err
 			}))
 	}
 }
@@ -116,12 +107,4 @@ func function(symbol, name string, fn interface{}) bindFunc {
 
 		return env.Bind(symbol, wrapped)
 	}
-}
-
-func liftBool(b bool) core.Bool {
-	if b {
-		return core.True
-	}
-
-	return core.False
 }

@@ -182,42 +182,6 @@ func (ie InvokeExpr) Eval(env core.Env) (any score.Any, err error) {
 	return ie.Target.Invoke(args...)
 }
 
-// // FnExpr binds a function to an environment.
-// type FnExpr struct {
-// 	Env core.Env
-// 	a   core.Analyzer
-// 	core.Fn
-// }
-
-// // Eval returns the FnExpr unmodified.
-// func (fex FnExpr) Eval(core.Env) (score.Any, error) { return fex, nil }
-
-// // Invoke .
-// func (fex FnExpr) Invoke(args ...ww.Any) (ww.Any, error) {
-// 	f, err := fex.Match(fex.a, args)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	for i := 0; i < f.NumArgs(); i++ {
-// 		p, err := f.Arg(i)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-
-// 		if err = fex.Env.Bind(p, args[i]); err != nil {
-// 			return nil, err
-// 		}
-// 	}
-
-// 	res, err := DoExpr{Exprs: f.Body}.Eval(fex.Env)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	return res.(ww.Any), nil
-// }
-
 // PathExpr binds a path to an Anchor
 type PathExpr struct {
 	Root ww.Anchor

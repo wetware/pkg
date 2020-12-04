@@ -130,6 +130,8 @@ func (a analyzer) analyzeSeq(env core.Env, seq core.Seq) (core.Expr, error) {
 		target = v.(ww.Any)
 	}
 
+	// The call target is not a special form.  It is some kind of invokation.
+	// Start by analyzing its arguments.
 	as := make([]core.Expr, 0, cnt-1)
 	if err = core.ForEach(args, func(item ww.Any) (bool, error) {
 		arg, err := a.analyze(env, item)
@@ -139,6 +141,8 @@ func (a analyzer) analyzeSeq(env core.Env, seq core.Seq) (core.Expr, error) {
 		return nil, err
 	}
 
+	// Determine whether this is an invokation on a Fn or an invokable
+	// value, and return the appropriate expression.
 	switch t := target.(type) {
 	case core.Fn:
 		return CallExpr{
