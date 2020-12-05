@@ -7,7 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os/user"
+	"path/filepath"
 	"runtime"
+	"strings"
 	"text/template"
 	"time"
 
@@ -32,8 +35,6 @@ Compiled with {{.GoVersion}} for {{.GOOS}}
 `
 
 var (
-	root ww.Anchor = nopAnchor{} // see before()
-
 	flags = []cli.Flag{
 		&cli.StringSliceFlag{
 			Name:    "join",
@@ -71,7 +72,17 @@ var (
 			Usage: "timeout for -dial",
 			Value: time.Second * 10,
 		},
+		&cli.StringSliceFlag{
+			Name:    "path",
+			Usage:   "location of ww source files",
+			Value:   cli.NewStringSlice("~/.ww"),
+			EnvVars: []string{"WW_PATH"},
+		},
 	}
+
+	// see before()
+	paths []string
+	root  ww.Anchor = nopAnchor{}
 )
 
 // Command constructor
@@ -93,7 +104,7 @@ func run() cli.ActionFunc {
 		}
 		defer lr.Close()
 
-		eval, err := lang.New(root)
+		eval, err := lang.New(root, paths...)
 		if err != nil {
 			return err
 		}
@@ -112,6 +123,10 @@ func run() cli.ActionFunc {
 // before the wetware client
 func before() cli.BeforeFunc {
 	return func(c *cli.Context) (err error) {
+		if paths, err = getUserPaths(c); err != nil {
+			return
+		}
+
 		if c.Bool("dial") {
 			ctx := ctxutil.WithDefaultSignals(context.Background())
 			ctx, cancel := context.WithTimeout(ctx, c.Duration("timeout"))
@@ -228,6 +243,23 @@ func (printer) Fprintln(w io.Writer, val interface{}) error {
 
 	_, err = fmt.Fprintln(w, s)
 	return err
+}
+
+func getUserPaths(c *cli.Context) (ps []string, err error) {
+	var usr *user.User
+	for _, p := range c.StringSlice("path") {
+		if p[0] == '~' {
+			if usr, err = user.Current(); err != nil {
+				break
+			}
+
+			p = strings.Replace(p, "~", usr.HomeDir, 1)
+		}
+
+		ps = append(ps, filepath.Clean(p))
+	}
+
+	return
 }
 
 type nopAnchor []string

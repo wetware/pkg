@@ -1,0 +1,4 @@
+;; core definitions for the Wetaware language
+
+(def __version__ "0.0.0")
+(def __author__ "Louis Thibault")

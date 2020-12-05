@@ -14,20 +14,6 @@ import (
 	capnp "zombiezen.com/go/capnproto2"
 )
 
-// import (
-// 	"bytes"
-// 	"fmt"
-// 	"io"
-// 	"net"
-// 	"os"
-// 	"reflect"
-// 	"strings"
-
-// 	"github.com/spy16/slurp/reader"
-// 	"github.com/wetware/ww/pkg/lang"
-// 	capnp "zombiezen.com/go/capnproto2"
-// )
-
 var (
 	escapeMap = map[rune]rune{
 		'"':  '"',
