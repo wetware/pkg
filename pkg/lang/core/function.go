@@ -3,6 +3,7 @@ package core
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
@@ -16,9 +17,10 @@ var (
 
 // A CallTarget is an implementation of a specific call signature for Fn.
 type CallTarget struct {
-	Name  string
-	Param []string
-	Body  []ww.Any
+	Name     string
+	Param    []string
+	Variadic bool
+	Body     []ww.Any
 }
 
 // Fn is a multi-arity function or macro.
@@ -95,6 +97,7 @@ func (fn Fn) Match(nargs int) (CallTarget, error) {
 			return CallTarget{}, err
 		}
 
+		ct.Variadic = a.variadic()
 		return ct, nil
 	}
 
@@ -185,18 +188,15 @@ func (b *FuncBuilder) AddTarget(seq Seq) {
 			return fmt.Errorf("expected Vector, got %s", sig[0].MemVal().Type())
 		}
 
-		ps, err := b.readParams(vec)
+		ps, variadic, err := b.readParams(vec)
 		if err != nil {
 			return err
 		}
 
-		if seq, err = seq.Next(); err != nil {
-			return err
-		}
-
 		b.sigs = append(b.sigs, callSignature{
-			Params: ps,
-			Body:   sig[1:],
+			Params:   ps,
+			Variadic: variadic,
+			Body:     sig[1:],
 		})
 		return nil
 	})
@@ -224,10 +224,10 @@ func (b *FuncBuilder) setFuncs() error {
 	return err
 }
 
-func (b *FuncBuilder) readParams(v Vector) ([]string, error) {
+func (b *FuncBuilder) readParams(v Vector) ([]string, bool, error) {
 	cnt, err := v.Count()
 	if err != nil || cnt == 0 {
-		return nil, err
+		return nil, false, err
 	}
 
 	ps := make([]string, cnt)
@@ -235,24 +235,31 @@ func (b *FuncBuilder) readParams(v Vector) ([]string, error) {
 	for i := range ps {
 		entry, err := v.EntryAt(i)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 
 		if entry.MemVal().Type() != api.Value_Which_symbol {
-			return nil, fmt.Errorf("expected symbol, got %s", entry.MemVal().Type())
+			return nil, false, fmt.Errorf("expected symbol, got %s", entry.MemVal().Type())
 		}
 
 		if ps[i], err = entry.MemVal().Raw.Symbol(); err != nil {
-			return nil, err
+			return nil, false, err
 		}
 	}
 
-	return ps, nil
+	var variadic bool
+	if last := ps[cnt-1]; strings.HasSuffix(last, "...") {
+		ps[cnt-1] = last[:len(last)-3]
+		variadic = true
+	}
+
+	return ps, variadic, nil
 }
 
 type callSignature struct {
-	Params []string
-	Body   []ww.Any
+	Params   []string
+	Variadic bool
+	Body     []ww.Any
 }
 
 func (sig callSignature) Populate(f api.Fn_Func) (err error) {
@@ -278,6 +285,10 @@ func (sig callSignature) populateParams(f api.Fn_Func) error {
 		if err = as.Set(i, s); err != nil {
 			break
 		}
+	}
+
+	if sig.Variadic {
+		f.SetVariadic(true)
 	}
 
 	return err
@@ -310,23 +321,20 @@ func (a *funcAnalyzer) matchArity(nargs int) (bool, error) {
 		return nargs == 0, nil
 	}
 
-	// since there are params -> must have at least 1 arg
-	if nargs <= 0 {
-		return false, nil
-	}
-
 	var err error
 	if a.ps, err = a.f.Params(); err != nil {
 		return false, err
 	}
 
 	a.nparam = a.ps.Len()
-	if a.f.Variadic() {
+	if a.variadic() {
 		return nargs >= a.nparam-1, nil
 	}
 
 	return nargs == a.nparam, nil
 }
+
+func (a funcAnalyzer) variadic() bool { return a.f.Variadic() }
 
 func (a funcAnalyzer) params() (ps []string, err error) {
 	ps = make([]string, a.nparam)

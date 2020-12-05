@@ -141,11 +141,29 @@ func (cex CallExpr) Eval(env core.Env) (score.Any, error) {
 
 	// Bind evaluated arguments to parameter names to build
 	// a map of local variables.
-	vars := make(map[string]score.Any, len(ct.Param))
+	scope := make(map[string]score.Any, len(ct.Param))
+	var vargs []ww.Any
 	for i, arg := range cex.Args {
-		if vars[ct.Param[i]], err = arg.Eval(env); err != nil {
+		any, err := arg.Eval(env)
+		if err != nil {
 			return nil, err
 		}
+
+		if ct.Variadic && i >= len(ct.Param)-1 {
+			vargs = append(vargs, any.(ww.Any))
+			continue
+		}
+
+		scope[ct.Param[i]] = any
+	}
+
+	if vargs != nil {
+		vs, err := core.NewList(capnp.SingleSegment(nil), vargs...)
+		if err != nil {
+			return nil, err
+		}
+
+		scope[ct.Param[len(ct.Param)-1]] = vs
 	}
 
 	// Analyze the call target's body to obtain evaluable expressions.
@@ -158,7 +176,7 @@ func (cex CallExpr) Eval(env core.Env) (score.Any, error) {
 
 	// Derive a child environment and evaluate the function body as a
 	// do expression.
-	return DoExpr{Exprs: body}.Eval(env.Child(ct.Name, vars))
+	return DoExpr{Exprs: body}.Eval(env.Child(ct.Name, scope))
 }
 
 // InvokeExpr performs invocation of target when evaluated.
