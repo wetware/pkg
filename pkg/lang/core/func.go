@@ -171,24 +171,34 @@ func (b *FuncBuilder) Commit() (Fn, error) {
 	return Fn{Value: mem.Value{Raw: b.val}}, nil
 }
 
-// AddTarget parses the sequence ([<params>*] <body>*) into a call target.
-func (b *FuncBuilder) AddTarget(seq Seq) {
+// AddSeq parses the sequence `([<params>*] <body>*)` into a call target.
+func (b *FuncBuilder) AddSeq(seq Seq) {
+	sig, err := ToSlice(seq)
+	if err != nil {
+		b.addStage(func() error { return err })
+	}
+
+	b.AddTarget(sig[0], sig[1:])
+}
+
+// AddTarget parses the call signature `[<params>*] <body>*` into a call target.
+func (b *FuncBuilder) AddTarget(args ww.Any, body []ww.Any) {
 	b.addStage(func() error {
-		sig, err := ToSlice(seq)
-		if err != nil {
-			return err
+		if mv := args.MemVal(); args.MemVal().Type() != api.Value_Which_vector {
+			return Error{
+				Cause:   errors.New("invalid call signature"),
+				Message: fmt.Sprintf("args must be Vector, not '%s'", mv.Type()),
+			}
 		}
 
-		if len(sig) < 2 {
-			return errors.New("invalid call signature")
+		if body == nil {
+			return Error{
+				Cause:   errors.New("invalid call signature"),
+				Message: "empty body",
+			}
 		}
 
-		vec, ok := sig[0].(Vector)
-		if !ok {
-			return fmt.Errorf("expected Vector, got %s", sig[0].MemVal().Type())
-		}
-
-		ps, variadic, err := b.readParams(vec)
+		ps, variadic, err := b.readParams(args.(Vector))
 		if err != nil {
 			return err
 		}
@@ -196,7 +206,7 @@ func (b *FuncBuilder) AddTarget(seq Seq) {
 		b.sigs = append(b.sigs, callSignature{
 			Params:   ps,
 			Variadic: variadic,
-			Body:     sig[1:],
+			Body:     body,
 		})
 		return nil
 	})

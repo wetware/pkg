@@ -151,65 +151,49 @@ func parseMacro(_ core.Analyzer, env core.Env, args core.Seq) (core.Expr, error)
 	return ConstExpr{fn}, err
 }
 
-func parseFnDef(env core.Env, args core.Seq, macro bool) (core.Fn, error) {
-	if args == nil {
-		return core.Fn{}, errors.New("nil argument sequence")
+func parseFnDef(env core.Env, seq core.Seq, macro bool) (ww.Any, error) {
+	if seq == nil {
+		return nil, errors.New("nil argument sequence")
 	}
 
-	cnt, err := args.Count()
+	args, err := core.ToSlice(seq)
 	if err != nil {
-		return core.Fn{}, err
-	} else if cnt < 1 {
-		return core.Fn{}, fmt.Errorf("%w: got %d, want at-least 1", core.ErrArity, cnt)
+		return nil, err
+	}
+
+	if len(args) < 1 {
+		return nil, fmt.Errorf("%w: got %d, want at-least 1", core.ErrArity, len(args))
 	}
 
 	var b core.FuncBuilder
 	b.Start(capnp.SingleSegment(nil))
 	b.SetMacro(macro)
 
-	first, err := args.First()
-	if err != nil {
-		return core.Fn{}, err
-	}
-
 	// Set function name?
-	if sym := first.MemVal(); sym.Type() == api.Value_Which_symbol {
+	if sym := args[0].MemVal(); sym.Type() == api.Value_Which_symbol {
 		name, err := sym.Raw.Symbol()
 		if err != nil {
-			return core.Fn{}, err
+			return nil, err
 		}
 
 		b.SetName(name)
-
-		// Advance the sequence ...
-		if args, err = args.Next(); err != nil {
-			return core.Fn{}, err
-		}
-
-		if first, err = args.First(); err != nil {
-			return core.Fn{}, err
-		}
+		args = args[1:]
 	}
 
 	// Set call signatures.
-	switch mv := first.MemVal(); mv.Type() {
+	switch mv := args[0].MemVal(); mv.Type() {
 	case api.Value_Which_vector:
-		b.AddTarget(args)
+		b.AddTarget(args[0], args[1:])
 
 	case api.Value_Which_list:
-		if err = core.ForEach(args, func(item ww.Any) (bool, error) {
-			if t, ok := item.(core.Seq); ok {
-				b.AddTarget(t)
-				return false, nil
+		for _, any := range args {
+			if seq, ok := any.(core.Seq); ok {
+				b.AddSeq(seq)
 			}
-
-			return false, fmt.Errorf("expected core.Seq, got %s", item.MemVal().Type())
-		}); err != nil {
-			return core.Fn{}, err
 		}
 
 	default:
-		return core.Fn{}, errors.New("syntax error")
+		return nil, errors.New("syntax error")
 
 	}
 

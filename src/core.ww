@@ -2,3 +2,6 @@
 
 (def __version__ "0.0.0")
 (def __author__ "Louis Thibault")
+
+;; (defn <name> [<args>*] <body...>)
+

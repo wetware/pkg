@@ -41,8 +41,13 @@ type Seqable interface {
 
 // ToSlice converts the given sequence into a slice.
 func ToSlice(seq Seq) ([]ww.Any, error) {
-	var sl []ww.Any
-	err := ForEach(seq, func(item ww.Any) (bool, error) {
+	cnt, err := seq.Count()
+	if err != nil || cnt == 0 {
+		return nil, err
+	}
+
+	sl := make([]ww.Any, 0, cnt)
+	err = ForEach(seq, func(item ww.Any) (bool, error) {
 		sl = append(sl, item)
 		return false, nil
 	})

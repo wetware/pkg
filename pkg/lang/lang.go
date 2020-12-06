@@ -3,6 +3,7 @@ package lang
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/spy16/slurp"
 	capnp "zombiezen.com/go/capnproto2"
@@ -58,6 +59,8 @@ func loadPrelude(env core.Env, a core.Analyzer) error {
 		return err
 	}
 
-	_, err = core.Eval(env, a, form)
+	if _, err = core.Eval(env, a, form); err != nil {
+		err = fmt.Errorf("load prelude: %w", err)
+	}
 	return err
 }

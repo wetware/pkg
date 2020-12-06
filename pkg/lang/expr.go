@@ -1,6 +1,7 @@
 package lang
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"os"
@@ -272,6 +273,46 @@ func (plx PathListExpr) Eval(core.Env) (score.Any, error) {
 	}
 
 	return b.Vector()
+}
+
+// VectorExpr .
+type VectorExpr struct {
+	eval   func(core.Env, ww.Any) (ww.Any, error)
+	Vector core.Vector
+}
+
+// Eval returns a new vector whose contents are the evaluated values
+// of the objects contained by the evaluated vector. Elements are evaluated left to right
+func (vex VectorExpr) Eval(env core.Env) (score.Any, error) {
+	cnt, err := vex.Vector.Count()
+	if err != nil || cnt == 0 {
+		return core.EmptyVector, err
+	}
+
+	// TODO(performace):  this is just begging for a transient.
+
+	for i := 0; i < cnt; i++ {
+		any, err := vex.Vector.EntryAt(i)
+		if err != nil {
+			return nil, err
+		}
+
+		other, err := vex.eval(env, any)
+		if err != nil {
+			return nil, err
+		}
+
+		// no need to canonicalize here.  If different, it's because the value changed.
+		if bytes.Equal(any.MemVal().Bytes(), other.MemVal().Bytes()) {
+			continue
+		}
+
+		if vex.Vector, err = vex.Vector.Assoc(i, other); err != nil {
+			return nil, err
+		}
+	}
+
+	return vex.Vector, nil
 }
 
 // LocalGoExpr starts a local process.  Local processes cannot be addressed by remote

@@ -3,7 +3,7 @@ package lang
 import (
 	"errors"
 	"fmt"
-	"sync"
+	"strings"
 
 	"github.com/spy16/slurp/builtin"
 	score "github.com/spy16/slurp/core"
@@ -76,6 +76,12 @@ func (a analyzer) analyze(env core.Env, any ww.Any) (core.Expr, error) {
 			Path: f,
 		}, nil
 
+	case core.Vector:
+		return VectorExpr{
+			eval:   a.Eval,
+			Vector: f,
+		}, nil
+
 	case core.Seq:
 		return a.analyzeSeq(env, f)
 
@@ -98,8 +104,7 @@ func (a analyzer) analyzeSeq(env core.Env, seq core.Seq) (core.Expr, error) {
 		return nil, err
 	}
 
-	args, err := seq.Next()
-	if err != nil {
+	if seq, err = seq.Next(); err != nil {
 		return nil, err
 	}
 
@@ -113,32 +118,27 @@ func (a analyzer) analyzeSeq(env core.Env, seq core.Seq) (core.Expr, error) {
 		}
 
 		if parse, found := a.special[s]; found {
-			return parse(a, env, args)
+			return parse(a, env, seq)
 		}
 
 		// symbol is not a special form; resolve.
-		expr, err := a.analyze(env, target)
-		if err != nil {
+		if target, err = a.Eval(env, target); err != nil {
 			return nil, err
 		}
-
-		v, err := expr.Eval(env)
-		if err != nil {
-			return nil, err
-		}
-
-		target = v.(ww.Any)
 	}
 
 	// The call target is not a special form.  It is some kind of invokation.
-	// Start by analyzing its arguments.
-	as := make([]core.Expr, 0, cnt-1)
-	if err = core.ForEach(args, func(item ww.Any) (bool, error) {
-		arg, err := a.analyze(env, item)
-		as = append(as, arg)
-		return false, err
-	}); err != nil {
+	// Unpack & analyze the args.
+	args, vargs, err := a.unpackArgs(env, seq)
+	if err != nil {
 		return nil, err
+	}
+
+	as := make([]core.Expr, len(args)+len(vargs))
+	for i, arg := range append(args, vargs...) {
+		if as[i], err = a.analyze(env, arg); err != nil {
+			return nil, err
+		}
 	}
 
 	// Determine whether this is an invokation on a Fn or an invokable
@@ -163,6 +163,88 @@ func (a analyzer) analyzeSeq(env core.Env, seq core.Seq) (core.Expr, error) {
 		Cause:   core.ErrNotInvokable,
 		Message: fmt.Sprintf("'%s'", target.MemVal().Type()),
 	}
+}
+
+func (a analyzer) unpackArgs(env core.Env, seq core.Seq) (args []ww.Any, vs []ww.Any, err error) {
+	if args, err = core.ToSlice(seq); err != nil || len(args) == 0 {
+		return
+	}
+
+	varg := args[len(args)-1]
+	mv := varg.MemVal()
+
+	// not vargs?
+	if mv.Type() != api.Value_Which_symbol {
+		return
+	}
+
+	var sym string
+	if sym, err = mv.Raw.Symbol(); err != nil {
+		return
+	}
+
+	if !strings.HasSuffix(sym, "...") {
+		return
+	}
+
+	// It's a varg.  Symbol or collection literal form?
+	switch sym {
+	case "...":
+		if len(args) < 2 {
+			err = errors.New("invalid syntax (no vargs to unpack)")
+			return
+		}
+
+		varg = args[len(args)-2]
+		args = args[:len(args)-1]
+
+	default:
+		// foo...
+		if varg, err = resolve(env, sym[:len(sym)-3]); err != nil {
+			return
+		}
+	}
+
+	// Evaluate the varg.  This will notably unquote sequences.
+	if varg, err = a.Eval(env, varg); err != nil {
+		return
+	}
+
+	// Coerce the varg into a sequence.
+	switch v := varg.(type) {
+	case core.Seq:
+		// '(:foo :bar)...'
+		seq = v
+
+	case core.Seqable:
+		// '[:foo :bar]...'
+		if seq, err = v.Seq(); err != nil {
+			return
+		}
+
+	default:
+		err = errors.New("invalid syntax (vargs)")
+		return
+
+	}
+
+	vs, err = core.ToSlice(seq)
+	args = args[:len(args)-1] // pop last
+	return
+}
+
+func (a analyzer) Eval(env core.Env, any ww.Any) (ww.Any, error) {
+	expr, err := a.analyze(env, any)
+	if err != nil {
+		return nil, err
+	}
+
+	v, err := expr.Eval(env)
+	if err == nil {
+		any = v.(ww.Any)
+	}
+
+	return any, err
 }
 
 func (a analyzer) macroExpand(env core.Env, form ww.Any) (ww.Any, error) {
@@ -223,21 +305,21 @@ func (a analyzer) macroExpand(env core.Env, form ww.Any) (ww.Any, error) {
 	return v.(ww.Any), nil
 }
 
-type linker struct {
-	mu sync.RWMutex
-	vs map[string]ww.Any
-}
+func resolve(env core.Env, symbol string) (any ww.Any, err error) {
+	var v interface{}
+	for env != nil {
+		if v, err = env.Resolve(symbol); err != nil && !errors.Is(err, core.ErrNotFound) {
+			// found symbol, or there was some unexpected error
+			break
+		}
 
-func (l *linker) Resolve(link string) (ww.Any, error) {
-	l.mu.RLock()
-	defer l.mu.RUnlock()
-
-	if v, ok := l.vs[link]; ok {
-		return v, nil
+		// not found in the current frame. check parent.
+		env = env.Parent()
 	}
 
-	return nil, core.Error{
-		Message: link,
-		Cause:   core.ErrNotFound,
+	if err == nil {
+		any = v.(ww.Any)
 	}
+
+	return
 }
