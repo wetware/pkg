@@ -3,11 +3,13 @@ package lang
 import (
 	"context"
 	"errors"
+	"os"
 
 	"github.com/spy16/slurp/builtin"
 	score "github.com/spy16/slurp/core"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/lang/core"
+	"github.com/wetware/ww/pkg/lang/reader"
 	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
 	capnp "zombiezen.com/go/capnproto2"
 )
@@ -300,4 +302,48 @@ func (rx RemoteGoExpr) Eval(core.Env) (score.Any, error) {
 
 	return rx.Root.Walk(context.Background(), path).
 		Go(context.Background(), rx.Args...)
+}
+
+// ImportExpr .
+type ImportExpr struct {
+	Analyzer core.Analyzer
+	Paths    []string
+}
+
+// Eval loads the module files from the supplied paths
+func (lex ImportExpr) Eval(env core.Env) (any score.Any, err error) {
+	var dex DoExpr
+	for _, path := range lex.Paths {
+		if dex.Exprs, err = lex.loadOne(env, path); err != nil {
+			break
+		}
+
+		if any, err = dex.Eval(env); err != nil {
+			break
+		}
+	}
+
+	return
+}
+
+func (lex ImportExpr) loadOne(env core.Env, path string) ([]core.Expr, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	forms, err := reader.New(f).All()
+	if err != nil {
+		return nil, err
+	}
+
+	exprs := make([]core.Expr, len(forms))
+	for i, form := range forms {
+		if exprs[i], err = lex.Analyzer.Analyze(env, form); err != nil {
+			break
+		}
+	}
+
+	return exprs, err
 }

@@ -22,9 +22,9 @@ type analyzer struct {
 	special map[string]SpecialParser
 }
 
-func newAnalyzer(root ww.Anchor) core.Analyzer {
+func newAnalyzer(root ww.Anchor, paths []string) (core.Analyzer, error) {
 	if root == nil {
-		panic("nil root")
+		return nil, errors.New("nil anchor")
 	}
 
 	return analyzer{
@@ -37,11 +37,11 @@ func newAnalyzer(root ww.Anchor) core.Analyzer {
 			"macro": parseMacro,
 			"quote": parseQuote,
 			// "go": c.Go,
-			"ls":   lsParser(root),
-			"load": parseLoad,
-			"eval": parseEval,
+			"ls":     lsParser(root),
+			"eval":   parseEval,
+			"import": importer(paths).Parse,
 		},
-	}
+	}, nil
 }
 
 // Analyze performs syntactic analysis of given form and returns an Expr

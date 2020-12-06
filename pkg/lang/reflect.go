@@ -14,19 +14,30 @@ import (
 var (
 	anyType = reflect.TypeOf((*ww.Any)(nil)).Elem()
 	errType = reflect.TypeOf((*error)(nil)).Elem()
+	ivkType = reflect.TypeOf((*core.Invokable)(nil)).Elem()
 
 	_ core.Invokable = (*funcWrapper)(nil)
 )
 
-// Func converts the given Go func to a ww.Any that is guaranteed
-// to satisfy Invokable.
+// Func converts the given Go value into a Wetware native function.
+// The resulting value is guaranteed to be invokable.
 func Func(name string, v interface{}) (ww.Any, error) {
 	rv := reflect.ValueOf(v)
 	rt := rv.Type()
-	if rt.Kind() != reflect.Func {
-		return nil, fmt.Errorf("%s is not a func", rt)
+
+	if m, ok := rt.MethodByName("Invoke"); ok {
+		rv = m.Func
+		rt = rv.Type()
 	}
 
+	if rt.Kind() != reflect.Func {
+		return nil, fmt.Errorf("cannot convert '%s' to func", reflect.TypeOf(v))
+	}
+
+	return newFuncWrapper(name, rv, rt)
+}
+
+func newFuncWrapper(name string, rv reflect.Value, rt reflect.Type) (*funcWrapper, error) {
 	minArgs := rt.NumIn()
 	if rt.IsVariadic() {
 		minArgs = minArgs - 1

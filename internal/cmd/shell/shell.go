@@ -21,6 +21,7 @@ import (
 
 	clientutil "github.com/wetware/ww/internal/util/client"
 	ctxutil "github.com/wetware/ww/internal/util/ctx"
+	logutil "github.com/wetware/ww/internal/util/log"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/lang"
 	"github.com/wetware/ww/pkg/lang/core"
@@ -111,6 +112,7 @@ func run() cli.ActionFunc {
 				newBanner,
 				newWriter,
 				newPrinter,
+				logutil.New,
 				newEvaluator,
 				newRootAnchor,
 				newReaderFactory),
@@ -155,21 +157,25 @@ func (f replFactory) New() *repl.REPL {
 	)
 }
 
-func newPaths(c *cli.Context) (ps []string, err error) {
-	var usr *user.User
-	for _, p := range c.StringSlice("path") {
-		if p[0] == '~' {
-			if usr, err = user.Current(); err != nil {
-				break
-			}
+func newPaths(c *cli.Context, log ww.Logger) ([]string, error) {
+	paths := c.StringSlice("path")
+	log.WithField("paths", paths).Debug("resolving source paths")
 
+	usr, err := user.Current()
+	if err != nil {
+		return nil, err
+	}
+
+	ps := make([]string, len(paths))
+	for i, p := range paths {
+		if p[0] == '~' {
 			p = strings.Replace(p, "~", usr.HomeDir, 1)
 		}
 
-		ps = append(ps, filepath.Clean(p))
+		ps[i] = filepath.Clean(p)
 	}
 
-	return
+	return ps, nil
 }
 
 func newRootAnchor(c *cli.Context, lx fx.Lifecycle) (ww.Anchor, error) {
@@ -246,19 +252,24 @@ type prompt struct {
 
 type printer struct{}
 
-func (printer) Fprintln(w io.Writer, val interface{}) error {
-	if err, ok := val.(error); ok {
-		_, err = fmt.Fprintf(w, "%+v\n", err)
-		return err
+func (printer) Fprintln(w io.Writer, val interface{}) (err error) {
+	if val == nil {
+		return
 	}
 
-	s, err := core.Render(val.(ww.Any))
-	if err != nil {
-		return err
+	if val, err = (printer{}).render(val); err == nil {
+		_, err = fmt.Fprintln(w, val)
 	}
 
-	_, err = fmt.Fprintln(w, s)
-	return err
+	return
+}
+
+func (printer) render(val interface{}) (interface{}, error) {
+	if any, ok := val.(ww.Any); ok {
+		return core.Render(any)
+	}
+
+	return val, nil
 }
 
 type banner struct {

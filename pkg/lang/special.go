@@ -1,17 +1,18 @@
 package lang
 
 import (
+	"errors"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"reflect"
+	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/spy16/slurp"
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/lang/core"
-	"github.com/wetware/ww/pkg/lang/reader"
 	capnp "zombiezen.com/go/capnproto2"
 )
 
@@ -265,58 +266,6 @@ func parseGo(a core.Analyzer, env core.Env, seq core.Seq) (core.Expr, error) {
 	// }, nil
 }
 
-func parseLoad(a core.Analyzer, env core.Env, seq core.Seq) (core.Expr, error) {
-	cnt, err := seq.Count()
-	if err != nil {
-		return nil, err
-	}
-
-	if cnt != 1 {
-		return nil, errors.Errorf("requires 1 argument, got %d", cnt)
-	}
-
-	first, err := seq.First()
-	if err != nil {
-		return nil, err
-	}
-
-	if first.MemVal().Type() != api.Value_Which_str {
-		return nil, errors.Errorf("expected string, got %s", first.MemVal().Type())
-	}
-
-	path, err := first.MemVal().Raw.Str()
-	if err != nil {
-		return nil, err
-	}
-
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	rd := reader.New(f)
-	var dex DoExpr
-	for {
-		form, err := rd.One()
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			return nil, err
-		}
-
-		expr, err := a.Analyze(env, form)
-		if err != nil {
-			return nil, err
-		}
-
-		dex.Exprs = append(dex.Exprs, expr)
-	}
-
-	return dex, nil
-}
-
 func parseEval(a core.Analyzer, env core.Env, seq core.Seq) (core.Expr, error) {
 	var dex DoExpr
 	return dex, core.ForEach(seq, func(item ww.Any) (bool, error) {
@@ -326,4 +275,90 @@ func parseEval(a core.Analyzer, env core.Env, seq core.Seq) (core.Expr, error) {
 		}
 		return false, err
 	})
+}
+
+type importer []string
+
+func (i importer) Parse(a core.Analyzer, env core.Env, seq core.Seq) (core.Expr, error) {
+	if cnt, err := seq.Count(); err != nil {
+		return nil, err
+	} else if cnt != 1 {
+		return nil, fmt.Errorf("expected 1 argument, got %d", cnt)
+	}
+
+	arg, err := seq.First()
+	if err != nil {
+		return nil, err
+	}
+
+	iex := ImportExpr{Analyzer: a}
+
+	switch mv := arg.MemVal(); mv.Type() {
+	case api.Value_Which_keyword:
+		kw, err := mv.Raw.Keyword()
+		if err != nil {
+			return nil, err
+		}
+
+		if kw != "prelude" {
+			return nil, fmt.Errorf("unrecognize kwarg '%s'", kw)
+		}
+
+		ps, err := i.init(a, env)
+		if err != nil {
+			return nil, err
+		}
+
+		iex.Paths = append(iex.Paths, ps...)
+
+	case api.Value_Which_symbol:
+		sym, err := mv.Raw.Symbol()
+		if err != nil {
+			return nil, err
+		}
+
+		path, err := i.symbolToPath(sym)
+		if err != nil {
+			return nil, fmt.Errorf("import error: %w", err)
+		}
+
+		iex.Paths = append(iex.Paths, path)
+
+	default:
+		return nil, fmt.Errorf("invalid argument type %s", mv.Type())
+
+	}
+
+	return iex, nil
+}
+
+func (i importer) init(a core.Analyzer, env core.Env) (paths []string, err error) {
+	var files []os.FileInfo
+	for _, path := range i {
+		if files, err = ioutil.ReadDir(path); err != nil {
+			break
+		}
+
+		for _, f := range files {
+			if !f.IsDir() && strings.HasSuffix(f.Name(), ".ww") {
+				paths = append(paths, filepath.Join(path, f.Name()))
+			}
+		}
+	}
+
+	return
+}
+
+func (i importer) symbolToPath(symbol string) (path string, err error) {
+	subpath := strings.ReplaceAll(symbol, ".", string(os.PathSeparator))
+	subpath = filepath.Clean(subpath) + ".ww"
+
+	for _, root := range i {
+		path = filepath.Join(root, subpath)
+		if _, err = os.Stat(path); !os.IsNotExist(err) {
+			return
+		}
+	}
+
+	return "", core.ErrNotFound
 }

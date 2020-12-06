@@ -21,7 +21,8 @@ var (
 	// ErrIndexOutOfBounds is returned when a sequence's index is out of range.
 	ErrIndexOutOfBounds = errors.New("index out of bounds")
 
-	// ErrNotFound is returned by Env when a binding is not found for a given symbol/name.
+	// ErrNotFound is returned by Env when a the corresponding entity for a name,
+	// binding or module path is not found.
 	ErrNotFound = core.ErrNotFound
 
 	// ErrArity is returned when an Invokable is invoked with wrong number
