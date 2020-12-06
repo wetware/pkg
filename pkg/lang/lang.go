@@ -3,6 +3,7 @@ package lang
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -43,6 +44,14 @@ func prelude() bindFunc {
 			function("not", "__not__", func(any ww.Any) (bool, error) {
 				b, err := core.IsTruthy(any)
 				return !b, err
+			}),
+			function("render", "__render__", core.Render),
+			function("print", "__print__", func(any ww.Any) (int, error) {
+				s, err := core.Render(any)
+				if err != nil {
+					return 0, err
+				}
+				return fmt.Print(s)
 			}),
 			function("len", "__len__", func(c core.Countable) (int, error) { return c.Count() }),
 			function("pop", "__pop__", core.Pop),

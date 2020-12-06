@@ -2,6 +2,8 @@ package lang
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"reflect"
 
 	"github.com/pkg/errors"
@@ -9,6 +11,7 @@ import (
 	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/lang/core"
+	"github.com/wetware/ww/pkg/lang/reader"
 	capnp "zombiezen.com/go/capnproto2"
 )
 
@@ -260,4 +263,67 @@ func parseGo(a core.Analyzer, env core.Env, seq core.Seq) (core.Expr, error) {
 	// return LocalGoExpr{
 	// 	Args: procArgs(args).Args(),
 	// }, nil
+}
+
+func parseLoad(a core.Analyzer, env core.Env, seq core.Seq) (core.Expr, error) {
+	cnt, err := seq.Count()
+	if err != nil {
+		return nil, err
+	}
+
+	if cnt != 1 {
+		return nil, errors.Errorf("requires 1 argument, got %d", cnt)
+	}
+
+	first, err := seq.First()
+	if err != nil {
+		return nil, err
+	}
+
+	if first.MemVal().Type() != api.Value_Which_str {
+		return nil, errors.Errorf("expected string, got %s", first.MemVal().Type())
+	}
+
+	path, err := first.MemVal().Raw.Str()
+	if err != nil {
+		return nil, err
+	}
+
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	rd := reader.New(f)
+	var dex DoExpr
+	for {
+		form, err := rd.One()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return nil, err
+		}
+
+		expr, err := a.Analyze(env, form)
+		if err != nil {
+			return nil, err
+		}
+
+		dex.Exprs = append(dex.Exprs, expr)
+	}
+
+	return dex, nil
+}
+
+func parseEval(a core.Analyzer, env core.Env, seq core.Seq) (core.Expr, error) {
+	var dex DoExpr
+	return dex, core.ForEach(seq, func(item ww.Any) (bool, error) {
+		expr, err := a.Analyze(env, item)
+		if err == nil {
+			dex.Exprs = append(dex.Exprs, expr)
+		}
+		return false, err
+	})
 }

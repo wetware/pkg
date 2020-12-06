@@ -37,9 +37,9 @@ func newAnalyzer(root ww.Anchor) core.Analyzer {
 			"macro": parseMacro,
 			"quote": parseQuote,
 			// "go": c.Go,
-			"ls": lsParser(root),
-			// "pop":   parsePop,
-			// "conj":  parseConj,
+			"ls":   lsParser(root),
+			"load": parseLoad,
+			"eval": parseEval,
 		},
 	}
 }

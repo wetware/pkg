@@ -59,6 +59,11 @@ type (
 // It binds the prelude to the environment before returning.
 func New() Env { return core.New(nil) }
 
+// Eval a form.
+func Eval(env Env, a Analyzer, form core.Any) (core.Any, error) {
+	return core.Eval(env, a, form)
+}
+
 // Invokable represents a value that can be invoked as a function.
 type Invokable interface {
 	// Invoke is called if this value appears as the first argument of

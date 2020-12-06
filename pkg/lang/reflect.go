@@ -14,9 +14,6 @@ import (
 var (
 	anyType = reflect.TypeOf((*ww.Any)(nil)).Elem()
 	errType = reflect.TypeOf((*error)(nil)).Elem()
-	strType = reflect.TypeOf((*core.String)(nil)).Elem()
-	symType = reflect.TypeOf((*core.Symbol)(nil)).Elem()
-	kwType  = reflect.TypeOf((*core.Keyword)(nil)).Elem()
 
 	_ core.Invokable = (*funcWrapper)(nil)
 )
@@ -43,7 +40,7 @@ func Func(name string, v interface{}) (ww.Any, error) {
 
 	adapters := make([]adapter, lastOutIdx+1)
 	for i := range adapters {
-		if out := rt.Out(i); out != anyType {
+		if out := rt.Out(i); !out.AssignableTo(anyType) {
 			adapters[i] = adapterFor(out)
 		}
 	}
@@ -259,16 +256,7 @@ func adapterFor(t reflect.Type) adapter {
 		return toFloat
 
 	case reflect.String:
-		switch t {
-		case strType:
-			return toString
-
-		case symType:
-			return toSymbol
-
-		case kwType:
-			return toKeyword
-		}
+		return toString
 
 	case reflect.Slice:
 		return maybeNil(toVector)
