@@ -286,7 +286,7 @@ type VectorExpr struct {
 func (vex VectorExpr) Eval(env core.Env) (score.Any, error) {
 	cnt, err := vex.Vector.Count()
 	if err != nil || cnt == 0 {
-		return core.EmptyVector, err
+		return vex.Vector, err
 	}
 
 	// TODO(performace):  this is just begging for a transient.
