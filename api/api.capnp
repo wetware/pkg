@@ -26,9 +26,10 @@ struct Value {
         path @11 :Text;
         list @12 :LinkedList;
         vector @13 :Vector;
+        vectorSeq @14 :VectorSeq;
         # map @14 :CHAMP;
-        fn @14 :Fn;
-        proc @15 :Proc;
+        fn @15 :Fn;
+        proc @16 :Proc;
     }
 }
 
@@ -101,3 +102,9 @@ struct Vector {
     }
 }
 
+
+struct VectorSeq {
+    vector @0 :Vector;
+    index @1 :UInt32;
+    offset @2 :UInt32;
+}

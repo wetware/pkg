@@ -4,16 +4,8 @@ import (
 	"strings"
 
 	ww "github.com/wetware/ww/pkg"
+	capnp "zombiezen.com/go/capnproto2"
 )
-
-// List is a persistent, singly-linked list with fast insertions/pops to its head.
-type List interface {
-	ww.Any
-	Seq
-	Count() (int, error)
-	Cons(any ww.Any) (List, error)
-	Pop() (List, error)
-}
 
 // Seq represents a sequence of values.
 type Seq interface {
@@ -30,13 +22,42 @@ type Seq interface {
 	Next() (Seq, error)
 
 	// Conj returns a new sequence with given items conjoined.
-	Conj(items ...ww.Any) (Seq, error)
+	Conj(...ww.Any) (Container, error)
 }
 
 // Seqable types can be represented as a sequence.
 type Seqable interface {
 	// Return a sequence representation of the underlying type.
 	Seq() (Seq, error)
+}
+
+// Cons .
+func Cons(a capnp.Arena, head ww.Any, tail Seq) (List, error) {
+	l, ll, err := newList(a)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = ll.SetHead(head.MemVal().Raw); err != nil {
+		return nil, err
+	}
+
+	if err = ll.SetTail(tail.MemVal().Raw); err != nil {
+		return nil, err
+	}
+
+	tailCount, err := tail.Count()
+	if err != nil {
+		return nil, err
+	}
+
+	var cnt int = 1
+	if tailCount > 0 {
+		cnt = tailCount + 1
+	}
+
+	ll.SetCount(uint32(cnt))
+	return l, nil
 }
 
 // ToSlice converts the given sequence into a slice.

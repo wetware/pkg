@@ -82,6 +82,7 @@ type Countable interface {
 type Container interface {
 	ww.Any
 	Countable
+	Conj(...ww.Any) (Container, error)
 }
 
 // Comparable type.
@@ -204,6 +205,15 @@ func Pop(cont Container) (ww.Any, error) {
 		return v.Pop()
 
 	case Seq:
+		cnt, err := v.Count()
+		if err != nil {
+			return nil, err
+		}
+
+		if cnt == 0 {
+			return nil, fmt.Errorf("%w: cannot pop from empty seq", ErrIllegalState)
+		}
+
 		return v.Next()
 
 	}
@@ -217,21 +227,16 @@ func Pop(cont Container) (ww.Any, error) {
 // For lists, the value is added at the head.
 // For vectors, the value is added at the tail.
 // `(conj nil item)` returns `(item)``.
-func Conj(any Container, xs ...ww.Any) (Container, error) {
+func Conj(any ww.Any, xs ...ww.Any) (Container, error) {
 	if IsNil(any) {
 		return NewList(capnp.SingleSegment(nil), xs...)
 	}
 
-	switch val := any.(type) {
-	case Seq:
-		return val.Conj(xs...)
-
-	case Vector:
-		return val.Conj(xs...)
-
+	if c, ok := any.(Container); ok {
+		return c.Conj(xs...)
 	}
 
-	return nil, fmt.Errorf("cannot conj with %s", any.MemVal().Type())
+	return nil, fmt.Errorf("cannot conj with %T", any)
 }
 
 // Canonical representation of an arbitrary value.

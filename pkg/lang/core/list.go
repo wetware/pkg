@@ -33,21 +33,28 @@ func init() {
 	}
 }
 
+// List is a persistent, singly-linked list with fast insertions/pops to its head.
+type List interface {
+	ww.Any
+	Seq
+	Count() (int, error)
+	Cons(any ww.Any) (List, error)
+}
+
 type list struct{ mem.Value }
 
 // NewList returns a new list containing given values.
-func NewList(a capnp.Arena, vs ...ww.Any) (List, error) {
+func NewList(a capnp.Arena, vs ...ww.Any) (l List, err error) {
 	if len(vs) == 0 {
 		return EmptyList, nil
 	}
 
-	l, _, err := newList(a)
-	if err != nil {
+	if l, _, err = newList(a); err != nil {
 		return nil, err
 	}
 
 	for i := len(vs) - 1; i >= 0; i-- {
-		l, err = listCons(capnp.SingleSegment(nil), vs[i].(ww.Any).MemVal(), l)
+		l, err = Cons(capnp.SingleSegment(nil), vs[i].(ww.Any).MemVal(), l)
 		if err != nil {
 			break
 		}
@@ -58,7 +65,7 @@ func NewList(a capnp.Arena, vs ...ww.Any) (List, error) {
 
 // Count returns the number of the list.
 func (l list) Count() (int, error) {
-	ll, _, err := listIsNull(l.Raw)
+	ll, err := l.Raw.List()
 	return int(ll.Count()), err
 }
 
@@ -68,17 +75,6 @@ func (l list) Render() (string, error) {
 		return Render(any.(ww.Any))
 	})
 }
-
-// // SExpr returns a valid s-expression for List
-// func (l list) SExpr() (string, error) {
-// 	return l.render(func(any ww.Any) (string, error) {
-// 		if r, ok := any.(SExpressable); ok {
-// 			return r.SExpr()
-// 		}
-
-// 		return "", errors.Errorf("%s is not a symbol provider", reflect.TypeOf(any))
-// 	})
-// }
 
 func (l list) render(f func(ww.Any) (string, error)) (string, error) {
 	cnt, err := l.Count()
@@ -121,14 +117,14 @@ func (l list) render(f func(ww.Any) (string, error)) (string, error) {
 }
 
 // Conj returns a new list with all the items added at the head of the list.
-func (l list) Conj(items ...ww.Any) (Seq, error) {
-	null, err := l.isNull()
+func (l list) Conj(items ...ww.Any) (Container, error) {
+	ll, err := l.Raw.List()
 	if err != nil {
 		return nil, err
 	}
 
 	var res List
-	if null {
+	if l.isNull(ll) {
 		res = l
 	} else {
 		res = EmptyList
@@ -145,31 +141,27 @@ func (l list) Conj(items ...ww.Any) (Seq, error) {
 
 // Cons returns a new list with the item added at the head of the list.
 func (l list) Cons(any ww.Any) (List, error) {
-	return listCons(capnp.SingleSegment(nil), any.(ww.Any).MemVal(), l)
+	return Cons(capnp.SingleSegment(nil), any.MemVal(), l)
 }
 
 // First returns the head or first item of the list.
-func (l list) First() (v ww.Any, err error) {
-	var null bool
-	if null, err = l.isNull(); err == nil && !null {
-		_, v, err = l.head()
+func (l list) First() (ww.Any, error) {
+	ll, err := l.Raw.List()
+	if err != nil || l.isNull(ll) {
+		return nil, err
 	}
 
-	return
-}
-
-// Pop returns the list tail.
-func (l list) Pop() (List, error) {
-	if _, next, err := listNext(l.Raw); err != ErrIllegalState {
-		return next, err
-	}
-
-	return nil, fmt.Errorf("%w: cannot pop from empty list", ErrIllegalState)
+	return l.head(ll)
 }
 
 // Next returns the tail of the list.
 func (l list) Next() (Seq, error) {
-	_, next, err := listNext(l.Raw)
+	ll, err := l.Raw.List()
+	if err != nil {
+		return nil, err
+	}
+
+	next, err := l.next(ll)
 	if err == ErrIllegalState { // (next ' ()) => nil
 		return nil, nil
 	}
@@ -177,19 +169,9 @@ func (l list) Next() (Seq, error) {
 	return next, err
 }
 
-func (l list) count() (ll api.LinkedList, cnt int, err error) {
-	if ll, err = l.Raw.List(); err == nil {
-		cnt = int(ll.Count())
-	}
+func (l list) isNull(ll api.LinkedList) bool { return ll.Count() == 0 }
 
-	return
-}
-
-func (l list) head() (ll api.LinkedList, v ww.Any, err error) {
-	if ll, err = l.Raw.List(); err != nil {
-		return
-	}
-
+func (l list) head(ll api.LinkedList) (v ww.Any, err error) {
 	var val mem.Value
 	if val.Raw, err = ll.Head(); err == nil {
 		v, err = AsAny(val)
@@ -198,82 +180,27 @@ func (l list) head() (ll api.LinkedList, v ww.Any, err error) {
 	return
 }
 
-func (l list) isNull() (null bool, err error) {
-	_, null, err = listIsNull(l.Raw)
-	return
-}
-
-func listTail(v mem.Value) (ll api.LinkedList, tail list, err error) {
-	if ll, err = v.Raw.List(); err != nil {
-		return
+func (l list) next(ll api.LinkedList) (Seq, error) {
+	if l.isNull(ll) {
+		return nil, ErrIllegalState
 	}
 
-	tail.Raw, err = ll.Tail()
-	return
-}
-
-// func listToSlice(l List, sizeHint int) ([]ww.Any, error) {
-// 	slice := make([]ww.Any, 0, sizeHint)
-// 	err := ForEach(l, func(item ww.Any) (bool, error) {
-// 		slice = append(slice, item)
-// 		return false, nil
-// 	})
-// 	return slice, err
-// }
-
-func listCons(a capnp.Arena, v mem.Value, tail list) (l list, err error) {
-	var ll api.LinkedList
-	if l, ll, err = newList(a); err != nil {
-		return
-	}
-
-	if err = ll.SetHead(v.Raw); err != nil {
-		return
-	}
-
-	if err = ll.SetTail(tail.Raw); err != nil {
-		return
-	}
-
-	var null bool
-	if null, err = tail.isNull(); err != nil {
-		return
-	}
-
-	var cnt int = 1
-	if !null {
-		if cnt, err = tail.Count(); err != nil {
-			return
-		}
-
-		cnt++
-	}
-
-	ll.SetCount(uint32(cnt))
-	return
-}
-
-func listIsNull(v api.Value) (l api.LinkedList, null bool, err error) {
-	l, err = v.List()
-	null = err == nil && l.Count() == 0
-	return
-}
-
-func listNext(v api.Value) (ll api.LinkedList, l list, err error) {
-	var null bool
-	if ll, null, err = listIsNull(v); null {
-		err = ErrIllegalState
-	}
-
+	val, err := ll.Tail()
 	if err != nil {
-		return ll, list{}, err
+		return nil, err
 	}
 
-	if l.Raw, err = ll.Tail(); err != nil {
-		return ll, list{}, err
+	any, err := AsAny(mem.Value{Raw: val})
+	if err != nil {
+		return nil, err
 	}
 
-	return ll, l, nil
+	if seq, ok := any.(Seq); ok {
+		return seq, nil
+	}
+
+	return nil, fmt.Errorf("%w: non-sequence type '%T' in tail",
+		ErrIllegalState, any)
 }
 
 func newList(a capnp.Arena) (l list, ll api.LinkedList, err error) {

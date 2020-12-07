@@ -58,9 +58,8 @@ func init() {
 // insertions.
 type Vector interface {
 	ww.Any
-	// Invokable  // TODO(XXX)
 	Count() (int, error)
-	Conj(...ww.Any) (Vector, error)
+	Conj(...ww.Any) (Container, error)
 	EntryAt(i int) (ww.Any, error)
 	Assoc(i int, val ww.Any) (Vector, error)
 	Pop() (Vector, error)
@@ -155,12 +154,17 @@ func (v PersistentVector) Count() (cnt int, err error) {
 	return
 }
 
-func (v PersistentVector) count() (api.Vector, int, error) {
-	return vectorCount(v.Value)
+func (v PersistentVector) count() (vec api.Vector, cnt int, err error) {
+	if vec, err = v.Raw.Vector(); err != nil {
+		return
+	}
+
+	cnt = int(vec.Count())
+	return
 }
 
 // Conj returns a new vector with items appended.
-func (v PersistentVector) Conj(items ...ww.Any) (Vector, error) { return v.conj(items...) }
+func (v PersistentVector) Conj(items ...ww.Any) (Container, error) { return v.conj(items...) }
 
 func (v PersistentVector) conj(items ...ww.Any) (PersistentVector, error) {
 	for _, item := range items {
@@ -177,20 +181,10 @@ func (v PersistentVector) conj(items ...ww.Any) (PersistentVector, error) {
 	return v, nil
 }
 
-// // Seq returns the implementing value as a sequence.
-// func (v vector) Seq() runtime.Seq {
-// 	s, err := newVectorSeq(v, 0, 0)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-
-// 	return s
-// }
-
 // EntryAt returns the item at given index. Returns error if the index
 // is out of range.
 func (v PersistentVector) EntryAt(i int) (ww.Any, error) {
-	vs, err := vectorArrayFor(v.Value, i)
+	vs, err := v.arrayFor(i)
 	if err != nil {
 		return nil, err
 	}
@@ -223,11 +217,21 @@ func (v PersistentVector) Assoc(i int, val ww.Any) (Vector, error) {
 
 // Pop returns a new vector without the last item in v
 func (v PersistentVector) Pop() (Vector, error) {
-	if _, vec, err := vectorPop(v.Value); err != ErrIllegalState {
+	if _, vec, err := v.pop(); err != ErrIllegalState {
 		return vec, err
 	}
 
 	return nil, fmt.Errorf("%w: cannot pop from empty vector", ErrIllegalState)
+}
+
+// Seq presents the vector as an iterable sequence.
+func (v PersistentVector) Seq() (Seq, error) {
+	vec, err := v.Raw.Vector()
+	if err != nil {
+		return nil, err
+	}
+
+	return newChunkedSeq(nil, vec, 0, 0)
 }
 
 func popVectorTail(level, cnt int, n api.Vector_Node) (ret api.Vector_Node, ok bool, err error) {
@@ -271,27 +275,28 @@ func popVectorTail(level, cnt int, n api.Vector_Node) (ret api.Vector_Node, ok b
 	}
 }
 
-func vectorArrayFor(v mem.Value, i int) (api.Value_List, error) {
+func (v PersistentVector) arrayFor(i int) (api.Value_List, error) {
 	// See:  https://github.com/clojure/clojure/blob/0b73494c3c855e54b1da591eeb687f24f608f346/src/jvm/clojure/lang/PersistentVector.java#L97-L113
-
-	vec, cnt, err := vectorCount(v)
+	vec, cnt, err := v.count()
 	if err == nil {
 		if i < 0 || i >= cnt {
 			return api.Value_List{}, ErrIndexOutOfBounds
 		}
 	}
 
+	return apiVectorArrayFor(vec, int(cnt), i)
+}
+
+func apiVectorArrayFor(vec api.Vector, cnt, i int) (api.Value_List, error) {
 	// value in tail?
-	if i >= vectorTailoff(int(vec.Count())) {
+	if i >= vectorTailoff(cnt) {
 		return vec.Tail()
 	}
 
-	/*
-		slow path; value in trie.
-	*/
+	// slow path; value in trie.
 
-	var n api.Vector_Node
-	if n, err = vec.Root(); err != nil {
+	n, err := vec.Root()
+	if err != nil {
 		return api.Value_List{}, err
 	}
 
@@ -345,7 +350,7 @@ func vectorUpdate(vec api.Vector, cnt, i int, any ww.Any) (Vector, error) {
 			return nil, err
 		}
 	} else {
-		if root, err = vectorAssoc(int(vec.Shift()), root, i, any); err != nil {
+		if root, err = apiVectorAssoc(int(vec.Shift()), root, i, any); err != nil {
 			return nil, err
 		}
 	}
@@ -438,7 +443,7 @@ func vectorCons(vec api.Vector, cnt int, any ww.Any) (_ PersistentVector, err er
 	return res, err
 }
 
-func vectorAssoc(level int, n api.Vector_Node, i int, v ww.Any) (ret api.Vector_Node, err error) {
+func apiVectorAssoc(level int, n api.Vector_Node, i int, v ww.Any) (ret api.Vector_Node, err error) {
 	if ret, err = cloneNode(capnp.SingleSegment(nil), n, -1); err != nil {
 		return
 	}
@@ -457,7 +462,7 @@ func vectorAssoc(level int, n api.Vector_Node, i int, v ww.Any) (ret api.Vector_
 	}
 
 	subidx := (i >> level) & mask
-	if n, err = vectorAssoc(level-bits, bs.At(subidx), i, v); err != nil {
+	if n, err = apiVectorAssoc(level-bits, bs.At(subidx), i, v); err != nil {
 		return
 	}
 
@@ -474,18 +479,9 @@ func vectorTailoff(cnt int) int {
 	return ((cnt - 1) >> bits) << bits
 }
 
-func vectorCount(v mem.Value) (vec api.Vector, cnt int, err error) {
-	if vec, err = v.Raw.Vector(); err != nil {
-		return
-	}
-
-	cnt = int(vec.Count())
-	return
-}
-
-func vectorPop(v mem.Value) (vec api.Vector, _ Vector, err error) {
+func (v PersistentVector) pop() (vec api.Vector, _ Vector, err error) {
 	var cnt int
-	if vec, cnt, err = vectorCount(v); err != nil {
+	if vec, cnt, err = v.count(); err != nil {
 		return
 	}
 
@@ -529,7 +525,7 @@ func vectorPop(v mem.Value) (vec api.Vector, _ Vector, err error) {
 		slow path; single item in tail => fetch tail node from trie
 	*/
 
-	if newtail, err = vectorArrayFor(v, cnt-2); err != nil {
+	if newtail, err = v.arrayFor(cnt - 2); err != nil {
 		return
 	}
 
@@ -563,10 +559,6 @@ func vectorPop(v mem.Value) (vec api.Vector, _ Vector, err error) {
 		shift,
 		newroot,
 		newtail)
-}
-
-func vectorConj() {
-
 }
 
 // VectorBuilder is a factory type used to efficiently construct Vectors using the Conj
@@ -727,6 +719,166 @@ func getChild(p api.Vector_Node, i int) (api.Vector_Node, error) {
 }
 
 /*
+	seq
+*/
+
+type chunkedSeq struct {
+	mem.Value
+	newArena func() capnp.Arena
+
+	// vec       Vector
+	// node      api.Value_List
+	// i, offset int
+}
+
+func newChunkedSeq(newArena func() capnp.Arena, v api.Vector, i, offset uint32) (chunkedSeq, error) {
+	if newArena == nil {
+		newArena = func() capnp.Arena { return capnp.SingleSegment(nil) }
+	}
+
+	val, err := mem.NewValue(newArena())
+	if err != nil {
+		return chunkedSeq{}, nil
+	}
+
+	seq, err := val.Raw.NewVectorSeq()
+	if err != nil {
+		return chunkedSeq{}, err
+	}
+
+	if err = seq.SetVector(v); err != nil {
+		return chunkedSeq{}, err
+	}
+	seq.SetIndex(i)
+	seq.SetOffset(offset)
+
+	// n, err := vectorArrayFor(v.MemVal(), i)
+	// if errors.Is(err, ErrIndexOutOfBounds) {
+	// 	_, n, err = newVectorLeafNode(capnp.SingleSegment(nil))
+	// }
+
+	return chunkedSeq{
+		Value:    val,
+		newArena: newArena,
+		// vec:    v,
+		// node:   n,
+		// i:      i,
+		// offset: offset,
+	}, err
+}
+
+func (cs chunkedSeq) Count() (cnt int, err error) {
+	var seq api.VectorSeq
+	if seq, err = cs.Raw.VectorSeq(); err != nil {
+		return
+	}
+
+	var vec api.Vector
+	if vec, err = seq.Vector(); err == nil {
+		cnt = int(vec.Count() - (seq.Index() - seq.Offset()))
+	}
+
+	return
+}
+
+func (cs chunkedSeq) First() (ww.Any, error) {
+	seq, err := cs.Raw.VectorSeq()
+	if err != nil {
+		return nil, err
+	}
+
+	node, err := cs.node(seq)
+	if err != nil {
+		return nil, err
+	}
+
+	return AsAny(mem.Value{Raw: node.At(cs.offset(seq))})
+}
+
+func (cs chunkedSeq) Next() (Seq, error) {
+	seq, err := cs.Raw.VectorSeq()
+	if err != nil {
+		return nil, err
+	}
+
+	node, err := cs.node(seq)
+	if err != nil {
+		return nil, err
+	}
+
+	if cs.offset(seq)+1 < node.Len() {
+		val, err := mem.NewValue(cs.newArena())
+		if err != nil {
+			return chunkedSeq{}, nil
+		}
+
+		if err = val.Raw.SetVectorSeq(seq); err != nil {
+			return chunkedSeq{}, nil
+		}
+
+		if seq, err = val.Raw.VectorSeq(); err == nil {
+			seq.SetOffset(seq.Offset() + 1)
+		}
+
+		return chunkedSeq{
+			Value:    val,
+			newArena: cs.newArena,
+		}, nil
+	}
+
+	return cs.chunkedNext()
+}
+
+func (cs chunkedSeq) index(seq api.VectorSeq) int  { return int(seq.Index()) }
+func (cs chunkedSeq) offset(seq api.VectorSeq) int { return int(seq.Offset()) }
+
+func (cs chunkedSeq) node(seq api.VectorSeq) (api.Value_List, error) {
+	vec, err := seq.Vector()
+	if err != nil {
+		return api.Value_List{}, err
+	}
+
+	return apiVectorArrayFor(vec, int(vec.Count()), cs.index(seq))
+}
+
+func (cs chunkedSeq) chunkedNext() (Seq, error) {
+	seq, err := cs.Raw.VectorSeq()
+	if err != nil {
+		return nil, err
+	}
+
+	vec, err := seq.Vector()
+	if err != nil {
+		return nil, err
+	}
+
+	node, err := cs.node(seq)
+	if err != nil {
+		return nil, err
+	}
+
+	// more?
+	if i := seq.Index() + uint32(node.Len()); i < vec.Count() {
+		return newChunkedSeq(cs.newArena, vec, i, 0)
+	}
+
+	// end of sequence
+	return nil, nil
+}
+
+// prepends each item to the sequence
+func (cs chunkedSeq) Conj(items ...ww.Any) (_ Container, err error) {
+	var seq Seq = cs
+	for _, any := range items {
+		if seq, err = Cons(cs.newArena(), any, seq); err != nil {
+			break
+		}
+	}
+
+	return seq, err
+}
+
+/*
 	vector utils
 */
 
@@ -847,10 +999,6 @@ func setNodeValue(n api.Vector_Node, i int, any ww.Any) error {
 
 	return vs.Set(i&mask, any.MemVal().Raw)
 }
-
-// func setValueListAt(vs api.Value_List, i int, v ww.Any) error {
-// 	return
-// }
 
 // cloneNode deep-copies n.  If lim >= 0, it will only copy the first `lim` elements.
 func cloneNode(a capnp.Arena, n api.Vector_Node, lim int) (api.Vector_Node, error) {

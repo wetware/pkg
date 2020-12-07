@@ -55,10 +55,11 @@ func TestEmptyVector(t *testing.T) {
 
 		v2, err := core.NewVector(nil)
 		assert.NoError(t, err)
-		v2, err = v2.Conj(mustInt(0))
+
+		v3, err := core.Conj(v2, mustInt(0))
 		assert.NoError(t, err)
 
-		eq, err := core.Eq(v, v2)
+		eq, err := core.Eq(v, v3)
 		require.NoError(t, err)
 
 		assert.True(t, eq, "vector v should be equal to v2.")
@@ -110,7 +111,7 @@ func TestNewVector(t *testing.T) {
 	}
 }
 
-func TestVectorStringer(t *testing.T) {
+func TestVectorRender(t *testing.T) {
 	t.Parallel()
 
 	for _, tt := range []struct {

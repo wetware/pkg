@@ -31,7 +31,7 @@ func TestEmptyList(t *testing.T) {
 	})
 
 	t.Run("Pop", func(t *testing.T) {
-		tail, err := core.EmptyList.Pop()
+		tail, err := core.Pop(core.EmptyList)
 		assert.True(t, errors.Is(err, core.ErrIllegalState),
 			"'%s' is not ErrIllegalState", err)
 
@@ -46,7 +46,7 @@ func TestEmptyList(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, 1, cnt)
 
-		v, err := seq.First()
+		v, err := seq.(core.Seq).First()
 		assert.NoError(t, err)
 
 		eq, err := core.Eq(core.True, v.(ww.Any))
