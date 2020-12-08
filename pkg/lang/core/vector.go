@@ -70,23 +70,12 @@ type Vector interface {
 type PersistentVector struct{ mem.Value }
 
 // NewVector creates a vector containing the supplied values.
-func NewVector(a capnp.Arena, vs ...ww.Any) (_ Vector, err error) {
-	if len(vs) == 0 {
-		return EmptyVector, nil
+func NewVector(a capnp.Arena, vs ...ww.Any) (vec PersistentVector, err error) {
+	if vec = EmptyVector; len(vs) > 0 {
+		vec, err = vec.conj(vs...)
 	}
 
-	var b *VectorBuilder
-	if b, err = NewVectorBuilder(a); err != nil {
-		return
-	}
-
-	for _, v := range vs {
-		if err = b.Conj(v); err != nil {
-			return
-		}
-	}
-
-	return b.Vector()
+	return
 }
 
 // Invoke is equivalent to `EntryAt`.
@@ -411,6 +400,8 @@ func (v PersistentVector) cons(vec api.Vector, cnt int, any ww.Any) (_ Persisten
 		Slow path; push to tree
 	*/
 
+	var newroot api.Vector_Node
+
 	// Wrap the tail in a node so that we can push it into the trie.
 	var tailnode api.Vector_Node
 	if tailnode, err = v.newLeafNode(capnp.SingleSegment(nil), tail); err != nil {
@@ -419,25 +410,38 @@ func (v PersistentVector) cons(vec api.Vector, cnt int, any ww.Any) (_ Persisten
 
 	// Overflow root?
 	if (cnt >> bits) > (1 << shift) {
-		if tailnode, err = newVectorPath(shift, tailnode); err != nil {
+		if newroot, err = newRootVectorNode(capnp.SingleSegment(nil)); err != nil {
 			return
 		}
 
-		if root, err = newVectorNodeWithBranches(capnp.SingleSegment(nil),
-			root,
-			tailnode,
-		); err != nil {
+		var array api.Vector_Node_List
+		if array, err = newroot.NewBranches(2); err != nil {
+			return
+		}
+
+		// first branch points to old root
+		if err = array.Set(0, root); err != nil {
+			return
+		}
+
+		// second branch points to former tail
+		var path api.Vector_Node
+		if path, err = v.newPath(shift, tailnode); err != nil {
+			return
+		}
+
+		if err = array.Set(1, path); err != nil {
 			return
 		}
 
 		shift += 5
 	} else {
-		if root, err = pushVectorTail(shift, cnt, root, tailnode); err != nil {
+		if newroot, err = v.pushTail(shift, cnt, root, tailnode); err != nil {
 			return
 		}
 	}
 
-	newtail, err := newVectorTail(capnp.SingleSegment(nil), 0)
+	newtail, err := v.newTail(capnp.SingleSegment(nil), any)
 	if err != nil {
 		return
 	}
@@ -445,9 +449,17 @@ func (v PersistentVector) cons(vec api.Vector, cnt int, any ww.Any) (_ Persisten
 	_, res, err := newVector(capnp.SingleSegment(nil),
 		cnt+1,
 		shift,
-		root,
+		newroot,
 		newtail)
 	return res, err
+}
+
+func (PersistentVector) newTail(a capnp.Arena, item ww.Any) (t api.Value_List, err error) {
+	if t, err = newVectorTail(capnp.SingleSegment(nil), 1); err == nil {
+		err = t.Set(0, item.MemVal().Raw)
+	}
+
+	return t, err
 }
 
 func apiVectorAssoc(level int, n api.Vector_Node, i int, v ww.Any) (ret api.Vector_Node, err error) {
@@ -568,114 +580,19 @@ func (v PersistentVector) pop() (vec api.Vector, _ Vector, err error) {
 		newtail)
 }
 
-// VectorBuilder is a factory type used to efficiently construct Vectors using the Conj
-// method.
-type VectorBuilder struct {
-	cnt, shift int
-	root       api.Vector_Node
-	tail       []ww.Any
-}
-
-// NewVectorBuilder returns a new VectorBuilder, using the a to create the root
-// vector node.
-func NewVectorBuilder(a capnp.Arena) (*VectorBuilder, error) {
-	root, _, err := newVectorNode(a)
-	if err != nil {
-		return nil, err
-	}
-
-	return &VectorBuilder{
-		shift: bits,
-		root:  root,
-		tail:  make([]ww.Any, 0, 32),
-	}, nil
-}
-
-// Vector returns the accumulated vector.
-func (b *VectorBuilder) Vector() (vec Vector, err error) {
-	if b.cnt == 0 {
-		return EmptyVector, nil
-	}
-
-	var tail api.Value_List
-	if tail, err = newVectorTail(capnp.SingleSegment(nil), len(b.tail)); err != nil {
-		return
-	}
-
-	for i, any := range b.tail {
-		if err = tail.Set(i&mask, any.MemVal().Raw); err != nil {
-			return
-		}
-	}
-
-	_, vec, err = newVector(capnp.SingleSegment(nil),
-		b.cnt,
-		b.shift,
-		b.root,
-		tail)
-	return
-}
-
-// Conj appends the values to the vector under construction.
-func (b *VectorBuilder) Conj(v ww.Any) (err error) {
-	// room in tail?
-	if len(b.tail) < width {
-		b.tail = append(b.tail, v)
-		b.cnt++
-		return
-	}
-
-	// full tail; push into tree
-	if err = b.insertTail(); err == nil {
-		// shove v into the tail
-		b.tail = append(b.tail[:0], v)
-		b.cnt++
-	}
-
-	return
-}
-
-func (b *VectorBuilder) insertTail() (err error) {
-	// create a leaf node containing the tail values
-	var tailnode api.Vector_Node
-	if tailnode, err = newVectorNodeWithValues(capnp.SingleSegment(nil), b.tail...); err != nil {
-		return
-	}
-
-	// overflow root?
-	if (b.cnt >> bits) > (1 << b.shift) {
-		if tailnode, err = newVectorPath(b.shift, tailnode); err != nil {
-			return
-		}
-
-		if b.root, err = newVectorNodeWithBranches(capnp.SingleSegment(nil),
-			b.root,   // b.root[0]
-			tailnode, // b.root[1]
-		); err != nil {
-			return
-		}
-
-		b.shift += bits
-		return
-	}
-
-	b.root, err = pushVectorTail(b.shift, b.cnt, b.root, tailnode)
-	return
-}
-
-func newVectorPath(level int, n api.Vector_Node) (_ api.Vector_Node, err error) {
+func (v PersistentVector) newPath(level int, n api.Vector_Node) (_ api.Vector_Node, err error) {
 	if level == 0 {
 		return n, nil
 	}
 
-	if n, err = newVectorPath(level-width, n); err != nil {
+	if n, err = v.newPath(level-width, n); err != nil {
 		return
 	}
 
 	return newVectorNodeWithBranches(capnp.SingleSegment(nil), n)
 }
 
-func pushVectorTail(level, cnt int, parent, tailnode api.Vector_Node) (_ api.Vector_Node, err error) {
+func (v PersistentVector) pushTail(level, cnt int, parent, tailnode api.Vector_Node) (_ api.Vector_Node, err error) {
 	// if parent is leaf => insert node,
 	//   else does it map to an existing child? => nodeToInsert = pushNode one more level
 	//   else => alloc new path
@@ -695,9 +612,9 @@ func pushVectorTail(level, cnt int, parent, tailnode api.Vector_Node) (_ api.Vec
 		}
 
 		if nodeNotNull(child) {
-			nodeToInsert, err = pushVectorTail(level-bits, cnt, child, tailnode)
+			nodeToInsert, err = v.pushTail(level-bits, cnt, child, tailnode)
 		} else {
-			nodeToInsert, err = newVectorPath(level-bits, tailnode)
+			nodeToInsert, err = v.newPath(level-bits, tailnode)
 		}
 
 		if err != nil {
@@ -974,6 +891,7 @@ func newVectorNodeWithValues(a capnp.Arena, vs ...ww.Any) (n api.Vector_Node, er
 	return
 }
 
+// vs is always the old tail, which is now being pushed into the trie.
 func (PersistentVector) newLeafNode(a capnp.Arena, vs api.Value_List) (n api.Vector_Node, err error) {
 	if n, err = newRootVectorNode(a); err == nil {
 		err = n.SetValues(vs)

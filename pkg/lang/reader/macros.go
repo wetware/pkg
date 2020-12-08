@@ -162,18 +162,15 @@ func readVector(rd *reader.Reader, _ rune) (score.Any, error) {
 
 	beginPos := rd.Position()
 
-	b, err := core.NewVectorBuilder(capnp.SingleSegment(nil))
-	if err != nil {
-		return nil, err
-	}
-
-	if err := rd.Container(vecEnd, "vector", func(val score.Any) error {
-		return b.Conj(val.(ww.Any))
+	var vec core.Container = core.EmptyVector
+	if err := rd.Container(vecEnd, "vector", func(val score.Any) (err error) {
+		vec, err = vec.Conj(val.(ww.Any))
+		return
 	}); err != nil {
 		return nil, annotateErr(rd, err, beginPos, "")
 	}
 
-	return b.Vector()
+	return vec, nil
 }
 
 func quoteFormReader(expandFunc string) reader.Macro {

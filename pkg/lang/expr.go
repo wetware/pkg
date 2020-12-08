@@ -243,7 +243,7 @@ type PathListExpr struct {
 	Args []ww.Any
 }
 
-// Eval calls ww.Anchor.Ls
+// Eval calls ww.Anchor.Ls and returns a vector of paths
 func (plx PathListExpr) Eval(core.Env) (score.Any, error) {
 	path, err := plx.Path.Parts()
 	if err != nil {
@@ -255,24 +255,15 @@ func (plx PathListExpr) Eval(core.Env) (score.Any, error) {
 		return nil, err
 	}
 
-	b, err := core.NewVectorBuilder(capnp.SingleSegment(nil))
-	if err != nil {
-		return nil, err
-	}
-
-	for _, a := range as {
-		// TODO(performance):  cache the anchors.
-		p, err := core.NewPath(capnp.SingleSegment(nil), anchorpath.Join(a.Path()))
+	ps := make([]ww.Any, len(as))
+	for i, a := range as {
+		ps[i], err = core.NewPath(capnp.SingleSegment(nil), anchorpath.Join(a.Path()))
 		if err != nil {
 			return nil, err
 		}
-
-		if err = b.Conj(p); err != nil {
-			return nil, err
-		}
 	}
 
-	return b.Vector()
+	return core.NewVector(capnp.SingleSegment(nil), ps...)
 }
 
 // VectorExpr .

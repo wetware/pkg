@@ -311,23 +311,17 @@ func toKeyword(v reflect.Value) (ww.Any, error) {
 }
 
 func toVector(v reflect.Value) (ww.Any, error) {
-	b, err := core.NewVectorBuilder(capnp.SingleSegment(nil))
-	if err != nil {
-		return nil, err
-	}
-
-	for i := 0; i < v.Len(); i++ {
-		any, ok := v.Index(i).Interface().(ww.Any)
-		if !ok {
-			return nil, fmt.Errorf("%s is not ww.Any", v.Type())
+	as := make([]ww.Any, v.Len())
+	for i := range as {
+		if any, ok := v.Index(i).Interface().(ww.Any); ok {
+			as[i] = any
+			continue
 		}
 
-		if err = b.Conj(any); err != nil {
-			return nil, err
-		}
+		return nil, fmt.Errorf("%s is not ww.Any", v.Type())
 	}
 
-	return b.Vector()
+	return core.NewVector(capnp.SingleSegment(nil), as...)
 }
 
 func maybeNil(adapt adapter) adapter {

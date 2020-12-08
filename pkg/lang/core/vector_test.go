@@ -12,6 +12,21 @@ import (
 	capnp "zombiezen.com/go/capnproto2"
 )
 
+func TestDebugXXX(t *testing.T) {
+	var err error
+	var vec core.Container = core.EmptyVector
+	const size int64 = 2048
+
+	for i := int64(0); i < size; i++ {
+		vec, err = vec.Conj(mustInt(i))
+		require.NoError(t, err, "error encountered on iteration %d", i)
+	}
+
+	cnt, err := vec.Count()
+	require.NoError(t, err)
+	assert.Equal(t, cnt, size)
+}
+
 func TestEmptyVector(t *testing.T) {
 	t.Parallel()
 
@@ -65,20 +80,20 @@ func TestEmptyVector(t *testing.T) {
 		assert.True(t, eq, "vector v should be equal to v2.")
 	})
 
-	t.Run("BuldLarge", func(t *testing.T) {
-		var err error
-		var vec core.Container = core.EmptyVector
-		const size int64 = 2048
+	// t.Run("BuldLarge", func(t *testing.T) {
+	// 	var err error
+	// 	var vec core.Container = core.EmptyVector
+	// 	const size int64 = 2048
 
-		for i := int64(0); i < size; i++ {
-			vec, err = vec.Conj(mustInt(i))
-			require.NoError(t, err, "error encountered on iteration %d", i)
-		}
+	// 	for i := int64(0); i < size; i++ {
+	// 		vec, err = vec.Conj(mustInt(i))
+	// 		require.NoError(t, err, "error encountered on iteration %d", i)
+	// 	}
 
-		cnt, err := vec.Count()
-		require.NoError(t, err)
-		assert.Equal(t, cnt, size)
-	})
+	// 	cnt, err := vec.Count()
+	// 	require.NoError(t, err)
+	// 	assert.Equal(t, cnt, size)
+	// })
 
 	t.Run("Seq", func(t *testing.T) {
 		seq, err := core.EmptyVector.Seq()
@@ -97,27 +112,27 @@ func TestNewVector(t *testing.T) {
 		desc string
 		vs   []ww.Any
 	}{{
-		// 	desc: "empty",
-		// 	vs:   []ww.Any{},
+		desc: "empty",
+		vs:   []ww.Any{},
+	}, {
+		desc: "single",
+		vs:   []ww.Any{mustKeyword("specimen")},
+	}, {
+		desc: "multi",
+		vs: []ww.Any{
+			mustKeyword("keyword"),
+			mustString("string"),
+			mustSymbol("symbol"),
+			mustChar('🧠')},
+	}, {
+		desc: "multinode",
+		vs:   valueRange(64), // overflow single node
+	}, {
+		desc: "multibranch",
+		vs:   valueRange(1025), // tree w/ single branch-node => max size of 1024
 		// }, {
-		// 	desc: "single",
-		// 	vs:   []ww.Any{mustKeyword("specimen")},
-		// }, {
-		// 	desc: "multi",
-		// 	vs: []ww.Any{
-		// 		mustKeyword("keyword"),
-		// 		mustString("string"),
-		// 		mustSymbol("symbol"),
-		// 		mustChar('🧠')},
-		// }, {
-		// 	desc: "multinode",
-		// 	vs:   valueRange(64), // overflow single node
-		// }, {
-		// 	desc: "multibranch",
-		// 	vs:   valueRange(1025), // tree w/ single branch-node => max size of 1024
-		// }, {
-		desc: "big",
-		vs:   valueRange(2048),
+		// 	desc: "big",
+		// 	vs:   valueRange(2048),
 	}} {
 		t.Run(tt.desc, func(t *testing.T) {
 			vec, err := core.NewVector(capnp.SingleSegment(nil), tt.vs...)
