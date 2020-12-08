@@ -973,15 +973,8 @@ func newVectorNodeWithValues(a capnp.Arena, vs ...ww.Any) (n api.Vector_Node, er
 }
 
 func cloneTail(a capnp.Arena, tail api.Value_List) (n api.Vector_Node, err error) {
-	var vals api.Value_List
-	if n, vals, err = newVectorLeafNode(a); err != nil {
-		return
-	}
-
-	for i := 0; i < tail.Len(); i++ {
-		if err = vals.Set(i, tail.At(i)); err != nil {
-			break
-		}
+	if n, err = newRootVectorNode(a); err == nil {
+		err = n.SetValues(tail)
 	}
 
 	return
