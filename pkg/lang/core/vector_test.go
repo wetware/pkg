@@ -64,6 +64,15 @@ func TestEmptyVector(t *testing.T) {
 
 		assert.True(t, eq, "vector v should be equal to v2.")
 	})
+
+	t.Run("Seq", func(t *testing.T) {
+		seq, err := core.EmptyVector.Seq()
+		require.NoError(t, err)
+
+		cnt, err := seq.Count()
+		require.NoError(t, err)
+		require.Zero(t, cnt)
+	})
 }
 
 func TestNewVector(t *testing.T) {

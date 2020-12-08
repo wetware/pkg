@@ -231,6 +231,10 @@ func (v PersistentVector) Seq() (Seq, error) {
 		return nil, err
 	}
 
+	if vec.Count() == 0 {
+		return EmptyList, nil
+	}
+
 	return newChunkedSeq(nil, vec, 0, 0)
 }
 
