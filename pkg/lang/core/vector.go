@@ -383,7 +383,7 @@ func (v PersistentVector) cons(vec api.Vector, cnt int, any ww.Any) (_ Persisten
 	}
 
 	/*
-		fast path; room in tail?
+		Fast path; room in tail?
 	*/
 	if cnt-vectorTailoff(cnt) < 32 {
 		var newtail api.Value_List
@@ -408,14 +408,16 @@ func (v PersistentVector) cons(vec api.Vector, cnt int, any ww.Any) (_ Persisten
 	}
 
 	/*
-		slow path; push to tree
+		Slow path; push to tree
 	*/
+
+	// Wrap the tail in a node so that we can push it into the trie.
 	var tailnode api.Vector_Node
 	if tailnode, err = v.newLeafNode(capnp.SingleSegment(nil), tail); err != nil {
 		return
 	}
 
-	// overflow root?
+	// Overflow root?
 	if (cnt >> bits) > (1 << shift) {
 		if tailnode, err = newVectorPath(shift, tailnode); err != nil {
 			return
