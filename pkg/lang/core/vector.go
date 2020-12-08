@@ -174,7 +174,7 @@ func (v PersistentVector) conj(items ...ww.Any) (PersistentVector, error) {
 			return PersistentVector{}, err
 		}
 
-		if v, err = vectorCons(vec, cnt, item); err != nil {
+		if v, err = v.cons(vec, cnt, item); err != nil {
 			return PersistentVector{}, err
 		}
 	}
@@ -205,12 +205,12 @@ func (v PersistentVector) Assoc(i int, val ww.Any) (Vector, error) {
 
 	// update?
 	if i >= 0 && i < cnt {
-		return vectorUpdate(vec, cnt, i, val)
+		return v.update(vec, cnt, i, val)
 	}
 
 	// append?
 	if i == cnt {
-		return vectorCons(vec, cnt, val)
+		return v.cons(vec, cnt, val)
 	}
 
 	return nil, ErrIndexOutOfBounds
@@ -331,7 +331,7 @@ func apiVectorArrayFor(vec api.Vector, cnt, i int) (api.Value_List, error) {
 	return n.Values()
 }
 
-func vectorUpdate(vec api.Vector, cnt, i int, any ww.Any) (Vector, error) {
+func (PersistentVector) update(vec api.Vector, cnt, i int, any ww.Any) (Vector, error) {
 	root, err := vec.Root()
 	if err != nil {
 		return nil, err
@@ -369,7 +369,7 @@ func vectorUpdate(vec api.Vector, cnt, i int, any ww.Any) (Vector, error) {
 	return res, err
 }
 
-func vectorCons(vec api.Vector, cnt int, any ww.Any) (_ PersistentVector, err error) {
+func (PersistentVector) cons(vec api.Vector, cnt int, any ww.Any) (_ PersistentVector, err error) {
 	shift := int(vec.Shift())
 
 	var root api.Vector_Node
