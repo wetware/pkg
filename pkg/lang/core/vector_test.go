@@ -65,6 +65,21 @@ func TestEmptyVector(t *testing.T) {
 		assert.True(t, eq, "vector v should be equal to v2.")
 	})
 
+	t.Run("BuldLarge", func(t *testing.T) {
+		var err error
+		var vec core.Container = core.EmptyVector
+		const size int64 = 2048
+
+		for i := int64(0); i < size; i++ {
+			vec, err = vec.Conj(mustInt(i))
+			require.NoError(t, err, "error encountered on iteration %d", i)
+		}
+
+		cnt, err := vec.Count()
+		require.NoError(t, err)
+		assert.Equal(t, cnt, size)
+	})
+
 	t.Run("Seq", func(t *testing.T) {
 		seq, err := core.EmptyVector.Seq()
 		require.NoError(t, err)
@@ -82,24 +97,27 @@ func TestNewVector(t *testing.T) {
 		desc string
 		vs   []ww.Any
 	}{{
-		desc: "empty",
-		vs:   []ww.Any{},
-	}, {
-		desc: "single",
-		vs:   []ww.Any{mustKeyword("specimen")},
-	}, {
-		desc: "multi",
-		vs: []ww.Any{
-			mustKeyword("keyword"),
-			mustString("string"),
-			mustSymbol("symbol"),
-			mustChar('🧠')},
-	}, {
-		desc: "multinode",
-		vs:   valueRange(64), // overflow single node
-	}, {
-		desc: "multibranch",
-		vs:   valueRange(1025), // tree w/ single branch-node => max size of 1024
+		// 	desc: "empty",
+		// 	vs:   []ww.Any{},
+		// }, {
+		// 	desc: "single",
+		// 	vs:   []ww.Any{mustKeyword("specimen")},
+		// }, {
+		// 	desc: "multi",
+		// 	vs: []ww.Any{
+		// 		mustKeyword("keyword"),
+		// 		mustString("string"),
+		// 		mustSymbol("symbol"),
+		// 		mustChar('🧠')},
+		// }, {
+		// 	desc: "multinode",
+		// 	vs:   valueRange(64), // overflow single node
+		// }, {
+		// 	desc: "multibranch",
+		// 	vs:   valueRange(1025), // tree w/ single branch-node => max size of 1024
+		// }, {
+		desc: "big",
+		vs:   valueRange(2048),
 	}} {
 		t.Run(tt.desc, func(t *testing.T) {
 			vec, err := core.NewVector(capnp.SingleSegment(nil), tt.vs...)
@@ -113,7 +131,13 @@ func TestNewVector(t *testing.T) {
 					break
 				}
 
-				assert.Equal(t, mustRender(want), mustRender(got),
+				wantc, err := core.Canonical(want)
+				require.NoError(t, err)
+
+				gotc, err := core.Canonical(got)
+				require.NoError(t, err)
+
+				assert.Equal(t, wantc, gotc,
 					"expected %s, got %s", mustRender(want), mustRender(got))
 			}
 		})
@@ -353,6 +377,21 @@ func TestVectorEquality(t *testing.T) {
 				"expected %s, got %s", mustRender(tt.v), mustRender(tt.newVector()))
 		})
 	}
+}
+
+func TestVectorSeq(t *testing.T) {
+	seq, err := vectorRange(1024).Seq()
+	require.NoError(t, err)
+	require.NotNil(t, seq)
+
+	var i int64
+	require.NoError(t, core.ForEach(seq, func(item ww.Any) (bool, error) {
+		idx := item.MemVal().Raw.I64()
+		require.Equal(t, i, idx,
+			"order invariant violated:  expected to visit index %d, got %d", i, idx)
+		i = idx
+		return false, nil
+	}), "error encountered during iteration:  failed call to seq.First() or seq.Next()")
 }
 
 func mustVector(vs ...ww.Any) core.Vector {
