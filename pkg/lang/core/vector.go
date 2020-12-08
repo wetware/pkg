@@ -369,7 +369,7 @@ func (PersistentVector) update(vec api.Vector, cnt, i int, any ww.Any) (Vector, 
 	return res, err
 }
 
-func (PersistentVector) cons(vec api.Vector, cnt int, any ww.Any) (_ PersistentVector, err error) {
+func (v PersistentVector) cons(vec api.Vector, cnt int, any ww.Any) (_ PersistentVector, err error) {
 	shift := int(vec.Shift())
 
 	var root api.Vector_Node
@@ -395,7 +395,7 @@ func (PersistentVector) cons(vec api.Vector, cnt int, any ww.Any) (_ PersistentV
 			return
 		}
 
-		if err = newtail.Set(tail.Len()&mask, any.MemVal().Raw); err != nil {
+		if err = newtail.Set(tail.Len(), any.MemVal().Raw); err != nil {
 			return
 		}
 
