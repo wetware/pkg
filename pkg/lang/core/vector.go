@@ -58,6 +58,7 @@ func init() {
 // insertions.
 type Vector interface {
 	ww.Any
+	Seq() (Seq, error)
 	Count() (int, error)
 	Conj(...ww.Any) (Container, error)
 	EntryAt(i int) (ww.Any, error)
