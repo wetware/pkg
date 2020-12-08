@@ -411,7 +411,7 @@ func (v PersistentVector) cons(vec api.Vector, cnt int, any ww.Any) (_ Persisten
 		slow path; push to tree
 	*/
 	var tailnode api.Vector_Node
-	if tailnode, err = cloneTail(capnp.SingleSegment(nil), tail); err != nil {
+	if tailnode, err = v.newLeafNode(capnp.SingleSegment(nil), tail); err != nil {
 		return
 	}
 
@@ -972,9 +972,9 @@ func newVectorNodeWithValues(a capnp.Arena, vs ...ww.Any) (n api.Vector_Node, er
 	return
 }
 
-func cloneTail(a capnp.Arena, tail api.Value_List) (n api.Vector_Node, err error) {
+func (PersistentVector) newLeafNode(a capnp.Arena, vs api.Value_List) (n api.Vector_Node, err error) {
 	if n, err = newRootVectorNode(a); err == nil {
-		err = n.SetValues(tail)
+		err = n.SetValues(vs)
 	}
 
 	return
