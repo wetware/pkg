@@ -150,7 +150,7 @@ func TestVectorRender(t *testing.T) {
 	}
 }
 
-func TestAssoc(t *testing.T) {
+func TestVectorAssoc(t *testing.T) {
 	t.Parallel()
 
 	t.Run("Append", func(t *testing.T) {
