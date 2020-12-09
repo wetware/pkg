@@ -102,12 +102,6 @@ func (v PersistentVector) Invoke(args ...ww.Any) (ww.Any, error) {
 
 // Render the vector in a human-readable format.
 func (v PersistentVector) Render() (string, error) {
-	return v.render(func(any ww.Any) (string, error) {
-		return Render(any)
-	})
-}
-
-func (v PersistentVector) render(f func(ww.Any) (string, error)) (string, error) {
 	cnt, err := v.Count()
 	if err != nil {
 		return "", err
@@ -122,7 +116,7 @@ func (v PersistentVector) render(f func(ww.Any) (string, error)) (string, error)
 			return "", fmt.Errorf("%w: index %d", err, i)
 		}
 
-		s, err := f(val)
+		s, err := Render(val)
 		if err != nil {
 			return "", fmt.Errorf("%w: index %d", err, i)
 		}
