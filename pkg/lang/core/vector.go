@@ -380,7 +380,7 @@ func (v PersistentVector) cons(vec api.Vector, cnt int, any ww.Any) (_ Persisten
 			return
 		}
 
-		if err = copyVectorTail(newtail, tail, -1); err != nil {
+		if err = copyVectorTail(newtail, tail, cnt&mask); err != nil {
 			return
 		}
 
@@ -1007,10 +1007,6 @@ func newVectorValueList(a capnp.Arena, size int) (_ api.Value_List, err error) {
 }
 
 func copyVectorTail(dst, src api.Value_List, lim int) (err error) {
-	if lim < 0 {
-		lim = src.Len()
-	}
-
 	for i := 0; i < lim; i++ {
 		if err = dst.Set(i, src.At(i)); err != nil {
 			break
