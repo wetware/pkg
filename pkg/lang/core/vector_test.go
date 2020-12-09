@@ -12,21 +12,6 @@ import (
 	capnp "zombiezen.com/go/capnproto2"
 )
 
-func TestDebugXXX(t *testing.T) {
-	var err error
-	var vec core.Container = core.EmptyVector
-	const size int64 = 2048
-
-	for i := int64(0); i < size; i++ {
-		vec, err = vec.Conj(mustInt(i))
-		require.NoError(t, err, "error encountered on iteration %d", i)
-	}
-
-	cnt, err := vec.Count()
-	require.NoError(t, err)
-	assert.Equal(t, cnt, size)
-}
-
 func TestEmptyVector(t *testing.T) {
 	t.Parallel()
 
@@ -80,20 +65,20 @@ func TestEmptyVector(t *testing.T) {
 		assert.True(t, eq, "vector v should be equal to v2.")
 	})
 
-	// t.Run("BuldLarge", func(t *testing.T) {
-	// 	var err error
-	// 	var vec core.Container = core.EmptyVector
-	// 	const size int64 = 2048
+	t.Run("BuldLarge", func(t *testing.T) {
+		var err error
+		var vec core.Container = core.EmptyVector
+		const size = 2048
 
-	// 	for i := int64(0); i < size; i++ {
-	// 		vec, err = vec.Conj(mustInt(i))
-	// 		require.NoError(t, err, "error encountered on iteration %d", i)
-	// 	}
+		for i := int64(0); i < int64(size); i++ {
+			vec, err = vec.Conj(mustInt(i))
+			require.NoError(t, err, "error encountered on iteration %d", i)
+		}
 
-	// 	cnt, err := vec.Count()
-	// 	require.NoError(t, err)
-	// 	assert.Equal(t, cnt, size)
-	// })
+		cnt, err := vec.Count()
+		require.NoError(t, err)
+		assert.Equal(t, cnt, size)
+	})
 
 	t.Run("Seq", func(t *testing.T) {
 		seq, err := core.EmptyVector.Seq()
@@ -395,7 +380,12 @@ func TestVectorEquality(t *testing.T) {
 }
 
 func TestVectorSeq(t *testing.T) {
-	seq, err := vectorRange(1024).Seq()
+	is := make([]ww.Any, 2048)
+	for i := range is {
+		is[i] = mustInt(int64(i))
+	}
+
+	seq, err := mustVector(is...).Seq()
 	require.NoError(t, err)
 	require.NotNil(t, seq)
 

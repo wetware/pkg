@@ -434,7 +434,7 @@ func (v PersistentVector) cons(vec api.Vector, cnt int, any ww.Any) (_ Persisten
 			return
 		}
 
-		shift += 5
+		shift += bits
 	} else {
 		if newroot, err = v.pushTail(shift, cnt, root, tailnode); err != nil {
 			return
@@ -570,7 +570,7 @@ func (v PersistentVector) pop() (vec api.Vector, _ Vector, err error) {
 
 	if shift > bits && nullNode(bs.At(1)) {
 		newroot = bs.At(0)
-		shift -= 5
+		shift -= bits
 	}
 
 	return newVector(capnp.SingleSegment(nil),
@@ -580,16 +580,32 @@ func (v PersistentVector) pop() (vec api.Vector, _ Vector, err error) {
 		newtail)
 }
 
-func (v PersistentVector) newPath(level int, n api.Vector_Node) (_ api.Vector_Node, err error) {
+func (v PersistentVector) newPath(level int, node api.Vector_Node) (ret api.Vector_Node, err error) {
 	if level == 0 {
-		return n, nil
+		return node, nil
 	}
 
-	if n, err = v.newPath(level-width, n); err != nil {
+	if ret, err = newRootVectorNode(capnp.SingleSegment(nil)); err != nil {
 		return
 	}
 
-	return newVectorNodeWithBranches(capnp.SingleSegment(nil), n)
+	var array api.Vector_Node_List
+	/*
+		TODO(optimization)
+		Right now we allocate fixed-size branches.  This reduces the number of allocations
+		when building large vectors, but wastes a bit of space on the wire.  Investigate
+		whether we can efficiently grow branches.
+	*/
+	if array, err = ret.NewBranches(width); err != nil {
+		return
+	}
+
+	var path api.Vector_Node
+	if path, err = v.newPath(level-bits, node); err == nil {
+		err = array.Set(0, path)
+	}
+
+	return
 }
 
 func (v PersistentVector) pushTail(level, cnt int, parent, tailnode api.Vector_Node) (_ api.Vector_Node, err error) {
