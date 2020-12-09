@@ -717,10 +717,14 @@ func (cs chunkedSeq) Count() (cnt int, err error) {
 
 	var vec api.Vector
 	if vec, err = seq.Vector(); err == nil {
-		cnt = int(vec.Count() - (seq.Index() - seq.Offset()))
+		cnt = cs.count(seq, vec)
 	}
 
 	return
+}
+
+func (cs chunkedSeq) count(seq api.VectorSeq, vec api.Vector) int {
+	return int(vec.Count() - (seq.Index() - seq.Offset()))
 }
 
 func (cs chunkedSeq) First() (ww.Any, error) {
@@ -751,11 +755,11 @@ func (cs chunkedSeq) Next() (Seq, error) {
 	if cs.offset(seq)+1 < node.Len() {
 		val, err := mem.NewValue(cs.newArena())
 		if err != nil {
-			return chunkedSeq{}, nil
+			return nil, err
 		}
 
 		if err = val.Raw.SetVectorSeq(seq); err != nil {
-			return chunkedSeq{}, nil
+			return nil, err
 		}
 
 		if seq, err = val.Raw.VectorSeq(); err == nil {
