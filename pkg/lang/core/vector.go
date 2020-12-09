@@ -384,7 +384,7 @@ func (v PersistentVector) cons(vec api.Vector, cnt int, any ww.Any) (_ Persisten
 			return
 		}
 
-		if err = newtail.Set(tail.Len(), any.MemVal().Raw); err != nil {
+		if err = newtail.Set(cnt&mask, any.MemVal().Raw); err != nil {
 			return
 		}
 
