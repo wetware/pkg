@@ -519,17 +519,17 @@ func (v PersistentVector) pop() (vec api.Vector, _ Vector, err error) {
 
 	// more than one item in the tail?
 	var newtail api.Value_List
-	if cnt-vectorTailoff(cnt) > 1 {
+	if pos := cnt - vectorTailoff(cnt); pos > 1 {
 		var tail api.Value_List
 		if tail, err = vec.Tail(); err != nil {
 			return
 		}
 
-		if newtail, err = newVectorValueList(capnp.SingleSegment(nil), tail.Len()-1); err != nil {
+		if newtail, err = newVectorValueList(capnp.SingleSegment(nil), pos-1); err != nil {
 			return
 		}
 
-		if err = copyVectorTail(newtail, tail, newtail.Len()); err != nil {
+		if err = copyVectorTail(newtail, tail, pos-1); err != nil {
 			return
 		}
 
