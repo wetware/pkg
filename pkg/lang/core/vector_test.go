@@ -394,7 +394,7 @@ func TestVectorSeq(t *testing.T) {
 		idx := item.MemVal().Raw.I64()
 		require.Equal(t, i, idx,
 			"order invariant violated:  expected to visit index %d, got %d", i, idx)
-		i = idx
+		i++
 		return false, nil
 	}), "error encountered during iteration:  failed call to seq.First() or seq.Next()")
 }
