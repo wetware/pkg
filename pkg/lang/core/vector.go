@@ -517,14 +517,14 @@ func (v PersistentVector) pop() (vec api.Vector, _ Vector, err error) {
 		return
 	}
 
-	var tail api.Value_List
-	if tail, err = vec.Tail(); err != nil {
-		return
-	}
-
 	// more than one item in the tail?
 	var newtail api.Value_List
 	if cnt-vectorTailoff(cnt) > 1 {
+		var tail api.Value_List
+		if tail, err = vec.Tail(); err != nil {
+			return
+		}
+
 		if newtail, err = newVectorValueList(capnp.SingleSegment(nil), tail.Len()-1); err != nil {
 			return
 		}
