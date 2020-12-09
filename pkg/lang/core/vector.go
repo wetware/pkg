@@ -288,8 +288,10 @@ func apiVectorArrayFor(vec api.Vector, cnt, i int) (api.Value_List, error) {
 		return api.Value_List{}, err
 	}
 
+	shift := vec.Shift()
+
 	var bs api.Vector_Node_List
-	for level := vec.Shift(); level > 0; level -= bits {
+	for level := shift; level > 0; level -= bits {
 		if !n.HasBranches() {
 			return api.Value_List{}, Error{
 				Cause:   ErrInvalidVectorNode,
