@@ -374,7 +374,7 @@ func (v PersistentVector) cons(vec api.Vector, cnt int, any ww.Any) (_ Persisten
 	/*
 		Fast path; room in tail?
 	*/
-	if cnt-vectorTailoff(cnt) < 32 {
+	if cnt-vectorTailoff(cnt) < width {
 		var newtail api.Value_List
 		if newtail, err = newVectorValueList(capnp.SingleSegment(nil), tail.Len()+1); err != nil {
 			return
@@ -491,7 +491,7 @@ func apiVectorAssoc(level int, n api.Vector_Node, i int, v ww.Any) (ret api.Vect
 }
 
 func vectorTailoff(cnt int) int {
-	if cnt < 32 {
+	if cnt < width {
 		return 0
 	}
 
