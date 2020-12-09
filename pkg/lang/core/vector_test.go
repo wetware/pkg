@@ -12,6 +12,8 @@ import (
 	capnp "zombiezen.com/go/capnproto2"
 )
 
+const bigvec = 4097 // 2**12 + 1
+
 func TestEmptyVector(t *testing.T) {
 	t.Parallel()
 
@@ -63,21 +65,6 @@ func TestEmptyVector(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.True(t, eq, "vector v should be equal to v2.")
-	})
-
-	t.Run("BuldLarge", func(t *testing.T) {
-		var err error
-		var vec core.Container = core.EmptyVector
-		const size = 2048
-
-		for i := int64(0); i < int64(size); i++ {
-			vec, err = vec.Conj(mustInt(i))
-			require.NoError(t, err, "error encountered on iteration %d", i)
-		}
-
-		cnt, err := vec.Count()
-		require.NoError(t, err)
-		assert.Equal(t, cnt, size)
 	})
 
 	t.Run("Seq", func(t *testing.T) {
@@ -267,6 +254,20 @@ func TestVectorAssoc(t *testing.T) {
 	})
 }
 
+func TestVectorConj(t *testing.T) {
+	var err error
+	var vec core.Container = core.EmptyVector
+
+	for i := int64(0); i < int64(bigvec); i++ {
+		vec, err = vec.Conj(mustInt(i))
+		require.NoError(t, err, "error encountered on iteration %d", i)
+	}
+
+	cnt, err := vec.Count()
+	require.NoError(t, err)
+	assert.Equal(t, cnt, bigvec)
+}
+
 func TestVectorPop(t *testing.T) {
 	for _, tt := range []struct {
 		desc      string
@@ -384,9 +385,7 @@ func TestVectorEquality(t *testing.T) {
 }
 
 func TestVectorSeq(t *testing.T) {
-	const nItems = 2049
-
-	is := make([]ww.Any, nItems)
+	is := make([]ww.Any, bigvec)
 	for i := range is {
 		is[i] = mustInt(int64(i))
 	}
@@ -397,7 +396,7 @@ func TestVectorSeq(t *testing.T) {
 
 	cnt, err := seq.Count()
 	require.NoError(t, err)
-	require.Equal(t, nItems, cnt)
+	require.Equal(t, bigvec, cnt)
 
 	var i int64
 	require.NoError(t, core.ForEach(seq, func(item ww.Any) (bool, error) {
