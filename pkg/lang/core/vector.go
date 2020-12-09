@@ -242,7 +242,7 @@ func popVectorTail(level, cnt int, n api.Vector_Node) (ret api.Vector_Node, ok b
 			return
 		}
 
-		if ret, err = cloneBranchNode(capnp.SingleSegment(nil), n, -1); err != nil {
+		if ret, err = cloneBranchNode(capnp.SingleSegment(nil), n, subidx); err != nil {
 			return
 		}
 

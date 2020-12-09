@@ -294,6 +294,10 @@ func TestVectorPop(t *testing.T) {
 		desc: "multibranch",
 		vec:  mustVector(valueRange(1025)...), // tree w/ single branch-node => max size of 1024
 		want: mustVector(valueRange(1024)...),
+	}, {
+		desc: "multibranch-big",
+		vec:  mustVector(valueRange(2049)...),
+		want: mustVector(valueRange(2048)...),
 	}} {
 		t.Run(tt.desc, func(t *testing.T) {
 			got, err := tt.vec.Pop()
