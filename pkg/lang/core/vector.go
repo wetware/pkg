@@ -139,11 +139,10 @@ func (v PersistentVector) Count() (cnt int, err error) {
 }
 
 func (v PersistentVector) count() (vec api.Vector, cnt int, err error) {
-	if vec, err = v.Raw.Vector(); err != nil {
-		return
+	if vec, err = v.Raw.Vector(); err == nil {
+		cnt = int(vec.Count())
 	}
 
-	cnt = int(vec.Count())
 	return
 }
 
@@ -484,6 +483,7 @@ func apiVectorAssoc(level int, n api.Vector_Node, i int, v ww.Any) (ret api.Vect
 
 }
 
+// number of items in the actual trie (i.e. not in the tail)
 func vectorTailoff(cnt int) int {
 	if cnt < width {
 		return 0
@@ -717,14 +717,10 @@ func (cs chunkedSeq) Count() (cnt int, err error) {
 
 	var vec api.Vector
 	if vec, err = seq.Vector(); err == nil {
-		cnt = cs.count(seq, vec)
+		cnt = int(vec.Count() - (seq.Index() + seq.Offset()))
 	}
 
 	return
-}
-
-func (cs chunkedSeq) count(seq api.VectorSeq, vec api.Vector) int {
-	return int(vec.Count() - (seq.Index() - seq.Offset()))
 }
 
 func (cs chunkedSeq) First() (ww.Any, error) {
@@ -738,53 +734,7 @@ func (cs chunkedSeq) First() (ww.Any, error) {
 		return nil, err
 	}
 
-	return AsAny(mem.Value{Raw: node.At(cs.offset(seq))})
-}
-
-func (cs chunkedSeq) Next() (Seq, error) {
-	seq, err := cs.Raw.VectorSeq()
-	if err != nil {
-		return nil, err
-	}
-
-	node, err := cs.node(seq)
-	if err != nil {
-		return nil, err
-	}
-
-	if cs.offset(seq)+1 < node.Len() {
-		val, err := mem.NewValue(cs.newArena())
-		if err != nil {
-			return nil, err
-		}
-
-		if err = val.Raw.SetVectorSeq(seq); err != nil {
-			return nil, err
-		}
-
-		if seq, err = val.Raw.VectorSeq(); err == nil {
-			seq.SetOffset(seq.Offset() + 1)
-		}
-
-		return chunkedSeq{
-			Value:    val,
-			newArena: cs.newArena,
-		}, nil
-	}
-
-	return cs.chunkedNext()
-}
-
-func (cs chunkedSeq) index(seq api.VectorSeq) int  { return int(seq.Index()) }
-func (cs chunkedSeq) offset(seq api.VectorSeq) int { return int(seq.Offset()) }
-
-func (cs chunkedSeq) node(seq api.VectorSeq) (api.Value_List, error) {
-	vec, err := seq.Vector()
-	if err != nil {
-		return api.Value_List{}, err
-	}
-
-	return apiVectorArrayFor(vec, int(vec.Count()), cs.index(seq))
+	return AsAny(mem.Value{Raw: node.At(int(seq.Offset()))})
 }
 
 func (cs chunkedSeq) chunkedNext() (Seq, error) {
@@ -798,18 +748,55 @@ func (cs chunkedSeq) chunkedNext() (Seq, error) {
 		return nil, err
 	}
 
-	node, err := cs.node(seq)
-	if err != nil {
-		return nil, err
-	}
+	nodelen := uint32(cs.nodeLen(seq, vec))
 
 	// more?
-	if i := seq.Index() + uint32(node.Len()); i < vec.Count() {
-		return newChunkedSeq(cs.newArena, vec, i, 0)
+	if i := seq.Index(); i+nodelen < vec.Count() {
+		return newChunkedSeq(cs.newArena, vec, i+nodelen, 0)
 	}
 
 	// end of sequence
 	return nil, nil
+}
+
+func (cs chunkedSeq) Next() (Seq, error) {
+	seq, err := cs.Raw.VectorSeq()
+	if err != nil {
+		return nil, err
+	}
+
+	vec, err := seq.Vector()
+	if err != nil {
+		return nil, err
+	}
+
+	if int(seq.Offset()+1) < cs.nodeLen(seq, vec) {
+		return newChunkedSeq(cs.newArena, vec, seq.Index(), seq.Offset()+1)
+	}
+
+	return cs.chunkedNext()
+}
+
+// length of the current array
+func (cs chunkedSeq) nodeLen(seq api.VectorSeq, vec api.Vector) int {
+	cnt := int(vec.Count())
+	tailoff := vectorTailoff(cnt)
+
+	// value in tail?
+	if int(seq.Index()) >= tailoff {
+		return cnt - tailoff
+	}
+
+	return width
+}
+
+func (cs chunkedSeq) node(seq api.VectorSeq) (api.Value_List, error) {
+	vec, err := seq.Vector()
+	if err != nil {
+		return api.Value_List{}, err
+	}
+
+	return apiVectorArrayFor(vec, int(vec.Count()), int(seq.Index()))
 }
 
 // prepends each item to the sequence

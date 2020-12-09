@@ -384,7 +384,9 @@ func TestVectorEquality(t *testing.T) {
 }
 
 func TestVectorSeq(t *testing.T) {
-	is := make([]ww.Any, 2048)
+	const nItems = 2049
+
+	is := make([]ww.Any, nItems)
 	for i := range is {
 		is[i] = mustInt(int64(i))
 	}
@@ -392,6 +394,10 @@ func TestVectorSeq(t *testing.T) {
 	seq, err := mustVector(is...).Seq()
 	require.NoError(t, err)
 	require.NotNil(t, seq)
+
+	cnt, err := seq.Count()
+	require.NoError(t, err)
+	require.Equal(t, nItems, cnt)
 
 	var i int64
 	require.NoError(t, core.ForEach(seq, func(item ww.Any) (bool, error) {
