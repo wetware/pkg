@@ -47,9 +47,6 @@ func init() {
 		panic(err)
 	}
 
-	vec.SetCount(0)    // TODO:  is this set by default?
-	vec.SetShift(bits) // TODO:  can we avoid setting the shift and treat EmptyVector as a special case?
-
 	// TODO(optimization):  can we skip allocating a root node for empty vector?
 	// 					    strategy:  consider pushTail with cnt==33 to be special case.
 	root, err := vec.NewRoot()
@@ -339,8 +336,18 @@ func (PersistentVector) update(vec api.Vector, cnt, i int, any ww.Any) (Vector, 
 	)
 }
 
+func (v PersistentVector) shift(vec api.Vector) (shift int) {
+	// EmptyVector leaves the `shift` field unset in order to achieve
+	// better compression.
+	if shift = int(vec.Shift()); shift == 0 {
+		shift = bits
+	}
+
+	return
+}
+
 func (v PersistentVector) cons(vec api.Vector, cnt int, any ww.Any) (_ PersistentVector, err error) {
-	shift := int(vec.Shift())
+	shift := v.shift(vec)
 
 	var root api.Vector_Node
 	if root, err = vec.Root(); err != nil {
@@ -501,8 +508,7 @@ func (v PersistentVector) pop(vec api.Vector) (_ PersistentVector, err error) {
 	cnt := int(vec.Count())
 	switch cnt {
 	case 0:
-		err = ErrIllegalState
-		return
+		return EmptyVector, ErrIllegalState
 	case 1:
 		return EmptyVector, nil
 	}
@@ -549,7 +555,9 @@ func (v PersistentVector) pop(vec api.Vector) (_ PersistentVector, err error) {
 		return
 	}
 
+	// vec.Shift() >= bits since EmptyVector.Pop() aborts with an error.
 	shift := int(vec.Shift())
+
 	var ok bool
 	var newroot api.Vector_Node
 	if newroot, ok, err = v.popTail(shift, cnt, root); err != nil {
