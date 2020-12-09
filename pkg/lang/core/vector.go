@@ -42,7 +42,7 @@ func init() {
 		panic(err)
 	}
 
-	tail, err := newVectorTail(capnp.SingleSegment([]byte{}), 0)
+	tail, err := newVectorValueList(capnp.SingleSegment([]byte{}), 0)
 	if err != nil {
 		panic(err)
 	}
@@ -376,7 +376,7 @@ func (v PersistentVector) cons(vec api.Vector, cnt int, any ww.Any) (_ Persisten
 	*/
 	if cnt-vectorTailoff(cnt) < 32 {
 		var newtail api.Value_List
-		if newtail, err = newVectorTail(capnp.SingleSegment(nil), tail.Len()+1); err != nil {
+		if newtail, err = newVectorValueList(capnp.SingleSegment(nil), tail.Len()+1); err != nil {
 			return
 		}
 
@@ -455,7 +455,7 @@ func (v PersistentVector) cons(vec api.Vector, cnt int, any ww.Any) (_ Persisten
 }
 
 func (PersistentVector) newTail(a capnp.Arena, item ww.Any) (t api.Value_List, err error) {
-	if t, err = newVectorTail(capnp.SingleSegment(nil), 1); err == nil {
+	if t, err = newVectorValueList(capnp.SingleSegment(nil), 1); err == nil {
 		err = t.Set(0, item.MemVal().Raw)
 	}
 
@@ -525,7 +525,7 @@ func (v PersistentVector) pop() (vec api.Vector, _ Vector, err error) {
 	// more than one item in the tail?
 	var newtail api.Value_List
 	if cnt-vectorTailoff(cnt) > 1 {
-		if newtail, err = newVectorTail(capnp.SingleSegment(nil), tail.Len()-1); err != nil {
+		if newtail, err = newVectorValueList(capnp.SingleSegment(nil), tail.Len()-1); err != nil {
 			return
 		}
 
@@ -831,7 +831,12 @@ func (cs chunkedSeq) Conj(items ...ww.Any) (_ Container, err error) {
 */
 
 func newVector(a capnp.Arena, cnt, shift int, root api.Vector_Node, t api.Value_List) (api.Vector, PersistentVector, error) {
-	val, vec, err := newVectorValue(a)
+	val, err := mem.NewValue(a)
+	if err != nil {
+		return api.Vector{}, PersistentVector{}, err
+	}
+
+	vec, err := val.Raw.NewVector()
 	if err != nil {
 		return api.Vector{}, PersistentVector{}, err
 	}
@@ -848,14 +853,6 @@ func newVector(a capnp.Arena, cnt, shift int, root api.Vector_Node, t api.Value_
 	vec.SetShift(uint8(shift))
 
 	return vec, PersistentVector{val}, nil
-}
-
-func newVectorValue(a capnp.Arena) (val mem.Value, vec api.Vector, err error) {
-	if val, err = mem.NewValue(a); err == nil {
-		vec, err = val.Raw.NewVector()
-	}
-
-	return
 }
 
 func newRootVectorNode(a capnp.Arena) (api.Vector_Node, error) {
@@ -900,21 +897,6 @@ func newVectorLeafNode(a capnp.Arena) (n api.Vector_Node, vs api.Value_List, err
 	return
 }
 
-func newVectorNodeWithValues(a capnp.Arena, vs ...ww.Any) (n api.Vector_Node, err error) {
-	var vals api.Value_List
-	if n, vals, err = newVectorLeafNode(a); err != nil {
-		return
-	}
-
-	for i, v := range vs {
-		if err = vals.Set(i, v.MemVal().Raw); err != nil {
-			return
-		}
-	}
-
-	return
-}
-
 // vs is always the old tail, which is now being pushed into the trie.
 func (PersistentVector) newLeafNode(a capnp.Arena, vs api.Value_List) (n api.Vector_Node, err error) {
 	if n, err = newRootVectorNode(a); err == nil {
@@ -939,7 +921,7 @@ func setNodeValue(n api.Vector_Node, i int, any ww.Any) error {
 		return err
 	}
 
-	return vs.Set(i&mask, any.MemVal().Raw)
+	return vs.Set(i, any.MemVal().Raw)
 }
 
 // cloneNode deep-copies n.  If lim >= 0, it will only copy the first `lim` elements.
@@ -1002,7 +984,7 @@ func cloneLeafNode(a capnp.Arena, n api.Vector_Node, lim int) (ret api.Vector_No
 }
 
 func cloneValueList(a capnp.Arena, vs api.Value_List) (ret api.Value_List, err error) {
-	if ret, err = newVectorTail(a, vs.Len()); err != nil {
+	if ret, err = newVectorValueList(a, vs.Len()); err != nil {
 		return
 	}
 
@@ -1015,7 +997,7 @@ func cloneValueList(a capnp.Arena, vs api.Value_List) (ret api.Value_List, err e
 	return
 }
 
-func newVectorTail(a capnp.Arena, size int) (_ api.Value_List, err error) {
+func newVectorValueList(a capnp.Arena, size int) (_ api.Value_List, err error) {
 	var seg *capnp.Segment
 	if _, seg, err = capnp.NewMessage(a); err != nil {
 		return
