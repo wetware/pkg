@@ -595,6 +595,14 @@ func (v PersistentVector) newPath(level int, node api.Vector_Node) (ret api.Vect
 		Right now we allocate fixed-size branches.  This reduces the number of allocations
 		when building large vectors, but wastes a bit of space on the wire.  Investigate
 		whether we can efficiently grow branches.
+
+		Note that this is harder than it seems.  In pushTail, for example, We can't mutate
+		an existing node, else we lose immutability guarantees.  We therefore have to create
+		a new node each time the branch array grows, which is expensive.  It is likely that
+		we will need to resort some kind of pooling strategy to offset the cost of allocation,
+		but it might end up being more performant to waste a bit of space in branch arrays.
+
+		In any case:  resist the urge to optimize this before solid benchmarks are in place.
 	*/
 	if array, err = ret.NewBranches(width); err != nil {
 		return
