@@ -170,7 +170,7 @@ func (l list) Next() (Seq, error) {
 func (l list) isNull(ll api.LinkedList) bool { return ll.Count() == 0 }
 
 func (l list) head(ll api.LinkedList) (v ww.Any, err error) {
-	var val api.Value
+	var val api.Any
 	if val, err = ll.Head(); err == nil {
 		v, err = AsAny(val)
 	}

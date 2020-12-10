@@ -10,7 +10,7 @@ $Go.package("api");
 $Go.import("github.com/wetware/ww/internal/api");
 
 
-struct Value {
+struct Any {
     union {
         nil @0 :Void;
         bool @1 :Bool;
@@ -45,9 +45,9 @@ interface Anchor {
     }
 
     walk @1 (path :Text) -> (anchor :Anchor);
-    load @2 () -> (value :Value);
-    store @3 (value :Value) -> ();
-    go @4 (args :List(Value)) -> (proc :Proc);
+    load @2 () -> (value :Any);
+    store @3 (value :Any) -> ();
+    go @4 (args :List(Any)) -> (proc :Proc);
 }
 
 
@@ -66,7 +66,7 @@ struct Fn {
             params @1 :List(Text);
         }
         variadic @2 :Bool;
-        body @3 :List(Value);
+        body @3 :List(Any);
     }
 }
 
@@ -83,8 +83,8 @@ struct Frac {
 
 struct LinkedList {
     count @0 :UInt32;
-    head @1 :Value;  # any
-    tail @2 :Value;  # ∈ {nil, list}
+    head @1 :Any;  # any
+    tail @2 :Any;  # ∈ {nil, list}
 }
 
 
@@ -92,12 +92,12 @@ struct Vector {
     count @0 :UInt32;
     shift @1 :UInt8;
     root @2 :Node;
-    tail @3 :List(Value);
+    tail @3 :List(Any);
 
     struct Node {
         union {
             branches @0 :List(Node);
-            values @1 :List(Value);
+            values @1 :List(Any);
         }
     }
 }

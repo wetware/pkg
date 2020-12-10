@@ -106,7 +106,7 @@ func (fn Fn) Match(nargs int) (CallTarget, error) {
 
 // FuncBuilder is a factory type for Fn.
 type FuncBuilder struct {
-	val    api.Value
+	val    api.Any
 	fn     api.Fn
 	sigs   []callSignature
 	stages []func() error
@@ -118,14 +118,12 @@ func (b *FuncBuilder) Start(a capnp.Arena) {
 	b.sigs = b.sigs[:0]
 
 	b.addStage(func() error {
-		_, seg, err := capnp.NewMessage(a)
+		mv, err := mem.NewValue(a)
 		if err != nil {
-			return fmt.Errorf("alloc message: %w", err)
+			return fmt.Errorf("alloc value: %w", err)
 		}
 
-		if b.val, err = api.NewRootValue(seg); err != nil {
-			return fmt.Errorf("alloc root value: %w", err)
-		}
+		b.val = mv.MemVal()
 
 		if b.fn, err = b.val.NewFn(); err != nil {
 			return fmt.Errorf("alloc fn: %w", err)
@@ -184,7 +182,7 @@ func (b *FuncBuilder) AddSeq(seq Seq) {
 // AddTarget parses the call signature `[<params>*] <body>*` into a call target.
 func (b *FuncBuilder) AddTarget(args ww.Any, body []ww.Any) {
 	b.addStage(func() error {
-		if mv := args.MemVal(); args.MemVal().Which() != api.Value_Which_vector {
+		if mv := args.MemVal(); args.MemVal().Which() != api.Any_Which_vector {
 			return Error{
 				Cause:   errors.New("invalid call signature"),
 				Message: fmt.Sprintf("args must be Vector, not '%s'", mv.Which()),
@@ -248,7 +246,7 @@ func (b *FuncBuilder) readParams(v Vector) ([]string, bool, error) {
 			return nil, false, err
 		}
 
-		if entry.MemVal().Which() != api.Value_Which_symbol {
+		if entry.MemVal().Which() != api.Any_Which_symbol {
 			return nil, false, fmt.Errorf("expected symbol, got %s", entry.MemVal().Which())
 		}
 
@@ -358,7 +356,7 @@ func (a funcAnalyzer) params() (ps []string, err error) {
 }
 
 func (a funcAnalyzer) body() (forms []ww.Any, err error) {
-	var vs api.Value_List
+	var vs api.Any_List
 	if vs, err = a.f.Body(); err != nil {
 		return
 	}

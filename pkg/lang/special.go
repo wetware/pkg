@@ -170,7 +170,7 @@ func parseFnDef(env core.Env, seq core.Seq, macro bool) (ww.Any, error) {
 	b.SetMacro(macro)
 
 	// Set function name?
-	if sym := args[0].MemVal(); sym.Which() == api.Value_Which_symbol {
+	if sym := args[0].MemVal(); sym.Which() == api.Any_Which_symbol {
 		name, err := sym.Symbol()
 		if err != nil {
 			return nil, err
@@ -182,10 +182,10 @@ func parseFnDef(env core.Env, seq core.Seq, macro bool) (ww.Any, error) {
 
 	// Set call signatures.
 	switch mv := args[0].MemVal(); mv.Which() {
-	case api.Value_Which_vector:
+	case api.Any_Which_vector:
 		b.AddTarget(args[0], args[1:])
 
-	case api.Value_Which_list:
+	case api.Any_Which_list:
 		for _, any := range args {
 			if seq, ok := any.(core.Seq); ok {
 				b.AddSeq(seq)
@@ -209,7 +209,7 @@ func lsParser(root ww.Anchor) SpecialParser {
 
 		pexpr := PathExpr{Root: root, Path: core.RootPath}
 		for _, arg := range args {
-			if arg.MemVal().Which() == api.Value_Which_path {
+			if arg.MemVal().Which() == api.Any_Which_path {
 				pexpr.Path = args[0].(core.Path)
 				args = args[1:]
 			}
@@ -278,7 +278,7 @@ func (i importer) Parse(a core.Analyzer, env core.Env, seq core.Seq) (core.Expr,
 	iex := ImportExpr{Analyzer: a}
 
 	switch mv := arg.MemVal(); mv.Which() {
-	case api.Value_Which_keyword:
+	case api.Any_Which_keyword:
 		kw, err := mv.Keyword()
 		if err != nil {
 			return nil, err
@@ -295,7 +295,7 @@ func (i importer) Parse(a core.Analyzer, env core.Env, seq core.Seq) (core.Expr,
 
 		iex.Paths = append(iex.Paths, ps...)
 
-	case api.Value_Which_symbol:
+	case api.Any_Which_symbol:
 		sym, err := mv.Symbol()
 		if err != nil {
 			return nil, err

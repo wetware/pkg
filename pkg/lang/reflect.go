@@ -82,7 +82,7 @@ type funcWrapper struct {
 	adapters   []adapter
 }
 
-func (fw *funcWrapper) MemVal() api.Value { return fw.sym.MemVal() }
+func (fw *funcWrapper) MemVal() api.Any { return fw.sym.MemVal() }
 
 func (fw *funcWrapper) Invoke(args ...ww.Any) (ww.Any, error) {
 	// allocate argument slice.

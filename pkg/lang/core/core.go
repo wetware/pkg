@@ -244,38 +244,38 @@ func Canonical(any ww.Any) ([]byte, error) {
 	return capnp.Canonicalize(any.MemVal().Struct)
 }
 
-// AsAny lifts a api.Value to a ww.Any.
-func AsAny(v api.Value) (val ww.Any, err error) {
+// AsAny lifts a api.Any to a ww.Any.
+func AsAny(v api.Any) (val ww.Any, err error) {
 	switch v.Which() {
-	case api.Value_Which_nil:
+	case api.Any_Which_nil:
 		val = Nil{}
-	case api.Value_Which_bool:
+	case api.Any_Which_bool:
 		val = Bool{mem.Value(v)}
-	case api.Value_Which_i64:
+	case api.Any_Which_i64:
 		val = i64{mem.Value(v)}
-	case api.Value_Which_f64:
+	case api.Any_Which_f64:
 		val = f64{mem.Value(v)}
-	case api.Value_Which_bigInt:
+	case api.Any_Which_bigInt:
 		val, err = asBigInt(v)
-	case api.Value_Which_bigFloat:
+	case api.Any_Which_bigFloat:
 		val, err = asBigFloat(v)
-	case api.Value_Which_frac:
+	case api.Any_Which_frac:
 		val, err = asFrac(v)
-	case api.Value_Which_char:
+	case api.Any_Which_char:
 		val = Char{mem.Value(v)}
-	case api.Value_Which_str:
+	case api.Any_Which_str:
 		val = String{mem.Value(v)}
-	case api.Value_Which_keyword:
+	case api.Any_Which_keyword:
 		val = Keyword{mem.Value(v)}
-	case api.Value_Which_symbol:
+	case api.Any_Which_symbol:
 		val = Symbol{mem.Value(v)}
-	case api.Value_Which_path:
+	case api.Any_Which_path:
 		val = Path{mem.Value(v)}
-	case api.Value_Which_list:
+	case api.Any_Which_list:
 		val = list{mem.Value(v)}
-	case api.Value_Which_vector:
+	case api.Any_Which_vector:
 		val = DeepPersistentVector{mem.Value(v)}
-	// case api.Value_Which_proc:
+	// case api.Any_Which_proc:
 	// 	val = RemoteProcess{v}
 	default:
 		err = fmt.Errorf("unknown value type '%s'", v.Which())

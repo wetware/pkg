@@ -112,7 +112,7 @@ func (a analyzer) analyzeSeq(env core.Env, seq core.Seq) (core.Expr, error) {
 	// The call target may be a special form.  In this case, we need to get the
 	// corresponding parser function, which will take care of parsing/analyzing
 	// the tail.
-	if mv := target.MemVal(); mv.Which() == api.Value_Which_symbol {
+	if mv := target.MemVal(); mv.Which() == api.Any_Which_symbol {
 		s, err := mv.Symbol()
 		if err != nil {
 			return nil, err
@@ -175,7 +175,7 @@ func (a analyzer) unpackArgs(env core.Env, seq core.Seq) (args []ww.Any, vs []ww
 	mv := varg.MemVal()
 
 	// not vargs?
-	if mv.Which() != api.Value_Which_symbol {
+	if mv.Which() != api.Any_Which_symbol {
 		return
 	}
 
@@ -268,7 +268,7 @@ func (a analyzer) macroExpand(env core.Env, form ww.Any) (ww.Any, error) {
 	}
 
 	var v interface{}
-	if mv := first.MemVal(); mv.Which() == api.Value_Which_symbol {
+	if mv := first.MemVal(); mv.Which() == api.Any_Which_symbol {
 		var rex ResolveExpr
 		rex.Symbol.Value = mem.Value(mv)
 		if v, err = rex.Eval(env); err != nil {

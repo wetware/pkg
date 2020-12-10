@@ -33,7 +33,7 @@ type Nil struct{}
 func (Nil) String() string { return "nil" }
 
 // MemVal returns the memory value.
-func (Nil) MemVal() api.Value { return mem.NilValue }
+func (Nil) MemVal() api.Any { return mem.NilValue }
 
 // Bool represents a boolean type.
 type Bool struct{ mem.Value }

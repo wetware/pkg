@@ -12,127 +12,127 @@ import (
 	server "zombiezen.com/go/capnproto2/server"
 )
 
-type Value struct{ capnp.Struct }
-type Value_Which uint16
+type Any struct{ capnp.Struct }
+type Any_Which uint16
 
 const (
-	Value_Which_nil       Value_Which = 0
-	Value_Which_bool      Value_Which = 1
-	Value_Which_i64       Value_Which = 2
-	Value_Which_bigInt    Value_Which = 3
-	Value_Which_f64       Value_Which = 4
-	Value_Which_bigFloat  Value_Which = 5
-	Value_Which_frac      Value_Which = 6
-	Value_Which_char      Value_Which = 7
-	Value_Which_str       Value_Which = 8
-	Value_Which_keyword   Value_Which = 9
-	Value_Which_symbol    Value_Which = 10
-	Value_Which_path      Value_Which = 11
-	Value_Which_list      Value_Which = 12
-	Value_Which_vector    Value_Which = 13
-	Value_Which_vectorSeq Value_Which = 14
-	Value_Which_fn        Value_Which = 15
-	Value_Which_proc      Value_Which = 16
+	Any_Which_nil       Any_Which = 0
+	Any_Which_bool      Any_Which = 1
+	Any_Which_i64       Any_Which = 2
+	Any_Which_bigInt    Any_Which = 3
+	Any_Which_f64       Any_Which = 4
+	Any_Which_bigFloat  Any_Which = 5
+	Any_Which_frac      Any_Which = 6
+	Any_Which_char      Any_Which = 7
+	Any_Which_str       Any_Which = 8
+	Any_Which_keyword   Any_Which = 9
+	Any_Which_symbol    Any_Which = 10
+	Any_Which_path      Any_Which = 11
+	Any_Which_list      Any_Which = 12
+	Any_Which_vector    Any_Which = 13
+	Any_Which_vectorSeq Any_Which = 14
+	Any_Which_fn        Any_Which = 15
+	Any_Which_proc      Any_Which = 16
 )
 
-func (w Value_Which) String() string {
+func (w Any_Which) String() string {
 	const s = "nilbooli64bigIntf64bigFloatfraccharstrkeywordsymbolpathlistvectorvectorSeqfnproc"
 	switch w {
-	case Value_Which_nil:
+	case Any_Which_nil:
 		return s[0:3]
-	case Value_Which_bool:
+	case Any_Which_bool:
 		return s[3:7]
-	case Value_Which_i64:
+	case Any_Which_i64:
 		return s[7:10]
-	case Value_Which_bigInt:
+	case Any_Which_bigInt:
 		return s[10:16]
-	case Value_Which_f64:
+	case Any_Which_f64:
 		return s[16:19]
-	case Value_Which_bigFloat:
+	case Any_Which_bigFloat:
 		return s[19:27]
-	case Value_Which_frac:
+	case Any_Which_frac:
 		return s[27:31]
-	case Value_Which_char:
+	case Any_Which_char:
 		return s[31:35]
-	case Value_Which_str:
+	case Any_Which_str:
 		return s[35:38]
-	case Value_Which_keyword:
+	case Any_Which_keyword:
 		return s[38:45]
-	case Value_Which_symbol:
+	case Any_Which_symbol:
 		return s[45:51]
-	case Value_Which_path:
+	case Any_Which_path:
 		return s[51:55]
-	case Value_Which_list:
+	case Any_Which_list:
 		return s[55:59]
-	case Value_Which_vector:
+	case Any_Which_vector:
 		return s[59:65]
-	case Value_Which_vectorSeq:
+	case Any_Which_vectorSeq:
 		return s[65:74]
-	case Value_Which_fn:
+	case Any_Which_fn:
 		return s[74:76]
-	case Value_Which_proc:
+	case Any_Which_proc:
 		return s[76:80]
 
 	}
-	return "Value_Which(" + strconv.FormatUint(uint64(w), 10) + ")"
+	return "Any_Which(" + strconv.FormatUint(uint64(w), 10) + ")"
 }
 
-// Value_TypeID is the unique identifier for the type Value.
-const Value_TypeID = 0xba39aaea7d7bcba2
+// Any_TypeID is the unique identifier for the type Any.
+const Any_TypeID = 0xa177c8866f029c3c
 
-func NewValue(s *capnp.Segment) (Value, error) {
+func NewAny(s *capnp.Segment) (Any, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 16, PointerCount: 1})
-	return Value{st}, err
+	return Any{st}, err
 }
 
-func NewRootValue(s *capnp.Segment) (Value, error) {
+func NewRootAny(s *capnp.Segment) (Any, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 16, PointerCount: 1})
-	return Value{st}, err
+	return Any{st}, err
 }
 
-func ReadRootValue(msg *capnp.Message) (Value, error) {
+func ReadRootAny(msg *capnp.Message) (Any, error) {
 	root, err := msg.Root()
-	return Value{root.Struct()}, err
+	return Any{root.Struct()}, err
 }
 
-func (s Value) String() string {
-	str, _ := text.Marshal(0xba39aaea7d7bcba2, s.Struct)
+func (s Any) String() string {
+	str, _ := text.Marshal(0xa177c8866f029c3c, s.Struct)
 	return str
 }
 
-func (s Value) Which() Value_Which {
-	return Value_Which(s.Struct.Uint16(0))
+func (s Any) Which() Any_Which {
+	return Any_Which(s.Struct.Uint16(0))
 }
-func (s Value) SetNil() {
+func (s Any) SetNil() {
 	s.Struct.SetUint16(0, 0)
 
 }
 
-func (s Value) Bool() bool {
+func (s Any) Bool() bool {
 	if s.Struct.Uint16(0) != 1 {
 		panic("Which() != bool")
 	}
 	return s.Struct.Bit(16)
 }
 
-func (s Value) SetBool(v bool) {
+func (s Any) SetBool(v bool) {
 	s.Struct.SetUint16(0, 1)
 	s.Struct.SetBit(16, v)
 }
 
-func (s Value) I64() int64 {
+func (s Any) I64() int64 {
 	if s.Struct.Uint16(0) != 2 {
 		panic("Which() != i64")
 	}
 	return int64(s.Struct.Uint64(8))
 }
 
-func (s Value) SetI64(v int64) {
+func (s Any) SetI64(v int64) {
 	s.Struct.SetUint16(0, 2)
 	s.Struct.SetUint64(8, uint64(v))
 }
 
-func (s Value) BigInt() ([]byte, error) {
+func (s Any) BigInt() ([]byte, error) {
 	if s.Struct.Uint16(0) != 3 {
 		panic("Which() != bigInt")
 	}
@@ -140,31 +140,31 @@ func (s Value) BigInt() ([]byte, error) {
 	return []byte(p.Data()), err
 }
 
-func (s Value) HasBigInt() bool {
+func (s Any) HasBigInt() bool {
 	if s.Struct.Uint16(0) != 3 {
 		return false
 	}
 	return s.Struct.HasPtr(0)
 }
 
-func (s Value) SetBigInt(v []byte) error {
+func (s Any) SetBigInt(v []byte) error {
 	s.Struct.SetUint16(0, 3)
 	return s.Struct.SetData(0, v)
 }
 
-func (s Value) F64() float64 {
+func (s Any) F64() float64 {
 	if s.Struct.Uint16(0) != 4 {
 		panic("Which() != f64")
 	}
 	return math.Float64frombits(s.Struct.Uint64(8))
 }
 
-func (s Value) SetF64(v float64) {
+func (s Any) SetF64(v float64) {
 	s.Struct.SetUint16(0, 4)
 	s.Struct.SetUint64(8, math.Float64bits(v))
 }
 
-func (s Value) BigFloat() (string, error) {
+func (s Any) BigFloat() (string, error) {
 	if s.Struct.Uint16(0) != 5 {
 		panic("Which() != bigFloat")
 	}
@@ -172,24 +172,24 @@ func (s Value) BigFloat() (string, error) {
 	return p.Text(), err
 }
 
-func (s Value) HasBigFloat() bool {
+func (s Any) HasBigFloat() bool {
 	if s.Struct.Uint16(0) != 5 {
 		return false
 	}
 	return s.Struct.HasPtr(0)
 }
 
-func (s Value) BigFloatBytes() ([]byte, error) {
+func (s Any) BigFloatBytes() ([]byte, error) {
 	p, err := s.Struct.Ptr(0)
 	return p.TextBytes(), err
 }
 
-func (s Value) SetBigFloat(v string) error {
+func (s Any) SetBigFloat(v string) error {
 	s.Struct.SetUint16(0, 5)
 	return s.Struct.SetText(0, v)
 }
 
-func (s Value) Frac() (Frac, error) {
+func (s Any) Frac() (Frac, error) {
 	if s.Struct.Uint16(0) != 6 {
 		panic("Which() != frac")
 	}
@@ -197,21 +197,21 @@ func (s Value) Frac() (Frac, error) {
 	return Frac{Struct: p.Struct()}, err
 }
 
-func (s Value) HasFrac() bool {
+func (s Any) HasFrac() bool {
 	if s.Struct.Uint16(0) != 6 {
 		return false
 	}
 	return s.Struct.HasPtr(0)
 }
 
-func (s Value) SetFrac(v Frac) error {
+func (s Any) SetFrac(v Frac) error {
 	s.Struct.SetUint16(0, 6)
 	return s.Struct.SetPtr(0, v.Struct.ToPtr())
 }
 
 // NewFrac sets the frac field to a newly
 // allocated Frac struct, preferring placement in s's segment.
-func (s Value) NewFrac() (Frac, error) {
+func (s Any) NewFrac() (Frac, error) {
 	s.Struct.SetUint16(0, 6)
 	ss, err := NewFrac(s.Struct.Segment())
 	if err != nil {
@@ -221,19 +221,19 @@ func (s Value) NewFrac() (Frac, error) {
 	return ss, err
 }
 
-func (s Value) Char() int32 {
+func (s Any) Char() int32 {
 	if s.Struct.Uint16(0) != 7 {
 		panic("Which() != char")
 	}
 	return int32(s.Struct.Uint32(8))
 }
 
-func (s Value) SetChar(v int32) {
+func (s Any) SetChar(v int32) {
 	s.Struct.SetUint16(0, 7)
 	s.Struct.SetUint32(8, uint32(v))
 }
 
-func (s Value) Str() (string, error) {
+func (s Any) Str() (string, error) {
 	if s.Struct.Uint16(0) != 8 {
 		panic("Which() != str")
 	}
@@ -241,24 +241,24 @@ func (s Value) Str() (string, error) {
 	return p.Text(), err
 }
 
-func (s Value) HasStr() bool {
+func (s Any) HasStr() bool {
 	if s.Struct.Uint16(0) != 8 {
 		return false
 	}
 	return s.Struct.HasPtr(0)
 }
 
-func (s Value) StrBytes() ([]byte, error) {
+func (s Any) StrBytes() ([]byte, error) {
 	p, err := s.Struct.Ptr(0)
 	return p.TextBytes(), err
 }
 
-func (s Value) SetStr(v string) error {
+func (s Any) SetStr(v string) error {
 	s.Struct.SetUint16(0, 8)
 	return s.Struct.SetText(0, v)
 }
 
-func (s Value) Keyword() (string, error) {
+func (s Any) Keyword() (string, error) {
 	if s.Struct.Uint16(0) != 9 {
 		panic("Which() != keyword")
 	}
@@ -266,24 +266,24 @@ func (s Value) Keyword() (string, error) {
 	return p.Text(), err
 }
 
-func (s Value) HasKeyword() bool {
+func (s Any) HasKeyword() bool {
 	if s.Struct.Uint16(0) != 9 {
 		return false
 	}
 	return s.Struct.HasPtr(0)
 }
 
-func (s Value) KeywordBytes() ([]byte, error) {
+func (s Any) KeywordBytes() ([]byte, error) {
 	p, err := s.Struct.Ptr(0)
 	return p.TextBytes(), err
 }
 
-func (s Value) SetKeyword(v string) error {
+func (s Any) SetKeyword(v string) error {
 	s.Struct.SetUint16(0, 9)
 	return s.Struct.SetText(0, v)
 }
 
-func (s Value) Symbol() (string, error) {
+func (s Any) Symbol() (string, error) {
 	if s.Struct.Uint16(0) != 10 {
 		panic("Which() != symbol")
 	}
@@ -291,24 +291,24 @@ func (s Value) Symbol() (string, error) {
 	return p.Text(), err
 }
 
-func (s Value) HasSymbol() bool {
+func (s Any) HasSymbol() bool {
 	if s.Struct.Uint16(0) != 10 {
 		return false
 	}
 	return s.Struct.HasPtr(0)
 }
 
-func (s Value) SymbolBytes() ([]byte, error) {
+func (s Any) SymbolBytes() ([]byte, error) {
 	p, err := s.Struct.Ptr(0)
 	return p.TextBytes(), err
 }
 
-func (s Value) SetSymbol(v string) error {
+func (s Any) SetSymbol(v string) error {
 	s.Struct.SetUint16(0, 10)
 	return s.Struct.SetText(0, v)
 }
 
-func (s Value) Path() (string, error) {
+func (s Any) Path() (string, error) {
 	if s.Struct.Uint16(0) != 11 {
 		panic("Which() != path")
 	}
@@ -316,24 +316,24 @@ func (s Value) Path() (string, error) {
 	return p.Text(), err
 }
 
-func (s Value) HasPath() bool {
+func (s Any) HasPath() bool {
 	if s.Struct.Uint16(0) != 11 {
 		return false
 	}
 	return s.Struct.HasPtr(0)
 }
 
-func (s Value) PathBytes() ([]byte, error) {
+func (s Any) PathBytes() ([]byte, error) {
 	p, err := s.Struct.Ptr(0)
 	return p.TextBytes(), err
 }
 
-func (s Value) SetPath(v string) error {
+func (s Any) SetPath(v string) error {
 	s.Struct.SetUint16(0, 11)
 	return s.Struct.SetText(0, v)
 }
 
-func (s Value) List() (LinkedList, error) {
+func (s Any) List() (LinkedList, error) {
 	if s.Struct.Uint16(0) != 12 {
 		panic("Which() != list")
 	}
@@ -341,21 +341,21 @@ func (s Value) List() (LinkedList, error) {
 	return LinkedList{Struct: p.Struct()}, err
 }
 
-func (s Value) HasList() bool {
+func (s Any) HasList() bool {
 	if s.Struct.Uint16(0) != 12 {
 		return false
 	}
 	return s.Struct.HasPtr(0)
 }
 
-func (s Value) SetList(v LinkedList) error {
+func (s Any) SetList(v LinkedList) error {
 	s.Struct.SetUint16(0, 12)
 	return s.Struct.SetPtr(0, v.Struct.ToPtr())
 }
 
 // NewList sets the list field to a newly
 // allocated LinkedList struct, preferring placement in s's segment.
-func (s Value) NewList() (LinkedList, error) {
+func (s Any) NewList() (LinkedList, error) {
 	s.Struct.SetUint16(0, 12)
 	ss, err := NewLinkedList(s.Struct.Segment())
 	if err != nil {
@@ -365,7 +365,7 @@ func (s Value) NewList() (LinkedList, error) {
 	return ss, err
 }
 
-func (s Value) Vector() (Vector, error) {
+func (s Any) Vector() (Vector, error) {
 	if s.Struct.Uint16(0) != 13 {
 		panic("Which() != vector")
 	}
@@ -373,21 +373,21 @@ func (s Value) Vector() (Vector, error) {
 	return Vector{Struct: p.Struct()}, err
 }
 
-func (s Value) HasVector() bool {
+func (s Any) HasVector() bool {
 	if s.Struct.Uint16(0) != 13 {
 		return false
 	}
 	return s.Struct.HasPtr(0)
 }
 
-func (s Value) SetVector(v Vector) error {
+func (s Any) SetVector(v Vector) error {
 	s.Struct.SetUint16(0, 13)
 	return s.Struct.SetPtr(0, v.Struct.ToPtr())
 }
 
 // NewVector sets the vector field to a newly
 // allocated Vector struct, preferring placement in s's segment.
-func (s Value) NewVector() (Vector, error) {
+func (s Any) NewVector() (Vector, error) {
 	s.Struct.SetUint16(0, 13)
 	ss, err := NewVector(s.Struct.Segment())
 	if err != nil {
@@ -397,7 +397,7 @@ func (s Value) NewVector() (Vector, error) {
 	return ss, err
 }
 
-func (s Value) VectorSeq() (VectorSeq, error) {
+func (s Any) VectorSeq() (VectorSeq, error) {
 	if s.Struct.Uint16(0) != 14 {
 		panic("Which() != vectorSeq")
 	}
@@ -405,21 +405,21 @@ func (s Value) VectorSeq() (VectorSeq, error) {
 	return VectorSeq{Struct: p.Struct()}, err
 }
 
-func (s Value) HasVectorSeq() bool {
+func (s Any) HasVectorSeq() bool {
 	if s.Struct.Uint16(0) != 14 {
 		return false
 	}
 	return s.Struct.HasPtr(0)
 }
 
-func (s Value) SetVectorSeq(v VectorSeq) error {
+func (s Any) SetVectorSeq(v VectorSeq) error {
 	s.Struct.SetUint16(0, 14)
 	return s.Struct.SetPtr(0, v.Struct.ToPtr())
 }
 
 // NewVectorSeq sets the vectorSeq field to a newly
 // allocated VectorSeq struct, preferring placement in s's segment.
-func (s Value) NewVectorSeq() (VectorSeq, error) {
+func (s Any) NewVectorSeq() (VectorSeq, error) {
 	s.Struct.SetUint16(0, 14)
 	ss, err := NewVectorSeq(s.Struct.Segment())
 	if err != nil {
@@ -429,7 +429,7 @@ func (s Value) NewVectorSeq() (VectorSeq, error) {
 	return ss, err
 }
 
-func (s Value) Fn() (Fn, error) {
+func (s Any) Fn() (Fn, error) {
 	if s.Struct.Uint16(0) != 15 {
 		panic("Which() != fn")
 	}
@@ -437,21 +437,21 @@ func (s Value) Fn() (Fn, error) {
 	return Fn{Struct: p.Struct()}, err
 }
 
-func (s Value) HasFn() bool {
+func (s Any) HasFn() bool {
 	if s.Struct.Uint16(0) != 15 {
 		return false
 	}
 	return s.Struct.HasPtr(0)
 }
 
-func (s Value) SetFn(v Fn) error {
+func (s Any) SetFn(v Fn) error {
 	s.Struct.SetUint16(0, 15)
 	return s.Struct.SetPtr(0, v.Struct.ToPtr())
 }
 
 // NewFn sets the fn field to a newly
 // allocated Fn struct, preferring placement in s's segment.
-func (s Value) NewFn() (Fn, error) {
+func (s Any) NewFn() (Fn, error) {
 	s.Struct.SetUint16(0, 15)
 	ss, err := NewFn(s.Struct.Segment())
 	if err != nil {
@@ -461,7 +461,7 @@ func (s Value) NewFn() (Fn, error) {
 	return ss, err
 }
 
-func (s Value) Proc() Proc {
+func (s Any) Proc() Proc {
 	if s.Struct.Uint16(0) != 16 {
 		panic("Which() != proc")
 	}
@@ -469,14 +469,14 @@ func (s Value) Proc() Proc {
 	return Proc{Client: p.Interface().Client()}
 }
 
-func (s Value) HasProc() bool {
+func (s Any) HasProc() bool {
 	if s.Struct.Uint16(0) != 16 {
 		return false
 	}
 	return s.Struct.HasPtr(0)
 }
 
-func (s Value) SetProc(v Proc) error {
+func (s Any) SetProc(v Proc) error {
 	s.Struct.SetUint16(0, 16)
 	if !v.Client.IsValid() {
 		return s.Struct.SetPtr(0, capnp.Ptr{})
@@ -486,53 +486,53 @@ func (s Value) SetProc(v Proc) error {
 	return s.Struct.SetPtr(0, in.ToPtr())
 }
 
-// Value_List is a list of Value.
-type Value_List struct{ capnp.List }
+// Any_List is a list of Any.
+type Any_List struct{ capnp.List }
 
-// NewValue creates a new list of Value.
-func NewValue_List(s *capnp.Segment, sz int32) (Value_List, error) {
+// NewAny creates a new list of Any.
+func NewAny_List(s *capnp.Segment, sz int32) (Any_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 16, PointerCount: 1}, sz)
-	return Value_List{l}, err
+	return Any_List{l}, err
 }
 
-func (s Value_List) At(i int) Value { return Value{s.List.Struct(i)} }
+func (s Any_List) At(i int) Any { return Any{s.List.Struct(i)} }
 
-func (s Value_List) Set(i int, v Value) error { return s.List.SetStruct(i, v.Struct) }
+func (s Any_List) Set(i int, v Any) error { return s.List.SetStruct(i, v.Struct) }
 
-func (s Value_List) String() string {
-	str, _ := text.MarshalList(0xba39aaea7d7bcba2, s.List)
+func (s Any_List) String() string {
+	str, _ := text.MarshalList(0xa177c8866f029c3c, s.List)
 	return str
 }
 
-// Value_Future is a wrapper for a Value promised by a client call.
-type Value_Future struct{ *capnp.Future }
+// Any_Future is a wrapper for a Any promised by a client call.
+type Any_Future struct{ *capnp.Future }
 
-func (p Value_Future) Struct() (Value, error) {
+func (p Any_Future) Struct() (Any, error) {
 	s, err := p.Future.Struct()
-	return Value{s}, err
+	return Any{s}, err
 }
 
-func (p Value_Future) Frac() Frac_Future {
+func (p Any_Future) Frac() Frac_Future {
 	return Frac_Future{Future: p.Future.Field(0, nil)}
 }
 
-func (p Value_Future) List() LinkedList_Future {
+func (p Any_Future) List() LinkedList_Future {
 	return LinkedList_Future{Future: p.Future.Field(0, nil)}
 }
 
-func (p Value_Future) Vector() Vector_Future {
+func (p Any_Future) Vector() Vector_Future {
 	return Vector_Future{Future: p.Future.Field(0, nil)}
 }
 
-func (p Value_Future) VectorSeq() VectorSeq_Future {
+func (p Any_Future) VectorSeq() VectorSeq_Future {
 	return VectorSeq_Future{Future: p.Future.Field(0, nil)}
 }
 
-func (p Value_Future) Fn() Fn_Future {
+func (p Any_Future) Fn() Fn_Future {
 	return Fn_Future{Future: p.Future.Field(0, nil)}
 }
 
-func (p Value_Future) Proc() Proc {
+func (p Any_Future) Proc() Proc {
 	return Proc{Client: p.Future.Field(0, nil).Client()}
 }
 
@@ -1290,25 +1290,25 @@ func (s Anchor_load_Results) String() string {
 	return str
 }
 
-func (s Anchor_load_Results) Value() (Value, error) {
+func (s Anchor_load_Results) Value() (Any, error) {
 	p, err := s.Struct.Ptr(0)
-	return Value{Struct: p.Struct()}, err
+	return Any{Struct: p.Struct()}, err
 }
 
 func (s Anchor_load_Results) HasValue() bool {
 	return s.Struct.HasPtr(0)
 }
 
-func (s Anchor_load_Results) SetValue(v Value) error {
+func (s Anchor_load_Results) SetValue(v Any) error {
 	return s.Struct.SetPtr(0, v.Struct.ToPtr())
 }
 
 // NewValue sets the value field to a newly
-// allocated Value struct, preferring placement in s's segment.
-func (s Anchor_load_Results) NewValue() (Value, error) {
-	ss, err := NewValue(s.Struct.Segment())
+// allocated Any struct, preferring placement in s's segment.
+func (s Anchor_load_Results) NewValue() (Any, error) {
+	ss, err := NewAny(s.Struct.Segment())
 	if err != nil {
-		return Value{}, err
+		return Any{}, err
 	}
 	err = s.Struct.SetPtr(0, ss.Struct.ToPtr())
 	return ss, err
@@ -1344,8 +1344,8 @@ func (p Anchor_load_Results_Future) Struct() (Anchor_load_Results, error) {
 	return Anchor_load_Results{s}, err
 }
 
-func (p Anchor_load_Results_Future) Value() Value_Future {
-	return Value_Future{Future: p.Future.Field(0, nil)}
+func (p Anchor_load_Results_Future) Value() Any_Future {
+	return Any_Future{Future: p.Future.Field(0, nil)}
 }
 
 type Anchor_store_Params struct{ capnp.Struct }
@@ -1373,25 +1373,25 @@ func (s Anchor_store_Params) String() string {
 	return str
 }
 
-func (s Anchor_store_Params) Value() (Value, error) {
+func (s Anchor_store_Params) Value() (Any, error) {
 	p, err := s.Struct.Ptr(0)
-	return Value{Struct: p.Struct()}, err
+	return Any{Struct: p.Struct()}, err
 }
 
 func (s Anchor_store_Params) HasValue() bool {
 	return s.Struct.HasPtr(0)
 }
 
-func (s Anchor_store_Params) SetValue(v Value) error {
+func (s Anchor_store_Params) SetValue(v Any) error {
 	return s.Struct.SetPtr(0, v.Struct.ToPtr())
 }
 
 // NewValue sets the value field to a newly
-// allocated Value struct, preferring placement in s's segment.
-func (s Anchor_store_Params) NewValue() (Value, error) {
-	ss, err := NewValue(s.Struct.Segment())
+// allocated Any struct, preferring placement in s's segment.
+func (s Anchor_store_Params) NewValue() (Any, error) {
+	ss, err := NewAny(s.Struct.Segment())
 	if err != nil {
-		return Value{}, err
+		return Any{}, err
 	}
 	err = s.Struct.SetPtr(0, ss.Struct.ToPtr())
 	return ss, err
@@ -1427,8 +1427,8 @@ func (p Anchor_store_Params_Future) Struct() (Anchor_store_Params, error) {
 	return Anchor_store_Params{s}, err
 }
 
-func (p Anchor_store_Params_Future) Value() Value_Future {
-	return Value_Future{Future: p.Future.Field(0, nil)}
+func (p Anchor_store_Params_Future) Value() Any_Future {
+	return Any_Future{Future: p.Future.Field(0, nil)}
 }
 
 type Anchor_store_Results struct{ capnp.Struct }
@@ -1511,25 +1511,25 @@ func (s Anchor_go_Params) String() string {
 	return str
 }
 
-func (s Anchor_go_Params) Args() (Value_List, error) {
+func (s Anchor_go_Params) Args() (Any_List, error) {
 	p, err := s.Struct.Ptr(0)
-	return Value_List{List: p.List()}, err
+	return Any_List{List: p.List()}, err
 }
 
 func (s Anchor_go_Params) HasArgs() bool {
 	return s.Struct.HasPtr(0)
 }
 
-func (s Anchor_go_Params) SetArgs(v Value_List) error {
+func (s Anchor_go_Params) SetArgs(v Any_List) error {
 	return s.Struct.SetPtr(0, v.List.ToPtr())
 }
 
 // NewArgs sets the args field to a newly
-// allocated Value_List, preferring placement in s's segment.
-func (s Anchor_go_Params) NewArgs(n int32) (Value_List, error) {
-	l, err := NewValue_List(s.Struct.Segment(), n)
+// allocated Any_List, preferring placement in s's segment.
+func (s Anchor_go_Params) NewArgs(n int32) (Any_List, error) {
+	l, err := NewAny_List(s.Struct.Segment(), n)
 	if err != nil {
-		return Value_List{}, err
+		return Any_List{}, err
 	}
 	err = s.Struct.SetPtr(0, l.List.ToPtr())
 	return l, err
@@ -1865,25 +1865,25 @@ func (s Fn_Func) SetVariadic(v bool) {
 	s.Struct.SetBit(16, v)
 }
 
-func (s Fn_Func) Body() (Value_List, error) {
+func (s Fn_Func) Body() (Any_List, error) {
 	p, err := s.Struct.Ptr(1)
-	return Value_List{List: p.List()}, err
+	return Any_List{List: p.List()}, err
 }
 
 func (s Fn_Func) HasBody() bool {
 	return s.Struct.HasPtr(1)
 }
 
-func (s Fn_Func) SetBody(v Value_List) error {
+func (s Fn_Func) SetBody(v Any_List) error {
 	return s.Struct.SetPtr(1, v.List.ToPtr())
 }
 
 // NewBody sets the body field to a newly
-// allocated Value_List, preferring placement in s's segment.
-func (s Fn_Func) NewBody(n int32) (Value_List, error) {
-	l, err := NewValue_List(s.Struct.Segment(), n)
+// allocated Any_List, preferring placement in s's segment.
+func (s Fn_Func) NewBody(n int32) (Any_List, error) {
+	l, err := NewAny_List(s.Struct.Segment(), n)
 	if err != nil {
-		return Value_List{}, err
+		return Any_List{}, err
 	}
 	err = s.Struct.SetPtr(1, l.List.ToPtr())
 	return l, err
@@ -2211,49 +2211,49 @@ func (s LinkedList) SetCount(v uint32) {
 	s.Struct.SetUint32(0, v)
 }
 
-func (s LinkedList) Head() (Value, error) {
+func (s LinkedList) Head() (Any, error) {
 	p, err := s.Struct.Ptr(0)
-	return Value{Struct: p.Struct()}, err
+	return Any{Struct: p.Struct()}, err
 }
 
 func (s LinkedList) HasHead() bool {
 	return s.Struct.HasPtr(0)
 }
 
-func (s LinkedList) SetHead(v Value) error {
+func (s LinkedList) SetHead(v Any) error {
 	return s.Struct.SetPtr(0, v.Struct.ToPtr())
 }
 
 // NewHead sets the head field to a newly
-// allocated Value struct, preferring placement in s's segment.
-func (s LinkedList) NewHead() (Value, error) {
-	ss, err := NewValue(s.Struct.Segment())
+// allocated Any struct, preferring placement in s's segment.
+func (s LinkedList) NewHead() (Any, error) {
+	ss, err := NewAny(s.Struct.Segment())
 	if err != nil {
-		return Value{}, err
+		return Any{}, err
 	}
 	err = s.Struct.SetPtr(0, ss.Struct.ToPtr())
 	return ss, err
 }
 
-func (s LinkedList) Tail() (Value, error) {
+func (s LinkedList) Tail() (Any, error) {
 	p, err := s.Struct.Ptr(1)
-	return Value{Struct: p.Struct()}, err
+	return Any{Struct: p.Struct()}, err
 }
 
 func (s LinkedList) HasTail() bool {
 	return s.Struct.HasPtr(1)
 }
 
-func (s LinkedList) SetTail(v Value) error {
+func (s LinkedList) SetTail(v Any) error {
 	return s.Struct.SetPtr(1, v.Struct.ToPtr())
 }
 
 // NewTail sets the tail field to a newly
-// allocated Value struct, preferring placement in s's segment.
-func (s LinkedList) NewTail() (Value, error) {
-	ss, err := NewValue(s.Struct.Segment())
+// allocated Any struct, preferring placement in s's segment.
+func (s LinkedList) NewTail() (Any, error) {
+	ss, err := NewAny(s.Struct.Segment())
 	if err != nil {
-		return Value{}, err
+		return Any{}, err
 	}
 	err = s.Struct.SetPtr(1, ss.Struct.ToPtr())
 	return ss, err
@@ -2285,12 +2285,12 @@ func (p LinkedList_Future) Struct() (LinkedList, error) {
 	return LinkedList{s}, err
 }
 
-func (p LinkedList_Future) Head() Value_Future {
-	return Value_Future{Future: p.Future.Field(0, nil)}
+func (p LinkedList_Future) Head() Any_Future {
+	return Any_Future{Future: p.Future.Field(0, nil)}
 }
 
-func (p LinkedList_Future) Tail() Value_Future {
-	return Value_Future{Future: p.Future.Field(1, nil)}
+func (p LinkedList_Future) Tail() Any_Future {
+	return Any_Future{Future: p.Future.Field(1, nil)}
 }
 
 type Vector struct{ capnp.Struct }
@@ -2358,25 +2358,25 @@ func (s Vector) NewRoot() (Vector_Node, error) {
 	return ss, err
 }
 
-func (s Vector) Tail() (Value_List, error) {
+func (s Vector) Tail() (Any_List, error) {
 	p, err := s.Struct.Ptr(1)
-	return Value_List{List: p.List()}, err
+	return Any_List{List: p.List()}, err
 }
 
 func (s Vector) HasTail() bool {
 	return s.Struct.HasPtr(1)
 }
 
-func (s Vector) SetTail(v Value_List) error {
+func (s Vector) SetTail(v Any_List) error {
 	return s.Struct.SetPtr(1, v.List.ToPtr())
 }
 
 // NewTail sets the tail field to a newly
-// allocated Value_List, preferring placement in s's segment.
-func (s Vector) NewTail(n int32) (Value_List, error) {
-	l, err := NewValue_List(s.Struct.Segment(), n)
+// allocated Any_List, preferring placement in s's segment.
+func (s Vector) NewTail(n int32) (Any_List, error) {
+	l, err := NewAny_List(s.Struct.Segment(), n)
 	if err != nil {
-		return Value_List{}, err
+		return Any_List{}, err
 	}
 	err = s.Struct.SetPtr(1, l.List.ToPtr())
 	return l, err
@@ -2490,12 +2490,12 @@ func (s Vector_Node) NewBranches(n int32) (Vector_Node_List, error) {
 	return l, err
 }
 
-func (s Vector_Node) Values() (Value_List, error) {
+func (s Vector_Node) Values() (Any_List, error) {
 	if s.Struct.Uint16(0) != 1 {
 		panic("Which() != values")
 	}
 	p, err := s.Struct.Ptr(0)
-	return Value_List{List: p.List()}, err
+	return Any_List{List: p.List()}, err
 }
 
 func (s Vector_Node) HasValues() bool {
@@ -2505,18 +2505,18 @@ func (s Vector_Node) HasValues() bool {
 	return s.Struct.HasPtr(0)
 }
 
-func (s Vector_Node) SetValues(v Value_List) error {
+func (s Vector_Node) SetValues(v Any_List) error {
 	s.Struct.SetUint16(0, 1)
 	return s.Struct.SetPtr(0, v.List.ToPtr())
 }
 
 // NewValues sets the values field to a newly
-// allocated Value_List, preferring placement in s's segment.
-func (s Vector_Node) NewValues(n int32) (Value_List, error) {
+// allocated Any_List, preferring placement in s's segment.
+func (s Vector_Node) NewValues(n int32) (Any_List, error) {
 	s.Struct.SetUint16(0, 1)
-	l, err := NewValue_List(s.Struct.Segment(), n)
+	l, err := NewAny_List(s.Struct.Segment(), n)
 	if err != nil {
-		return Value_List{}, err
+		return Any_List{}, err
 	}
 	err = s.Struct.SetPtr(0, l.List.ToPtr())
 	return l, err
@@ -2643,127 +2643,127 @@ func (p VectorSeq_Future) Vector() Vector_Future {
 	return Vector_Future{Future: p.Future.Field(0, nil)}
 }
 
-const schema_c8aa6d83e0c03a9d = "x\xda\x94W}\x8cT\xd5\x15?\xbf\xfbf\xe6-\xcc" +
-	"\xe7\xe3\x0eQ\xb0db\x03\xad\xace\x0b\x0b\x92tS" +
-	";\x8be\x97b)\xee\xdb\x11B\x13\xd3\xf8v\xe6-" +
-	";af\xde\xfaf\x16\xdc\x14\xd3\x1alL\x9a\xd0\xaf" +
-	"\x84Tl\x88\x81\xa6M%jk\x8dI5\xe9\x97V" +
-	"kZ\x88\xb5E\x8b\x09\xb6`L\xb4\x06\xcb\xa2\xab," +
-	"\xb8p\x9b\xf3f\xde\xbc\xd9\xd9]\xb0\xff\xcd\xbc\xdf\xb9" +
-	"\xbf\xf3y\xcf9w\xf5D\xa8W\xac\x09\xdf\xb1\x80\xc8" +
-	",\x85#\xeal\xc7t\xec\xce\x8dw\x7f\x9b\xcc\xc5\x80" +
-	"\xfaR\xf5\x89\xd5\xef=\xf2\xfc\xc7\xd4\x07]\x10\xc9\xfd" +
-	"\xa1\xbf\xcb\x83!\x9dH\x1e\x08\xed!(w\xfd\x9f\xb7" +
-	">\xf0\xd8\xf9\xef\x91\xb1\x18Da\xe8Dk\x17\x87\x17" +
-	"\x81 \x97\x85\xb3\x04\xb5\xb7\xff\xd0\xc0\xc2\xd7>\xfb\x03" +
-	"2\x13\x80:\xd4\xf3\x87\xd3\xfb\xcaG_\xaaK\xca[" +
-	"\xc3\xcf\xc9\xbe0\xff\xda\x10\xfe%AM\xde5\xb5\xe3" +
-	"\xfaD\xff\x81V\xb6\xd7\xeblg<\xb6\x7f\xbd\xe3\x9e" +
-	";\x16\xfb\xcd#\xad\x02\x88\x08\x16\x08GX\xe0\xc5\xe3" +
-	"\x8b\xee[\xb6h\xdf\xcf\xdb\xd5\x09V\xb2\"\xf2\x17\xb9" +
-	"&\xc2\xbfVEX]\xef\x9f\xa6\x87\xb7]\xd8\xf2h" +
-	"\x9d\x8d\xbdZ\xfbBd!(\xa4\x96t\xbd\xf8\x8b\x1f" +
-	"}4\xfdd\xab\x9e\xc7\x19\x82|\xda\xd3\xf3\xab\xe47" +
-	"~\xba\xbe\x0bO\xb5\x0a\xbc\x1a\xf1,}\xc3\x13\xb0\x8f" +
-	"}\xf9'\xc3\x8f[O\x93\x91\xd0\x02;\x08\xf2r\xe4" +
-	"a\x19\xd6\xd9\x08\xe8\x9b\xe4J\xfe\xa5\x8e\xfc\xf5\x9b\xf7" +
-	"\xbd{\xf4\x0b\xcf\xb2\xd5\"\x90\xee\x83n\x10IC?" +
-	"\"\x97\xe8^d\xf5\xdfk\x04up\xe2\xa9\xc4\xfd7" +
-	",\x7f\xaeU\xf9\xe5\x85^\x14\x10e\xe5O\xec\xc8~" +
-	"\xe6\xdf\xbd\x9b_hq\xec\x96\xe8Rv\xec\xb7\xff\xbd" +
-	"\x90\xdesj\xf3\xcbdH\x1fY\x16\x15\x8c\xdc\xf8\xb2" +
-	"\xb6xS\xa6\xef\x1f-\xa4\x12\xd1K\x1cY\x8fs\xf4" +
-	"\xe67\xcf}\xee\x95\xf0\xc9\xe0\xa4\xbc%z\x89Bj" +
-	"\xd5\xfe\x07\xdf\x1c}\xed\xe6w\xeb\x053xb\xdfq" +
-	"\xf1\xecc\x93\xd4'\xbc\x82Y\x12\xbd$WDY\xfa" +
-	"\xc6(\xc7\xfc\xc7\x17\xaf\xe4nxh\xfb\xb9\xc04\xf9" +
-	"\x8cGs\xe4\xe4\xf3K\xb2gn{\x9fL\x03Pz" +
-	"\xf7\xf4?\xbf\x7fj\xe2\x03\x9f\xe6P\xf4\xd7\xf2g\x1e" +
-	"\xcd\xe1\xe8\xdb\xd4\x82\xcf\xcc3K\x03\xf2`\xec\xbb\xf2" +
-	"p\xec:\"\xf9h\x8c\xa5\x9bF\xb5'c\x7f\xfc\xa8" +
-	"<\x10\xbf\x8eh\xed\xe1\xf8&\xc8b\x82\xb3q\xc7\x83" +
-	"\xbf\xeb:\x15\xfd\xea\x14\x19\x89Y%d&\x1e\x96_" +
-	"g)\xb9-\xc1\xf5\xdf\xbc\x1fs\xd5\xdb\x93\x89\xa3\xf2" +
-	"\x99\x04\x9b\xf1\xc7\xc4\xdb\xb4JY\xa3\xc5\xcf[\xa3\xc5" +
-	".\x91\xb7F+\xa3=\xdb\xed|\xcdq\xbb\xb6:\x05" +
-	"\xd8\x03\x80\xd9\xa1\x85bJ\x85@d\xac\xbc\x9d\xc8\xbc" +
-	"I\x83\xb9Q \x8e+*\x0d\xfe\xba\xa1\x87\xc8\xfc\xa2" +
-	"\x06s\x87\x80\x1ar\xadJ~\xc4\xae\x12\x11\x12\x84\x01" +
-	"\x0dH\x05\x97\x97\xc0\x1f\xb3\xbb\xad\xd2\x98]\x0d\xf0f" +
-	"\xa1\xd5\xf1\xa6EZ\xdd\xa2\x0d\x95\xfc\x88\xe3vUk" +
-	"\x8ek/\x1f\xb0\\\xab\x8c\xaa\x19\xd2BD\x9eU\xf1" +
-	"n\"\xb3C\x83\x99\x16\xc8x\xd4m\x94\xa9\x16\xca\x19" +
-	"N\xe6\xec{\x88]\x8c5\xb9\xfa\xd8\x97^\x0d\xe6\x16" +
-	"\x01\xa0\xee\xdff\xfe\xb6Q\x839 `\x08\xa4!\x88" +
-	"\x8c\xaf\xb1\xd2\xafh0\xef\x14\xc8:\xc3\xc3U\xbb\x86" +
-	"\x08\x09D\xd8=\x8f\x1c\xa9 \x0du#2\xc5J\xc1" +
-	"\xbe\x17\x1d$\xd01\xaf\x97{\xac\xd2\xae\xe5\x83vu" +
-	"\xacT\x9b\xe9eO\xe0e\xd6\xf2da\x04%D\x80" +
-	"1/\xe7N\xa7\xc1X\xa5V\xc6\xce\x8019\xea:" +
-	"y\x18A\x7fh\xe3k\x84mK\xb1\xb2\xcb.l)" +
-	"Vk\xd4\x1e\xb8\xee9\x02\xd79W\xe0:\x83\xc0e" +
-	"\xf2\xceX\xa5\xe6\x07$9b[\x85\xd9\xa9K\xd6\xac" +
-	"b\xe9*\x19\x9d\xe9j\xc9\xb1\x0a\xf5\x1a\xa9\x12]-" +
-	"\xc4\xbe\xcc\xbc\x01\xb1j#\x88\x91@\xec\xea\xba\xe6J" +
-	"\xd5\xffS\x90\xa8S\x0e\xb8\x9a\x93\xe7\x90\x86\xb40Q" +
-	"\xb3\xad\xc1\xef\x8c\x86\xd1I\xc2\x08\xeb\xc9=V\xb1\xd6" +
-	"\x8b\x01\xccb\xd8n\xe9\xa51\xef\xc6nl\xdeXy" +
-	"\x1c\x9f&\xca\xbd\x04\x0d\xb9\x13\x10X\x86+*\xe5%" +
-	"G\xbe\x82N\xa2\xdc1FN2\".\xabz\x86\xe4" +
-	"\xab\xde\x99\xbf1r\x0a\x02qmZ\xa5\xa1\x11\xc9\xd7" +
-	"\xd1C\x94;\xc1\xc0i>\x12\xfa\x98\x8f\x84\x88\xe4\x1b" +
-	"\xde\x91\x93\x8c\xbc\xc5G\xc2\x97T\x1aa\"y\x06\xb7" +
-	"\x13\xe5N3p\x96\x81\xc8E\x95F\x84H\xfe\xc7S" +
-	"\xff\x16\x03\x13\xcc\xa5O)\x91\xf6\xba\xfb{\x1e\xf2\x0e" +
-	"#\x93|\xa4\xe3\x82J\xa3\x83H\x9e\xf7\x94\x9ce`" +
-	"\x8a\x81\x05\x1f\xa94\x16\x10\xc9\x0fq\x1bQn\x82\x81" +
-	"i\x06\x16~\xa8\xd2XH$/z\x06OB\xc3\xa0" +
-	"\x10\x88G'U\x1aQ\"y\xd9S1\xc5\x07B\x0c" +
-	"\xc4>Pi\xc4x\xb2\x08\x06\xa6\x19\xe8` \xfe\xbe" +
-	"J#N$\xc3\xa2\x87hPh\xc8\xc5\xf8{\xe2\xbc" +
-	"J#A$\x17\x88A\xa2\\\x07\x03i\x06\x92\x13*" +
-	"\x8d$OG\xb1\x94(\x17c\xe0z\x06R\xe7T\x1a" +
-	")\"\xb9\xd8S\x91b\xe0SB@\xaf\x14K\x14I" +
-	"\x0e9N\x09 \x01\x10\xf4\xe2\xfau\x08\x93@\x98\x90" +
-	"\x1d*\xee\xdc\\\xa9!N\x02q\x82>\xbc~\x1d\xa2" +
-	"$\x10%\xa8\xa1\xe2\xce\xfe\x92c\xd5\xb8\xd56\x0a5" +
-	"9\xecZy\xa4\x82Y\xd1\xb8B\xf9\x11\xcbE\x88\x04" +
-	"B\x04\xbdZs}\xf9o\xed\xb2\xc7\xf78n\xc1\xff" +
-	"\x9f\xad\x8e\x97\x87\x9cR\x93\xae\xf5\x12$K\xc5j\x0d" +
-	"\xa9`\x97\xa9s\xcf\xdb\xed\xd4\xeeF\x8f%\xdc\x83T" +
-	"\xb0q\xd5Qm\xb8\x82T0/\x1bv^\xa3\x0b\xb5" +
-	"]\xbf\xea\x9c]\x8dgTL\x83y\x93\x80\xca\x8f\x14" +
-	"K\x05\xd7\xae\xcc\x98F\xcd\xcd\xe0\x13L\x1bO\x81V" +
-	"\xab6\x85\"\xfeuu\xf2]|\x15\x9b&\xf8\x02\xed" +
-	"\x8d7[o4s\xb5\x99\xe5\x02I\xcb\xdd\xf9\x09\x06" +
-	"\xa1h\xd7\xda`m\x17h\xa8\xcd\x8d\x0de\xeb?\xdb" +
-	"\x9atg\xd0\xa4\xe3Pjv\x9b^&\xae(\xbfQ" +
-	"\xf7\x04\x8dzf!\xb8\x8eS\xa3\xc8\xb5\x87\x90hO" +
-	"W\xbb\xd5\x8d\xce\xd5_\xc9t\xf5\x8fU\xbc\xf6\x97\x0a" +
-	"\xb6\x0d\x8b\x0d\xb8K\x839\xd2\xbam\xd8\xfc\xf5n\x0d" +
-	"\xe6^\x1e*\xa9\xba\xad\xe3\x9c\xf4{5\x98\x0f\x08\x18" +
-	"\x1a\xbcve\xdc\xcf~\xed\xd5`>$\x90\xad\x14K" +
-	"\x96;N\x91\xec\xa8g\x82\x1frv\x89\x03\xbd\xdbr" +
-	"\x8bV\xa1\x98\xe7Bi\\\xc3\xe4\x90S\x18\xbfvj" +
-	"\x9a>\xf0(\x01\x82\x85\xd1@g\x92\xbdb\x97\x1a\xf1" +
-	"\xb7\xba[=R\xed\x1e\x95\x04\xe2\x82\xfdd\x97\x8al" +
-	"}A\x839\xda\xe2R\x99\x09F\xea~f\xcaV\xde" +
-	"u|k\xb3%\xab<T\xb0(\x92\xacXe\xdbO" +
-	"Ufx\xac\x92o\xad/\xdf\xb8\xb9\x9d\xd8PIr" +
-	"\xaa<?\x9a\xb7\xc4\xc0\xa0\xca\x8d\x0dyY$\xb8f" +
-	"\xda\x1bP\xfe\xc2\x0c\x7f\xeb7~\xb8\x94\x84\xf1\x1d\x1d" +
-	"h>S\xe0?\x9c\x8cq\x1e^e\x1d\xa2\xf9\xb8\x81" +
-	"\xffT1,\xc6\xb6\xe9\xd0\x9a\xaf6\xf8\x0f\x05cs" +
-	"7\x09\xe3V\x1d\xc1;\x00\xfe[\xcbX\xc3\xfaV\xe8" +
-	"Z\xa9\xda\x8b$\x8f\xf4^$y\"\xf7\"\xe3\xdd\xdd" +
-	"^h;\x9d9'e\xbf\xabY\xf9\xc6j\xdb\xc8\xcc" +
-	"J\x0e\xecr\x0d\xe6j\x01\xc3\xdf_Vu7\xd6\xdd" +
-	"u\x02\x99\xcaX\xd9v\xfd>\x9c)\xd8\x15\xa7\xec\xff" +
-	"\x9b5\x89\xed$w>/\x8c\xcd\xd5\x97\xcba\xabS" +
-	"\xb0\xe7)\x07\x03\xa1F5t\x07\xd5\x00q\xb5Z\xe8" +
-	"l\xa9\x85\x19\x8bT\xa6:R\x1cn\xae\xa3\xdeum" +
-	"[\xc2\x9bk\xd5|\xe5\xfd\xbf\x00\x00\x00\xff\xff\xd3\x1a" +
-	"\xf0\x1d"
+const schema_c8aa6d83e0c03a9d = "x\xda\x94W}\x8cTW\xf9~\x9fs\xe7c\x99\xef" +
+	"\xcb\x99M\x0b\xfdm&\xfd\x05\xb4le\xa5\x0b\xe5\x8f" +
+	"M\xeb,\x95\x05\xb7\"\xdd\xbbS\x08&\x8d\xe9\xdd\x99" +
+	"\xbb\xbb\x13f\xe6N\xef\xcc\xb2\xdd\x04\xa3\x0d\xd5&&" +
+	"\xf8\xd1\x84X\xaa\xa4Y\x8d\xc6\x92Z\xc5\xc6\xc4\x9a\xf8" +
+	"\xd1V+\x1aH\xadb\xa5\x09*4M\xda\x1a\x90\xa5" +
+	"\xdd\x96\x85.\\\xf3\xde\x99{\xef\xec\xb0\x0b\xf5\xbf\x99" +
+	"\xfb\xbc\xe79\xcf\xfb\x9e\xf7\xe3\x9cu3\x81~qG" +
+	"\xf0\xbeeDZ)\x18\xb2\xcfv\xcc\xc7\xee\xdf\xfc\xe0" +
+	"\x97I\xeb\x04\xecO\xd5\x9e]w\xee\xa9\x97>\xa4\x01" +
+	"\x84\x05\x91\xdc\x1f\xf8\x8b<\x18\x08\x13\xc9\x03\x81I\x82" +
+	"mm\xfc\xc3\xf6G\x9f\xb9\xf0uR;A\x14D\x98" +
+	"h}gp9\x08\xb2+\x98%\xd8{\xb7\x1c\x1a\x8a" +
+	"\xbc\xf6\xf1o\x92\x96\x00\xecC}\xbf=\xbd\xaf|\xf8" +
+	"h\xc3R\xde\x1d|Q\x0e\x04\xf9\xd7\xa6\xe0O\x08\xf6" +
+	"\xec\x03s\xbbnNl9\xd0\xca\xf6z\x83\xed\x8c\xc3" +
+	"\xf6\xcf\xb7\xad\xf3\xc7b\xbfx\xaa\xd5\x00!\xc1\x06\xc1" +
+	"\x10\x1b\xdc\xf5]a~\xf5\xe8\xe44o'\xfc\xed\x06" +
+	"\x10V\x89\xe4\xea\xd0\xe3rm\x88\x17\xad\x09\xfdF!" +
+	"\xd8/\x1f_\xfe\xc5\xae\xe5\xfb~\xd8\xaeN\xb0&5" +
+	"\xf2'\xd9\x15\xe1_+\"\xac\xae\xffw\xf3\xa3;." +
+	"n{\xba\xb19\x07a\xfd\x91H\x04\x14\xb0W\xf4\xbc" +
+	"\xfc\xa3\xc7?\x98?\xd2*\xeb C\x90\xd3\x11\x96\xf5" +
+	"\xd3\xe4\x17\xbe\xbf\xb1\x07\xcf\xb5\x1a\xbc\x10q\x1c\xfb\xa3" +
+	"c`\x1c\xfb\xf4wF\x7f\xac\xff\x9c\xd4\x84\xe2\xeb " +
+	"\xc8w\"O\xca\x0b\x8e\x88s\x91\xad\xb23\x1a&\xb2" +
+	"\x0f\xce<\x97x\xe4\x96U/\xb6\xb2]\x898Q@" +
+	"\x94\xd9\x9e\xdd\x95\xfd\xd8\xbf\xfa\x07\x7f\xdf\xa2\xf4\xce\xe8" +
+	"JV\xfa\xab\xff\\LO\x9e\x1a|\x85T\xe9\"]" +
+	"Q\xc1\xc8\xad\xaf(\x9d[3\x03\x7fm!\x95\x88^" +
+	"\xe6\xc8:\x9c\xd5\xdb\xdf8\xff\x89W\x83'\xfd\x95\xf2" +
+	"\xce\xe8e\x0a\xd8k\xf7?\xf6F\xf5\xb5\xdb\xff\xddH" +
+	"\x98\xe1\x13\xfb\x8e\x8b_>3K\x03\xc2I\x98\x15\xd1" +
+	"\xcbr5\xab\x96\xb7F9\x88\xdf\xbet5w\xcb\x13" +
+	";\xcf\xfb\xd2\xe4\xf3\x0e\xcd\xf7N\xbe\xb4\"{\xe6\x9e" +
+	"wIS\x01;\xdc;\xff\xf7o\x9c\x9ay\xcf\xa59" +
+	"\x14\xfd\x99\xfc\x81C3\x1d}\x8bZ\xf0\x85\x07\xc7\xd6" +
+	"\x80<\x18\xfb\x9a\x9c\x8e\xddD$\x9f\x8e\xb1\xb5'\xaa" +
+	"=\xba\xfb\xe3\x87\xe5\x81\xf8MD\xeb\xa7\xe3[!\x8b" +
+	"\x09\x0e\xef}\x8f\xfd\xba\xe7T\xf4\xb3s\xa4&\xae\xc9" +
+	"\x09-\xf1\xa4\xfc<[\xc9\x1d\x09\xce\x7f\xaf>\x16K" +
+	"\xa0#\x89\xc3\xf2\xf9\x04\xcbx!\xf1\x16\xad\xb5\xf5j" +
+	"\xf1\x93z\xb5\xd8#\xf2z\xb5R\xed\xdbi\xe4\xeb\xa6" +
+	"\xd5\xb3\xdd,\xc0\x18\x02\xb4\x0e%\x10\xb3\xed\x00\x88\xd4" +
+	"5\xf7\x12i\xb7)\xd06\x0b\xc4q\xd5N\x83\xbfn" +
+	"\xea#\xd2\xeeR\xa0\xed\x12\xb0G,\xbd\x92\x1f7j" +
+	"D\x84\x04aH\x01R~\xf1\x12\xf8cv\x8f^\x9a" +
+	"0j>\xee\x95G\x03\xf7\x14)\x0dE\x9b*\xf9q" +
+	"\xd3\xea\xa9\xd5M\xcbX5\xa4[z\x195-\xa0\x04" +
+	"\x88\x1cU\xf1^\"\xadC\x81\x96\x16\xc88\xd4m\x94" +
+	"\xa9\x16\xca\x05N\xe6\x8c\x87\x88]\x8cy\\\x03\xecK" +
+	"\xbf\x02m\x9b\x00\xd0\xf0o\x90\xbfmV\xa0\x0d\x09\xa8" +
+	"\x02i\x08\"\xf5s\xbc\xe9g\x14h\xf7\x0bd\xcd\xd1" +
+	"\xd1\x9aQG\x88\x04B\xec\x9eC\x8e\x94\x7f\x0c\x0d\x11" +
+	"\x99b\xa5`<\x8c\x0e\x12\xe8X\xd2\xcbI\xbd\xb4{" +
+	"\xd5\xb0Q\x9b(\xd5\x17z\xd9\xe7{\x99\xd5\x1d[\xa8" +
+	"~\x0a\x11\xa0.\xc99f6\x19k\xd4\xca\xd8\xed3" +
+	"&\xab\x96\x99\x87\xea\x17|\x1b\x1f\\>Lq\xc06" +
+	"{9!\x8f\xe3\xff\x89rG\xa1 w\x02\x02]\xb8" +
+	"j\xa7\x9c\xb8\xc9W\xd1M\x94;\xc6\xc8IF\xc4\x15" +
+	"\xbb\x11<\xf97g\xcd\x9f\x199\x05\x81\xb82o\xa7" +
+	"\xa1\x10\xc9\xd7\xd1G\x94;\xc1\xc0i^\x12\xf8\x90\x97" +
+	"\x04\x88\xe4?\x9c%'\x19y\x93\x97\x04/\xdbi\x04" +
+	"\x89\xe4\x19\xdcK\x94;\xcd\xc0Y\x06B\x97\xec4B" +
+	"D\xf2\x1dg\xfb7\x19\x98a\xae\xf0\x9c-\xd2N\xff" +
+	"8\xe7 o32\xcbK:.\xdait\x10\xc9\x0b" +
+	"\xce&g\x19\x98c`\xd9\x07v\x1a\xcb\x88\xe4\xfb\xb8" +
+	"\x87(7\xc3\xc0<\x03\x91\xf7\xed4\"D\xf2\x92#" +
+	"x\x16\x0a\x86\x85@<:k\xa7\x11%\x92W\x9c-" +
+	"\xe6xA\x80\x81\xd8{v\x1a1\xee]\x82\x81y\x06" +
+	":\x18\x88\xbfk\xa7\x11'\x92A\xd1G4,\x14\xe4" +
+	"b\xfc=q\xc1N#A$\x97\x89a\xa2\\\x07\x03" +
+	"i\x06\x923v\x1aI\x9e\x03b%Q.\xc6\xc0\xcd" +
+	"\x0c\xa4\xce\xdbi\xa4\x88d\xa7\xb3E\x8a\x81\xff\x13\x02" +
+	"\xe1J\xb1D\xa1\xe4\x88i\x96\x00\x12\x00!\\\xdc\xb8" +
+	"\x01A\x12\x08\x12\xb2#\xc5\xb1\xc1J\x1dq\x12\x88\x13" +
+	"\xc2\xa3\x1b7 J\x02Q\x82=R\x1c\xdbR2\xf5" +
+	":\x17s\x8c\x04b\x84\xe4\xa8\xa5\xe7\x91\xf2\xbbQ#" +
+	"\xb5\x93\xf9q\xddB\x80\x04\x02\x84p\xadn\xb9\xf6_" +
+	"\xdamLM\x9aV\xc1\xfd\x9f\xadM\x95G\xcc\x92G" +
+	"W\xd5\xeb\xe3\xde\x9fR\xb1VG\xca\x1f\x7f\x0d\xee%" +
+	"\xeb\xc9\xde\xd3\xacb\xc2CH\xf93\xbd\x81*\xa3\x15" +
+	"\xa4\xfc\x8e\xdc\xd4y\x83<o\xb6\x87m\xc5\xcan\xa3" +
+	"\xb0\xadX\xabS{\x83\xe8]\xa4At/\xd6 \xba" +
+	"\xfd\x06\x91\xc9\x9b\x13\x95\xba[\xf8\xc9qC/\\\xdb" +
+	"\xa2\x92u\xbdX\xbaN\xe7ZX\xd2%S/4z" +
+	"a\x8d\xe8z\xad\xc4\xb5Y\xb2\xf0[\x0e\xe0z{-" +
+	"\xd6\x92\xfe\x97\xc6\xdb\xec C\x96b\xe69\xa4\x01%" +
+	"H\xe4\x8do\xb87\x00U\xed&\xa1\x06\xc3\xc9I\xbd" +
+	"X\xef\xc7\x10\x96\x14U[\xb4\xa7\xf1\x84\x8a)\xd0n" +
+	"\x13\xb0\xf3\xe3\xc5R\xc12*\x0bf\x91w/\xf8\x08" +
+	"\xb3\xc6\xd9@\xa9\xd7<\xa3\x90\xeb\x84\x99\xefa\x81\x9e" +
+	"\x04\xd7\xa0\xbd\xedf\x1b\xe1_,\xf8\xab\x04\x92\xba5" +
+	"\xf6\x11\xc6\xa0h\xdf\xb5\xc9\xdan\xd0\xdc671\x92" +
+	"m\xfclK\xddn?u\xe3\xb0\xedk\x93\xb7K\\" +
+	"\xb5\xdd\xf4\xed\xf3\xd3wa\x91Z\xa6Y\xa7\xd0\x8dG" +
+	"\x90h?\xaev\xd5\xcd\x8c\xd8R\xc9\xf4l\x99\xa88" +
+	"I\x91\xf2\xef\x1a:\x0bx@\x816\xdez\xd70\xf8" +
+	"\xeb\x83\x0a\xb4\xbd\\j\xa9\x86\xd6)>\xf4\x87\x15h" +
+	"\x8f\x0a\xa8\x0a\x9cQ\xa2>\xc2~\xedU\xa0=!\x90" +
+	"\xad\x14K\xba5E\xa1l\xd5\x91\xe0\x86\x9c]\xe2@" +
+	"\xef\xd1\xad\xa2^(\xe69Q\x9a-29b\x16\xa6" +
+	"n|4\x9e\x0f\\`\x80\x7f]T\xd1\x9dd\xaf\xd8" +
+	"\xa5f\xfc\xf5\xdeV\x8f\xecv\x8fJ\x02q\xc1~\xb2" +
+	"KEV_P\xa0U[\\*3\xc1x\xc3\xcfL" +
+	"Y\xcf[\xa6\xab6[\xd2\xcb#\x05\x9dB\xc9\x8a^" +
+	"6\xdc\xa3\xca\x8cNT\xf2-\xf9\xe5\x89[\xdc\x89M" +
+	"\x95$\x1f\x95\xe3\x87W%*\x86\xed\xdc\xc4\x88s\x8a" +
+	"\x04KK;e\xeb^\x97\xe1\xde\xf9\xd5o\xad$\xa1" +
+	"~%\x0cx\xaf\x0e\xb8\xcf&u\x8aK\xba\x1c\x86\xf0" +
+	"\xde*p_\x1e\xaa\xce\xd8\x8e0\x14\xef\xcd\x06\xf7\x99" +
+	"\xa0\x0e\xf6\x92P\xef\x0e\xc3\x7f\x05\xc0}i\xa9w\xf0" +
+	"~\xab\xc3J\xa9\xd6\x8f$7\xba~$\xb9O\xf5#" +
+	"\xe3\xd4n?\x941sa\xffp\xcf\xcaR\xf4|\xf3" +
+	"b\xdb<\x995\x1c\xd8U\x0a\xb4u\x02\xaa\xdb\xd5\xd7" +
+	"\xf66/\xbb\x1b\x042\x95\x89\xb2a\xb932S0" +
+	"*f\xd9\xfd\xd7\xce\xbf\xd3H\xf2Tr\xc2\xe8]|" +
+	"9\x1d\xb6\x9b\x05c\x89tP\x11hfC\xaf\x9f\x0d" +
+	"\x10\xd7\xcb\x85\xee\x96\\X0^2\xb5\xf1\xe2\xa8w" +
+	"\x19u\xca\xb5\xed\x0a\xee\x0d\x9b\xa5\xd2\xfb\xbf\x01\x00\x00" +
+	"\xff\xff\xb0\xcc\xe5\x84"
 
 func init() {
 	schemas.Register(schema_c8aa6d83e0c03a9d,
@@ -2772,12 +2772,12 @@ func init() {
 		0x9027d60a509d467c,
 		0x95460e1858f85cf4,
 		0x9fb80cccef72e8de,
+		0xa177c8866f029c3c,
 		0xa683121d7d12cdc6,
 		0xa94cf75566fcc440,
 		0xb1fcf692a8c62e19,
 		0xb3012e36a35e0fb0,
 		0xb561ad669b43cc65,
-		0xba39aaea7d7bcba2,
 		0xc2241b810eb3f099,
 		0xc54940df263f58ae,
 		0xcf49dc7714f7eebd,

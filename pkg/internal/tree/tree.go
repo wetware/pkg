@@ -13,10 +13,10 @@ import (
 type Transaction Node
 
 // Load API value
-func (t Transaction) Load() api.Value { return Node(t).val }
+func (t Transaction) Load() api.Any { return Node(t).val }
 
 // Store API value
-func (t Transaction) Store(val api.Value) bool {
+func (t Transaction) Store(val api.Any) bool {
 	if mem.IsNil(val) || mem.IsNil(Node(t).val) {
 		Node(t).val = val
 		return true
@@ -63,7 +63,7 @@ func (n Node) List() []Node {
 }
 
 // Load API value
-func (n Node) Load() api.Value {
+func (n Node) Load() api.Any {
 	n.tx.RLock()
 	defer n.tx.RUnlock()
 
@@ -71,7 +71,7 @@ func (n Node) Load() api.Value {
 }
 
 // Store API value
-func (n Node) Store(val api.Value) bool {
+func (n Node) Store(val api.Any) bool {
 	n.tx.Lock()
 	defer n.tx.Unlock()
 
@@ -135,7 +135,7 @@ type node struct {
 	ctr int
 
 	tx  sync.RWMutex
-	val api.Value
+	val api.Any
 
 	Name     string
 	parent   *node

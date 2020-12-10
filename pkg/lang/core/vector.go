@@ -38,7 +38,7 @@ var (
 	_ Vector = (*ShallowPersistentVector)(nil)
 	_ Vector = (*DeepPersistentVector)(nil)
 
-	emptyVectorValue api.Value
+	emptyVectorValue api.Any
 	emptyVectorSeq   chunkedSeq
 )
 
@@ -76,7 +76,7 @@ type Vector interface {
 
 // NewVector creates a vector containing the supplied values.
 func NewVector(a capnp.Arena, items ...ww.Any) (Vector, error) {
-	values := make([]api.Value, len(items))
+	values := make([]api.Any, len(items))
 	for i, any := range items {
 		values[i] = any.MemVal()
 	}
@@ -88,7 +88,7 @@ func NewVector(a capnp.Arena, items ...ww.Any) (Vector, error) {
 type EmptyPersistentVector struct{}
 
 // MemVal .
-func (EmptyPersistentVector) MemVal() api.Value { return emptyVectorValue }
+func (EmptyPersistentVector) MemVal() api.Any { return emptyVectorValue }
 
 // Count always returns 0 and a nil error.
 func (EmptyPersistentVector) Count() (int, error) { return 0, nil }
@@ -100,7 +100,7 @@ func (EmptyPersistentVector) Invoke(args ...ww.Any) (ww.Any, error) {
 	}
 
 	switch idx := args[0]; idx.MemVal().Which() {
-	case api.Value_Which_i64, api.Value_Which_bigInt:
+	case api.Any_Which_i64, api.Any_Which_bigInt:
 		return nil, ErrIndexOutOfBounds
 
 	default:
@@ -120,7 +120,7 @@ func (EmptyPersistentVector) Conj(items ...ww.Any) (Container, error) {
 		return EmptyVector, nil
 	}
 
-	values := make([]api.Value, len(items))
+	values := make([]api.Any, len(items))
 	for i, any := range items {
 		values[i] = any.MemVal()
 	}
@@ -138,7 +138,7 @@ func (EmptyPersistentVector) Assoc(i int, val ww.Any) (Vector, error) {
 	return EmptyVector.cons(val)
 }
 
-func (EmptyPersistentVector) conj(values []api.Value) (Vector, error) {
+func (EmptyPersistentVector) conj(values []api.Any) (Vector, error) {
 	if len(values) == 0 {
 		return EmptyVector, nil
 	}
@@ -203,7 +203,7 @@ func (EmptyPersistentVector) Seq() (Seq, error) { return emptyVectorSeq, nil }
 // ShallowPersistentVector is a compact vector that stores up to 32 values.
 type ShallowPersistentVector struct{ mem.Value }
 
-func newShallowPersistentVector(a capnp.Arena, values ...api.Value) (ShallowPersistentVector, error) {
+func newShallowPersistentVector(a capnp.Arena, values ...api.Any) (ShallowPersistentVector, error) {
 	if len(values) == 0 {
 		return ShallowPersistentVector{}, fmt.Errorf("%w: ShallowPersistentVector must not be empty", ErrIllegalState)
 
@@ -255,7 +255,7 @@ func (ShallowPersistentVector) Invoke(args ...ww.Any) (ww.Any, error) {
 	}
 
 	switch idx := args[0]; idx.MemVal().Which() {
-	case api.Value_Which_i64, api.Value_Which_bigInt:
+	case api.Any_Which_i64, api.Any_Which_bigInt:
 		return nil, ErrIndexOutOfBounds
 
 	default:
@@ -345,7 +345,7 @@ func (v ShallowPersistentVector) EntryAt(i int) (ww.Any, error) {
 
 // Conj returns a new vector with items appended.
 func (v ShallowPersistentVector) Conj(items ...ww.Any) (Container, error) {
-	values := make([]api.Value, len(items))
+	values := make([]api.Any, len(items))
 	for i, any := range items {
 		values[i] = any.MemVal()
 	}
@@ -353,7 +353,7 @@ func (v ShallowPersistentVector) Conj(items ...ww.Any) (Container, error) {
 	return v.conj(values)
 }
 
-func (v ShallowPersistentVector) conj(values []api.Value) (Vector, error) {
+func (v ShallowPersistentVector) conj(values []api.Any) (Vector, error) {
 	if len(values) == 0 {
 		return v, nil
 	}
@@ -402,8 +402,8 @@ func (v ShallowPersistentVector) conj(values []api.Value) (Vector, error) {
 		values...)
 }
 
-func (v ShallowPersistentVector) cloneTail(a capnp.Arena, vec api.Vector) (newtail api.Value_List, err error) {
-	var tail api.Value_List
+func (v ShallowPersistentVector) cloneTail(a capnp.Arena, vec api.Vector) (newtail api.Any_List, err error) {
+	var tail api.Any_List
 	if tail, err = vec.Tail(); err != nil {
 		return
 	}
@@ -413,7 +413,7 @@ func (v ShallowPersistentVector) cloneTail(a capnp.Arena, vec api.Vector) (newta
 		return
 	}
 
-	if newtail, err = api.NewValue_List(seg, width); err == nil {
+	if newtail, err = api.NewAny_List(seg, width); err == nil {
 		for i := 0; i < int(vec.Count()); i++ {
 			if err = newtail.Set(i, tail.At(i)); err != nil {
 				break
@@ -434,7 +434,7 @@ func (v ShallowPersistentVector) Cons(item ww.Any) (Vector, error) {
 	return v.cons(vec, item.MemVal())
 }
 
-func (v ShallowPersistentVector) cons(vec api.Vector, val api.Value) (Vector, error) {
+func (v ShallowPersistentVector) cons(vec api.Vector, val api.Any) (Vector, error) {
 	if cnt := int(vec.Count()); cnt < width {
 		return v.shallowCons(vec, cnt, val)
 	}
@@ -442,7 +442,7 @@ func (v ShallowPersistentVector) cons(vec api.Vector, val api.Value) (Vector, er
 	return v.deepCons(vec, val)
 }
 
-func (v ShallowPersistentVector) shallowCons(vec api.Vector, cnt int, val api.Value) (ShallowPersistentVector, error) {
+func (v ShallowPersistentVector) shallowCons(vec api.Vector, cnt int, val api.Any) (ShallowPersistentVector, error) {
 	tail, err := vec.Tail()
 	if err != nil {
 		return ShallowPersistentVector{}, err
@@ -473,7 +473,7 @@ func (v ShallowPersistentVector) shallowCons(vec api.Vector, cnt int, val api.Va
 	return ShallowPersistentVector{mv}, newTail.Set(cnt, val)
 }
 
-func (v ShallowPersistentVector) deepCons(vec api.Vector, val api.Value) (DeepPersistentVector, error) {
+func (v ShallowPersistentVector) deepCons(vec api.Vector, val api.Any) (DeepPersistentVector, error) {
 	tail, err := vec.Tail()
 	if err != nil {
 		return DeepPersistentVector{}, err
@@ -484,7 +484,7 @@ func (v ShallowPersistentVector) deepCons(vec api.Vector, val api.Value) (DeepPe
 		val)
 }
 
-func (v ShallowPersistentVector) update(vec api.Vector, cnt, idx int, val api.Value) (ShallowPersistentVector, error) {
+func (v ShallowPersistentVector) update(vec api.Vector, cnt, idx int, val api.Any) (ShallowPersistentVector, error) {
 	tail, err := vec.Tail()
 	if err != nil {
 		return ShallowPersistentVector{}, err
@@ -592,7 +592,7 @@ func (v ShallowPersistentVector) Seq() (Seq, error) {
 type DeepPersistentVector struct{ mem.Value }
 
 // N.B.:  tail MUST be of length 32 and fully-populated.
-func newDeepPersistentVector(a capnp.Arena, tail api.Value_List, values ...api.Value) (DeepPersistentVector, error) {
+func newDeepPersistentVector(a capnp.Arena, tail api.Any_List, values ...api.Any) (DeepPersistentVector, error) {
 	mv, err := mem.NewValue(a)
 	if err != nil {
 		return DeepPersistentVector{}, err
@@ -629,9 +629,9 @@ func (v DeepPersistentVector) Invoke(args ...ww.Any) (ww.Any, error) {
 	}
 
 	switch idx := args[0]; idx.MemVal().Which() {
-	case api.Value_Which_i64:
+	case api.Any_Which_i64:
 		return v.EntryAt(int(idx.MemVal().I64()))
-	case api.Value_Which_bigInt:
+	case api.Any_Which_bigInt:
 		// TODO(performance):  can we use unsafe.Pointer here?
 		if bi := idx.(BigInt).BigInt(); bi.IsInt64() && bi.Int64() <= math.MaxUint32 {
 			return v.EntryAt(int(bi.Int64()))
@@ -692,7 +692,7 @@ func (v DeepPersistentVector) count() (vec api.Vector, cnt int, err error) {
 
 // Conj returns a new vector with items appended.
 func (v DeepPersistentVector) Conj(items ...ww.Any) (Container, error) {
-	values := make([]api.Value, len(items))
+	values := make([]api.Any, len(items))
 	for i, any := range items {
 		values[i] = any.MemVal()
 	}
@@ -700,7 +700,7 @@ func (v DeepPersistentVector) Conj(items ...ww.Any) (Container, error) {
 	return v.conj(values)
 }
 
-func (v DeepPersistentVector) conj(values []api.Value) (DeepPersistentVector, error) {
+func (v DeepPersistentVector) conj(values []api.Any) (DeepPersistentVector, error) {
 	for _, val := range values {
 		vec, cnt, err := v.count()
 		if err != nil {
@@ -818,19 +818,19 @@ func (v DeepPersistentVector) popTail(level, cnt int, n api.Vector_Node) (ret ap
 	}
 }
 
-func (v DeepPersistentVector) arrayFor(i int) (api.Value_List, error) {
+func (v DeepPersistentVector) arrayFor(i int) (api.Any_List, error) {
 	// See:  https://github.com/clojure/clojure/blob/0b73494c3c855e54b1da591eeb687f24f608f346/src/jvm/clojure/lang/PersistentVector.java#L97-L113
 	vec, cnt, err := v.count()
 	if err == nil {
 		if i < 0 || i >= cnt {
-			return api.Value_List{}, ErrIndexOutOfBounds
+			return api.Any_List{}, ErrIndexOutOfBounds
 		}
 	}
 
 	return apiVectorArrayFor(vec, int(cnt), i)
 }
 
-func (DeepPersistentVector) update(vec api.Vector, cnt, i int, val api.Value) (Vector, error) {
+func (DeepPersistentVector) update(vec api.Vector, cnt, i int, val api.Any) (Vector, error) {
 	root, err := vec.Root()
 	if err != nil {
 		return nil, err
@@ -893,7 +893,7 @@ func (v DeepPersistentVector) Cons(item ww.Any) (Vector, error) {
 	return v.cons(vec, int(vec.Count()), item.MemVal())
 }
 
-func (v DeepPersistentVector) cons(vec api.Vector, cnt int, val api.Value) (_ DeepPersistentVector, err error) {
+func (v DeepPersistentVector) cons(vec api.Vector, cnt int, val api.Any) (_ DeepPersistentVector, err error) {
 	shift := v.shift(vec)
 
 	var root api.Vector_Node
@@ -901,7 +901,7 @@ func (v DeepPersistentVector) cons(vec api.Vector, cnt int, val api.Value) (_ De
 		return
 	}
 
-	var tail api.Value_List
+	var tail api.Any_List
 	if tail, err = vec.Tail(); err != nil {
 		return
 	}
@@ -910,7 +910,7 @@ func (v DeepPersistentVector) cons(vec api.Vector, cnt int, val api.Value) (_ De
 		Fast path; room in tail?
 	*/
 	if taillen := cnt - vectorTailoff(cnt); taillen < width {
-		var newtail api.Value_List
+		var newtail api.Any_List
 		if newtail, err = newVectorValueList(capnp.SingleSegment(nil)); err != nil {
 			return
 		}
@@ -980,7 +980,7 @@ func (v DeepPersistentVector) cons(vec api.Vector, cnt int, val api.Value) (_ De
 	}
 
 	// old tail was successfully inserted; create new tail...
-	var newtail api.Value_List
+	var newtail api.Any_List
 	if newtail, err = newVectorValueList(capnp.SingleSegment(nil)); err != nil {
 		return
 	}
@@ -998,7 +998,7 @@ func (v DeepPersistentVector) cons(vec api.Vector, cnt int, val api.Value) (_ De
 }
 
 // vs is always the old tail, which is now being pushed into the trie.
-func (DeepPersistentVector) newLeafNode(a capnp.Arena, vs api.Value_List) (n api.Vector_Node, err error) {
+func (DeepPersistentVector) newLeafNode(a capnp.Arena, vs api.Any_List) (n api.Vector_Node, err error) {
 	if n, err = newRootVectorNode(a); err == nil {
 		err = n.SetValues(vs)
 	}
@@ -1006,14 +1006,14 @@ func (DeepPersistentVector) newLeafNode(a capnp.Arena, vs api.Value_List) (n api
 	return
 }
 
-func apiVectorAssoc(level int, n api.Vector_Node, i int, val api.Value) (ret api.Vector_Node, err error) {
+func apiVectorAssoc(level int, n api.Vector_Node, i int, val api.Any) (ret api.Vector_Node, err error) {
 	if ret, err = cloneNode(capnp.SingleSegment(nil), n, width); err != nil {
 		return
 	}
 
 	// is leaf?
 	if level == 0 {
-		var vs api.Value_List
+		var vs api.Any_List
 		if vs, err = ret.Values(); err == nil {
 			err = vs.Set(i&mask, val)
 		}
@@ -1068,9 +1068,9 @@ func (v DeepPersistentVector) pop(vec api.Vector) (_ Vector, err error) {
 		Fast path.  There's more than one item in the tail, so we won't
 		have to pop the old tail and dig up a node from the trie.
 	*/
-	var newtail api.Value_List
+	var newtail api.Any_List
 	if taillen := cnt - vectorTailoff(cnt); taillen > 1 {
-		var tail api.Value_List
+		var tail api.Any_List
 		if tail, err = vec.Tail(); err != nil {
 			return
 		}
@@ -1245,7 +1245,7 @@ type chunkedSeq struct {
 	mem.Value
 
 	// vec       Vector
-	// node      api.Value_List
+	// node      api.Any_List
 	// i, offset int
 }
 
@@ -1361,10 +1361,10 @@ func (cs chunkedSeq) nodeLen(seq api.VectorSeq, vec api.Vector) int {
 	return width
 }
 
-func (cs chunkedSeq) node(seq api.VectorSeq) (api.Value_List, error) {
+func (cs chunkedSeq) node(seq api.VectorSeq) (api.Any_List, error) {
 	vec, err := seq.Vector()
 	if err != nil {
-		return api.Value_List{}, err
+		return api.Any_List{}, err
 	}
 
 	return apiVectorArrayFor(vec, int(vec.Count()), int(seq.Index()))
@@ -1386,7 +1386,7 @@ func (cs chunkedSeq) Conj(items ...ww.Any) (_ Container, err error) {
 	vector utils
 */
 
-func newVector(a capnp.Arena, cnt, shift int, root api.Vector_Node, t api.Value_List) (DeepPersistentVector, error) {
+func newVector(a capnp.Arena, cnt, shift int, root api.Vector_Node, t api.Any_List) (DeepPersistentVector, error) {
 	val, err := mem.NewValue(a)
 	if err != nil {
 		return DeepPersistentVector{}, err
@@ -1445,7 +1445,7 @@ func newVectorNodeWithBranches(a capnp.Arena, bs ...api.Vector_Node) (n api.Vect
 	return
 }
 
-func newVectorLeafNode(a capnp.Arena) (n api.Vector_Node, vs api.Value_List, err error) {
+func newVectorLeafNode(a capnp.Arena) (n api.Vector_Node, vs api.Any_List, err error) {
 	if n, err = newRootVectorNode(a); err != nil {
 		return
 	}
@@ -1454,7 +1454,7 @@ func newVectorLeafNode(a capnp.Arena) (n api.Vector_Node, vs api.Value_List, err
 	return
 }
 
-func apiVectorArrayFor(vec api.Vector, cnt, i int) (api.Value_List, error) {
+func apiVectorArrayFor(vec api.Vector, cnt, i int) (api.Any_List, error) {
 	// value in tail?
 	if i >= vectorTailoff(cnt) {
 		return vec.Tail()
@@ -1464,27 +1464,27 @@ func apiVectorArrayFor(vec api.Vector, cnt, i int) (api.Value_List, error) {
 
 	n, err := vec.Root()
 	if err != nil {
-		return api.Value_List{}, err
+		return api.Any_List{}, err
 	}
 
 	var bs api.Vector_Node_List
 	for level := vec.Shift(); level > 0; level -= bits {
 		if !n.HasBranches() {
-			return api.Value_List{}, Error{
+			return api.Any_List{}, Error{
 				Cause:   ErrInvalidVectorNode,
 				Message: "non-leaf node must branch",
 			}
 		}
 
 		if bs, err = n.Branches(); err != nil {
-			return api.Value_List{}, err
+			return api.Any_List{}, err
 		}
 
 		n = bs.At((i >> level) & mask)
 	}
 
 	if !n.HasValues() {
-		return api.Value_List{}, Error{
+		return api.Any_List{}, Error{
 			Cause:   ErrInvalidVectorNode,
 			Message: "leaf node must contain values",
 		}
@@ -1531,7 +1531,7 @@ func cloneBranchNode(a capnp.Arena, n api.Vector_Node, lim int) (ret api.Vector_
 }
 
 func cloneLeafNode(a capnp.Arena, n api.Vector_Node, lim int) (ret api.Vector_Node, err error) {
-	var vs, rvs api.Value_List
+	var vs, rvs api.Any_List
 	if ret, rvs, err = newVectorLeafNode(a); err != nil {
 		return
 	}
@@ -1549,17 +1549,17 @@ func cloneLeafNode(a capnp.Arena, n api.Vector_Node, lim int) (ret api.Vector_No
 	return
 }
 
-func newVectorValueList(a capnp.Arena) (_ api.Value_List, err error) {
+func newVectorValueList(a capnp.Arena) (_ api.Any_List, err error) {
 	var seg *capnp.Segment
 	if _, seg, err = capnp.NewMessage(a); err != nil {
 		return
 	}
 
-	return api.NewValue_List(seg, width)
+	return api.NewAny_List(seg, width)
 }
 
-func tailSlice(cnt int, tail api.Value_List) []api.Value {
-	items := make([]api.Value, 0, width)
+func tailSlice(cnt int, tail api.Any_List) []api.Any {
+	items := make([]api.Any, 0, width)
 	for i := 0; i < cnt; i++ {
 		items = append(items, tail.At(i))
 	}

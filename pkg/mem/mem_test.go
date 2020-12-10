@@ -9,5 +9,5 @@ import (
 )
 
 func TestNil(t *testing.T) {
-	assert.Equal(t, api.Value_Which_nil, mem.NilValue.Which())
+	assert.Equal(t, api.Any_Which_nil, mem.NilValue.Which())
 }

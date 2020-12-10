@@ -48,21 +48,21 @@ func (i i64) String() string { return fmt.Sprintf("%d", i.Int64()) }
 // Comp returns 0 if the v == other, -1 if v < other, and 1 if v > other.
 func (i i64) Comp(other ww.Any) (int, error) {
 	switch val := other.MemVal(); val.Which() {
-	case api.Value_Which_i64:
+	case api.Any_Which_i64:
 		return compI64(i.Int64(), val.I64()), nil
 
-	case api.Value_Which_f64:
+	case api.Any_Which_f64:
 		var f big.Float
 		return f.SetInt64(i.Int64()).Cmp(big.NewFloat(val.F64())), nil
 
-	case api.Value_Which_bigInt:
+	case api.Any_Which_bigInt:
 		return big.NewInt(i.Int64()).Cmp(other.(BigInt).BigInt()), nil
 
-	case api.Value_Which_bigFloat:
+	case api.Any_Which_bigFloat:
 		var f big.Float
 		return f.SetInt64(i.Int64()).Cmp(other.(BigFloat).f), nil
 
-	case api.Value_Which_frac:
+	case api.Any_Which_frac:
 		var r big.Rat
 		return r.SetInt64(i.Int64()).Cmp(other.(Fraction).Rat()), nil
 
@@ -96,7 +96,7 @@ func NewBigInt(a capnp.Arena, i *big.Int) (BigInt, error) {
 	return bigInt{i: i, Value: mv}, err
 }
 
-func asBigInt(v api.Value) (BigInt, error) {
+func asBigInt(v api.Any) (BigInt, error) {
 	var i big.Int
 	if buf, err := v.BigInt(); err == nil {
 		i.SetBytes(buf)
@@ -113,21 +113,21 @@ func (bi bigInt) String() string { return bi.i.String() }
 // Comp returns 0 if the v == other, -1 if v < other, and 1 if v > other.
 func (bi bigInt) Comp(other ww.Any) (int, error) {
 	switch val := other.MemVal(); val.Which() {
-	case api.Value_Which_i64:
+	case api.Any_Which_i64:
 		return bi.i.Cmp(big.NewInt(val.I64())), nil
 
-	case api.Value_Which_f64:
+	case api.Any_Which_f64:
 		var f big.Float
 		return f.SetInt(bi.i).Cmp(big.NewFloat(val.F64())), nil
 
-	case api.Value_Which_bigInt:
+	case api.Any_Which_bigInt:
 		return bi.i.Cmp(other.(BigInt).BigInt()), nil
 
-	case api.Value_Which_bigFloat:
+	case api.Any_Which_bigFloat:
 		var f big.Float
 		return f.SetInt(bi.i).Cmp(other.(BigFloat).f), nil
 
-	case api.Value_Which_frac:
+	case api.Any_Which_frac:
 		var r big.Rat
 		return r.SetFrac(bi.i, &unit).Cmp(other.(Fraction).Rat()), nil
 
@@ -165,23 +165,23 @@ func (f f64) String() string { return strconv.FormatFloat(f.Float64(), 'g', -1, 
 // Comp returns 0 if the v == other, -1 if v < other, and 1 if v > other.
 func (f f64) Comp(other ww.Any) (int, error) {
 	switch val := other.MemVal(); val.Which() {
-	case api.Value_Which_i64:
+	case api.Any_Which_i64:
 		var bf big.Float
 		return big.NewFloat(f.Float64()).Cmp(bf.SetInt64(val.I64())), nil
 
-	case api.Value_Which_f64:
+	case api.Any_Which_f64:
 		return compF64(f.Float64(), val.F64()), nil
 
-	case api.Value_Which_bigInt:
+	case api.Any_Which_bigInt:
 		var bf big.Float
 		return big.NewFloat(f.Float64()).Cmp(bf.SetInt(other.(BigInt).BigInt())), nil
 
-	case api.Value_Which_bigFloat:
+	case api.Any_Which_bigFloat:
 		var bi big.Float
 		bi.SetFloat64(f.Float64())
 		return bi.Cmp(other.(BigFloat).f), nil
 
-	case api.Value_Which_frac:
+	case api.Any_Which_frac:
 		var r big.Rat
 		r.SetFloat64(f.Float64())
 		return r.Cmp(other.(Fraction).Rat()), nil
@@ -211,7 +211,7 @@ func NewBigFloat(a capnp.Arena, f *big.Float) (BigFloat, error) {
 	return BigFloat{f: f, Value: mv}, err
 }
 
-func asBigFloat(v api.Value) (bf BigFloat, err error) {
+func asBigFloat(v api.Any) (bf BigFloat, err error) {
 	bf.f = &big.Float{}
 	bf.Value = mem.Value(v)
 
@@ -233,21 +233,21 @@ func (bf BigFloat) String() string { return bf.f.Text('g', -1) }
 // Comp returns 0 if the v == other, -1 if v < other, and 1 if v > other.
 func (bf BigFloat) Comp(other ww.Any) (int, error) {
 	switch val := other.MemVal(); val.Which() {
-	case api.Value_Which_i64:
+	case api.Any_Which_i64:
 		var f big.Float
 		return bf.f.Cmp(f.SetInt64(val.I64())), nil
 
-	case api.Value_Which_f64:
+	case api.Any_Which_f64:
 		return bf.f.Cmp(big.NewFloat(val.F64())), nil
 
-	case api.Value_Which_bigInt:
+	case api.Any_Which_bigInt:
 		var f big.Float
 		return bf.f.Cmp(f.SetInt(other.(BigInt).BigInt())), nil
 
-	case api.Value_Which_bigFloat:
+	case api.Any_Which_bigFloat:
 		return bf.f.Cmp(other.(BigFloat).f), nil
 
-	case api.Value_Which_frac:
+	case api.Any_Which_frac:
 		var r big.Rat
 		bf.f.Rat(&r)
 		return r.Cmp(other.(Fraction).Rat()), nil
@@ -295,7 +295,7 @@ func NewFraction(a capnp.Arena, r *big.Rat) (Fraction, error) {
 	return frac{r: r, Value: mv}, nil
 }
 
-func asFrac(v api.Value) (Fraction, error) {
+func asFrac(v api.Any) (Fraction, error) {
 	fv, err := v.Frac()
 	if err != nil {
 		return nil, err
@@ -329,24 +329,24 @@ func (f frac) String() string { return f.r.String() }
 // Comp returns true if the other value is numerical and has the same value.
 func (f frac) Comp(other ww.Any) (int, error) {
 	switch val := other.MemVal(); val.Which() {
-	case api.Value_Which_i64:
+	case api.Any_Which_i64:
 		var r big.Rat
 		return f.r.Cmp(r.SetFrac(big.NewInt(val.I64()), &unit)), nil
 
-	case api.Value_Which_f64:
+	case api.Any_Which_f64:
 		var r big.Rat
 		return f.r.Cmp(r.SetFloat64(val.F64())), nil
 
-	case api.Value_Which_bigInt:
+	case api.Any_Which_bigInt:
 		var r big.Rat
 		return f.r.Cmp(r.SetFrac(other.(BigInt).BigInt(), &unit)), nil
 
-	case api.Value_Which_bigFloat:
+	case api.Any_Which_bigFloat:
 		var r big.Rat
 		other.(BigFloat).f.Rat(&r)
 		return f.r.Cmp(&r), nil
 
-	case api.Value_Which_frac:
+	case api.Any_Which_frac:
 		return f.r.Cmp(other.(Fraction).Rat()), nil
 
 	default:

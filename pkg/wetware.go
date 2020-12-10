@@ -43,7 +43,7 @@ type Loggable interface{ log.Loggable }
 
 // Any is a generic value type
 type Any interface {
-	MemVal() api.Value
+	MemVal() api.Any
 }
 
 // Anchor is a node in a cluster-wide, hierarchical namespace.
