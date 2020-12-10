@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/wetware/ww/internal/api"
+	"github.com/wetware/ww/internal/mem"
 	ww "github.com/wetware/ww/pkg"
-	"github.com/wetware/ww/pkg/mem"
+	memutil "github.com/wetware/ww/pkg/util/mem"
 	capnp "zombiezen.com/go/capnproto2"
 )
 
@@ -19,16 +19,14 @@ var (
 )
 
 func init() {
-	mv, err := mem.NewValue(capnp.SingleSegment(nil))
-	if err != nil {
+	var err error
+	if EmptyList.Any, err = memutil.Alloc(capnp.SingleSegment(nil)); err != nil {
 		panic(err)
 	}
 
-	if _, err = mv.MemVal().NewList(); err != nil {
+	if _, err = EmptyList.Any.NewList(); err != nil {
 		panic(err)
 	}
-
-	EmptyList.Value = mv
 }
 
 // List is a persistent, singly-linked list with fast insertions/pops to its head.
@@ -39,7 +37,7 @@ type List interface {
 	Cons(any ww.Any) (List, error)
 }
 
-type list struct{ mem.Value }
+type list struct{ mem.Any }
 
 // NewList returns a new list containing given values.
 func NewList(a capnp.Arena, vs ...ww.Any) (l List, err error) {
@@ -61,9 +59,12 @@ func NewList(a capnp.Arena, vs ...ww.Any) (l List, err error) {
 	return l, err
 }
 
+// Value returns the memory value
+func (l list) Value() mem.Any { return l.Any }
+
 // Count returns the number of the list.
 func (l list) Count() (int, error) {
-	ll, err := l.MemVal().List()
+	ll, err := l.Value().List()
 	return int(ll.Count()), err
 }
 
@@ -116,7 +117,7 @@ func (l list) render(f func(ww.Any) (string, error)) (string, error) {
 
 // Conj returns a new list with all the items added at the head of the list.
 func (l list) Conj(items ...ww.Any) (Container, error) {
-	ll, err := l.MemVal().List()
+	ll, err := l.Value().List()
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +145,7 @@ func (l list) Cons(any ww.Any) (List, error) {
 
 // First returns the head or first item of the list.
 func (l list) First() (ww.Any, error) {
-	ll, err := l.MemVal().List()
+	ll, err := l.Value().List()
 	if err != nil || l.isNull(ll) {
 		return nil, err
 	}
@@ -154,7 +155,7 @@ func (l list) First() (ww.Any, error) {
 
 // Next returns the tail of the list.
 func (l list) Next() (Seq, error) {
-	ll, err := l.MemVal().List()
+	ll, err := l.Value().List()
 	if err != nil {
 		return nil, err
 	}
@@ -167,10 +168,10 @@ func (l list) Next() (Seq, error) {
 	return next, err
 }
 
-func (l list) isNull(ll api.LinkedList) bool { return ll.Count() == 0 }
+func (l list) isNull(ll mem.LinkedList) bool { return ll.Count() == 0 }
 
-func (l list) head(ll api.LinkedList) (v ww.Any, err error) {
-	var val api.Any
+func (l list) head(ll mem.LinkedList) (v ww.Any, err error) {
+	var val mem.Any
 	if val, err = ll.Head(); err == nil {
 		v, err = AsAny(val)
 	}
@@ -178,7 +179,7 @@ func (l list) head(ll api.LinkedList) (v ww.Any, err error) {
 	return
 }
 
-func (l list) next(ll api.LinkedList) (Seq, error) {
+func (l list) next(ll mem.LinkedList) (Seq, error) {
 	if l.isNull(ll) {
 		return nil, ErrIllegalState
 	}
@@ -201,9 +202,9 @@ func (l list) next(ll api.LinkedList) (Seq, error) {
 		ErrIllegalState, any)
 }
 
-func newList(a capnp.Arena) (l list, ll api.LinkedList, err error) {
-	if l.Value, err = mem.NewValue(a); err == nil {
-		ll, err = l.MemVal().NewList()
+func newList(a capnp.Arena) (l list, ll mem.LinkedList, err error) {
+	if l.Any, err = memutil.Alloc(a); err == nil {
+		ll, err = l.NewList()
 	}
 
 	return

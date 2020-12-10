@@ -7,9 +7,8 @@ import (
 	"reflect"
 
 	"github.com/spy16/slurp/core"
-	"github.com/wetware/ww/internal/api"
+	"github.com/wetware/ww/internal/mem"
 	ww "github.com/wetware/ww/pkg"
-	"github.com/wetware/ww/pkg/mem"
 	capnp "zombiezen.com/go/capnproto2"
 )
 
@@ -121,7 +120,7 @@ func IsNil(v ww.Any) bool {
 		return true
 	}
 
-	return mem.IsNil(v.MemVal())
+	return v.Value().Which() == mem.Any_Which_nil
 }
 
 // IsTruthy returns true if the value has a logical vale of `true`.
@@ -177,7 +176,7 @@ func Eq(a, b ww.Any) (bool, error) {
 	}
 
 	// Identical types with the same canonical representation are equal.
-	if a.MemVal().Which() == b.MemVal().Which() {
+	if a.Value().Which() == b.Value().Which() {
 		ca, err := Canonical(a)
 		if err != nil {
 			return false, err
@@ -218,7 +217,7 @@ func Pop(cont Container) (ww.Any, error) {
 
 	}
 
-	return nil, fmt.Errorf("cannot pop from %s", cont.MemVal().Which())
+	return nil, fmt.Errorf("cannot pop from %s", cont.Value().Which())
 }
 
 // Conj returns a new collection with the supplied
@@ -241,44 +240,44 @@ func Conj(any ww.Any, xs ...ww.Any) (Container, error) {
 
 // Canonical representation of an arbitrary value.
 func Canonical(any ww.Any) ([]byte, error) {
-	return capnp.Canonicalize(any.MemVal().Struct)
+	return capnp.Canonicalize(any.Value().Struct)
 }
 
-// AsAny lifts a api.Any to a ww.Any.
-func AsAny(v api.Any) (val ww.Any, err error) {
-	switch v.Which() {
-	case api.Any_Which_nil:
+// AsAny lifts a mem.Any to a ww.Any.
+func AsAny(any mem.Any) (val ww.Any, err error) {
+	switch any.Which() {
+	case mem.Any_Which_nil:
 		val = Nil{}
-	case api.Any_Which_bool:
-		val = Bool{mem.Value(v)}
-	case api.Any_Which_i64:
-		val = i64{mem.Value(v)}
-	case api.Any_Which_f64:
-		val = f64{mem.Value(v)}
-	case api.Any_Which_bigInt:
-		val, err = asBigInt(v)
-	case api.Any_Which_bigFloat:
-		val, err = asBigFloat(v)
-	case api.Any_Which_frac:
-		val, err = asFrac(v)
-	case api.Any_Which_char:
-		val = Char{mem.Value(v)}
-	case api.Any_Which_str:
-		val = String{mem.Value(v)}
-	case api.Any_Which_keyword:
-		val = Keyword{mem.Value(v)}
-	case api.Any_Which_symbol:
-		val = Symbol{mem.Value(v)}
-	case api.Any_Which_path:
-		val = Path{mem.Value(v)}
-	case api.Any_Which_list:
-		val = list{mem.Value(v)}
-	case api.Any_Which_vector:
-		val = DeepPersistentVector{mem.Value(v)}
-	// case api.Any_Which_proc:
+	case mem.Any_Which_bool:
+		val = Bool{any}
+	case mem.Any_Which_i64:
+		val = i64{any}
+	case mem.Any_Which_f64:
+		val = f64{any}
+	case mem.Any_Which_bigInt:
+		val, err = asBigInt(any)
+	case mem.Any_Which_bigFloat:
+		val, err = asBigFloat(any)
+	case mem.Any_Which_frac:
+		val, err = asFrac(any)
+	case mem.Any_Which_char:
+		val = Char{any}
+	case mem.Any_Which_str:
+		val = String{any}
+	case mem.Any_Which_keyword:
+		val = Keyword{any}
+	case mem.Any_Which_symbol:
+		val = Symbol{any}
+	case mem.Any_Which_path:
+		val = Path{any}
+	case mem.Any_Which_list:
+		val = list{any}
+	case mem.Any_Which_vector:
+		val = DeepPersistentVector{any}
+	// case mem.Any_Which_proc:
 	// 	val = RemoteProcess{v}
 	default:
-		err = fmt.Errorf("unknown value type '%s'", v.Which())
+		err = fmt.Errorf("unknown value type '%s'", any.Which())
 	}
 
 	return

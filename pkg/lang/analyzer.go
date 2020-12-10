@@ -7,10 +7,9 @@ import (
 
 	"github.com/spy16/slurp/builtin"
 	score "github.com/spy16/slurp/core"
-	"github.com/wetware/ww/internal/api"
+	"github.com/wetware/ww/internal/mem"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/lang/core"
-	"github.com/wetware/ww/pkg/mem"
 )
 
 var _ core.Analyzer = (*analyzer)(nil)
@@ -112,8 +111,8 @@ func (a analyzer) analyzeSeq(env core.Env, seq core.Seq) (core.Expr, error) {
 	// The call target may be a special form.  In this case, we need to get the
 	// corresponding parser function, which will take care of parsing/analyzing
 	// the tail.
-	if mv := target.MemVal(); mv.Which() == api.Any_Which_symbol {
-		s, err := mv.Symbol()
+	if any := target.Value(); any.Which() == mem.Any_Which_symbol {
+		s, err := any.Symbol()
 		if err != nil {
 			return nil, err
 		}
@@ -162,7 +161,7 @@ func (a analyzer) analyzeSeq(env core.Env, seq core.Seq) (core.Expr, error) {
 
 	return nil, core.Error{
 		Cause:   core.ErrNotInvokable,
-		Message: fmt.Sprintf("'%s'", target.MemVal().Which()),
+		Message: fmt.Sprintf("'%s'", target.Value().Which()),
 	}
 }
 
@@ -172,15 +171,15 @@ func (a analyzer) unpackArgs(env core.Env, seq core.Seq) (args []ww.Any, vs []ww
 	}
 
 	varg := args[len(args)-1]
-	mv := varg.MemVal()
+	any := varg.Value()
 
 	// not vargs?
-	if mv.Which() != api.Any_Which_symbol {
+	if any.Which() != mem.Any_Which_symbol {
 		return
 	}
 
 	var sym string
-	if sym, err = mv.Symbol(); err != nil {
+	if sym, err = any.Symbol(); err != nil {
 		return
 	}
 
@@ -268,9 +267,9 @@ func (a analyzer) macroExpand(env core.Env, form ww.Any) (ww.Any, error) {
 	}
 
 	var v interface{}
-	if mv := first.MemVal(); mv.Which() == api.Any_Which_symbol {
+	if any := first.Value(); any.Which() == mem.Any_Which_symbol {
 		var rex ResolveExpr
-		rex.Symbol.Value = mem.Value(mv)
+		rex.Symbol.Any = any
 		if v, err = rex.Eval(env); err != nil {
 			return nil, builtin.ErrNoExpand
 		}

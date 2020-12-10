@@ -6,12 +6,12 @@ import (
 	"runtime"
 
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/wetware/ww/internal/api"
+	"github.com/wetware/ww/internal/mem"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/internal/rpc"
 	"github.com/wetware/ww/pkg/lang/core"
-	"github.com/wetware/ww/pkg/mem"
 	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
+	memutil "github.com/wetware/ww/pkg/util/mem"
 	capnp "zombiezen.com/go/capnproto2"
 )
 
@@ -25,11 +25,11 @@ func (a anchor) Ls(ctx context.Context) ([]ww.Anchor, error) {
 }
 
 func (a anchor) Walk(ctx context.Context, path []string) ww.Anchor {
-	f, done := a.Anchor().Walk(ctx, func(p api.Anchor_walk_Params) error {
+	f, done := a.Anchor().Walk(ctx, func(p mem.Anchor_walk_Params) error {
 		return p.SetPath(anchorpath.Join(path))
 	})
 
-	runtime.SetFinalizer(&f, func(*api.Anchor_walk_Results_Future) {
+	runtime.SetFinalizer(&f, func(*mem.Anchor_walk_Results_Future) {
 		done()
 	})
 
@@ -63,8 +63,8 @@ func (a anchor) Load(ctx context.Context) (ww.Any, error) {
 }
 
 func (a anchor) Store(ctx context.Context, any ww.Any) error {
-	f, done := a.Anchor().Store(ctx, func(p api.Anchor_store_Params) error {
-		return p.SetValue(any.MemVal())
+	f, done := a.Anchor().Store(ctx, func(p mem.Anchor_store_Params) error {
+		return p.SetValue(any.Value())
 	})
 	defer done()
 
@@ -100,16 +100,16 @@ func (a anchor) Go(ctx context.Context, args ...ww.Any) (ww.Any, error) {
 		return nil, err
 	}
 
-	val, err := mem.NewValue(capnp.SingleSegment(nil))
+	any, err := memutil.Alloc(capnp.SingleSegment(nil))
 	if err != nil {
 		return nil, err
 	}
 
-	if err = val.MemVal().SetProc(res.Proc()); err != nil {
+	if err = any.SetProc(res.Proc()); err != nil {
 		return nil, err
 	}
 
-	// return core.RemoteProcess{Value: val}, nil
+	// return core.RemoteProcess{Value: any}, nil
 	return nil, errors.New("core.RemoteProcess NOT IMPLEMENTED")
 }
 
@@ -162,19 +162,19 @@ func (p path) Name() string {
 func (p path) Path() []string { return p }
 
 type anchorProvider interface {
-	Anchor() api.Anchor
+	Anchor() mem.Anchor
 }
 
 type procArgs []ww.Any
 
-func (args procArgs) Set(p api.Anchor_go_Params) error {
+func (args procArgs) Set(p mem.Anchor_go_Params) error {
 	vs, err := p.NewArgs(int32(len(args)))
 	if err != nil {
 		return err
 	}
 
 	for i, any := range args {
-		if err = vs.Set(i, any.MemVal()); err != nil {
+		if err = vs.Set(i, any.Value()); err != nil {
 			break
 		}
 	}

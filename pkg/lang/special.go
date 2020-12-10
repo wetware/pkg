@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/spy16/slurp"
-	"github.com/wetware/ww/internal/api"
+	"github.com/wetware/ww/internal/mem"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/lang/core"
 	capnp "zombiezen.com/go/capnproto2"
@@ -170,7 +170,7 @@ func parseFnDef(env core.Env, seq core.Seq, macro bool) (ww.Any, error) {
 	b.SetMacro(macro)
 
 	// Set function name?
-	if sym := args[0].MemVal(); sym.Which() == api.Any_Which_symbol {
+	if sym := args[0].Value(); sym.Which() == mem.Any_Which_symbol {
 		name, err := sym.Symbol()
 		if err != nil {
 			return nil, err
@@ -181,11 +181,11 @@ func parseFnDef(env core.Env, seq core.Seq, macro bool) (ww.Any, error) {
 	}
 
 	// Set call signatures.
-	switch mv := args[0].MemVal(); mv.Which() {
-	case api.Any_Which_vector:
+	switch mv := args[0].Value(); mv.Which() {
+	case mem.Any_Which_vector:
 		b.AddTarget(args[0], args[1:])
 
-	case api.Any_Which_list:
+	case mem.Any_Which_list:
 		for _, any := range args {
 			if seq, ok := any.(core.Seq); ok {
 				b.AddSeq(seq)
@@ -209,7 +209,7 @@ func lsParser(root ww.Anchor) SpecialParser {
 
 		pexpr := PathExpr{Root: root, Path: core.RootPath}
 		for _, arg := range args {
-			if arg.MemVal().Which() == api.Any_Which_path {
+			if arg.Value().Which() == mem.Any_Which_path {
 				pexpr.Path = args[0].(core.Path)
 				args = args[1:]
 			}
@@ -277,8 +277,8 @@ func (i importer) Parse(a core.Analyzer, env core.Env, seq core.Seq) (core.Expr,
 
 	iex := ImportExpr{Analyzer: a}
 
-	switch mv := arg.MemVal(); mv.Which() {
-	case api.Any_Which_keyword:
+	switch mv := arg.Value(); mv.Which() {
+	case mem.Any_Which_keyword:
 		kw, err := mv.Keyword()
 		if err != nil {
 			return nil, err
@@ -295,7 +295,7 @@ func (i importer) Parse(a core.Analyzer, env core.Env, seq core.Seq) (core.Expr,
 
 		iex.Paths = append(iex.Paths, ps...)
 
-	case api.Any_Which_symbol:
+	case mem.Any_Which_symbol:
 		sym, err := mv.Symbol()
 		if err != nil {
 			return nil, err

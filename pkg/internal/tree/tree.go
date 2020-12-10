@@ -5,20 +5,20 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/wetware/ww/internal/api"
-	"github.com/wetware/ww/pkg/mem"
+	"github.com/wetware/ww/internal/mem"
+	memutil "github.com/wetware/ww/pkg/util/mem"
 )
 
 // Transaction groups multiple node operations into a single atomic commit.
 type Transaction Node
 
 // Load API value
-func (t Transaction) Load() api.Any { return Node(t).val }
+func (t Transaction) Load() mem.Any { return Node(t).any }
 
 // Store API value
-func (t Transaction) Store(val api.Any) bool {
-	if mem.IsNil(val) || mem.IsNil(Node(t).val) {
-		Node(t).val = val
+func (t Transaction) Store(any mem.Any) bool {
+	if memutil.IsNil(any) || memutil.IsNil(Node(t).any) {
+		Node(t).any = any
 		return true
 	}
 
@@ -63,20 +63,20 @@ func (n Node) List() []Node {
 }
 
 // Load API value
-func (n Node) Load() api.Any {
+func (n Node) Load() mem.Any {
 	n.tx.RLock()
 	defer n.tx.RUnlock()
 
-	return n.val
+	return n.any
 }
 
 // Store API value
-func (n Node) Store(val api.Any) bool {
+func (n Node) Store(any mem.Any) bool {
 	n.tx.Lock()
 	defer n.tx.Unlock()
 
-	if mem.IsNil(val) || mem.IsNil(n.val) {
-		n.val = val
+	if memutil.IsNil(any) || memutil.IsNil(n.any) {
+		n.any = any
 		return true
 	}
 
@@ -135,7 +135,7 @@ type node struct {
 	ctr int
 
 	tx  sync.RWMutex
-	val api.Any
+	any mem.Any
 
 	Name     string
 	parent   *node
@@ -170,7 +170,7 @@ func (n *node) orphanedUnsafe() bool {
 	// - nobody's using it
 	// - it has no children
 	// - it's not holding an object
-	return n.ctr == 0 && len(n.children) == 0 && mem.IsNil(n.val)
+	return n.ctr == 0 && len(n.children) == 0 && memutil.IsNil(n.any)
 }
 
 func (n *node) ref() *nodeRef {

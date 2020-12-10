@@ -44,7 +44,7 @@ func fnPrint(any ww.Any) (int, error) {
 func fnLen(c core.Countable) (int, error) { return c.Count() }
 
 func fnTypeOf(a ww.Any) (core.Symbol, error) {
-	return core.NewSymbol(capnp.SingleSegment(nil), a.MemVal().Which().String())
+	return core.NewSymbol(capnp.SingleSegment(nil), a.Value().Which().String())
 }
 
 func fnNext(seq core.Seq) (core.Seq, error) { return seq.Next() }

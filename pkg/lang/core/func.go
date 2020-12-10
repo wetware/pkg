@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/wetware/ww/internal/api"
+	"github.com/wetware/ww/internal/mem"
 	ww "github.com/wetware/ww/pkg"
-	"github.com/wetware/ww/pkg/mem"
+	memutil "github.com/wetware/ww/pkg/util/mem"
 	capnp "zombiezen.com/go/capnproto2"
 )
 
@@ -24,7 +24,10 @@ type CallTarget struct {
 }
 
 // Fn is a multi-arity function or macro.
-type Fn struct{ mem.Value }
+type Fn struct{ mem.Any }
+
+// Value returns the memory value
+func (fn Fn) Value() mem.Any { return fn.Any }
 
 // Render a human-readable representation of the function
 func (fn Fn) Render() (string, error) {
@@ -41,7 +44,7 @@ func (fn Fn) Render() (string, error) {
 
 // Macro returns true if the function is a macro.
 func (fn Fn) Macro() bool {
-	raw, err := fn.MemVal().Fn()
+	raw, err := fn.Fn()
 	if err != nil {
 		panic(err)
 	}
@@ -51,12 +54,12 @@ func (fn Fn) Macro() bool {
 
 // Name of the function.
 func (fn Fn) Name() (string, error) {
-	raw, err := fn.MemVal().Fn()
+	raw, err := fn.Fn()
 	if err != nil {
 		return "", err
 	}
 
-	if raw.Which() == api.Fn_Which_lambda {
+	if raw.Which() == mem.Fn_Which_lambda {
 		return "λ", nil
 	}
 
@@ -65,7 +68,7 @@ func (fn Fn) Name() (string, error) {
 
 // Match the arguments to the appropriate call signature.
 func (fn Fn) Match(nargs int) (CallTarget, error) {
-	raw, err := fn.MemVal().Fn()
+	raw, err := fn.Fn()
 	if err != nil {
 		return CallTarget{}, err
 	}
@@ -106,8 +109,8 @@ func (fn Fn) Match(nargs int) (CallTarget, error) {
 
 // FuncBuilder is a factory type for Fn.
 type FuncBuilder struct {
-	val    api.Any
-	fn     api.Fn
+	any    mem.Any
+	fn     mem.Fn
 	sigs   []callSignature
 	stages []func() error
 }
@@ -117,15 +120,12 @@ func (b *FuncBuilder) Start(a capnp.Arena) {
 	b.stages = make([]func() error, 0, 8)
 	b.sigs = b.sigs[:0]
 
-	b.addStage(func() error {
-		mv, err := mem.NewValue(a)
-		if err != nil {
+	b.addStage(func() (err error) {
+		if b.any, err = memutil.Alloc(a); err != nil {
 			return fmt.Errorf("alloc value: %w", err)
 		}
 
-		b.val = mv.MemVal()
-
-		if b.fn, err = b.val.NewFn(); err != nil {
+		if b.fn, err = b.any.NewFn(); err != nil {
 			return fmt.Errorf("alloc fn: %w", err)
 		}
 
@@ -166,7 +166,7 @@ func (b *FuncBuilder) Commit() (Fn, error) {
 		}
 	}
 
-	return Fn{Value: mem.Value(b.val)}, nil
+	return Fn{Any: b.any}, nil
 }
 
 // AddSeq parses the sequence `([<params>*] <body>*)` into a call target.
@@ -182,10 +182,10 @@ func (b *FuncBuilder) AddSeq(seq Seq) {
 // AddTarget parses the call signature `[<params>*] <body>*` into a call target.
 func (b *FuncBuilder) AddTarget(args ww.Any, body []ww.Any) {
 	b.addStage(func() error {
-		if mv := args.MemVal(); args.MemVal().Which() != api.Any_Which_vector {
+		if any := args.Value(); args.Value().Which() != mem.Any_Which_vector {
 			return Error{
 				Cause:   errors.New("invalid call signature"),
-				Message: fmt.Sprintf("args must be Vector, not '%s'", mv.Which()),
+				Message: fmt.Sprintf("args must be Vector, not '%s'", any.Which()),
 			}
 		}
 
@@ -246,11 +246,11 @@ func (b *FuncBuilder) readParams(v Vector) ([]string, bool, error) {
 			return nil, false, err
 		}
 
-		if entry.MemVal().Which() != api.Any_Which_symbol {
-			return nil, false, fmt.Errorf("expected symbol, got %s", entry.MemVal().Which())
+		if entry.Value().Which() != mem.Any_Which_symbol {
+			return nil, false, fmt.Errorf("expected symbol, got %s", entry.Value().Which())
 		}
 
-		if ps[i], err = entry.MemVal().Symbol(); err != nil {
+		if ps[i], err = entry.Value().Symbol(); err != nil {
 			return nil, false, err
 		}
 	}
@@ -270,7 +270,7 @@ type callSignature struct {
 	Body     []ww.Any
 }
 
-func (sig callSignature) Populate(f api.Fn_Func) (err error) {
+func (sig callSignature) Populate(f mem.Fn_Func) (err error) {
 	if err = sig.populateBody(f); err == nil {
 		err = sig.populateParams(f)
 	}
@@ -278,7 +278,7 @@ func (sig callSignature) Populate(f api.Fn_Func) (err error) {
 	return
 }
 
-func (sig callSignature) populateParams(f api.Fn_Func) error {
+func (sig callSignature) populateParams(f mem.Fn_Func) error {
 	if sig.Params == nil {
 		f.SetNilary()
 		return nil
@@ -302,14 +302,14 @@ func (sig callSignature) populateParams(f api.Fn_Func) error {
 	return err
 }
 
-func (sig callSignature) populateBody(f api.Fn_Func) error {
+func (sig callSignature) populateBody(f mem.Fn_Func) error {
 	bs, err := f.NewBody(int32(len(sig.Body)))
 	if err != nil {
 		return err
 	}
 
 	for i, any := range sig.Body {
-		if err = bs.Set(i, any.MemVal()); err != nil {
+		if err = bs.Set(i, any.Value()); err != nil {
 			break
 		}
 	}
@@ -318,7 +318,7 @@ func (sig callSignature) populateBody(f api.Fn_Func) error {
 }
 
 type funcAnalyzer struct {
-	f      api.Fn_Func
+	f      mem.Fn_Func
 	ps     capnp.TextList
 	nparam int
 }
@@ -356,7 +356,7 @@ func (a funcAnalyzer) params() (ps []string, err error) {
 }
 
 func (a funcAnalyzer) body() (forms []ww.Any, err error) {
-	var vs api.Any_List
+	var vs mem.Any_List
 	if vs, err = a.f.Body(); err != nil {
 		return
 	}

@@ -38,11 +38,11 @@ func Cons(a capnp.Arena, head ww.Any, tail Seq) (List, error) {
 		return nil, err
 	}
 
-	if err = ll.SetHead(head.MemVal()); err != nil {
+	if err = ll.SetHead(head.Value()); err != nil {
 		return nil, err
 	}
 
-	if err = ll.SetTail(tail.MemVal()); err != nil {
+	if err = ll.SetTail(tail.Value()); err != nil {
 		return nil, err
 	}
 

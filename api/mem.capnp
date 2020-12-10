@@ -1,13 +1,13 @@
 using Go = import "/go.capnp";
 
 #
-# anchor.capnp contains definitions for the Anchor protocol.
+# Specs for memory layout
 #
 
 @0xc8aa6d83e0c03a9d;
 
-$Go.package("api");
-$Go.import("github.com/wetware/ww/internal/api");
+$Go.package("mem");
+$Go.import("github.com/wetware/ww/internal/mem");
 
 
 struct Any {

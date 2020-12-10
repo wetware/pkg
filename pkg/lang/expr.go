@@ -11,8 +11,8 @@ import (
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/lang/core"
 	"github.com/wetware/ww/pkg/lang/reader"
-	"github.com/wetware/ww/pkg/mem"
 	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
+	memutil "github.com/wetware/ww/pkg/util/mem"
 	capnp "zombiezen.com/go/capnproto2"
 )
 
@@ -295,7 +295,7 @@ func (vex VectorExpr) Eval(env core.Env) (score.Any, error) {
 		}
 
 		// no need to canonicalize here.  If different, it's because the value changed.
-		if bytes.Equal(mem.Bytes(any.MemVal()), mem.Bytes(other.MemVal())) {
+		if bytes.Equal(memutil.Bytes(any.Value()), memutil.Bytes(other.Value())) {
 			continue
 		}
 

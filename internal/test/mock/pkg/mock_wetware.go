@@ -8,8 +8,8 @@ import (
 	context "context"
 	gomock "github.com/golang/mock/gomock"
 	log "github.com/lthibault/log"
+	mem "github.com/wetware/ww/internal/mem"
 	ww "github.com/wetware/ww/pkg"
-	mem "github.com/wetware/ww/pkg/mem"
 	reflect "reflect"
 )
 
@@ -446,18 +446,18 @@ func (m *MockAny) EXPECT() *MockAnyMockRecorder {
 	return m.recorder
 }
 
-// MemVal mocks base method
-func (m *MockAny) MemVal() mem.Value {
+// Value mocks base method
+func (m *MockAny) Value() mem.Any {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MemVal")
-	ret0, _ := ret[0].(mem.Value)
+	ret := m.ctrl.Call(m, "Value")
+	ret0, _ := ret[0].(mem.Any)
 	return ret0
 }
 
-// MemVal indicates an expected call of MemVal
-func (mr *MockAnyMockRecorder) MemVal() *gomock.Call {
+// Value indicates an expected call of Value
+func (mr *MockAnyMockRecorder) Value() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MemVal", reflect.TypeOf((*MockAny)(nil).MemVal))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Value", reflect.TypeOf((*MockAny)(nil).Value))
 }
 
 // MockAnchor is a mock of Anchor interface

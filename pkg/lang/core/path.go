@@ -3,9 +3,10 @@ package core
 import (
 	capnp "zombiezen.com/go/capnproto2"
 
+	"github.com/wetware/ww/internal/mem"
 	ww "github.com/wetware/ww/pkg"
-	"github.com/wetware/ww/pkg/mem"
 	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
+	memutil "github.com/wetware/ww/pkg/util/mem"
 )
 
 var (
@@ -23,24 +24,27 @@ func init() {
 }
 
 // Path points to an anchor
-type Path struct{ mem.Value }
+type Path struct{ mem.Any }
 
 // NewPath .
 func NewPath(a capnp.Arena, p string) (Path, error) {
-	mv, err := mem.NewValue(a)
+	any, err := memutil.Alloc(a)
 	if err == nil {
-		err = mv.MemVal().SetPath(p)
+		err = any.SetPath(p)
 	}
 
-	return Path{mv}, err
+	return Path{any}, err
 }
 
+// Value returns the memory value
+func (p Path) Value() mem.Any { return p.Any }
+
 // Render the path into a parseable s-expression.
-func (p Path) Render() (string, error) { return p.MemVal().Path() }
+func (p Path) Render() (string, error) { return p.Path() }
 
 // Parts returns split path for p
 func (p Path) Parts() ([]string, error) {
-	s, err := p.MemVal().Path()
+	s, err := p.Path()
 	if err != nil {
 		return nil, err
 	}

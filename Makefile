@@ -3,7 +3,7 @@
 all: capnp
 
 clean:
-	@rm -f internal/api/*.capnp.go
+	@rm -f internal/mem/*.capnp.go
 
 capnp: clean
 	# N.B.:  compiling capnp schemas requires having github.com/capnproto/go-capnproto2 installed
@@ -13,7 +13,7 @@ capnp: clean
 	#		  2. git checkout VERSION_TAG  # See: https://github.com/capnproto/go-capnproto2/releases
 	#		  3. make capnp
 	#
-	@capnp compile -I$(GOPATH)/src/zombiezen.com/go/capnproto2/std -ogo:internal api/api.capnp
+	@capnp compile -I$(GOPATH)/src/zombiezen.com/go/capnproto2/std -ogo:internal/mem --src-prefix=api/ api/mem.capnp
 
 cleanmocks:
 	@find . -name 'mock_*.go' | xargs -I{} rm {}

@@ -4,7 +4,7 @@ import (
 	"context"
 	"runtime"
 
-	"github.com/wetware/ww/internal/api"
+	"github.com/wetware/ww/internal/mem"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/internal/rpc"
 	anchorpath "github.com/wetware/ww/pkg/util/anchor/path"
@@ -15,10 +15,10 @@ func Ls(ctx context.Context, t rpc.Terminal, d rpc.Dialer) ([]ww.Anchor, error) 
 	c := t.Dial(ctx, d, ww.AnchorProtocol)
 	defer t.HangUp(c)
 
-	return ls(ctx, api.Anchor{Client: c.Client}, adaptHostAnchor(t))
+	return ls(ctx, mem.Anchor{Client: c.Client}, adaptHostAnchor(t))
 }
 
-func ls(ctx context.Context, a api.Anchor, ad adapter) ([]ww.Anchor, error) {
+func ls(ctx context.Context, a mem.Anchor, ad adapter) ([]ww.Anchor, error) {
 	f, done := a.Ls(ctx, nil)
 	defer done()
 
@@ -46,15 +46,15 @@ func Walk(ctx context.Context, t rpc.Terminal, d rpc.Dialer, path []string) ww.A
 	c := t.Dial(ctx, d, ww.AnchorProtocol)
 	defer t.HangUp(c)
 
-	return walk(ctx, api.Anchor{Client: c.Client}, path)
+	return walk(ctx, mem.Anchor{Client: c.Client}, path)
 }
 
-func walk(ctx context.Context, a api.Anchor, p path) ww.Anchor {
-	f, done := a.Walk(ctx, func(ps api.Anchor_walk_Params) error {
+func walk(ctx context.Context, a mem.Anchor, p path) ww.Anchor {
+	f, done := a.Walk(ctx, func(ps mem.Anchor_walk_Params) error {
 		return ps.SetPath(anchorpath.Join(p.Path()))
 	})
 
-	runtime.SetFinalizer(&f, func(*api.Anchor_walk_Results_Future) {
+	runtime.SetFinalizer(&f, func(*mem.Anchor_walk_Results_Future) {
 		done()
 	})
 
