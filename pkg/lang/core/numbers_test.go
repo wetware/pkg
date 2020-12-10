@@ -490,8 +490,8 @@ func mustFloat(f float64) core.Float64 {
 	return f64
 }
 
-func mustInt(i int64) core.Int64 {
-	i64, err := core.NewInt64(capnp.SingleSegment(nil), i)
+func mustInt(i int) core.Int64 {
+	i64, err := core.NewInt64(capnp.SingleSegment(nil), int64(i))
 	if err != nil {
 		panic(err)
 	}

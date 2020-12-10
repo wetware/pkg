@@ -274,7 +274,7 @@ func AsAny(v mem.Value) (val ww.Any, err error) {
 	case api.Value_Which_list:
 		val = list{v}
 	case api.Value_Which_vector:
-		val = PersistentVector{v}
+		val = DeepPersistentVector{v}
 	// case api.Value_Which_proc:
 	// 	val = RemoteProcess{v}
 	default:

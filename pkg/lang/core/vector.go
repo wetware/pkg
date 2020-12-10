@@ -3,6 +3,7 @@ package core
 import (
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/wetware/ww/internal/api"
@@ -31,9 +32,14 @@ var (
 	ErrInvalidVectorNode = errors.New("invalid VectorNode")
 
 	// EmptyVector is the zero-value vector.
-	EmptyVector PersistentVector
+	EmptyVector EmptyPersistentVector
 
-	_ Vector = (*PersistentVector)(nil)
+	_ Vector = (*EmptyPersistentVector)(nil)
+	_ Vector = (*ShallowPersistentVector)(nil)
+	_ Vector = (*DeepPersistentVector)(nil)
+
+	emptyVectorValue mem.Value
+	emptyVectorSeq   chunkedSeq
 )
 
 func init() {
@@ -47,25 +53,12 @@ func init() {
 		panic(err)
 	}
 
-	// TODO(optimization):  can we skip allocating a root node for empty vector?
-	// 					    strategy:  consider pushTail with cnt==33 to be special case.
-	root, err := vec.NewRoot()
+	emptyVectorValue = val
+
+	emptyVectorSeq, err = newChunkedSeq(capnp.SingleSegment(nil), vec, 0, 0)
 	if err != nil {
 		panic(err)
 	}
-
-	// TODO(optimization):  can we skip allocating branches for empty vector root?
-	//						strategy:  consider pushTail with cnt==33 to be special case.
-	if _, err = root.NewBranches(width); err != nil {
-		panic(err)
-	}
-
-	// TODO(optimization):  can we skip allocating a tail for empty vector?
-	if _, err = vec.NewTail(width); err != nil {
-		panic(err)
-	}
-
-	EmptyVector.Raw = val.Raw
 }
 
 // Vector is a persistent, ordered collection of values with fast random lookups and
@@ -78,22 +71,559 @@ type Vector interface {
 	EntryAt(i int) (ww.Any, error)
 	Assoc(i int, val ww.Any) (Vector, error)
 	Pop() (Vector, error)
+	Cons(ww.Any) (Vector, error)
 }
 
-// PersistentVector is a persistent, immutable vector.
-type PersistentVector struct{ mem.Value }
-
 // NewVector creates a vector containing the supplied values.
-func NewVector(a capnp.Arena, vs ...ww.Any) (vec PersistentVector, err error) {
-	if vec = EmptyVector; len(vs) > 0 {
-		vec, err = vec.conj(vs...)
+func NewVector(a capnp.Arena, items ...ww.Any) (Vector, error) {
+	values := make([]api.Value, len(items))
+	for i, any := range items {
+		values[i] = any.MemVal().Raw
+	}
+
+	return EmptyVector.conj(values)
+}
+
+// EmptyPersistentVector is the zero-value persistent vector.
+type EmptyPersistentVector struct{}
+
+// MemVal .
+func (EmptyPersistentVector) MemVal() mem.Value { return emptyVectorValue }
+
+// Count always returns 0 and a nil error.
+func (EmptyPersistentVector) Count() (int, error) { return 0, nil }
+
+// Invoke is equivalent to `EntryAt`.
+func (EmptyPersistentVector) Invoke(args ...ww.Any) (ww.Any, error) {
+	if nargs := len(args); nargs != 1 {
+		return nil, fmt.Errorf("%w: got %d, want at-least 1", ErrArity, nargs)
+	}
+
+	switch idx := args[0]; idx.MemVal().Type() {
+	case api.Value_Which_i64, api.Value_Which_bigInt:
+		return nil, ErrIndexOutOfBounds
+
+	default:
+		return nil, fmt.Errorf("%s is not an integer type", idx.MemVal().Type())
+	}
+}
+
+// Render the vector in a human-readable format.
+func (EmptyPersistentVector) Render() (string, error) { return "[]", nil }
+
+// EntryAt returns ErrIndexOutOfBounds
+func (EmptyPersistentVector) EntryAt(int) (ww.Any, error) { return nil, ErrIndexOutOfBounds }
+
+// Conj returns a new vector with items appended.
+func (EmptyPersistentVector) Conj(items ...ww.Any) (Container, error) {
+	if len(items) == 0 {
+		return EmptyVector, nil
+	}
+
+	values := make([]api.Value, len(items))
+	for i, any := range items {
+		values[i] = any.MemVal().Raw
+	}
+
+	return EmptyVector.conj(values)
+}
+
+// Assoc returns a new vector with the value at given index updated.
+// Returns error if the index is out of range.
+func (EmptyPersistentVector) Assoc(i int, val ww.Any) (Vector, error) {
+	if i != 0 {
+		return nil, ErrIndexOutOfBounds
+	}
+
+	return EmptyVector.cons(val)
+}
+
+func (EmptyPersistentVector) conj(values []api.Value) (Vector, error) {
+	if len(values) == 0 {
+		return EmptyVector, nil
+	}
+
+	if len(values) <= width {
+		return newShallowPersistentVector(capnp.SingleSegment(nil), values...)
+	}
+
+	mv, err := mem.NewValue(capnp.SingleSegment(nil))
+	if err != nil {
+		return nil, err
+	}
+
+	vec, err := mv.Raw.NewVector()
+	if err != nil {
+		return nil, err
+	}
+
+	vec.SetCount(width) // 32
+	vec.SetShift(bits)  // 5
+
+	tail, err := vec.NewTail(width)
+	if err != nil {
+		return nil, err
+	}
+
+	for i, val := range values[:width] {
+		if err = tail.Set(i, val); err != nil {
+			return nil, err
+		}
+	}
+
+	root, err := vec.NewRoot()
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err = root.NewBranches(width); err != nil {
+		return nil, err
+	}
+
+	return (DeepPersistentVector{mv}).conj(values[width:])
+}
+
+// Cons appends to the end of the vector
+func (EmptyPersistentVector) Cons(item ww.Any) (Vector, error) {
+	return (EmptyVector).cons(item)
+}
+
+func (EmptyPersistentVector) cons(item ww.Any) (ShallowPersistentVector, error) {
+	return newShallowPersistentVector(capnp.SingleSegment(nil), item.MemVal().Raw)
+}
+
+// Pop returns ErrIllegalState
+func (EmptyPersistentVector) Pop() (Vector, error) {
+	return nil, fmt.Errorf("%w: cannot pop from empty vector", ErrIllegalState)
+}
+
+// Seq returns an empty
+func (EmptyPersistentVector) Seq() (Seq, error) { return emptyVectorSeq, nil }
+
+// ShallowPersistentVector is a compact vector that stores up to 32 values.
+type ShallowPersistentVector struct{ mem.Value }
+
+func newShallowPersistentVector(a capnp.Arena, values ...api.Value) (ShallowPersistentVector, error) {
+	if len(values) == 0 {
+		return ShallowPersistentVector{}, fmt.Errorf("%w: ShallowPersistentVector must not be empty", ErrIllegalState)
+
+	}
+
+	if len(values) > width {
+		return ShallowPersistentVector{}, fmt.Errorf("%w: cannot allocate %d items to ShallowPersistentVector (max %d)",
+			ErrIllegalState,
+			len(values),
+			width)
+	}
+
+	val, err := mem.NewValue(a)
+	if err != nil {
+		return ShallowPersistentVector{}, err
+	}
+
+	vec, err := val.Raw.NewVector()
+	if err != nil {
+		return ShallowPersistentVector{}, err
+	}
+
+	vec.SetCount(uint32(len(values)))
+
+	tail, err := vec.NewTail(width)
+	if err != nil {
+		return ShallowPersistentVector{}, err
+	}
+
+	for i, v := range values {
+		if err = tail.Set(i, v); err != nil {
+			break
+		}
+	}
+
+	return ShallowPersistentVector{val}, err
+}
+
+// Count returns the tail length
+func (v ShallowPersistentVector) Count() (int, error) {
+	vec, err := v.Raw.Vector()
+	return int(vec.Count()), err
+}
+
+// Invoke is equivalent to `EntryAt`.
+func (ShallowPersistentVector) Invoke(args ...ww.Any) (ww.Any, error) {
+	if nargs := len(args); nargs != 1 {
+		return nil, fmt.Errorf("%w: got %d, want at-least 1", ErrArity, nargs)
+	}
+
+	switch idx := args[0]; idx.MemVal().Type() {
+	case api.Value_Which_i64, api.Value_Which_bigInt:
+		return nil, ErrIndexOutOfBounds
+
+	default:
+		return nil, fmt.Errorf("%s is not an integer type", idx.MemVal().Type())
+	}
+}
+
+// Render the vector in a human-readable format.
+func (v ShallowPersistentVector) Render() (string, error) {
+	vec, err := v.Raw.Vector()
+	if err != nil {
+		return "", err
+	}
+
+	tail, err := vec.Tail()
+	if err != nil {
+		return "", err
+	}
+
+	var b strings.Builder
+	b.WriteRune('[')
+
+	cnt := int(vec.Count())
+	for i := 0; i < cnt; i++ {
+		item, err := AsAny(mem.Value{Raw: tail.At(i)})
+		if err != nil {
+			return "", err
+		}
+
+		s, err := Render(item)
+		if err != nil {
+			return "", err
+		}
+
+		b.WriteString(s)
+
+		if i < cnt-1 {
+			b.WriteRune(' ')
+		}
+	}
+
+	b.WriteRune(']')
+	return b.String(), nil
+}
+
+// Assoc returns a new vector with the value at given index updated.
+// Returns error if the index is out of range.
+func (v ShallowPersistentVector) Assoc(i int, item ww.Any) (Vector, error) {
+	vec, err := v.Raw.Vector()
+	if err != nil {
+		return nil, err
+	}
+
+	cnt := int(vec.Count())
+
+	// update?
+	if i >= 0 && i < cnt {
+		return v.update(vec, cnt, i, item.MemVal().Raw)
+	}
+
+	// append?
+	if i == cnt {
+		return v.cons(vec, item.MemVal().Raw)
+	}
+
+	return nil, ErrIndexOutOfBounds
+}
+
+// EntryAt returns ErrIndexOutOfBounds
+func (v ShallowPersistentVector) EntryAt(i int) (ww.Any, error) {
+	if i > 31 || i < 0 {
+		return nil, ErrIndexOutOfBounds
+	}
+
+	vec, err := v.Raw.Vector()
+	if err != nil {
+		return nil, err
+	}
+
+	tail, err := vec.Tail()
+	if err != nil {
+		return nil, err
+	}
+
+	return AsAny(mem.Value{Raw: tail.At(i)})
+}
+
+// Conj returns a new vector with items appended.
+func (v ShallowPersistentVector) Conj(items ...ww.Any) (Container, error) {
+	values := make([]api.Value, len(items))
+	for i, any := range items {
+		values[i] = any.MemVal().Raw
+	}
+
+	return v.conj(values)
+}
+
+func (v ShallowPersistentVector) conj(values []api.Value) (Vector, error) {
+	if len(values) == 0 {
+		return v, nil
+	}
+
+	vec, err := v.Raw.Vector()
+	if err != nil {
+		return nil, err
+	}
+
+	cnt := int(vec.Count())
+
+	// result fits in shallow vector?
+	if cnt+len(values) <= width {
+		tail, err := vec.Tail()
+		if err != nil {
+			return nil, err
+		}
+
+		ts := tailSlice(cnt, tail)
+		for _, val := range values {
+			ts = append(ts, val)
+		}
+
+		return newShallowPersistentVector(capnp.SingleSegment(nil), ts...)
+	}
+
+	// deep vector is needed
+	newtail, err := v.cloneTail(capnp.SingleSegment(nil), vec)
+	if err != nil {
+		return nil, err
+	}
+
+	if cnt < width {
+		offset := width - cnt // number of free slots in tail
+		for i := 0; i < offset; i++ {
+			if err = newtail.Set(cnt+i, values[i]); err != nil {
+				return nil, err
+			}
+		}
+
+		values = values[offset:]
+	}
+
+	return newDeepPersistentVector(capnp.SingleSegment(nil),
+		newtail,
+		values...)
+}
+
+func (v ShallowPersistentVector) cloneTail(a capnp.Arena, vec api.Vector) (newtail api.Value_List, err error) {
+	var tail api.Value_List
+	if tail, err = vec.Tail(); err != nil {
+		return
+	}
+
+	var seg *capnp.Segment
+	if _, seg, err = capnp.NewMessage(a); err != nil {
+		return
+	}
+
+	if newtail, err = api.NewValue_List(seg, width); err == nil {
+		for i := 0; i < int(vec.Count()); i++ {
+			if err = newtail.Set(i, tail.At(i)); err != nil {
+				break
+			}
+		}
 	}
 
 	return
 }
 
+// Cons appends to the end of the vector.
+func (v ShallowPersistentVector) Cons(item ww.Any) (Vector, error) {
+	vec, err := v.Raw.Vector()
+	if err != nil {
+		return nil, err
+	}
+
+	return v.cons(vec, item.MemVal().Raw)
+}
+
+func (v ShallowPersistentVector) cons(vec api.Vector, val api.Value) (Vector, error) {
+	if cnt := int(vec.Count()); cnt < width {
+		return v.shallowCons(vec, cnt, val)
+	}
+
+	return v.deepCons(vec, val)
+}
+
+func (v ShallowPersistentVector) shallowCons(vec api.Vector, cnt int, val api.Value) (ShallowPersistentVector, error) {
+	tail, err := vec.Tail()
+	if err != nil {
+		return ShallowPersistentVector{}, err
+	}
+
+	mv, err := mem.NewValue(capnp.SingleSegment(nil))
+	if err != nil {
+		return ShallowPersistentVector{}, err
+	}
+
+	if vec, err = mv.Raw.NewVector(); err != nil {
+		return ShallowPersistentVector{}, err
+	}
+
+	vec.SetCount(uint32(cnt + 1))
+
+	newTail, err := vec.NewTail(width)
+	if err != nil {
+		return ShallowPersistentVector{}, err
+	}
+
+	for i := 0; i < cnt; i++ {
+		if err = newTail.Set(i, tail.At(i)); err != nil {
+			break
+		}
+	}
+
+	return ShallowPersistentVector{mv}, newTail.Set(cnt, val)
+}
+
+func (v ShallowPersistentVector) deepCons(vec api.Vector, val api.Value) (DeepPersistentVector, error) {
+	tail, err := vec.Tail()
+	if err != nil {
+		return DeepPersistentVector{}, err
+	}
+
+	return newDeepPersistentVector(capnp.SingleSegment(nil),
+		tail,
+		val)
+}
+
+func (v ShallowPersistentVector) update(vec api.Vector, cnt, idx int, val api.Value) (ShallowPersistentVector, error) {
+	tail, err := vec.Tail()
+	if err != nil {
+		return ShallowPersistentVector{}, err
+	}
+
+	mv, err := mem.NewValue(capnp.SingleSegment(nil))
+	if err != nil {
+		return ShallowPersistentVector{}, err
+	}
+
+	newVec, err := mv.Raw.NewVector()
+	if err != nil {
+		return ShallowPersistentVector{}, err
+	}
+
+	newVec.SetCount(uint32(cnt))
+
+	newTail, err := vec.NewTail(width)
+	if err != nil {
+		return ShallowPersistentVector{}, err
+	}
+
+	for i := 0; i < int(cnt); i++ {
+		if i == idx {
+			err = newTail.Set(i, val)
+		} else {
+			err = newTail.Set(i, tail.At(i))
+		}
+
+		if err != nil {
+			break
+		}
+	}
+
+	return ShallowPersistentVector{mv}, err
+}
+
+// Pop returns ErrIllegalState
+func (v ShallowPersistentVector) Pop() (Vector, error) {
+	vec, err := v.Raw.Vector()
+	if err != nil {
+		return nil, err
+	}
+
+	cnt := vec.Count()
+	if cnt == 1 {
+		return EmptyVector, nil
+	}
+
+	tail, err := vec.Tail()
+	if err != nil {
+		return nil, err
+	}
+
+	val, err := mem.NewValue(capnp.SingleSegment(nil))
+	if err != nil {
+		return nil, err
+	}
+
+	if vec, err = val.Raw.NewVector(); err != nil {
+		return nil, err
+	}
+
+	vec.SetCount(cnt - 1)
+
+	newTail, err := vec.NewTail(width)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := 0; i < int(cnt-1); i++ {
+		if err = newTail.Set(i, tail.At(i)); err != nil {
+			break
+		}
+	}
+
+	return ShallowPersistentVector{val}, err
+}
+
+// Seq returns a sequence that iterates over the vector
+func (v ShallowPersistentVector) Seq() (Seq, error) {
+	vec, err := v.Raw.Vector()
+	if err != nil {
+		return nil, err
+	}
+
+	mv, err := mem.NewValue(capnp.SingleSegment(nil))
+	if err != nil {
+		return nil, err
+	}
+
+	seq, err := mv.Raw.NewVectorSeq()
+	if err != nil {
+		return nil, err
+	}
+
+	if err = seq.SetVector(vec); err != nil {
+		return nil, err
+	}
+
+	return chunkedSeq{mv}, nil
+}
+
+// DeepPersistentVector is a persistent, immutable vector.
+type DeepPersistentVector struct{ mem.Value }
+
+// N.B.:  tail MUST be of length 32 and fully-populated.
+func newDeepPersistentVector(a capnp.Arena, tail api.Value_List, values ...api.Value) (DeepPersistentVector, error) {
+	mv, err := mem.NewValue(a)
+	if err != nil {
+		return DeepPersistentVector{}, err
+	}
+
+	vec, err := mv.Raw.NewVector()
+	if err != nil {
+		return DeepPersistentVector{}, err
+	}
+
+	if err = vec.SetTail(tail); err != nil {
+		return DeepPersistentVector{}, err
+	}
+
+	vec.SetCount(width) // 32
+	vec.SetShift(bits)  // 5
+
+	root, err := vec.NewRoot()
+	if err != nil {
+		return DeepPersistentVector{}, err
+	}
+
+	if _, err = root.NewBranches(width); err != nil {
+		return DeepPersistentVector{}, err
+	}
+
+	return (DeepPersistentVector{mv}).conj(values)
+}
+
 // Invoke is equivalent to `EntryAt`.
-func (v PersistentVector) Invoke(args ...ww.Any) (ww.Any, error) {
+func (v DeepPersistentVector) Invoke(args ...ww.Any) (ww.Any, error) {
 	if nargs := len(args); nargs != 1 {
 		return nil, fmt.Errorf("%w: got %d, want at-least 1", ErrArity, nargs)
 	}
@@ -103,11 +633,11 @@ func (v PersistentVector) Invoke(args ...ww.Any) (ww.Any, error) {
 		return v.EntryAt(int(idx.MemVal().Raw.I64()))
 	case api.Value_Which_bigInt:
 		// TODO(performance):  can we use unsafe.Pointer here?
-		if bi := idx.(BigInt).BigInt(); bi.IsInt64() {
+		if bi := idx.(BigInt).BigInt(); bi.IsInt64() && bi.Int64() <= math.MaxUint32 {
 			return v.EntryAt(int(bi.Int64()))
 		}
 
-		fallthrough
+		return nil, ErrIndexOutOfBounds
 
 	default:
 		return nil, fmt.Errorf("%s is not an integer type", idx.MemVal().Type())
@@ -115,7 +645,7 @@ func (v PersistentVector) Invoke(args ...ww.Any) (ww.Any, error) {
 }
 
 // Render the vector in a human-readable format.
-func (v PersistentVector) Render() (string, error) {
+func (v DeepPersistentVector) Render() (string, error) {
 	cnt, err := v.Count()
 	if err != nil {
 		return "", err
@@ -147,12 +677,12 @@ func (v PersistentVector) Render() (string, error) {
 }
 
 // Count returns the number of elements in the vector.
-func (v PersistentVector) Count() (cnt int, err error) {
+func (v DeepPersistentVector) Count() (cnt int, err error) {
 	_, cnt, err = v.count()
 	return
 }
 
-func (v PersistentVector) count() (vec api.Vector, cnt int, err error) {
+func (v DeepPersistentVector) count() (vec api.Vector, cnt int, err error) {
 	if vec, err = v.Raw.Vector(); err == nil {
 		cnt = int(vec.Count())
 	}
@@ -161,17 +691,24 @@ func (v PersistentVector) count() (vec api.Vector, cnt int, err error) {
 }
 
 // Conj returns a new vector with items appended.
-func (v PersistentVector) Conj(items ...ww.Any) (Container, error) { return v.conj(items...) }
+func (v DeepPersistentVector) Conj(items ...ww.Any) (Container, error) {
+	values := make([]api.Value, len(items))
+	for i, any := range items {
+		values[i] = any.MemVal().Raw
+	}
 
-func (v PersistentVector) conj(items ...ww.Any) (PersistentVector, error) {
-	for _, item := range items {
+	return v.conj(values)
+}
+
+func (v DeepPersistentVector) conj(values []api.Value) (DeepPersistentVector, error) {
+	for _, val := range values {
 		vec, cnt, err := v.count()
 		if err != nil {
-			return PersistentVector{}, err
+			return DeepPersistentVector{}, err
 		}
 
-		if v, err = v.cons(vec, cnt, item); err != nil {
-			return PersistentVector{}, err
+		if v, err = v.cons(vec, cnt, val); err != nil {
+			return DeepPersistentVector{}, err
 		}
 	}
 
@@ -180,7 +717,7 @@ func (v PersistentVector) conj(items ...ww.Any) (PersistentVector, error) {
 
 // EntryAt returns the item at given index. Returns error if the index
 // is out of range.
-func (v PersistentVector) EntryAt(i int) (ww.Any, error) {
+func (v DeepPersistentVector) EntryAt(i int) (ww.Any, error) {
 	vs, err := v.arrayFor(i)
 	if err != nil {
 		return nil, err
@@ -191,7 +728,7 @@ func (v PersistentVector) EntryAt(i int) (ww.Any, error) {
 
 // Assoc returns a new vector with the value at given index updated.
 // Returns error if the index is out of range.
-func (v PersistentVector) Assoc(i int, val ww.Any) (Vector, error) {
+func (v DeepPersistentVector) Assoc(i int, item ww.Any) (Vector, error) {
 	// https://github.com/clojure/clojure/blob/0b73494c3c855e54b1da591eeb687f24f608f346/src/jvm/clojure/lang/PersistentVector.java#L121
 
 	vec, cnt, err := v.count()
@@ -201,19 +738,19 @@ func (v PersistentVector) Assoc(i int, val ww.Any) (Vector, error) {
 
 	// update?
 	if i >= 0 && i < cnt {
-		return v.update(vec, cnt, i, val)
+		return v.update(vec, cnt, i, item.MemVal().Raw)
 	}
 
 	// append?
 	if i == cnt {
-		return v.cons(vec, cnt, val)
+		return v.cons(vec, cnt, item.MemVal().Raw)
 	}
 
 	return nil, ErrIndexOutOfBounds
 }
 
 // Pop returns a new vector without the last item in v
-func (v PersistentVector) Pop() (Vector, error) {
+func (v DeepPersistentVector) Pop() (Vector, error) {
 	raw, err := v.Raw.Vector()
 	if err != nil {
 		return nil, err
@@ -227,7 +764,7 @@ func (v PersistentVector) Pop() (Vector, error) {
 }
 
 // Seq presents the vector as an iterable sequence.
-func (v PersistentVector) Seq() (Seq, error) {
+func (v DeepPersistentVector) Seq() (Seq, error) {
 	vec, err := v.Raw.Vector()
 	if err != nil {
 		return nil, err
@@ -237,10 +774,10 @@ func (v PersistentVector) Seq() (Seq, error) {
 		return EmptyList, nil
 	}
 
-	return newChunkedSeq(nil, vec, 0, 0)
+	return newChunkedSeq(capnp.SingleSegment(nil), vec, 0, 0)
 }
 
-func (v PersistentVector) popTail(level, cnt int, n api.Vector_Node) (ret api.Vector_Node, ok bool, err error) {
+func (v DeepPersistentVector) popTail(level, cnt int, n api.Vector_Node) (ret api.Vector_Node, ok bool, err error) {
 	subidx := ((cnt - 2) >> level) & mask
 	if level > 5 {
 		var bs api.Vector_Node_List
@@ -281,7 +818,7 @@ func (v PersistentVector) popTail(level, cnt int, n api.Vector_Node) (ret api.Ve
 	}
 }
 
-func (v PersistentVector) arrayFor(i int) (api.Value_List, error) {
+func (v DeepPersistentVector) arrayFor(i int) (api.Value_List, error) {
 	// See:  https://github.com/clojure/clojure/blob/0b73494c3c855e54b1da591eeb687f24f608f346/src/jvm/clojure/lang/PersistentVector.java#L97-L113
 	vec, cnt, err := v.count()
 	if err == nil {
@@ -293,7 +830,7 @@ func (v PersistentVector) arrayFor(i int) (api.Value_List, error) {
 	return apiVectorArrayFor(vec, int(cnt), i)
 }
 
-func (PersistentVector) update(vec api.Vector, cnt, i int, any ww.Any) (Vector, error) {
+func (DeepPersistentVector) update(vec api.Vector, cnt, i int, val api.Value) (Vector, error) {
 	root, err := vec.Root()
 	if err != nil {
 		return nil, err
@@ -319,11 +856,11 @@ func (PersistentVector) update(vec api.Vector, cnt, i int, any ww.Any) (Vector, 
 			}
 		}
 
-		if err = tail.Set(i&mask, any.MemVal().Raw); err != nil {
+		if err = tail.Set(i&mask, val); err != nil {
 			return nil, err
 		}
 	} else {
-		if root, err = apiVectorAssoc(int(vec.Shift()), root, i, any); err != nil {
+		if root, err = apiVectorAssoc(int(vec.Shift()), root, i, val); err != nil {
 			return nil, err
 		}
 	}
@@ -336,8 +873,8 @@ func (PersistentVector) update(vec api.Vector, cnt, i int, any ww.Any) (Vector, 
 	)
 }
 
-func (v PersistentVector) shift(vec api.Vector) (shift int) {
-	// EmptyVector leaves the `shift` field unset in order to achieve
+func (v DeepPersistentVector) shift(vec api.Vector) (shift int) {
+	// EmptyPersistentVector leaves the `shift` field unset in order to achieve
 	// better compression.
 	if shift = int(vec.Shift()); shift == 0 {
 		shift = bits
@@ -346,7 +883,17 @@ func (v PersistentVector) shift(vec api.Vector) (shift int) {
 	return
 }
 
-func (v PersistentVector) cons(vec api.Vector, cnt int, any ww.Any) (_ PersistentVector, err error) {
+// Cons appends to the end of the vector.
+func (v DeepPersistentVector) Cons(item ww.Any) (Vector, error) {
+	vec, err := v.Raw.Vector()
+	if err != nil {
+		return nil, err
+	}
+
+	return v.cons(vec, int(vec.Count()), item.MemVal().Raw)
+}
+
+func (v DeepPersistentVector) cons(vec api.Vector, cnt int, val api.Value) (_ DeepPersistentVector, err error) {
 	shift := v.shift(vec)
 
 	var root api.Vector_Node
@@ -376,16 +923,15 @@ func (v PersistentVector) cons(vec api.Vector, cnt int, any ww.Any) (_ Persisten
 		}
 
 		// append the new value to the new tail
-		if err = newtail.Set(taillen, any.MemVal().Raw); err != nil {
+		if err = newtail.Set(taillen, val); err != nil {
 			return
 		}
 
-		res, err := newVector(capnp.SingleSegment(nil),
+		return newVector(capnp.SingleSegment(nil),
 			cnt+1,
 			shift,
 			root,
 			newtail)
-		return res, err
 	}
 
 	/*
@@ -440,7 +986,7 @@ func (v PersistentVector) cons(vec api.Vector, cnt int, any ww.Any) (_ Persisten
 	}
 
 	// ... and insert new value into the new tail.
-	if err = newtail.Set(0, any.MemVal().Raw); err != nil {
+	if err = newtail.Set(0, val); err != nil {
 		return
 	}
 
@@ -452,7 +998,7 @@ func (v PersistentVector) cons(vec api.Vector, cnt int, any ww.Any) (_ Persisten
 }
 
 // vs is always the old tail, which is now being pushed into the trie.
-func (PersistentVector) newLeafNode(a capnp.Arena, vs api.Value_List) (n api.Vector_Node, err error) {
+func (DeepPersistentVector) newLeafNode(a capnp.Arena, vs api.Value_List) (n api.Vector_Node, err error) {
 	if n, err = newRootVectorNode(a); err == nil {
 		err = n.SetValues(vs)
 	}
@@ -460,7 +1006,7 @@ func (PersistentVector) newLeafNode(a capnp.Arena, vs api.Value_List) (n api.Vec
 	return
 }
 
-func apiVectorAssoc(level int, n api.Vector_Node, i int, v ww.Any) (ret api.Vector_Node, err error) {
+func apiVectorAssoc(level int, n api.Vector_Node, i int, val api.Value) (ret api.Vector_Node, err error) {
 	if ret, err = cloneNode(capnp.SingleSegment(nil), n, width); err != nil {
 		return
 	}
@@ -469,7 +1015,7 @@ func apiVectorAssoc(level int, n api.Vector_Node, i int, v ww.Any) (ret api.Vect
 	if level == 0 {
 		var vs api.Value_List
 		if vs, err = ret.Values(); err == nil {
-			err = vs.Set(i&mask, v.MemVal().Raw)
+			err = vs.Set(i&mask, val)
 		}
 
 		return
@@ -483,7 +1029,7 @@ func apiVectorAssoc(level int, n api.Vector_Node, i int, v ww.Any) (ret api.Vect
 	}
 
 	subidx := (i >> level) & mask
-	if n, err = apiVectorAssoc(level-bits, bs.At(subidx), i, v); err != nil {
+	if n, err = apiVectorAssoc(level-bits, bs.At(subidx), i, val); err != nil {
 		return
 	}
 
@@ -504,11 +1050,11 @@ func vectorTailoff(cnt int) int {
 	return ((cnt - 1) >> bits) << bits
 }
 
-func (v PersistentVector) pop(vec api.Vector) (_ PersistentVector, err error) {
+func (v DeepPersistentVector) pop(vec api.Vector) (_ Vector, err error) {
 	cnt := int(vec.Count())
 	switch cnt {
 	case 0:
-		return EmptyVector, ErrIllegalState
+		return nil, ErrIllegalState
 	case 1:
 		return EmptyVector, nil
 	}
@@ -527,6 +1073,12 @@ func (v PersistentVector) pop(vec api.Vector) (_ PersistentVector, err error) {
 		var tail api.Value_List
 		if tail, err = vec.Tail(); err != nil {
 			return
+		}
+
+		// result fits in shallow vector?
+		if cnt-1 <= width {
+			return newShallowPersistentVector(capnp.SingleSegment(nil),
+				tailSlice(cnt, tail)...)
 		}
 
 		if newtail, err = newVectorValueList(capnp.SingleSegment(nil)); err != nil {
@@ -555,7 +1107,12 @@ func (v PersistentVector) pop(vec api.Vector) (_ PersistentVector, err error) {
 		return
 	}
 
-	// vec.Shift() >= bits since EmptyVector.Pop() aborts with an error.
+	if cnt-1 <= width {
+		return newShallowPersistentVector(capnp.SingleSegment(nil),
+			tailSlice(cnt-1, newtail)...)
+	}
+
+	// vec.Shift() >= bits since EmptyPersistentVector.Pop() aborts with an error.
 	shift := int(vec.Shift())
 
 	var ok bool
@@ -589,7 +1146,7 @@ func (v PersistentVector) pop(vec api.Vector) (_ PersistentVector, err error) {
 		newtail)
 }
 
-func (v PersistentVector) newPath(level int, node api.Vector_Node) (ret api.Vector_Node, err error) {
+func (v DeepPersistentVector) newPath(level int, node api.Vector_Node) (ret api.Vector_Node, err error) {
 	if level == 0 {
 		return node, nil
 	}
@@ -625,7 +1182,7 @@ func (v PersistentVector) newPath(level int, node api.Vector_Node) (ret api.Vect
 	return
 }
 
-func (v PersistentVector) pushTail(level, cnt int, parent, tailnode api.Vector_Node) (_ api.Vector_Node, err error) {
+func (v DeepPersistentVector) pushTail(level, cnt int, parent, tailnode api.Vector_Node) (_ api.Vector_Node, err error) {
 	// if parent is leaf => insert node,
 	//   else does it map to an existing child? => nodeToInsert = pushNode one more level
 	//   else => alloc new path
@@ -657,8 +1214,6 @@ func (v PersistentVector) pushTail(level, cnt int, parent, tailnode api.Vector_N
 
 	var bs api.Vector_Node_List
 	if bs, err = parent.Branches(); err == nil {
-		// nbranches := bs.Len()
-		// func(int) {}(nbranches)
 		err = bs.Set(subidx, nodeToInsert)
 	}
 
@@ -688,19 +1243,14 @@ func getChild(p api.Vector_Node, i int) (api.Vector_Node, error) {
 
 type chunkedSeq struct {
 	mem.Value
-	newArena func() capnp.Arena
 
 	// vec       Vector
 	// node      api.Value_List
 	// i, offset int
 }
 
-func newChunkedSeq(newArena func() capnp.Arena, v api.Vector, i, offset uint32) (chunkedSeq, error) {
-	if newArena == nil {
-		newArena = func() capnp.Arena { return capnp.SingleSegment(nil) }
-	}
-
-	val, err := mem.NewValue(newArena())
+func newChunkedSeq(a capnp.Arena, v api.Vector, i uint32, offset uint8) (chunkedSeq, error) {
+	val, err := mem.NewValue(a)
 	if err != nil {
 		return chunkedSeq{}, nil
 	}
@@ -722,8 +1272,7 @@ func newChunkedSeq(newArena func() capnp.Arena, v api.Vector, i, offset uint32) 
 	// }
 
 	return chunkedSeq{
-		Value:    val,
-		newArena: newArena,
+		Value: val,
 		// vec:    v,
 		// node:   n,
 		// i:      i,
@@ -739,7 +1288,7 @@ func (cs chunkedSeq) Count() (cnt int, err error) {
 
 	var vec api.Vector
 	if vec, err = seq.Vector(); err == nil {
-		cnt = int(vec.Count() - (seq.Index() + seq.Offset()))
+		cnt = int(vec.Count() - (seq.Index() + uint32(seq.Offset())))
 	}
 
 	return
@@ -774,7 +1323,7 @@ func (cs chunkedSeq) chunkedNext() (Seq, error) {
 
 	// more?
 	if i := seq.Index(); i+nodelen < vec.Count() {
-		return newChunkedSeq(cs.newArena, vec, i+nodelen, 0)
+		return newChunkedSeq(capnp.SingleSegment(nil), vec, i+nodelen, 0)
 	}
 
 	// end of sequence
@@ -793,7 +1342,7 @@ func (cs chunkedSeq) Next() (Seq, error) {
 	}
 
 	if int(seq.Offset()+1) < cs.nodeLen(seq, vec) {
-		return newChunkedSeq(cs.newArena, vec, seq.Index(), seq.Offset()+1)
+		return newChunkedSeq(capnp.SingleSegment(nil), vec, seq.Index(), seq.Offset()+1)
 	}
 
 	return cs.chunkedNext()
@@ -825,7 +1374,7 @@ func (cs chunkedSeq) node(seq api.VectorSeq) (api.Value_List, error) {
 func (cs chunkedSeq) Conj(items ...ww.Any) (_ Container, err error) {
 	var seq Seq = cs
 	for _, any := range items {
-		if seq, err = Cons(cs.newArena(), any, seq); err != nil {
+		if seq, err = Cons(capnp.SingleSegment(nil), any, seq); err != nil {
 			break
 		}
 	}
@@ -837,29 +1386,30 @@ func (cs chunkedSeq) Conj(items ...ww.Any) (_ Container, err error) {
 	vector utils
 */
 
-func newVector(a capnp.Arena, cnt, shift int, root api.Vector_Node, t api.Value_List) (PersistentVector, error) {
+func newVector(a capnp.Arena, cnt, shift int, root api.Vector_Node, t api.Value_List) (DeepPersistentVector, error) {
 	val, err := mem.NewValue(a)
 	if err != nil {
-		return PersistentVector{}, err
+		return DeepPersistentVector{}, err
 	}
 
 	vec, err := val.Raw.NewVector()
 	if err != nil {
-		return PersistentVector{}, err
+		return DeepPersistentVector{}, err
 	}
 
+	// TODO(performance): lots of calls to capnp.copyStruct and capnp.writePtr, here.
 	if err = vec.SetRoot(root); err != nil {
-		return PersistentVector{}, err
+		return DeepPersistentVector{}, err
 	}
 
 	if err = vec.SetTail(t); err != nil {
-		return PersistentVector{}, err
+		return DeepPersistentVector{}, err
 	}
 
 	vec.SetCount(uint32(cnt))
 	vec.SetShift(uint8(shift))
 
-	return PersistentVector{val}, nil
+	return DeepPersistentVector{val}, nil
 }
 
 func newRootVectorNode(a capnp.Arena) (api.Vector_Node, error) {
@@ -1006,4 +1556,12 @@ func newVectorValueList(a capnp.Arena) (_ api.Value_List, err error) {
 	}
 
 	return api.NewValue_List(seg, width)
+}
+
+func tailSlice(cnt int, tail api.Value_List) []api.Value {
+	items := make([]api.Value, 0, width)
+	for i := 0; i < cnt; i++ {
+		items = append(items, tail.At(i))
+	}
+	return items
 }

@@ -3,6 +3,7 @@ package core_test
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,27 +13,36 @@ import (
 	capnp "zombiezen.com/go/capnproto2"
 )
 
-const bigvec = 4097 // 2**12 + 1
-
 func TestEmptyVector(t *testing.T) {
 	t.Parallel()
 
-	require.NotZero(t, core.EmptyVector,
-		"zero-value empty vector is invalid (shift is missing)")
+	t.Run("New", func(t *testing.T) {
+		t.Parallel()
 
-	t.Run("NewVector", func(t *testing.T) {
-		v, err := core.NewVector(nil)
-		assert.NoError(t, err)
-
-		eq, err := core.Eq(core.EmptyVector, v)
+		v, err := core.NewVector(capnp.SingleSegment(nil))
 		require.NoError(t, err)
-		assert.True(t, eq)
+		require.NotNil(t, v)
+		assert.IsType(t, core.EmptyPersistentVector{}, v)
+
+		cnt, err := v.Count()
+		require.NoError(t, err)
+		assert.Zero(t, cnt)
 	})
 
 	t.Run("Count", func(t *testing.T) {
+		t.Parallel()
+
 		cnt, err := core.EmptyVector.Count()
 		assert.NoError(t, err)
 		assert.Zero(t, cnt)
+	})
+
+	t.Run("Render", func(t *testing.T) {
+		t.Parallel()
+
+		s, err := core.EmptyVector.Render()
+		assert.NoError(t, err)
+		assert.Equal(t, "[]", s)
 	})
 
 	t.Run("EntryAt", func(t *testing.T) {
@@ -44,6 +54,8 @@ func TestEmptyVector(t *testing.T) {
 	})
 
 	t.Run("Pop", func(t *testing.T) {
+		t.Parallel()
+
 		tail, err := core.EmptyVector.Pop()
 		assert.True(t, errors.Is(err, core.ErrIllegalState),
 			"'%s' is not ErrIllegalState", err)
@@ -51,7 +63,27 @@ func TestEmptyVector(t *testing.T) {
 		assert.Nil(t, tail)
 	})
 
+	t.Run("Cons", func(t *testing.T) {
+		t.Parallel()
+
+		item := mustInt(0)
+
+		v, err := core.EmptyVector.Cons(item)
+		assert.NoError(t, err)
+		assert.NotEqual(t, core.EmptyVector, v)
+		assert.IsType(t, core.ShallowPersistentVector{}, v)
+
+		any, err := v.EntryAt(0)
+		assert.NoError(t, err)
+
+		eq, err := core.Eq(item, any)
+		assert.NoError(t, err)
+		assert.True(t, eq)
+	})
+
 	t.Run("Conj", func(t *testing.T) {
+		t.Parallel()
+
 		v, err := core.EmptyVector.Conj(mustInt(0))
 		assert.NoError(t, err)
 
@@ -62,405 +94,512 @@ func TestEmptyVector(t *testing.T) {
 		assert.NoError(t, err)
 
 		eq, err := core.Eq(v, v3)
-		require.NoError(t, err)
-
+		assert.NoError(t, err)
 		assert.True(t, eq, "vector v should be equal to v2.")
 	})
 
 	t.Run("Seq", func(t *testing.T) {
+		t.Parallel()
+
 		seq, err := core.EmptyVector.Seq()
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		cnt, err := seq.Count()
+		assert.NoError(t, err)
+		assert.Zero(t, cnt)
+	})
+}
+
+func TestShallowPersistentVector(t *testing.T) {
+	t.Parallel()
+
+	const count = 32
+
+	t.Run("New", func(t *testing.T) {
+		t.Parallel()
+
+		v, err := core.NewVector(capnp.SingleSegment(nil), valueRange(count)...)
 		require.NoError(t, err)
-		require.Zero(t, cnt)
+		assert.IsType(t, core.ShallowPersistentVector{}, v)
+
+		cnt, err := v.Count()
+		assert.NoError(t, err)
+		assert.Equal(t, count, cnt)
 	})
-}
 
-func TestNewVector(t *testing.T) {
-	t.Parallel()
+	t.Run("Count", func(t *testing.T) {
+		t.Parallel()
 
-	for _, tt := range []struct {
-		desc string
-		vs   []ww.Any
-	}{{
-		desc: "empty",
-		vs:   []ww.Any{},
-	}, {
-		desc: "single",
-		vs:   []ww.Any{mustKeyword("specimen")},
-	}, {
-		desc: "multi",
-		vs: []ww.Any{
-			mustKeyword("keyword"),
-			mustString("string"),
-			mustSymbol("symbol"),
-			mustChar('🧠')},
-	}, {
-		desc: "multinode",
-		vs:   valueRange(64), // overflow single node
-	}, {
-		desc: "multibranch",
-		vs:   valueRange(1025), // tree w/ single branch-node => max size of 1024
-		// }, {
-		// 	desc: "big",
-		// 	vs:   valueRange(2048),
-	}} {
-		t.Run(tt.desc, func(t *testing.T) {
-			vec, err := core.NewVector(capnp.SingleSegment(nil), tt.vs...)
-			if !assert.NoError(t, err) {
-				return
-			}
-
-			for i, want := range tt.vs {
-				got, err := vec.EntryAt(i)
-				if !assert.NoError(t, err) {
-					break
-				}
-
-				wantc, err := core.Canonical(want)
+		for i := 1; i <= count; i++ {
+			withParallelIndex(t, i, func(t *testing.T, i int) {
+				v, err := core.NewVector(capnp.SingleSegment(nil), valueRange(i)...)
 				require.NoError(t, err)
 
-				gotc, err := core.Canonical(got)
-				require.NoError(t, err)
-
-				assert.Equal(t, wantc, gotc,
-					"expected %s, got %s", mustRender(want), mustRender(got))
-			}
-		})
-	}
-}
-
-func TestVectorRender(t *testing.T) {
-	t.Parallel()
-
-	for _, tt := range []struct {
-		desc, want string
-		vec        core.Vector
-	}{{
-		desc: "empty",
-		vec:  mustVector(),
-		want: "[]",
-	}, {
-		desc: "single",
-		vec:  mustVector(mustKeyword("specimen")),
-		want: "[:specimen]",
-	}, {
-		desc: "multi",
-		vec: mustVector(
-			mustKeyword("keyword"),
-			mustString("string"),
-			mustSymbol("symbol"),
-			mustChar('🧠')),
-		want: "[:keyword \"string\" symbol \\🧠]",
-	}} {
-		t.Run(tt.desc, func(t *testing.T) {
-			assert.Equal(t, tt.want, mustRender(tt.vec),
-				"expected %s, got %s", tt.want, mustRender(tt.vec))
-		})
-	}
-}
-
-func TestVectorAssoc(t *testing.T) {
-	t.Parallel()
-
-	t.Run("Append", func(t *testing.T) {
-		for _, tt := range []struct {
-			desc, want string
-			vec        core.Vector
-			add        ww.Any
-		}{{
-			desc: "empty",
-			vec:  mustVector(),
-			add:  mustKeyword("keyword"),
-			want: "[:keyword]",
-		}, {
-			desc: "non-empty",
-			vec: mustVector(
-				mustKeyword("keyword"),
-				mustString("string"),
-				mustSymbol("symbol"),
-				mustChar('🧠')),
-			add:  mustKeyword("added"),
-			want: "[:keyword \"string\" symbol \\🧠 :added]",
-		}} {
-			t.Run(tt.desc, func(t *testing.T) {
-				orig := mustRender(tt.vec)
-				defer func() {
-					require.Equal(t, orig, mustRender(tt.vec),
-						"IMMUTABILITY VIOLATION")
-				}()
-
-				cnt, err := tt.vec.Count()
-				require.NoError(t, err)
-
-				got, err := tt.vec.Assoc(cnt, tt.add)
-				if assert.NoError(t, err) {
-					assert.Equal(t, tt.want, mustRender(got),
-						"expected %s, got %s", tt.want, mustRender(tt.vec))
-				}
+				cnt, err := v.Count()
+				assert.NoError(t, err)
+				assert.Equal(t, i, cnt)
 			})
 		}
 	})
 
-	t.Run("Update", func(t *testing.T) {
-		for _, tt := range []struct {
-			want string
-			vec  core.Vector
-			add  ww.Any
-			idx  int
-		}{{
-			vec: mustVector(
-				mustKeyword("keyword"),
-				mustString("string"),
-				mustSymbol("symbol"),
-				mustChar('🧠')),
-			add:  mustKeyword("added"),
-			want: "[:added \"string\" symbol \\🧠]",
-			idx:  0,
-		}, {
-			vec: mustVector(
-				mustKeyword("keyword"),
-				mustString("string"),
-				mustSymbol("symbol"),
-				mustChar('🧠')),
-			add:  mustKeyword("added"),
-			want: "[:keyword :added symbol \\🧠]",
-			idx:  1,
-		}, {
-			vec: mustVector(
-				mustKeyword("keyword"),
-				mustString("string"),
-				mustSymbol("symbol"),
-				mustChar('🧠')),
-			add:  mustKeyword("added"),
-			want: "[:keyword \"string\" symbol :added]",
-			idx:  3,
-		}} {
-			t.Run(fmt.Sprintf("%d", tt.idx), func(t *testing.T) {
-				orig := mustRender(tt.vec)
-				defer func() {
-					require.Equal(t, orig, mustRender(tt.vec),
-						"IMMUTABILITY VIOLATION")
-				}()
+	t.Run("Render", func(t *testing.T) {
+		t.Parallel()
 
-				got, err := tt.vec.Assoc(tt.idx, tt.add)
-				if assert.NoError(t, err) {
-					assert.Equal(t, tt.want, mustRender(got),
-						"expected %s, got %s", tt.want, mustRender(got))
-				}
+		for i := 1; i <= count; i++ {
+			withParallelIndex(t, i, func(t *testing.T, i int) {
+				v, err := core.NewVector(capnp.SingleSegment(nil), valueRange(i)...)
+				require.NoError(t, err)
+
+				s, err := core.Render(v)
+				assert.NoError(t, err)
+
+				assert.Equal(t, renderRange(i), s)
 			})
 		}
 	})
-}
 
-func TestVectorConj(t *testing.T) {
-	var err error
-	var vec core.Container = core.EmptyVector
+	t.Run("EntryAt", func(t *testing.T) {
+		t.Parallel()
 
-	for i := int64(0); i < int64(bigvec); i++ {
-		vec, err = vec.Conj(mustInt(i))
-		require.NoError(t, err, "error encountered on iteration %d", i)
-	}
+		v, err := core.NewVector(capnp.SingleSegment(nil), valueRange(count)...)
+		require.NoError(t, err)
 
-	cnt, err := vec.Count()
-	require.NoError(t, err)
-	assert.Equal(t, cnt, bigvec)
-}
+		for i := 0; i < count; i++ {
+			withParallelIndex(t, i, func(t *testing.T, i int) {
+				item, err := v.EntryAt(i)
+				assert.NoError(t, err)
 
-func TestVectorPop(t *testing.T) {
-	for _, tt := range []struct {
-		desc      string
-		vec, want core.Vector
-	}{{
-		desc: "single",
-		vec:  mustVector(mustKeyword("keyword")),
-		want: mustVector(),
-	}, {
-		desc: "multi",
-		vec: mustVector(
-			mustKeyword("keyword"),
-			mustString("string"),
-			mustSymbol("symbol"),
-			mustChar('🧠')),
-		want: mustVector(
-			mustKeyword("keyword"),
-			mustString("string"),
-			mustSymbol("symbol")),
-	}, {
-		desc: "multinode",
-		vec:  mustVector(valueRange(64)...), // overflow single node
-		want: mustVector(valueRange(63)...),
-	}, {
-		desc: "multibranch",
-		vec:  mustVector(valueRange(1025)...), // tree w/ single branch-node => max size of 1024
-		want: mustVector(valueRange(1024)...),
-	}, {
-		desc: "multibranch-big",
-		vec:  mustVector(valueRange(2049)...),
-		want: mustVector(valueRange(2048)...),
-	}} {
-		t.Run(tt.desc, func(t *testing.T) {
-			got, err := tt.vec.Pop()
-			assert.NoError(t, err)
-			assertVectEq(t, tt.want, got)
+				eq, err := core.Eq(item, mustInt(i))
+				assert.NoError(t, err)
+				assert.True(t, eq)
+			})
+		}
+
+		t.Run("NegativeIndex", func(t *testing.T) {
+			item, err := v.EntryAt(-1)
+			assert.Error(t, err)
+			assert.True(t, errors.Is(err, core.ErrIndexOutOfBounds))
+			assert.Nil(t, item)
 		})
-	}
-}
 
-func TestVectorEquality(t *testing.T) {
-	for _, tt := range []struct {
-		desc      string
-		v         core.Vector
-		newVector func() core.Vector
-	}{
-		{
-			desc: "basic",
-			v:    mustVector(mustInt(0), mustInt(1), mustInt(2)),
-			newVector: func() core.Vector {
-				return mustVector(mustInt(0), mustInt(1), mustInt(2))
-			},
-		},
-		{
-			desc: "pop from tail",
-			v:    mustVector(mustInt(0), mustInt(1), mustInt(2)),
-			newVector: func() core.Vector {
-				v := mustVector(mustInt(0), mustInt(1), mustInt(2), mustInt(3))
-				v, err := v.Pop()
-				require.NoError(t, err)
-				return v
-			},
-		},
-		{
-			desc: "pop from leaf",
-			v:    vectorRange(32),
-			newVector: func() core.Vector {
-				v := vectorRange(33)
-				v, err := v.Pop()
-				require.NoError(t, err)
-				return v
-			},
-		},
-		{
-			desc: "pop multiple across tail boundary",
-			v:    vectorRange(30),
-			newVector: func() core.Vector {
-				var err error
-				var v = vectorRange(35)
-				for i := 0; i < 5; i++ {
-					if v, err = v.Pop(); err != nil {
-						panic(err)
-					}
-				}
+		t.Run("Overflow", func(t *testing.T) {
+			item, err := v.EntryAt(33)
+			assert.Error(t, err)
+			assert.True(t, errors.Is(err, core.ErrIndexOutOfBounds))
+			assert.Nil(t, item)
+		})
 
-				return v
-			},
-		},
-		{
-			desc: "complex",
-			v: mustVector(
-				mustKeyword("keyword"),
-				mustFrac(1, 32),
-				mustVector(mustFloat(3.14), mustString("string")),
-			),
-			newVector: func() core.Vector {
-				var err error
-				v := mustVector(mustKeyword("keyword"), mustFrac(1, 32))
-				v, err = v.Assoc(2, mustVector(mustFloat(3.14), mustString("string")))
-				if err != nil {
-					panic(err)
-				}
-				return v
-			},
-		},
-	} {
-		t.Run(tt.desc, func(t *testing.T) {
-			eq, err := core.Eq(tt.v, tt.newVector())
+	})
+
+	t.Run("Pop", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ResultIsEmpty", func(t *testing.T) {
+			t.Parallel()
+
+			v, err := core.NewVector(capnp.SingleSegment(nil), valueRange(1)...)
 			require.NoError(t, err)
 
-			assert.True(t, eq,
-				"expected %s, got %s", mustRender(tt.v), mustRender(tt.newVector()))
+			res, err := v.Pop()
+			assert.NoError(t, err)
+			assert.Equal(t, core.Vector(core.EmptyVector), res)
 		})
-	}
+
+		t.Run("ResultNotEmpty", func(t *testing.T) {
+			t.Parallel()
+
+			v, err := core.NewVector(capnp.SingleSegment(nil), valueRange(2)...)
+			require.NoError(t, err)
+
+			res, err := v.Pop()
+			assert.NoError(t, err)
+			assert.IsType(t, core.ShallowPersistentVector{}, res)
+
+			t.Run("CountOK", func(t *testing.T) {
+				t.Parallel()
+
+				cnt, err := res.Count()
+				assert.NoError(t, err)
+				assert.Equal(t, 1, cnt)
+			})
+
+			t.Run("EntryAtOK", func(t *testing.T) {
+				t.Parallel()
+
+				item, err := res.EntryAt(0)
+				assert.NoError(t, err)
+				eq, err := core.Eq(mustInt(0), item)
+				require.NoError(t, err)
+				assert.True(t, eq)
+			})
+
+			t.Run("EqualityOK", func(t *testing.T) {
+				t.Parallel()
+
+				want, err := core.NewVector(capnp.SingleSegment(nil), valueRange(1)...)
+				require.NoError(t, err)
+				eq, err := core.Eq(want, res)
+				assert.NoError(t, err)
+				assert.True(t, eq, "expected %s, got %s", mustRender(want), mustRender(res))
+			})
+		})
+	})
+
+	t.Run("Cons", func(t *testing.T) {
+		t.Parallel()
+
+		for i := 1; i < count; i++ {
+			withParallelIndex(t, i, func(t *testing.T, i int) {
+				v, err := core.NewVector(capnp.SingleSegment(nil), valueRange(i)...)
+				require.NoError(t, err)
+
+				insert := mustInt(9001)
+
+				res, err := v.Cons(insert)
+				assert.NoError(t, err)
+				assert.NotNil(t, res)
+				assert.IsType(t, core.ShallowPersistentVector{}, res)
+
+				cnt, err := res.Count()
+				assert.NoError(t, err)
+				assert.Equal(t, i+1, cnt)
+
+				item, err := res.EntryAt(i)
+				assert.NoError(t, err)
+				eq, err := core.Eq(insert, item)
+				assert.NoError(t, err)
+				assert.True(t, eq, "expected %s, got %s", insert, item)
+			})
+		}
+
+		t.Run("Overflow", func(t *testing.T) {
+			t.Parallel()
+
+			v, err := core.NewVector(capnp.SingleSegment(nil), valueRange(count)...)
+			require.NoError(t, err)
+
+			insert := mustInt(9001)
+
+			res, err := v.Cons(insert)
+			assert.NoError(t, err)
+			assert.NotNil(t, res)
+			assert.IsType(t, core.DeepPersistentVector{}, res)
+
+			cnt, err := res.Count()
+			assert.NoError(t, err)
+			assert.Equal(t, 33, cnt)
+
+			item, err := res.EntryAt(count)
+			assert.NoError(t, err)
+			eq, err := core.Eq(insert, item)
+			assert.NoError(t, err)
+			assert.True(t, eq, "expected %s, got %s", insert, item)
+		})
+	})
+
+	t.Run("Conj", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("InRange", func(t *testing.T) {
+			t.Parallel()
+
+			items := valueRange(count)
+
+			v, err := core.NewVector(capnp.SingleSegment(nil), items[0])
+			require.NoError(t, err)
+
+			ctr, err := v.Conj(items[1:]...)
+			assert.NoError(t, err)
+			assert.NotNil(t, ctr)
+
+			cnt, err := ctr.Count()
+			assert.NoError(t, err)
+			assert.Equal(t, count, cnt)
+
+			require.IsType(t, core.ShallowPersistentVector{}, ctr)
+			for i, want := range items {
+				got, err := ctr.(core.ShallowPersistentVector).EntryAt(i)
+				assert.NoError(t, err)
+
+				eq, err := core.Eq(want, got)
+				require.NoError(t, err)
+				require.True(t, eq)
+			}
+		})
+
+		t.Run("Overflow", func(t *testing.T) {
+			t.Parallel()
+
+			items := valueRange(33)
+
+			v, err := core.NewVector(capnp.SingleSegment(nil), items[0])
+			require.NoError(t, err)
+
+			ctr, err := v.Conj(items[1:]...)
+			assert.NoError(t, err)
+			assert.NotNil(t, ctr)
+
+			cnt, err := ctr.Count()
+			assert.NoError(t, err)
+			assert.Equal(t, 33, cnt)
+
+			require.IsType(t, core.DeepPersistentVector{}, ctr)
+			for i, want := range items {
+				got, err := ctr.(core.DeepPersistentVector).EntryAt(i)
+				assert.NoError(t, err)
+
+				eq, err := core.Eq(want, got)
+				require.NoError(t, err)
+				require.True(t, eq)
+			}
+		})
+	})
+
+	t.Run("Seq", func(t *testing.T) {
+		t.Parallel()
+
+		items := valueRange(count)
+
+		v, err := core.NewVector(capnp.SingleSegment(nil), items...)
+		require.NoError(t, err)
+		require.NotNil(t, v)
+
+		seq, err := v.Seq()
+		require.NoError(t, err)
+		require.NotNil(t, seq)
+
+		results, err := core.ToSlice(seq)
+		require.NoError(t, err)
+		assert.Len(t, results, len(items))
+
+		for i, got := range results {
+			eq, err := core.Eq(items[i], got)
+			assert.NoError(t, err)
+			assert.True(t, eq)
+		}
+	})
 }
 
-func TestVectorSeq(t *testing.T) {
-	is := make([]ww.Any, bigvec)
-	for i := range is {
-		is[i] = mustInt(int64(i))
-	}
+func TestDeepPersistentVector(t *testing.T) {
+	t.Parallel()
 
-	seq, err := mustVector(is...).Seq()
-	require.NoError(t, err)
-	require.NotNil(t, seq)
+	const count = 4096
+	var ranges = [...]int{33, 64, 128, 256, 512, 1024, 2048, 4096}
 
-	cnt, err := seq.Count()
-	require.NoError(t, err)
-	require.Equal(t, bigvec, cnt)
+	t.Run("New", func(t *testing.T) {
+		t.Parallel()
 
-	var i int64
-	require.NoError(t, core.ForEach(seq, func(item ww.Any) (bool, error) {
-		idx := item.MemVal().Raw.I64()
-		require.Equal(t, i, idx,
-			"order invariant violated:  expected to visit index %d, got %d", i, idx)
-		i++
-		return false, nil
-	}), "error encountered during iteration:  failed call to seq.First() or seq.Next()")
-}
+		v, err := core.NewVector(capnp.SingleSegment(nil), valueRange(count)...)
+		require.NoError(t, err)
+		require.IsType(t, core.DeepPersistentVector{}, v)
 
-func mustVector(vs ...ww.Any) core.Vector {
-	vec, err := core.NewVector(capnp.SingleSegment(nil), vs...)
-	if err != nil {
-		panic(err)
-	}
+		cnt, err := v.Count()
+		require.NoError(t, err)
+		assert.Equal(t, count, cnt)
+	})
 
-	return vec
-}
+	t.Run("Count", func(t *testing.T) {
+		t.Parallel()
 
-func vectorRange(n int) core.Vector {
-	v, err := core.NewVector(capnp.SingleSegment(nil), valueRange(n)...)
-	if err != nil {
-		panic(err)
-	}
+		for _, i := range ranges {
+			withParallelIndex(t, i, func(t *testing.T, i int) {
+				v, err := core.NewVector(capnp.SingleSegment(nil), valueRange(i)...)
+				require.NoError(t, err)
 
-	return v
+				cnt, err := v.Count()
+				assert.NoError(t, err)
+				assert.Equal(t, i, cnt)
+			})
+		}
+	})
+
+	t.Run("Render", func(t *testing.T) {
+		t.Parallel()
+
+		for _, i := range ranges {
+			withParallelIndex(t, i, func(t *testing.T, i int) {
+				v, err := core.NewVector(capnp.SingleSegment(nil), valueRange(i)...)
+				require.NoError(t, err)
+
+				s, err := core.Render(v)
+				assert.NoError(t, err)
+
+				assert.Equal(t, renderRange(i), s)
+			})
+		}
+	})
+
+	t.Run("EntryAt", func(t *testing.T) {
+		t.Parallel()
+
+		v, err := core.NewVector(capnp.SingleSegment(nil), valueRange(count)...)
+		require.NoError(t, err)
+
+		for _, i := range ranges {
+			withParallelIndex(t, i, func(t *testing.T, i int) {
+				item, err := v.EntryAt(i - 1)
+				assert.NoError(t, err)
+
+				eq, err := core.Eq(item, mustInt(i-1))
+				assert.NoError(t, err)
+				assert.True(t, eq)
+			})
+		}
+
+		t.Run("NegativeIndex", func(t *testing.T) {
+			item, err := v.EntryAt(-1)
+			assert.Error(t, err)
+			assert.True(t, errors.Is(err, core.ErrIndexOutOfBounds))
+			assert.Nil(t, item)
+		})
+	})
+
+	t.Run("Pop", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ResultIsShallow", func(t *testing.T) {
+			t.Parallel()
+
+			v, err := core.NewVector(capnp.SingleSegment(nil), valueRange(33)...)
+			require.NoError(t, err)
+
+			res, err := v.Pop()
+			assert.NoError(t, err)
+			assert.IsType(t, core.ShallowPersistentVector{}, res)
+
+			cnt, err := res.Count()
+			require.NoError(t, err)
+			assert.Equal(t, cnt, 32)
+		})
+
+		t.Run("ResultIsDeep", func(t *testing.T) {
+			t.Parallel()
+
+			v, err := core.NewVector(capnp.SingleSegment(nil), valueRange(128)...)
+			require.NoError(t, err)
+
+			res, err := v.Pop()
+			assert.NoError(t, err)
+			assert.IsType(t, core.DeepPersistentVector{}, res)
+
+			cnt, err := res.Count()
+			require.NoError(t, err)
+			assert.Equal(t, cnt, 127)
+		})
+	})
+
+	t.Run("Cons", func(t *testing.T) {
+		t.Parallel()
+
+		for _, i := range ranges {
+			withParallelIndex(t, i, func(t *testing.T, i int) {
+				v, err := core.NewVector(capnp.SingleSegment(nil), valueRange(i)...)
+				require.NoError(t, err)
+
+				insert := mustInt(9001)
+
+				res, err := v.Cons(insert)
+				require.NoError(t, err)
+				require.NotNil(t, res)
+				require.IsType(t, core.DeepPersistentVector{}, res)
+
+				cnt, err := res.Count()
+				require.NoError(t, err)
+				require.Equal(t, i+1, cnt)
+
+				item, err := res.EntryAt(i)
+				require.NoError(t, err)
+				eq, err := core.Eq(insert, item)
+				require.NoError(t, err)
+				require.True(t, eq, "expected %s, got %s", insert, item)
+			})
+		}
+	})
+
+	t.Run("Conj", func(t *testing.T) {
+		t.Parallel()
+
+		items := valueRange(count)
+
+		v, err := core.NewVector(capnp.SingleSegment(nil), items[0])
+		require.NoError(t, err)
+
+		ctr, err := v.Conj(items[1:]...)
+		assert.NoError(t, err)
+		assert.NotNil(t, ctr)
+
+		cnt, err := ctr.Count()
+		assert.NoError(t, err)
+		assert.Equal(t, count, cnt)
+
+		require.IsType(t, core.DeepPersistentVector{}, ctr)
+		for i, want := range items {
+			got, err := ctr.(core.DeepPersistentVector).EntryAt(i)
+			require.NoError(t, err)
+
+			eq, err := core.Eq(want, got)
+			require.NoError(t, err)
+			require.True(t, eq)
+		}
+	})
+
+	t.Run("Seq", func(t *testing.T) {
+		t.Parallel()
+
+		items := valueRange(count)
+
+		v, err := core.NewVector(capnp.SingleSegment(nil), items...)
+		require.NoError(t, err)
+		require.NotNil(t, v)
+
+		seq, err := v.Seq()
+		require.NoError(t, err)
+		require.NotNil(t, seq)
+
+		results, err := core.ToSlice(seq)
+		require.NoError(t, err)
+		assert.Len(t, results, len(items))
+
+		for i, got := range results {
+			eq, err := core.Eq(items[i], got)
+			assert.NoError(t, err)
+			assert.True(t, eq)
+		}
+	})
 }
 
 func valueRange(n int) []ww.Any {
 	vs := make([]ww.Any, n)
 	for i := 0; i < n; i++ {
-		vs[i] = mustKeyword(fmt.Sprintf("%d", i))
+		vs[i] = mustInt(i)
 	}
 	return vs
 }
 
-func assertVectEq(t *testing.T, want, got core.Vector) (ok bool) {
-	wantcnt, err := want.Count()
-	assert.NoError(t, err)
+func renderRange(n int) string {
+	var b strings.Builder
+	b.WriteRune('[')
 
-	gotcnt, err := got.Count()
-	assert.NoError(t, err)
-
-	if wantcnt != gotcnt {
-		t.Errorf("want len=%d, got len=%d", wantcnt, gotcnt)
-		return
-	}
-
-	for i := 0; i < wantcnt; i++ {
-		w, err := want.EntryAt(i)
-		if !assert.NoError(t, err) {
-			return
+	for i, val := range valueRange(n) {
+		s, err := core.Render(val)
+		if err != nil {
+			panic(err)
 		}
 
-		g, err := got.EntryAt(i)
-		if !assert.NoError(t, err) {
-			return
-		}
+		b.WriteString(s)
 
-		if !assert.Equal(t, mustRender(w), mustRender(g)) {
-			return
+		if i < n-1 {
+			b.WriteRune(' ')
 		}
 	}
 
-	return true
+	b.WriteRune(']')
+	return b.String()
+}
+
+func withParallelIndex(t *testing.T, i int, f func(*testing.T, int)) {
+	t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+		t.Parallel()
+		f(t, i)
+	})
 }

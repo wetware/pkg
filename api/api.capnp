@@ -104,7 +104,7 @@ struct Vector {
 
 
 struct VectorSeq {
-    vector @0 :Vector;
-    index @1 :UInt32;
-    offset @2 :UInt32;
+    offset @0 :UInt8;
+    vector @1 :Vector;
+    index @2 :UInt32;
 }
