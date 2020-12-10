@@ -45,6 +45,24 @@ func TestEmptyVector(t *testing.T) {
 		assert.Equal(t, "[]", s)
 	})
 
+	t.Run("Assoc", func(t *testing.T) {
+		t.Run("Append", func(t *testing.T) {
+			v, err := core.EmptyVector.Assoc(0, mustInt(0))
+			assert.NoError(t, err)
+			assert.IsType(t, core.ShallowPersistentVector{}, v)
+
+			cnt, err := v.Count()
+			assert.NoError(t, err)
+			assert.Equal(t, 1, cnt)
+		})
+
+		t.Run("Overflow", func(t *testing.T) {
+			v, err := core.EmptyVector.Assoc(1, mustInt(0))
+			assert.EqualError(t, err, core.ErrIndexOutOfBounds.Error())
+			assert.Nil(t, v)
+		})
+	})
+
 	t.Run("EntryAt", func(t *testing.T) {
 		t.Parallel()
 
