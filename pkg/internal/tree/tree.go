@@ -5,6 +5,7 @@ import (
 	"runtime"
 	"sync"
 
+	"github.com/wetware/ww/internal/api"
 	"github.com/wetware/ww/pkg/mem"
 )
 
@@ -12,11 +13,11 @@ import (
 type Transaction Node
 
 // Load API value
-func (t Transaction) Load() mem.Value { return Node(t).val }
+func (t Transaction) Load() api.Value { return Node(t).val }
 
 // Store API value
-func (t Transaction) Store(val mem.Value) bool {
-	if val.Nil() || Node(t).val.Nil() {
+func (t Transaction) Store(val api.Value) bool {
+	if mem.IsNil(val) || mem.IsNil(Node(t).val) {
 		Node(t).val = val
 		return true
 	}
@@ -62,7 +63,7 @@ func (n Node) List() []Node {
 }
 
 // Load API value
-func (n Node) Load() mem.Value {
+func (n Node) Load() api.Value {
 	n.tx.RLock()
 	defer n.tx.RUnlock()
 
@@ -70,11 +71,11 @@ func (n Node) Load() mem.Value {
 }
 
 // Store API value
-func (n Node) Store(val mem.Value) bool {
+func (n Node) Store(val api.Value) bool {
 	n.tx.Lock()
 	defer n.tx.Unlock()
 
-	if val.Nil() || n.val.Nil() {
+	if mem.IsNil(val) || mem.IsNil(n.val) {
 		n.val = val
 		return true
 	}
@@ -134,7 +135,7 @@ type node struct {
 	ctr int
 
 	tx  sync.RWMutex
-	val mem.Value
+	val api.Value
 
 	Name     string
 	parent   *node
@@ -169,7 +170,7 @@ func (n *node) orphanedUnsafe() bool {
 	// - nobody's using it
 	// - it has no children
 	// - it's not holding an object
-	return n.ctr == 0 && len(n.children) == 0 && n.val.Nil()
+	return n.ctr == 0 && len(n.children) == 0 && mem.IsNil(n.val)
 }
 
 func (n *node) ref() *nodeRef {

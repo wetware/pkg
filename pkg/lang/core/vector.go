@@ -38,7 +38,7 @@ var (
 	_ Vector = (*ShallowPersistentVector)(nil)
 	_ Vector = (*DeepPersistentVector)(nil)
 
-	emptyVectorValue mem.Value
+	emptyVectorValue api.Value
 	emptyVectorSeq   chunkedSeq
 )
 
@@ -48,12 +48,12 @@ func init() {
 		panic(err)
 	}
 
-	vec, err := val.Raw.NewVector()
+	vec, err := val.MemVal().NewVector()
 	if err != nil {
 		panic(err)
 	}
 
-	emptyVectorValue = val
+	emptyVectorValue = val.MemVal()
 
 	emptyVectorSeq, err = newChunkedSeq(capnp.SingleSegment(nil), vec, 0, 0)
 	if err != nil {
@@ -78,7 +78,7 @@ type Vector interface {
 func NewVector(a capnp.Arena, items ...ww.Any) (Vector, error) {
 	values := make([]api.Value, len(items))
 	for i, any := range items {
-		values[i] = any.MemVal().Raw
+		values[i] = any.MemVal()
 	}
 
 	return EmptyVector.conj(values)
@@ -88,7 +88,7 @@ func NewVector(a capnp.Arena, items ...ww.Any) (Vector, error) {
 type EmptyPersistentVector struct{}
 
 // MemVal .
-func (EmptyPersistentVector) MemVal() mem.Value { return emptyVectorValue }
+func (EmptyPersistentVector) MemVal() api.Value { return emptyVectorValue }
 
 // Count always returns 0 and a nil error.
 func (EmptyPersistentVector) Count() (int, error) { return 0, nil }
@@ -99,12 +99,12 @@ func (EmptyPersistentVector) Invoke(args ...ww.Any) (ww.Any, error) {
 		return nil, fmt.Errorf("%w: got %d, want at-least 1", ErrArity, nargs)
 	}
 
-	switch idx := args[0]; idx.MemVal().Type() {
+	switch idx := args[0]; idx.MemVal().Which() {
 	case api.Value_Which_i64, api.Value_Which_bigInt:
 		return nil, ErrIndexOutOfBounds
 
 	default:
-		return nil, fmt.Errorf("%s is not an integer type", idx.MemVal().Type())
+		return nil, fmt.Errorf("%s is not an integer type", idx.MemVal().Which())
 	}
 }
 
@@ -122,7 +122,7 @@ func (EmptyPersistentVector) Conj(items ...ww.Any) (Container, error) {
 
 	values := make([]api.Value, len(items))
 	for i, any := range items {
-		values[i] = any.MemVal().Raw
+		values[i] = any.MemVal()
 	}
 
 	return EmptyVector.conj(values)
@@ -152,7 +152,7 @@ func (EmptyPersistentVector) conj(values []api.Value) (Vector, error) {
 		return nil, err
 	}
 
-	vec, err := mv.Raw.NewVector()
+	vec, err := mv.MemVal().NewVector()
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +189,7 @@ func (EmptyPersistentVector) Cons(item ww.Any) (Vector, error) {
 }
 
 func (EmptyPersistentVector) cons(item ww.Any) (ShallowPersistentVector, error) {
-	return newShallowPersistentVector(capnp.SingleSegment(nil), item.MemVal().Raw)
+	return newShallowPersistentVector(capnp.SingleSegment(nil), item.MemVal())
 }
 
 // Pop returns ErrIllegalState
@@ -221,7 +221,7 @@ func newShallowPersistentVector(a capnp.Arena, values ...api.Value) (ShallowPers
 		return ShallowPersistentVector{}, err
 	}
 
-	vec, err := val.Raw.NewVector()
+	vec, err := val.MemVal().NewVector()
 	if err != nil {
 		return ShallowPersistentVector{}, err
 	}
@@ -244,7 +244,7 @@ func newShallowPersistentVector(a capnp.Arena, values ...api.Value) (ShallowPers
 
 // Count returns the tail length
 func (v ShallowPersistentVector) Count() (int, error) {
-	vec, err := v.Raw.Vector()
+	vec, err := v.MemVal().Vector()
 	return int(vec.Count()), err
 }
 
@@ -254,18 +254,18 @@ func (ShallowPersistentVector) Invoke(args ...ww.Any) (ww.Any, error) {
 		return nil, fmt.Errorf("%w: got %d, want at-least 1", ErrArity, nargs)
 	}
 
-	switch idx := args[0]; idx.MemVal().Type() {
+	switch idx := args[0]; idx.MemVal().Which() {
 	case api.Value_Which_i64, api.Value_Which_bigInt:
 		return nil, ErrIndexOutOfBounds
 
 	default:
-		return nil, fmt.Errorf("%s is not an integer type", idx.MemVal().Type())
+		return nil, fmt.Errorf("%s is not an integer type", idx.MemVal().Which())
 	}
 }
 
 // Render the vector in a human-readable format.
 func (v ShallowPersistentVector) Render() (string, error) {
-	vec, err := v.Raw.Vector()
+	vec, err := v.MemVal().Vector()
 	if err != nil {
 		return "", err
 	}
@@ -280,7 +280,7 @@ func (v ShallowPersistentVector) Render() (string, error) {
 
 	cnt := int(vec.Count())
 	for i := 0; i < cnt; i++ {
-		item, err := AsAny(mem.Value{Raw: tail.At(i)})
+		item, err := AsAny(tail.At(i))
 		if err != nil {
 			return "", err
 		}
@@ -304,7 +304,7 @@ func (v ShallowPersistentVector) Render() (string, error) {
 // Assoc returns a new vector with the value at given index updated.
 // Returns error if the index is out of range.
 func (v ShallowPersistentVector) Assoc(i int, item ww.Any) (Vector, error) {
-	vec, err := v.Raw.Vector()
+	vec, err := v.MemVal().Vector()
 	if err != nil {
 		return nil, err
 	}
@@ -313,12 +313,12 @@ func (v ShallowPersistentVector) Assoc(i int, item ww.Any) (Vector, error) {
 
 	// update?
 	if i >= 0 && i < cnt {
-		return v.update(vec, cnt, i, item.MemVal().Raw)
+		return v.update(vec, cnt, i, item.MemVal())
 	}
 
 	// append?
 	if i == cnt {
-		return v.cons(vec, item.MemVal().Raw)
+		return v.cons(vec, item.MemVal())
 	}
 
 	return nil, ErrIndexOutOfBounds
@@ -330,7 +330,7 @@ func (v ShallowPersistentVector) EntryAt(i int) (ww.Any, error) {
 		return nil, ErrIndexOutOfBounds
 	}
 
-	vec, err := v.Raw.Vector()
+	vec, err := v.MemVal().Vector()
 	if err != nil {
 		return nil, err
 	}
@@ -340,14 +340,14 @@ func (v ShallowPersistentVector) EntryAt(i int) (ww.Any, error) {
 		return nil, err
 	}
 
-	return AsAny(mem.Value{Raw: tail.At(i)})
+	return AsAny(tail.At(i))
 }
 
 // Conj returns a new vector with items appended.
 func (v ShallowPersistentVector) Conj(items ...ww.Any) (Container, error) {
 	values := make([]api.Value, len(items))
 	for i, any := range items {
-		values[i] = any.MemVal().Raw
+		values[i] = any.MemVal()
 	}
 
 	return v.conj(values)
@@ -358,7 +358,7 @@ func (v ShallowPersistentVector) conj(values []api.Value) (Vector, error) {
 		return v, nil
 	}
 
-	vec, err := v.Raw.Vector()
+	vec, err := v.MemVal().Vector()
 	if err != nil {
 		return nil, err
 	}
@@ -426,12 +426,12 @@ func (v ShallowPersistentVector) cloneTail(a capnp.Arena, vec api.Vector) (newta
 
 // Cons appends to the end of the vector.
 func (v ShallowPersistentVector) Cons(item ww.Any) (Vector, error) {
-	vec, err := v.Raw.Vector()
+	vec, err := v.MemVal().Vector()
 	if err != nil {
 		return nil, err
 	}
 
-	return v.cons(vec, item.MemVal().Raw)
+	return v.cons(vec, item.MemVal())
 }
 
 func (v ShallowPersistentVector) cons(vec api.Vector, val api.Value) (Vector, error) {
@@ -453,7 +453,7 @@ func (v ShallowPersistentVector) shallowCons(vec api.Vector, cnt int, val api.Va
 		return ShallowPersistentVector{}, err
 	}
 
-	if vec, err = mv.Raw.NewVector(); err != nil {
+	if vec, err = mv.MemVal().NewVector(); err != nil {
 		return ShallowPersistentVector{}, err
 	}
 
@@ -495,7 +495,7 @@ func (v ShallowPersistentVector) update(vec api.Vector, cnt, idx int, val api.Va
 		return ShallowPersistentVector{}, err
 	}
 
-	newVec, err := mv.Raw.NewVector()
+	newVec, err := mv.MemVal().NewVector()
 	if err != nil {
 		return ShallowPersistentVector{}, err
 	}
@@ -524,7 +524,7 @@ func (v ShallowPersistentVector) update(vec api.Vector, cnt, idx int, val api.Va
 
 // Pop returns ErrIllegalState
 func (v ShallowPersistentVector) Pop() (Vector, error) {
-	vec, err := v.Raw.Vector()
+	vec, err := v.MemVal().Vector()
 	if err != nil {
 		return nil, err
 	}
@@ -544,7 +544,7 @@ func (v ShallowPersistentVector) Pop() (Vector, error) {
 		return nil, err
 	}
 
-	if vec, err = val.Raw.NewVector(); err != nil {
+	if vec, err = val.MemVal().NewVector(); err != nil {
 		return nil, err
 	}
 
@@ -566,7 +566,7 @@ func (v ShallowPersistentVector) Pop() (Vector, error) {
 
 // Seq returns a sequence that iterates over the vector
 func (v ShallowPersistentVector) Seq() (Seq, error) {
-	vec, err := v.Raw.Vector()
+	vec, err := v.MemVal().Vector()
 	if err != nil {
 		return nil, err
 	}
@@ -576,7 +576,7 @@ func (v ShallowPersistentVector) Seq() (Seq, error) {
 		return nil, err
 	}
 
-	seq, err := mv.Raw.NewVectorSeq()
+	seq, err := mv.MemVal().NewVectorSeq()
 	if err != nil {
 		return nil, err
 	}
@@ -598,7 +598,7 @@ func newDeepPersistentVector(a capnp.Arena, tail api.Value_List, values ...api.V
 		return DeepPersistentVector{}, err
 	}
 
-	vec, err := mv.Raw.NewVector()
+	vec, err := mv.MemVal().NewVector()
 	if err != nil {
 		return DeepPersistentVector{}, err
 	}
@@ -628,9 +628,9 @@ func (v DeepPersistentVector) Invoke(args ...ww.Any) (ww.Any, error) {
 		return nil, fmt.Errorf("%w: got %d, want at-least 1", ErrArity, nargs)
 	}
 
-	switch idx := args[0]; idx.MemVal().Type() {
+	switch idx := args[0]; idx.MemVal().Which() {
 	case api.Value_Which_i64:
-		return v.EntryAt(int(idx.MemVal().Raw.I64()))
+		return v.EntryAt(int(idx.MemVal().I64()))
 	case api.Value_Which_bigInt:
 		// TODO(performance):  can we use unsafe.Pointer here?
 		if bi := idx.(BigInt).BigInt(); bi.IsInt64() && bi.Int64() <= math.MaxUint32 {
@@ -640,7 +640,7 @@ func (v DeepPersistentVector) Invoke(args ...ww.Any) (ww.Any, error) {
 		return nil, ErrIndexOutOfBounds
 
 	default:
-		return nil, fmt.Errorf("%s is not an integer type", idx.MemVal().Type())
+		return nil, fmt.Errorf("%s is not an integer type", idx.MemVal().Which())
 	}
 }
 
@@ -683,7 +683,7 @@ func (v DeepPersistentVector) Count() (cnt int, err error) {
 }
 
 func (v DeepPersistentVector) count() (vec api.Vector, cnt int, err error) {
-	if vec, err = v.Raw.Vector(); err == nil {
+	if vec, err = v.MemVal().Vector(); err == nil {
 		cnt = int(vec.Count())
 	}
 
@@ -694,7 +694,7 @@ func (v DeepPersistentVector) count() (vec api.Vector, cnt int, err error) {
 func (v DeepPersistentVector) Conj(items ...ww.Any) (Container, error) {
 	values := make([]api.Value, len(items))
 	for i, any := range items {
-		values[i] = any.MemVal().Raw
+		values[i] = any.MemVal()
 	}
 
 	return v.conj(values)
@@ -723,7 +723,7 @@ func (v DeepPersistentVector) EntryAt(i int) (ww.Any, error) {
 		return nil, err
 	}
 
-	return AsAny(mem.Value{Raw: vs.At(i & mask)})
+	return AsAny(vs.At(i & mask))
 }
 
 // Assoc returns a new vector with the value at given index updated.
@@ -738,12 +738,12 @@ func (v DeepPersistentVector) Assoc(i int, item ww.Any) (Vector, error) {
 
 	// update?
 	if i >= 0 && i < cnt {
-		return v.update(vec, cnt, i, item.MemVal().Raw)
+		return v.update(vec, cnt, i, item.MemVal())
 	}
 
 	// append?
 	if i == cnt {
-		return v.cons(vec, cnt, item.MemVal().Raw)
+		return v.cons(vec, cnt, item.MemVal())
 	}
 
 	return nil, ErrIndexOutOfBounds
@@ -751,7 +751,7 @@ func (v DeepPersistentVector) Assoc(i int, item ww.Any) (Vector, error) {
 
 // Pop returns a new vector without the last item in v
 func (v DeepPersistentVector) Pop() (Vector, error) {
-	raw, err := v.Raw.Vector()
+	raw, err := v.MemVal().Vector()
 	if err != nil {
 		return nil, err
 	}
@@ -765,7 +765,7 @@ func (v DeepPersistentVector) Pop() (Vector, error) {
 
 // Seq presents the vector as an iterable sequence.
 func (v DeepPersistentVector) Seq() (Seq, error) {
-	vec, err := v.Raw.Vector()
+	vec, err := v.MemVal().Vector()
 	if err != nil {
 		return nil, err
 	}
@@ -885,12 +885,12 @@ func (v DeepPersistentVector) shift(vec api.Vector) (shift int) {
 
 // Cons appends to the end of the vector.
 func (v DeepPersistentVector) Cons(item ww.Any) (Vector, error) {
-	vec, err := v.Raw.Vector()
+	vec, err := v.MemVal().Vector()
 	if err != nil {
 		return nil, err
 	}
 
-	return v.cons(vec, int(vec.Count()), item.MemVal().Raw)
+	return v.cons(vec, int(vec.Count()), item.MemVal())
 }
 
 func (v DeepPersistentVector) cons(vec api.Vector, cnt int, val api.Value) (_ DeepPersistentVector, err error) {
@@ -1255,7 +1255,7 @@ func newChunkedSeq(a capnp.Arena, v api.Vector, i uint32, offset uint8) (chunked
 		return chunkedSeq{}, nil
 	}
 
-	seq, err := val.Raw.NewVectorSeq()
+	seq, err := val.MemVal().NewVectorSeq()
 	if err != nil {
 		return chunkedSeq{}, err
 	}
@@ -1282,7 +1282,7 @@ func newChunkedSeq(a capnp.Arena, v api.Vector, i uint32, offset uint8) (chunked
 
 func (cs chunkedSeq) Count() (cnt int, err error) {
 	var seq api.VectorSeq
-	if seq, err = cs.Raw.VectorSeq(); err != nil {
+	if seq, err = cs.MemVal().VectorSeq(); err != nil {
 		return
 	}
 
@@ -1295,7 +1295,7 @@ func (cs chunkedSeq) Count() (cnt int, err error) {
 }
 
 func (cs chunkedSeq) First() (ww.Any, error) {
-	seq, err := cs.Raw.VectorSeq()
+	seq, err := cs.MemVal().VectorSeq()
 	if err != nil {
 		return nil, err
 	}
@@ -1305,11 +1305,11 @@ func (cs chunkedSeq) First() (ww.Any, error) {
 		return nil, err
 	}
 
-	return AsAny(mem.Value{Raw: node.At(int(seq.Offset()))})
+	return AsAny(node.At(int(seq.Offset())))
 }
 
 func (cs chunkedSeq) chunkedNext() (Seq, error) {
-	seq, err := cs.Raw.VectorSeq()
+	seq, err := cs.MemVal().VectorSeq()
 	if err != nil {
 		return nil, err
 	}
@@ -1331,7 +1331,7 @@ func (cs chunkedSeq) chunkedNext() (Seq, error) {
 }
 
 func (cs chunkedSeq) Next() (Seq, error) {
-	seq, err := cs.Raw.VectorSeq()
+	seq, err := cs.MemVal().VectorSeq()
 	if err != nil {
 		return nil, err
 	}
@@ -1392,7 +1392,7 @@ func newVector(a capnp.Arena, cnt, shift int, root api.Vector_Node, t api.Value_
 		return DeepPersistentVector{}, err
 	}
 
-	vec, err := val.Raw.NewVector()
+	vec, err := val.MemVal().NewVector()
 	if err != nil {
 		return DeepPersistentVector{}, err
 	}

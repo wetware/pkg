@@ -165,8 +165,8 @@ func (a localAnchor) Walk(_ context.Context, path []string) ww.Anchor {
 }
 
 func (a localAnchor) Load(context.Context) (ww.Any, error) {
-	if n := a.node.Load(); !n.Nil() {
-		return core.AsAny(n)
+	if val := a.node.Load(); !mem.IsNil(val) {
+		return core.AsAny(val)
 	}
 
 	return core.Nil{}, nil
@@ -183,7 +183,7 @@ func (a localAnchor) Store(_ context.Context, any ww.Any) error {
 func (a localAnchor) Go(_ context.Context, args ...ww.Any) (p ww.Any, err error) {
 	return nil, errors.New("Host Interpreter NOT IMPLEMENTED (pkg/host/anchor.go")
 	// a.node.Txn(func(t tree.Transaction) {
-	// 	if err = ww.ErrAnchorNotEmpty; t.Load().Nil() {
+	// 	if err = ww.ErrAnchorNotEmpty; mem.IsNil(t.Load()) {
 	// 		if p, err = proc.Spawn(a.env.Fork(), args...); err == nil {
 	// 			_ = t.Store(p.MemVal())
 	// 			a.log.WithField("args", args).Info("process started")
@@ -288,7 +288,7 @@ func (a rootAnchorCap) Load(ctx context.Context, call api.Anchor_load) error {
 		return err
 	}
 
-	return res.SetValue(any.MemVal().Raw)
+	return res.SetValue(any.MemVal())
 }
 
 func (a rootAnchorCap) Store(ctx context.Context, call api.Anchor_store) error {
@@ -303,7 +303,7 @@ func (a rootAnchorCap) Go(ctx context.Context, call api.Anchor_go) error {
 
 	args := make([]ww.Any, vs.Len())
 	for i := 0; i < vs.Len(); i++ {
-		if args[i], err = core.AsAny(mem.Value{Raw: vs.At(i)}); err != nil {
+		if args[i], err = core.AsAny(vs.At(i)); err != nil {
 			return err
 		}
 	}
@@ -318,7 +318,7 @@ func (a rootAnchorCap) Go(ctx context.Context, call api.Anchor_go) error {
 		return err
 	}
 
-	return res.SetProc(p.MemVal().Raw.Proc())
+	return res.SetProc(p.MemVal().Proc())
 }
 
 type anchorCap struct{ anchor ww.Anchor }
@@ -394,7 +394,7 @@ func (a anchorCap) Load(ctx context.Context, call api.Anchor_load) error {
 		return err
 	}
 
-	return res.SetValue(any.MemVal().Raw)
+	return res.SetValue(any.MemVal())
 }
 
 func (a anchorCap) Store(ctx context.Context, call api.Anchor_store) error {
@@ -403,7 +403,7 @@ func (a anchorCap) Store(ctx context.Context, call api.Anchor_store) error {
 		return err
 	}
 
-	any, err := core.AsAny(mem.Value{Raw: raw})
+	any, err := core.AsAny(raw)
 	if err != nil {
 		return err
 	}
@@ -419,7 +419,7 @@ func (a anchorCap) Go(ctx context.Context, call api.Anchor_go) error {
 
 	args := make([]ww.Any, vs.Len())
 	for i := 0; i < vs.Len(); i++ {
-		if args[i], err = core.AsAny(mem.Value{Raw: vs.At(i)}); err != nil {
+		if args[i], err = core.AsAny(vs.At(i)); err != nil {
 			return err
 		}
 	}
@@ -434,7 +434,7 @@ func (a anchorCap) Go(ctx context.Context, call api.Anchor_go) error {
 		return err
 	}
 
-	return res.SetProc(p.MemVal().Raw.Proc())
+	return res.SetProc(p.MemVal().Proc())
 }
 
 func errmem(err error) error {

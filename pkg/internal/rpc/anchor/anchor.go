@@ -59,12 +59,12 @@ func (a anchor) Load(ctx context.Context) (ww.Any, error) {
 		return nil, err
 	}
 
-	return core.AsAny(mem.Value{Raw: v})
+	return core.AsAny(v)
 }
 
 func (a anchor) Store(ctx context.Context, any ww.Any) error {
 	f, done := a.Anchor().Store(ctx, func(p api.Anchor_store_Params) error {
-		return p.SetValue(any.MemVal().Raw)
+		return p.SetValue(any.MemVal())
 	})
 	defer done()
 
@@ -105,7 +105,7 @@ func (a anchor) Go(ctx context.Context, args ...ww.Any) (ww.Any, error) {
 		return nil, err
 	}
 
-	if err = val.Raw.SetProc(res.Proc()); err != nil {
+	if err = val.MemVal().SetProc(res.Proc()); err != nil {
 		return nil, err
 	}
 
@@ -174,7 +174,7 @@ func (args procArgs) Set(p api.Anchor_go_Params) error {
 	}
 
 	for i, any := range args {
-		if err = vs.Set(i, any.MemVal().Raw); err != nil {
+		if err = vs.Set(i, any.MemVal()); err != nil {
 			break
 		}
 	}

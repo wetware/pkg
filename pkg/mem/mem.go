@@ -5,32 +5,34 @@ import (
 	capnp "zombiezen.com/go/capnproto2"
 )
 
-// Type of Value
-type Type = api.Value_Which
+// NilValue is a singleton with a precomputed nil value.
+var NilValue api.Value
 
 // Value is a persistent datastructure in memory.
-type Value struct{ Raw api.Value }
+type Value api.Value
 
 // NewValue allocates a new value in the supplied arena.
-func NewValue(a capnp.Arena) (val Value, err error) {
-	var seg *capnp.Segment
-	if _, seg, err = capnp.NewMessage(a); err == nil {
-		val.Raw, err = api.NewRootValue(seg)
+func NewValue(a capnp.Arena) (Value, error) {
+	_, seg, err := capnp.NewMessage(a)
+	if err != nil {
+		return Value{}, err
 	}
 
-	return
+	val, err := api.NewRootValue(seg)
+	return Value(val), err
 }
 
-// Type returns the value's type.
-func (v Value) Type() Type { return v.Raw.Which() }
-
 // Bytes represents the raw data underlying the Value.
-func (v Value) Bytes() []byte { return v.Raw.Segment().Data() }
+func (v Value) Bytes() []byte { return api.Value(v).Segment().Data() }
 
 // MemVal returns the underlying value.  It is provided as
 // a convenience for the `lang` package, which embeds Value
 // into all datatypes.
-func (v Value) MemVal() Value { return v }
+func (v Value) MemVal() api.Value { return api.Value(v) }
 
-// Nil returns true if the Value is nil.
-func (v Value) Nil() bool { return v.Type() == api.Value_Which_nil }
+// IsNil returns true if the Value is nil.
+func IsNil(v api.Value) bool { return api.Value(v).Which() == api.Value_Which_nil }
+
+// Bytes returns the non-canonical byte array that underpins
+// the value.
+func Bytes(v api.Value) []byte { return v.Segment().Data() }

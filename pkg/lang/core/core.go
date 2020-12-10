@@ -121,7 +121,7 @@ func IsNil(v ww.Any) bool {
 		return true
 	}
 
-	return v.MemVal().Nil()
+	return mem.IsNil(v.MemVal())
 }
 
 // IsTruthy returns true if the value has a logical vale of `true`.
@@ -177,7 +177,7 @@ func Eq(a, b ww.Any) (bool, error) {
 	}
 
 	// Identical types with the same canonical representation are equal.
-	if a.MemVal().Type() == b.MemVal().Type() {
+	if a.MemVal().Which() == b.MemVal().Which() {
 		ca, err := Canonical(a)
 		if err != nil {
 			return false, err
@@ -218,7 +218,7 @@ func Pop(cont Container) (ww.Any, error) {
 
 	}
 
-	return nil, fmt.Errorf("cannot pop from %s", cont.MemVal().Type())
+	return nil, fmt.Errorf("cannot pop from %s", cont.MemVal().Which())
 }
 
 // Conj returns a new collection with the supplied
@@ -241,20 +241,20 @@ func Conj(any ww.Any, xs ...ww.Any) (Container, error) {
 
 // Canonical representation of an arbitrary value.
 func Canonical(any ww.Any) ([]byte, error) {
-	return capnp.Canonicalize(any.MemVal().Raw.Struct)
+	return capnp.Canonicalize(any.MemVal().Struct)
 }
 
-// AsAny lifts a mem.Value to a ww.Any.
-func AsAny(v mem.Value) (val ww.Any, err error) {
-	switch v.Type() {
+// AsAny lifts a api.Value to a ww.Any.
+func AsAny(v api.Value) (val ww.Any, err error) {
+	switch v.Which() {
 	case api.Value_Which_nil:
 		val = Nil{}
 	case api.Value_Which_bool:
-		val = Bool{v}
+		val = Bool{mem.Value(v)}
 	case api.Value_Which_i64:
-		val = i64{v}
+		val = i64{mem.Value(v)}
 	case api.Value_Which_f64:
-		val = f64{v}
+		val = f64{mem.Value(v)}
 	case api.Value_Which_bigInt:
 		val, err = asBigInt(v)
 	case api.Value_Which_bigFloat:
@@ -262,23 +262,23 @@ func AsAny(v mem.Value) (val ww.Any, err error) {
 	case api.Value_Which_frac:
 		val, err = asFrac(v)
 	case api.Value_Which_char:
-		val = Char{v}
+		val = Char{mem.Value(v)}
 	case api.Value_Which_str:
-		val = String{v}
+		val = String{mem.Value(v)}
 	case api.Value_Which_keyword:
-		val = Keyword{v}
+		val = Keyword{mem.Value(v)}
 	case api.Value_Which_symbol:
-		val = Symbol{v}
+		val = Symbol{mem.Value(v)}
 	case api.Value_Which_path:
-		val = Path{v}
+		val = Path{mem.Value(v)}
 	case api.Value_Which_list:
-		val = list{v}
+		val = list{mem.Value(v)}
 	case api.Value_Which_vector:
-		val = DeepPersistentVector{v}
+		val = DeepPersistentVector{mem.Value(v)}
 	// case api.Value_Which_proc:
 	// 	val = RemoteProcess{v}
 	default:
-		err = fmt.Errorf("unknown value type '%s'", v.Type())
+		err = fmt.Errorf("unknown value type '%s'", v.Which())
 	}
 
 	return

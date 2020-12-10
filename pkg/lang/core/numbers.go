@@ -32,33 +32,28 @@ type i64 struct{ mem.Value }
 
 // NewInt64 .
 func NewInt64(a capnp.Arena, i int64) (Int64, error) {
-	_, seg, err := capnp.NewMessage(a)
-	if err != nil {
-		return nil, err
+	mv, err := mem.NewValue(a)
+	if err == nil {
+		mv.MemVal().SetI64(i)
 	}
 
-	var res i64
-	if res.Raw, err = api.NewRootValue(seg); err == nil {
-		res.Raw.SetI64(i)
-	}
-
-	return res, nil
+	return i64{mv}, err
 }
 
 // Int64 satsifies Int64
-func (i i64) Int64() int64 { return i.Raw.I64() }
+func (i i64) Int64() int64 { return i.MemVal().I64() }
 
 func (i i64) String() string { return fmt.Sprintf("%d", i.Int64()) }
 
 // Comp returns 0 if the v == other, -1 if v < other, and 1 if v > other.
 func (i i64) Comp(other ww.Any) (int, error) {
-	switch o := other.MemVal(); o.Type() {
+	switch val := other.MemVal(); val.Which() {
 	case api.Value_Which_i64:
-		return compI64(i.Int64(), o.Raw.I64()), nil
+		return compI64(i.Int64(), val.I64()), nil
 
 	case api.Value_Which_f64:
 		var f big.Float
-		return f.SetInt64(i.Int64()).Cmp(big.NewFloat(o.Raw.F64())), nil
+		return f.SetInt64(i.Int64()).Cmp(big.NewFloat(val.F64())), nil
 
 	case api.Value_Which_bigInt:
 		return big.NewInt(i.Int64()).Cmp(other.(BigInt).BigInt()), nil
@@ -93,26 +88,21 @@ type bigInt struct {
 
 // NewBigInt .
 func NewBigInt(a capnp.Arena, i *big.Int) (BigInt, error) {
-	_, seg, err := capnp.NewMessage(a)
-	if err != nil {
-		return nil, err
+	mv, err := mem.NewValue(a)
+	if err == nil {
+		err = mv.MemVal().SetBigInt(i.Bytes())
 	}
 
-	var v mem.Value
-	if v.Raw, err = api.NewRootValue(seg); err == nil {
-		err = v.Raw.SetBigInt(i.Bytes())
-	}
-
-	return bigInt{i: i, Value: v}, nil
+	return bigInt{i: i, Value: mv}, err
 }
 
-func asBigInt(v mem.Value) (BigInt, error) {
+func asBigInt(v api.Value) (BigInt, error) {
 	var i big.Int
-	if buf, err := v.Raw.BigInt(); err == nil {
+	if buf, err := v.BigInt(); err == nil {
 		i.SetBytes(buf)
 	}
 
-	return bigInt{i: &i, Value: v}, nil
+	return bigInt{i: &i, Value: mem.Value(v)}, nil
 }
 
 // BigInt satisfies BigInt
@@ -122,13 +112,13 @@ func (bi bigInt) String() string { return bi.i.String() }
 
 // Comp returns 0 if the v == other, -1 if v < other, and 1 if v > other.
 func (bi bigInt) Comp(other ww.Any) (int, error) {
-	switch o := other.MemVal(); o.Type() {
+	switch val := other.MemVal(); val.Which() {
 	case api.Value_Which_i64:
-		return bi.i.Cmp(big.NewInt(o.Raw.I64())), nil
+		return bi.i.Cmp(big.NewInt(val.I64())), nil
 
 	case api.Value_Which_f64:
 		var f big.Float
-		return f.SetInt(bi.i).Cmp(big.NewFloat(o.Raw.F64())), nil
+		return f.SetInt(bi.i).Cmp(big.NewFloat(val.F64())), nil
 
 	case api.Value_Which_bigInt:
 		return bi.i.Cmp(other.(BigInt).BigInt()), nil
@@ -159,33 +149,28 @@ type f64 struct{ mem.Value }
 
 // NewFloat64 .
 func NewFloat64(a capnp.Arena, f float64) (Float64, error) {
-	_, seg, err := capnp.NewMessage(a)
-	if err != nil {
-		return nil, err
+	mv, err := mem.NewValue(a)
+	if err == nil {
+		mv.MemVal().SetF64(f)
 	}
 
-	var v mem.Value
-	if v.Raw, err = api.NewRootValue(seg); err == nil {
-		v.Raw.SetF64(f)
-	}
-
-	return f64{v}, nil
+	return f64{mv}, err
 }
 
 // Float64 satisfies Float64
-func (f f64) Float64() float64 { return f.Raw.F64() }
+func (f f64) Float64() float64 { return f.MemVal().F64() }
 
 func (f f64) String() string { return strconv.FormatFloat(f.Float64(), 'g', -1, 64) }
 
 // Comp returns 0 if the v == other, -1 if v < other, and 1 if v > other.
 func (f f64) Comp(other ww.Any) (int, error) {
-	switch o := other.MemVal(); o.Type() {
+	switch val := other.MemVal(); val.Which() {
 	case api.Value_Which_i64:
 		var bf big.Float
-		return big.NewFloat(f.Float64()).Cmp(bf.SetInt64(o.Raw.I64())), nil
+		return big.NewFloat(f.Float64()).Cmp(bf.SetInt64(val.I64())), nil
 
 	case api.Value_Which_f64:
-		return compF64(f.Float64(), o.Raw.F64()), nil
+		return compF64(f.Float64(), val.F64()), nil
 
 	case api.Value_Which_bigInt:
 		var bf big.Float
@@ -212,32 +197,26 @@ func (f f64) Zero() bool { return f.Float64() == 0 }
 
 // BigFloat represents an arbitrary-precision floating-point number.
 type BigFloat struct {
-	f *big.Float
 	mem.Value
+	f *big.Float
 }
 
 // NewBigFloat .
-func NewBigFloat(a capnp.Arena, f *big.Float) (bf BigFloat, err error) {
-	bf.f = f
-
-	var seg *capnp.Segment
-	if _, seg, err = capnp.NewMessage(a); err != nil {
-		return
+func NewBigFloat(a capnp.Arena, f *big.Float) (BigFloat, error) {
+	mv, err := mem.NewValue(a)
+	if err == nil {
+		err = mv.MemVal().SetBigFloat(f.Text('g', -1))
 	}
 
-	if bf.Raw, err = api.NewRootValue(seg); err == nil {
-		err = bf.Raw.SetBigFloat(f.Text('g', -1))
-	}
-
-	return
+	return BigFloat{f: f, Value: mv}, err
 }
 
-func asBigFloat(v mem.Value) (bf BigFloat, err error) {
+func asBigFloat(v api.Value) (bf BigFloat, err error) {
 	bf.f = &big.Float{}
-	bf.Value = v
+	bf.Value = mem.Value(v)
 
 	var s string
-	if s, err = v.Raw.BigFloat(); err == nil {
+	if s, err = v.BigFloat(); err == nil {
 		if _, ok := bf.f.SetString(s); !ok {
 			err = fmt.Errorf("invalid bigfloat format '%s'", s)
 		}
@@ -253,13 +232,13 @@ func (bf BigFloat) String() string { return bf.f.Text('g', -1) }
 
 // Comp returns 0 if the v == other, -1 if v < other, and 1 if v > other.
 func (bf BigFloat) Comp(other ww.Any) (int, error) {
-	switch o := other.MemVal(); o.Type() {
+	switch val := other.MemVal(); val.Which() {
 	case api.Value_Which_i64:
 		var f big.Float
-		return bf.f.Cmp(f.SetInt64(o.Raw.I64())), nil
+		return bf.f.Cmp(f.SetInt64(val.I64())), nil
 
 	case api.Value_Which_f64:
-		return bf.f.Cmp(big.NewFloat(o.Raw.F64())), nil
+		return bf.f.Cmp(big.NewFloat(val.F64())), nil
 
 	case api.Value_Which_bigInt:
 		var f big.Float
@@ -295,18 +274,13 @@ type frac struct {
 
 // NewFraction with built-in implementation.
 func NewFraction(a capnp.Arena, r *big.Rat) (Fraction, error) {
-	_, seg, err := capnp.NewMessage(a)
+	mv, err := mem.NewValue(a)
 	if err != nil {
 		return nil, err
 	}
 
-	var v mem.Value
-	if v.Raw, err = api.NewRootValue(seg); err != nil {
-		return nil, err
-	}
-
-	var f api.Frac
-	if f, err = v.Raw.NewFrac(); err != nil {
+	f, err := mv.MemVal().NewFrac()
+	if err != nil {
 		return nil, err
 	}
 
@@ -318,11 +292,11 @@ func NewFraction(a capnp.Arena, r *big.Rat) (Fraction, error) {
 		return nil, err
 	}
 
-	return frac{r: r, Value: v}, nil
+	return frac{r: r, Value: mv}, nil
 }
 
-func asFrac(v mem.Value) (Fraction, error) {
-	fv, err := v.Raw.Frac()
+func asFrac(v api.Value) (Fraction, error) {
+	fv, err := v.Frac()
 	if err != nil {
 		return nil, err
 	}
@@ -343,7 +317,7 @@ func asFrac(v mem.Value) (Fraction, error) {
 	var r big.Rat
 	return frac{
 		r:     r.SetFrac(&numer, &denom),
-		Value: v,
+		Value: mem.Value(v),
 	}, nil
 }
 
@@ -354,14 +328,14 @@ func (f frac) String() string { return f.r.String() }
 
 // Comp returns true if the other value is numerical and has the same value.
 func (f frac) Comp(other ww.Any) (int, error) {
-	switch o := other.MemVal(); o.Type() {
+	switch val := other.MemVal(); val.Which() {
 	case api.Value_Which_i64:
 		var r big.Rat
-		return f.r.Cmp(r.SetFrac(big.NewInt(o.Raw.I64()), &unit)), nil
+		return f.r.Cmp(r.SetFrac(big.NewInt(val.I64()), &unit)), nil
 
 	case api.Value_Which_f64:
 		var r big.Rat
-		return f.r.Cmp(r.SetFloat64(o.Raw.F64())), nil
+		return f.r.Cmp(r.SetFloat64(val.F64())), nil
 
 	case api.Value_Which_bigInt:
 		var r big.Rat

@@ -41,7 +41,7 @@ func (fn Fn) Render() (string, error) {
 
 // Macro returns true if the function is a macro.
 func (fn Fn) Macro() bool {
-	raw, err := fn.Raw.Fn()
+	raw, err := fn.MemVal().Fn()
 	if err != nil {
 		panic(err)
 	}
@@ -51,7 +51,7 @@ func (fn Fn) Macro() bool {
 
 // Name of the function.
 func (fn Fn) Name() (string, error) {
-	raw, err := fn.Raw.Fn()
+	raw, err := fn.MemVal().Fn()
 	if err != nil {
 		return "", err
 	}
@@ -65,7 +65,7 @@ func (fn Fn) Name() (string, error) {
 
 // Match the arguments to the appropriate call signature.
 func (fn Fn) Match(nargs int) (CallTarget, error) {
-	raw, err := fn.Raw.Fn()
+	raw, err := fn.MemVal().Fn()
 	if err != nil {
 		return CallTarget{}, err
 	}
@@ -168,7 +168,7 @@ func (b *FuncBuilder) Commit() (Fn, error) {
 		}
 	}
 
-	return Fn{Value: mem.Value{Raw: b.val}}, nil
+	return Fn{Value: mem.Value(b.val)}, nil
 }
 
 // AddSeq parses the sequence `([<params>*] <body>*)` into a call target.
@@ -184,10 +184,10 @@ func (b *FuncBuilder) AddSeq(seq Seq) {
 // AddTarget parses the call signature `[<params>*] <body>*` into a call target.
 func (b *FuncBuilder) AddTarget(args ww.Any, body []ww.Any) {
 	b.addStage(func() error {
-		if mv := args.MemVal(); args.MemVal().Type() != api.Value_Which_vector {
+		if mv := args.MemVal(); args.MemVal().Which() != api.Value_Which_vector {
 			return Error{
 				Cause:   errors.New("invalid call signature"),
-				Message: fmt.Sprintf("args must be Vector, not '%s'", mv.Type()),
+				Message: fmt.Sprintf("args must be Vector, not '%s'", mv.Which()),
 			}
 		}
 
@@ -248,11 +248,11 @@ func (b *FuncBuilder) readParams(v Vector) ([]string, bool, error) {
 			return nil, false, err
 		}
 
-		if entry.MemVal().Type() != api.Value_Which_symbol {
-			return nil, false, fmt.Errorf("expected symbol, got %s", entry.MemVal().Type())
+		if entry.MemVal().Which() != api.Value_Which_symbol {
+			return nil, false, fmt.Errorf("expected symbol, got %s", entry.MemVal().Which())
 		}
 
-		if ps[i], err = entry.MemVal().Raw.Symbol(); err != nil {
+		if ps[i], err = entry.MemVal().Symbol(); err != nil {
 			return nil, false, err
 		}
 	}
@@ -311,7 +311,7 @@ func (sig callSignature) populateBody(f api.Fn_Func) error {
 	}
 
 	for i, any := range sig.Body {
-		if err = bs.Set(i, any.MemVal().Raw); err != nil {
+		if err = bs.Set(i, any.MemVal()); err != nil {
 			break
 		}
 	}
@@ -365,7 +365,7 @@ func (a funcAnalyzer) body() (forms []ww.Any, err error) {
 
 	forms = make([]ww.Any, vs.Len())
 	for i := range forms {
-		if forms[i], err = AsAny(mem.Value{Raw: vs.At(i)}); err != nil {
+		if forms[i], err = AsAny(vs.At(i)); err != nil {
 			break
 		}
 	}

@@ -19,18 +19,16 @@ var (
 )
 
 func init() {
-	_, seg, err := capnp.NewMessage(capnp.SingleSegment(nil))
+	mv, err := mem.NewValue(capnp.SingleSegment(nil))
 	if err != nil {
 		panic(err)
 	}
 
-	if EmptyList.Raw, err = api.NewRootValue(seg); err != nil {
+	if _, err = mv.MemVal().NewList(); err != nil {
 		panic(err)
 	}
 
-	if _, err = EmptyList.Raw.NewList(); err != nil {
-		panic(err)
-	}
+	EmptyList.Value = mv
 }
 
 // List is a persistent, singly-linked list with fast insertions/pops to its head.
@@ -54,7 +52,7 @@ func NewList(a capnp.Arena, vs ...ww.Any) (l List, err error) {
 	}
 
 	for i := len(vs) - 1; i >= 0; i-- {
-		l, err = Cons(capnp.SingleSegment(nil), vs[i].(ww.Any).MemVal(), l)
+		l, err = Cons(capnp.SingleSegment(nil), vs[i], l)
 		if err != nil {
 			break
 		}
@@ -65,7 +63,7 @@ func NewList(a capnp.Arena, vs ...ww.Any) (l List, err error) {
 
 // Count returns the number of the list.
 func (l list) Count() (int, error) {
-	ll, err := l.Raw.List()
+	ll, err := l.MemVal().List()
 	return int(ll.Count()), err
 }
 
@@ -118,7 +116,7 @@ func (l list) render(f func(ww.Any) (string, error)) (string, error) {
 
 // Conj returns a new list with all the items added at the head of the list.
 func (l list) Conj(items ...ww.Any) (Container, error) {
-	ll, err := l.Raw.List()
+	ll, err := l.MemVal().List()
 	if err != nil {
 		return nil, err
 	}
@@ -141,12 +139,12 @@ func (l list) Conj(items ...ww.Any) (Container, error) {
 
 // Cons returns a new list with the item added at the head of the list.
 func (l list) Cons(any ww.Any) (List, error) {
-	return Cons(capnp.SingleSegment(nil), any.MemVal(), l)
+	return Cons(capnp.SingleSegment(nil), any, l)
 }
 
 // First returns the head or first item of the list.
 func (l list) First() (ww.Any, error) {
-	ll, err := l.Raw.List()
+	ll, err := l.MemVal().List()
 	if err != nil || l.isNull(ll) {
 		return nil, err
 	}
@@ -156,7 +154,7 @@ func (l list) First() (ww.Any, error) {
 
 // Next returns the tail of the list.
 func (l list) Next() (Seq, error) {
-	ll, err := l.Raw.List()
+	ll, err := l.MemVal().List()
 	if err != nil {
 		return nil, err
 	}
@@ -172,8 +170,8 @@ func (l list) Next() (Seq, error) {
 func (l list) isNull(ll api.LinkedList) bool { return ll.Count() == 0 }
 
 func (l list) head(ll api.LinkedList) (v ww.Any, err error) {
-	var val mem.Value
-	if val.Raw, err = ll.Head(); err == nil {
+	var val api.Value
+	if val, err = ll.Head(); err == nil {
 		v, err = AsAny(val)
 	}
 
@@ -190,7 +188,7 @@ func (l list) next(ll api.LinkedList) (Seq, error) {
 		return nil, err
 	}
 
-	any, err := AsAny(mem.Value{Raw: val})
+	any, err := AsAny(val)
 	if err != nil {
 		return nil, err
 	}
@@ -205,7 +203,7 @@ func (l list) next(ll api.LinkedList) (Seq, error) {
 
 func newList(a capnp.Arena) (l list, ll api.LinkedList, err error) {
 	if l.Value, err = mem.NewValue(a); err == nil {
-		ll, err = l.Raw.NewList()
+		ll, err = l.MemVal().NewList()
 	}
 
 	return

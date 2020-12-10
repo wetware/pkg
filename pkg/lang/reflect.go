@@ -5,9 +5,9 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/wetware/ww/internal/api"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/lang/core"
-	"github.com/wetware/ww/pkg/mem"
 	capnp "zombiezen.com/go/capnproto2"
 )
 
@@ -82,7 +82,7 @@ type funcWrapper struct {
 	adapters   []adapter
 }
 
-func (fw *funcWrapper) MemVal() mem.Value { return fw.sym.MemVal() }
+func (fw *funcWrapper) MemVal() api.Value { return fw.sym.MemVal() }
 
 func (fw *funcWrapper) Invoke(args ...ww.Any) (ww.Any, error) {
 	// allocate argument slice.

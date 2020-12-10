@@ -9,7 +9,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/lthibault/log"
 	"github.com/pkg/errors"
-	"github.com/wetware/ww/pkg/mem"
+	"github.com/wetware/ww/internal/api"
 )
 
 const (
@@ -43,7 +43,7 @@ type Loggable interface{ log.Loggable }
 
 // Any is a generic value type
 type Any interface {
-	MemVal() mem.Value
+	MemVal() api.Value
 }
 
 // Anchor is a node in a cluster-wide, hierarchical namespace.

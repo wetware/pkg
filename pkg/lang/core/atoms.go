@@ -3,6 +3,7 @@ package core
 import (
 	"fmt"
 
+	"github.com/wetware/ww/internal/api"
 	"github.com/wetware/ww/pkg/mem"
 	capnp "zombiezen.com/go/capnproto2"
 )
@@ -32,7 +33,7 @@ type Nil struct{}
 func (Nil) String() string { return "nil" }
 
 // MemVal returns the memory value.
-func (Nil) MemVal() mem.Value { return mem.NilValue }
+func (Nil) MemVal() api.Value { return mem.NilValue }
 
 // Bool represents a boolean type.
 type Bool struct{ mem.Value }
@@ -41,14 +42,14 @@ type Bool struct{ mem.Value }
 func NewBool(a capnp.Arena, b bool) (Bool, error) {
 	val, err := mem.NewValue(a)
 	if err == nil {
-		val.Raw.SetBool(b)
+		val.MemVal().SetBool(b)
 	}
 
 	return Bool{val}, err
 }
 
 // Bool returns the boolean value.
-func (b Bool) Bool() bool { return b.Raw.Bool() }
+func (b Bool) Bool() bool { return b.MemVal().Bool() }
 
 func (b Bool) String() string {
 	if b.Bool() {
@@ -66,14 +67,14 @@ type Char struct{ mem.Value }
 func NewChar(a capnp.Arena, r rune) (Char, error) {
 	val, err := mem.NewValue(a)
 	if err == nil {
-		val.Raw.SetChar(r)
+		val.MemVal().SetChar(r)
 	}
 
 	return Char{val}, err
 }
 
 // Char returns the character as a native rune.
-func (c Char) Char() rune { return c.Raw.Char() }
+func (c Char) Char() rune { return c.MemVal().Char() }
 
 func (c Char) String() string { return fmt.Sprintf("\\%c", c.Char()) }
 
@@ -84,14 +85,14 @@ type String struct{ mem.Value }
 func NewString(a capnp.Arena, s string) (String, error) {
 	val, err := mem.NewValue(a)
 	if err == nil {
-		err = val.Raw.SetStr(s)
+		err = val.MemVal().SetStr(s)
 	}
 
 	return String{val}, err
 }
 
 func (str String) String() (s string, err error) {
-	if s, err = str.Raw.Str(); err == nil {
+	if s, err = str.MemVal().Str(); err == nil {
 		s = "\"" + s + "\""
 	}
 
@@ -103,7 +104,7 @@ func (str String) Render() (string, error) { return str.String() }
 
 // Count returns the number of characters in the string.
 func (str String) Count() (int, error) {
-	s, err := str.Raw.Str()
+	s, err := str.MemVal().Str()
 	return len(s), err
 }
 
@@ -114,14 +115,14 @@ type Keyword struct{ mem.Value }
 func NewKeyword(a capnp.Arena, s string) (Keyword, error) {
 	val, err := mem.NewValue(a)
 	if err == nil {
-		err = val.Raw.SetKeyword(s)
+		err = val.MemVal().SetKeyword(s)
 	}
 
 	return Keyword{val}, err
 }
 
 // Keyword returns the keyword's value as a native string.
-func (kw Keyword) Keyword() (string, error) { return kw.Raw.Keyword() }
+func (kw Keyword) Keyword() (string, error) { return kw.MemVal().Keyword() }
 
 // Render the keyword into a human-readable string.
 func (kw Keyword) Render() (string, error) {
@@ -140,14 +141,14 @@ type Symbol struct{ mem.Value }
 func NewSymbol(a capnp.Arena, s string) (Symbol, error) {
 	val, err := mem.NewValue(a)
 	if err == nil {
-		err = val.Raw.SetSymbol(s)
+		err = val.MemVal().SetSymbol(s)
 	}
 
 	return Symbol{val}, err
 }
 
 // Symbol returns the symbol's value as a native string.
-func (sym Symbol) Symbol() (string, error) { return sym.Raw.Symbol() }
+func (sym Symbol) Symbol() (string, error) { return sym.MemVal().Symbol() }
 
 // Render the symbol into a human-readable string.
 func (sym Symbol) Render() (string, error) { return sym.Symbol() }

@@ -170,8 +170,8 @@ func parseFnDef(env core.Env, seq core.Seq, macro bool) (ww.Any, error) {
 	b.SetMacro(macro)
 
 	// Set function name?
-	if sym := args[0].MemVal(); sym.Type() == api.Value_Which_symbol {
-		name, err := sym.Raw.Symbol()
+	if sym := args[0].MemVal(); sym.Which() == api.Value_Which_symbol {
+		name, err := sym.Symbol()
 		if err != nil {
 			return nil, err
 		}
@@ -181,7 +181,7 @@ func parseFnDef(env core.Env, seq core.Seq, macro bool) (ww.Any, error) {
 	}
 
 	// Set call signatures.
-	switch mv := args[0].MemVal(); mv.Type() {
+	switch mv := args[0].MemVal(); mv.Which() {
 	case api.Value_Which_vector:
 		b.AddTarget(args[0], args[1:])
 
@@ -209,7 +209,7 @@ func lsParser(root ww.Anchor) SpecialParser {
 
 		pexpr := PathExpr{Root: root, Path: core.RootPath}
 		for _, arg := range args {
-			if arg.MemVal().Type() == api.Value_Which_path {
+			if arg.MemVal().Which() == api.Value_Which_path {
 				pexpr.Path = args[0].(core.Path)
 				args = args[1:]
 			}
@@ -277,9 +277,9 @@ func (i importer) Parse(a core.Analyzer, env core.Env, seq core.Seq) (core.Expr,
 
 	iex := ImportExpr{Analyzer: a}
 
-	switch mv := arg.MemVal(); mv.Type() {
+	switch mv := arg.MemVal(); mv.Which() {
 	case api.Value_Which_keyword:
-		kw, err := mv.Raw.Keyword()
+		kw, err := mv.Keyword()
 		if err != nil {
 			return nil, err
 		}
@@ -296,7 +296,7 @@ func (i importer) Parse(a core.Analyzer, env core.Env, seq core.Seq) (core.Expr,
 		iex.Paths = append(iex.Paths, ps...)
 
 	case api.Value_Which_symbol:
-		sym, err := mv.Raw.Symbol()
+		sym, err := mv.Symbol()
 		if err != nil {
 			return nil, err
 		}
@@ -309,7 +309,7 @@ func (i importer) Parse(a core.Analyzer, env core.Env, seq core.Seq) (core.Expr,
 		iex.Paths = append(iex.Paths, path)
 
 	default:
-		return nil, fmt.Errorf("invalid argument type %s", mv.Type())
+		return nil, fmt.Errorf("invalid argument type %s", mv.Which())
 
 	}
 
