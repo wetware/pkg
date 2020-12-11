@@ -6,8 +6,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	mock_vendor "github.com/wetware/ww/internal/test/mock/vendor"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/lang/core"
 	capnp "zombiezen.com/go/capnproto2"
@@ -177,6 +179,25 @@ func TestShallowPersistentVector(t *testing.T) {
 		cnt, err := v.Count()
 		assert.NoError(t, err)
 		assert.Equal(t, count, cnt)
+
+		t.Run("AllocError", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			arena := mock_vendor.NewMockArena(ctrl)
+			arena.EXPECT().NumSegments().
+				Return(int64(0)).
+				Times(1)
+
+			arena.EXPECT().
+				Allocate(gomock.Any(), gomock.Any()).
+				Return(capnp.SegmentID(0), nil, errors.New("mock arena allocation failure"))
+
+			_, err := core.NewVector(arena, valueRange(count)...)
+			require.Error(t, err)
+		})
 	})
 
 	t.Run("Count", func(t *testing.T) {
@@ -490,6 +511,25 @@ func TestDeepPersistentVector(t *testing.T) {
 		cnt, err := v.Count()
 		require.NoError(t, err)
 		assert.Equal(t, count, cnt)
+
+		t.Run("AllocError", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			arena := mock_vendor.NewMockArena(ctrl)
+			arena.EXPECT().NumSegments().
+				Return(int64(0)).
+				Times(1)
+
+			arena.EXPECT().
+				Allocate(gomock.Any(), gomock.Any()).
+				Return(capnp.SegmentID(0), nil, errors.New("mock arena allocation failure"))
+
+			_, err := core.NewVector(arena, valueRange(count)...)
+			require.Error(t, err)
+		})
 	})
 
 	t.Run("Count", func(t *testing.T) {

@@ -1,14 +1,17 @@
 package memutil
 
 import (
+	"fmt"
+
 	"github.com/wetware/ww/internal/mem"
 	capnp "zombiezen.com/go/capnproto2"
 )
 
+// Alloc allocates a new memory segment.
 func Alloc(a capnp.Arena) (mem.Any, error) {
 	_, seg, err := capnp.NewMessage(a)
 	if err != nil {
-		return mem.Any{}, err
+		return mem.Any{}, fmt.Errorf("alloc error: %w", err)
 	}
 
 	// TODO(performance):  we might not always want to allocate a _root_ value,

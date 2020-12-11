@@ -72,7 +72,7 @@ type Vector interface {
 
 // NewVector creates a vector containing the supplied values.
 func NewVector(a capnp.Arena, items ...ww.Any) (Vector, error) {
-	return EmptyVector.conj(items)
+	return EmptyVector.conj(a, items)
 }
 
 // EmptyPersistentVector is the zero-value persistent vector.
@@ -101,7 +101,7 @@ func (EmptyPersistentVector) Conj(items ...ww.Any) (Container, error) {
 		return EmptyVector, nil
 	}
 
-	return EmptyVector.conj(items)
+	return EmptyVector.conj(capnp.SingleSegment(nil), items)
 }
 
 // Assoc returns a new vector with the value at given index updated.
@@ -114,16 +114,18 @@ func (EmptyPersistentVector) Assoc(i int, val ww.Any) (Vector, error) {
 	return EmptyVector.cons(val)
 }
 
-func (EmptyPersistentVector) conj(items []ww.Any) (Vector, error) {
+func (EmptyPersistentVector) conj(a capnp.Arena, items []ww.Any) (Vector, error) {
 	if len(items) == 0 {
 		return EmptyVector, nil
 	}
 
+	// number of items fits in the tail; use shallow vector.
 	if len(items) <= width {
-		return newShallowPersistentVector(capnp.SingleSegment(nil), items...)
+		return newShallowPersistentVector(a, items...)
 	}
 
-	any, err := memutil.Alloc(capnp.SingleSegment(nil))
+	// number of items overflows the tail; use deep vector.
+	any, err := memutil.Alloc(a)
 	if err != nil {
 		return nil, err
 	}
