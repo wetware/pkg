@@ -1288,21 +1288,6 @@ func newVectorNode(a capnp.Arena) (n mem.Vector_Node, bs mem.Vector_Node_List, e
 	return
 }
 
-func newVectorNodeWithBranches(a capnp.Arena, bs ...mem.Vector_Node) (n mem.Vector_Node, err error) {
-	var branches mem.Vector_Node_List
-	if n, branches, err = newVectorNode(a); err != nil {
-		return
-	}
-
-	for i, b := range bs {
-		if err = branches.Set(i, b); err != nil {
-			break
-		}
-	}
-
-	return
-}
-
 func newVectorLeafNode(a capnp.Arena) (n mem.Vector_Node, vs mem.Any_List, err error) {
 	if n, err = newRootVectorNode(a); err != nil {
 		return
