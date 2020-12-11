@@ -82,9 +82,23 @@ struct Frac {
 
 
 struct LinkedList {
-    count @0 :UInt32;
-    head @1 :Any;  # any
-    tail @2 :Any;  # ∈ {nil, list}
+    union {
+        empty @0 :Void;
+        head @1 :Any;
+        packedConsCell @2 :PackedConsCell;
+        consCell @3 :ConsCell;
+    }
+
+    struct PackedConsCell {
+        head @0 :Any;
+        tail @1 :Any;
+    }
+
+    struct ConsCell {
+        head @0 :Any;
+        tail @1 :Any;  # LinkedList
+        offset @2 :UInt32;
+    }
 }
 
 

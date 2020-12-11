@@ -791,7 +791,7 @@ func TestDeepPersistentVector(t *testing.T) {
 
 func valueRange(n int) []ww.Any {
 	vs := make([]ww.Any, n)
-	for i := 0; i < n; i++ {
+	for i := range vs {
 		vs[i] = mustInt(i)
 	}
 	return vs

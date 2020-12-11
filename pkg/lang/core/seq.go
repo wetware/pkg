@@ -33,31 +33,30 @@ type Seqable interface {
 
 // Cons .
 func Cons(a capnp.Arena, head ww.Any, tail Seq) (List, error) {
-	l, ll, err := newList(a)
+	tailcnt, err := tail.Count()
 	if err != nil {
 		return nil, err
 	}
 
-	if err = ll.SetHead(head.Value()); err != nil {
-		return nil, err
+	if tailcnt == 0 {
+		return EmptyList.cons(a, head)
 	}
 
-	if err = ll.SetTail(tail.Value()); err != nil {
-		return nil, err
-	}
-
-	tailCount, err := tail.Count()
+	list, err := tail.Value().List()
 	if err != nil {
 		return nil, err
 	}
 
-	var cnt int = 1
-	if tailCount > 0 {
-		cnt = tailCount + 1
-	}
+	switch tailcnt {
+	case 1:
+		return PersistentHeadList{tail.Value()}.cons(a, list, head)
 
-	ll.SetCount(uint32(cnt))
-	return l, nil
+	case 2:
+		return PackedPersistentList{tail.Value()}.cons(a, list, head)
+
+	default:
+		return DeepPersistentList{tail.Value()}.cons(a, list, head)
+	}
 }
 
 // ToSlice converts the given sequence into a slice.
@@ -114,4 +113,25 @@ func SeqString(seq Seq, begin, end, sep string) (string, error) {
 	})
 
 	return strings.TrimRight(b.String(), sep) + end, err
+}
+
+func renderSeq(seq Seq) (string, error) {
+	var b strings.Builder
+	b.WriteRune('(')
+
+	err := ForEach(seq, func(item ww.Any) (_ bool, err error) {
+		if b.Len() > 1 {
+			b.WriteRune(' ')
+		}
+
+		var s string
+		if s, err = Render(item); err == nil {
+			b.WriteString(s)
+		}
+
+		return
+	})
+
+	b.WriteRune(')')
+	return b.String(), err
 }

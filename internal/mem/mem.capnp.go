@@ -2179,17 +2179,41 @@ func (p Frac_Future) Struct() (Frac, error) {
 }
 
 type LinkedList struct{ capnp.Struct }
+type LinkedList_Which uint16
+
+const (
+	LinkedList_Which_empty          LinkedList_Which = 0
+	LinkedList_Which_head           LinkedList_Which = 1
+	LinkedList_Which_packedConsCell LinkedList_Which = 2
+	LinkedList_Which_consCell       LinkedList_Which = 3
+)
+
+func (w LinkedList_Which) String() string {
+	const s = "emptyheadpackedConsCellconsCell"
+	switch w {
+	case LinkedList_Which_empty:
+		return s[0:5]
+	case LinkedList_Which_head:
+		return s[5:9]
+	case LinkedList_Which_packedConsCell:
+		return s[9:23]
+	case LinkedList_Which_consCell:
+		return s[23:31]
+
+	}
+	return "LinkedList_Which(" + strconv.FormatUint(uint64(w), 10) + ")"
+}
 
 // LinkedList_TypeID is the unique identifier for the type LinkedList.
 const LinkedList_TypeID = 0xa683121d7d12cdc6
 
 func NewLinkedList(s *capnp.Segment) (LinkedList, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2})
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
 	return LinkedList{st}, err
 }
 
 func NewRootLinkedList(s *capnp.Segment) (LinkedList, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2})
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
 	return LinkedList{st}, err
 }
 
@@ -2203,30 +2227,38 @@ func (s LinkedList) String() string {
 	return str
 }
 
-func (s LinkedList) Count() uint32 {
-	return s.Struct.Uint32(0)
+func (s LinkedList) Which() LinkedList_Which {
+	return LinkedList_Which(s.Struct.Uint16(0))
 }
+func (s LinkedList) SetEmpty() {
+	s.Struct.SetUint16(0, 0)
 
-func (s LinkedList) SetCount(v uint32) {
-	s.Struct.SetUint32(0, v)
 }
 
 func (s LinkedList) Head() (Any, error) {
+	if s.Struct.Uint16(0) != 1 {
+		panic("Which() != head")
+	}
 	p, err := s.Struct.Ptr(0)
 	return Any{Struct: p.Struct()}, err
 }
 
 func (s LinkedList) HasHead() bool {
+	if s.Struct.Uint16(0) != 1 {
+		return false
+	}
 	return s.Struct.HasPtr(0)
 }
 
 func (s LinkedList) SetHead(v Any) error {
+	s.Struct.SetUint16(0, 1)
 	return s.Struct.SetPtr(0, v.Struct.ToPtr())
 }
 
 // NewHead sets the head field to a newly
 // allocated Any struct, preferring placement in s's segment.
 func (s LinkedList) NewHead() (Any, error) {
+	s.Struct.SetUint16(0, 1)
 	ss, err := NewAny(s.Struct.Segment())
 	if err != nil {
 		return Any{}, err
@@ -2235,27 +2267,67 @@ func (s LinkedList) NewHead() (Any, error) {
 	return ss, err
 }
 
-func (s LinkedList) Tail() (Any, error) {
-	p, err := s.Struct.Ptr(1)
-	return Any{Struct: p.Struct()}, err
-}
-
-func (s LinkedList) HasTail() bool {
-	return s.Struct.HasPtr(1)
-}
-
-func (s LinkedList) SetTail(v Any) error {
-	return s.Struct.SetPtr(1, v.Struct.ToPtr())
-}
-
-// NewTail sets the tail field to a newly
-// allocated Any struct, preferring placement in s's segment.
-func (s LinkedList) NewTail() (Any, error) {
-	ss, err := NewAny(s.Struct.Segment())
-	if err != nil {
-		return Any{}, err
+func (s LinkedList) PackedConsCell() (LinkedList_PackedConsCell, error) {
+	if s.Struct.Uint16(0) != 2 {
+		panic("Which() != packedConsCell")
 	}
-	err = s.Struct.SetPtr(1, ss.Struct.ToPtr())
+	p, err := s.Struct.Ptr(0)
+	return LinkedList_PackedConsCell{Struct: p.Struct()}, err
+}
+
+func (s LinkedList) HasPackedConsCell() bool {
+	if s.Struct.Uint16(0) != 2 {
+		return false
+	}
+	return s.Struct.HasPtr(0)
+}
+
+func (s LinkedList) SetPackedConsCell(v LinkedList_PackedConsCell) error {
+	s.Struct.SetUint16(0, 2)
+	return s.Struct.SetPtr(0, v.Struct.ToPtr())
+}
+
+// NewPackedConsCell sets the packedConsCell field to a newly
+// allocated LinkedList_PackedConsCell struct, preferring placement in s's segment.
+func (s LinkedList) NewPackedConsCell() (LinkedList_PackedConsCell, error) {
+	s.Struct.SetUint16(0, 2)
+	ss, err := NewLinkedList_PackedConsCell(s.Struct.Segment())
+	if err != nil {
+		return LinkedList_PackedConsCell{}, err
+	}
+	err = s.Struct.SetPtr(0, ss.Struct.ToPtr())
+	return ss, err
+}
+
+func (s LinkedList) ConsCell() (LinkedList_ConsCell, error) {
+	if s.Struct.Uint16(0) != 3 {
+		panic("Which() != consCell")
+	}
+	p, err := s.Struct.Ptr(0)
+	return LinkedList_ConsCell{Struct: p.Struct()}, err
+}
+
+func (s LinkedList) HasConsCell() bool {
+	if s.Struct.Uint16(0) != 3 {
+		return false
+	}
+	return s.Struct.HasPtr(0)
+}
+
+func (s LinkedList) SetConsCell(v LinkedList_ConsCell) error {
+	s.Struct.SetUint16(0, 3)
+	return s.Struct.SetPtr(0, v.Struct.ToPtr())
+}
+
+// NewConsCell sets the consCell field to a newly
+// allocated LinkedList_ConsCell struct, preferring placement in s's segment.
+func (s LinkedList) NewConsCell() (LinkedList_ConsCell, error) {
+	s.Struct.SetUint16(0, 3)
+	ss, err := NewLinkedList_ConsCell(s.Struct.Segment())
+	if err != nil {
+		return LinkedList_ConsCell{}, err
+	}
+	err = s.Struct.SetPtr(0, ss.Struct.ToPtr())
 	return ss, err
 }
 
@@ -2264,7 +2336,7 @@ type LinkedList_List struct{ capnp.List }
 
 // NewLinkedList creates a new list of LinkedList.
 func NewLinkedList_List(s *capnp.Segment, sz int32) (LinkedList_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2}, sz)
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1}, sz)
 	return LinkedList_List{l}, err
 }
 
@@ -2289,7 +2361,241 @@ func (p LinkedList_Future) Head() Any_Future {
 	return Any_Future{Future: p.Future.Field(0, nil)}
 }
 
-func (p LinkedList_Future) Tail() Any_Future {
+func (p LinkedList_Future) PackedConsCell() LinkedList_PackedConsCell_Future {
+	return LinkedList_PackedConsCell_Future{Future: p.Future.Field(0, nil)}
+}
+
+func (p LinkedList_Future) ConsCell() LinkedList_ConsCell_Future {
+	return LinkedList_ConsCell_Future{Future: p.Future.Field(0, nil)}
+}
+
+type LinkedList_PackedConsCell struct{ capnp.Struct }
+
+// LinkedList_PackedConsCell_TypeID is the unique identifier for the type LinkedList_PackedConsCell.
+const LinkedList_PackedConsCell_TypeID = 0xe7fbb794cd4dfb75
+
+func NewLinkedList_PackedConsCell(s *capnp.Segment) (LinkedList_PackedConsCell, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
+	return LinkedList_PackedConsCell{st}, err
+}
+
+func NewRootLinkedList_PackedConsCell(s *capnp.Segment) (LinkedList_PackedConsCell, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
+	return LinkedList_PackedConsCell{st}, err
+}
+
+func ReadRootLinkedList_PackedConsCell(msg *capnp.Message) (LinkedList_PackedConsCell, error) {
+	root, err := msg.Root()
+	return LinkedList_PackedConsCell{root.Struct()}, err
+}
+
+func (s LinkedList_PackedConsCell) String() string {
+	str, _ := text.Marshal(0xe7fbb794cd4dfb75, s.Struct)
+	return str
+}
+
+func (s LinkedList_PackedConsCell) Head() (Any, error) {
+	p, err := s.Struct.Ptr(0)
+	return Any{Struct: p.Struct()}, err
+}
+
+func (s LinkedList_PackedConsCell) HasHead() bool {
+	return s.Struct.HasPtr(0)
+}
+
+func (s LinkedList_PackedConsCell) SetHead(v Any) error {
+	return s.Struct.SetPtr(0, v.Struct.ToPtr())
+}
+
+// NewHead sets the head field to a newly
+// allocated Any struct, preferring placement in s's segment.
+func (s LinkedList_PackedConsCell) NewHead() (Any, error) {
+	ss, err := NewAny(s.Struct.Segment())
+	if err != nil {
+		return Any{}, err
+	}
+	err = s.Struct.SetPtr(0, ss.Struct.ToPtr())
+	return ss, err
+}
+
+func (s LinkedList_PackedConsCell) Tail() (Any, error) {
+	p, err := s.Struct.Ptr(1)
+	return Any{Struct: p.Struct()}, err
+}
+
+func (s LinkedList_PackedConsCell) HasTail() bool {
+	return s.Struct.HasPtr(1)
+}
+
+func (s LinkedList_PackedConsCell) SetTail(v Any) error {
+	return s.Struct.SetPtr(1, v.Struct.ToPtr())
+}
+
+// NewTail sets the tail field to a newly
+// allocated Any struct, preferring placement in s's segment.
+func (s LinkedList_PackedConsCell) NewTail() (Any, error) {
+	ss, err := NewAny(s.Struct.Segment())
+	if err != nil {
+		return Any{}, err
+	}
+	err = s.Struct.SetPtr(1, ss.Struct.ToPtr())
+	return ss, err
+}
+
+// LinkedList_PackedConsCell_List is a list of LinkedList_PackedConsCell.
+type LinkedList_PackedConsCell_List struct{ capnp.List }
+
+// NewLinkedList_PackedConsCell creates a new list of LinkedList_PackedConsCell.
+func NewLinkedList_PackedConsCell_List(s *capnp.Segment, sz int32) (LinkedList_PackedConsCell_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2}, sz)
+	return LinkedList_PackedConsCell_List{l}, err
+}
+
+func (s LinkedList_PackedConsCell_List) At(i int) LinkedList_PackedConsCell {
+	return LinkedList_PackedConsCell{s.List.Struct(i)}
+}
+
+func (s LinkedList_PackedConsCell_List) Set(i int, v LinkedList_PackedConsCell) error {
+	return s.List.SetStruct(i, v.Struct)
+}
+
+func (s LinkedList_PackedConsCell_List) String() string {
+	str, _ := text.MarshalList(0xe7fbb794cd4dfb75, s.List)
+	return str
+}
+
+// LinkedList_PackedConsCell_Future is a wrapper for a LinkedList_PackedConsCell promised by a client call.
+type LinkedList_PackedConsCell_Future struct{ *capnp.Future }
+
+func (p LinkedList_PackedConsCell_Future) Struct() (LinkedList_PackedConsCell, error) {
+	s, err := p.Future.Struct()
+	return LinkedList_PackedConsCell{s}, err
+}
+
+func (p LinkedList_PackedConsCell_Future) Head() Any_Future {
+	return Any_Future{Future: p.Future.Field(0, nil)}
+}
+
+func (p LinkedList_PackedConsCell_Future) Tail() Any_Future {
+	return Any_Future{Future: p.Future.Field(1, nil)}
+}
+
+type LinkedList_ConsCell struct{ capnp.Struct }
+
+// LinkedList_ConsCell_TypeID is the unique identifier for the type LinkedList_ConsCell.
+const LinkedList_ConsCell_TypeID = 0xed28827df3487c53
+
+func NewLinkedList_ConsCell(s *capnp.Segment) (LinkedList_ConsCell, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2})
+	return LinkedList_ConsCell{st}, err
+}
+
+func NewRootLinkedList_ConsCell(s *capnp.Segment) (LinkedList_ConsCell, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2})
+	return LinkedList_ConsCell{st}, err
+}
+
+func ReadRootLinkedList_ConsCell(msg *capnp.Message) (LinkedList_ConsCell, error) {
+	root, err := msg.Root()
+	return LinkedList_ConsCell{root.Struct()}, err
+}
+
+func (s LinkedList_ConsCell) String() string {
+	str, _ := text.Marshal(0xed28827df3487c53, s.Struct)
+	return str
+}
+
+func (s LinkedList_ConsCell) Head() (Any, error) {
+	p, err := s.Struct.Ptr(0)
+	return Any{Struct: p.Struct()}, err
+}
+
+func (s LinkedList_ConsCell) HasHead() bool {
+	return s.Struct.HasPtr(0)
+}
+
+func (s LinkedList_ConsCell) SetHead(v Any) error {
+	return s.Struct.SetPtr(0, v.Struct.ToPtr())
+}
+
+// NewHead sets the head field to a newly
+// allocated Any struct, preferring placement in s's segment.
+func (s LinkedList_ConsCell) NewHead() (Any, error) {
+	ss, err := NewAny(s.Struct.Segment())
+	if err != nil {
+		return Any{}, err
+	}
+	err = s.Struct.SetPtr(0, ss.Struct.ToPtr())
+	return ss, err
+}
+
+func (s LinkedList_ConsCell) Tail() (Any, error) {
+	p, err := s.Struct.Ptr(1)
+	return Any{Struct: p.Struct()}, err
+}
+
+func (s LinkedList_ConsCell) HasTail() bool {
+	return s.Struct.HasPtr(1)
+}
+
+func (s LinkedList_ConsCell) SetTail(v Any) error {
+	return s.Struct.SetPtr(1, v.Struct.ToPtr())
+}
+
+// NewTail sets the tail field to a newly
+// allocated Any struct, preferring placement in s's segment.
+func (s LinkedList_ConsCell) NewTail() (Any, error) {
+	ss, err := NewAny(s.Struct.Segment())
+	if err != nil {
+		return Any{}, err
+	}
+	err = s.Struct.SetPtr(1, ss.Struct.ToPtr())
+	return ss, err
+}
+
+func (s LinkedList_ConsCell) Offset() uint32 {
+	return s.Struct.Uint32(0)
+}
+
+func (s LinkedList_ConsCell) SetOffset(v uint32) {
+	s.Struct.SetUint32(0, v)
+}
+
+// LinkedList_ConsCell_List is a list of LinkedList_ConsCell.
+type LinkedList_ConsCell_List struct{ capnp.List }
+
+// NewLinkedList_ConsCell creates a new list of LinkedList_ConsCell.
+func NewLinkedList_ConsCell_List(s *capnp.Segment, sz int32) (LinkedList_ConsCell_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2}, sz)
+	return LinkedList_ConsCell_List{l}, err
+}
+
+func (s LinkedList_ConsCell_List) At(i int) LinkedList_ConsCell {
+	return LinkedList_ConsCell{s.List.Struct(i)}
+}
+
+func (s LinkedList_ConsCell_List) Set(i int, v LinkedList_ConsCell) error {
+	return s.List.SetStruct(i, v.Struct)
+}
+
+func (s LinkedList_ConsCell_List) String() string {
+	str, _ := text.MarshalList(0xed28827df3487c53, s.List)
+	return str
+}
+
+// LinkedList_ConsCell_Future is a wrapper for a LinkedList_ConsCell promised by a client call.
+type LinkedList_ConsCell_Future struct{ *capnp.Future }
+
+func (p LinkedList_ConsCell_Future) Struct() (LinkedList_ConsCell, error) {
+	s, err := p.Future.Struct()
+	return LinkedList_ConsCell{s}, err
+}
+
+func (p LinkedList_ConsCell_Future) Head() Any_Future {
+	return Any_Future{Future: p.Future.Field(0, nil)}
+}
+
+func (p LinkedList_ConsCell_Future) Tail() Any_Future {
 	return Any_Future{Future: p.Future.Field(1, nil)}
 }
 
@@ -2643,125 +2949,138 @@ func (p VectorSeq_Future) Vector() Vector_Future {
 	return Vector_Future{Future: p.Future.Field(0, nil)}
 }
 
-const schema_c8aa6d83e0c03a9d = "x\xda\x94W}\x8c\x1b\xd5\xf5\xbd\xe7\xcd\xd8\xdexm" +
-	"\x8f\x87q\x04\x81_d\xfd\xaa\xa5%K\xb3\x0aK\x1a" +
-	"\xa9\x16\xa9\x17\x9al\x1a\x9a\xc2\xce\x1aP\xfe@\x15\xb3" +
-	"\xf6l\xd6\x8d\xedq\xc66\xcb\xa2Dm\x14(*\x12" +
-	"m\x83\x84J\xd5F\xa8T\xad\x0a\xa2\xf4\x03U\xaa*" +
-	"\xf5C\xa5\xa5AJD\xa3\x06\x9aF\xa1\x0dQ$h" +
-	"\x14\x9a\x0f\x12\x92\xc0&\xaf\xbac\xcf\x8cw\xd7K\xca" +
-	"\x7f3s\xde\xbb\xef\xdc\xfb\xee=\xf7\xce\xaa\xe3\xea\x88" +
-	"\xb8%r\xf7\x12\"\xb3\x12\x89\xca\x93}\xb3\x89{\xd6" +
-	"=\xf052u@~\xae\xf1\xe2\xaaw\x9fy\xf9C" +
-	"Z\x8f\x98 2\x9eP\x7fi<\xa5\xc6\x88\x8c\xdd\xea" +
-	"4A\xbak\xfer\xd7#/\x9c\xf9&\xe9:\x88\"" +
-	"`D\x8f\x9c%\x18K#y\x82\xdc>\xbag,\xfe" +
-	"\xc6\xa7\xbeMf\x1c\x90{r\x7f8\xba\xab\xfa\xfc\xde" +
-	"\xce\xc2\xcfD\x9e5\xd6F\xf8\xe9\xb3\x91\x9f\x11\xe4\xb9" +
-	"\xfb/n\xbe.5\xfaT\xb7\xb1\x03\x9e\xb1\xd7=c" +
-	"\xff|\xc7=\xb5/\xf1\xebg\xba\xf1\xf3\x91c\x04\xe3" +
-	"\x92\x87\xdf\xf6}\xe1|}\xef\xf4\x0f\xf80\x11\x1e\xb6" +
-	"\x1e1\x9d\xc8X\x16u\x8d\xe5\xd1\x18\xd1\xad\xcb\xa2\xbf" +
-	"W\x08\xf2\x95\xfd\xd7\xecX~\xcd\xae\x1f\xcf\xe7&\xd8" +
-	".\xe2\xcf\x1bK\xe2\xfc\x14\x893\xb7\x91?\xcdN\xde" +
-	"{a\xd3s\xed\xb3\xbd\x08\xec\x89\x9f U.\x1bz" +
-	"\xe5'O\xbe?\xfb\x8bnR;\xe3'\x08\xc6\xa3q" +
-	"&\xf5s\xed\xcb?\\3\x84\x97\xba\xf1\x1f\xc5\xd9\xa9" +
-	"\xe7<\xdc\xde\xf7\xf9\xefM\xfe\xd4\xfa\x15\xe9q%$" +
-	"A0^\x8d?l\xec\xf7\x18\xbc\x1a\xdf`\x9c\xe1'" +
-	"\xf9\xdd\xd3/\xa5v\xde0\xf0\xc7nc\xff\x88s\x04" +
-	"\xde\xf4\x8c\xbd\xb89\xff\xc9\x7f\x8dl\xfcs\x17K\xbd" +
-	"\xff\x03R\xe5o\xffs!3}d\xe3k\xa4k>" +
-	"p>~\x8cT\xf9\xff\xaf)K7d\xd7\xffm\xae" +
-	"\xc5\xc3\x81\xc5\xfa\xcd\xc7N}\xfa@\xe4P\xd7\xc6d" +
-	"\xffaR\xe5\xca'\x1e;V\x7f\xe3\xe6\x13\xed<\x19" +
-	"?\xb8k\xbf\xf8\xcd\x0b\xe7h\xbd\xf0\xf2\xe4L\xfc\xb0" +
-	"q\xd9#\x7f\xc9\x0b\xdfw.])\xdc\xf0\xf4}\xa7" +
-	"\xba\x88\xed\xf6\xcc<{\xe8\xe5e\xf9\xb7\xee8Kf" +
-	"\x12\x90\xb1\xe1\xd9\xbf\x7f\xeb\xc8\xe9\xf7|3\xad\xfe'" +
-	"\x8d\x1d\xfd\xbcz\xa6\xffm\xea\xc2\xe7^\x19\xaf\x06\x8c" +
-	"m\x89\xaf\x18\xad\xc4\xb5D\xc6\x8e\x04\xaf\x0eH\xcd\x0f" +
-	"\xad\x95|\xdc('\xaf%\xba\xb5\x95\xdc\x00cm\x8a" +
-	"c{\xf7c\xbf\x1b:\xd2\xff\xc5\x8b\xa4\xc7\x17d\xc3" +
-	"\x8d\xa9\x87\x8d\x15\xa9\xf6\x13\xa7}P\x16\xbdRgg" +
-	"\xeaq\xe3\x1b)\xa6\xb1;\xf56\xad\x94U\xbb:T" +
-	"\xb4\xea5\xd4s\xf7\xd9\xc5\xa6\xe3f\x87\xeerJ\xf6" +
-	"\x18`\xf6)jBJ\x15D\xfa\x8a;\x89\xcc\x9b\x14" +
-	"\x98\xeb\x04\x92\xb8\"3\xe0\xaf\xb7\xe7\x88\xcc\xdb\x14\x98" +
-	"\x9b\x05\xe4\x84k\xd5\x8aSv\x83\x88\x90\"\x8c)@" +
-	":\xacW\x02\x7f\xcc?hUZv#\xc4\x83\xa2h" +
-	"\xe3\x01\x1bQ\xcf\xdd^+N9\xeeP\xa3\xe9\xb8\xf6" +
-	"\xc0X\xd6r\xadj\xc3T\x15\x95\xc8c\x94\x1c&2" +
-	"\xfb\x14\x98\x19\x81\xacgv\x9e\xb9t\x97\xb9\xc0\xb9X" +
-	"\xc1\xde\xc6\xae%\x02;\xeb\xd9\x87\x11\x05\xe6&\x01\xa0" +
-	"\xed\xd7F\xfe\xb6N\x819&\xa0\x0bd \x88\xf4/" +
-	"\xf1\x81_P`\xde#\x90w&'\x1bv\x13Q\x12" +
-	"\x88\xb2[\x9eq\xa4\xc3\xd0\xb7\x09d\xcb\xb5\x92\xfd\x10" +
-	"\xfaH\xa0\xaf\xa7w\xd3Ve\xeb\xc0\xb8\x9dm\xb4*" +
-	"\xcd9\xde\xe5B\xef\xf2\x96\xb7\x16z\x982\x04\xe8=" +
-	"\xedmq\x06\xc6\xedF+6\xcf\xda`hM\xab\xbb" +
-	"N\x11zX\xd9\xf3lQ\x96\x8d\xcdp\x90\xd6\x05\xf7" +
-	"o\xec\xc7'\x88\x0a{\xa1\xa0p\x10\x02\xcbqE\xa6" +
-	"\xbdX\x19\x070HT\xd8\xc7\xc8!F\xc4e\xd9\x0e" +
-	"\x98\xf1\xba\xb7\xe7\xaf\x8c\x1c\x81@R\x99\x95\x19(\\" +
-	"\xc1\xc8\x11\x15\x0e2p\x94\xb7\xa8\x1f\xf2\x16\x95\xc8x" +
-	"\xd3\xdbr\x88\x91\xe3\xbc%\xf2\x81\xcc Bd\xbc\x85" +
-	";\x89\x0aG\x198\xc9@\xf4\x92\xcc Jd\xfc\xdb" +
-	";\xfe8\x03\xa7\xd9V\xec\xa2\x14\x19O'\xde\xf5\x90" +
-	"w\x189\xc7[\xfa.\xc8\x0c\xfa\xb8\xfa\xbdCN2" +
-	"p\x91\x81%\xef\xcb\x0c\x96\xb0\xe6\xe0\x0e\xa2\xc2i\x06" +
-	"f\x19\x88\x9f\x97\x19\xc4Y%<\xc2\xe7\xa0`\\\x08" +
-	"$\xfb\xcf\xc9\x0c\xfa\x89\x8c\xcb\xde\x11\x17y\x83\xca@" +
-	"\xe2=\x99A\x82\xf5Y00\xcb@\x1f\x03\xc9\xb32" +
-	"\x83$\xcb\xb5\xc8\x11\x8d\x0b\x05\x85\x04\x7fO\x9d\x91\x19" +
-	"\xa4\x88\x8c%b\x9c\xa8\xd0\xc7@\x86\x01\xed\xb4\xcc@" +
-	"c\x81\x14\xd7\x13\x15\x12\x0c\\\xc7@\xfa\x94\xcc M" +
-	"d,\xf5\x8eH3\xf0\x7fB V+W(\xaaM" +
-	"8N\x05 \x01\x10b\xe55\xab\x11!\x81\x08!?" +
-	"Q\xde\xb2\xb1\xd6D\x92\x04\x92\x84\xd8\xe4\x9a\xd5\xe8'" +
-	"\x81~\x82\x9c(o\x19\xad8V\x93\x0b7A\x02\x09" +
-	"\x826\xe9ZE\xa4C\xd5i\xa7\xb3V\x9c\xb2\\\xa8" +
-	"$\xa0\x12b\x8d\xa6\xeb\xaf\xff\xeaV{f\xdaqK" +
-	"\xfe{\xbe1S\x9dp*\x81\xb9\xba\xd5\x9c\x0a^*" +
-	"\xe5F\x13\xe9\xb0\xc1\xb5m/ZC\xb2\x0d\x14l\xc2" +
-	"6\xa4\xc3\x9e\xddF\x95\xc9\x1a\xd2\xa1\xf2vx^%" +
-	"\xc7Q\xcfm*\xd7\xb6\xda%mS\xb9\xd1\x9c\xa7\x07" +
-	"\xc3=\xf4`\xb0\x97\x1e\x0c\x86z\x90-:\xadZ\xd3" +
-	"\xafsm\xca\xb6J\x0b\xd5HkZ\xe5\xcaG\x88T" +
-	"X\xc5\x15\xc7*\x0d\x8cY\x1aK\xdeb\xa2\xd1\x81\x17" +
-	"\xad\xf2\xae\x88/vB/\xdd\xf98\xaaJ\xf9zn" +
-	"\xccu\x8a\x1c@U\x89\x10\x05\xfd\x18~G\xd7\xf5A" +
-	"\x12z$\xa6M[\xe5\xe6\x08\xc6\xd0\x93L\xa3\xa7h" +
-	"q\xcbI(0o\x12\x90\xc5\xa9r\xa5\xe4\xda\xb59" +
-	"\xcd%h\xf2Wi\x1e\xe3y\xdb\xf3\xb3{\x01\xf3\x1e" +
-	"bR\xc1\xd1\xbd\xd5t\xccr-\xa5w\x98\x07\x044" +
-	"\xcb\xdd\xf2\xbfu\xb3\xf0\xbc\x8e\xc5\x1e\xc7\x15Z\x13\xfc" +
-	"\xa48\xee\xbc\x94\x1c\x0cS2\x09)\x17&\xe5rq" +
-	"E\xfai\x99\x0b\xd3rn\xdd\xb9\x8e\xd3\xa4\xe8\xc7\xe9" +
-	"&\x95\xc6\x02\xb6\xa8\xe7FkC\xa3\xad\x1a\xbckO" +
-	"\x87#\x82\xc5\x07\xdf\xaf\xc0\x9c\xea\x1e\x11l\xfe\xfa\x80" +
-	"\x02s;\x97N\xba\xcdq\x86\xaf\xf6!\x05\xe6#\x02" +
-	"\xba\x02\xaf+\xe8;\xd9\x9f\xed\x0a\xcc\xa7\x05\xf2\xb5r" +
-	"\xc5rg(\x9a\xaf{}\xdf\x0f1\xbb\xc2\x81}\xd0" +
-	"r\xcbV\xa9\\\xe4t\xe8\xa8\x9d6\xe1\x94f\xae~" +
-	"\x15\xa4\xb1\x03\xa6\x0a\x84\xc3\x9d\x8eAm\xb4U+\xb2" +
-	"7\x9d\x90[\xc3\xdd\xce\xc8\xf9\xceT\x04\x92\x82]d" +
-	"o\xcaL\xbc\xa4\xc0\xacwySe\x03Sm\x17\xb3" +
-	"U\xab\xe8:>\xd1|\xc5\xaaN\x94,\x8aj5\xab" +
-	"j\xfb\xb7\x93\x9dl\xd5\x8a]\xa9\x14\x90\x9b\xc7\x1f\xfe" +
-	"\xe5\x10yN\x045\xa0c\\v\x12\xc8!\xb8f\xc6" +
-	"+H\x7f\xb2\x85?\x9b\xeb\xbb\xaf'\xa1?\x1a\x03\x82" +
-	"\x7f\x03\xf8\x7f6\xfa\x0c\x17k5\x06\x11\xfcP\xc0\xff" +
-	"A\xd0-\xc6\xee\x8dA\x09\xfe\xaa\xe0\xcf\xf3\xfa\xc6a" +
-	"\x12\xfa\xda\x18\xc2\x81\x1d\xfe\xdf\x90~\x0b\x9fwcL" +
-	"\xa94F\xa0\xb1r\x8d@c\xf5\x19A\xd6\xab\xce\x11" +
-	"([\x9c\xb9\xca\xc0\xba2\xeaZ\xc5\xce\x0c\xda\xb9\x92" +
-	"\x15\x1c\xd1\x01\x05\xe6*\x01\xddW\xe6\x95\xc3\x9d\xb9t" +
-	"\xb5@\xb6\xd6\xaa\xda\xae\xdf\xe2\xb2%\xbb\xe6T\xfd\xb7" +
-	"\x85\x93`'~\xc1\x80\xcaI\xc0\x83\xef\"I\xa0C" +
-	"\xed\xe4\xc0p\x98\x03\x10\x1f\x95\x01\x83]\x190\xa7?" +
-	"d\x1bS\xe5\xc9`x\xf4\xear\xde\xa8\x1ct\x8b\xc5" +
-	"\xf2\xf9\xbf\x01\x00\x00\xff\xff\x10\xfa\xcf5"
+const schema_c8aa6d83e0c03a9d = "x\xda\x94W{l[\xe5\x15?\xbf\xef\xfa\x91\xc4v" +
+	"\xae/\xd7\x15\xafU\x16(\x0c\x08kTBW\xa9\x16" +
+	"\xcc)iR\xd2\xb5,7\xa6\xa8Hh\xe2\xc6\xbei" +
+	"\xbc\xda\xbe\xee\xb5CH\xd5jcm\x87\x86\xc46\xd0" +
+	"\xaa\x816\x84\xc6\xa4iC\x94\x8d!\xb4\x87\xd4\xbd\xd8" +
+	"X'\xb5bh\x1d\xeb\xaan+\x15S\xa1j\xd7'" +
+	"\xb4\xa5i\xeft\xae}\x1f1\xce\x0a\xff]\xfb\xf7}" +
+	"\xe7\xfc\xce\xf9\xce\xf9\x9d\xef[\xbc!< n\x0f\xdb" +
+	"\x9dDZ=\x1c\xb1\x8fu\xcc\xc6\xef[\xf1\xd0WH" +
+	"S\x00\xfbs\xb5\x97\x16\x1f\x7f\xee\xb5\x8b4\x84\xa8 " +
+	"R\xff\x13\xfa\x99z<\x14%R\xdf\x0bM\x13lk" +
+	"\xe9\x9f\xee\xdd\xf6\xe2\xa9o\x90\xa2\x80(\x0cF\x8a\xe1" +
+	"\xd3\x04\xb5\x1c\xce\x12\xec\xcd\xc3\xcf\x8ev\xbdu\xf3\xb7" +
+	"H\xeb\x02\xecg3\xbf=\xb4\xb5\xfc\xc2\xee\xe6\xc2'" +
+	"\xc2\xcf\xab;\xc2\xfc\xf5d\xf8'\x04\xfb\xec\x83\xe7\xd7" +
+	"]\xd3=\xbc#h\xec\xd6\x08\x1b[\x14ac\xffz" +
+	"\xd7:\xb1'\xfe\x8b\xe7\x82\xf8\x9a\xc8a\x82\xaa9\xf8" +
+	"\x9d\xdf\x13\xe6\xd7vO\x7f\x9f\x9d\x09\xdf\xd9\x10\xa2\x0a" +
+	"\x91\xba1b\xa9S\x91(\xd1\x1d\x1b#\xbf\x91\x08\xf6" +
+	"\xeb{\xaf\xda\xb2\xf0\xaa\xad?l\xe16\x84h\x88H" +
+	"}\xa0\xeb\x05U\xef\xba\x99H\xdd\xd2u\x84`\x0f\xfc" +
+	"avb\xed\xb9\xd5?n8wR\xf0@\xec(\x85" +
+	"\xeck\xfb^\xff\xd1S\x1f\xcc\xbe\x1cduW\xec(" +
+	"A]\x1ecV?\x95\xbf\xf8\x83\xa5}x%\x88\xeb" +
+	"1\x8e\xcappc\xcf\xe0w'v\xea\xaf\x92\xd2%" +
+	"\xf9,\x08\xea\xf6\xd8&\xf5\xeb1^\xbe=\xb6R\xdd" +
+	"\xc9_\xf63'_\xe9~\xf4\xfa\x9e\xdf\x07\x8d\xed\x88" +
+	"q\x0a\x9eq\x8c\xbd\xb4.\xfb\xe9\x7f\x0f\x8c\xfc1\xc0" +
+	"ro\xecC\x0a\xd9\xbb\xfe{.5}p\xe4\x0dR" +
+	"d\x17x9v\x98B\xf6\x0doH\x0bV\xa6\x87\xfe" +
+	":\xd7\xe2\x01\xcfb\xf5\xb6\xc3'>\xf3fx\x7f`" +
+	"\xe3\x9fc\x07(dO]\\\xb3\xf7\xdb?\xbfx\x84" +
+	"\x94\x05\x81\\\x86\x05gxg\xecF\xa8\xbb\x1c\xee\xbf" +
+	"\x8cq\x9d,z\xe2\xb1\xc3\xd5\xb7n;\xda\xa8\xaa\xb1" +
+	"}[\xf7\x8a_\xbdx\x96\x86\x84SU\x0b\xe2\x07\xd4" +
+	"\x1b\xe2\xbcza\x9c\x0b!\xb7\xf9\x9e3[\xbez\xcb" +
+	"q\xd2\x16\xa0\xd5\xb6\xfaj\xfc\xb4\xfa;g\xf1.g" +
+	"\xf1w.\\\xce]\xff\xf4\xfd'\x02!\xafM0\xc1" +
+	"\xe7\xf7\xbfvm\xf6\xed\xbbO\x93\x96\x00\xech\xff\xec" +
+	"\xdf\xbfy\xf0\xe4\x19\xd7\xe7\xb2\xc4S\xea\xf2\x84sX" +
+	"\x09>_\x0fo\xa9\x06\x11\x15\x80\xfa\xd9\xee/\xa9\xcb" +
+	"\xba\xaf&R\x97w\xf3j/\x82\xd6C\xbbI~\\" +
+	"]$_Mt\xc72y%T$\xf9\xd4\xbe\xf0\xd8" +
+	"\xaf\xfb\x0e\xc6>\x7f\x9e\x94\xae`\x138\xe1\xbc'o" +
+	"R\x8f\xcb\x8d/\xce\x94\xd7q-\x1d\xe3,\x1eJ>" +
+	"\xae\xaeI2\x8d\xb5\xc9#\xb4\xc8.\x1b\xe5\xbe\xbc^" +
+	"\xad\xa0\x9a\xb9\xdf\xc8\xd7M+\xddw\xafY0F\x01" +
+	"\xadC\x0a\xc5m;\x04\"\xe5\xd6UD\xda-\x12\xb4" +
+	"\x15\x02\x09\\\xb6S\xe0\x7f\x97g\x88\xb4;%h\xeb" +
+	"\x04\xecqK\xaf\xe4'\x8d\x1a\x11\xa1\x9b0*\x01I" +
+	"_\x0a\x08\xfcg\xf6a\xbd4e\xd4|\xdc\xeb\xb7\x06" +
+	"\xee\xb1\x11\xd5\xcc\xf2J~\xd2\xb4\xfaju\xd32z" +
+	"F\xd3\xba\xa5\x97kZH\x0a\x119\x8c\x12\xfdDZ" +
+	"\x87\x04-%\x90v\xcc\xb6\x98K\x06\xccy\xc1Es" +
+	"\xc6F\x0e-\xee\xd9\x19\xe2\x18\x06$h\xab\x05\x80F" +
+	"\\#\xfc\xdf\x0a\x09\xda\xa8\x80\"\x90\x82 R\xd6\xb0" +
+	"\xc3{$h\xf7\x09d\xcd\x89\x89\x9aQG\x84\x04\"" +
+	"\x1c\x96c\x1cI?\xf5\x0d\x02\xe9b\xa5`<\x82\x0e" +
+	"\x12\xe8h\x1b\xdd\xb4^\xda\xd03f\xa4kS\xa5\xfa" +
+	"\x9c\xe82~tY\xddY\x0b\xc5/\x19\x02\x94\xb6\xf6" +
+	"\xd6\x9b=cFm*\xdab\xad\xd7\xb7&W-3" +
+	"\x0f\xc5\xd7\x8c\x16[\x94fc3\x9c\xa4\x15\xde\xf9\xab" +
+	"{q#Qn7$\xe4\xf6A`!.\xdbI'" +
+	"W\xea\x9b\xe8%\xca\xedad?#\xe2\x92\xddH\x98" +
+	"\xfa7g\xcf_\x189\x08\x81\x844k\xa7 \x11\xa9" +
+	"\xff@\x86(\xb7\x8f\x81C\xbc%t\x91\xb7\xb0b\xfe" +
+	"\xd3\xd9\xb2\x9f\x91wxK\xf8C;\x850\x91\xfa6" +
+	"V\x11\xe5\x0e1p\x8c\x81\xc8\x05;\x85\x08W\xbc\xe3" +
+	"\xfe\x1d\x06N\xb2\xad\xe8y[\xa4\x1c\x05:\xee \xef" +
+	"2r\x96\xb7t\x9c\xb3S\xe8 RO9N\x8e1" +
+	"p\x9e\x81\xce\x0f\xec\x14:\x89\xd4\xf7q7Q\xee$" +
+	"\x03\xb3\x0ct\xbdo\xa7\xd0E\xa4^p\x08\x9f\x85\x84" +
+	"1!\x90\x88\x9d\xb5S\x88\x11\xa9\x97\x1c\x17\xe7yC" +
+	"\x88\x81\xf8\x19;\x858\x91\x0a\xc1\xc0,\x03\x1d\x0c$" +
+	"N\xdb)$\x88\xd4\xb0\xc8\x10\x8d\x09\x09\xb98\xff\xdf" +
+	"}\xcaN\xa1\x9bH\xed\x14cD\xb9\x0e\x06R\x0c\xc8" +
+	"'\xed\x14d\"U\x11\xd7\x11\xe5\xe2\x0c\\\xc3@\xf2" +
+	"\x84\x9dB\x92\x05\xcfq\x91d\xe0SB Z)\x96" +
+	"(\"\x8f\x9bf\x09 \x01\x10\xa2\xc5\xa5K\x10&\x81" +
+	"0!;^\\?R\xa9#A\x02\x09Btb\xe9" +
+	"\x12\xc4H F\xb0\xc7\x8b\xeb\x87K\xa6^\xe7\xc6\x8d" +
+	"\x93@\x9c OXz\x1eI_u\x1a\xe5,\xe7'" +
+	"u\x0b!\x12\x08\x11\xa2\xb5\xba\xe5\xae\xff\xf2\x06cf" +
+	"\xda\xb4\x0a\xee\xeflm\xa6<n\x96<sU\xbd>" +
+	"\xe9\xfd(\x15ku$}Mn\xd8\x9e\xb7\x87\xec\x06" +
+	"\x903\x08\x1b\x91\xf4\xaf\x03\x0dT\x9a\xa8 \xe9+o" +
+	"\x93\xe7\x15j\x1c\xd5\xcc\xeabe\x83Q\x90W\x17k" +
+	"u\xad\x03\x08\x8c\xa2\xceM\xfe\xf0P:W\xd9\xa3z" +
+	"~\x83Q\x184)[\xa9\x0d\x1a\xa5\x92=h6>" +
+	"\x88HK\xfa\x12\xa9\xb3><(A\x9b\x0cJ\xa4\xc1" +
+	"\xad\xf7\x90\x04\xad$\x90\x10\x97\xec\x86\x96\x147\x11i" +
+	"\x93\x12\xb4z\xa0/\x94\x8d,\xb2U\x09\xdaf\x81\xb4" +
+	"Q\xae\xd6g(\"O\x1az\xa1\x8d\xb2U[X!" +
+	"\xe9\x87\xd0\\\x92\xf7y\"\xe9\xc7\xd4\"\x8d\xbev\x94" +
+	"L\xbd\xd03\xaa\xcb,\xb4\xf3IU\x13\x9eW[\x02" +
+	"\xe7<\x9f\x87vj\xf7I\xb4\x9c\xb2\xd5\xcc\xa8e\xe6" +
+	"Y\xa1BR\x98\xc8\xbb_\xc0\xbd\xa1(J/\x09%" +
+	"\x1c\x95\xa7\xf5b}\x00\xa3hK\xa6\xd6V*\xf9\x0c" +
+	"\xe2\x12\xb4[\x04\xec\xfcd\xb1T\xb0\x8c\xca\x9c\x91\xe6" +
+	"\xddC\xae0\xb2\xc6\xb2\x86\x13gp\x01\xf3\xeecR" +
+	"\x9e\xeb\xf6\x1a>\xaa[\xba\xd4>\xcd=\x02\xb2n\xad" +
+	"\xffx3\xd4\xf7\xd7\xb4\xe8\x81\x92\xdb\x02\xdc\x01}n" +
+	"\x8dWj\x83Q\xa3Tj\x0e\xff\xa6\xeb[\xd9u\x8f" +
+	"\x04m\xb1\x80\xe2\x8e\xc8E\xbd\xcd\x0b\xc1\x12\x81yj" +
+	"T\xae\xeb\xc5\xd2\xff9H?\xe2\xdc\xd48\x7fI\xa6" +
+	"\xd52\x9b{\xfd\xd9\x9c\x80\xddl\xa9\x91^\x7f:/" +
+	"\x14\x97mw>g\xfc\xf9<Wp,\xd3\xacS\xe4" +
+	"c\x8d\xd1@N\x06\xcdJ\xda\xe9\x9f\xf99y\xd9\x08" +
+	"R\x82h\xc3\xe7\x13e\xc8\xbd]\xcc\x7fm(\xd5>" +
+	"r\xa0\xa8f\x86+}\xc3S\x158\x9d\x11\x14\xa6L" +
+	"[a\xca4\x85i3\xdfq\x92\x0d\xce3\\\xfd\x8f" +
+	"H\xd0\xb6\x09(\x12\x1a\xb2\xf4(\x07\xb7Y\x82\xf6\xb4" +
+	"@\xb6R,\xe9\xd6\x0cE\xb2U\xe7B\xe6V!\xa7" +
+	"\x9ak\xefa\xdd*\xea\x85b\x9e;\xa69\x86\xe4q" +
+	"\xb30s\xe5j%\x99\x03\xd0B\x80\x7f\xebV\xd0+" +
+	"\x0fOU\xf2\x1cM3\xfdsU\xd6n\x0d\xc6Q\xd9" +
+	"\xcb\xae\xca2\xf1\x82\x04\xad\x1a\x88\xa6\xdc\xdf\x94\xdem" +
+	"\x02\xe9\xb2\x9e\xb7L\x97h\xb6\xa4\x97\xc7\x0b:E\xe4" +
+	"\x8a^6\xdc\xeaIOLU\xf2\x81n\xf3\xc8\xb5\xf0" +
+	"\x87{8DN\x10\x9eL(\x18\xb3\x9b\x05n\x12," +
+	"-\xe5h\x96\xfb\xe4\x80\xfb\x1cS\x9e\xbc\x8e\x84\xb2=" +
+	"\x0ax\xcfA\xb8\xafYe\x86\xf5\xac\x1c\x85\xf0\xde\x90" +
+	"p\xdf\x84\x8a\xce\xd8\xda($\xef%\x0d\xf7\x09\xa7\x8c" +
+	"\xf4\x93P\xee\x8a\xc2\x7f\xa3\xc1}\x01+\xb7\xb3\xbf\x9b" +
+	"\xa2R\xa96\x00\x99\xc5}\x002\x0b\xf4\x00\xd2\x8e\x80" +
+	"\x0d@Zo\xce\x15O\x96\xdeaK\xcf\xb7\xe8C\x7f" +
+	";}\xe8\xf7\xf5!]\x99*\x1b\x96{\xf7H\x17\x8c" +
+	"\x8aYv\x7f}\xf4\x8a\xde\xcc\x9f\xf7r\xe0\"\xe0\x17" +
+	"\xc9<E\xa0 \xd4\xac\x81~\xbf\x06\xdc\x1el_\x01" +
+	"\xbd\x81\x0a\xc8\x9bS\x15\xaf\xd3\xd2\xb5\xc9\xe2\x84w\xab" +
+	"wt\xa3\xe5\x0d\xe35\xed|\xf5\xfc\xbf\x00\x00\x00\xff" +
+	"\xff\x1d\xcc^\xb6"
 
 func init() {
 	schemas.Register(schema_c8aa6d83e0c03a9d,
@@ -2781,7 +3100,9 @@ func init() {
 		0xcf49dc7714f7eebd,
 		0xd3451f471503cf21,
 		0xd805d12cefe22b70,
+		0xe7fbb794cd4dfb75,
 		0xea2bd670e2878d2d,
+		0xed28827df3487c53,
 		0xef56981b53fef997,
 		0xf242e13f19c3d8a2,
 		0xf3f0dc8fd7fc3207,

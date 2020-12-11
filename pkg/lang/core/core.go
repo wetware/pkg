@@ -111,10 +111,16 @@ func Render(v ww.Any) (string, error) {
 	switch val := v.(type) {
 	case Renderable:
 		return val.Render()
+
+	case Seq:
+		return renderSeq(val)
+
 	case fmt.Stringer:
 		return val.String(), nil
+
 	default:
 		return fmt.Sprintf("%#v", val), nil
+
 	}
 }
 
@@ -248,38 +254,40 @@ func Canonical(any ww.Any) ([]byte, error) {
 }
 
 // AsAny lifts a mem.Any to a ww.Any.
-func AsAny(any mem.Any) (val ww.Any, err error) {
+func AsAny(any mem.Any) (item ww.Any, err error) {
 	switch any.Which() {
 	case mem.Any_Which_nil:
-		val = Nil{}
+		item = Nil{}
 	case mem.Any_Which_bool:
-		val = Bool{any}
+		item = Bool{any}
 	case mem.Any_Which_i64:
-		val = i64{any}
+		item = i64{any}
 	case mem.Any_Which_f64:
-		val = f64{any}
+		item = f64{any}
 	case mem.Any_Which_bigInt:
-		val, err = asBigInt(any)
+		item, err = asBigInt(any)
 	case mem.Any_Which_bigFloat:
-		val, err = asBigFloat(any)
+		item, err = asBigFloat(any)
 	case mem.Any_Which_frac:
-		val, err = asFrac(any)
+		item, err = asFrac(any)
 	case mem.Any_Which_char:
-		val = Char{any}
+		item = Char{any}
 	case mem.Any_Which_str:
-		val = String{any}
+		item = String{any}
 	case mem.Any_Which_keyword:
-		val = Keyword{any}
+		item = Keyword{any}
 	case mem.Any_Which_symbol:
-		val = Symbol{any}
+		item = Symbol{any}
 	case mem.Any_Which_path:
-		val = Path{any}
+		item = Path{any}
 	case mem.Any_Which_list:
-		val = list{any}
+		item, err = asList(any)
+
 	case mem.Any_Which_vector:
-		val = DeepPersistentVector{any}
+		item = DeepPersistentVector{any} // XXX
+
 	// case mem.Any_Which_proc:
-	// 	val = RemoteProcess{v}
+	// 	item = RemoteProcess{v}
 	default:
 		err = fmt.Errorf("unknown value type '%s'", any.Which())
 	}
