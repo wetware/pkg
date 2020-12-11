@@ -184,12 +184,12 @@ func newShallowPersistentVector(a capnp.Arena, items ...ww.Any) (ShallowPersiste
 		panic(fmt.Sprintf("invalid range for shallow vector: %d", len(items)))
 	}
 
-	val, err := memutil.Alloc(a)
+	any, err := memutil.Alloc(a)
 	if err != nil {
 		return ShallowPersistentVector{}, err
 	}
 
-	vec, err := val.NewVector()
+	vec, err := any.NewVector()
 	if err != nil {
 		return ShallowPersistentVector{}, err
 	}
@@ -201,13 +201,13 @@ func newShallowPersistentVector(a capnp.Arena, items ...ww.Any) (ShallowPersiste
 		return ShallowPersistentVector{}, err
 	}
 
-	for i, any := range items {
-		if err = tail.Set(i, any.Value()); err != nil {
+	for i, item := range items {
+		if err = tail.Set(i, item.Value()); err != nil {
 			break
 		}
 	}
 
-	return ShallowPersistentVector{val}, err
+	return ShallowPersistentVector{any}, err
 }
 
 // Value returns the memory value
