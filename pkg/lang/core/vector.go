@@ -1127,24 +1127,12 @@ func newChunkedSeq(a capnp.Arena, v mem.Vector, i uint32, offset uint8) (chunked
 		return chunkedSeq{}, err
 	}
 
-	if err = seq.SetVector(v); err != nil {
-		return chunkedSeq{}, err
+	if err = seq.SetVector(v); err == nil {
+		seq.SetIndex(i)
+		seq.SetOffset(offset)
 	}
-	seq.SetIndex(i)
-	seq.SetOffset(offset)
 
-	// n, err := vectorArrayFor(v.Any, i)
-	// if errors.Is(err, ErrIndexOutOfBounds) {
-	// 	_, n, err = newVectorLeafNode(capnp.SingleSegment(nil))
-	// }
-
-	return chunkedSeq{
-		Any: any,
-		// vec:    v,
-		// node:   n,
-		// i:      i,
-		// offset: offset,
-	}, err
+	return chunkedSeq{any}, err
 }
 
 // Value returns the memory value
