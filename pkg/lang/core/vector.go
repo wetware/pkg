@@ -90,17 +90,7 @@ func (EmptyPersistentVector) Count() (int, error) { return 0, nil }
 
 // Invoke is equivalent to `EntryAt`.
 func (EmptyPersistentVector) Invoke(args ...ww.Any) (ww.Any, error) {
-	if nargs := len(args); nargs != 1 {
-		return nil, fmt.Errorf("%w: got %d, want at-least 1", ErrArity, nargs)
-	}
-
-	switch idx := args[0]; idx.Value().Which() {
-	case mem.Any_Which_i64, mem.Any_Which_bigInt:
-		return nil, ErrIndexOutOfBounds
-
-	default:
-		return nil, fmt.Errorf("%s is not an integer type", idx.Value().Which())
-	}
+	return invokeVector(EmptyVector, args)
 }
 
 // Render the vector in a human-readable format.
@@ -242,18 +232,8 @@ func (v ShallowPersistentVector) Count() (int, error) {
 }
 
 // Invoke is equivalent to `EntryAt`.
-func (ShallowPersistentVector) Invoke(args ...ww.Any) (ww.Any, error) {
-	if nargs := len(args); nargs != 1 {
-		return nil, fmt.Errorf("%w: got %d, want at-least 1", ErrArity, nargs)
-	}
-
-	switch idx := args[0]; idx.Value().Which() {
-	case mem.Any_Which_i64, mem.Any_Which_bigInt:
-		return nil, ErrIndexOutOfBounds
-
-	default:
-		return nil, fmt.Errorf("%s is not an integer type", idx.Value().Which())
-	}
+func (v ShallowPersistentVector) Invoke(args ...ww.Any) (ww.Any, error) {
+	return invokeVector(v, args)
 }
 
 // Render the vector in a human-readable format.
@@ -338,7 +318,6 @@ func (v ShallowPersistentVector) EntryAt(i int) (ww.Any, error) {
 
 // Conj returns a new vector with items appended.
 func (v ShallowPersistentVector) Conj(items ...ww.Any) (Container, error) {
-
 	return v.conj(items)
 }
 
@@ -615,24 +594,7 @@ func (v DeepPersistentVector) Value() mem.Any { return v.Any }
 
 // Invoke is equivalent to `EntryAt`.
 func (v DeepPersistentVector) Invoke(args ...ww.Any) (ww.Any, error) {
-	if nargs := len(args); nargs != 1 {
-		return nil, fmt.Errorf("%w: got %d, want at-least 1", ErrArity, nargs)
-	}
-
-	switch idx := args[0]; idx.Value().Which() {
-	case mem.Any_Which_i64:
-		return v.EntryAt(int(idx.Value().I64()))
-	case mem.Any_Which_bigInt:
-		// TODO(performance):  can we use unsafe.Pointer here?
-		if bi := idx.(BigInt).BigInt(); bi.IsInt64() && bi.Int64() <= math.MaxUint32 {
-			return v.EntryAt(int(bi.Int64()))
-		}
-
-		return nil, ErrIndexOutOfBounds
-
-	default:
-		return nil, fmt.Errorf("%s is not an integer type", idx.Value().Which())
-	}
+	return invokeVector(v, args)
 }
 
 // Render the vector in a human-readable format.
@@ -1522,6 +1484,27 @@ func newVectorValueList(a capnp.Arena) (_ mem.Any_List, err error) {
 	}
 
 	return mem.NewAny_List(seg, width)
+}
+
+func invokeVector(v Vector, args []ww.Any) (ww.Any, error) {
+	if nargs := len(args); nargs != 1 {
+		return nil, fmt.Errorf("%w: got %d, want at-least 1", ErrArity, nargs)
+	}
+
+	switch idx := args[0]; idx.Value().Which() {
+	case mem.Any_Which_i64:
+		return v.EntryAt(int(idx.Value().I64()))
+
+	case mem.Any_Which_bigInt:
+		if bi := idx.(BigInt).BigInt(); bi.IsInt64() && bi.Int64() <= math.MaxUint32 {
+			return v.EntryAt(int(bi.Int64()))
+		}
+
+		return nil, ErrIndexOutOfBounds
+
+	default:
+		return nil, fmt.Errorf("%s is not an integer type", idx.Value().Which())
+	}
 }
 
 type item mem.Any

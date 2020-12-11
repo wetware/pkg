@@ -128,6 +128,14 @@ func TestEmptyVector(t *testing.T) {
 	t.Run("Conj", func(t *testing.T) {
 		t.Parallel()
 
+		t.Run("Nop", func(t *testing.T) {
+			t.Parallel()
+
+			v, err := core.EmptyVector.Conj()
+			assert.NoError(t, err)
+			assert.IsType(t, core.EmptyPersistentVector{}, v)
+		})
+
 		v, err := core.EmptyVector.Conj(mustInt(0))
 		assert.NoError(t, err)
 
