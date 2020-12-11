@@ -969,11 +969,8 @@ func vectorTailoff(cnt int) int {
 
 func (v DeepPersistentVector) pop(vec mem.Vector) (_ Vector, err error) {
 	cnt := int(vec.Count())
-	switch cnt {
-	case 0:
-		return nil, ErrIllegalState
-	case 1:
-		return EmptyVector, nil
+	if cnt <= width {
+		return nil, fmt.Errorf("%w: invalid count '%d' for deep vector", ErrMemory, cnt)
 	}
 
 	var root mem.Vector_Node
