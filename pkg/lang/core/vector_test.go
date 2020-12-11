@@ -211,7 +211,7 @@ func TestShallowPersistentVector(t *testing.T) {
 	})
 
 	t.Run("Assoc", func(t *testing.T) {
-		t.Run("Insert", func(t *testing.T) {
+		t.Run("Update", func(t *testing.T) {
 			v, err := core.NewVector(capnp.SingleSegment(nil), valueRange(16)...)
 			require.NoError(t, err)
 
@@ -524,23 +524,44 @@ func TestDeepPersistentVector(t *testing.T) {
 	})
 
 	t.Run("Assoc", func(t *testing.T) {
-		t.Run("Insert", func(t *testing.T) {
-			v, err := core.NewVector(capnp.SingleSegment(nil), valueRange(count)...)
-			require.NoError(t, err)
+		t.Run("Update", func(t *testing.T) {
+			t.Run("Tail", func(t *testing.T) {
+				v, err := core.NewVector(capnp.SingleSegment(nil), valueRange(count)...)
+				require.NoError(t, err)
 
-			v, err = v.Assoc(1024, mustInt(9001))
-			require.NoError(t, err)
+				v, err = v.Assoc(count-1, mustInt(9001))
+				require.NoError(t, err)
 
-			cnt, err := v.Count()
-			assert.NoError(t, err)
-			assert.Equal(t, count, cnt)
+				cnt, err := v.Count()
+				assert.NoError(t, err)
+				assert.Equal(t, count, cnt)
 
-			got, err := v.EntryAt(1024)
-			require.NoError(t, err)
+				got, err := v.EntryAt(count - 1)
+				require.NoError(t, err)
 
-			eq, err := core.Eq(mustInt(9001), got)
-			require.NoError(t, err)
-			assert.True(t, eq)
+				eq, err := core.Eq(mustInt(9001), got)
+				require.NoError(t, err)
+				assert.True(t, eq)
+			})
+
+			t.Run("Trie", func(t *testing.T) {
+				v, err := core.NewVector(capnp.SingleSegment(nil), valueRange(count)...)
+				require.NoError(t, err)
+
+				v, err = v.Assoc(1024, mustInt(9001))
+				require.NoError(t, err)
+
+				cnt, err := v.Count()
+				assert.NoError(t, err)
+				assert.Equal(t, count, cnt)
+
+				got, err := v.EntryAt(1024)
+				require.NoError(t, err)
+
+				eq, err := core.Eq(mustInt(9001), got)
+				require.NoError(t, err)
+				assert.True(t, eq)
+			})
 		})
 
 		t.Run("Append", func(t *testing.T) {

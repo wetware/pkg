@@ -31,9 +31,13 @@ var (
 	// ErrNotInvokable is returned by InvokeExpr when the target is not invokable.
 	ErrNotInvokable = core.ErrNotInvokable
 
-	// ErrIllegalState is returned when an operation is performed against a correct
-	// type with an invalid value.
+	// ErrIllegalState is returned when an operation is attempted against a datatype
+	// that has the right type but an inappropriate value.
 	ErrIllegalState = errors.New("illegal state")
+
+	// ErrMemory is returned when an operation is attempted against an illegally
+	// formatted datatype.
+	ErrMemory = errors.New("memory error")
 
 	errType = reflect.TypeOf((*error)(nil)).Elem()
 	anyType = reflect.TypeOf((*ww.Any)(nil)).Elem()

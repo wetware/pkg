@@ -1,7 +1,6 @@
 package core
 
 import (
-	"errors"
 	"fmt"
 	"math"
 	"strings"
@@ -28,9 +27,6 @@ const (
 )
 
 var (
-	// ErrInvalidVectorNode is returned when a node in the vector trie is invalid.
-	ErrInvalidVectorNode = errors.New("invalid VectorNode")
-
 	// EmptyVector is the zero-value vector.
 	EmptyVector EmptyPersistentVector
 
@@ -812,16 +808,6 @@ func (DeepPersistentVector) update(vec mem.Vector, cnt, i int, any ww.Any) (Vect
 	)
 }
 
-func (v DeepPersistentVector) shift(vec mem.Vector) (shift int) {
-	// EmptyPersistentVector leaves the `shift` field unset in order to achieve
-	// better compression.
-	if shift = int(vec.Shift()); shift == 0 {
-		shift = bits
-	}
-
-	return
-}
-
 // Cons appends to the end of the vector.
 func (v DeepPersistentVector) Cons(item ww.Any) (Vector, error) {
 	vec, err := v.Any.Vector()
@@ -833,7 +819,7 @@ func (v DeepPersistentVector) Cons(item ww.Any) (Vector, error) {
 }
 
 func (v DeepPersistentVector) cons(vec mem.Vector, cnt int, any ww.Any) (_ DeepPersistentVector, err error) {
-	shift := v.shift(vec)
+	shift := int(vec.Shift())
 
 	var root mem.Vector_Node
 	if root, err = vec.Root(); err != nil {
@@ -1382,40 +1368,35 @@ func newVectorLeafNode(a capnp.Arena) (n mem.Vector_Node, vs mem.Any_List, err e
 	return
 }
 
-func apiVectorArrayFor(vec mem.Vector, cnt, i int) (mem.Any_List, error) {
+func apiVectorArrayFor(vec mem.Vector, cnt, i int) (_ mem.Any_List, err error) {
 	// value in tail?
 	if i >= vectorTailoff(cnt) {
 		return vec.Tail()
 	}
 
 	// slow path; value in trie.
-
-	n, err := vec.Root()
-	if err != nil {
-		return mem.Any_List{}, err
+	var n mem.Vector_Node
+	if n, err = vec.Root(); err != nil {
+		return
 	}
 
 	var bs mem.Vector_Node_List
 	for level := vec.Shift(); level > 0; level -= bits {
-		if !n.HasBranches() {
-			return mem.Any_List{}, Error{
-				Cause:   ErrInvalidVectorNode,
-				Message: "non-leaf node must branch",
-			}
+		if n.Which() != mem.Vector_Node_Which_branches {
+			err = fmt.Errorf("%w: unexpected value node", ErrMemory)
+			return
 		}
 
 		if bs, err = n.Branches(); err != nil {
-			return mem.Any_List{}, err
+			return
 		}
 
 		n = bs.At((i >> level) & mask)
 	}
 
-	if !n.HasValues() {
-		return mem.Any_List{}, Error{
-			Cause:   ErrInvalidVectorNode,
-			Message: "leaf node must contain values",
-		}
+	if n.Which() != mem.Vector_Node_Which_values {
+		err = fmt.Errorf("%w: leaf node must contain values", ErrMemory)
+		return
 	}
 
 	return n.Values()
@@ -1423,16 +1404,12 @@ func apiVectorArrayFor(vec mem.Vector, cnt, i int) (mem.Any_List, error) {
 
 // cloneNode deep-copies n.  If lim >= 0, it will only copy the first `lim` elements.
 func cloneNode(a capnp.Arena, n mem.Vector_Node, lim int) (mem.Vector_Node, error) {
-	switch n.Which() {
-	case mem.Vector_Node_Which_branches:
+	if n.Which() == mem.Vector_Node_Which_branches {
 		return cloneBranchNode(a, n, lim)
-
-	case mem.Vector_Node_Which_values:
-		return cloneLeafNode(a, n, lim)
-
 	}
 
-	panic(errors.New("cannot clone uninitialized mem.Vector_Node"))
+	// mem.Vector_Node_Which_values:
+	return cloneLeafNode(a, n, lim)
 }
 
 func cloneBranchNode(a capnp.Arena, n mem.Vector_Node, lim int) (ret mem.Vector_Node, err error) {
