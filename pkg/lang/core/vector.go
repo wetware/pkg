@@ -180,16 +180,8 @@ func (EmptyPersistentVector) Seq() (Seq, error) { return emptyVectorSeq, nil }
 type ShallowPersistentVector struct{ mem.Any }
 
 func newShallowPersistentVector(a capnp.Arena, items ...ww.Any) (ShallowPersistentVector, error) {
-	if len(items) == 0 {
-		return ShallowPersistentVector{}, fmt.Errorf("%w: ShallowPersistentVector must not be empty", ErrIllegalState)
-
-	}
-
-	if len(items) > width {
-		return ShallowPersistentVector{}, fmt.Errorf("%w: cannot allocate %d items to ShallowPersistentVector (max %d)",
-			ErrIllegalState,
-			len(items),
-			width)
+	if len(items) == 0 || len(items) > width {
+		panic(fmt.Sprintf("invalid range for shallow vector: %d", len(items)))
 	}
 
 	val, err := memutil.Alloc(a)
