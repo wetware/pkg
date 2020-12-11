@@ -484,12 +484,11 @@ func (v ShallowPersistentVector) update(vec mem.Vector, cnt, idx int, item ww.An
 		return ShallowPersistentVector{}, err
 	}
 
-	newVec, err := any.NewVector()
-	if err != nil {
+	if vec, err = any.NewVector(); err != nil {
 		return ShallowPersistentVector{}, err
 	}
 
-	newVec.SetCount(uint32(cnt))
+	vec.SetCount(uint32(cnt))
 
 	newTail, err := vec.NewTail(width)
 	if err != nil {
