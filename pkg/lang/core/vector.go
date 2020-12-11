@@ -757,7 +757,7 @@ func (v DeepPersistentVector) Seq() (Seq, error) {
 	return newChunkedSeq(capnp.SingleSegment(nil), vec, 0, 0)
 }
 
-func (v DeepPersistentVector) popTail(level, cnt int, n mem.Vector_Node) (ret mem.Vector_Node, ok bool, err error) {
+func (v DeepPersistentVector) popTail(level, cnt int, n mem.Vector_Node) (ret mem.Vector_Node, err error) {
 	subidx := ((cnt - 2) >> level) & mask
 	if level > 5 {
 		var bs mem.Vector_Node_List
@@ -766,8 +766,7 @@ func (v DeepPersistentVector) popTail(level, cnt int, n mem.Vector_Node) (ret me
 		}
 
 		var newchild mem.Vector_Node
-		switch newchild, ok, err = v.popTail(level-5, cnt, bs.At(subidx)); {
-		case err != nil, !ok && subidx == 0:
+		if newchild, err = v.popTail(level-5, cnt, bs.At(subidx)); err != nil {
 			return
 		}
 
@@ -783,7 +782,6 @@ func (v DeepPersistentVector) popTail(level, cnt int, n mem.Vector_Node) (ret me
 			return
 		}
 
-		ok = true
 		return
 	} else if subidx == 0 {
 		return // null node
@@ -793,7 +791,6 @@ func (v DeepPersistentVector) popTail(level, cnt int, n mem.Vector_Node) (ret me
 			return
 		}
 
-		ok = true
 		return
 	}
 }
@@ -1095,18 +1092,9 @@ func (v DeepPersistentVector) pop(vec mem.Vector) (_ Vector, err error) {
 	// vec.Shift() >= bits since EmptyPersistentVector.Pop() aborts with an error.
 	shift := int(vec.Shift())
 
-	var ok bool
 	var newroot mem.Vector_Node
-	if newroot, ok, err = v.popTail(shift, cnt, root); err != nil {
+	if newroot, err = v.popTail(shift, cnt, root); err != nil {
 		return
-	}
-
-	// null node?
-	if !ok {
-		// 	newroot = EMPTY_NODE;
-		if newroot, err = newVectorNodeWithBranches(capnp.SingleSegment(nil)); err != nil {
-			return
-		}
 	}
 
 	var bs mem.Vector_Node_List
@@ -1114,6 +1102,7 @@ func (v DeepPersistentVector) pop(vec mem.Vector) (_ Vector, err error) {
 		return
 	}
 
+	// XXX:  is this still relevant with deep vector?
 	if shift > bits && nullNode(bs.At(1)) {
 		newroot = bs.At(0)
 		shift -= bits

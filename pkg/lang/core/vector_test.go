@@ -13,6 +13,32 @@ import (
 	capnp "zombiezen.com/go/capnproto2"
 )
 
+const width = 32
+
+func TestPersistentVector(t *testing.T) {
+	t.Parallel()
+
+	const count = 4096
+
+	var err error
+	var v core.Vector = core.EmptyVector
+	for i := 0; i < count; i++ {
+		v, err = v.Cons(mustInt(i))
+		require.NoError(t, err, "cons error on iteration %d", i)
+
+		assertVectorTypeOK(t, v)
+	}
+
+	for i := 0; i < count; i++ {
+		v, err = v.Pop()
+		require.NoError(t, err, "pop error on iteration %d", i)
+
+		assertVectorTypeOK(t, v)
+	}
+
+	assert.IsType(t, core.EmptyPersistentVector{}, v)
+}
+
 func TestEmptyVector(t *testing.T) {
 	t.Parallel()
 
@@ -131,7 +157,7 @@ func TestEmptyVector(t *testing.T) {
 func TestShallowPersistentVector(t *testing.T) {
 	t.Parallel()
 
-	const count = 32
+	const count = width
 
 	t.Run("New", func(t *testing.T) {
 		t.Parallel()
@@ -571,7 +597,7 @@ func TestDeepPersistentVector(t *testing.T) {
 
 			cnt, err := res.Count()
 			require.NoError(t, err)
-			assert.Equal(t, cnt, 32)
+			assert.Equal(t, cnt, width)
 		})
 
 		t.Run("ResultIsDeep", func(t *testing.T) {
@@ -728,4 +754,21 @@ func withParallelIndex(t *testing.T, i int, f func(*testing.T, int)) {
 		t.Parallel()
 		f(t, i)
 	})
+}
+
+func assertVectorTypeOK(t *testing.T, v core.Vector) bool {
+	cnt, err := v.Count()
+	require.NoError(t, err)
+
+	switch {
+	case cnt == 0:
+		return assert.IsType(t, core.EmptyPersistentVector{}, v)
+
+	case cnt <= width:
+		return assert.IsType(t, core.ShallowPersistentVector{}, v)
+
+	default:
+		return assert.IsType(t, core.DeepPersistentVector{}, v)
+
+	}
 }
