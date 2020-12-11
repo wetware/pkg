@@ -577,17 +577,41 @@ func TestDeepPersistentVector(t *testing.T) {
 		t.Run("ResultIsDeep", func(t *testing.T) {
 			t.Parallel()
 
-			v, err := core.NewVector(capnp.SingleSegment(nil), valueRange(128)...)
-			require.NoError(t, err)
+			t.Run("PopTail", func(t *testing.T) {
+				t.Parallel()
 
-			res, err := v.Pop()
-			assert.NoError(t, err)
-			assert.IsType(t, core.DeepPersistentVector{}, res)
+				// with cnt=128 the vector is 'deep' and popping a value WILL NOT
+				// cause a new tail to be retrieved from the trie.
+				v, err := core.NewVector(capnp.SingleSegment(nil), valueRange(128)...)
+				require.NoError(t, err)
 
-			cnt, err := res.Count()
-			require.NoError(t, err)
-			assert.Equal(t, cnt, 127)
+				res, err := v.Pop()
+				assert.NoError(t, err)
+				assert.IsType(t, core.DeepPersistentVector{}, res)
+
+				cnt, err := res.Count()
+				require.NoError(t, err)
+				assert.Equal(t, cnt, 127)
+			})
+
+			t.Run("PopTrie", func(t *testing.T) {
+				t.Parallel()
+
+				// with cnt=1025 the vector is 'deep' and popping a value WILL
+				// cause a new tail to be retrieved from the trie.
+				v, err := core.NewVector(capnp.SingleSegment(nil), valueRange(1025)...)
+				require.NoError(t, err)
+
+				res, err := v.Pop()
+				assert.NoError(t, err)
+				assert.IsType(t, core.DeepPersistentVector{}, res)
+
+				cnt, err := res.Count()
+				require.NoError(t, err)
+				assert.Equal(t, cnt, 1024)
+			})
 		})
+
 	})
 
 	t.Run("Cons", func(t *testing.T) {

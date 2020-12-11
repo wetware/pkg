@@ -740,11 +740,7 @@ func (v DeepPersistentVector) Pop() (Vector, error) {
 		return nil, err
 	}
 
-	if vec, err := v.pop(raw); err != ErrIllegalState {
-		return vec, err
-	}
-
-	return nil, fmt.Errorf("%w: cannot pop from empty vector", ErrIllegalState)
+	return v.pop(raw)
 }
 
 // Seq presents the vector as an iterable sequence.
