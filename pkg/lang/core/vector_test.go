@@ -489,6 +489,48 @@ func TestDeepPersistentVector(t *testing.T) {
 		}
 	})
 
+	t.Run("Assoc", func(t *testing.T) {
+		t.Run("Insert", func(t *testing.T) {
+			v, err := core.NewVector(capnp.SingleSegment(nil), valueRange(count)...)
+			require.NoError(t, err)
+
+			v, err = v.Assoc(1024, mustInt(9001))
+			require.NoError(t, err)
+
+			cnt, err := v.Count()
+			assert.NoError(t, err)
+			assert.Equal(t, count, cnt)
+
+			got, err := v.EntryAt(1024)
+			require.NoError(t, err)
+
+			eq, err := core.Eq(mustInt(9001), got)
+			require.NoError(t, err)
+			assert.True(t, eq)
+		})
+
+		t.Run("Append", func(t *testing.T) {
+			v, err := core.NewVector(capnp.SingleSegment(nil), valueRange(count)...)
+			require.NoError(t, err)
+
+			v, err = v.Assoc(count, mustInt(count))
+			assert.NoError(t, err)
+
+			cnt, err := v.Count()
+			assert.NoError(t, err)
+			assert.Equal(t, count+1, cnt)
+		})
+
+		t.Run("Overflow", func(t *testing.T) {
+			v, err := core.NewVector(capnp.SingleSegment(nil), mustInt(count))
+			require.NoError(t, err)
+
+			v, err = v.Assoc(9001, mustInt(9001))
+			assert.EqualError(t, err, core.ErrIndexOutOfBounds.Error())
+			assert.Nil(t, v)
+		})
+	})
+
 	t.Run("EntryAt", func(t *testing.T) {
 		t.Parallel()
 
