@@ -320,13 +320,13 @@ func (v ShallowPersistentVector) conj(items []ww.Any) (Vector, error) {
 	}
 
 	cnt := int(vec.Count())
+	tail, err := vec.Tail()
+	if err != nil {
+		return nil, err
+	}
 
 	// result fits in shallow vector?
 	if cnt+len(items) <= width {
-		tail, err := vec.Tail()
-		if err != nil {
-			return nil, err
-		}
 
 		ts := tailSlice(cnt, tail)
 		for _, val := range items {
@@ -337,7 +337,7 @@ func (v ShallowPersistentVector) conj(items []ww.Any) (Vector, error) {
 	}
 
 	// deep vector is needed
-	newtail, err := v.cloneTail(capnp.SingleSegment(nil), vec)
+	newtail, err := cloneTail(capnp.SingleSegment(nil), tail, cnt)
 	if err != nil {
 		return nil, err
 	}
@@ -356,28 +356,6 @@ func (v ShallowPersistentVector) conj(items []ww.Any) (Vector, error) {
 	return newDeepPersistentVector(capnp.SingleSegment(nil),
 		newtail,
 		items...)
-}
-
-func (v ShallowPersistentVector) cloneTail(a capnp.Arena, vec mem.Vector) (newtail mem.Any_List, err error) {
-	var tail mem.Any_List
-	if tail, err = vec.Tail(); err != nil {
-		return
-	}
-
-	var seg *capnp.Segment
-	if _, seg, err = capnp.NewMessage(a); err != nil {
-		return
-	}
-
-	if newtail, err = mem.NewAny_List(seg, width); err == nil {
-		for i := 0; i < int(vec.Count()); i++ {
-			if err = newtail.Set(i, tail.At(i)); err != nil {
-				break
-			}
-		}
-	}
-
-	return
 }
 
 // Cons appends to the end of the vector.
@@ -989,20 +967,9 @@ func (v DeepPersistentVector) pop(vec mem.Vector) (_ Vector, err error) {
 			return
 		}
 
-		// result fits in shallow vector?
-		if cnt-1 <= width {
-			return newShallowPersistentVector(capnp.SingleSegment(nil),
-				tailSlice(cnt, tail)...)
-		}
-
-		if newtail, err = newVectorValueList(capnp.SingleSegment(nil)); err != nil {
+		newtail, err = cloneTail(capnp.SingleSegment(nil), tail, taillen-1)
+		if err != nil {
 			return
-		}
-
-		for i := 0; i < taillen-1; i++ {
-			if err = newtail.Set(i, tail.At(i)); err != nil {
-				return
-			}
 		}
 
 		return newVector(capnp.SingleSegment(nil),
@@ -1134,13 +1101,13 @@ func nodeNotNull(n mem.Vector_Node) bool {
 	return n.HasBranches() || n.HasValues()
 }
 
-func getChild(p mem.Vector_Node, i int) (mem.Vector_Node, error) {
-	bs, err := p.Branches()
-	if err != nil {
-		return mem.Vector_Node{}, err
+func getChild(p mem.Vector_Node, i int) (n mem.Vector_Node, err error) {
+	var bs mem.Vector_Node_List
+	if bs, err = p.Branches(); err == nil {
+		n = bs.At(i)
 	}
 
-	return bs.At(i), nil
+	return
 }
 
 /*
@@ -1483,4 +1450,21 @@ func tailSlice(cnt int, tail mem.Any_List) []ww.Any {
 		items = append(items, item(tail.At(i)))
 	}
 	return items
+}
+
+func cloneTail(a capnp.Arena, tail mem.Any_List, lim int) (newtail mem.Any_List, err error) {
+	var seg *capnp.Segment
+	if _, seg, err = capnp.NewMessage(a); err != nil {
+		return
+	}
+
+	if newtail, err = mem.NewAny_List(seg, width); err == nil {
+		for i := 0; i < lim; i++ {
+			if err = newtail.Set(i, tail.At(i)); err != nil {
+				break
+			}
+		}
+	}
+
+	return
 }
