@@ -282,9 +282,8 @@ func AsAny(any mem.Any) (item ww.Any, err error) {
 		item = Path{any}
 	case mem.Any_Which_list:
 		item, err = asList(any)
-
 	case mem.Any_Which_vector:
-		item = DeepPersistentVector{any} // XXX
+		item, err = asVector(any)
 
 	// case mem.Any_Which_proc:
 	// 	item = RemoteProcess{v}

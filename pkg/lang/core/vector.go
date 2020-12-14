@@ -75,6 +75,24 @@ func NewVector(a capnp.Arena, items ...ww.Any) (Vector, error) {
 	return EmptyVector.conj(a, items)
 }
 
+func asVector(any mem.Any) (Vector, error) {
+	vec, err := any.Vector()
+	if err != nil {
+		return nil, err
+	}
+
+	cnt := vec.Count()
+	if cnt == 0 {
+		return EmptyVector, nil
+	}
+
+	if cnt > width {
+		return DeepPersistentVector{any}, nil
+	}
+
+	return ShallowPersistentVector{any}, nil
+}
+
 // EmptyPersistentVector is the zero-value persistent vector.
 type EmptyPersistentVector struct{}
 
