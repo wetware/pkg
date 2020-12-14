@@ -166,6 +166,10 @@ func (a analyzer) analyzeSeq(env core.Env, seq core.Seq) (core.Expr, error) {
 }
 
 func (a analyzer) unpackArgs(env core.Env, seq core.Seq) (args []ww.Any, vs []ww.Any, err error) {
+	if seq == nil {
+		return
+	}
+
 	if args, err = core.ToSlice(seq); err != nil || len(args) == 0 {
 		return
 	}
