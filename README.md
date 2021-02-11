@@ -47,11 +47,11 @@ The problem is that declarative syntax gets datacenters exactly backwards.  In a
 
 But with IaaS/PaaS systems like Kubernetes and Mesos, both 1 & 2 are burried under multiple layers of configuration, indirection and abstract interfaces.  And although you know where you want to go (*i.e.*, the state described by your YAML config), you can't be sure where are right now, nor how your config translates into execution.
 
-When you encounter a problem, it's hard to diagnose what went wrong.  It's also hard to apply localized hotfixes.  All you can really do is grapple with configuration, restart services, and make educated guesses.  This whack-a-mole approach to debugging works, but it's tedious, and gets in the way of root-cause analysis.  Worse, existing IaaS/PaaS systems are incomprehensibly complex, and easily degenerate into inconsistent states that force you to reboot the entire cluster.  When you do that, you lose valuable debugging information that might have prevented the next incident... and it gets worse as you scale.
+When you encounter a problem, it's hard to diagnose what went wrong.  All you can really do is grapple with configuration, restart services, and make educated guesses.  Worse, existing IaaS/PaaS systems are incomprehensibly complex, and frequently degenerate into inconsistent states that force you to reboot the entire cluster, especially as you scale.  When that happens you lose valuable debugging information that could have prevented the next incident.
 
 ### The Wetware Way
 
-Wetware breaks this vicious cycle by turning IaaS/PaaS on its head.  Instead of static configuration, you're given a powerful language for querying and programming your cluster.  Wetware's comes with a REPL to interactively run code on your cluster, high-performance datastructures and synchronization primitives that make concurrency simple, and a rich standard library for writing distributed systems, batteries included.
+Wetware breaks this vicious cycle by turning IaaS/PaaS on its head.  Instead of static configuration, you're given a powerful language for querying and programming your cluster.  Wetware comes with a REPL to interactively run code on your cluster, high-performance datastructures and synchronization primitives that make concurrency simple, and a rich standard library for writing distributed systems, batteries included.
 
 Drawing inspiration from proven paradigms such as UNIX, Wetware will feel familiar to junior devs and CTOs alike, empowering them to _finally_ treat infrastructure as code.
 
