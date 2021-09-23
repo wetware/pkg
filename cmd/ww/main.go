@@ -6,20 +6,22 @@
 package main
 
 import (
+	"context"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/urfave/cli/v2"
 
 	"github.com/lthibault/log"
 
-	"github.com/wetware/ww/internal/cmd/boot"
-	"github.com/wetware/ww/internal/cmd/client"
-	"github.com/wetware/ww/internal/cmd/keygen"
-	"github.com/wetware/ww/internal/cmd/shell"
 	"github.com/wetware/ww/internal/cmd/start"
+	logutil "github.com/wetware/ww/internal/util/log"
 )
 
 const version = "0.0.0"
+
+var logger log.Logger
 
 var flags = []cli.Flag{
 	&cli.StringFlag{
@@ -45,10 +47,11 @@ var flags = []cli.Flag{
 
 var commands = []*cli.Command{
 	start.Command(),
-	shell.Command(),
-	client.Command(),
-	keygen.Command(),
-	boot.Command(),
+	// discover.Command(),
+	// shell.Command(),
+	// client.Command(),
+	// keygen.Command(),
+	// boot.Command(),
 }
 
 func main() {
@@ -61,11 +64,35 @@ func main() {
 		EnableBashCompletion: true,
 		Flags:                flags,
 		Commands:             commands,
+		Before:               before(),
 	})
 }
 
+func before() cli.BeforeFunc {
+	return func(c *cli.Context) error {
+		logger = logutil.New(c)
+		for _, set := range []func(log.Logger){
+			start.SetLogger,
+			// discover.SetLogger,
+			// shell.SetLogger,
+			// client.SetLogger,
+			// keygen.SetLogger,
+			// boot.SetLogger,
+		} {
+			set(logger)
+		}
+
+		return nil
+	}
+}
+
 func run(app *cli.App) {
-	if err := app.Run(os.Args); err != nil {
-		log.New().Fatal(err)
+	ctx, cancel := signal.NotifyContext(context.Background(),
+		syscall.SIGINT,
+		syscall.SIGTERM)
+	defer cancel()
+
+	if err := app.RunContext(ctx, os.Args); err != nil {
+		logger.Fatal(err)
 	}
 }
