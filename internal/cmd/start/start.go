@@ -2,13 +2,13 @@ package start
 
 import (
 	"context"
-	"io"
 	"time"
 
 	"github.com/lthibault/log"
 	"github.com/urfave/cli/v2"
-	ww "github.com/wetware/ww/pkg"
 	"go.uber.org/fx"
+
+	"github.com/wetware/ww/pkg/server"
 )
 
 var logger = log.New()
@@ -76,11 +76,7 @@ func run() cli.ActionFunc {
 				fx.Annotate(c.String("ns"), fx.ParamTags(`name:"ns"`)),
 				fx.Annotate(c.Context, fx.As(new(context.Context))),
 				fx.Annotate(logger, fx.As(new(log.Logger)))),
-			fx.Provide(
-				newSystemHook,
-				newDatastore,
-				newRoutedHost,
-				newPubSub),
+			fx.Provide(server.New),
 			fx.Invoke(start))
 
 		if err := app.Start(c.Context); err != nil {
@@ -93,17 +89,15 @@ func run() cli.ActionFunc {
 	}
 }
 
-func start(cfg ww.Config, lx fx.Lifecycle) {
-	var n ww.Node
+func start(lx fx.Lifecycle, n server.Node) {
 	lx.Append(fx.Hook{
-		OnStart: func(ctx context.Context) (err error) {
-			logger.Info("ready")
-			n, err = ww.New(ctx, cfg)
-			return
+		OnStart: func(context.Context) error {
+			logger.With(n).Info("ready")
+			return nil
 		},
 		OnStop: func(ctx context.Context) error {
-			logger.Warn("shutting down")
-			return n.Shutdown(ctx)
+			logger.With(n).Warn("shutting down")
+			return nil
 		},
 	})
 }
@@ -113,12 +107,4 @@ func shutdown(app *fx.App) error {
 	defer cancel()
 
 	return app.Stop(ctx)
-}
-
-func closer(c io.Closer) fx.Hook {
-	return fx.Hook{
-		OnStop: func(context.Context) error {
-			return c.Close()
-		},
-	}
 }
