@@ -14,6 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/helpers"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/lthibault/log"
 
 	"github.com/wetware/casm/pkg/cluster"
@@ -25,7 +26,9 @@ import (
 type Node struct {
 	log log.Logger
 
-	ns   string
+	ns string
+	ts []string // default topics
+
 	host HostFactory
 	dht  DHTFactory
 	ps   PubSubFactory
@@ -76,39 +79,75 @@ func (n Node) Serve(ctx context.Context) error {
 		return err
 	}
 
-	id := uuid.Must(uuid.NewRandom())
-	log := n.log.With(log.F{
-		"ns":       n.ns,
-		"id":       h.ID(),
-		"instance": id,
-	})
-
-	return instance{
-		id:   id,
-		log:  log,
-		h:    h,
-		Node: c,
-	}.Serve(ctx)
+	return newInstance(n.log, n.ns, h, ps, c).Serve(ctx, n.ts)
 }
 
 type instance struct {
 	id  uuid.UUID
 	log log.Logger
 	h   host.Host
+	tm  *topicManager
 	*cluster.Node
 }
 
-func (in instance) Serve(ctx context.Context) error {
+func newInstance(l log.Logger, ns string, h host.Host, ps PubSub, c *cluster.Node) instance {
+	id := uuid.Must(uuid.NewRandom())
+	l = l.With(log.F{
+		"ns":       ns,
+		"id":       h.ID(),
+		"instance": id,
+	})
+
+	return instance{
+		id:   id,
+		log:  l,
+		h:    h,
+		tm:   newTopicManager(ps, c.Topic()),
+		Node: c,
+	}
+}
+
+func (in instance) Serve(ctx context.Context, topics []string) error {
+	defer in.tm.Close()
+
+	cancel, err := in.startRelays(topics)
+	if err != nil {
+		return fmt.Errorf("relay topics: %w", err)
+	}
+	defer cancel()
+
 	if err := in.registerHandlers(in.Topic().String()); err != nil {
-		return err
+		return fmt.Errorf("register handlers: %w", err)
 	}
 	defer in.unregisterHandlers()
 
-	in.log.WithField("addrs", in.h.Addrs()).Info("started")
+	in.log.WithField("addrs", in.h.Addrs()).Info("ready")
 	<-ctx.Done()
 	in.log.Warn("stopping")
 
 	return in.Close()
+}
+
+func (in instance) startRelays(ts []string) (cancel func(), err error) {
+	var cs = make([]pubsub.RelayCancelFunc, len(ts))
+
+	cancel = func() {
+		for _, cancel := range cs {
+			cancel()
+		}
+	}
+
+	for i, topic := range ts {
+		if cs[i], err = in.tm.Relay(topic); err != nil {
+			cs = cs[:i]
+			cancel()
+			break
+		}
+
+		in.log.WithField("topic", topic).Debug("relaying topic")
+	}
+
+	return
 }
 
 func (in instance) handleRPC(f transportFactory) network.StreamHandler {

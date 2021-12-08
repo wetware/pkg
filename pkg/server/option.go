@@ -30,6 +30,12 @@ func WithNamepace(ns string) Option {
 	}
 }
 
+func WithTopics(ts ...string) Option {
+	return func(n *Node) {
+		n.ts = ts
+	}
+}
+
 func WithSecret(s pnet.PSK) Option {
 	return func(n *Node) {
 		n.host.SetSecret(s)

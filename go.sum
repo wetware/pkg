@@ -684,7 +684,6 @@ github.com/lthibault/log v1.2.1 h1:REKIXtQiw9dyAmiiqYZkPitve81odUB0aEqakS+TmTk=
 github.com/lthibault/log v1.2.1/go.mod h1:j254NVxJgJGQGevj/zS79WLQCVPoHW42ZFN/0yCqASo=
 github.com/lthibault/treap v0.1.4 h1:wl4J9/PP0zFDMQzG5SshEv6AXqawxgTgRxsRPs6INw4=
 github.com/lthibault/treap v0.1.4/go.mod h1:lkAEtwwWT4AtrM6APG4Y2MktVKUoT6hHcJHe/gxF1ho=
-github.com/lthibault/util v0.0.10 h1:cZjDQzrjn3b2wclDQSd5Aq5BC8GcBh0aJubr2ZX+VJQ=
 github.com/lthibault/util v0.0.10/go.mod h1:cGZBEILcwYh+UkEdWKgP1vEOlayHa5dh2ay8yixCJQ0=
 github.com/lthibault/util v0.0.11 h1:GC0rQ1lmQLEoB/9QxymWJ+RF8IBg8/copYQ3tSM/G38=
 github.com/lthibault/util v0.0.11/go.mod h1:cGZBEILcwYh+UkEdWKgP1vEOlayHa5dh2ay8yixCJQ0=
