@@ -35,7 +35,7 @@ require (
 
 require (
 	github.com/libp2p/go-libp2p-quic-transport v0.11.2
-	github.com/lthibault/util v0.0.10
+	github.com/lthibault/util v0.0.11
 	go.uber.org/multierr v1.7.0
 )
 

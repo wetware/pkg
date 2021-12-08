@@ -26,7 +26,7 @@ type PubSubFactory interface {
 type GossipsubFactory struct{}
 
 func (GossipsubFactory) New(h host.Host, r routing.ContentRouting) (PubSub, error) {
-	ctx := ctxutil.FromChan(h.Network().Process().Closing())
+	ctx := ctxutil.C(h.Network().Process().Closing())
 	return pubsub.NewGossipSub(ctx, h,
 		pubsub.WithDiscovery(discovery.NewRoutingDiscovery(r)))
 }

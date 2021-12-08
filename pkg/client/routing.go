@@ -20,7 +20,7 @@ type RoutingHook interface {
 type defaultRoutingFactory struct{}
 
 func (defaultRoutingFactory) New(h host.Host) (routing.Routing, error) {
-	ctx := ctxutil.FromChan(h.Network().Process().Closing())
+	ctx := ctxutil.C(h.Network().Process().Closing())
 	return dual.New(ctx, h, dual.DHTOption(dht.Mode(dht.ModeClient)))
 }
 

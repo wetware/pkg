@@ -25,7 +25,7 @@ type RoutingHook interface {
 type DualDHTFactory []dual.Option
 
 func (opt DualDHTFactory) New(h host.Host) (DHT, error) {
-	ctx := ctxutil.FromChan(h.Network().Process().Closing())
+	ctx := ctxutil.C(h.Network().Process().Closing())
 
 	if len(opt) == 0 {
 		opt = append(opt,
