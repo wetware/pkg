@@ -17,22 +17,17 @@ import (
 )
 
 type RPCFactory interface {
-	New(context.Context, host.Host, discovery.Discoverer) (*rpc.Conn, error)
+	New(ctx context.Context, ns string, h host.Host, d discovery.Discoverer) (*rpc.Conn, error)
 }
 
 type BasicRPCFactory struct {
-	NS                 string            `optional:"true" name:"ns"`
 	Log                log.Logger        `optional:"true"`
 	ErrorReporter      rpc.ErrorReporter `optional:"true"`
 	DisableCompression bool              `optional:"true" name:"capnp-no-packed"`
 	Options            rpc.Options
 }
 
-func (f BasicRPCFactory) New(ctx context.Context, h host.Host, d discovery.Discoverer) (*rpc.Conn, error) {
-	if f.NS == "" {
-		f.NS = "ww"
-	}
-
+func (f BasicRPCFactory) New(ctx context.Context, ns string, h host.Host, d discovery.Discoverer) (*rpc.Conn, error) {
 	if f.Log == nil {
 		f.Log = log.New()
 	}
@@ -43,7 +38,7 @@ func (f BasicRPCFactory) New(ctx context.Context, h host.Host, d discovery.Disco
 		})
 	}
 
-	info, err := f.discover(ctx, d)
+	info, err := f.discover(ctx, ns, d)
 	if err != nil {
 		return nil, fmt.Errorf("discover: %w", err)
 	}
@@ -52,21 +47,21 @@ func (f BasicRPCFactory) New(ctx context.Context, h host.Host, d discovery.Disco
 		return nil, fmt.Errorf("connect (%s): %w", info.ID.ShortString(), err)
 	}
 
-	s, err := h.NewStream(ctx, info.ID, f.proto())
+	s, err := h.NewStream(ctx, info.ID, f.proto(ns))
 	if err != nil {
 		return nil, fmt.Errorf("open stream: %w", err)
 	}
 
-	return rpc.NewConn(f.newTransport(s), f.options()), nil
+	return rpc.NewConn(f.newTransport(s), f.options(ns)), nil
 }
 
-func (f BasicRPCFactory) discover(ctx context.Context, d discovery.Discoverer) (info peer.AddrInfo, err error) {
+func (f BasicRPCFactory) discover(ctx context.Context, ns string, d discovery.Discoverer) (info peer.AddrInfo, err error) {
 	var (
 		ch <-chan peer.AddrInfo
 		ok bool
 	)
 
-	ch, err = d.FindPeers(ctx, f.NS /*discovery.Limit(1)*/)
+	ch, err = d.FindPeers(ctx, ns /*discovery.Limit(1)*/)
 	if err == nil {
 		select {
 		case info, ok = <-ch:
@@ -89,8 +84,8 @@ func (f BasicRPCFactory) newTransport(rwc io.ReadWriteCloser) rpc.Transport {
 	return rpc.NewPackedStreamTransport(rwc)
 }
 
-func (f BasicRPCFactory) proto() protocol.ID {
-	id := protoutil.AppendStrings(ww.Proto, f.NS)
+func (f BasicRPCFactory) proto(ns string) protocol.ID {
+	id := protoutil.AppendStrings(ww.Proto, ns)
 	if !f.DisableCompression {
 		id = protoutil.AppendStrings(id, "packed")
 	}
@@ -98,9 +93,9 @@ func (f BasicRPCFactory) proto() protocol.ID {
 	return id
 }
 
-func (f BasicRPCFactory) options() *rpc.Options {
+func (f BasicRPCFactory) options(ns string) *rpc.Options {
 	if f.Options.ErrorReporter == nil {
-		var log = f.Log.WithField("ns", f.NS)
+		var log = f.Log.WithField("ns", ns)
 		f.Options.ErrorReporter = rpcutil.ErrReporterFunc(func(err error) {
 			log.WithError(err).Warn("rpc error")
 		})

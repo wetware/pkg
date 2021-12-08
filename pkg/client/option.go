@@ -2,6 +2,16 @@ package client
 
 type Option func(*Dialer)
 
+func WithNamespace(ns string) Option {
+	if ns == "" {
+		ns = "ww"
+	}
+
+	return func(d *Dialer) {
+		d.ns = ns
+	}
+}
+
 func WithHost(h HostFactory) Option {
 	if h == nil {
 		h = &BasicHostFactory{}
@@ -44,6 +54,7 @@ func WithRPCFactory(r RPCFactory) Option {
 
 func withDefault(opt []Option) []Option {
 	return append([]Option{
+		WithNamespace(""),
 		WithHost(nil),
 		WithRouting(nil),
 		WithPubSub(nil),

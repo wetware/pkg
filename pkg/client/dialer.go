@@ -14,6 +14,7 @@ import (
 type Dialer struct {
 	join discovery.Discoverer
 
+	ns      string
 	host    HostFactory
 	routing RoutingFactory
 	pubsub  PubSubFactory
@@ -82,7 +83,7 @@ func (d Dialer) Dial(ctx context.Context) (n Node, err error) {
 		return n, fmt.Errorf("pubsub: %w", err)
 	}
 
-	if n.conn, err = d.rpc.New(ctx, n.h, d.join); err != nil {
+	if n.conn, err = d.rpc.New(ctx, d.ns, n.h, d.join); err != nil {
 		return n, fmt.Errorf("rpc: %w", err)
 	}
 
