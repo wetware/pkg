@@ -125,7 +125,7 @@ func (p instance) handleRPC(f transportFactory) network.StreamHandler {
 				p.log.
 					With(streamFields(s)).
 					WithError(err).
-					Warn("rpc error")
+					Debug("rpc error")
 			}),
 		})
 		defer conn.Close()

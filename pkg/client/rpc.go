@@ -34,7 +34,7 @@ func (f BasicRPCFactory) New(ctx context.Context, ns string, h host.Host, d disc
 
 	if f.ErrorReporter == nil {
 		f.ErrorReporter = rpcutil.ErrReporterFunc(func(err error) {
-			f.Log.WithError(err).Warn("rpc error")
+			f.Log.WithError(err).Debug("rpc error")
 		})
 	}
 
@@ -97,7 +97,7 @@ func (f BasicRPCFactory) options(ns string) *rpc.Options {
 	if f.Options.ErrorReporter == nil {
 		var log = f.Log.WithField("ns", ns)
 		f.Options.ErrorReporter = rpcutil.ErrReporterFunc(func(err error) {
-			log.WithError(err).Warn("rpc error")
+			log.WithError(err).Debug("rpc error")
 		})
 	}
 
