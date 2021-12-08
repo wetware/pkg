@@ -111,18 +111,18 @@ func (in instance) Serve(ctx context.Context) error {
 	return in.Close()
 }
 
-func (p instance) handleRPC(f transportFactory) network.StreamHandler {
+func (in instance) handleRPC(f transportFactory) network.StreamHandler {
 	return func(s network.Stream) {
 		defer s.Close()
 
-		h := client.Host_ServerToClient(p, &server.Policy{
+		h := client.Host_ServerToClient(in, &server.Policy{
 			MaxConcurrentCalls: 64, // lower when capnp issue #190 is resolved
 		})
 
 		conn := rpc.NewConn(f.NewTransport(s), &rpc.Options{
 			BootstrapClient: h.Client,
 			ErrorReporter: rpcutil.ErrReporterFunc(func(err error) {
-				p.log.
+				in.log.
 					With(streamFields(s)).
 					WithError(err).
 					Debug("rpc error")
@@ -132,12 +132,12 @@ func (p instance) handleRPC(f transportFactory) network.StreamHandler {
 
 		select {
 		case <-conn.Done():
-			p.log.
+			in.log.
 				With(streamFields(s)).
 				Debug("client hung up")
 
-		case <-p.h.Network().Process().Closing():
-			p.log.
+		case <-in.h.Network().Process().Closing():
+			in.log.
 				With(streamFields(s)).
 				Debug("server shutting down")
 		}
