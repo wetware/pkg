@@ -6,41 +6,42 @@ import (
 	"runtime"
 
 	"github.com/libp2p/go-libp2p-core/discovery"
+	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/wetware/casm/pkg/boot"
-	"go.uber.org/fx"
 )
 
 type Dialer struct {
-	fx.In
+	join discovery.Discoverer
 
-	Join discovery.Discoverer
+	host    HostFactory
+	routing RoutingFactory
+	pubsub  PubSubFactory
+	rpc     RPCFactory
+}
 
-	Host    HostFactory    `optional:"true"`
-	Routing RoutingFactory `optional:"true"`
-	PubSub  PubSubFactory  `optional:"true"`
-	RPC     RPCFactory     `optional:"true"`
+func NewDialer(join discovery.Discoverer, opt ...Option) Dialer {
+	d := Dialer{join: join}
+	for _, option := range withDefault(opt) {
+		option(&d)
+	}
+	return d
 }
 
 // Dial joins a cluster via 'addr', using the default Dialer.
-func Dial(ctx context.Context, addr string) (*Node, error) {
-	info, err := peer.AddrInfoFromString(addr)
-	if err != nil {
-		return nil, fmt.Errorf("addr: %w", err)
-	}
-
-	return DialDiscover(ctx, boot.StaticAddrs{*info})
+func Dial(ctx context.Context, addr string, opt ...Option) (Node, error) {
+	return DialDiscover(ctx, addrString(addr), opt...)
 }
 
 // DialDiscover joins a cluster via the supplied discovery service,
 // using the default dialer.
-func DialDiscover(ctx context.Context, d discovery.Discoverer) (*Node, error) {
-	return Dialer{Join: d}.Dial(ctx)
+func DialDiscover(ctx context.Context, d discovery.Discoverer, opt ...Option) (Node, error) {
+	return NewDialer(d, opt...).Dial(ctx)
 }
 
 // Dial creates a client and connects it to a cluster.  The context
 // can be safely cancelled when 'Dial' returns.
-func (d Dialer) Dial(ctx context.Context) (*Node, error) {
+func (d Dialer) Dial(ctx context.Context) (n Node, err error) {
 	// Libp2p often binds the lifecycle of various types to that of
 	// the context passed into their respective constructors (e.g.
 	// host.Host).  Throughout the Wetware ecosystem, we enforce the
@@ -52,34 +53,13 @@ func (d Dialer) Dial(ctx context.Context) (*Node, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	if d.Host == nil {
-		d.Host = &BasicHostFactory{}
+	if rf, ok := d.host.(RoutingHook); ok {
+		d.routing = &routingHook{RoutingFactory: d.routing}
+		rf.SetRouting(d.routing)
 	}
 
-	if d.Routing == nil {
-		d.Routing = defaultRoutingFactory{}
-	}
-
-	if d.PubSub == nil {
-		d.PubSub = defaultPubSubFactory{}
-	}
-
-	if d.RPC == nil {
-		d.RPC = BasicRPCFactory{}
-	}
-
-	if rf, ok := d.Host.(RoutingHook); ok {
-		d.Routing = &routingHook{RoutingFactory: d.Routing}
-		rf.SetRouting(d.Routing)
-	}
-
-	var (
-		n   = &Node{}
-		err error
-	)
-
-	if n.h, err = d.Host.New(context.Background()); err != nil {
-		return nil, fmt.Errorf("host: %w", err)
+	if n.h, err = d.host.New(context.Background()); err != nil {
+		return n, fmt.Errorf("host: %w", err)
 	}
 
 	// Ensure we do not leak resources (e.g. bind addresses) if any
@@ -92,20 +72,31 @@ func (d Dialer) Dial(ctx context.Context) (*Node, error) {
 	//
 	// Routing, PubSub and Conn are all tied to the lifetime of the
 	// 'Host' instance.  They need not be explicitly closed.
-	runtime.SetFinalizer(n, func(c *Node) { _ = c.h.Close() })
+	runtime.SetFinalizer(&n.h, func(h *host.Host) { _ = (*h).Close() })
 
-	if n.r, err = d.Routing.New(n.h); err != nil {
-		return nil, fmt.Errorf("dht: %w", err)
+	if n.r, err = d.routing.New(n.h); err != nil {
+		return n, fmt.Errorf("dht: %w", err)
 	}
 
-	if n.ps, err = d.PubSub.New(n.h, n.r); err != nil {
-		return nil, fmt.Errorf("pubsub: %w", err)
+	if n.ps, err = d.pubsub.New(n.h, n.r); err != nil {
+		return n, fmt.Errorf("pubsub: %w", err)
 	}
 
-	if n.conn, err = d.RPC.New(ctx, n.h, d.Join); err != nil {
-		return nil, fmt.Errorf("rpc: %w", err)
+	if n.conn, err = d.rpc.New(ctx, n.h, d.join); err != nil {
+		return n, fmt.Errorf("rpc: %w", err)
 	}
 
 	n.cap = n.conn.Bootstrap(ctx)
 	return n, nil
+}
+
+type addrString string
+
+func (addr addrString) FindPeers(ctx context.Context, ns string, opt ...discovery.Option) (<-chan peer.AddrInfo, error) {
+	info, err := peer.AddrInfoFromString(string(addr))
+	if err != nil {
+		return nil, fmt.Errorf("addr: %w", err)
+	}
+
+	return boot.StaticAddrs{*info}.FindPeers(ctx, ns, opt...)
 }
