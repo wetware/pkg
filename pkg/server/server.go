@@ -71,7 +71,7 @@ func (n Node) Serve(ctx context.Context) error {
 		return fmt.Errorf("pubsub: %w", err)
 	}
 
-	in, err := cluster.New(ctx, ps, cluster.WithNamespace(n.ns))
+	c, err := cluster.New(ctx, ps, cluster.WithNamespace(n.ns))
 	if err != nil {
 		return err
 	}
@@ -87,7 +87,7 @@ func (n Node) Serve(ctx context.Context) error {
 		id:   id,
 		log:  log,
 		h:    h,
-		Node: in,
+		Node: c,
 	}.Serve(ctx)
 }
 
