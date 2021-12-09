@@ -155,7 +155,7 @@ func (in instance) Serve(ctx context.Context, topics []string, opt []cluster.Opt
 			// Logging
 			service.Hook{
 				OnStart: func() error {
-					in.log.Info("joined cluster")
+					in.log.Info("ready")
 					return nil
 				},
 				OnClose: func() error {
