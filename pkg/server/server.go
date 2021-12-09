@@ -18,6 +18,7 @@ import (
 	"github.com/lthibault/log"
 
 	"github.com/wetware/casm/pkg/cluster"
+	"github.com/wetware/casm/pkg/util/service"
 	"github.com/wetware/ww/internal/api/client"
 	rpcutil "github.com/wetware/ww/internal/util/rpc"
 	ww "github.com/wetware/ww/pkg"
@@ -59,7 +60,7 @@ func (n Node) Serve(ctx context.Context) error {
 		rh.SetRouting(n.dht)
 	}
 
-	h, err := n.host.New(ctx)
+	h, err := n.host.New(ctx) // closed by instance
 	if err != nil {
 		return fmt.Errorf("host: %w", err)
 	}
@@ -74,61 +75,110 @@ func (n Node) Serve(ctx context.Context) error {
 		return fmt.Errorf("pubsub: %w", err)
 	}
 
-	c, err := cluster.New(ctx, ps, n.cc.options()...)
-	if err != nil {
-		return err
-	}
-
-	return newInstance(n.log, n.cc.NS, h, ps, c).Serve(ctx, n.ts)
+	return n.newInstance(h, ps).Serve(ctx, n.ts, n.cc.options())
 }
 
 type instance struct {
 	id  uuid.UUID
 	log log.Logger
-	h   host.Host
-	tm  *topicManager
-	*cluster.Node
+
+	h  host.Host
+	ps PubSub
+
+	cc ClusterConfig
+	ts []string
 }
 
-func newInstance(l log.Logger, ns string, h host.Host, ps PubSub, c *cluster.Node) instance {
+func (n Node) newInstance(h host.Host, ps PubSub) instance {
 	id := uuid.Must(uuid.NewRandom())
-	l = l.With(log.F{
-		"ns":       ns,
+	n.log = n.log.With(log.F{
+		"addrs":    h.Addrs(),
+		"ns":       n.cc.NS,
 		"id":       h.ID(),
 		"instance": id,
 	})
 
 	return instance{
-		id:   id,
-		log:  l,
-		h:    h,
-		tm:   newTopicManager(ps, c.Topic()),
-		Node: c,
+		id:  id,
+		log: n.log,
+		h:   h,
+		ps:  ps,
+		ts:  n.ts,
+		cc:  n.cc,
 	}
 }
 
-func (in instance) Serve(ctx context.Context, topics []string) error {
-	defer in.tm.Close()
+func (in instance) Serve(ctx context.Context, topics []string, opt []cluster.Option) error {
+	var (
+		tm     *topicManager
+		cancel func()
+		c      *cluster.Node
+		ss     = service.Set{
+			// Capabilities
+			service.Hook{
+				OnStart: func() error {
+					return in.registerHandlers(in.cc.NS)
+				},
+				OnClose: func() error {
+					in.unregisterHandlers()
+					return nil
+				},
+			},
+			// Cluster
+			service.Hook{
+				OnStart: func() (err error) {
+					c, err = cluster.New(ctx, in.ps,
+						cluster.WithLogger(in.log),
+						cluster.WithTTL(in.cc.TTL),
+						cluster.WithMeta(in.cc.Meta),
+						cluster.WithReadiness(in.cc.Ready),
+						cluster.WithNamespace(in.cc.NS),
+						cluster.WithRoutingTable(in.cc.Routing))
+					return
+				},
+				OnClose: func() error {
+					return c.Close()
+				},
+			},
+			// Topic manager
+			service.Hook{
+				OnStart: func() (err error) {
+					tm = newTopicManager(in.ps, c.Topic())
+					cancel, err = in.startRelays(tm, topics)
+					return
+				},
+				OnClose: func() error {
+					cancel()
+					return tm.Close()
+				},
+			},
+			// Logging
+			service.Hook{
+				OnStart: func() error {
+					in.log.Info("joined cluster")
+					return nil
+				},
+				OnClose: func() error {
+					in.log.Warn("shutdown signal received")
+					return nil
+				},
+			}}
+	)
 
-	cancel, err := in.startRelays(topics)
-	if err != nil {
-		return fmt.Errorf("relay topics: %w", err)
+	if err := ss.Start(); err != nil {
+		return fmt.Errorf("setup: %w", err)
 	}
-	defer cancel()
 
-	if err := in.registerHandlers(in.Topic().String()); err != nil {
-		return fmt.Errorf("register handlers: %w", err)
-	}
-	defer in.unregisterHandlers()
-
-	in.log.WithField("addrs", in.h.Addrs()).Info("ready")
 	<-ctx.Done()
-	in.log.Warn("stopping")
 
-	return in.Close()
+	if err := ss.Close(); err != nil {
+		return fmt.Errorf("teardown")
+	}
+
+	return in.h.Close()
 }
 
-func (in instance) startRelays(ts []string) (cancel func(), err error) {
+func (in instance) startRelays(tm *topicManager, ts []string) (cancel func(), err error) {
 	var cs = make([]pubsub.RelayCancelFunc, len(ts))
 
 	cancel = func() {
@@ -138,7 +188,7 @@ func (in instance) startRelays(ts []string) (cancel func(), err error) {
 	}
 
 	for i, topic := range ts {
-		if cs[i], err = in.tm.Relay(topic); err != nil {
+		if cs[i], err = tm.Relay(topic); err != nil {
 			cs = cs[:i]
 			cancel()
 			break
