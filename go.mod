@@ -37,7 +37,6 @@ require (
 	github.com/libp2p/go-libp2p-quic-transport v0.11.2
 	github.com/lthibault/util v0.0.11
 	github.com/thejerf/suture/v4 v4.0.1
-	go.uber.org/multierr v1.7.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 )
 
@@ -142,6 +141,7 @@ require (
 	github.com/whyrusleeping/timecache v0.0.0-20160911033111-cfcb2f1abfee // indirect
 	go.opencensus.io v0.23.0 // indirect
 	go.uber.org/dig v1.12.0 // indirect
+	go.uber.org/multierr v1.7.0 // indirect
 	golang.org/x/tools v0.1.5 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 )

@@ -3,22 +3,31 @@ package client
 import (
 	"context"
 	"fmt"
+	"path"
 	"runtime"
 
+	"capnproto.org/go/capnp/v3"
+	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/libp2p/go-libp2p-core/discovery"
 	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/routing"
+	"github.com/lthibault/log"
 	"github.com/wetware/casm/pkg/boot"
+	rpcutil "github.com/wetware/ww/internal/util/rpc"
+	"github.com/wetware/ww/pkg/cap"
 )
 
 type Dialer struct {
 	join discovery.Discoverer
 
 	ns      string
+	log     log.Logger
 	host    HostFactory
 	routing RoutingFactory
 	pubsub  PubSubFactory
-	rpc     RPCFactory
+	cap     cap.Dialer
 }
 
 func NewDialer(join discovery.Discoverer, opt ...Option) Dialer {
@@ -59,7 +68,15 @@ func (d Dialer) Dial(ctx context.Context) (n Node, err error) {
 		rf.SetRouting(d.routing)
 	}
 
-	if n.h, err = d.host.New(context.Background()); err != nil {
+	var (
+		h    host.Host
+		ps   PubSub
+		r    routing.Routing
+		conn *rpc.Conn
+	)
+
+	h, err = d.host.New(context.Background())
+	if err != nil {
 		return n, fmt.Errorf("host: %w", err)
 	}
 
@@ -73,22 +90,53 @@ func (d Dialer) Dial(ctx context.Context) (n Node, err error) {
 	//
 	// Routing, PubSub and Conn are all tied to the lifetime of the
 	// 'Host' instance.  They need not be explicitly closed.
-	runtime.SetFinalizer(&n.h, func(h *host.Host) { _ = (*h).Close() })
+	runtime.SetFinalizer(&h, func(h *host.Host) { _ = (*h).Close() })
 
-	if n.r, err = d.routing.New(n.h); err != nil {
+	r, err = d.routing.New(h)
+	if err != nil {
 		return n, fmt.Errorf("dht: %w", err)
 	}
 
-	if n.ps, err = d.pubsub.New(n.h, n.r); err != nil {
+	ps, err = d.pubsub.New(h, n.Routing)
+	if err != nil {
 		return n, fmt.Errorf("pubsub: %w", err)
 	}
 
-	if n.conn, err = d.rpc.New(ctx, d.ns, n.h, d.join); err != nil {
-		return n, fmt.Errorf("rpc: %w", err)
+	c, err := d.cap.Dial(ctx, cap.NewBinder(func(s network.Stream) (*capnp.Client, error) {
+		if conn, err = d.bind(ctx, s); err != nil {
+			return nil, err
+		}
+
+		return conn.Bootstrap(ctx), nil
+	}))
+
+	return Node{
+		PubSub:  ps,
+		Routing: r,
+		Conn:    conn,
+		c:       c,
+	}, nil
+}
+
+func (d Dialer) bind(ctx context.Context, s network.Stream) (*rpc.Conn, error) {
+	return rpc.NewConn(d.transportFor(s), &rpc.Options{
+		ErrorReporter: d.reporter(),
+	}), nil
+}
+
+func (d Dialer) transportFor(s network.Stream) rpc.Transport {
+	if path.Base(string(s.Protocol())) == "packed" {
+		return rpc.NewPackedStreamTransport(s)
 	}
 
-	n.cap = n.conn.Bootstrap(ctx)
-	return n, nil
+	return rpc.NewStreamTransport(s)
+}
+
+func (d Dialer) reporter() rpcutil.ErrReporterFunc {
+	log := d.log.WithField("ns", d.ns)
+	return func(err error) {
+		log.WithError(err).Debug("rpc error")
+	}
 }
 
 type addrString string

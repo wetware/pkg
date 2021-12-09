@@ -1,5 +1,7 @@
 package client
 
+import "github.com/wetware/ww/pkg/cap"
+
 type Option func(*Dialer)
 
 func WithNamespace(ns string) Option {
@@ -42,13 +44,13 @@ func WithPubSub(p PubSubFactory) Option {
 	}
 }
 
-func WithRPCFactory(r RPCFactory) Option {
-	if r == nil {
-		r = BasicRPCFactory{}
-	}
-
+func WithCapability(c cap.Dialer) Option {
 	return func(d *Dialer) {
-		d.rpc = r
+		if c == nil {
+			c = BasicCapDialer{NS: d.ns}
+		}
+
+		d.cap = c
 	}
 }
 
@@ -58,6 +60,6 @@ func withDefault(opt []Option) []Option {
 		WithHost(nil),
 		WithRouting(nil),
 		WithPubSub(nil),
-		WithRPCFactory(nil),
+		WithCapability(nil),
 	}, opt...)
 }
