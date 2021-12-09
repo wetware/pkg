@@ -20,6 +20,7 @@ type ServerConfig struct {
 
 	Logger  log.Logger
 	Topics  []string             `group:"topics"`
+	NS      string               `optional:"true"`
 	Host    server.HostFactory   `optional:"true"`
 	DHT     server.DHTFactory    `optional:"true"`
 	PubSub  server.PubSubFactory `optional:"true"`
@@ -38,7 +39,8 @@ func Server(cfg ServerConfig) server.Node {
 		server.WithDHT(cfg.DHT),
 		server.WithPubSub(cfg.PubSub),
 		server.WithSecret(cfg.Secret),
-		server.WithClusterConfig(cfg.Cluster))
+		server.WithClusterConfig(cfg.Cluster),
+		server.WithNamepace(cfg.NS))
 }
 
 // DialConfig can be populated by Fx.
