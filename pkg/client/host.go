@@ -26,7 +26,7 @@ type HostFactory interface {
 	New(context.Context) (host.Host, error)
 }
 
-type BasicHostFactory struct {
+type RoutedHostFactory struct {
 	fx.In `ignore-unexported:"true"`
 
 	Secret pnet.PSK                `optional:"true"`
@@ -35,7 +35,7 @@ type BasicHostFactory struct {
 	routing *routingHook
 }
 
-func (f *BasicHostFactory) New(ctx context.Context) (host.Host, error) {
+func (f *RoutedHostFactory) New(ctx context.Context) (host.Host, error) {
 	var opt = make([]libp2p.Option, len(defaultHostOpt))
 	copy(opt, defaultHostOpt)
 

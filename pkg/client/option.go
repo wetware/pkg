@@ -29,7 +29,7 @@ func WithLogger(l log.Logger) Option {
 
 func WithHost(h HostFactory) Option {
 	if h == nil {
-		h = &BasicHostFactory{}
+		h = &RoutedHostFactory{}
 	}
 
 	return func(d *Dialer) {
