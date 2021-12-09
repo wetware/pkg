@@ -1,6 +1,9 @@
 package client
 
-import "github.com/wetware/ww/pkg/cap"
+import (
+	"github.com/lthibault/log"
+	"github.com/wetware/ww/pkg/cap"
+)
 
 type Option func(*Dialer)
 
@@ -11,6 +14,16 @@ func WithNamespace(ns string) Option {
 
 	return func(d *Dialer) {
 		d.ns = ns
+	}
+}
+
+func WithLogger(l log.Logger) Option {
+	if l == nil {
+		l = log.New()
+	}
+
+	return func(d *Dialer) {
+		d.log = l
 	}
 }
 
@@ -57,6 +70,7 @@ func WithCapability(c cap.Dialer) Option {
 func withDefault(opt []Option) []Option {
 	return append([]Option{
 		WithNamespace(""),
+		WithLogger(nil),
 		WithHost(nil),
 		WithRouting(nil),
 		WithPubSub(nil),
