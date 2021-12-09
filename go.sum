@@ -1016,6 +1016,8 @@ github.com/warpfork/go-wish v0.0.0-20200122115046-b9ea61034e4a h1:G++j5e0OC488te
 github.com/warpfork/go-wish v0.0.0-20200122115046-b9ea61034e4a/go.mod h1:x6AKhvSSexNrVSrViXSHUEbICjmGXhtgABaHIySUSGw=
 github.com/wetware/casm v0.0.0-20211204043726-2151b5caa784 h1:Iq0R9DlWsOtUDogDCFJ+wCuvhj8aD+Z4yocsR0Y5tEE=
 github.com/wetware/casm v0.0.0-20211204043726-2151b5caa784/go.mod h1:rSm5vUeBJ6lwzNPrE6K8yiOcmnSs4fFaMhRyFYlaLgE=
+github.com/wetware/casm v0.0.0-20211209000602-e20b00d42032 h1:OHi5RPugs92U19CP2jKwyeZoGwRS7jiEuk7vrAVSvlc=
+github.com/wetware/casm v0.0.0-20211209000602-e20b00d42032/go.mod h1:F6dL4xCkjnsil8NAtOgrAmow6039EVAZLQg+TxoIfHo=
 github.com/wetware/matrix v1.0.0-alpha.17/go.mod h1:Amn22v5AokspzNpka0Y0HNHkBSDo0MUf+JxkxVcs6h0=
 github.com/wetware/matrix v1.0.0-alpha.18 h1:au4xMIAU1zz5X9gLc9as04W6Y2vqkTKn62wihYg7wDQ=
 github.com/wetware/matrix v1.0.0-alpha.18/go.mod h1:QF5tprOw2yk7syU+KDU+75dtb/guiCDKjxDfHF7L5R4=
