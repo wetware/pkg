@@ -194,7 +194,7 @@ func (in instance) startRelays(tm *topicManager, ts []string) (cancel func(), er
 			break
 		}
 
-		in.log.WithField("topic", topic).Debug("relaying topic")
+		in.log.WithField("topic", topic).Info("relaying topic")
 	}
 
 	return
