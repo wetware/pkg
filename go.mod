@@ -36,6 +36,7 @@ require (
 require (
 	github.com/libp2p/go-libp2p-quic-transport v0.11.2
 	github.com/lthibault/util v0.0.11
+	github.com/thejerf/suture/v4 v4.0.1
 	go.uber.org/multierr v1.7.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 )

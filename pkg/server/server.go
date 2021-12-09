@@ -26,12 +26,12 @@ import (
 type Node struct {
 	log log.Logger
 
-	ns string
 	ts []string // default topics
 
 	host HostFactory
 	dht  DHTFactory
 	ps   PubSubFactory
+	cc   ClusterConfig
 }
 
 func New(opt ...Option) (n Node) {
@@ -43,11 +43,11 @@ func New(opt ...Option) (n Node) {
 }
 
 // String returns the cluster namespace
-func (n Node) String() string { return n.ns }
+func (n Node) String() string { return n.cc.NS }
 
 func (n Node) Loggable() map[string]interface{} {
 	return map[string]interface{}{
-		"ns": n.ns,
+		"ns": n.cc.NS,
 	}
 }
 
@@ -74,12 +74,12 @@ func (n Node) Serve(ctx context.Context) error {
 		return fmt.Errorf("pubsub: %w", err)
 	}
 
-	c, err := cluster.New(ctx, ps, cluster.WithNamespace(n.ns))
+	c, err := cluster.New(ctx, ps, n.cc.options()...)
 	if err != nil {
 		return err
 	}
 
-	return newInstance(n.log, n.ns, h, ps, c).Serve(ctx, n.ts)
+	return newInstance(n.log, n.cc.NS, h, ps, c).Serve(ctx, n.ts)
 }
 
 type instance struct {

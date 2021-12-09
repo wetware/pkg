@@ -5,10 +5,12 @@ import (
 	"time"
 
 	"github.com/lthibault/log"
+	"github.com/thejerf/suture/v4"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
 
-	"github.com/wetware/ww/pkg/server"
+	logutil "github.com/wetware/ww/internal/util/log"
+	"github.com/wetware/ww/pkg/util/embed"
 )
 
 var logger = log.New()
@@ -72,11 +74,15 @@ func Command() *cli.Command {
 func run() cli.ActionFunc {
 	return func(c *cli.Context) error {
 		app := fx.New(fx.NopLogger,
+			newSharedSecret(c),
 			fx.Supply(c,
 				fx.Annotate(c.String("ns"), fx.ParamTags(`name:"ns"`)),
+				fx.Annotate(c.Duration("ttl"), fx.ParamTags(`name:"ttl"`)),
 				fx.Annotate(c.Context, fx.As(new(context.Context))),
 				fx.Annotate(logger, fx.As(new(log.Logger)))),
-			fx.Provide(server.New),
+			fx.Provide(
+				newSystemHook,
+				newDatastore),
 			fx.Invoke(start))
 
 		if err := app.Start(c.Context); err != nil {
@@ -89,15 +95,39 @@ func run() cli.ActionFunc {
 	}
 }
 
-func start(lx fx.Lifecycle, n server.Node) {
+func start(ctx context.Context, cfg embed.ServerConfig, lx fx.Lifecycle) {
+	var (
+		n = embed.Server(cfg)
+		s = suture.New("ww", suture.Spec{
+			EventHook: logutil.NewEventHook(logger),
+		})
+
+		cancel context.CancelFunc
+		cherr  <-chan error
+	)
+
+	s.Add(n)
+
 	lx.Append(fx.Hook{
 		OnStart: func(context.Context) error {
-			logger.With(n).Info("ready")
+			ctx, cancel = context.WithCancel(ctx)
+			cherr = s.ServeBackground(ctx)
 			return nil
 		},
-		OnStop: func(ctx context.Context) error {
-			logger.With(n).Warn("shutting down")
-			return nil
+		OnStop: func(ctx context.Context) (err error) {
+			cancel()
+
+			select {
+			case err = <-cherr:
+				if err == context.Canceled {
+					err = nil
+				}
+
+			case <-ctx.Done():
+				err = ctx.Err()
+			}
+
+			return
 		},
 	})
 }

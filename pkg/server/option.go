@@ -20,13 +20,18 @@ func WithLogger(l log.Logger) Option {
 	}
 }
 
+// WithNamespace is a conveniece method that modifies the 'NS' field
+// of the current 'ClusterConfig' with the specified value.  If 'ns'
+// is "", the default namespace "ww" is used.
+//
+// Note that this option will be overridden by 'WithClusterConfig'.
 func WithNamepace(ns string) Option {
 	if ns == "" {
 		ns = "ww"
 	}
 
 	return func(n *Node) {
-		n.ns = ns
+		n.cc.NS = ns
 	}
 }
 
@@ -90,6 +95,16 @@ func WithPubSub(f PubSubFactory) Option {
 
 	return func(n *Node) {
 		n.ps = f
+	}
+}
+
+func WithClusterConfig(c ClusterConfig) Option {
+	if c.NS == "" {
+		c.NS = "ww"
+	}
+
+	return func(n *Node) {
+		n.cc = c
 	}
 }
 
