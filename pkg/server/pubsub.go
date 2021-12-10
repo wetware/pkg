@@ -82,6 +82,7 @@ func (tm *topicManager) Relay(topic string) (cancel pubsub.RelayCancelFunc, err 
 	}
 
 	tm.wg.Add(1) // track additional relay
+	cancel = func() { tm.wg.Done() }
 
 	// TODO:  close 't' and remove from 'tm.ts' when all relays
 	//        have been canceled.
@@ -98,16 +99,15 @@ func (tm *topicManager) Relay(topic string) (cancel pubsub.RelayCancelFunc, err 
 }
 
 func (tm *topicManager) Close() error {
+	tm.mu.Lock()
+	defer tm.mu.Unlock()
+
+	tm.wg.Wait() // wait for all relays to be canceled
+
 	// NOTE:  'tm.cluster' is closed by the CASM 'cluster.Node'.
 	//         Likewise, the pubsub's lifecycle is handled independently.
 	//
 	//         DO NOT close either of these objects.
-	tm.mu.Lock()
-	defer tm.mu.Unlock()
-
-	// wait for all relays to be canceled
-	tm.wg.Wait()
-
 	var g errgroup.Group
 	for topic, t := range tm.ts {
 		g.Go(closer(topic, t))
