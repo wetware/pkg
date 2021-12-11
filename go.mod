@@ -23,7 +23,7 @@ require (
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/sirupsen/logrus v1.8.1
 	github.com/urfave/cli/v2 v2.3.0
-	github.com/wetware/casm v0.0.0-20211211062117-83e7827ec29e
+	github.com/wetware/casm v0.0.0-20211211094734-22a38fda1420
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/fx v1.15.0
 	go.uber.org/zap v1.19.1 // indirect
