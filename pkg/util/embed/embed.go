@@ -22,21 +22,17 @@ import (
 type ServerConfig struct {
 	fx.In
 
-	Logger log.Logger `optional:"true"`
-
-	// Cluster config
-	Topics []string       `group:"topics"`
-	NS     string         `optional:"true" name:"ns"`
-	TTL    time.Duration  `optional:"true" name:"ttl"`
-	Meta   pulse.Preparer `optional:"true"`
-	Secret pnet.PSK       `optional:"true"`
-
-	// Libp2p config
-	Host    server.HostFactory   `optional:"true"`
-	Routing cluster.RoutingTable `optional:"true"`
-	DHT     server.DHTFactory    `optional:"true"`
-	PubSub  server.PubSubFactory `optional:"true"`
-	Ready   pubsub.RouterReady   `optional:"true"`
+	Logger      log.Logger           `optional:"true"`
+	ListenAddrs []string             `optional:"true"`
+	Topics      []string             `group:"topics"`
+	NS          string               `optional:"true" name:"ns"`
+	TTL         time.Duration        `optional:"true" name:"ttl"`
+	Meta        pulse.Preparer       `optional:"true"`
+	Secret      pnet.PSK             `optional:"true"`
+	Cluster     discovery.Advertiser `optional:"true"`
+	Boot        discovery.Discoverer `optional:"true"`
+	Routing     cluster.RoutingTable `optional:"true"`
+	Ready       pubsub.RouterReady   `optional:"true"`
 }
 
 // Server returns a fully configured 'server.Node', suitable for
@@ -46,19 +42,34 @@ func Server(cfg ServerConfig) server.Node {
 	return server.New(
 		server.WithLogger(cfg.Logger),
 		server.WithTopics(cfg.Topics...),
-		server.WithHost(cfg.Host),
-		server.WithDHT(cfg.DHT),
-		server.WithPubSub(cfg.PubSub),
-		server.WithSecret(cfg.Secret),
-		server.WithClusterConfig(server.ClusterConfig{
+		server.WithHost(&server.RoutedHost{
+			ListenAddrs: cfg.ListenAddrs,
+			Secret:      cfg.Secret,
+			// Auth:               ,  // TODO
+			// PrivKey:            ,  // TODO
+		}),
+		server.WithDHT(server.DualDHTFactory{
+			// ...
+		}),
+		server.WithPubSub(server.GossipsubFactory{
+			Logger:     cfg.Logger,
+			Advertiser: cfg.Cluster,
+			Discoverer: cfg.Boot,
+			Discovery: server.PexDiscovery{
+				Logger:  cfg.Logger,
+				NS:      cfg.NS,
+				Cluster: cfg.Cluster,
+				Boot:    cfg.Boot,
+			},
+		}),
+		server.WithCluster(server.ClusterConfig{
 			NS:      cfg.NS,
 			Log:     cfg.Logger,
 			TTL:     cfg.TTL,
 			Meta:    cfg.Meta,
 			Routing: cfg.Routing,
-			Ready:   pubsub.MinTopicSize(1),
-		}),
-		server.WithNamepace(cfg.NS))
+			Ready:   cfg.Ready,
+		}))
 }
 
 // DialConfig can be populated by Fx.

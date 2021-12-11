@@ -18,12 +18,12 @@ require (
 	github.com/libp2p/go-libp2p-pubsub v0.5.4
 	github.com/lthibault/log v1.2.1
 	github.com/miekg/dns v1.1.43 // indirect
-	github.com/multiformats/go-multiaddr v0.4.0
+	github.com/multiformats/go-multiaddr v0.4.0 // indirect
 	github.com/prometheus/common v0.30.0 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/sirupsen/logrus v1.8.1
 	github.com/urfave/cli/v2 v2.3.0
-	github.com/wetware/casm v0.0.0-20211211094734-22a38fda1420
+	github.com/wetware/casm v0.0.0-20211211101810-2218e0cc1988
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/fx v1.15.0
 	go.uber.org/zap v1.19.1 // indirect
@@ -145,3 +145,5 @@ require (
 	golang.org/x/tools v0.1.5 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 )
+
+replace github.com/wetware/casm => /Users/lthibault/Go/src/github.com/wetware/casm

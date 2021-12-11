@@ -9,8 +9,8 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
-	disc "github.com/libp2p/go-libp2p-discovery"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/lthibault/log"
 	ctxutil "github.com/lthibault/util/ctx"
 	"go.uber.org/fx"
 	"golang.org/x/sync/errgroup"
@@ -33,16 +33,26 @@ type PubSubFactory interface {
 type GossipsubFactory struct {
 	fx.In
 
+	Logger log.Logger
+
 	// Bootstrap discovery.  These will be wrapped in a peer-sampling
 	// cache and used to bootstrap the cluster.
 	Advertiser discovery.Advertiser
 	Discoverer discovery.Discoverer
+
+	Discovery DiscoveryFactory
 }
 
-func (GossipsubFactory) New(h host.Host, r routing.ContentRouting) (PubSub, error) {
+func (f GossipsubFactory) New(h host.Host, r routing.ContentRouting) (PubSub, error) {
+	// Bind the pubsub router's lifetime to the host's.
 	ctx := ctxutil.C(h.Network().Process().Closing())
-	return pubsub.NewGossipSub(ctx, h,
-		pubsub.WithDiscovery(disc.NewRoutingDiscovery(r)))
+
+	d, err := f.Discovery.New(ctx, h, r)
+	if err != nil {
+		return nil, err
+	}
+
+	return pubsub.NewGossipSub(ctx, h, pubsub.WithDiscovery(d))
 }
 
 type topicManager struct {

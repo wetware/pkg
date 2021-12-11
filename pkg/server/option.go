@@ -1,11 +1,8 @@
 package server
 
 import (
-	"github.com/libp2p/go-libp2p-core/connmgr"
-	"github.com/libp2p/go-libp2p-core/pnet"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/lthibault/log"
-	ma "github.com/multiformats/go-multiaddr"
 )
 
 // Option type for Node
@@ -21,57 +18,15 @@ func WithLogger(l log.Logger) Option {
 	}
 }
 
-// WithNamespace is a conveniece method that modifies the 'NS' field
-// of the current 'ClusterConfig' with the specified value.  If 'ns'
-// is "", the default namespace "ww" is used.
-//
-// Note that this option will be overridden by 'WithClusterConfig'.
-func WithNamepace(ns string) Option {
-	if ns == "" {
-		ns = "ww"
-	}
-
-	return func(n *Node) {
-		n.cc.NS = ns
-	}
-}
-
 func WithTopics(ts ...string) Option {
 	return func(n *Node) {
 		n.ts = ts
 	}
 }
 
-func WithSecret(s pnet.PSK) Option {
-	return func(n *Node) {
-		n.host.SetSecret(s)
-	}
-}
-
-func WithAuth(auth connmgr.ConnectionGater) Option {
-	return func(n *Node) {
-		n.host.SetAuth(auth)
-	}
-}
-
-func WithListenAddrs(ms ...ma.Multiaddr) Option {
-	ss := make([]string, len(ms))
-	for i, m := range ms {
-		ss[i] = m.String()
-	}
-
-	return WithListenAddrStrings(ss...)
-}
-
-func WithListenAddrStrings(ss ...string) Option {
-	return func(n *Node) {
-		n.host.SetListenAddrs(ss...)
-	}
-}
-
 func WithHost(f HostFactory) Option {
 	if f == nil {
-		f = &RoutedHostFactory{}
+		f = &RoutedHost{}
 	}
 
 	return func(n *Node) {
@@ -99,7 +54,7 @@ func WithPubSub(f PubSubFactory) Option {
 	}
 }
 
-func WithClusterConfig(c ClusterConfig) Option {
+func WithCluster(c ClusterConfig) Option {
 	if c.NS == "" {
 		c.NS = "ww"
 	}
@@ -115,7 +70,6 @@ func WithClusterConfig(c ClusterConfig) Option {
 
 func withDefaults(opt []Option) []Option {
 	return append([]Option{
-		WithNamepace(""),
 		WithLogger(nil),
 		WithHost(nil),
 		WithDHT(nil),

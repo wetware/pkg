@@ -24,17 +24,13 @@ var defaultHostOpt = []libp2p.Option{
 
 type HostFactory interface {
 	New(context.Context) (host.Host, error)
-
-	SetListenAddrs(...string)
-	SetSecret(pnet.PSK)
-	SetAuth(connmgr.ConnectionGater)
 }
 
-// RoutedHostFactory creates a host with DHT routing enabled.
+// RoutedHost creates a host with DHT routing enabled.
 //
-// Instances of 'RoutedHostFactory' MUST NOT be shared across
+// Instances of 'RoutedHost' MUST NOT be shared across
 // nodes.
-type RoutedHostFactory struct {
+type RoutedHost struct {
 	fx.In `ignore-unexported:"true"`
 
 	ListenAddrs []string                `optional:"true"`
@@ -45,7 +41,7 @@ type RoutedHostFactory struct {
 	routing *routingHook
 }
 
-func (f *RoutedHostFactory) New(ctx context.Context) (host.Host, error) {
+func (f *RoutedHost) New(ctx context.Context) (host.Host, error) {
 	var opt = make([]libp2p.Option, len(defaultHostOpt))
 	copy(opt, defaultHostOpt)
 
@@ -76,6 +72,6 @@ func (f *RoutedHostFactory) New(ctx context.Context) (host.Host, error) {
 	return libp2p.New(ctx, opt...)
 }
 
-func (f *RoutedHostFactory) SetListenAddrs(ss ...string)       { f.ListenAddrs = ss }
-func (f *RoutedHostFactory) SetSecret(s pnet.PSK)              { f.Secret = s }
-func (f *RoutedHostFactory) SetAuth(a connmgr.ConnectionGater) { f.Auth = a }
+func (f *RoutedHost) SetListenAddrs(ss ...string)       { f.ListenAddrs = ss }
+func (f *RoutedHost) SetSecret(s pnet.PSK)              { f.Secret = s }
+func (f *RoutedHost) SetAuth(a connmgr.ConnectionGater) { f.Auth = a }
