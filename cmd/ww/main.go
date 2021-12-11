@@ -65,6 +65,9 @@ func main() {
 		Flags:                flags,
 		Commands:             commands,
 		Before:               before(),
+		Metadata: map[string]interface{}{
+			"version": version,
+		},
 	})
 }
 

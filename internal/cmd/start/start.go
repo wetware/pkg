@@ -9,7 +9,8 @@ import (
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
 
-	logutil "github.com/wetware/ww/internal/util/log"
+	serviceutil "github.com/wetware/ww/internal/util/service"
+	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/util/embed"
 )
 
@@ -81,6 +82,7 @@ func run() cli.ActionFunc {
 				fx.Annotate(c.Context, fx.As(new(context.Context))),
 				fx.Annotate(logger, fx.As(new(log.Logger)))),
 			fx.Provide(
+				newBootStrategy,
 				newSystemHook,
 				newDatastore),
 			fx.Invoke(start))
@@ -95,23 +97,32 @@ func run() cli.ActionFunc {
 	}
 }
 
-func start(ctx context.Context, cfg embed.ServerConfig, lx fx.Lifecycle) {
+type serviceConfig struct {
+	fx.In
+
+	Lifecycle fx.Lifecycle
+	Services  []suture.Service `group:"services"`
+}
+
+func start(c *cli.Context, ctx context.Context, svc serviceConfig, cfg embed.ServerConfig) {
 	var (
+		s = serviceutil.New(c, cfg.Logger)
 		n = embed.Server(cfg)
-		s = suture.New("ww", suture.Spec{
-			EventHook: logutil.NewEventHook(logger),
-		})
 
 		cancel context.CancelFunc
 		cherr  <-chan error
 	)
 
-	s.Add(n)
+	for _, service := range append(svc.Services, n) {
+		s.Add(service)
+		cfg.Logger.With(service.(log.Loggable)).Debugf("loaded %s", service)
+	}
 
-	lx.Append(fx.Hook{
+	svc.Lifecycle.Append(fx.Hook{
 		OnStart: func(context.Context) error {
 			ctx, cancel = context.WithCancel(ctx)
 			cherr = s.ServeBackground(ctx)
+			cfg.Logger.WithField("version", ww.Version).Infof("loaded %s", s)
 			return nil
 		},
 		OnStop: func(ctx context.Context) (err error) {

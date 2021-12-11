@@ -16,3 +16,4 @@
 
 # Wetware
 cmd/scratch/*
+.envrc

@@ -3,6 +3,7 @@ package server
 import (
 	"github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/pnet"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/lthibault/log"
 	ma "github.com/multiformats/go-multiaddr"
 )
@@ -101,6 +102,10 @@ func WithPubSub(f PubSubFactory) Option {
 func WithClusterConfig(c ClusterConfig) Option {
 	if c.NS == "" {
 		c.NS = "ww"
+	}
+
+	if c.Ready == nil {
+		c.Ready = pubsub.MinTopicSize(1)
 	}
 
 	return func(n *Node) {

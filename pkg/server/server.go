@@ -44,11 +44,13 @@ func New(opt ...Option) (n Node) {
 }
 
 // String returns the cluster namespace
-func (n Node) String() string { return n.cc.NS }
+func (n Node) String() string { return "ww.cluster" }
 
 func (n Node) Loggable() map[string]interface{} {
 	return map[string]interface{}{
-		"ns": n.cc.NS,
+		"ns":     n.cc.NS,
+		"ttl":    n.cc.TTL,
+		"topics": n.ts,
 	}
 }
 

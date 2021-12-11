@@ -1,11 +1,16 @@
 package start
 
-import "github.com/wetware/casm/pkg/cluster/pulse"
+import (
+	"context"
 
-/*
- * system.go contains pulse.Hook constructor, which hooks into the OS to provide system
- * config info to the heartbeat system.
- */
+	"github.com/libp2p/go-libp2p-core/discovery"
+	"github.com/lthibault/log"
+	"github.com/thejerf/suture/v4"
+	"github.com/urfave/cli/v2"
+	"github.com/wetware/casm/pkg/boot"
+	"github.com/wetware/casm/pkg/cluster/pulse"
+	"go.uber.org/fx"
+)
 
 // systemHook populates heartbeat messages with system information from the
 // operating system.
@@ -22,4 +27,36 @@ func (h systemHook) Prepare(pulse.Heartbeat) {
 
 	// WARNING:  DO NOT make a syscall each time 'Prepare' is invoked.
 	//           Cache results and periodically refresh them.
+}
+
+type bootServices struct {
+	fx.Out
+
+	Beacon     suture.Service `group:"services"`
+	Advertiser discovery.Advertiser
+	Discoverer discovery.Discoverer
+}
+
+func newBootStrategy(c *cli.Context, log log.Logger, lx fx.Lifecycle) bootServices {
+	var b = boot.Beacon{
+		Log:  log,
+		Addr: "0.0.0.0:8822",
+	}
+
+	var s = boot.Scanner{
+		Port: 8822,
+		CIDR: "255.255.255.0/24",
+	}
+
+	lx.Append(fx.Hook{
+		OnStop: func(context.Context) error {
+			return s.Close()
+		},
+	})
+
+	return bootServices{
+		Beacon:     &b,
+		Advertiser: &b,
+		Discoverer: &s,
+	}
 }
