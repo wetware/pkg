@@ -2,8 +2,10 @@ package start
 
 import (
 	"context"
+	"fmt"
 	"time"
 
+	"github.com/libp2p/go-libp2p-core/discovery"
 	"github.com/lthibault/log"
 	"github.com/thejerf/suture/v4"
 	"github.com/urfave/cli/v2"
@@ -11,6 +13,7 @@ import (
 
 	serviceutil "github.com/wetware/ww/internal/util/service"
 	ww "github.com/wetware/ww/pkg"
+	"github.com/wetware/ww/pkg/server"
 	"github.com/wetware/ww/pkg/util/embed"
 )
 
@@ -84,8 +87,11 @@ func run() cli.ActionFunc {
 			fx.Provide(
 				newBootStrategy,
 				newSystemHook,
-				newDatastore),
-			fx.Invoke(start))
+				newDatastore,
+				embed.Server),
+			fx.Invoke(
+
+				startRuntime))
 
 		if err := app.Start(c.Context); err != nil {
 			return err
@@ -97,37 +103,74 @@ func run() cli.ActionFunc {
 	}
 }
 
-type serviceConfig struct {
+type runtime struct {
 	fx.In
 
 	Lifecycle fx.Lifecycle
+
+	Logger log.Logger
+	CLI    *cli.Context
+
+	Bootstrap discovery.Advertiser
 	Services  []suture.Service `group:"services"`
 }
 
-func start(c *cli.Context, ctx context.Context, svc serviceConfig, cfg embed.ServerConfig) {
+func startRuntime(c *cli.Context, ctx context.Context, n server.Node, r runtime) {
+	// Set up some shared variables.  These will mutate throughout the application
+	// lifecycle.
 	var (
-		s = serviceutil.New(c, cfg.Logger)
-		n = embed.Server(cfg)
-
 		cancel context.CancelFunc
 		cherr  <-chan error
 	)
 
-	for _, service := range append(svc.Services, n) {
+	// Register services.
+	s := serviceutil.New(c, r.Logger.With(n))
+	for _, service := range append(r.Services, n) {
 		s.Add(service)
-		cfg.Logger.With(service.(log.Loggable)).Debugf("loaded %s", service)
+		r.Logger.With(service.(log.Loggable)).Debugf("loaded %s", service)
 	}
 
-	svc.Lifecycle.Append(fx.Hook{
+	// Hook main service (Supervisor) into application lifecycle.
+	r.Lifecycle.Append(fx.Hook{
+		// Bind global variables and start wetware.
 		OnStart: func(context.Context) error {
 			ctx, cancel = context.WithCancel(ctx)
+
+			// Start the supervisor.
 			cherr = s.ServeBackground(ctx)
-			cfg.Logger.WithField("version", ww.Version).Infof("loaded %s", s)
+
+			// Advertise our presence to the network.
+			_, err := r.Bootstrap.Advertise(ctx, c.String("ns"))
+			if err != nil {
+				return fmt.Errorf("boot: %w", err)
+			}
+
+			// The wetware environment is now loaded.  Bear in mind
+			// that this is a PA/EL system, so we hand over control
+			// to the user without synchronizing the cluster view.
+			//
+			// System events are likewise asynchronous, but reliable.
+			// Users can wait for the local node to have successfully
+			// bound to network interfaces by subscribing to the
+			// 'EvtLocalAddrsUpdated' event.
+			r.Logger.
+				WithField("version", ww.Version).
+				Infof("%s loaded", s)
+
 			return nil
 		},
 		OnStop: func(ctx context.Context) (err error) {
+			// Cancel the application context.
+			//
+			// Beyond this point, the services in this local
+			// process are no longer guaranteed to be in sync.
 			cancel()
 
+			r.Logger.Debug("shutdown signal received")
+
+			// Wait for the supervisor to shut down gracefully.
+			// If it does not terminate in a timely fashion,
+			// abort the application and return an error.
 			select {
 			case err = <-cherr:
 				if err == context.Canceled {

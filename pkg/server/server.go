@@ -11,9 +11,12 @@ import (
 	"capnproto.org/go/capnp/v3/rpc"
 	"capnproto.org/go/capnp/v3/server"
 	"github.com/google/uuid"
+	"github.com/libp2p/go-eventbus"
+	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/helpers"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/lthibault/log"
 
@@ -23,6 +26,20 @@ import (
 	rpcutil "github.com/wetware/ww/internal/util/rpc"
 	ww "github.com/wetware/ww/pkg"
 )
+
+type EvtNodeReady struct {
+	ID        peer.ID
+	Instance  uuid.UUID
+	Namespace string
+}
+
+func (ev EvtNodeReady) Loggable() map[string]interface{} {
+	return map[string]interface{}{
+		"id":       ev.ID,
+		"instance": ev.Instance,
+		"ns":       ev.Namespace,
+	}
+}
 
 type Node struct {
 	log log.Logger
@@ -154,15 +171,32 @@ func (in instance) Serve(ctx context.Context, topics []string, opt []cluster.Opt
 					return tm.Close()
 				},
 			},
-			// Logging
+			// Signalling
 			service.Hook{
 				OnStart: func() error {
-					in.log.Info("ready")
-					return nil
-				},
-				OnClose: func() error {
-					in.log.Warn("shutdown signal received")
-					return nil
+					sub, err := in.h.EventBus().Subscribe(new(event.EvtLocalAddressesUpdated))
+					if err != nil {
+						return err
+					}
+					defer sub.Close()
+
+					select {
+					case <-sub.Out():
+					case <-ctx.Done():
+						return fmt.Errorf("wait host ready: %w", ctx.Err())
+					}
+
+					e, err := in.h.EventBus().Emitter(new(EvtNodeReady), eventbus.Stateful)
+					if err != nil {
+						return err
+					}
+					defer e.Close()
+
+					return e.Emit(EvtNodeReady{
+						ID:        in.h.ID(),
+						Instance:  in.id,
+						Namespace: in.cc.NS,
+					})
 				},
 			}}
 	)

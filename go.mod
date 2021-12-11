@@ -34,6 +34,7 @@ require (
 )
 
 require (
+	github.com/libp2p/go-eventbus v0.2.1
 	github.com/libp2p/go-libp2p-quic-transport v0.11.2
 	github.com/lthibault/util v0.0.11
 	github.com/thejerf/suture/v4 v4.0.1
@@ -72,7 +73,6 @@ require (
 	github.com/libp2p/go-buffer-pool v0.0.2 // indirect
 	github.com/libp2p/go-cidranger v1.1.0 // indirect
 	github.com/libp2p/go-conn-security-multistream v0.2.1 // indirect
-	github.com/libp2p/go-eventbus v0.2.1 // indirect
 	github.com/libp2p/go-flow-metrics v0.0.3 // indirect
 	github.com/libp2p/go-libp2p-asn-util v0.0.0-20200825225859-85005c6cf052 // indirect
 	github.com/libp2p/go-libp2p-autonat v0.4.2 // indirect

@@ -5,12 +5,14 @@ import (
 	"io"
 	"sync"
 
+	"github.com/libp2p/go-libp2p-core/discovery"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
-	discovery "github.com/libp2p/go-libp2p-discovery"
+	disc "github.com/libp2p/go-libp2p-discovery"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	ctxutil "github.com/lthibault/util/ctx"
+	"go.uber.org/fx"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -28,12 +30,19 @@ type PubSubFactory interface {
 	New(host.Host, routing.ContentRouting) (PubSub, error)
 }
 
-type GossipsubFactory struct{}
+type GossipsubFactory struct {
+	fx.In
+
+	// Bootstrap discovery.  These will be wrapped in a peer-sampling
+	// cache and used to bootstrap the cluster.
+	Advertiser discovery.Advertiser
+	Discoverer discovery.Discoverer
+}
 
 func (GossipsubFactory) New(h host.Host, r routing.ContentRouting) (PubSub, error) {
 	ctx := ctxutil.C(h.Network().Process().Closing())
 	return pubsub.NewGossipSub(ctx, h,
-		pubsub.WithDiscovery(discovery.NewRoutingDiscovery(r)))
+		pubsub.WithDiscovery(disc.NewRoutingDiscovery(r)))
 }
 
 type topicManager struct {
