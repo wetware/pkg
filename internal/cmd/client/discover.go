@@ -1,0 +1,81 @@
+package client
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+
+	"github.com/urfave/cli/v2"
+	"github.com/wetware/ww/pkg/boot"
+)
+
+// ww client discover scan -p 8822
+func Scan() *cli.Command {
+	var s boot.Scanner
+
+	return &cli.Command{
+		Name:   "scan",
+		Usage:  "scan a port range for cluster hosts",
+		Flags:  scanFlags,
+		Before: beforeScan(&s),
+		Action: scan(&s),
+	}
+}
+
+var scanFlags = []cli.Flag{
+	&cli.StringFlag{
+		Name:    "ns",
+		Usage:   "namespace to query",
+		Value:   "ww",
+		EnvVars: []string{"WW_NS"},
+	},
+	&cli.StringFlag{
+		Name:    "cidr",
+		Usage:   "CIDR range to scan",
+		Value:   "127.0.0.0/24",
+		EnvVars: []string{"WW_DISCOVER_CIDR"},
+	},
+	&cli.IntFlag{
+		Name:    "port",
+		Usage:   "port to scan",
+		Value:   8822,
+		EnvVars: []string{"WW_DISCOVER_PORT"},
+	},
+}
+
+func beforeScan(s *boot.Scanner) cli.BeforeFunc {
+	return func(c *cli.Context) error {
+		s.Port = c.Int("port")
+		s.CIDR = c.String("cidr")
+		s.Logger = logger.
+			WithField("ns", c.String("ns")).
+			WithField("port", c.Int("port")).
+			WithField("cidr", c.String("cidr"))
+		s.Logger.Debug("port scan started")
+		return nil
+	}
+}
+
+func scan(s *boot.Scanner) cli.ActionFunc {
+	return func(c *cli.Context) error {
+		ps, err := s.FindPeers(c.Context, c.String("ns"))
+		if err != nil {
+			return err
+		}
+
+		enc := json.NewEncoder(c.App.Writer)
+		enc.SetIndent("\n", "  ")
+
+		for peer := range ps {
+			if err := enc.Encode(peer); err != nil {
+				return err
+			}
+		}
+
+		if errors.Is(c.Context.Err(), context.Canceled) {
+			return nil
+		}
+
+		return c.Context.Err()
+	}
+}

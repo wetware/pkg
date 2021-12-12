@@ -5,6 +5,7 @@ import (
 	"context"
 	"time"
 
+	ds "github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-core/discovery"
 	"github.com/libp2p/go-libp2p-core/pnet"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -33,6 +34,7 @@ type ServerConfig struct {
 	Boot        discovery.Discoverer `optional:"true"`
 	Routing     cluster.RoutingTable `optional:"true"`
 	Ready       pubsub.RouterReady   `optional:"true"`
+	Datastore   ds.Batching          `optional:"true"`
 }
 
 // Server returns a fully configured 'server.Node', suitable for
@@ -56,10 +58,11 @@ func Server(cfg ServerConfig) server.Node {
 			Advertiser: cfg.Cluster,
 			Discoverer: cfg.Boot,
 			Discovery: server.PexDiscovery{
-				Logger:  cfg.Logger,
-				NS:      cfg.NS,
-				Cluster: cfg.Cluster,
-				Boot:    cfg.Boot,
+				Logger:    cfg.Logger,
+				NS:        cfg.NS,
+				Cluster:   cfg.Cluster,
+				Boot:      cfg.Boot,
+				Datastore: cfg.Datastore,
 			},
 		}),
 		server.WithCluster(server.ClusterConfig{

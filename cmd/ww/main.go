@@ -15,6 +15,7 @@ import (
 
 	"github.com/lthibault/log"
 
+	"github.com/wetware/ww/internal/cmd/client"
 	"github.com/wetware/ww/internal/cmd/start"
 	logutil "github.com/wetware/ww/internal/util/log"
 )
@@ -47,9 +48,9 @@ var flags = []cli.Flag{
 
 var commands = []*cli.Command{
 	start.Command(),
+	client.Command(),
 	// discover.Command(),
 	// shell.Command(),
-	// client.Command(),
 	// keygen.Command(),
 	// boot.Command(),
 }
@@ -76,9 +77,9 @@ func before() cli.BeforeFunc {
 		logger = logutil.New(c)
 		for _, set := range []func(log.Logger){
 			start.SetLogger,
+			client.SetLogger,
 			// discover.SetLogger,
 			// shell.SetLogger,
-			// client.SetLogger,
 			// keygen.SetLogger,
 			// boot.SetLogger,
 		} {

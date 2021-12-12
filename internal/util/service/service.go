@@ -2,33 +2,33 @@ package serviceutil
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
 	"github.com/lthibault/log"
 	"github.com/thejerf/suture/v4"
-	"github.com/urfave/cli/v2"
 )
 
-func New(c *cli.Context, log log.Logger) *suture.Supervisor {
-	return suture.New(c.App.Name, suture.Spec{
-		EventHook: NewEventHook(log, c.App),
+func New(log log.Logger, name string) *suture.Supervisor {
+	return suture.New(name, suture.Spec{
+		EventHook: NewEventHook(log, name),
 	})
 }
 
-func NewEventHook(logger log.Logger, app *cli.App) suture.EventHook {
+func NewEventHook(log log.Logger, name string) suture.EventHook {
 	return func(e suture.Event) {
 		switch ev := e.(type) {
 		case suture.EventBackoff:
-			logger.WithFields(ev.Map()).Debugf("%s suspended", ev.SupervisorName)
+			log.WithFields(ev.Map()).Debugf("%s suspended", ev.SupervisorName)
 
 		case suture.EventResume:
-			logger.
+			log.
 				WithField("parent", ev.SupervisorName).
 				Infof("%s resumed", ev.SupervisorName)
 
 		case suture.EventServiceTerminate:
-			logger.With(Exception{
+			log.With(Exception{
 				Value:        ev.Err,
 				Parent:       ev.SupervisorName,
 				Restart:      ev.Restarting,
@@ -37,20 +37,20 @@ func NewEventHook(logger log.Logger, app *cli.App) suture.EventHook {
 				Warnf("encountered exception in %s", ev.ServiceName)
 
 		case suture.EventServicePanic:
-			logger.With(Exception{
-				Value:        app.Metadata,
+			log.With(Exception{
+				Value:        name,
 				Parent:       ev.SupervisorName,
 				Restart:      ev.Restarting,
 				Backpressure: ev.CurrentFailures / ev.FailureThreshold,
 			}).
 				Warnf("unhandled exception in %s", ev.ServiceName)
 
-			fmt.Fprintf(app.Writer, "%s\n%s\n",
+			fmt.Fprintf(os.Stdout, "%s\n%s\n",
 				ev.PanicMsg,
 				ev.Stacktrace)
 
 		case suture.EventStopTimeout:
-			logger.
+			log.
 				WithField("parent", ev.SupervisorName).
 				Fatal("%w encountered a fatal error during restart", ev.ServiceName)
 		}

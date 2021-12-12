@@ -23,8 +23,10 @@ type DiscoveryFactory interface {
 type PexDiscovery struct {
 	fx.In
 
-	NS     string `name:"ns"`
 	Logger log.Logger
+
+	NS  string        `name:"ns"`
+	TTL time.Duration `name:"ttl"`
 
 	Cluster   discovery.Advertiser
 	Boot      discovery.Discoverer
@@ -32,12 +34,10 @@ type PexDiscovery struct {
 }
 
 func (p PexDiscovery) New(ctx context.Context, h host.Host, r routing.ContentRouting) (discovery.Discovery, error) {
-	//
 	px, err := pex.New(ctx, h,
 		pex.WithLogger(p.Logger),
 		pex.WithDiscovery(p),
-		pex.WithDatastore(p.Datastore),
-	)
+		pex.WithDatastore(p.Datastore))
 
 	// If the namespace matches the cluster pubsub topic,
 	// fetch peers from PeX, which itself will fall back
@@ -49,18 +49,26 @@ func (p PexDiscovery) New(ctx context.Context, h host.Host, r routing.ContentRou
 	}, err
 }
 
-func (p PexDiscovery) Advertise(ctx context.Context, ns string, opt ...discovery.Option) (time.Duration, error) {
+func (p PexDiscovery) Advertise(ctx context.Context, ns string, opt ...discovery.Option) (ttl time.Duration, err error) {
 	// This is the lowest-level (and often most expensive) form of
 	// advertising.  Implementations will vary substantially in their
 	// semantics.
-	return p.Cluster.Advertise(ctx, ns, opt...)
+	if ttl, err = p.Cluster.Advertise(ctx, ns, opt...); err == nil {
+		p.Logger.Debugf("advertised %s", ns)
+	}
+
+	return
 }
 
-func (p PexDiscovery) FindPeers(ctx context.Context, ns string, opt ...discovery.Option) (<-chan peer.AddrInfo, error) {
+func (p PexDiscovery) FindPeers(ctx context.Context, ns string, opt ...discovery.Option) (peers <-chan peer.AddrInfo, err error) {
 	// This is the lowest-level (and often most expensive) form
 	// of peeer discovery.  It is wrapped by PeX and called only
 	// when we fail to bootstrap from a persisted local view.
-	return p.Boot.FindPeers(ctx, ns, opt...)
+	if peers, err = p.Boot.FindPeers(ctx, ns, opt...); err != nil {
+		p.Logger.Debugf("booting %s", ns)
+	}
+
+	return
 }
 
 func exactly(match string) func(string) bool {

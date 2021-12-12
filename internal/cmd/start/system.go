@@ -1,14 +1,12 @@
 package start
 
 import (
-	"context"
-
 	"github.com/libp2p/go-libp2p-core/discovery"
 	"github.com/lthibault/log"
 	"github.com/thejerf/suture/v4"
 	"github.com/urfave/cli/v2"
-	"github.com/wetware/casm/pkg/boot"
 	"github.com/wetware/casm/pkg/cluster/pulse"
+	"github.com/wetware/ww/pkg/boot"
 	"go.uber.org/fx"
 )
 
@@ -37,22 +35,26 @@ type bootServices struct {
 	Discoverer discovery.Discoverer
 }
 
-func newBootStrategy(c *cli.Context, log log.Logger, lx fx.Lifecycle) bootServices {
+func newBootStrategy(c *cli.Context, log log.Logger) bootServices {
+	const (
+		addr = "0.0.0.0:8822"
+		port = 8822
+		cidr = "255.255.255.0/24"
+	)
+
 	var b = boot.Beacon{
-		Log:  log,
-		Addr: "0.0.0.0:8822",
+		Logger: log.
+			WithField("addr", addr),
+		Addr: addr,
 	}
 
 	var s = boot.Scanner{
-		Port: 8822,
-		CIDR: "255.255.255.0/24",
+		Logger: log.
+			WithField("port", 8822).
+			WithField("cidr", cidr),
+		Port: port,
+		CIDR: cidr,
 	}
-
-	lx.Append(fx.Hook{
-		OnStop: func(context.Context) error {
-			return s.Close()
-		},
-	})
 
 	return bootServices{
 		Beacon:     &b,

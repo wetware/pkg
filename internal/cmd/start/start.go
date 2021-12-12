@@ -2,7 +2,6 @@ package start
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/discovery"
@@ -10,6 +9,7 @@ import (
 	"github.com/thejerf/suture/v4"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
+	"golang.org/x/sync/errgroup"
 
 	serviceutil "github.com/wetware/ww/internal/util/service"
 	ww "github.com/wetware/ww/pkg"
@@ -90,7 +90,6 @@ func run() cli.ActionFunc {
 				newDatastore,
 				embed.Server),
 			fx.Invoke(
-
 				startRuntime))
 
 		if err := app.Start(c.Context); err != nil {
@@ -115,7 +114,7 @@ type runtime struct {
 	Services  []suture.Service `group:"services"`
 }
 
-func startRuntime(c *cli.Context, ctx context.Context, n server.Node, r runtime) {
+func startRuntime(ctx context.Context, n server.Node, r runtime) {
 	// Set up some shared variables.  These will mutate throughout the application
 	// lifecycle.
 	var (
@@ -123,12 +122,11 @@ func startRuntime(c *cli.Context, ctx context.Context, n server.Node, r runtime)
 		cherr  <-chan error
 	)
 
+	r.Logger = r.Logger.WithField("version", ww.Version)
+
 	// Register services.
-	s := serviceutil.New(c, r.Logger.With(n))
-	for _, service := range append(r.Services, n) {
-		s.Add(service)
-		r.Logger.With(service.(log.Loggable)).Debugf("loaded %s", service)
-	}
+	s := serviceutil.New(r.Logger.With(n), r.CLI.String("ns"))
+	s.Add(r)
 
 	// Hook main service (Supervisor) into application lifecycle.
 	r.Lifecycle.Append(fx.Hook{
@@ -139,12 +137,6 @@ func startRuntime(c *cli.Context, ctx context.Context, n server.Node, r runtime)
 			// Start the supervisor.
 			cherr = s.ServeBackground(ctx)
 
-			// Advertise our presence to the network.
-			_, err := r.Bootstrap.Advertise(ctx, c.String("ns"))
-			if err != nil {
-				return fmt.Errorf("boot: %w", err)
-			}
-
 			// The wetware environment is now loaded.  Bear in mind
 			// that this is a PA/EL system, so we hand over control
 			// to the user without synchronizing the cluster view.
@@ -153,9 +145,7 @@ func startRuntime(c *cli.Context, ctx context.Context, n server.Node, r runtime)
 			// Users can wait for the local node to have successfully
 			// bound to network interfaces by subscribing to the
 			// 'EvtLocalAddrsUpdated' event.
-			r.Logger.
-				WithField("version", ww.Version).
-				Infof("%s loaded", s)
+			r.Logger.WithField("ns", s).Debug("loaded namespace")
 
 			return nil
 		},
@@ -165,8 +155,7 @@ func startRuntime(c *cli.Context, ctx context.Context, n server.Node, r runtime)
 			// Beyond this point, the services in this local
 			// process are no longer guaranteed to be in sync.
 			cancel()
-
-			r.Logger.Debug("shutdown signal received")
+			r.Logger.Tracef("shutdown signal sent to %s", s)
 
 			// Wait for the supervisor to shut down gracefully.
 			// If it does not terminate in a timely fashion,
@@ -184,6 +173,29 @@ func startRuntime(c *cli.Context, ctx context.Context, n server.Node, r runtime)
 			return
 		},
 	})
+}
+
+func (r runtime) Serve(ctx context.Context) error {
+	r.Logger.Info("wetware started")
+
+	g, ctx := errgroup.WithContext(ctx)
+	for _, s := range r.Services {
+		g.Go(serve(ctx, s))
+	}
+
+	// Advertise our presence to the network.
+	_, err := r.Bootstrap.Advertise(ctx, r.CLI.String("ns"))
+	if err != nil {
+		return err
+	}
+
+	return g.Wait()
+}
+
+func serve(ctx context.Context, s suture.Service) func() error {
+	return func() error {
+		return s.Serve(ctx)
+	}
 }
 
 func shutdown(app *fx.App) error {

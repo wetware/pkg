@@ -46,6 +46,7 @@ type GossipsubFactory struct {
 func (f GossipsubFactory) New(h host.Host, r routing.ContentRouting) (PubSub, error) {
 	// Bind the pubsub router's lifetime to the host's.
 	ctx := ctxutil.C(h.Network().Process().Closing())
+	f.Logger.Trace("new gossipsub")
 
 	d, err := f.Discovery.New(ctx, h, r)
 	if err != nil {
