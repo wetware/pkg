@@ -83,7 +83,7 @@ func (b *Beacon) Serve(ctx context.Context) error {
 				return
 			}
 
-			b.Logger.WithField("size", n).Trace("got message from: %s", addr)
+			b.Logger.WithField("size", n).Tracef("got message from: %s", addr)
 
 			err = k.Knock.UnmarshalBinary(buf[:n])
 			if err != nil {
@@ -316,4 +316,15 @@ func (a *atomicBeaconState) Reset() { (*atomic.Value)(a).Store(beaconState{}) }
 type beaconState struct {
 	cq        <-chan struct{}
 	advertise chan<- *discovery.Options
+}
+
+type knockRequest struct {
+	Knock
+	Dialback net.Addr
+}
+
+func (req knockRequest) Loggable() map[string]interface{} {
+	return map[string]interface{}{
+		"dialback": req.Dialback.String(),
+	}
 }

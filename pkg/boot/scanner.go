@@ -2,9 +2,11 @@ package boot
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"net"
 	"runtime"
 	"time"
@@ -23,25 +25,25 @@ func init() {
 	}
 }
 
-// Type PortKnocker can test a port by sending a UDP packet.
-type PortKnocker struct {
+// Type RoundTripper can test a port by sending a UDP packet.
+type RoundTripper struct {
 	Port    int
 	Timeout time.Duration
 	Request Knock
 }
 
-func (p PortKnocker) RoundTrip(ctx context.Context, conn *net.UDPConn, host *net.UDPAddr, b []byte) (n int, err error) {
-	if err = conn.SetWriteDeadline(p.deadline(ctx)); err != nil {
+func (rt RoundTripper) RoundTrip(ctx context.Context, conn *net.UDPConn, host *net.UDPAddr, b []byte) (n int, err error) {
+	if err = conn.SetWriteDeadline(rt.deadline(ctx)); err != nil {
 		return
 	}
 
-	n, err = conn.WriteToUDP(p.Request.Bytes(), host)
+	n, err = conn.WriteToUDP(rt.Request.Bytes(), host)
 	if err != nil {
 		err = fmt.Errorf("send: %w", err)
 		return
 	}
 
-	if conn.SetReadDeadline(p.deadline(ctx)); err != nil {
+	if conn.SetReadDeadline(rt.deadline(ctx)); err != nil {
 		return
 	}
 
@@ -53,7 +55,7 @@ func (p PortKnocker) RoundTrip(ctx context.Context, conn *net.UDPConn, host *net
 	return
 }
 
-func (p PortKnocker) deadline(ctx context.Context) (t time.Time) {
+func (p RoundTripper) deadline(ctx context.Context) (t time.Time) {
 	var ok bool
 	if t, ok = ctx.Deadline(); ok {
 		return
@@ -91,7 +93,7 @@ func (s Scanner) FindPeers(ctx context.Context, ns string, opts ...discovery.Opt
 		return nil, err
 	}
 
-	ip, ipnet, err := net.ParseCIDR(s.CIDR)
+	_, ipnet, err := net.ParseCIDR(s.CIDR)
 	if err != nil {
 		return nil, err
 	}
@@ -101,16 +103,28 @@ func (s Scanner) FindPeers(ctx context.Context, ns string, opts ...discovery.Opt
 	go func() {
 		defer close(out)
 
-		// loop through CIDR
-		for ip := ip.Mask(ipnet.Mask); ipnet.Contains(ip); inc(ip) {
-			if ip.Equal(broadcast(ipnet, ip)) || ip.IsMulticast() {
-				// unusable address
-				continue
-			}
+		var (
+			// Convert IPNet struct mask and address to uint32.
+			// Network is BigEndian.
+			mask  = binary.BigEndian.Uint32(ipnet.Mask)
+			begin = binary.BigEndian.Uint32(ipnet.IP)
+			end   = (begin & mask) | (mask ^ 0xffffffff) // final address
 
+			// Each IP will be masked with the nonce before knocking.
+			// This effectively randomizes the search.
+			nonce = rand.Uint32() & (mask ^ 0xffffffff)
+		)
+
+		// loop through CIDR as unt32
+		for i := begin; i <= end; i++ {
 			select {
 			case <-token:
-				go s.roundTrip(ctx, ns, ip, out, cancel)
+				// Skip X.X.X.0 and X.X.X.255
+				if i^nonce == begin || i^nonce == end {
+					continue
+				}
+
+				go s.roundTrip(ctx, ns, i^nonce, out, cancel)
 
 			case <-ctx.Done():
 				s.Logger.WithError(err).Trace("interrupt")
@@ -122,7 +136,7 @@ func (s Scanner) FindPeers(ctx context.Context, ns string, opts ...discovery.Opt
 	return out, nil
 }
 
-func (s Scanner) roundTrip(ctx context.Context, ns string, ip net.IP, out chan<- peer.AddrInfo, abort context.CancelFunc) {
+func (s Scanner) roundTrip(ctx context.Context, ns string, i uint32, out chan<- peer.AddrInfo, abort context.CancelFunc) {
 	defer func() {
 		select {
 		case token <- struct{}{}:
@@ -130,14 +144,16 @@ func (s Scanner) roundTrip(ctx context.Context, ns string, ip net.IP, out chan<-
 		}
 	}()
 
-	s.Logger.Trace("started knocking")
+	var ip = make(net.IP, 4)
+	binary.BigEndian.PutUint32(ip, i)
+
+	s.Logger.Tracef("knocking on %s:%d", ip, s.Port)
 
 	var (
 		peer peer.PeerRecord
 	)
 
 	if err := s.RoundTrip(ctx, ns, ip, &peer); err != nil {
-		s.Logger.WithError(err).Trace("knock aborted")
 		return
 	}
 
@@ -154,7 +170,7 @@ func (s Scanner) RoundTrip(ctx context.Context, ns string, ip net.IP, r record.R
 		return fmt.Errorf("crypto: %w", err)
 	}
 
-	var knocker = PortKnocker{
+	var knocker = RoundTripper{
 		Port:    s.Port,
 		Request: request,
 	}
@@ -222,33 +238,4 @@ func (s Scanner) connection(ctx context.Context) (*net.UDPConn, error) {
 	runtime.SetFinalizer(conn, func(c io.Closer) { c.Close() })
 
 	return conn, err
-}
-
-// increment an IP
-func inc(ip net.IP) {
-	for j := len(ip) - 1; j >= 0; j-- {
-		ip[j]++
-		if ip[j] > 0 {
-			break
-		}
-	}
-}
-
-func broadcast(ipnet *net.IPNet, ip net.IP) net.IP {
-	broadcast := net.IP(make([]byte, 4))
-	for i := range ip {
-		broadcast[i] = ip[i] | ^ipnet.Mask[i]
-	}
-	return broadcast
-}
-
-type knockRequest struct {
-	Knock
-	Dialback net.Addr
-}
-
-func (req knockRequest) Loggable() map[string]interface{} {
-	return map[string]interface{}{
-		"dialback": req.Dialback.String(),
-	}
 }
