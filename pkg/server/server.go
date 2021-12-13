@@ -49,6 +49,7 @@ type Node struct {
 	host HostFactory
 	dht  DHTFactory
 	ps   PubSubFactory
+	boot BootStrategy
 	cc   ClusterConfig
 }
 
@@ -61,7 +62,7 @@ func New(opt ...Option) (n Node) {
 }
 
 // String returns the cluster namespace
-func (n Node) String() string { return "ww.cluster" }
+func (n Node) String() string { return n.cc.NS }
 
 func (n Node) Loggable() map[string]interface{} {
 	return map[string]interface{}{
@@ -89,7 +90,7 @@ func (n Node) Serve(ctx context.Context) error {
 		return fmt.Errorf("dht: %w", err)
 	}
 
-	ps, err := n.ps.New(h, dht)
+	ps, err := n.ps.New(h, n.boot, dht)
 	if err != nil {
 		return fmt.Errorf("pubsub: %w", err)
 	}

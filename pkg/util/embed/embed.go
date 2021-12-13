@@ -23,18 +23,23 @@ import (
 type ServerConfig struct {
 	fx.In
 
-	Logger      log.Logger           `optional:"true"`
+	// Required parameters
+	Logger       log.Logger
+	BootStrategy server.BootStrategy
+
 	ListenAddrs []string             `optional:"true"`
 	Topics      []string             `group:"topics"`
 	NS          string               `optional:"true" name:"ns"`
 	TTL         time.Duration        `optional:"true" name:"ttl"`
 	Meta        pulse.Preparer       `optional:"true"`
 	Secret      pnet.PSK             `optional:"true"`
-	Cluster     discovery.Advertiser `optional:"true"`
-	Boot        discovery.Discoverer `optional:"true"`
 	Routing     cluster.RoutingTable `optional:"true"`
 	Ready       pubsub.RouterReady   `optional:"true"`
 	Datastore   ds.Batching          `optional:"true"`
+
+	Host   server.HostFactory   `optional:"true"`
+	DHT    server.DHTFactory    `optional:"true"`
+	PubSub server.PubSubFactory `optional:"true"`
 }
 
 // Server returns a fully configured 'server.Node', suitable for
@@ -44,35 +49,58 @@ func Server(cfg ServerConfig) server.Node {
 	return server.New(
 		server.WithLogger(cfg.Logger),
 		server.WithTopics(cfg.Topics...),
-		server.WithHost(&server.RoutedHost{
-			ListenAddrs: cfg.ListenAddrs,
-			Secret:      cfg.Secret,
-			// Auth:               ,  // TODO
-			// PrivKey:            ,  // TODO
-		}),
-		server.WithDHT(server.DualDHTFactory{
-			// ...
-		}),
-		server.WithPubSub(server.GossipsubFactory{
-			Logger:     cfg.Logger,
-			Advertiser: cfg.Cluster,
-			Discoverer: cfg.Boot,
-			Discovery: server.PexDiscovery{
-				Logger:    cfg.Logger,
-				NS:        cfg.NS,
-				Cluster:   cfg.Cluster,
-				Boot:      cfg.Boot,
-				Datastore: cfg.Datastore,
-			},
-		}),
-		server.WithCluster(server.ClusterConfig{
-			NS:      cfg.NS,
-			Log:     cfg.Logger,
-			TTL:     cfg.TTL,
-			Meta:    cfg.Meta,
-			Routing: cfg.Routing,
-			Ready:   cfg.Ready,
-		}))
+		server.WithHost(cfg.host()),
+		server.WithBootStrategy(cfg.BootStrategy),
+		server.WithDHT(cfg.dht()),
+		server.WithPubSub(cfg.pubsub()),
+		server.WithCluster(cfg.cluster()))
+}
+
+func (cfg ServerConfig) host() server.HostFactory {
+	if cfg.Host != nil {
+		return cfg.Host
+	}
+
+	return &server.RoutedHost{
+		ListenAddrs: cfg.ListenAddrs,
+		Secret:      cfg.Secret,
+		// Auth:               ,  // TODO
+		// PrivKey:            ,  // TODO
+	}
+}
+
+func (cfg ServerConfig) dht() server.DHTFactory {
+	if cfg.DHT != nil {
+		return cfg.DHT
+	}
+
+	return server.DualDHTFactory{}
+}
+
+func (cfg ServerConfig) pubsub() server.PubSubFactory {
+	if cfg.PubSub != nil {
+		return cfg.PubSub
+	}
+
+	return server.GossipsubFactory{
+		Logger: cfg.Logger,
+		Discovery: server.PexDiscovery{
+			Logger:    cfg.Logger,
+			NS:        cfg.NS,
+			Datastore: cfg.Datastore,
+		},
+	}
+}
+
+func (cfg ServerConfig) cluster() server.ClusterConfig {
+	return server.ClusterConfig{
+		NS:      cfg.NS,
+		Log:     cfg.Logger,
+		TTL:     cfg.TTL,
+		Meta:    cfg.Meta,
+		Routing: cfg.Routing,
+		Ready:   cfg.Ready,
+	}
 }
 
 // DialConfig can be populated by Fx.

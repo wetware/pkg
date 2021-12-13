@@ -44,6 +44,16 @@ func WithDHT(f DHTFactory) Option {
 	}
 }
 
+func WithBootStrategy(b BootStrategy) Option {
+	if b == nil {
+		b = &PortScanStrategy{}
+	}
+
+	return func(n *Node) {
+		n.boot = b
+	}
+}
+
 func WithPubSub(f PubSubFactory) Option {
 	if f == nil {
 		f = &GossipsubFactory{}
@@ -72,6 +82,7 @@ func withDefaults(opt []Option) []Option {
 	return append([]Option{
 		WithLogger(nil),
 		WithHost(nil),
+		WithBootStrategy(nil),
 		WithDHT(nil),
 		WithPubSub(nil),
 	}, opt...)

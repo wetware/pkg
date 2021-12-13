@@ -5,7 +5,6 @@ import (
 	"io"
 	"sync"
 
-	"github.com/libp2p/go-libp2p-core/discovery"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
@@ -27,28 +26,22 @@ type PubSub interface {
 }
 
 type PubSubFactory interface {
-	New(host.Host, routing.ContentRouting) (PubSub, error)
+	New(host.Host, BootStrategy, routing.ContentRouting) (PubSub, error)
 }
 
 type GossipsubFactory struct {
 	fx.In
 
-	Logger log.Logger
-
-	// Bootstrap discovery.  These will be wrapped in a peer-sampling
-	// cache and used to bootstrap the cluster.
-	Advertiser discovery.Advertiser
-	Discoverer discovery.Discoverer
-
+	Logger    log.Logger
 	Discovery DiscoveryFactory
 }
 
-func (f GossipsubFactory) New(h host.Host, r routing.ContentRouting) (PubSub, error) {
+func (f GossipsubFactory) New(h host.Host, b BootStrategy, r routing.ContentRouting) (PubSub, error) {
 	// Bind the pubsub router's lifetime to the host's.
 	ctx := ctxutil.C(h.Network().Process().Closing())
 	f.Logger.Trace("new gossipsub")
 
-	d, err := f.Discovery.New(ctx, h, r)
+	d, err := f.Discovery.New(h, b, r)
 	if err != nil {
 		return nil, err
 	}

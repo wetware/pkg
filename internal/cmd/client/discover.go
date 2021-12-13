@@ -2,23 +2,28 @@ package client
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
+	"net"
 
+	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/record"
 	"github.com/urfave/cli/v2"
 	"github.com/wetware/ww/pkg/boot"
 )
 
 // ww client discover scan -p 8822
 func Scan() *cli.Command {
-	var s boot.Scanner
+	var k boot.PortKnocker
 
 	return &cli.Command{
 		Name:   "scan",
 		Usage:  "scan a port range for cluster hosts",
 		Flags:  scanFlags,
-		Before: beforeScan(&s),
-		Action: scan(&s),
+		Before: beforeScan(&k),
+		Action: scan(&k),
 	}
 }
 
@@ -43,22 +48,36 @@ var scanFlags = []cli.Flag{
 	},
 }
 
-func beforeScan(s *boot.Scanner) cli.BeforeFunc {
-	return func(c *cli.Context) error {
-		s.Port = c.Int("port")
-		s.CIDR = c.String("cidr")
-		s.Logger = logger.
+func beforeScan(k *boot.PortKnocker) cli.BeforeFunc {
+	return func(c *cli.Context) (err error) {
+		k.Port = c.Int("port")
+		k.Logger = logger.
 			WithField("ns", c.String("ns")).
 			WithField("port", c.Int("port")).
 			WithField("cidr", c.String("cidr"))
-		s.Logger.Debug("port scan started")
-		return nil
+		k.Logger.Debug("port scan started")
+
+		_, k.Subnet, err = net.ParseCIDR(c.String("cidr"))
+		return
 	}
 }
 
-func scan(s *boot.Scanner) cli.ActionFunc {
+func scan(k *boot.PortKnocker) cli.ActionFunc {
 	return func(c *cli.Context) error {
-		ps, err := s.FindPeers(c.Context, c.String("ns"))
+		// HACK: send empty peer record signed with ephemeral key as knock payload.
+		// At some point we should probably query a specific namespace, which will
+		// involve its own record type.
+		var rec peer.PeerRecord
+		pk, _, err := crypto.GenerateECDSAKeyPair(rand.Reader)
+		if err != nil {
+			return err
+		}
+		k.RequestBody, err = record.Seal(&rec, pk)
+		if err != nil {
+			return err
+		}
+
+		ps, err := k.FindPeers(c.Context, c.String("ns"))
 		if err != nil {
 			return err
 		}

@@ -20,19 +20,19 @@ import (
 var logger = log.New()
 
 var flags = []cli.Flag{
-	&cli.StringFlag{
-		Name:    "join",
-		Aliases: []string{"j"},
-		Usage:   "addrs to static bootstrap peers",
-		EnvVars: []string{"WW_JOIN"},
-	},
-	&cli.StringFlag{
-		Name:    "discover",
-		Aliases: []string{"d"},
-		Usage:   "bootstrap service multiaddr",
-		Value:   "/ip4/228.8.8.8/udp/8822",
-		EnvVars: []string{"WW_DISCOVER"},
-	},
+	// &cli.StringFlag{
+	// 	Name:    "join",
+	// 	Aliases: []string{"j"},
+	// 	Usage:   "addrs to static bootstrap peers",
+	// 	EnvVars: []string{"WW_JOIN"},
+	// },
+	// &cli.StringFlag{
+	// 	Name:    "discover",
+	// 	Aliases: []string{"d"},
+	// 	Usage:   "bootstrap service multiaddr",
+	// 	Value:   "/ip4/228.8.8.8/udp/8822",
+	// 	EnvVars: []string{"WW_DISCOVER"},
+	// },
 	&cli.StringSliceFlag{
 		Name:    "addr",
 		Aliases: []string{"a"},
@@ -110,8 +110,8 @@ type runtime struct {
 	Logger log.Logger
 	CLI    *cli.Context
 
-	Bootstrap discovery.Advertiser
-	Services  []suture.Service `group:"services"`
+	Cluster  discovery.Advertiser
+	Services []suture.Service `group:"services"`
 }
 
 func startRuntime(ctx context.Context, n server.Node, r runtime) {
@@ -122,10 +122,12 @@ func startRuntime(ctx context.Context, n server.Node, r runtime) {
 		cherr  <-chan error
 	)
 
-	r.Logger = r.Logger.WithField("version", ww.Version)
+	r.Logger = r.Logger.
+		WithField("version", ww.Version).
+		With(n)
 
 	// Register services.
-	s := serviceutil.New(r.Logger.With(n), r.CLI.String("ns"))
+	s := serviceutil.New(r.Logger, n.String())
 	s.Add(r)
 
 	// Hook main service (Supervisor) into application lifecycle.
@@ -173,6 +175,23 @@ func startRuntime(ctx context.Context, n server.Node, r runtime) {
 			return
 		},
 	})
+
+	// Hook into the bootstrap service and
+	r.Lifecycle.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			ttl, err := r.Cluster.Advertise(ctx,
+				n.String(),
+				discovery.TTL(time.Hour*24))
+
+			if err == nil {
+				r.Logger.
+					WithField("ttl", ttl).
+					Debug("advertised local node on bootstrap service")
+			}
+
+			return err
+		},
+	})
 }
 
 func (r runtime) Serve(ctx context.Context) error {
@@ -181,12 +200,6 @@ func (r runtime) Serve(ctx context.Context) error {
 	g, ctx := errgroup.WithContext(ctx)
 	for _, s := range r.Services {
 		g.Go(serve(ctx, s))
-	}
-
-	// Advertise our presence to the network.
-	_, err := r.Bootstrap.Advertise(ctx, r.CLI.String("ns"))
-	if err != nil {
-		return err
 	}
 
 	return g.Wait()

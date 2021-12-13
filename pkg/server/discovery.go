@@ -1,23 +1,25 @@
 package server
 
 import (
-	"context"
 	"time"
 
 	ds "github.com/ipfs/go-datastore"
+	"github.com/jbenet/goprocess"
 	"github.com/libp2p/go-libp2p-core/discovery"
+	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
 	disc "github.com/libp2p/go-libp2p-discovery"
 	"github.com/lthibault/log"
-	"github.com/wetware/casm/pkg/boot"
+	ctxutil "github.com/lthibault/util/ctx"
+	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/pex"
+	"github.com/wetware/ww/pkg/boot"
 	"go.uber.org/fx"
 )
 
 type DiscoveryFactory interface {
-	New(context.Context, host.Host, routing.ContentRouting) (discovery.Discovery, error)
+	New(host.Host, BootStrategy, routing.ContentRouting) (discovery.Discovery, error)
 }
 
 type PexDiscovery struct {
@@ -25,18 +27,23 @@ type PexDiscovery struct {
 
 	Logger log.Logger
 
-	NS  string        `name:"ns"`
-	TTL time.Duration `name:"ttl"`
-
-	Cluster   discovery.Advertiser
-	Boot      discovery.Discoverer
+	NS        string        `name:"ns"`
+	TTL       time.Duration `name:"ttl"`
 	Datastore ds.Batching
 }
 
-func (p PexDiscovery) New(ctx context.Context, h host.Host, r routing.ContentRouting) (discovery.Discovery, error) {
+func (p PexDiscovery) New(h host.Host, b BootStrategy, r routing.ContentRouting) (discovery.Discovery, error) {
+	ctx := ctxutil.C(h.Network().Process().Closing())
+
+	bootstrap, err := b.New(h)
+	if err != nil {
+		return nil, err
+	}
+
+	// Wrap the bootstrap discovery service in a peer sampling service.
 	px, err := pex.New(ctx, h,
 		pex.WithLogger(p.Logger),
-		pex.WithDiscovery(p),
+		pex.WithDiscovery(bootstrap),
 		pex.WithDatastore(p.Datastore))
 
 	// If the namespace matches the cluster pubsub topic,
@@ -49,26 +56,43 @@ func (p PexDiscovery) New(ctx context.Context, h host.Host, r routing.ContentRou
 	}, err
 }
 
-func (p PexDiscovery) Advertise(ctx context.Context, ns string, opt ...discovery.Option) (ttl time.Duration, err error) {
-	// This is the lowest-level (and often most expensive) form of
-	// advertising.  Implementations will vary substantially in their
-	// semantics.
-	if ttl, err = p.Cluster.Advertise(ctx, ns, opt...); err == nil {
-		p.Logger.Debugf("advertised %s", ns)
-	}
-
-	return
+type BootStrategy interface {
+	New(h host.Host) (discovery.Discovery, error)
 }
 
-func (p PexDiscovery) FindPeers(ctx context.Context, ns string, opt ...discovery.Option) (peers <-chan peer.AddrInfo, err error) {
-	// This is the lowest-level (and often most expensive) form
-	// of peeer discovery.  It is wrapped by PeX and called only
-	// when we fail to bootstrap from a persisted local view.
-	if peers, err = p.Boot.FindPeers(ctx, ns, opt...); err != nil {
-		p.Logger.Debugf("booting %s", ns)
-	}
+type PortScanStrategy struct {
+	boot.PortListener
+	boot.PortKnocker
+}
 
-	return
+func (p *PortScanStrategy) New(h host.Host) (discovery.Discovery, error) {
+	bus := h.EventBus()
+
+	// We update the local peer record each time the host binds
+	// or unbinds a network address.
+	sub, err := bus.Subscribe(new(event.EvtLocalAddressesUpdated))
+	if err != nil {
+		return nil, err
+	}
+	goprocess.WithParent(h.Network().Process()).SetTeardown(sub.Close)
+
+	// Initialize the register.  The subscription is stateful, so this
+	// will not block.
+	v := <-sub.Out()
+	ev := v.(event.EvtLocalAddressesUpdated)
+	p.PortListener.Endpoint.Register = casm.New(ev.SignedPeerRecord)
+	p.PortKnocker.RequestBody = ev.SignedPeerRecord
+
+	// Update the register in the background in case the host (un)binds
+	// any addresses.
+	go func() {
+		for v := range sub.Out() {
+			ev := v.(event.EvtLocalAddressesUpdated)
+			p.PortListener.Store(ev.SignedPeerRecord)
+		}
+	}()
+
+	return p, nil
 }
 
 func exactly(match string) func(string) bool {
