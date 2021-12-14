@@ -56,7 +56,6 @@ func beforeScan(k *boot.PortKnocker) cli.BeforeFunc {
 			WithField("port", c.Int("port")).
 			WithField("cidr", c.String("cidr"))
 		k.Logger.Debug("port scan started")
-
 		_, k.Subnet, err = net.ParseCIDR(c.String("cidr"))
 		return
 	}

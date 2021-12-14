@@ -43,21 +43,33 @@ func (pl PortListener) Serve(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 
 	// Get network/addr from the active conn.  This will give us the resolved
 	// endpoint address.
 	log := pl.Logger.
-		WithField("network", conn.LocalAddr().Network()).
-		WithField("addr", conn.LocalAddr().String())
+		WithField("net", conn.LocalAddr().Network()).
+		WithField("conn", conn.LocalAddr().String())
 
-	// Answer all packets with the contents of the endpoint until 'ctx' expires.
-	for ctx.Err() == nil {
-		if err = boot.Answer(ctx, pl.Endpoint, conn); err != nil {
-			log.WithError(err).Debug("exception occurred while handling packet")
+	// Answer all packets until 'conn' is closed.
+	cherr := make(chan error, 1)
+	go func() {
+		for {
+			if err = boot.Answer(ctx, pl.Endpoint, conn); err != nil {
+				cherr <- err
+				return
+			}
+
+			log.Trace("handled packet")
 		}
-	}
+	}()
 
-	return ctx.Err()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err = <-cherr:
+		return err
+	}
 }
 
 func (pl PortListener) Advertise(ctx context.Context, ns string, opt ...discovery.Option) (time.Duration, error) {
