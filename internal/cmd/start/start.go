@@ -85,7 +85,7 @@ func run() cli.ActionFunc {
 				fx.Annotate(c.Context, fx.As(new(context.Context))),
 				fx.Annotate(logger, fx.As(new(log.Logger)))),
 			fx.Provide(
-				newBootStrategy,
+				bindBootContext,
 				newSystemHook,
 				newDatastore,
 				embed.Server),

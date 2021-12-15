@@ -4,15 +4,12 @@ import (
 	"time"
 
 	ds "github.com/ipfs/go-datastore"
-	"github.com/jbenet/goprocess"
 	"github.com/libp2p/go-libp2p-core/discovery"
-	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/routing"
 	disc "github.com/libp2p/go-libp2p-discovery"
 	"github.com/lthibault/log"
 	ctxutil "github.com/lthibault/util/ctx"
-	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/pex"
 	"github.com/wetware/ww/pkg/boot"
 	"go.uber.org/fx"
@@ -61,38 +58,37 @@ type BootStrategy interface {
 }
 
 type PortScanStrategy struct {
-	boot.PortListener
-	boot.PortKnocker
 }
 
 func (p *PortScanStrategy) New(h host.Host) (discovery.Discovery, error) {
-	bus := h.EventBus()
+	panic("NOT IMPLEMENTED")
+	// bus := h.EventBus()
 
-	// We update the local peer record each time the host binds
-	// or unbinds a network address.
-	sub, err := bus.Subscribe(new(event.EvtLocalAddressesUpdated))
-	if err != nil {
-		return nil, err
-	}
-	goprocess.WithParent(h.Network().Process()).SetTeardown(sub.Close)
+	// // We update the local peer record each time the host binds
+	// // or unbinds a network address.
+	// sub, err := bus.Subscribe(new(event.EvtLocalAddressesUpdated))
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// goprocess.WithParent(h.Network().Process()).SetTeardown(sub.Close)
 
-	// Initialize the register.  The subscription is stateful, so this
-	// will not block.
-	v := <-sub.Out()
-	ev := v.(event.EvtLocalAddressesUpdated)
-	p.PortListener.Endpoint.Register = casm.New(ev.SignedPeerRecord)
-	p.PortKnocker.RequestBody = ev.SignedPeerRecord
+	// // Initialize the register.  The subscription is stateful, so this
+	// // will not block.
+	// v := <-sub.Out()
+	// ev := v.(event.EvtLocalAddressesUpdated)
+	// p.PortListener.Endpoint.Register = casm.New(ev.SignedPeerRecord)
+	// p.PortKnocker.RequestBody = ev.SignedPeerRecord
 
-	// Update the register in the background in case the host (un)binds
-	// any addresses.
-	go func() {
-		for v := range sub.Out() {
-			ev := v.(event.EvtLocalAddressesUpdated)
-			p.PortListener.Store(ev.SignedPeerRecord)
-		}
-	}()
+	// // Update the register in the background in case the host (un)binds
+	// // any addresses.
+	// go func() {
+	// 	for v := range sub.Out() {
+	// 		ev := v.(event.EvtLocalAddressesUpdated)
+	// 		p.PortListener.Store(ev.SignedPeerRecord)
+	// 	}
+	// }()
 
-	return p, nil
+	// return p.Service, nil
 }
 
 func exactly(match string) func(string) bool {
