@@ -2,62 +2,43 @@ package start
 
 import (
 	"context"
+	"io"
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/discovery"
+	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p-core/host"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/libp2p/go-libp2p-kad-dht/dual"
+	libp2pquic "github.com/libp2p/go-libp2p-quic-transport"
 	"github.com/lthibault/log"
 	"github.com/thejerf/suture/v4"
 	"github.com/urfave/cli/v2"
-	"go.uber.org/fx"
-	"golang.org/x/sync/errgroup"
 
+	"go.uber.org/fx"
+
+	"github.com/wetware/casm/pkg/cluster"
+	"github.com/wetware/ww/internal/runtime"
 	serviceutil "github.com/wetware/ww/internal/util/service"
-	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/server"
-	"github.com/wetware/ww/pkg/util/embed"
 )
 
 var logger = log.New()
 
 var flags = []cli.Flag{
-	// &cli.StringFlag{
-	// 	Name:    "join",
-	// 	Aliases: []string{"j"},
-	// 	Usage:   "addrs to static bootstrap peers",
-	// 	EnvVars: []string{"WW_JOIN"},
-	// },
-	// &cli.StringFlag{
-	// 	Name:    "discover",
-	// 	Aliases: []string{"d"},
-	// 	Usage:   "bootstrap service multiaddr",
-	// 	Value:   "/ip4/228.8.8.8/udp/8822",
-	// 	EnvVars: []string{"WW_DISCOVER"},
-	// },
 	&cli.StringSliceFlag{
-		Name:    "addr",
+		Name:    "listen",
 		Aliases: []string{"a"},
 		Usage:   "host listen address",
 		Value: cli.NewStringSlice(
 			"/ip4/0.0.0.0/udp/2020/quic",
 			"/ip6/::0/udp/2020/quic"),
-		EnvVars: []string{"WW_ADDR"},
+		EnvVars: []string{"WW_LISTEN"},
 	},
 	&cli.StringFlag{
 		Name:    "ns",
 		Usage:   "cluster namespace",
 		Value:   "ww",
 		EnvVars: []string{"WW_NS"},
-	},
-	&cli.DurationFlag{
-		Name:    "ttl",
-		Usage:   "heartbeat TTL duration",
-		Value:   time.Second * 5,
-		EnvVars: []string{"WW_TTL"},
-	},
-	&cli.StringFlag{
-		Name:    "secret",
-		Usage:   "cluster-wide shared secret",
-		EnvVars: []string{"WW_SECRET"},
 	},
 }
 
@@ -77,138 +58,61 @@ func Command() *cli.Command {
 
 func run() cli.ActionFunc {
 	return func(c *cli.Context) error {
-		app := fx.New(fx.NopLogger,
-			newSharedSecret(c),
-			fx.Supply(c,
-				fx.Annotate(c.String("ns"), fx.ParamTags(`name:"ns"`)),
-				fx.Annotate(c.Duration("ttl"), fx.ParamTags(`name:"ttl"`)),
-				fx.Annotate(c.Context, fx.As(new(context.Context))),
-				fx.Annotate(logger, fx.As(new(log.Logger)))),
-			fx.Provide(
-				bindBootContext,
-				newSystemHook,
-				newDatastore,
-				embed.Server),
-			fx.Invoke(
-				startRuntime))
-
+		app := fx.New(fx.NopLogger, bind(c))
 		if err := app.Start(c.Context); err != nil {
 			return err
 		}
 
-		<-c.Context.Done()
+		<-c.Done() // TODO:  process OS signals in a loop here.
 
 		return shutdown(app)
 	}
 }
 
-type runtime struct {
-	fx.In
-
-	Lifecycle fx.Lifecycle
-
-	Logger log.Logger
-	CLI    *cli.Context
-
-	Cluster  discovery.Advertiser
-	Services []suture.Service `group:"services"`
+func bind(c *cli.Context) fx.Option {
+	return fx.Options(
+		runtime.Bind(),
+		fx.Supply(c),
+		fx.Provide(
+			logging,
+			supervisor,
+			localhost,
+			routing,
+			node))
 }
 
-func startRuntime(ctx context.Context, n server.Node, r runtime) {
-	// Set up some shared variables.  These will mutate throughout the application
-	// lifecycle.
-	var (
-		cancel context.CancelFunc
-		cherr  <-chan error
-	)
+func logging() log.Logger {
+	return logger
+}
 
-	r.Logger = r.Logger.
-		WithField("version", ww.Version).
-		With(n)
-
-	// Register services.
-	s := serviceutil.New(r.Logger, n.String())
-	s.Add(r)
-
-	// Hook main service (Supervisor) into application lifecycle.
-	r.Lifecycle.Append(fx.Hook{
-		// Bind global variables and start wetware.
-		OnStart: func(context.Context) error {
-			ctx, cancel = context.WithCancel(ctx)
-
-			// Start the supervisor.
-			cherr = s.ServeBackground(ctx)
-
-			// The wetware environment is now loaded.  Bear in mind
-			// that this is a PA/EL system, so we hand over control
-			// to the user without synchronizing the cluster view.
-			//
-			// System events are likewise asynchronous, but reliable.
-			// Users can wait for the local node to have successfully
-			// bound to network interfaces by subscribing to the
-			// 'EvtLocalAddrsUpdated' event.
-			r.Logger.WithField("ns", s).Debug("loaded namespace")
-
-			return nil
-		},
-		OnStop: func(ctx context.Context) (err error) {
-			// Cancel the application context.
-			//
-			// Beyond this point, the services in this local
-			// process are no longer guaranteed to be in sync.
-			cancel()
-			r.Logger.Tracef("shutdown signal sent to %s", s)
-
-			// Wait for the supervisor to shut down gracefully.
-			// If it does not terminate in a timely fashion,
-			// abort the application and return an error.
-			select {
-			case err = <-cherr:
-				if err == context.Canceled {
-					err = nil
-				}
-
-			case <-ctx.Done():
-				err = ctx.Err()
-			}
-
-			return
-		},
-	})
-
-	// Hook into the bootstrap service and
-	r.Lifecycle.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			ttl, err := r.Cluster.Advertise(ctx,
-				n.String(),
-				discovery.TTL(time.Hour*24))
-
-			if err == nil {
-				r.Logger.
-					WithField("ttl", ttl).
-					Debug("advertised local node on bootstrap service")
-			}
-
-			return err
-		},
+func supervisor() *suture.Supervisor {
+	return suture.New("runtime", suture.Spec{
+		EventHook: serviceutil.NewEventHook(logger, "runtime"),
 	})
 }
 
-func (r runtime) Serve(ctx context.Context) error {
-	r.Logger.Info("wetware started")
-
-	g, ctx := errgroup.WithContext(ctx)
-	for _, s := range r.Services {
-		g.Go(serve(ctx, s))
+func localhost(c *cli.Context, lx fx.Lifecycle) (host.Host, error) {
+	h, err := libp2p.New(c.Context,
+		libp2p.NoTransports,
+		libp2p.Transport(libp2pquic.NewTransport),
+		libp2p.ListenAddrStrings(c.StringSlice("listen")...))
+	if err == nil {
+		lx.Append(closer(h))
 	}
 
-	return g.Wait()
+	return h, err
 }
 
-func serve(ctx context.Context, s suture.Service) func() error {
-	return func() error {
-		return s.Serve(ctx)
-	}
+func routing(c *cli.Context, h host.Host) (*dual.DHT, error) {
+	return dual.New(c.Context, h,
+		dual.LanDHTOption(dht.Mode(dht.ModeServer)),
+		dual.WanDHTOption(dht.Mode(dht.ModeAuto)))
+}
+
+func node(c *cli.Context, h host.Host, n *cluster.Node) (server.Node, error) {
+	return server.New(h, n,
+		server.WithLogger(logger),
+		server.WithNamespace(c.String("ns")))
 }
 
 func shutdown(app *fx.App) error {
@@ -216,4 +120,12 @@ func shutdown(app *fx.App) error {
 	defer cancel()
 
 	return app.Stop(ctx)
+}
+
+func closer(c io.Closer) fx.Hook {
+	return fx.Hook{
+		OnStop: func(context.Context) error {
+			return c.Close()
+		},
+	}
 }

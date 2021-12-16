@@ -18,7 +18,7 @@ require (
 	github.com/libp2p/go-libp2p-pubsub v0.5.4
 	github.com/lthibault/log v1.2.1
 	github.com/miekg/dns v1.1.43 // indirect
-	github.com/multiformats/go-multiaddr v0.4.0 // indirect
+	github.com/multiformats/go-multiaddr v0.4.0
 	github.com/prometheus/common v0.30.0 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/sirupsen/logrus v1.8.1
@@ -34,11 +34,9 @@ require (
 )
 
 require (
-	github.com/libp2p/go-eventbus v0.2.1
 	github.com/libp2p/go-libp2p-quic-transport v0.11.2
 	github.com/lthibault/util v0.0.11
 	github.com/thejerf/suture/v4 v4.0.1
-	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 )
 
 require (
@@ -73,6 +71,7 @@ require (
 	github.com/libp2p/go-buffer-pool v0.0.2 // indirect
 	github.com/libp2p/go-cidranger v1.1.0 // indirect
 	github.com/libp2p/go-conn-security-multistream v0.2.1 // indirect
+	github.com/libp2p/go-eventbus v0.2.1 // indirect
 	github.com/libp2p/go-flow-metrics v0.0.3 // indirect
 	github.com/libp2p/go-libp2p-asn-util v0.0.0-20200825225859-85005c6cf052 // indirect
 	github.com/libp2p/go-libp2p-autonat v0.4.2 // indirect
@@ -142,6 +141,7 @@ require (
 	go.opencensus.io v0.23.0 // indirect
 	go.uber.org/dig v1.12.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/tools v0.1.5 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 )

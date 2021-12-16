@@ -2,8 +2,6 @@
 package server
 
 import (
-	"context"
-	"fmt"
 	"io"
 	"path"
 	"strings"
@@ -11,244 +9,67 @@ import (
 	"capnproto.org/go/capnp/v3/rpc"
 	"capnproto.org/go/capnp/v3/server"
 	"github.com/google/uuid"
-	"github.com/libp2p/go-eventbus"
-	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/helpers"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/lthibault/log"
 
 	"github.com/wetware/casm/pkg/cluster"
-	"github.com/wetware/casm/pkg/util/service"
 	"github.com/wetware/ww/internal/api/client"
 	rpcutil "github.com/wetware/ww/internal/util/rpc"
 	ww "github.com/wetware/ww/pkg"
 )
 
-type EvtNodeReady struct {
-	ID        peer.ID
-	Instance  uuid.UUID
-	Namespace string
-}
-
-func (ev EvtNodeReady) Loggable() map[string]interface{} {
-	return map[string]interface{}{
-		"id":       ev.ID,
-		"instance": ev.Instance,
-		"ns":       ev.Namespace,
-	}
-}
-
 type Node struct {
+	id  uuid.UUID
+	ns  string
 	log log.Logger
 
-	ts []string // default topics
-
-	host HostFactory
-	dht  DHTFactory
-	ps   PubSubFactory
-	boot BootStrategy
-	cc   ClusterConfig
+	h host.Host
+	c *cluster.Node
 }
 
-func New(opt ...Option) (n Node) {
+func New(h host.Host, c *cluster.Node, opt ...Option) (Node, error) {
+	var n = Node{
+		id: uuid.Must(uuid.NewRandom()), // instance ID
+		h:  h,
+		c:  c,
+	}
+
 	for _, option := range withDefaults(opt) {
 		option(&n)
 	}
 
-	return
+	return n, n.registerHandlers()
+}
+
+func (n Node) Close() error {
+	n.unregisterHandlers()
+	return nil
 }
 
 // String returns the cluster namespace
-func (n Node) String() string { return n.cc.NS }
+func (n Node) String() string { return n.ns }
 
 func (n Node) Loggable() map[string]interface{} {
 	return map[string]interface{}{
-		"ns":     n.cc.NS,
-		"ttl":    n.cc.TTL,
-		"topics": n.ts,
+		"ns":       n.ns,
+		"instance": n.id,
 	}
 }
 
-func (n Node) Serve(ctx context.Context) error {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	if rh, ok := n.host.(RoutingHook); ok {
-		rh.SetRouting(n.dht)
-	}
-
-	h, err := n.host.New(ctx) // closed by instance
-	if err != nil {
-		return fmt.Errorf("host: %w", err)
-	}
-
-	dht, err := n.dht.New(h)
-	if err != nil {
-		return fmt.Errorf("dht: %w", err)
-	}
-
-	ps, err := n.ps.New(h, n.boot, dht)
-	if err != nil {
-		return fmt.Errorf("pubsub: %w", err)
-	}
-
-	return n.newInstance(h, ps).Serve(ctx, n.ts, n.cc.options())
-}
-
-type instance struct {
-	id  uuid.UUID
-	log log.Logger
-
-	h  host.Host
-	ps PubSub
-
-	cc ClusterConfig
-	ts []string
-}
-
-func (n Node) newInstance(h host.Host, ps PubSub) instance {
-	id := uuid.Must(uuid.NewRandom())
-	n.log = n.log.With(log.F{
-		"addrs":    h.Addrs(),
-		"ns":       n.cc.NS,
-		"id":       h.ID(),
-		"instance": id,
-	})
-
-	return instance{
-		id:  id,
-		log: n.log,
-		h:   h,
-		ps:  ps,
-		ts:  n.ts,
-		cc:  n.cc,
-	}
-}
-
-func (in instance) Serve(ctx context.Context, topics []string, opt []cluster.Option) error {
-	var (
-		tm     *topicManager
-		cancel func()
-		c      *cluster.Node
-		ss     = service.Set{
-			// Capabilities
-			service.Hook{
-				OnStart: func() error {
-					return in.registerHandlers(in.cc.NS)
-				},
-				OnClose: func() error {
-					in.unregisterHandlers()
-					return nil
-				},
-			},
-			// Cluster
-			service.Hook{
-				OnStart: func() (err error) {
-					c, err = cluster.New(ctx, in.ps,
-						cluster.WithLogger(in.log),
-						cluster.WithTTL(in.cc.TTL),
-						cluster.WithMeta(in.cc.Meta),
-						cluster.WithReadiness(in.cc.Ready),
-						cluster.WithNamespace(in.cc.NS),
-						cluster.WithRoutingTable(in.cc.Routing))
-					return
-				},
-				OnClose: func() error {
-					return c.Close()
-				},
-			},
-			// Topic manager
-			service.Hook{
-				OnStart: func() (err error) {
-					tm = newTopicManager(in.ps, c.Topic())
-					cancel, err = in.startRelays(tm, topics)
-					return
-				},
-				OnClose: func() error {
-					cancel()
-					return tm.Close()
-				},
-			},
-			// Signalling
-			service.Hook{
-				OnStart: func() error {
-					sub, err := in.h.EventBus().Subscribe(new(event.EvtLocalAddressesUpdated))
-					if err != nil {
-						return err
-					}
-					defer sub.Close()
-
-					select {
-					case <-sub.Out():
-					case <-ctx.Done():
-						return fmt.Errorf("wait host ready: %w", ctx.Err())
-					}
-
-					e, err := in.h.EventBus().Emitter(new(EvtNodeReady), eventbus.Stateful)
-					if err != nil {
-						return err
-					}
-					defer e.Close()
-
-					return e.Emit(EvtNodeReady{
-						ID:        in.h.ID(),
-						Instance:  in.id,
-						Namespace: in.cc.NS,
-					})
-				},
-			}}
-	)
-
-	if err := ss.Start(); err != nil {
-		return fmt.Errorf("setup: %w", err)
-	}
-
-	<-ctx.Done()
-
-	if err := ss.Close(); err != nil {
-		return fmt.Errorf("teardown")
-	}
-
-	return in.h.Close()
-}
-
-func (in instance) startRelays(tm *topicManager, ts []string) (cancel func(), err error) {
-	var cs = make([]pubsub.RelayCancelFunc, len(ts))
-
-	cancel = func() {
-		for _, cancel := range cs {
-			cancel()
-		}
-	}
-
-	for i, topic := range ts {
-		if cs[i], err = tm.Relay(topic); err != nil {
-			cs = cs[:i]
-			cancel()
-			break
-		}
-
-		in.log.WithField("topic", topic).Info("relaying topic")
-	}
-
-	return
-}
-
-func (in instance) handleRPC(f transportFactory) network.StreamHandler {
+func (n Node) handleRPC(f transportFactory) network.StreamHandler {
 	return func(s network.Stream) {
 		defer s.Close()
 
-		h := client.Host_ServerToClient(in, &server.Policy{
+		h := client.Host_ServerToClient(n, &server.Policy{
 			MaxConcurrentCalls: 64, // lower when capnp issue #190 is resolved
 		})
 
 		conn := rpc.NewConn(f.NewTransport(s), &rpc.Options{
 			BootstrapClient: h.Client,
 			ErrorReporter: rpcutil.ErrReporterFunc(func(err error) {
-				in.log.
+				n.log.
 					With(streamFields(s)).
 					WithError(err).
 					Debug("rpc error")
@@ -258,12 +79,12 @@ func (in instance) handleRPC(f transportFactory) network.StreamHandler {
 
 		select {
 		case <-conn.Done():
-			in.log.
+			n.log.
 				With(streamFields(s)).
 				Debug("client hung up")
 
-		case <-in.h.Network().Process().Closing():
-			in.log.
+		case <-n.h.Network().Process().Closing():
+			n.log.
 				With(streamFields(s)).
 				Debug("server shutting down")
 		}
@@ -275,28 +96,28 @@ const (
 	protoPacked = ww.Proto + "/packed"
 )
 
-func (p instance) registerHandlers(ns string) error {
+func (n *Node) registerHandlers() error {
 	matchVersion, err := helpers.MultistreamSemverMatcher(ww.Proto)
 	if err != nil {
 		return err
 	}
 
-	matchCluster := matchNamespace(ns).Then(matchVersion)
+	matchCluster := matchNamespace(n.ns).Then(matchVersion)
 
-	p.h.SetStreamHandlerMatch(proto,
+	n.h.SetStreamHandlerMatch(proto,
 		matchCluster,
-		p.handleRPC(rpc.NewStreamTransport))
+		n.handleRPC(rpc.NewStreamTransport))
 
-	p.h.SetStreamHandlerMatch(protoPacked,
+	n.h.SetStreamHandlerMatch(protoPacked,
 		matchPacked().Then(matchCluster),
-		p.handleRPC(rpc.NewPackedStreamTransport))
+		n.handleRPC(rpc.NewPackedStreamTransport))
 
 	return nil
 }
 
-func (p instance) unregisterHandlers() {
-	p.h.RemoveStreamHandler(proto)
-	p.h.RemoveStreamHandler(protoPacked)
+func (n *Node) unregisterHandlers() {
+	n.h.RemoveStreamHandler(proto)
+	n.h.RemoveStreamHandler(protoPacked)
 }
 
 type matcher func(string) bool

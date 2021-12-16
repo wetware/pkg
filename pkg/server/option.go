@@ -1,7 +1,6 @@
 package server
 
 import (
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/lthibault/log"
 )
 
@@ -18,72 +17,18 @@ func WithLogger(l log.Logger) Option {
 	}
 }
 
-func WithTopics(ts ...string) Option {
-	return func(n *Node) {
-		n.ts = ts
-	}
-}
-
-func WithHost(f HostFactory) Option {
-	if f == nil {
-		f = &RoutedHost{}
+func WithNamespace(ns string) Option {
+	if ns == "" {
+		ns = "ww"
 	}
 
 	return func(n *Node) {
-		n.host = f
-	}
-}
-
-func WithDHT(f DHTFactory) Option {
-	if f == nil {
-		f = DualDHTFactory(nil)
-	}
-
-	return func(n *Node) {
-		n.dht = f
-	}
-}
-
-func WithBootStrategy(b BootStrategy) Option {
-	if b == nil {
-		b = &PortScanStrategy{}
-	}
-
-	return func(n *Node) {
-		n.boot = b
-	}
-}
-
-func WithPubSub(f PubSubFactory) Option {
-	if f == nil {
-		f = &GossipsubFactory{}
-	}
-
-	return func(n *Node) {
-		n.ps = f
-	}
-}
-
-func WithCluster(c ClusterConfig) Option {
-	if c.NS == "" {
-		c.NS = "ww"
-	}
-
-	if c.Ready == nil {
-		c.Ready = pubsub.MinTopicSize(1)
-	}
-
-	return func(n *Node) {
-		n.cc = c
+		n.ns = ns
 	}
 }
 
 func withDefaults(opt []Option) []Option {
 	return append([]Option{
 		WithLogger(nil),
-		WithHost(nil),
-		WithBootStrategy(nil),
-		WithDHT(nil),
-		WithPubSub(nil),
 	}, opt...)
 }
