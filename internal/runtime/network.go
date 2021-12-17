@@ -114,9 +114,9 @@ func bootstrap(c *cli.Context, config bootstrapConfig) (discovery.Discovery, err
 	// fetch peers from PeX, which itself will fall back
 	// on the bootstrap services.
 	return boot.Namespace{
-		Match: pubsubTopic(c.String("ns")),
-		Cache: d,
-		Else:  disc.NewRoutingDiscovery(config.DHT),
+		Match:   pubsubTopic(c.String("ns")),
+		Target:  d,
+		Default: disc.NewRoutingDiscovery(config.DHT),
 	}, nil
 }
 
@@ -150,6 +150,7 @@ func crawler(c *cli.Context, log log.Logger) (boot.Crawler, error) {
 	}
 
 	return boot.Crawler{
+		Logger: log.WithField("scan", u.String()),
 		Dialer: new(net.Dialer),
 		Strategy: &boot.ScanSubnet{
 			Logger: log.WithField("scan", u.String()),
