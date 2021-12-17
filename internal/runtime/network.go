@@ -3,6 +3,7 @@ package runtime
 import (
 	"context"
 	"net"
+	"strings"
 	"time"
 
 	ds "github.com/ipfs/go-datastore"
@@ -110,7 +111,7 @@ func bootstrap(c *cli.Context, config bootstrapConfig) (discovery.Discovery, err
 	// fetch peers from PeX, which itself will fall back
 	// on the bootstrap service 'p'.
 	return boot.Cache{
-		Match: exactly(c.String("ns")),
+		Match: pubsubTopic(c.String("ns")),
 		Cache: d,
 		Else:  disc.NewRoutingDiscovery(config.DHT),
 	}, nil
@@ -137,10 +138,11 @@ func crawler(c *cli.Context, log log.Logger) boot.Crawler {
 	}
 }
 
-func exactly(match string) func(string) bool {
+func pubsubTopic(match string) func(string) bool {
+	const prefix = "floodsub:"
+
 	return func(s string) bool {
-		log.New().Info(s)
-		return match == s
+		return match == strings.TrimPrefix(s, prefix)
 	}
 }
 
