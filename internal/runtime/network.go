@@ -109,13 +109,14 @@ func exactly(match string) func(string) bool {
 	}
 }
 
-func bindCrawler(c *cli.Context) boot.Crawler {
+func bindCrawler(c *cli.Context, log log.Logger) boot.Crawler {
 	return boot.Crawler{
-		Net: new(net.Dialer),
+		Dialer: new(net.Dialer),
 		Strategy: &boot.ScanSubnet{
+			Logger: log,
 			Net:    "tcp",
 			Port:   8822,
-			Subnet: boot.Subnet{CIDR: "127.0.0.1/24"}, // XXX
+			CIDR:   "127.0.0.1/24", // XXX
 		},
 	}
 }
@@ -127,160 +128,3 @@ func timeout(ctx context.Context) time.Duration {
 
 	return time.Second * 5
 }
-
-// // ...
-
-// type bootContext struct {
-// 	fx.Out
-
-// 	Advertiser discovery.Advertiser
-// 	Discoverer discovery.Discoverer
-// 	Service    discovery.Discovery
-// }
-
-// func bindNetwork(c *cli.Context, scanner boot.Scanner) (b bootContext, err error) {
-// 	defer func() {
-// 		if exc, ok := recover().(error); ok {
-// 			err = exc // abruptly return the panicked error
-// 		}
-// 	}()
-
-// 	b = bootContext{
-// 		Advertiser: advertiser(c),
-// 		Discoverer: netscan(c, scanner),
-// 		Service:    service(&b),
-// 	}
-
-// 	return
-// }
-
-// func netscan(c *cli.Context, scanner boot.Scanner) discovery.Discoverer {
-// 	return &boot.DiscoveryService{
-// 		Strategy: &boot.ScanSubnet{
-// 			Net:     "tcp",
-// 			Port:    port(c), // may panic
-// 			Subnet:  cidr(c), // may panic
-// 			Scanner: scanner,
-// 		},
-// 	}
-// }
-
-// func service(bcx *bootContext) discovery.Discovery {
-// 	return struct {
-// 		discovery.Advertiser
-// 		discovery.Discoverer
-// 	}{
-// 		Advertiser: bcx.Advertiser,
-// 		Discoverer: bcx.Discoverer,
-// 	}
-// }
-
-// func port(c *cli.Context) (port int) {
-// 	selector := scanAddr(c.String("discovery")).String() // cidr:port
-
-// 	// get the last segment of a ':'-separated path, defaulting to "".
-// 	var portNum string
-// 	for _, portNum = range strings.SplitN(selector, ":", 2) {
-// 		port, _ = strconv.Atoi(portNum)
-// 	}
-
-// 	return
-// }
-
-// func cidr(c *cli.Context) boot.Subnet {
-// 	return boot.Subnet{
-// 		CIDR: c.String("subnet"),
-// 	}
-// }
-
-// // func bind(c *cli.Context, a func() discovery.Advertiser, s boot.ScanStrategy) *cli.Context {
-// // 	c = withAdvertiser(c, a)
-// // 	c = withDiscoverer(c, newScanner(func() *boot.Context {
-// // 		return &boot.Context{
-// // 			Net:      new(net.Dialer),
-// // 			Strategy: s,
-// // 		}
-// // 	}))
-// // 	return c
-
-// // }
-
-// func advertiser(c *cli.Context) discovery.Advertiser {
-// 	return c.Context.Value(newAdvertiser(nil)).(discovery.Advertiser)
-// }
-
-// // func strategy(c *cli.Context) boot.ScanStrategy {
-// // 	return c.Context.Value(newScanner(nil)).(boot.ScanStrategy)
-// // }
-
-// // func withAdvertiser(c *cli.Context, a func() discovery.Advertiser) *cli.Context {
-// // 	c.Context = context.WithValue(c.Context, newAdvertiser(nil), a)
-// // 	return c
-// // }
-
-// // func withDiscoverer(c *cli.Context, s newScanner) *cli.Context {
-// // 	c.Context = context.WithValue(c.Context, newScanner(nil), s)
-// // 	return c
-// // }
-
-// type newAdvertiser func() discovery.Advertiser
-
-// func (advertiser newAdvertiser) Advertise(ctx context.Context, ns string, opt ...discovery.Option) (time.Duration, error) {
-// 	return advertiser().Advertise(ctx, ns, opt...)
-// }
-
-// // type newScanner func() *boot.Context
-
-// // func bindScanOptions(opts *discovery.Options, opt []discovery.Option) error {
-// // 	return opts.Apply(opt...)
-// // }
-
-// // func (scanner newScanner) FindPeers(ctx context.Context, ns string, opt ...discovery.Option) (<-chan peer.AddrInfo, error) {
-// // 	var opts = discovery.Options{
-// // 		Limit: 1,
-// // 	}
-
-// // 	if err := bindScanOptions(&opts, opt); err != nil {
-// // 		return nil, nil
-// // 	}
-
-// // 	agent := make(chan peer.AddrInfo, 1)
-// // 	return agent, scanner.bind(ctx, agent, scanAddr(ns), &opts)
-// // }
-
-// // func (scanner newScanner) bind(ctx context.Context, out chan<- peer.AddrInfo, addr net.Addr, opts *discovery.Options) error {
-// // 	var rec peer.PeerRecord
-
-// // 	scan := scanner()
-// // 	if _, err := scan.Strategy.Scan(ctx, scan.Net, &rec); err != nil {
-// // 		return err
-// // 	}
-
-// // 	select {
-// // 	case out <- peer.AddrInfo{ID: rec.PeerID, Addrs: rec.Addrs}:
-// // 		return nil
-
-// // 	case <-ctx.Done():
-// // 		return ctx.Err()
-// // 	}
-// // }
-
-// type scanAddr string
-
-// func (addr scanAddr) Network() string {
-// 	u, err := url.Parse(string(addr))
-// 	if err != nil {
-// 		panic(fmt.Errorf("invalid namespace: %w", err))
-// 	}
-
-// 	return u.Scheme
-// }
-
-// func (addr scanAddr) String() string {
-// 	u, err := url.Parse(string(addr))
-// 	if err != nil {
-// 		panic(fmt.Errorf("invalid namespace: %w", err))
-// 	}
-
-// 	return u.Host
-// }

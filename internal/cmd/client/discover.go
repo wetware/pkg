@@ -2,13 +2,11 @@ package client
 
 import (
 	"bytes"
-	"context"
 	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"time"
 
@@ -30,7 +28,7 @@ func Crawl() *cli.Command {
 		Usage:  "scan an IP range for cluster hosts",
 		Flags:  scanFlags,
 		Before: beforeScan(&b),
-		Action: scan(&b),
+		Action: crawl(&b),
 	}
 }
 
@@ -97,92 +95,36 @@ var publishFlags = []cli.Flag{
 	SCAN
 */
 
-type recordScanner struct{}
-
-func (recordScanner) Scan(conn net.Conn, dst record.Record) (*record.Envelope, error) {
-	data, err := ioutil.ReadAll(io.LimitReader(conn, 512)) // arbitrary MTU
-	if err != nil {
-		return nil, err
-	}
-
-	return record.ConsumeTypedEnvelope(data, dst)
-}
-
 func beforeScan(s *boot.Crawler) cli.BeforeFunc {
 	return func(c *cli.Context) (err error) {
+		s.Logger = logger
 		s.Strategy = &boot.ScanSubnet{
-			Net:     c.String("net"),
-			Port:    c.Int("port"),
-			Subnet:  boot.Subnet{CIDR: c.String("subnet")},
-			Scanner: recordScanner{},
+			Logger: logger,
+			Net:    c.String("net"),
+			Port:   c.Int("port"),
+			CIDR:   c.String("subnet"),
 		}
 
 		return
 	}
 }
 
-func scan(b *boot.Crawler) cli.ActionFunc {
+func crawl(b *boot.Crawler) cli.ActionFunc {
 	return func(c *cli.Context) error {
-		var (
-			rs    = make(chan peer.PeerRecord, 1)
-			cherr = make(chan error, 1)
-		)
-
-		go func() {
-			defer close(rs)
-			defer close(cherr)
-
-			var (
-				rec    peer.PeerRecord
-				dialer = logDialer{Logger: logger}
-			)
-
-			_, err := b.Strategy.Scan(c.Context, dialer, &rec)
-			if err != nil {
-				cherr <- err // buffered
-			}
-		}()
+		peers, err := b.FindPeers(c.Context, "")
+		if err != nil {
+			return err
+		}
 
 		enc := json.NewEncoder(c.App.Writer)
-		enc.SetIndent("\n", "  ")
-
-		for {
-			select {
-			case record := <-rs:
-				if err := enc.Encode(record); err != nil {
-					return err
-				}
-
-			case err := <-cherr:
+		for info := range peers {
+			if err := enc.Encode(info); err != nil {
 				return err
 			}
 		}
+
+		return nil
 	}
-}
-
-type logDialer struct {
-	Logger log.Logger
-}
-
-func (d logDialer) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
-	log := d.Logger.With(log.F{
-		"net":  network,
-		"addr": addr,
-	})
-	log.Trace("dialing")
-
-	var dialer net.Dialer
-	conn, err := dialer.DialContext(ctx, network, addr)
-	if err == nil {
-		return conn, nil
-	}
-
-	if ne, ok := err.(net.Error); ok && ne.Timeout() {
-		log.Debug("no answer")
-		return nil, boot.ErrSkip
-	}
-
-	return nil, err
 }
 
 /*
@@ -248,7 +190,7 @@ func (p *recordPublisher) handle(conn net.Conn) {
 }
 
 func (p *recordPublisher) autoGenerate() error {
-	pk, _, err := crypto.GenerateECDSAKeyPair(rand.Reader)
+	pk, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	if err != nil {
 		return err
 	}
@@ -259,7 +201,8 @@ func (p *recordPublisher) autoGenerate() error {
 	}
 
 	var rec = peer.PeerRecord{
-		Seq: uint64(time.Now().UnixNano()),
+		PeerID: id,
+		Seq:    uint64(time.Now().UnixNano()),
 		Addrs: []multiaddr.Multiaddr{
 			multiaddr.StringCast(fmt.Sprintf("/ip4/127.0.0.1/udp/2020/p2p/%s", id)),
 		},
