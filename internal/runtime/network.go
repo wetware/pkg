@@ -117,12 +117,13 @@ func bootstrap(c *cli.Context, config bootstrapConfig) (discovery.Discovery, err
 	}, nil
 }
 
-func beacon(c *cli.Context, h host.Host) boot.Beacon {
+func beacon(c *cli.Context, log log.Logger, h host.Host) boot.Beacon {
 	const port = 8822 // XXX
 
 	return boot.Beacon{
-		Addr: &net.TCPAddr{Port: port},
-		Host: h,
+		Logger: log,
+		Addr:   &net.TCPAddr{Port: port},
+		Host:   h,
 	}
 }
 
