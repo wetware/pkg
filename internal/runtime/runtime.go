@@ -20,9 +20,8 @@ import (
 // Bind a context to an Fx.Option that loads dependencies at runtime.
 func Bind() fx.Option {
 	return fx.Options(
-		fx.Provide(
-			bindSystem,
-			bindNetwork),
+		network,
+		system,
 		fx.Invoke(bind))
 }
 
@@ -33,34 +32,14 @@ type Config struct {
 
 	Lifecycle fx.Lifecycle
 
-	CLI    *cli.Context
 	Logger log.Logger
 
 	Supervisor *suture.Supervisor
 	Services   []suture.Service `group:"services"` // caller-supplied services
 }
 
-// Initialize a context from the configuration.  This method MUST be
-// idempotent.
-func (config *Config) Init() context.Context {
-
-	//
-	// Adding and removing capabilities can be achieved
-	// by 'Bind'ing Wetware modules to an Fx runtime.
-	//
-	// Fx's dependency injection runtime provides the basis for integrating
-	// capability-based security into Wetware.  Each module binds a copy of
-	// it's main config struct to  the context.  This ensures that packages
-	// cannot access it without first importing the 'runtime' package. This
-	// property facilitates static analysis because the Go dependency graph
-	// is equal to the object authority graph.
-	//
-	return context.WithValue(config.CLI.Context, (*Config)(nil), config)
-}
-
-func bind(config Config) {
-	ctx, cancel := context.WithCancel(config.Init())
-	defer cancel()
+func bind(c *cli.Context, config Config) {
+	ctx, cancel := context.WithCancel(c.Context) // cancelled by stop hook
 
 	// Bind user-defined services to the runtime.
 	for _, service := range config.Services {
@@ -85,7 +64,6 @@ func bind(config Config) {
 			// Users can wait for the local node to have successfully
 			// bound to network interfaces by subscribing to the
 			// 'EvtLocalAddrsUpdated' event.
-			config.Logger.Info("wetware loaded")
 
 			return nil
 		},

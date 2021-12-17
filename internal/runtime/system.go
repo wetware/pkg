@@ -10,32 +10,23 @@ import (
 	"github.com/wetware/casm/pkg/cluster/pulse"
 )
 
+// system module:  interacts with local file storage.
+var system = fx.Provide(
+	storage,
+	heartbeat,
+)
+
 /*******************************************************************************
  *                                                                             *
  *  system.go is responsible for interacting with the local operating system.  *
  *                                                                             *
  *******************************************************************************/
 
-// systemConfig exports filesystem functionality.  Filesystem data
-// stored by a host is guaranteed to remain valid across reboots.
-type systemConfig struct {
-	fx.Out
-
-	Hook    pulse.Preparer
-	Storage ds.Batching
-}
-
-// bindSystem module:  interacts with local file storage.
-func bindSystem() systemConfig {
-	return systemConfig{
-		Hook:    hook{},
-		Storage: newStorage(),
-	}
-}
-
 // hook populates heartbeat messages with system information from the
 // operating system.
 type hook struct{}
+
+func heartbeat() hook { return hook{} }
 
 func (h hook) Prepare(pulse.Heartbeat) {
 	// TODO:  populate a capnp struct containing metadata for the
@@ -46,7 +37,7 @@ func (h hook) Prepare(pulse.Heartbeat) {
 	//           Cache results and periodically refresh them.
 }
 
-func newStorage() ds.Batching {
+func storage() ds.Batching {
 	// TODO(enhancement):  use peristent datastore + namespacing + caching.
 	return sync.MutexWrap(ds.NewMapDatastore())
 	// return badger.NewDatastore(c.Path("store"), &badger.DefaultOptions)

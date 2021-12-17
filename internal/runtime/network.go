@@ -9,6 +9,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/discovery"
 	"github.com/libp2p/go-libp2p-core/host"
 	disc "github.com/libp2p/go-libp2p-discovery"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/lthibault/log"
@@ -18,16 +19,15 @@ import (
 
 	"github.com/wetware/casm/pkg/boot"
 	"github.com/wetware/casm/pkg/cluster"
-	"github.com/wetware/casm/pkg/pex"
 )
 
-func bindNetwork() fx.Option {
-	return fx.Provide(
-		bindCluster,
-		bindPubSub,
-		bindDiscovery,
-		bindCrawler)
-}
+var network = fx.Provide(
+	bootstrap,
+	routing,
+	overlay,
+	crawler,
+	beacon,
+	node)
 
 type clusterConfig struct {
 	fx.In
@@ -38,7 +38,7 @@ type clusterConfig struct {
 	Lifecycle fx.Lifecycle
 }
 
-func bindCluster(c *cli.Context, config clusterConfig) (*cluster.Node, error) {
+func node(c *cli.Context, config clusterConfig) (*cluster.Node, error) {
 	node, err := cluster.New(c.Context, config.PubSub,
 		cluster.WithLogger(config.Logger),
 		cluster.WithNamespace(c.String("ns")))
@@ -50,11 +50,17 @@ func bindCluster(c *cli.Context, config clusterConfig) (*cluster.Node, error) {
 	return node, err
 }
 
-func bindPubSub(c *cli.Context, h host.Host, d discovery.Discovery) (*pubsub.PubSub, error) {
+func routing(c *cli.Context, h host.Host) (*dual.DHT, error) {
+	return dual.New(c.Context, h,
+		dual.LanDHTOption(dht.Mode(dht.ModeServer)),
+		dual.WanDHTOption(dht.Mode(dht.ModeAuto)))
+}
+
+func overlay(c *cli.Context, h host.Host, d discovery.Discovery) (*pubsub.PubSub, error) {
 	return pubsub.NewGossipSub(c.Context, h, pubsub.WithDiscovery(d))
 }
 
-type discoveryConfig struct {
+type bootstrapConfig struct {
 	fx.In
 
 	Logger    log.Logger
@@ -69,7 +75,7 @@ type discoveryConfig struct {
 	Lifecycle fx.Lifecycle
 }
 
-func bindDiscovery(c *cli.Context, config discoveryConfig) (discovery.Discovery, error) {
+func bootstrap(c *cli.Context, config bootstrapConfig) (discovery.Discovery, error) {
 	var token suture.ServiceToken
 	config.Lifecycle.Append(fx.Hook{
 		OnStart: func(context.Context) error {
@@ -81,35 +87,45 @@ func bindDiscovery(c *cli.Context, config discoveryConfig) (discovery.Discovery,
 		},
 	})
 
-	// Wrap the bootstrap discovery service in a peer sampling service.
-	px, err := pex.New(c.Context, config.Host,
-		pex.WithLogger(config.Logger),
-		pex.WithDatastore(config.Datastore),
-		pex.WithDiscovery(struct {
-			discovery.Discoverer
-			discovery.Advertiser
-		}{
-			Discoverer: config.Crawler,
-			Advertiser: config.Beacon,
-		}))
+	d := struct {
+		discovery.Discoverer
+		discovery.Advertiser
+	}{
+		Discoverer: config.Crawler,
+		Advertiser: config.Beacon,
+	}
+
+	// TODO:  enable PeX when testing is complete
+
+	// // Wrap the bootstrap discovery service in a peer sampling service.
+	// px, err := pex.New(c.Context, config.Host,
+	// 	pex.WithLogger(config.Logger),
+	// 	pex.WithDatastore(config.Datastore),
+	// 	pex.WithDiscovery(d))
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	// If the namespace matches the cluster pubsub topic,
 	// fetch peers from PeX, which itself will fall back
 	// on the bootstrap service 'p'.
 	return boot.Cache{
 		Match: exactly(c.String("ns")),
-		Cache: px,
+		Cache: d,
 		Else:  disc.NewRoutingDiscovery(config.DHT),
-	}, err
+	}, nil
 }
 
-func exactly(match string) func(string) bool {
-	return func(s string) bool {
-		return match == s
+func beacon(c *cli.Context, h host.Host) boot.Beacon {
+	const port = 8822 // XXX
+
+	return boot.Beacon{
+		Addr: &net.TCPAddr{Port: port},
+		Host: h,
 	}
 }
 
-func bindCrawler(c *cli.Context, log log.Logger) boot.Crawler {
+func crawler(c *cli.Context, log log.Logger) boot.Crawler {
 	return boot.Crawler{
 		Dialer: new(net.Dialer),
 		Strategy: &boot.ScanSubnet{
@@ -118,6 +134,13 @@ func bindCrawler(c *cli.Context, log log.Logger) boot.Crawler {
 			Port:   8822,
 			CIDR:   "127.0.0.1/24", // XXX
 		},
+	}
+}
+
+func exactly(match string) func(string) bool {
+	return func(s string) bool {
+		log.New().Info(s)
+		return match == s
 	}
 }
 

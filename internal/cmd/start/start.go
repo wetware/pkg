@@ -7,8 +7,6 @@ import (
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/host"
-	dht "github.com/libp2p/go-libp2p-kad-dht"
-	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	libp2pquic "github.com/libp2p/go-libp2p-quic-transport"
 	"github.com/lthibault/log"
 	"github.com/thejerf/suture/v4"
@@ -58,11 +56,18 @@ func Command() *cli.Command {
 
 func run() cli.ActionFunc {
 	return func(c *cli.Context) error {
-		app := fx.New(fx.NopLogger, bind(c))
+		var (
+			node server.Node
+			app  = fx.New(fx.NopLogger,
+				fx.Populate(&node),
+				bind(c))
+		)
+
 		if err := app.Start(c.Context); err != nil {
 			return err
 		}
 
+		logger.With(node).Info("wetware loaded")
 		<-c.Done() // TODO:  process OS signals in a loop here.
 
 		return shutdown(app)
@@ -77,9 +82,12 @@ func bind(c *cli.Context) fx.Option {
 			logging,
 			supervisor,
 			localhost,
-			routing,
 			node))
 }
+
+//
+// Dependency declarations
+//
 
 func logging() log.Logger {
 	return logger
@@ -103,16 +111,24 @@ func localhost(c *cli.Context, lx fx.Lifecycle) (host.Host, error) {
 	return h, err
 }
 
-func routing(c *cli.Context, h host.Host) (*dual.DHT, error) {
-	return dual.New(c.Context, h,
-		dual.LanDHTOption(dht.Mode(dht.ModeServer)),
-		dual.WanDHTOption(dht.Mode(dht.ModeAuto)))
+type serverConfig struct {
+	fx.In
+
+	Host      host.Host
+	Cluster   *cluster.Node
+	Lifecycle fx.Lifecycle
 }
 
-func node(c *cli.Context, h host.Host, n *cluster.Node) (server.Node, error) {
-	return server.New(h, n,
+func node(c *cli.Context, config serverConfig) (server.Node, error) {
+	n, err := server.New(config.Host, config.Cluster,
 		server.WithLogger(logger),
 		server.WithNamespace(c.String("ns")))
+
+	if err == nil {
+		config.Lifecycle.Append(closer(n))
+	}
+
+	return n, err
 }
 
 func shutdown(app *fx.App) error {
