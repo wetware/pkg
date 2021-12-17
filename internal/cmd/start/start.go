@@ -33,6 +33,12 @@ var flags = []cli.Flag{
 		EnvVars: []string{"WW_LISTEN"},
 	},
 	&cli.StringFlag{
+		Name:    "discover",
+		Aliases: []string{"d"},
+		Usage:   "bootstrap discovery addr in URL-CIDR format",
+		Value:   "tcp://127.0.0.1:8822/24",
+	},
+	&cli.StringFlag{
 		Name:    "ns",
 		Usage:   "cluster namespace",
 		Value:   "ww",

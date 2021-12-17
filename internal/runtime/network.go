@@ -3,6 +3,9 @@ package runtime
 import (
 	"context"
 	"net"
+	"net/url"
+	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -109,34 +112,52 @@ func bootstrap(c *cli.Context, config bootstrapConfig) (discovery.Discovery, err
 
 	// If the namespace matches the cluster pubsub topic,
 	// fetch peers from PeX, which itself will fall back
-	// on the bootstrap service 'p'.
-	return boot.Cache{
+	// on the bootstrap services.
+	return boot.Namespace{
 		Match: pubsubTopic(c.String("ns")),
 		Cache: d,
 		Else:  disc.NewRoutingDiscovery(config.DHT),
 	}, nil
 }
 
-func beacon(c *cli.Context, log log.Logger, h host.Host) boot.Beacon {
-	const port = 8822 // XXX
+func beacon(c *cli.Context, log log.Logger, h host.Host) (boot.Beacon, error) {
+	u, err := url.Parse(c.String("discover"))
+	if err != nil {
+		return boot.Beacon{}, err
+	}
+
+	port, err := strconv.Atoi(u.Port())
+	if err != nil {
+		return boot.Beacon{}, err
+	}
 
 	return boot.Beacon{
-		Logger: log,
+		Logger: log.WithField("beacon_port", port),
 		Addr:   &net.TCPAddr{Port: port},
 		Host:   h,
-	}
+	}, nil
 }
 
-func crawler(c *cli.Context, log log.Logger) boot.Crawler {
+func crawler(c *cli.Context, log log.Logger) (boot.Crawler, error) {
+	u, err := url.Parse(c.String("discover"))
+	if err != nil {
+		return boot.Crawler{}, err
+	}
+
+	port, err := strconv.Atoi(u.Port())
+	if err != nil {
+		return boot.Crawler{}, err
+	}
+
 	return boot.Crawler{
 		Dialer: new(net.Dialer),
 		Strategy: &boot.ScanSubnet{
-			Logger: log,
-			Net:    "tcp",
-			Port:   8822,
-			CIDR:   "127.0.0.1/24", // XXX
+			Logger: log.WithField("scan", u.String()),
+			Net:    u.Scheme,
+			Port:   port,
+			CIDR:   path.Join(u.Hostname(), u.Path), // e.g. '10.0.1.0/24'
 		},
-	}
+	}, nil
 }
 
 func pubsubTopic(match string) func(string) bool {
