@@ -70,7 +70,7 @@ func run() cli.ActionFunc {
 				bind(c))
 		)
 
-		if err := app.Start(c.Context); err != nil {
+		if err := start(c, app); err != nil {
 			return err
 		}
 
@@ -136,6 +136,13 @@ func node(c *cli.Context, config serverConfig) (server.Node, error) {
 	}
 
 	return n, err
+}
+
+func start(c *cli.Context, app *fx.App) error {
+	ctx, cancel := context.WithTimeout(c.Context, time.Second*15)
+	defer cancel()
+
+	return app.Start(ctx)
 }
 
 func shutdown(app *fx.App) error {
