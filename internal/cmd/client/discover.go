@@ -34,12 +34,6 @@ func Crawl() *cli.Command {
 
 var scanFlags = []cli.Flag{
 	&cli.StringFlag{
-		Name:    "ns",
-		Usage:   "namespace to query",
-		Value:   "ww",
-		EnvVars: []string{"WW_NS"},
-	},
-	&cli.StringFlag{
 		Name:  "subnet",
 		Usage: "CIDR range to scan",
 		Value: "127.0.0.0/24",
