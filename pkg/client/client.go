@@ -2,8 +2,6 @@
 package client
 
 import (
-	"context"
-
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
@@ -44,18 +42,13 @@ func (n Node) Close() error {
 		n.host.Close())
 }
 
-// Bootstrap allows callers to hint to the routing system to get into a
-// Boostrapped state and remain there. It is not a synchronous call.
-//
-// Bootstrap has no effect if routing is not configured.
-func (n Node) Bootstrap(ctx context.Context) (err error) {
-	if n.routing != nil {
-		err = n.routing.Bootstrap(ctx)
-	}
-
-	return
-}
-
 func (n Node) Routing() routing.Routing { return n.routing }
 
 func (n Node) PubSub() PubSub { return n.overlay }
+
+// GetClusterSubscription returns a subscription to the cluster topic.
+// This topic is read-only for clients.  Users MUST close the
+// subscription prior to calling n.Close().
+func (n Node) GetClusterSubscription() (*pubsub.Subscription, error) {
+	return n.overlay.t.Subscribe()
+}
