@@ -36,6 +36,14 @@ func (n Node) String() string {
 	return n.overlay.String()
 }
 
+func (n Node) Loggable() map[string]interface{} {
+	return map[string]interface{}{
+		"ns":        n.String(),
+		"id":        n.host.ID(),
+		"connected": !n.overlay.Orphaned(),
+	}
+}
+
 func (n Node) Close() error {
 	return multierr.Combine(
 		n.overlay.Close(), // MUST happen before n.Host.Close()
