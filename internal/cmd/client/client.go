@@ -63,7 +63,7 @@ func Subscribe() *cli.Command {
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  "topic",
-				Usage: "pubsub topic (\"\" is the cluser topic)",
+				Usage: "pubsub topic (\"\" is the cluster topic)",
 			},
 		},
 		Before: dialClient,

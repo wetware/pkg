@@ -35,7 +35,7 @@ var flags = []cli.Flag{
 	&cli.StringFlag{
 		Name:    "discover",
 		Aliases: []string{"d"},
-		Usage:   "bootstrap discovery addr in URL-CIDR format",
+		Usage:   "bootstrap discovery addr (cidr url)",
 		Value:   "tcp://127.0.0.1:8822/24", // TODO:  this should default to mudp
 		EnvVars: []string{"WW_DISCOVER"},
 	},
