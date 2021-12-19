@@ -2,29 +2,60 @@
 package client
 
 import (
-	"capnproto.org/go/capnp/v3"
+	"context"
+
+	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/libp2p/go-libp2p-kad-dht/dual"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	ctxutil "github.com/lthibault/util/ctx"
+	"go.uber.org/multierr"
 )
 
-type Conn interface {
-	// Done returns a channel that is closed when the underlying RPC transport
-	// is closed.  Callers MUST subsequently call Close() in order to clean up
-	// shared resources. Callers MAY call Close() before the channel is closed.
-	Done() <-chan struct{}
+func DefaultRouting(h host.Host) (routing.Routing, error) {
+	ctx := ctxutil.C(h.Network().Process().Closing())
+	return dual.New(ctx, h,
+		dual.DHTOption(dht.Mode(dht.ModeClient)))
+}
 
-	// Close the underlying transport and libp2p host services.  Callers MUST
-	// call Close() when they are finished with the client.
-	Close() error
+type PubSub interface {
+	Join(topic string, opt ...pubsub.TopicOpt) (*pubsub.Topic, error)
+	Subscribe(topic string, opts ...pubsub.SubOpt) (*pubsub.Subscription, error)
+	GetTopics() []string
+	ListPeers(topic string) []peer.ID
 }
 
 type Node struct {
-	Conn
-	c *capnp.Client
-
-	Routing routing.Routing
-	PubSub  PubSub
+	host    host.Host
+	routing routing.Routing
+	overlay overlay
 }
 
-// Object returns an RPC client that references the
-// underlying object.
-func (n Node) Object() *capnp.Client { return n.c }
+// String returns the cluster namespace
+func (n Node) String() string {
+	return n.overlay.String()
+}
+
+func (n Node) Close() error {
+	return multierr.Combine(
+		n.overlay.Close(), // MUST happen before n.Host.Close()
+		n.host.Close())
+}
+
+// Bootstrap allows callers to hint to the routing system to get into a
+// Boostrapped state and remain there. It is not a synchronous call.
+//
+// Bootstrap has no effect if routing is not configured.
+func (n Node) Bootstrap(ctx context.Context) (err error) {
+	if n.routing != nil {
+		err = n.routing.Bootstrap(ctx)
+	}
+
+	return
+}
+
+func (n Node) Routing() routing.Routing { return n.routing }
+
+func (n Node) PubSub() PubSub { return n.overlay }

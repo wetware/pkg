@@ -3,35 +3,42 @@ package client
 import (
 	"context"
 	"fmt"
-	"path"
-	"runtime"
+	"time"
 
-	"capnproto.org/go/capnp/v3"
-	"capnproto.org/go/capnp/v3/rpc"
+	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/discovery"
 	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
+	ps "github.com/libp2p/go-libp2p-core/peerstore"
+	"github.com/libp2p/go-libp2p-core/pnet"
 	"github.com/libp2p/go-libp2p-core/routing"
+	disc "github.com/libp2p/go-libp2p-discovery"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	libp2pquic "github.com/libp2p/go-libp2p-quic-transport"
+	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	"github.com/lthibault/log"
+	ctxutil "github.com/lthibault/util/ctx"
 	"github.com/wetware/casm/pkg/boot"
-	rpcutil "github.com/wetware/ww/internal/util/rpc"
-	"github.com/wetware/ww/pkg/cap"
 )
 
-type Dialer struct {
-	join discovery.Discoverer
+type RoutingFactory func(host.Host) (routing.Routing, error)
 
-	ns      string
-	log     log.Logger
-	host    HostFactory
-	routing RoutingFactory
-	pubsub  PubSubFactory
-	cap     cap.Dialer
+type Dialer struct {
+	ns  string
+	log log.Logger
+
+	host   host.Host
+	secret pnet.PSK
+	auth   connmgr.ConnectionGater
+
+	pubsub PubSub
+
+	newRouting RoutingFactory
 }
 
-func NewDialer(join discovery.Discoverer, opt ...Option) Dialer {
-	d := Dialer{join: join}
+func NewDialer(opt ...Option) Dialer {
+	var d Dialer
 	for _, option := range withDefault(opt) {
 		option(&d)
 	}
@@ -46,97 +53,182 @@ func Dial(ctx context.Context, addr string, opt ...Option) (Node, error) {
 // DialDiscover joins a cluster via the supplied discovery service,
 // using the default dialer.
 func DialDiscover(ctx context.Context, d discovery.Discoverer, opt ...Option) (Node, error) {
-	return NewDialer(d, opt...).Dial(ctx)
+	return NewDialer(opt...).Dial(ctx, d)
 }
 
 // Dial creates a client and connects it to a cluster.  The context
 // can be safely cancelled when 'Dial' returns.
-func (d Dialer) Dial(ctx context.Context) (n Node, err error) {
-	// Libp2p often binds the lifecycle of various types to that of
-	// the context passed into their respective constructors (e.g.
-	// host.Host).  Throughout the Wetware ecosystem, we enforce the
-	// idiom that contexts passed to constructors are used to abort
-	// construction, NOT shutdown the resulting type.
-	//
-	// This deferred call to 'cancel' is a guard against passing the
-	// dial context to a constructor that expects long-lived context.
+func (d Dialer) Dial(ctx context.Context, join discovery.Discoverer) (n Node, err error) {
+	// Enforce the semantic convention that 'ctx' is valid only for the duration
+	// of the call to 'Dial'.  Processes that outlive this call should use their
+	// own contexts.
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	if rf, ok := d.host.(RoutingHook); ok {
-		d.routing = &routingHook{RoutingFactory: d.routing}
-		rf.SetRouting(d.routing)
-	}
-
-	var (
-		h    host.Host
-		ps   PubSub
-		r    routing.Routing
-		conn *rpc.Conn
-	)
-
-	h, err = d.host.New(context.Background())
-	if err != nil {
-		return n, fmt.Errorf("host: %w", err)
-	}
-
-	// Ensure we do not leak resources (e.g. bind addresses) if any
-	// of our subsequent factories fail.
-	//
-	// Note that a 'HostFactory' implementation could potentially
-	// return a 'Host' instsance that was previously created and is
-	// still in use elsewhere. Under such conditions, closing would
-	// be an error.
-	//
-	// Routing, PubSub and Conn are all tied to the lifetime of the
-	// 'Host' instance.  They need not be explicitly closed.
-	runtime.SetFinalizer(&h, func(h *host.Host) { _ = (*h).Close() })
-
-	r, err = d.routing.New(h)
-	if err != nil {
-		return n, fmt.Errorf("dht: %w", err)
-	}
-
-	ps, err = d.pubsub.New(h, n.Routing)
-	if err != nil {
-		return n, fmt.Errorf("pubsub: %w", err)
-	}
-
-	c, err := d.cap.Dial(ctx, cap.NewBinder(func(s network.Stream) (*capnp.Client, error) {
-		if conn, err = d.bind(ctx, s); err != nil {
-			return nil, err
+	if n.host = d.host; n.host == nil {
+		if n.host, err = d.newHost(&n); err != nil {
+			return
 		}
 
-		return conn.Bootstrap(ctx), nil
-	}))
-
-	return Node{
-		PubSub:  ps,
-		Routing: r,
-		Conn:    conn,
-		c:       c,
-	}, nil
-}
-
-func (d Dialer) bind(ctx context.Context, s network.Stream) (*rpc.Conn, error) {
-	return rpc.NewConn(d.transportFor(s), &rpc.Options{
-		ErrorReporter: d.reporter(),
-	}), nil
-}
-
-func (d Dialer) transportFor(s network.Stream) rpc.Transport {
-	if path.Base(string(s.Protocol())) == "packed" {
-		return rpc.NewPackedStreamTransport(s)
+		// If the user explicitly passed in a host using the 'WithHost'
+		// option, they are responsible for closing it.
+		defer func() {
+			if err != nil {
+				n.host.Close()
+			}
+		}()
 	}
 
-	return rpc.NewStreamTransport(s)
+	if n.routing, err = d.newRouting(n.host); err != nil {
+		return
+	}
+
+	n.host = routedhost.Wrap(n.host, n.routing)
+
+	if n.overlay, err = d.newOverlay(ctx, &n, join); err != nil {
+		return
+	}
+
+	if err = n.bootstrap(ctx, n.host, join); err != nil {
+		return
+	}
+
+	return
 }
 
-func (d Dialer) reporter() rpcutil.ErrReporterFunc {
-	log := d.log.WithField("ns", d.ns)
-	return func(err error) {
-		log.WithError(err).Debug("rpc error")
+func (d Dialer) newHost(n *Node) (host.Host, error) {
+	var opt = []libp2p.Option{
+		libp2p.NoListenAddrs,
+		libp2p.NoTransports,
+		libp2p.Transport(libp2pquic.NewTransport)}
+
+	if d.secret != nil {
+		opt = append(opt, libp2p.PrivateNetwork(d.secret))
 	}
+
+	if d.auth != nil {
+		opt = append(opt, libp2p.ConnectionGater(d.auth))
+	}
+
+	return libp2p.New(context.Background(), opt...)
+}
+
+func (d Dialer) newOverlay(ctx context.Context, n *Node, join discovery.Discoverer) (ov overlay, err error) {
+	// Calls to the discovery service MUST block until the 'overlay' struct
+	// is fully populated.  See Node.bootstrapRequired, below.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	if ov.PubSub = d.pubsub; ov.PubSub == nil {
+		if ov.PubSub, err = d.newPubSub(ctx, n, join); err != nil {
+			return
+		}
+	}
+
+	if ov.t, err = ov.PubSub.Join(d.ns); err != nil {
+		return
+	}
+
+	if ov.stop, err = ov.t.Relay(); err != nil {
+		return
+	}
+
+	return
+}
+
+func (d Dialer) newPubSub(ctx context.Context, n *Node, join discovery.Discoverer) (*pubsub.PubSub, error) {
+	return pubsub.NewGossipSub(ctxFromHost(d.host), d.host,
+		pubsub.WithDiscovery(d.newDiscovery(ctx, n, join)))
+}
+
+func ctxFromHost(h host.Host) context.Context {
+	return ctxutil.C(h.Network().Process().Closing())
+}
+
+// newDiscovery returns wraps 'join' and returns a discovery service suitable
+// for use in 'PubSub'.  It routes calls to 'Advertise' and 'Discover' so as
+// to rely on 'join' only during bootstrap, otherwise preferring the DHT.
+func (d Dialer) newDiscovery(ctx context.Context, n *Node, join discovery.Discoverer) discovery.Discovery {
+	// Bootstrapper is used for discovery operations on the 'd.ns' namespace
+	// when the pubsub service is disconnected from the cluster topic.
+	//
+	// Note that because client hosts do not listen for incoming connections,
+	// calls to 'Advertise' MUST be a noop, otherwise server and client nodes
+	// alike may try to connect to the client.
+	bootstrapper := struct {
+		discovery.Discoverer
+		discovery.Advertiser
+	}{
+		Discoverer: join,
+		Advertiser: nopAdvertiser{},
+	}
+
+	// Route calls to the bootstrapper when they involve the cluster namespace
+	// and the pubsub overlay has no peers in the corresponding topic.
+	return boot.Namespace{
+		Match:   n.bootstrapRequired(ctx),
+		Target:  bootstrapper,
+		Default: disc.NewRoutingDiscovery(n.routing),
+	}
+}
+
+// returns a matcher that returns 'true' if the namespace
+// matches the cluster topic and the pubsub is currently
+// disconnected from the overlay.
+func (n *Node) bootstrapRequired(ctx context.Context) func(string) bool {
+	// overlay's fields are nil when 'bootstrapRequried' is called, so
+	// we block all calls to the matcher function until 'Dial' has
+	// returned.
+	var ready = ctx.Done()
+
+	return func(s string) bool {
+		<-ready // closed by 'Dial'
+
+		return n.overlay.DiscoveryString() == s && n.overlay.Orphaned()
+	}
+}
+
+type overlay struct {
+	PubSub
+	stop pubsub.RelayCancelFunc
+	t    *pubsub.Topic
+}
+
+func (o overlay) Close() error {
+	o.stop() // MUST happen before o.t.Close()
+	return o.t.Close()
+}
+
+// String returns the cluster namespace
+func (o overlay) String() string {
+	return o.t.String()
+}
+
+func (o overlay) Orphaned() bool {
+	return len(o.ListPeers(o.t.String())) == 0
+}
+
+func (o overlay) DiscoveryString() string {
+	return "floodsub:" + o.t.String()
+}
+
+func (n *Node) bootstrap(ctx context.Context, h host.Host, join discovery.Discoverer) error {
+	peers, err := join.FindPeers(ctx, n.String())
+	if err != nil {
+		return err
+	}
+
+	for info := range peers {
+		if err = h.Connect(ctx, info); err == nil {
+			break
+		}
+	}
+
+	if err != nil {
+		return err
+	}
+
+	return n.routing.Bootstrap(ctx)
 }
 
 type addrString string
@@ -148,4 +240,10 @@ func (addr addrString) FindPeers(ctx context.Context, ns string, opt ...discover
 	}
 
 	return boot.StaticAddrs{*info}.FindPeers(ctx, ns, opt...)
+}
+
+type nopAdvertiser struct{}
+
+func (nopAdvertiser) Advertise(context.Context, string, ...discovery.Option) (time.Duration, error) {
+	return ps.PermanentAddrTTL, nil
 }
