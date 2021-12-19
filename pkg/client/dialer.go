@@ -85,9 +85,20 @@ func (d Dialer) Dial(ctx context.Context, join discovery.Discoverer) (n Node, er
 
 	n.host = routedhost.Wrap(n.host, n.routing)
 
-	if n.overlay, err = d.newOverlay(ctx, &n, join); err != nil {
-		return
-	}
+	func() {
+		// Calls to the discovery service MUST block until 'overlay' has
+		// been assigned to 'n'.  'Node.bootstrapRequired' will block
+		// on 'ctx.Done()' until this function returns.
+		//
+		// Note that the anonymous function is necessary to avoid a
+		// deadlock in 'n.bootstrap'.
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		if n.overlay, err = d.newOverlay(ctx, &n, join); err != nil {
+			return
+		}
+	}()
 
 	if err = n.bootstrap(ctx, n.host, join); err != nil {
 		return
@@ -114,11 +125,6 @@ func (d Dialer) newHost(n *Node) (host.Host, error) {
 }
 
 func (d Dialer) newOverlay(ctx context.Context, n *Node, join discovery.Discoverer) (ov overlay, err error) {
-	// Calls to the discovery service MUST block until the 'overlay' struct
-	// is fully populated.  See Node.bootstrapRequired, below.
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
 	if ov.PubSub = d.pubsub; ov.PubSub == nil {
 		if ov.PubSub, err = d.newPubSub(ctx, n, join); err != nil {
 			return
@@ -183,7 +189,6 @@ func (n *Node) bootstrapRequired(ctx context.Context) func(string) bool {
 
 	return func(s string) bool {
 		<-ready // closed by 'Dial'
-
 		return n.overlay.DiscoveryString() == s && n.overlay.Orphaned()
 	}
 }
