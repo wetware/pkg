@@ -137,7 +137,7 @@ func (d Dialer) newOverlay(ctx context.Context, n *Node, join discovery.Discover
 }
 
 func (d Dialer) newPubSub(ctx context.Context, n *Node, join discovery.Discoverer) (*pubsub.PubSub, error) {
-	return pubsub.NewGossipSub(ctxFromHost(d.host), d.host,
+	return pubsub.NewGossipSub(ctxFromHost(n.host), n.host,
 		pubsub.WithDiscovery(d.newDiscovery(ctx, n, join)))
 }
 
