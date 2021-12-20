@@ -12,7 +12,10 @@ import (
 	"github.com/libp2p/go-libp2p-core/helpers"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/peer"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/lthibault/log"
+	ctxutil "github.com/lthibault/util/ctx"
 
 	"github.com/wetware/casm/pkg/cluster"
 	"github.com/wetware/ww/internal/api/client"
@@ -20,27 +23,45 @@ import (
 	ww "github.com/wetware/ww/pkg"
 )
 
+type PubSub interface {
+	Join(string, ...pubsub.TopicOpt) (*pubsub.Topic, error)
+	RegisterTopicValidator(string, interface{}, ...pubsub.ValidatorOpt) error
+	UnregisterTopicValidator(string) error
+	GetTopics() []string
+	ListPeers(topic string) []peer.ID
+}
+
 type Node struct {
 	id  uuid.UUID
 	ns  string
 	log log.Logger
 
-	h host.Host
-	c *cluster.Node
+	h  host.Host
+	ps PubSub
+	c  *cluster.Node
 }
 
-func New(h host.Host, c *cluster.Node, opt ...Option) (Node, error) {
-	var n = Node{
-		id: uuid.Must(uuid.NewRandom()), // instance ID
-		h:  h,
-		c:  c,
-	}
+func New(h host.Host, ps PubSub, opt ...Option) (n Node, err error) {
+	n.id = uuid.Must(uuid.NewRandom()) // instance ID
+	n.h = h
+	n.ps = ps
 
 	for _, option := range withDefaults(opt) {
 		option(&n)
 	}
 
-	return n, n.registerHandlers()
+	ctx := ctxutil.C(h.Network().Process().Closing())
+	n.c, err = cluster.New(ctx, ps,
+		cluster.WithLogger(n.log),
+		cluster.WithNamespace(n.ns),
+		/* cluster.WithMeta(...), */
+		/* cluster.WithTTL(...), */) // TODO
+
+	if err == nil {
+		err = n.registerHandlers()
+	}
+
+	return
 }
 
 func (n Node) Close() error {
@@ -57,6 +78,8 @@ func (n Node) Loggable() map[string]interface{} {
 		"instance": n.id,
 	}
 }
+
+func (n Node) PubSub() PubSub { return n.ps }
 
 func (n Node) handleRPC(f transportFactory) network.StreamHandler {
 	return func(s network.Stream) {

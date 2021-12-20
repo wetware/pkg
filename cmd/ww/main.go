@@ -6,10 +6,7 @@
 package main
 
 import (
-	"context"
 	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/urfave/cli/v2"
 
@@ -91,12 +88,7 @@ func before() cli.BeforeFunc {
 }
 
 func run(app *cli.App) {
-	ctx, cancel := signal.NotifyContext(context.Background(),
-		syscall.SIGINT,
-		syscall.SIGTERM)
-	defer cancel()
-
-	if err := app.RunContext(ctx, os.Args); err != nil {
+	if err := app.Run(os.Args); err != nil {
 		logger.Fatal(err)
 	}
 }

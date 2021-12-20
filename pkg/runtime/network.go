@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"time"
 
 	ds "github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-core/discovery"
@@ -25,15 +24,13 @@ import (
 	bootutil "github.com/wetware/ww/internal/util/boot"
 )
 
-var network = fx.Options(
-	fx.Provide(
-		bootstrap,
-		routing,
-		overlay,
-		bootutil.NewCrawler,
-		beacon,
-		node),
-	fx.Invoke(relayTopics))
+var network = fx.Provide(
+	bootstrap,
+	routing,
+	overlay,
+	bootutil.NewCrawler,
+	beacon,
+	node)
 
 type clusterConfig struct {
 	fx.In
@@ -82,14 +79,10 @@ type bootstrapConfig struct {
 }
 
 func bootstrap(c *cli.Context, config bootstrapConfig) (discovery.Discovery, error) {
-	var token suture.ServiceToken
 	config.Lifecycle.Append(fx.Hook{
 		OnStart: func(context.Context) error {
-			token = config.Supervisor.Add(config.Beacon)
+			config.Supervisor.Add(config.Beacon)
 			return nil
-		},
-		OnStop: func(ctx context.Context) error {
-			return config.Supervisor.RemoveAndWait(token, timeout(ctx))
 		},
 	})
 
@@ -145,45 +138,5 @@ func pubsubTopic(match string) func(string) bool {
 
 	return func(s string) bool {
 		return match == strings.TrimPrefix(s, prefix)
-	}
-}
-
-func timeout(ctx context.Context) time.Duration {
-	if t, ok := ctx.Deadline(); ok {
-		return time.Until(t)
-	}
-
-	return time.Second * 5
-}
-
-func relayTopics(c *cli.Context, log log.Logger, ps *pubsub.PubSub, lx fx.Lifecycle) {
-	for _, topic := range c.StringSlice("relay") {
-		lx.Append(newRelayHook(log.WithField("topic", topic), ps, topic))
-	}
-}
-
-func newRelayHook(log log.Logger, ps *pubsub.PubSub, topic string) fx.Hook {
-	var (
-		t      *pubsub.Topic
-		cancel pubsub.RelayCancelFunc
-	)
-
-	return fx.Hook{
-		OnStart: func(context.Context) (err error) {
-			if t, err = ps.Join(topic); err != nil {
-				return
-			}
-
-			if cancel, err = t.Relay(); err != nil {
-				return
-			}
-
-			log.Info("relaying topic")
-			return
-		},
-		OnStop: func(ctx context.Context) error {
-			cancel()
-			return t.Close()
-		},
 	}
 }

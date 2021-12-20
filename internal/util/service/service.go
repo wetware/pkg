@@ -52,7 +52,7 @@ func NewEventHook(log log.Logger, name string) suture.EventHook {
 		case suture.EventStopTimeout:
 			log.
 				WithField("parent", ev.SupervisorName).
-				Fatal("%w encountered a fatal error during restart", ev.ServiceName)
+				Fatalf("%s failed to stop in a timely manner", ev.ServiceName)
 		}
 	}
 }

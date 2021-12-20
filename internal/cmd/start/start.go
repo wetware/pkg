@@ -7,6 +7,7 @@ import (
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/host"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	libp2pquic "github.com/libp2p/go-libp2p-quic-transport"
 	"github.com/lthibault/log"
 	"github.com/thejerf/suture/v4"
@@ -14,7 +15,6 @@ import (
 
 	"go.uber.org/fx"
 
-	"github.com/wetware/casm/pkg/cluster"
 	serviceutil "github.com/wetware/ww/internal/util/service"
 	"github.com/wetware/ww/pkg/runtime"
 	"github.com/wetware/ww/pkg/server"
@@ -53,7 +53,7 @@ var flags = []cli.Flag{
 }
 
 // SetLogger assigns the global logger for this command module.
-// It has no effect after the Command().Action has begune executing.
+// It has no effect after the Command().Action has begun executing.
 func SetLogger(log log.Logger) { logger = log }
 
 // Command constructor
@@ -80,7 +80,7 @@ func run() cli.ActionFunc {
 		}
 
 		logger.With(node).Info("wetware loaded")
-		<-c.Done() // TODO:  process OS signals in a loop here.
+		<-app.Done() // TODO:  process OS signals in a loop here.
 
 		return shutdown(app)
 	}
@@ -94,7 +94,43 @@ func bind(c *cli.Context) fx.Option {
 			logging,
 			supervisor,
 			localhost,
-			node))
+			node),
+		fx.Invoke(relayTopics))
+}
+
+func relayTopics(c *cli.Context, log log.Logger, node server.Node, lx fx.Lifecycle) {
+	if topics := c.StringSlice("relay"); len(topics) > 0 {
+		for _, topic := range c.StringSlice("relay") {
+			lx.Append(newRelayHook(log, node.PubSub(), topic))
+		}
+
+		log.WithField("topics", topics).Info("relaying topics")
+	}
+}
+
+func newRelayHook(log log.Logger, ps server.PubSub, topic string) fx.Hook {
+	var (
+		t      *pubsub.Topic
+		cancel pubsub.RelayCancelFunc
+	)
+
+	return fx.Hook{
+		OnStart: func(context.Context) (err error) {
+			if t, err = ps.Join(topic); err != nil {
+				return
+			}
+
+			if cancel, err = t.Relay(); err != nil {
+				return
+			}
+
+			return
+		},
+		OnStop: func(ctx context.Context) error {
+			cancel()
+			return t.Close()
+		},
+	}
 }
 
 //
@@ -127,12 +163,12 @@ type serverConfig struct {
 	fx.In
 
 	Host      host.Host
-	Cluster   *cluster.Node
+	PubSub    *pubsub.PubSub
 	Lifecycle fx.Lifecycle
 }
 
 func node(c *cli.Context, config serverConfig) (server.Node, error) {
-	n, err := server.New(config.Host, config.Cluster,
+	n, err := server.New(config.Host, config.PubSub,
 		server.WithLogger(logger),
 		server.WithNamespace(c.String("ns")))
 
@@ -150,11 +186,15 @@ func start(c *cli.Context, app *fx.App) error {
 	return app.Start(ctx)
 }
 
-func shutdown(app *fx.App) error {
+func shutdown(app *fx.App) (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
 	defer cancel()
 
-	return app.Stop(ctx)
+	if err = app.Stop(ctx); err == context.Canceled {
+		err = nil
+	}
+
+	return
 }
 
 func closer(c io.Closer) fx.Hook {
