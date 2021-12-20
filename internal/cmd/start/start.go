@@ -45,6 +45,11 @@ var flags = []cli.Flag{
 		Value:   "ww",
 		EnvVars: []string{"WW_NS"},
 	},
+	&cli.StringSliceFlag{
+		Name:    "relay",
+		Usage:   "pubsub topics to relay",
+		EnvVars: []string{"WW_RELAY"},
+	},
 }
 
 // SetLogger assigns the global logger for this command module.

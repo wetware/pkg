@@ -25,13 +25,15 @@ import (
 	bootutil "github.com/wetware/ww/internal/util/boot"
 )
 
-var network = fx.Provide(
-	bootstrap,
-	routing,
-	overlay,
-	bootutil.NewCrawler,
-	beacon,
-	node)
+var network = fx.Options(
+	fx.Provide(
+		bootstrap,
+		routing,
+		overlay,
+		bootutil.NewCrawler,
+		beacon,
+		node),
+	fx.Invoke(relayTopics))
 
 type clusterConfig struct {
 	fx.In
@@ -152,4 +154,36 @@ func timeout(ctx context.Context) time.Duration {
 	}
 
 	return time.Second * 5
+}
+
+func relayTopics(c *cli.Context, log log.Logger, ps *pubsub.PubSub, lx fx.Lifecycle) {
+	for _, topic := range c.StringSlice("relay") {
+		lx.Append(newRelayHook(log.WithField("topic", topic), ps, topic))
+	}
+}
+
+func newRelayHook(log log.Logger, ps *pubsub.PubSub, topic string) fx.Hook {
+	var (
+		t      *pubsub.Topic
+		cancel pubsub.RelayCancelFunc
+	)
+
+	return fx.Hook{
+		OnStart: func(context.Context) (err error) {
+			if t, err = ps.Join(topic); err != nil {
+				return
+			}
+
+			if cancel, err = t.Relay(); err != nil {
+				return
+			}
+
+			log.Info("relaying topic")
+			return
+		},
+		OnStop: func(ctx context.Context) error {
+			cancel()
+			return t.Close()
+		},
+	}
 }
