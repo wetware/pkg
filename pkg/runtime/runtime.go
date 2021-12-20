@@ -48,13 +48,13 @@ func bind(c *cli.Context, config Config) {
 
 	// Set up some shared variables.  These will mutate throughout the application
 	// lifecycle.
-	var signal = make(sigchan, 1)
+	var cherr <-chan error
 
 	// Hook main service (Supervisor) into application lifecycle.
 	config.Lifecycle.Append(fx.Hook{
 		// Bind global variables and start wetware.
 		OnStart: func(_ context.Context) error {
-			go signal.Error(config.Supervisor.Serve(ctx)) // NOTE: application context
+			cherr = config.Supervisor.ServeBackground(ctx) // NOTE: application context
 
 			// The wetware environment is now loaded.  Bear in mind
 			// that this is a PA/EL system, so we hand over control
@@ -79,7 +79,7 @@ func bind(c *cli.Context, config Config) {
 			// If it does not terminate in a timely fashion,
 			// abort the application and return an error.
 			select {
-			case err = <-signal:
+			case err = <-cherr:
 				return err
 
 			case <-ctx.Done():
@@ -88,12 +88,6 @@ func bind(c *cli.Context, config Config) {
 		},
 	})
 }
-
-// a channel that can signal exceptions
-type sigchan chan error
-
-func (ch sigchan) Error(err error) { ch <- err }
-func (ch sigchan) Success()        { close(ch) }
 
 func closer(c io.Closer) fx.Hook {
 	return fx.Hook{
