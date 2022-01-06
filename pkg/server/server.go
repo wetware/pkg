@@ -75,6 +75,7 @@ func (n Node) String() string { return n.ns }
 func (n Node) Loggable() map[string]interface{} {
 	return map[string]interface{}{
 		"ns":       n.ns,
+		"id":       n.h.ID(),
 		"instance": n.id,
 	}
 }
