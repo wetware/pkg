@@ -1,7 +1,9 @@
 package client
 
 import (
-	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p"
+	libp2pquic "github.com/libp2p/go-libp2p-quic-transport"
+	"github.com/libp2p/go-libp2p/config"
 	"github.com/lthibault/log"
 )
 
@@ -31,37 +33,16 @@ func WithLogger(l log.Logger) Option {
 	}
 }
 
-// WithHost specifies the host used by the dialer.  If h == nil, each
-// call to 'Dial' will create a new client host.
-//
-// Users are responsible for closing 'h' when finished, and are advised
-// that calls to 'Node.Close' will implicitly close 'h'.
-//
-// In most cases, 'h' SHOULD NOT listen for incoming connections.
-func WithHost(h host.Host) Option {
-	return func(d *Dialer) {
-		d.host = h
-	}
-}
-
-// WithRouting configures the client's routing implementation.
-// If r == nil, a default DHT client is used.
-func WithRouting(r RoutingFactory) Option {
-	if r == nil {
-		r = DefaultRouting
+func WithHostOpts(opt ...config.Option) Option {
+	if len(opt) == 0 {
+		opt = append(opt,
+			libp2p.NoListenAddrs,
+			libp2p.NoTransports,
+			libp2p.Transport(libp2pquic.NewTransport))
 	}
 
 	return func(d *Dialer) {
-		d.newRouting = r
-	}
-}
-
-// WithPubSub sets the pubsub instance used to construct the overlay.
-// This instance MUST be bound to 'h'.  Passing 'WithPubSub' without
-// a corresponding 'WithHost' causes undefined behavior.  Use caution.
-func WithPubSub(p PubSub) Option {
-	return func(d *Dialer) {
-		d.pubsub = p
+		d.hostOpts = opt
 	}
 }
 
@@ -69,8 +50,6 @@ func withDefault(opt []Option) []Option {
 	return append([]Option{
 		WithNamespace(""),
 		WithLogger(nil),
-		WithHost(nil),
-		WithRouting(nil),
-		WithPubSub(nil),
+		WithHostOpts(),
 	}, opt...)
 }

@@ -3,38 +3,29 @@ package client
 import (
 	"context"
 	"fmt"
-	"time"
+	"path"
 
+	"capnproto.org/go/capnp/v3"
+	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/discovery"
 	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	ps "github.com/libp2p/go-libp2p-core/peerstore"
-	"github.com/libp2p/go-libp2p-core/pnet"
 	"github.com/libp2p/go-libp2p-core/routing"
-	disc "github.com/libp2p/go-libp2p-discovery"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	libp2pquic "github.com/libp2p/go-libp2p-quic-transport"
-	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
+	"github.com/libp2p/go-libp2p/config"
 	"github.com/lthibault/log"
-	ctxutil "github.com/lthibault/util/ctx"
+
 	"github.com/wetware/casm/pkg/boot"
+	ww "github.com/wetware/ww/pkg"
 )
 
 type RoutingFactory func(host.Host) (routing.Routing, error)
 
 type Dialer struct {
-	ns  string
-	log log.Logger
-
-	host   host.Host
-	secret pnet.PSK
-	auth   connmgr.ConnectionGater
-
-	pubsub PubSub
-
-	newRouting RoutingFactory
+	ns       string
+	log      log.Logger
+	hostOpts []config.Option
 }
 
 func NewDialer(opt ...Option) Dialer {
@@ -65,175 +56,108 @@ func (d Dialer) Dial(ctx context.Context, join discovery.Discoverer) (n Node, er
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	if n.host = d.host; n.host == nil {
-		if n.host, err = d.newHost(&n); err != nil {
-			return
-		}
+	n.ns = d.ns
 
-		// If the user explicitly passed in a host using the 'WithHost'
-		// option, they are responsible for closing it.
-		defer func() {
-			if err != nil {
-				n.host.Close()
-			}
-		}()
-	}
-
-	if n.routing, err = d.newRouting(n.host); err != nil {
-		return
-	}
-
-	n.host = routedhost.Wrap(n.host, n.routing)
-
-	func() {
-		// Calls to the discovery service MUST block until 'overlay' has
-		// been assigned to 'n'.  'Node.bootstrapRequired' will block
-		// on 'ctx.Done()' until this function returns.
-		//
-		// Note that the anonymous function is necessary to avoid a
-		// deadlock in 'n.bootstrap'.
-		ctx, cancel := context.WithCancel(ctx)
-		defer cancel()
-
-		if n.overlay, err = d.newOverlay(ctx, &n, join); err != nil {
-			return
-		}
-	}()
-
-	if err = n.bootstrap(ctx, n.host, join); err != nil {
-		return
-	}
-
-	return
-}
-
-func (d Dialer) newHost(n *Node) (host.Host, error) {
-	var opt = []libp2p.Option{
-		libp2p.NoListenAddrs,
-		libp2p.NoTransports,
-		libp2p.Transport(libp2pquic.NewTransport)}
-
-	if d.secret != nil {
-		opt = append(opt, libp2p.PrivateNetwork(d.secret))
-	}
-
-	if d.auth != nil {
-		opt = append(opt, libp2p.ConnectionGater(d.auth))
-	}
-
-	return libp2p.New(context.Background(), opt...)
-}
-
-func (d Dialer) newOverlay(ctx context.Context, n *Node, join discovery.Discoverer) (ov overlay, err error) {
-	if ov.PubSub = d.pubsub; ov.PubSub == nil {
-		if ov.PubSub, err = d.newPubSub(ctx, n, join); err != nil {
-			return
-		}
-	}
-
-	if ov.t, err = ov.PubSub.Join(d.ns); err != nil {
-		return
-	}
-
-	if ov.stop, err = ov.t.Relay(); err != nil {
-		return
-	}
-
-	return
-}
-
-func (d Dialer) newPubSub(ctx context.Context, n *Node, join discovery.Discoverer) (*pubsub.PubSub, error) {
-	return pubsub.NewGossipSub(ctxFromHost(n.host), n.host,
-		pubsub.WithDiscovery(d.newDiscovery(ctx, n, join)))
-}
-
-func ctxFromHost(h host.Host) context.Context {
-	return ctxutil.C(h.Network().Process().Closing())
-}
-
-// newDiscovery returns wraps 'join' and returns a discovery service suitable
-// for use in 'PubSub'.  It routes calls to 'Advertise' and 'Discover' so as
-// to rely on 'join' only during bootstrap, otherwise preferring the DHT.
-func (d Dialer) newDiscovery(ctx context.Context, n *Node, join discovery.Discoverer) discovery.Discovery {
-	// Bootstrapper is used for discovery operations on the 'd.ns' namespace
-	// when the pubsub service is disconnected from the cluster topic.
-	//
-	// Note that because client hosts do not listen for incoming connections,
-	// calls to 'Advertise' MUST be a noop, otherwise server and client nodes
-	// alike may try to connect to the client.
-	bootstrapper := struct {
-		discovery.Discoverer
-		discovery.Advertiser
-	}{
-		Discoverer: join,
-		Advertiser: nopAdvertiser{},
-	}
-
-	// Route calls to the bootstrapper when they involve the cluster namespace
-	// and the pubsub overlay has no peers in the corresponding topic.
-	return boot.Namespace{
-		Match:   n.bootstrapRequired(ctx),
-		Target:  bootstrapper,
-		Default: disc.NewRoutingDiscovery(n.routing),
-	}
-}
-
-// returns a matcher that returns 'true' if the namespace
-// matches the cluster topic and the pubsub is currently
-// disconnected from the overlay.
-func (n *Node) bootstrapRequired(ctx context.Context) func(string) bool {
-	// overlay's fields are nil when 'bootstrapRequried' is called, so
-	// we block all calls to the matcher function until 'Dial' has
-	// returned.
-	var ready = ctx.Done()
-
-	return func(s string) bool {
-		<-ready // closed by 'Dial'
-		return n.overlay.DiscoveryString() == s && n.overlay.Orphaned()
-	}
-}
-
-type overlay struct {
-	PubSub
-	stop pubsub.RelayCancelFunc
-	t    *pubsub.Topic
-}
-
-func (o overlay) Close() error {
-	o.stop() // MUST happen before o.t.Close()
-	return o.t.Close()
-}
-
-// String returns the cluster namespace
-func (o overlay) String() string {
-	return o.t.String()
-}
-
-func (o overlay) Orphaned() bool {
-	return len(o.ListPeers(o.t.String())) == 0
-}
-
-func (o overlay) DiscoveryString() string {
-	return "floodsub:" + o.t.String()
-}
-
-func (n *Node) bootstrap(ctx context.Context, h host.Host, join discovery.Discoverer) error {
-	peers, err := join.FindPeers(ctx, n.String())
+	n.h, err = libp2p.New(context.Background(), d.hostOpts...)
 	if err != nil {
-		return err
+		return
 	}
 
+	if n.ps.Client, err = d.newRootCapability(ctx, n.h, join); err == nil {
+		// Block until the client is fully resolved. This is necessary because
+		// returning from 'Dial' will cause 'ctx' to be canceled, aborting the
+		// bootstrap process.
+		err = n.ps.Client.Resolve(ctx)
+	}
+
+	return
+}
+
+func (d Dialer) newRootCapability(ctx context.Context, h host.Host, join discovery.Discoverer) (*capnp.Client, error) {
+	peers, err := join.FindPeers(ctx, d.ns)
+	if err != nil {
+		return nil, err
+	}
+
+	var s network.Stream
 	for info := range peers {
-		if err = h.Connect(ctx, info); err == nil {
+		if err = h.Connect(ctx, info); err != nil {
+			continue
+		}
+
+		s, err = h.NewStream(ctx, info.ID,
+			ww.Subprotocol(d.ns, "packed"),
+			ww.Subprotocol(d.ns))
+		if err == nil {
 			break
 		}
 	}
 
 	if err != nil {
-		return err
+		defer h.Close()
+		return nil, err
 	}
 
-	return n.routing.Bootstrap(ctx)
+	conn := rpc.NewConn(transportFor(s), &rpc.Options{
+		// // TODO: authenticate the base capability set for this client.
+		// //       One possible approach is to return a client that implements
+		// //       zero or more <Cap>Auth methods, e.g. PubSubAuth.  The
+		// //       receiver would then attempt to call all <Cap>Auth methods it
+		// //       knows about, and would receive a "not implemented" exception
+		// //       if the client is not requesting the corresponding capability.
+		// //
+		// //       Importantly, when the client _is_ requesting a capability,
+		// //       the corresponding <Cap>Auth method would have to return a
+		// //       capability that is somehow able to prove that the sender is
+		// //       authorized to obtain the requested capability.  We consider
+		// //       two possible approaches:
+		// //
+		// //       1)  A SturdyRef behaving like a secret API key.  The advantage
+		// //           of this method is that it is simple.  Because the SturdyRef
+		// //           is secret, however, it ought not be transmitted in plain
+		// //           text.  One solution is to transmit a salted hash of the API
+		// //           key, which somewhat complexifies implementation and has
+		// //           performance implications for lookup performance.
+		// //
+		// //           The main drawback to this approach is that it requires
+		// //           each cluster node to maintain a stateful, dynamic — and
+		// //           more importantly, *consistent* — database of valid refs.
+		// //           This goes against the general ethos of Wetware as a PA/EL
+		// //           system, and introduces a nontrivial attack vector wherein
+		// //           an adversary could obtain capabilities via stale keys,
+		// //           e.g. by conducting an eclipse attack that prevents the
+		// //           targeted node from updating its SturdyRef table.
+		// //           Moreover, the dynamic and rapidly-chaning nature of the
+		// //           SturdyRef table preculdes the use of blockchain-based
+		// //           state management.
+		// //
+		// //       2)  A capability that takes a cryptographically-random nonce
+		// //           as input and blindly (!) returns a record.Record instance
+		// //           instance that contains the nonce and is that is signed by
+		// //           a trusted authority. The domain string of the record binds
+		// //           the authority to a specific capability.  For example, an
+		// //           attempt to use a valid, signed record to authenticate the
+		// //           PubSub capability would fail if the record's somain did
+		// //           not match "ww.cap.pubsub".
+		// //
+		// //           The advantage to this approach is that state-management
+		// //           is reduced to a small set of long-lived key pairs, which
+		// //           can even be configured statically for small clusters.
+		// //           Where static configuration is not desireable, the small
+		// //           size of data and infrequent updates make this solution
+		// //           amenable to a variety of blockchain-based approaches.
+		// BootstrapClient: authProvider.Client,
+	})
+
+	return conn.Bootstrap(ctx), nil
+}
+
+func transportFor(s network.Stream) rpc.Transport {
+	if path.Base(string(s.Protocol())) == "packed" {
+		return rpc.NewPackedStreamTransport(s)
+	}
+
+	return rpc.NewStreamTransport(s)
 }
 
 type addrString string
@@ -245,10 +169,4 @@ func (addr addrString) FindPeers(ctx context.Context, ns string, opt ...discover
 	}
 
 	return boot.StaticAddrs{*info}.FindPeers(ctx, ns, opt...)
-}
-
-type nopAdvertiser struct{}
-
-func (nopAdvertiser) Advertise(context.Context, string, ...discovery.Option) (time.Duration, error) {
-	return ps.PermanentAddrTTL, nil
 }

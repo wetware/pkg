@@ -15,6 +15,7 @@ import (
 
 	"go.uber.org/fx"
 
+	"github.com/wetware/casm/pkg/cluster"
 	serviceutil "github.com/wetware/ww/internal/util/service"
 	"github.com/wetware/ww/pkg/runtime"
 	"github.com/wetware/ww/pkg/server"
@@ -45,11 +46,6 @@ var flags = []cli.Flag{
 		Value:   "ww",
 		EnvVars: []string{"WW_NS"},
 	},
-	&cli.StringSliceFlag{
-		Name:    "relay",
-		Usage:   "pubsub topics to relay",
-		EnvVars: []string{"WW_RELAY"},
-	},
 }
 
 // SetLogger assigns the global logger for this command module.
@@ -69,7 +65,7 @@ func Command() *cli.Command {
 func run() cli.ActionFunc {
 	return func(c *cli.Context) error {
 		var (
-			node server.Node
+			node *server.Node
 			app  = fx.New(fx.NopLogger,
 				fx.Populate(&node),
 				bind(c))
@@ -94,43 +90,7 @@ func bind(c *cli.Context) fx.Option {
 			logging,
 			supervisor,
 			localhost,
-			node),
-		fx.Invoke(relayTopics))
-}
-
-func relayTopics(c *cli.Context, log log.Logger, node server.Node, lx fx.Lifecycle) {
-	if topics := c.StringSlice("relay"); len(topics) > 0 {
-		for _, topic := range c.StringSlice("relay") {
-			lx.Append(newRelayHook(log, node.PubSub(), topic))
-		}
-
-		log.WithField("topics", topics).Info("relaying topics")
-	}
-}
-
-func newRelayHook(log log.Logger, ps server.PubSub, topic string) fx.Hook {
-	var (
-		t      *pubsub.Topic
-		cancel pubsub.RelayCancelFunc
-	)
-
-	return fx.Hook{
-		OnStart: func(context.Context) (err error) {
-			if t, err = ps.Join(topic); err != nil {
-				return
-			}
-
-			if cancel, err = t.Relay(); err != nil {
-				return
-			}
-
-			return
-		},
-		OnStop: func(ctx context.Context) error {
-			cancel()
-			return t.Close()
-		},
-	}
+			node))
 }
 
 //
@@ -162,15 +122,19 @@ func localhost(c *cli.Context, lx fx.Lifecycle) (host.Host, error) {
 type serverConfig struct {
 	fx.In
 
+	Log       log.Logger
 	Host      host.Host
 	PubSub    *pubsub.PubSub
 	Lifecycle fx.Lifecycle
 }
 
-func node(c *cli.Context, config serverConfig) (server.Node, error) {
+func node(c *cli.Context, config serverConfig) (*server.Node, error) {
 	n, err := server.New(config.Host, config.PubSub,
-		server.WithLogger(logger),
-		server.WithNamespace(c.String("ns")))
+		server.WithLogger(config.Log),
+		server.WithClusterOpts(
+			cluster.WithLogger(config.Log),
+			// cluster.WithMeta(...),
+			cluster.WithNamespace(c.String("ns"))))
 
 	if err == nil {
 		config.Lifecycle.Append(closer(n))

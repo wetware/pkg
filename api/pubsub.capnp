@@ -2,11 +2,24 @@ using Go = import "/go.capnp";
 
 @0xf9d8a0180405d9ed;
 
-$Go.package("client");
-$Go.import("github.com/wetware/ww/internal/api/client");
+$Go.package("pubsub");
+$Go.import("github.com/wetware/ww/internal/api/pubsub");
 
 
-interface Host {}
+interface Topic {
+    publish   @0 (msg :Data) -> ();
+    subscribe @1 (handler :Handler) -> ();
+
+    interface Handler {
+        handle @0 (msg :Data) -> ();
+    }
+}
+
+
+interface PubSub {
+    join @0 (name :Text) -> (topic :Topic);
+}
+
 
 # interface PubSub {
 #     join @0 (name :Text) -> (topic :Topic);

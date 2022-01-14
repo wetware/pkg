@@ -3,7 +3,6 @@ package runtime
 import (
 	"context"
 	"fmt"
-	"io"
 
 	"github.com/lthibault/log"
 	"github.com/thejerf/suture/v4"
@@ -89,10 +88,10 @@ func bind(c *cli.Context, config Config) {
 	})
 }
 
-func closer(c io.Closer) fx.Hook {
-	return fx.Hook{
-		OnStop: func(context.Context) error {
-			return c.Close()
-		},
-	}
-}
+// func closer(c io.Closer) fx.Hook {
+// 	return fx.Hook{
+// 		OnStop: func(context.Context) error {
+// 			return c.Close()
+// 		},
+// 	}
+// }

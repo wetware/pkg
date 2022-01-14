@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/lthibault/log"
+	"github.com/wetware/casm/pkg/cluster"
 )
 
 // Option type for Node
@@ -17,18 +18,19 @@ func WithLogger(l log.Logger) Option {
 	}
 }
 
-func WithNamespace(ns string) Option {
-	if ns == "" {
-		ns = "ww"
-	}
+func WithClusterOpts(opt ...cluster.Option) Option {
+	opt = append([]cluster.Option{
+		cluster.WithNamespace("ww"),
+	}, opt...)
 
 	return func(n *Node) {
-		n.ns = ns
+		n.clusterOpt = opt
 	}
 }
 
-func withDefaults(opt []Option) []Option {
+func withDefault(opt []Option) []Option {
 	return append([]Option{
 		WithLogger(nil),
+		WithClusterOpts(),
 	}, opt...)
 }

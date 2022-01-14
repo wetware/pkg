@@ -20,7 +20,6 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/wetware/casm/pkg/boot"
-	"github.com/wetware/casm/pkg/cluster"
 	bootutil "github.com/wetware/ww/internal/util/boot"
 )
 
@@ -29,34 +28,25 @@ var network = fx.Provide(
 	routing,
 	overlay,
 	bootutil.NewCrawler,
-	beacon,
-	node)
+	beacon)
 
-type clusterConfig struct {
-	fx.In
-
-	Logger log.Logger
-	PubSub *pubsub.PubSub
-
-	Lifecycle fx.Lifecycle
-}
-
-func node(c *cli.Context, config clusterConfig) (*cluster.Node, error) {
-	node, err := cluster.New(c.Context, config.PubSub,
-		cluster.WithLogger(config.Logger),
-		cluster.WithNamespace(c.String("ns")))
-
-	if err == nil {
-		config.Lifecycle.Append(closer(node))
-	}
-
-	return node, err
-}
-
-func routing(c *cli.Context, h host.Host) (*dual.DHT, error) {
-	return dual.New(c.Context, h,
+func routing(c *cli.Context, h host.Host, lx fx.Lifecycle) (*dual.DHT, error) {
+	dht, err := dual.New(c.Context, h,
 		dual.LanDHTOption(dht.Mode(dht.ModeServer)),
 		dual.WanDHTOption(dht.Mode(dht.ModeAuto)))
+
+	if err == nil {
+		lx.Append(fx.Hook{
+			OnStart: func(ctx context.Context) error {
+				return dht.Bootstrap(ctx)
+			},
+			OnStop: func(context.Context) error {
+				return dht.Close()
+			},
+		})
+	}
+
+	return dht, err
 }
 
 func overlay(c *cli.Context, h host.Host, d discovery.Discovery) (*pubsub.PubSub, error) {

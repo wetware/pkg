@@ -10,21 +10,21 @@ all: capnp
 clean: clean-capnp clean-mocks
 
 
-capnp: capnp-client
+capnp: capnp-pubsub
 # N.B.:  compiling capnp schemas requires having capnproto.org/go/capnp/v3 installed
 #        on the GOPATH.
 
 
-capnp-client:
-	@mkdir -p internal/api/client
-	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/std -ogo:internal/api/client --src-prefix=api api/client.capnp
+capnp-pubsub:
+	@mkdir -p internal/api/pubsub
+	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/std -ogo:internal/api/pubsub --src-prefix=api api/pubsub.capnp
 
 
-clean-capnp: clean-capnp-client
+clean-capnp: clean-capnp-pubsub
 
 
-clean-capnp-client:
-	@rm -rf internal/api/client
+clean-capnp-pubsub:
+	@rm -rf internal/api/pubsub
 
 
 mocks: cleanmocks

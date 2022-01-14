@@ -3,24 +3,23 @@ package server
 
 import (
 	"io"
-	"path"
-	"strings"
 
 	"capnproto.org/go/capnp/v3/rpc"
-	"capnproto.org/go/capnp/v3/server"
 	"github.com/google/uuid"
-	"github.com/libp2p/go-libp2p-core/helpers"
+	"github.com/jbenet/goprocess"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/lthibault/log"
 	ctxutil "github.com/lthibault/util/ctx"
+	"go.uber.org/multierr"
 
 	"github.com/wetware/casm/pkg/cluster"
-	"github.com/wetware/ww/internal/api/client"
+	protoutil "github.com/wetware/casm/pkg/util/proto"
 	rpcutil "github.com/wetware/ww/internal/util/rpc"
 	ww "github.com/wetware/ww/pkg"
+	pscap "github.com/wetware/ww/pkg/cap/pubsub"
 )
 
 type PubSub interface {
@@ -33,65 +32,72 @@ type PubSub interface {
 
 type Node struct {
 	id  uuid.UUID
-	ns  string
 	log log.Logger
 
-	h  host.Host
-	ps PubSub
-	c  *cluster.Node
+	proc goprocess.Process
+	h    host.Host
+
+	ps pscap.Factory
+
+	clusterOpt []cluster.Option
+	c          *cluster.Node
 }
 
-func New(h host.Host, ps PubSub, opt ...Option) (n Node, err error) {
-	n.id = uuid.Must(uuid.NewRandom()) // instance ID
-	n.h = h
-	n.ps = ps
-
-	for _, option := range withDefaults(opt) {
-		option(&n)
+func New(h host.Host, ps PubSub, opt ...Option) (*Node, error) {
+	var n = &Node{
+		h:    h,
+		id:   uuid.Must(uuid.NewRandom()), // instance ID
+		proc: goprocess.WithParent(h.Network().Process()),
+		ps:   pscap.New(ps),
 	}
 
-	ctx := ctxutil.C(h.Network().Process().Closing())
-	n.c, err = cluster.New(ctx, ps,
-		cluster.WithLogger(n.log),
-		cluster.WithNamespace(n.ns),
-		/* cluster.WithMeta(...), */
-		/* cluster.WithTTL(...), */) // TODO
-
-	if err == nil {
-		err = n.registerHandlers()
+	for _, option := range withDefault(opt) {
+		option(n)
 	}
 
-	return
+	// Start cluster
+	var (
+		ctx = ctxutil.FromChan(n.proc.Closing())
+		err error
+	)
+
+	if n.c, err = cluster.New(ctx, ps, n.clusterOpt...); err != nil {
+		return nil, err
+	}
+
+	// Start capability servers
+	n.proc.Go(n.ps.Run())
+	// n.proc.Go(foo.Run())
+
+	n.registerHandlers()
+	return n, n.c.Bootstrap(ctx)
 }
 
-func (n Node) Close() error {
-	n.unregisterHandlers()
-	return nil
+func (n *Node) Close() error {
+	n.h.RemoveStreamHandler(ww.Subprotocol(n.String()))
+	n.h.RemoveStreamHandler(ww.Subprotocol(n.String(), "packed"))
+	return multierr.Combine(
+		n.c.Close(),
+		n.proc.Close())
 }
 
 // String returns the cluster namespace
-func (n Node) String() string { return n.ns }
+func (n *Node) String() string { return n.c.Topic().String() }
 
-func (n Node) Loggable() map[string]interface{} {
+func (n *Node) Loggable() map[string]interface{} {
 	return map[string]interface{}{
-		"ns":       n.ns,
+		"ns":       n.String(),
 		"id":       n.h.ID(),
 		"instance": n.id,
 	}
 }
 
-func (n Node) PubSub() PubSub { return n.ps }
-
-func (n Node) handleRPC(f transportFactory) network.StreamHandler {
+func (n *Node) handleRPC(f transportFactory) network.StreamHandler {
 	return func(s network.Stream) {
 		defer s.Close()
 
-		h := client.Host_ServerToClient(n, &server.Policy{
-			MaxConcurrentCalls: 64, // lower when capnp issue #190 is resolved
-		})
-
 		conn := rpc.NewConn(f.NewTransport(s), &rpc.Options{
-			BootstrapClient: h.Client,
+			BootstrapClient: n.ps.New(nil).Client,
 			ErrorReporter: rpcutil.ErrReporterFunc(func(err error) {
 				n.log.
 					With(streamFields(s)).
@@ -115,57 +121,21 @@ func (n Node) handleRPC(f transportFactory) network.StreamHandler {
 	}
 }
 
-const (
-	proto       = ww.Proto
-	protoPacked = ww.Proto + "/packed"
-)
+func (n *Node) registerHandlers() {
+	var (
+		match       = ww.NewMatcher(n.String())
+		matchPacked = match.Then(protoutil.Exactly("packed"))
+	)
 
-func (n *Node) registerHandlers() error {
-	matchVersion, err := helpers.MultistreamSemverMatcher(ww.Proto)
-	if err != nil {
-		return err
-	}
-
-	matchCluster := matchNamespace(n.ns).Then(matchVersion)
-
-	n.h.SetStreamHandlerMatch(proto,
-		matchCluster,
+	n.h.SetStreamHandlerMatch(
+		ww.Subprotocol(n.String()),
+		match,
 		n.handleRPC(rpc.NewStreamTransport))
 
-	n.h.SetStreamHandlerMatch(protoPacked,
-		matchPacked().Then(matchCluster),
+	n.h.SetStreamHandlerMatch(
+		ww.Subprotocol(n.String(), "packed"),
+		matchPacked,
 		n.handleRPC(rpc.NewPackedStreamTransport))
-
-	return nil
-}
-
-func (n *Node) unregisterHandlers() {
-	n.h.RemoveStreamHandler(proto)
-	n.h.RemoveStreamHandler(protoPacked)
-}
-
-type matcher func(string) bool
-
-func (match matcher) Then(next matcher) matcher {
-	return func(s string) (ok bool) {
-		if ok = match(s); ok {
-			ok = next(path.Dir(s)) // pop last element of path
-		}
-		return
-	}
-}
-
-// /ww/<version>/<ns>[/packed]
-func matchNamespace(ns string) matcher {
-	return func(s string) bool {
-		return path.Base(strings.TrimSuffix(s, "/packed")) == ns
-	}
-}
-
-func matchPacked() matcher {
-	return func(s string) bool {
-		return path.Base(s) == "packed"
-	}
 }
 
 type transportFactory func(io.ReadWriteCloser) rpc.Transport
