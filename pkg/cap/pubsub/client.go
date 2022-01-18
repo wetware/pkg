@@ -45,32 +45,11 @@ func (t Topic) Publish(ctx context.Context, b []byte) error {
 	return err
 }
 
-func (t Topic) Subscribe(ctx context.Context) (Subscription, error) {
-	var (
-		sub = &subscription{
-			cq: make(chan struct{}),
-			ms: make(chan []byte, subBufSize),
-		}
-
-		h = pubsub.Topic_Handler_ServerToClient(sub, &defaultPolicy)
-	)
-
-	// The subscription signals that it has been closed by invalidating
-	// the handler. This causes the remote endpoint to receive an error
-	// when it attempts to call Handle, which is interpreted as a close
-	// signal.
-	sub.release = h.Client.Release
-
-	f, release := (pubsub.Topic)(t).Subscribe(ctx, func(ps pubsub.Topic_subscribe_Params) error {
-		return ps.SetHandler(h)
-	})
-	defer release()
-
-	_, err := f.Struct()
-	return sub, err
+func (t Topic) Subscribe() Subscription {
+	return newSubscription((pubsub.Topic)(t))
 }
 
-func (t Topic) Close() error {
+func (t Topic) Close() error { // TODO:  rename to Cancel and remove error?
 	t.Client.Release()
 	return nil
 }
