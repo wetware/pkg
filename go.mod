@@ -39,11 +39,13 @@ require (
 	github.com/lthibault/util v0.0.11
 	github.com/stretchr/testify v1.7.0
 	github.com/thejerf/suture/v4 v4.0.1
+	github.com/wetware/matrix v1.0.0-alpha.18
 	go.uber.org/multierr v1.7.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 )
 
 require (
+	github.com/antlabs/stl v0.0.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/cheekybits/genny v1.0.0 // indirect
@@ -106,6 +108,7 @@ require (
 	github.com/libp2p/go-tcp-transport v0.2.8 // indirect
 	github.com/libp2p/go-ws-transport v0.5.0 // indirect
 	github.com/libp2p/go-yamux/v2 v2.2.0 // indirect
+	github.com/lthibault/go-libp2p-inproc-transport v0.0.1-alpha.7 // indirect
 	github.com/lthibault/jitterbug/v2 v2.2.3-0.20210828000604-93d421a45630 // indirect
 	github.com/lthibault/treap v0.1.4 // indirect
 	github.com/lucas-clemente/quic-go v0.21.2 // indirect
@@ -139,7 +142,6 @@ require (
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/spacemonkeygo/spacelog v0.0.0-20180420211403-2296661a0572 // indirect
-	github.com/wetware/matrix v1.0.0-alpha.18 // indirect
 	github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 // indirect
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7 // indirect
 	github.com/whyrusleeping/timecache v0.0.0-20160911033111-cfcb2f1abfee // indirect
