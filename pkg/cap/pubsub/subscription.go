@@ -142,10 +142,6 @@ func (sh subHandler) Handle(ctx context.Context, sub *pubsub.Subscription) {
 			return
 		}
 
-		if err = sh.buffer.Acquire(ctx, 1); err != nil {
-			return
-		}
-
 		// TODO:  reduce goroutine count in order to conserve memory. Goroutines
 		//        have an initial stack-size of 2kb, and we have O(n) goroutines
 		//        per topic, where n is the number of messages.  As such, memory
@@ -155,7 +151,9 @@ func (sh subHandler) Handle(ctx context.Context, sub *pubsub.Subscription) {
 		//        goroutines per topic.  During this investigation, we must check
 		//        that reflect.Select does not introduce latent O(n) consumption,
 		//        either.
-		go sh.send(ctx, m, cancel)
+		if err = sh.buffer.Acquire(ctx, 1); err == nil {
+			go sh.send(ctx, m, cancel)
+		}
 	}
 }
 
