@@ -148,7 +148,7 @@ func (sh subHandler) send(ctx context.Context, m *pubsub.Message, done, abort fu
 	// This signals that the remote end has canceled their subscription.
 	//
 	// TODO:  test specifically for 'capnp: call on released client'.
-	if err := f.Client().Resolve(ctx); err != nil {
+	if _, err := f.Struct(); err != nil {
 		abort()
 	}
 }
