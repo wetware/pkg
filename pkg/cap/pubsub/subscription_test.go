@@ -97,11 +97,22 @@ func TestSubscription(t *testing.T) {
 		topic := api.Topic_ServerToClient(ch, nil)
 		sub := newSubscription(topic)
 
+		cherr := make(chan error, 1)
 		go func() {
+			defer close(cherr)
+			h := api.Topic_Handler{Client: <-ch}
+
 			for i := 0; i < 2; i++ {
-				select {
-				case <-ctx.Done():
-				case sub.h.ms <- []byte("test"):
+				f, release := h.Handle(ctx,
+					func(ps api.Topic_Handler_handle_Params) error {
+						return ps.SetMsg([]byte("test"))
+					})
+
+				_, err := f.Struct()
+				release()
+
+				if err != nil {
+					cherr <- err
 				}
 			}
 		}()
@@ -113,14 +124,12 @@ func TestSubscription(t *testing.T) {
 		require.NoError(t, err, "Next() should succeed")
 		assert.Equal(t, "test", string(b))
 
-		// If the future were to be accidentally released, ensure
-		// that the handler has adequate time to shut down.  This
-		// increases our chance of detecting the error.
-		time.Sleep(time.Millisecond * 10)
-
 		b, err = sub.Next(ctx)
 		require.NoError(t, err, "Next() should succeed")
 		assert.Equal(t, "test", string(b))
+
+		require.NoError(t, <-cherr,
+			"test invariant violated: handler must succeed")
 	})
 
 	t.Run("ContextCancel", func(t *testing.T) {

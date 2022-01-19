@@ -97,6 +97,9 @@ func (s *Subscription) Next(ctx context.Context) ([]byte, error) {
 	}
 }
 
+// Resolve blocks until the subscription is ready, the underlying
+// RPC call fails, or the context expires. If the RPC call fails,
+// the subscription is automatically canceled.
 func (s *Subscription) Resolve(ctx context.Context) error {
 	if s.release != nil {
 		select {
