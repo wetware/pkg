@@ -5,27 +5,33 @@ import (
 
 	capnp "capnproto.org/go/capnp/v3"
 
-	"github.com/wetware/ww/internal/api/pubsub"
+	api "github.com/wetware/ww/internal/api/pubsub"
 )
 
-type PubSub pubsub.PubSub
+type PubSub api.PubSub
 
 func (ps PubSub) Join(ctx context.Context, topic string) (FutureTopic, capnp.ReleaseFunc) {
-	f, release := (pubsub.PubSub)(ps).Join(ctx, func(ps pubsub.PubSub_join_Params) error {
+	f, release := (api.PubSub)(ps).Join(ctx, func(ps api.PubSub_join_Params) error {
 		return ps.SetName(topic)
 	})
 
 	return FutureTopic(f), release
 }
 
-type FutureTopic pubsub.PubSub_join_Results_Future
+func (ps PubSub) AddRef() PubSub {
+	return PubSub(api.PubSub(ps).AddRef())
+}
+
+func (ps PubSub) Release() { ps.Client.Release() }
+
+type FutureTopic api.PubSub_join_Results_Future
 
 func (ft FutureTopic) Topic() Topic {
-	return Topic((pubsub.PubSub_join_Results_Future)(ft).Topic())
+	return Topic((api.PubSub_join_Results_Future)(ft).Topic())
 }
 
 func (ft FutureTopic) Struct() (Topic, error) {
-	res, err := (pubsub.PubSub_join_Results_Future)(ft).Struct()
+	res, err := (api.PubSub_join_Results_Future)(ft).Struct()
 	if err != nil {
 		return Topic{}, err
 	}
@@ -33,10 +39,10 @@ func (ft FutureTopic) Struct() (Topic, error) {
 	return Topic(res.Topic()), nil
 }
 
-type Topic pubsub.Topic
+type Topic api.Topic
 
 func (t Topic) Publish(ctx context.Context, b []byte) error {
-	f, release := (pubsub.Topic)(t).Publish(ctx, func(ps pubsub.Topic_publish_Params) error {
+	f, release := (api.Topic)(t).Publish(ctx, func(ps api.Topic_publish_Params) error {
 		return ps.SetMsg(b)
 	})
 	defer release()
@@ -46,10 +52,11 @@ func (t Topic) Publish(ctx context.Context, b []byte) error {
 }
 
 func (t Topic) Subscribe() Subscription {
-	return newSubscription((pubsub.Topic)(t))
+	return newSubscription((api.Topic)(t))
 }
 
-func (t Topic) Close() error { // TODO:  rename to Cancel and remove error?
-	t.Client.Release()
-	return nil
+func (t Topic) Release() { t.Client.Release() }
+
+func (t Topic) AddRef() Topic {
+	return Topic(api.Topic(t).AddRef())
 }
