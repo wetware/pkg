@@ -8,16 +8,14 @@ package main
 import (
 	"os"
 
-	"github.com/urfave/cli/v2"
-
 	"github.com/lthibault/log"
+	"github.com/urfave/cli/v2"
 
 	"github.com/wetware/ww/internal/cmd/client"
 	"github.com/wetware/ww/internal/cmd/start"
 	logutil "github.com/wetware/ww/internal/util/log"
+	ww "github.com/wetware/ww/pkg"
 )
-
-const version = "0.0.0"
 
 var logger log.Logger
 
@@ -52,39 +50,28 @@ var commands = []*cli.Command{
 	// boot.Command(),
 }
 
+func before() cli.BeforeFunc {
+	return func(c *cli.Context) error {
+		logger = logutil.New(c)
+		return nil
+	}
+}
+
 func main() {
 	run(&cli.App{
 		Name:                 "wetware",
 		Usage:                "the distributed programming language",
 		UsageText:            "ww [global options] command [command options] [arguments...]",
 		Copyright:            "2020 The Wetware Project",
-		Version:              version,
+		Version:              ww.Version,
 		EnableBashCompletion: true,
 		Flags:                flags,
-		Commands:             commands,
 		Before:               before(),
+		Commands:             commands,
 		Metadata: map[string]interface{}{
-			"version": version,
+			"version": ww.Version,
 		},
 	})
-}
-
-func before() cli.BeforeFunc {
-	return func(c *cli.Context) error {
-		logger = logutil.New(c)
-		for _, set := range []func(log.Logger){
-			start.SetLogger,
-			client.SetLogger,
-			// discover.SetLogger,
-			// shell.SetLogger,
-			// keygen.SetLogger,
-			// boot.SetLogger,
-		} {
-			set(logger)
-		}
-
-		return nil
-	}
 }
 
 func run(app *cli.App) {

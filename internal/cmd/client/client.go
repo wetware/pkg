@@ -4,15 +4,14 @@ import (
 	"github.com/lthibault/log"
 	"github.com/urfave/cli/v2"
 	bootutil "github.com/wetware/ww/internal/util/boot"
+	logutil "github.com/wetware/ww/internal/util/log"
 	"github.com/wetware/ww/pkg/client"
 )
 
 var (
-	logger = struct{ log.Logger }{log.New()}
+	logger log.Logger
 	node   client.Node
 )
-
-func SetLogger(log log.Logger) { logger.Logger = log }
 
 func Command() *cli.Command {
 	return &cli.Command{
@@ -66,12 +65,14 @@ func Subscribe() *cli.Command {
 				Usage: "pubsub topic (\"\" is the cluster topic)",
 			},
 		},
-		Before: dialClient,
+		Before: before,
 		Action: subscribe,
 	}
 }
 
-func dialClient(c *cli.Context) error {
+func before(c *cli.Context) error {
+	logger = logutil.New(c)
+
 	crawler, err := bootutil.NewCrawler(c, logger)
 	if err != nil {
 		return err

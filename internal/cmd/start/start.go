@@ -16,12 +16,11 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/wetware/casm/pkg/cluster"
+	logutil "github.com/wetware/ww/internal/util/log"
 	serviceutil "github.com/wetware/ww/internal/util/service"
 	"github.com/wetware/ww/pkg/runtime"
 	"github.com/wetware/ww/pkg/server"
 )
-
-var logger = log.New()
 
 var flags = []cli.Flag{
 	&cli.StringSliceFlag{
@@ -48,10 +47,6 @@ var flags = []cli.Flag{
 	},
 }
 
-// SetLogger assigns the global logger for this command module.
-// It has no effect after the Command().Action has begun executing.
-func SetLogger(log log.Logger) { logger = log }
-
 // Command constructor
 func Command() *cli.Command {
 	return &cli.Command{
@@ -65,9 +60,10 @@ func Command() *cli.Command {
 func run() cli.ActionFunc {
 	return func(c *cli.Context) error {
 		var (
-			node *server.Node
-			app  = fx.New(fx.NopLogger,
-				fx.Populate(&node),
+			logger log.Logger
+			node   *server.Node
+			app    = fx.New(fx.NopLogger,
+				fx.Populate(&logger, &node),
 				bind(c))
 		)
 
@@ -87,7 +83,7 @@ func bind(c *cli.Context) fx.Option {
 		runtime.Bind(),
 		fx.Supply(c),
 		fx.Provide(
-			logging,
+			logutil.New,
 			supervisor,
 			localhost,
 			node))
@@ -97,13 +93,9 @@ func bind(c *cli.Context) fx.Option {
 // Dependency declarations
 //
 
-func logging() log.Logger {
-	return logger
-}
-
-func supervisor() *suture.Supervisor {
+func supervisor(log log.Logger) *suture.Supervisor {
 	return suture.New("runtime", suture.Spec{
-		EventHook: serviceutil.NewEventHook(logger, "runtime"),
+		EventHook: serviceutil.NewEventHook(log, "runtime"),
 	})
 }
 

@@ -5,14 +5,16 @@ import (
 	"github.com/lthibault/log"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
+	ww "github.com/wetware/ww/pkg"
 )
 
 // New logger from a cli context
 func New(c *cli.Context) log.Logger {
-	return log.New(
-		WithLevel(c),
-		WithFormat(c),
-		withErrWriter(c))
+	if logger := get(c); logger != nil {
+		return logger
+	}
+
+	return bind(c)
 }
 
 // WithLevel returns a log.Option that configures a logger's level.
@@ -68,4 +70,31 @@ func WithFormat(c *cli.Context) log.Option {
 
 func withErrWriter(c *cli.Context) log.Option {
 	return log.WithWriter(c.App.ErrWriter)
+}
+
+// key with random component to avoid collision
+const key = "ww.util.log:Fp+&(<[.~10}>\\>nI!bzeJZX"
+
+// Bind a global logger instance to the CLI context.
+// Future calls to New will return this cached logger.
+func bind(c *cli.Context) log.Logger {
+	logger := log.New(
+		WithLevel(c),
+		WithFormat(c),
+		withErrWriter(c)).
+		WithField("version", ww.Version)
+
+	c.App.Metadata[key] = func() log.Logger {
+		return logger
+	}
+
+	return logger
+}
+
+func get(c *cli.Context) log.Logger {
+	if logger, ok := c.App.Metadata[key].(func() log.Logger); ok {
+		return logger()
+	}
+
+	return nil
 }
