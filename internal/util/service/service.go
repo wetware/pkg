@@ -34,7 +34,7 @@ func NewEventHook(log log.Logger, name string) suture.EventHook {
 				Restart:      ev.Restarting,
 				Backpressure: ev.CurrentFailures / ev.FailureThreshold,
 			}).
-				Warnf("encountered exception in %s", ev.ServiceName)
+				Warnf("caught exception in %s", ev.ServiceName)
 
 		case suture.EventServicePanic:
 			log.With(Exception{
