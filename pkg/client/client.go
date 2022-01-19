@@ -32,7 +32,7 @@ func (n Node) Loggable() map[string]interface{} {
 }
 
 func (n Node) Close() error {
-	defer n.ps.Client.Release()
+	defer n.ps.Release()
 
 	return n.h.Close()
 }
