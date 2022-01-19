@@ -12,6 +12,7 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	api "github.com/wetware/ww/internal/api/pubsub"
 	"go.uber.org/multierr"
+	"golang.org/x/sync/semaphore"
 )
 
 var ErrClosed = errors.New("closed")
@@ -221,7 +222,10 @@ func (tc topicCap) Subscribe(ctx context.Context, call api.Topic_subscribe) erro
 
 	sub, err := tc.t.Subscribe()
 	if err == nil {
-		go subHandler(call.Args().Handler().AddRef()).
+		go subHandler{
+			handler: call.Args().Handler().AddRef(),
+			buffer:  semaphore.NewWeighted(int64(call.Args().BufSize())),
+		}.
 			Handle(context.TODO(), sub)
 	}
 

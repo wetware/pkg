@@ -8,7 +8,7 @@ $Go.import("github.com/wetware/ww/internal/api/pubsub");
 
 interface Topic {
     publish   @0 (msg :Data) -> ();
-    subscribe @1 (handler :Handler) -> ();
+    subscribe @1 (handler :Handler, bufSize :UInt8) -> ();
 
     interface Handler {
         handle @0 (msg :Data) -> ();

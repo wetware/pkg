@@ -52,7 +52,8 @@ func (t Topic) Publish(ctx context.Context, b []byte) error {
 }
 
 func (t Topic) Subscribe() *Subscription {
-	return newSubscription((api.Topic)(t))
+	const bufSize = 32
+	return newSubscription((api.Topic)(t), bufSize)
 }
 
 func (t Topic) Release() { t.Client.Release() }

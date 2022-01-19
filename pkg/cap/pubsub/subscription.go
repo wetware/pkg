@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"capnproto.org/go/capnp/v3"
+	"capnproto.org/go/capnp/v3/server"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	api "github.com/wetware/ww/internal/api/pubsub"
 	"golang.org/x/sync/semaphore"
@@ -54,13 +55,18 @@ type Subscription struct {
 	release capnp.ReleaseFunc
 }
 
-func newSubscription(t api.Topic) *Subscription {
+func newSubscription(t api.Topic, bufSize uint8) *Subscription {
 	var (
-		h          = newHandler()
-		c          = api.Topic_Handler_ServerToClient(h, &defaultPolicy)
+		h = newHandler()
+		c = api.Topic_Handler_ServerToClient(h, &server.Policy{
+			MaxConcurrentCalls: int(bufSize),
+			AnswerQueueSize:    int(bufSize),
+		})
+
 		f, release = t.Subscribe(
 			context.Background(),
 			func(ps api.Topic_subscribe_Params) error {
+				ps.SetBufSize(bufSize)
 				return ps.SetHandler(c)
 			})
 	)
@@ -119,18 +125,16 @@ func (s *Subscription) Resolve(ctx context.Context) error {
 	return s.err
 }
 
-type subHandler api.Topic_Handler
+type subHandler struct {
+	handler api.Topic_Handler
+	buffer  *semaphore.Weighted
+}
 
 func (sh subHandler) Handle(ctx context.Context, sub *pubsub.Subscription) {
 	ctx, cancel := context.WithCancel(ctx)
-	defer sh.Client.Release()
+	defer sh.handler.Release()
 	defer sub.Cancel()
 	defer cancel()
-
-	var (
-		weight = int64(defaultPolicy.MaxConcurrentCalls)
-		sem    = semaphore.NewWeighted(weight)
-	)
 
 	for {
 		m, err := sub.Next(ctx)
@@ -138,23 +142,30 @@ func (sh subHandler) Handle(ctx context.Context, sub *pubsub.Subscription) {
 			return
 		}
 
-		if err = sem.Acquire(ctx, 1); err != nil {
+		if err = sh.buffer.Acquire(ctx, 1); err != nil {
 			return
 		}
 
-		go sh.send(ctx, m,
-			func() { sem.Release(1) },
-			cancel)
+		// TODO:  reduce goroutine count in order to conserve memory. Goroutines
+		//        have an initial stack-size of 2kb, and we have O(n) goroutines
+		//        per topic, where n is the number of messages.  As such, memory
+		//        consumption will be highest at peak system load.
+		//
+		//        We should investigate reflect.Select as a means to achieve O(1)
+		//        goroutines per topic.  During this investigation, we must check
+		//        that reflect.Select does not introduce latent O(n) consumption,
+		//        either.
+		go sh.send(ctx, m, cancel)
 	}
 }
 
-func (sh subHandler) send(ctx context.Context, m *pubsub.Message, done, abort func()) {
-	defer done()
+func (sh subHandler) send(ctx context.Context, m *pubsub.Message, abort func()) {
+	defer sh.buffer.Release(1)
 
-	h := api.Topic_Handler(sh)
-	f, release := h.Handle(ctx, func(ps api.Topic_Handler_handle_Params) error {
-		return ps.SetMsg(m.Data)
-	})
+	f, release := sh.handler.Handle(ctx,
+		func(ps api.Topic_Handler_handle_Params) error {
+			return ps.SetMsg(m.Data)
+		})
 	defer release()
 
 	// Abort the subscription if we receive a 'call on released client' exception.

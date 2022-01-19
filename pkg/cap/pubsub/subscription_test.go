@@ -95,7 +95,7 @@ func TestSubscription(t *testing.T) {
 
 		ch := make(mockTopicServer, 1)
 		topic := api.Topic_ServerToClient(ch, nil)
-		sub := newSubscription(topic)
+		sub := newSubscription(topic, 32)
 
 		cherr := make(chan error, 1)
 		go func() {
@@ -140,7 +140,7 @@ func TestSubscription(t *testing.T) {
 
 		ch := make(mockTopicServer, 1)
 		topic := api.Topic_ServerToClient(ch, nil)
-		sub := newSubscription(topic)
+		sub := newSubscription(topic, 32)
 
 		aborted, abort := context.WithCancel(ctx)
 		abort()
@@ -158,7 +158,7 @@ func TestSubscription(t *testing.T) {
 
 		ch := make(mockTopicServer, 1)
 		topic := api.Topic_ServerToClient(ch, nil)
-		sub := newSubscription(topic)
+		sub := newSubscription(topic, 32)
 
 		sub.Cancel()
 		require.NotPanics(t, sub.Cancel,
@@ -184,7 +184,7 @@ func TestSubscription(t *testing.T) {
 
 		ch := make(mockTopicServer, 1)
 		topic := api.Topic_ServerToClient(ch, nil)
-		sub := newSubscription(topic)
+		sub := newSubscription(topic, 32)
 
 		(<-ch).Release()
 
@@ -200,7 +200,7 @@ func TestSubscription(t *testing.T) {
 		defer cancel()
 
 		topic := api.Topic_ServerToClient(errTopicServer{}, nil)
-		sub := newSubscription(topic)
+		sub := newSubscription(topic, 32)
 
 		b, err := sub.Next(ctx)
 		require.EqualError(t, err, "pubsub.capnp:Topic.subscribe: test")
