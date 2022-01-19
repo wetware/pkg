@@ -34,7 +34,6 @@ require (
 )
 
 require (
-	github.com/jbenet/goprocess v0.1.4
 	github.com/libp2p/go-libp2p-quic-transport v0.11.2
 	github.com/lthibault/util v0.0.11
 	github.com/stretchr/testify v1.7.0
@@ -71,6 +70,7 @@ require (
 	github.com/ipld/go-ipld-prime v0.9.0 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
 	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect
+	github.com/jbenet/goprocess v0.1.4 // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect
 	github.com/klauspost/compress v1.11.7 // indirect
 	github.com/libp2p/go-addr-util v0.1.0 // indirect

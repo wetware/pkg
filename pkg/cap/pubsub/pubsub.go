@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	"capnproto.org/go/capnp/v3/server"
-	"github.com/jbenet/goprocess"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	api "github.com/wetware/ww/internal/api/pubsub"
 	"go.uber.org/multierr"
@@ -35,44 +34,52 @@ var defaultPolicy = server.Policy{
 // Factory tracks existing topics internally.  See 'Join' for more details.
 type Factory struct {
 	ps      TopicJoiner
-	cq      chan struct{}
+	ts      topicManager
+	cq      <-chan struct{}
+	cancel  context.CancelFunc
 	onJoin  chan evtTopicJoinRequested
 	onLeave chan evtTopicReleased
 }
 
-func New(ps TopicJoiner) Factory {
-	return Factory{
+func New(ctx context.Context, ps TopicJoiner) Factory {
+	ctx, cancel := context.WithCancel(ctx)
+
+	f := Factory{
 		ps:      ps,
-		cq:      make(chan struct{}),
+		ts:      make(topicManager),
+		cq:      ctx.Done(),
+		cancel:  cancel,
 		onJoin:  make(chan evtTopicJoinRequested),
 		onLeave: make(chan evtTopicReleased), // TODO:  buffer? (finalizer is single-threaded)
 	}
+
+	go f.run()
+
+	return f
 }
 
-func (s Factory) Run() goprocess.ProcessFunc {
-	return func(proc goprocess.Process) {
-		defer close(s.cq)
-
-		var ts = make(topicManager)
-		proc.SetTeardown(ts.Close)
-
-		for {
-			select {
-			case evt := <-s.onJoin:
-				if t, err := ts.GetOrCreate(s.ps, evt.Topic); err != nil {
-					evt.Err <- err
-				} else {
-					evt.Res <- t
-				}
-
-			case evt := <-s.onLeave:
-				evt.Err <- ts.Release(evt.Topic)
-
-			case <-proc.Closing():
-				return
+func (s Factory) run() {
+	for {
+		select {
+		case evt := <-s.onJoin:
+			if t, err := s.ts.GetOrCreate(s.ps, evt.Topic); err != nil {
+				evt.Err <- err
+			} else {
+				evt.Res <- t
 			}
+
+		case evt := <-s.onLeave:
+			evt.Err <- s.ts.Release(evt.Topic)
+
+		case <-s.cq:
+			return
 		}
 	}
+}
+
+func (s Factory) Close() error {
+	s.cancel()
+	return s.ts.Close()
 }
 
 func (s Factory) New(p *server.Policy) PubSub {

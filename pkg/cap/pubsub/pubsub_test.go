@@ -25,8 +25,7 @@ func TestPubSub(t *testing.T) {
 	gs, err := pubsub.NewGossipSub(ctx, h)
 	require.NoError(t, err)
 
-	factory := pscap.New(gs)
-	h.Network().Process().Go(factory.Run())
+	factory := pscap.New(ctx, gs)
 
 	ps := factory.New(nil)
 	defer ps.Release()

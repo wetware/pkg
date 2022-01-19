@@ -6,7 +6,6 @@ import (
 
 	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/google/uuid"
-	"github.com/jbenet/goprocess"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -34,21 +33,19 @@ type Node struct {
 	id  uuid.UUID
 	log log.Logger
 
-	proc goprocess.Process
-	h    host.Host
-
-	ps pscap.Factory
-
+	h          host.Host
+	ps         pscap.Factory
 	clusterOpt []cluster.Option
 	c          *cluster.Node
 }
 
 func New(h host.Host, ps PubSub, opt ...Option) (*Node, error) {
+	ctx := ctxutil.C(h.Network().Process().Closing())
+
 	var n = &Node{
-		h:    h,
-		id:   uuid.Must(uuid.NewRandom()), // instance ID
-		proc: goprocess.WithParent(h.Network().Process()),
-		ps:   pscap.New(ps),
+		h:  h,
+		id: uuid.Must(uuid.NewRandom()), // instance ID
+		ps: pscap.New(ctx, ps),
 	}
 
 	for _, option := range withDefault(opt) {
@@ -56,18 +53,10 @@ func New(h host.Host, ps PubSub, opt ...Option) (*Node, error) {
 	}
 
 	// Start cluster
-	var (
-		ctx = ctxutil.FromChan(n.proc.Closing())
-		err error
-	)
-
+	var err error
 	if n.c, err = cluster.New(ctx, ps, n.clusterOpt...); err != nil {
 		return nil, err
 	}
-
-	// Start capability servers
-	n.proc.Go(n.ps.Run())
-	// n.proc.Go(foo.Run())
 
 	n.registerHandlers()
 	return n, n.c.Bootstrap(ctx)
@@ -78,7 +67,7 @@ func (n *Node) Close() error {
 	n.h.RemoveStreamHandler(ww.Subprotocol(n.String(), "packed"))
 	return multierr.Combine(
 		n.c.Close(),
-		n.proc.Close())
+		n.ps.Close())
 }
 
 // String returns the cluster namespace
