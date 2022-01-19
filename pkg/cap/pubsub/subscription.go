@@ -3,6 +3,7 @@ package pubsub
 import (
 	"context"
 
+	"capnproto.org/go/capnp/v3"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	api "github.com/wetware/ww/internal/api/pubsub"
 	"golang.org/x/sync/semaphore"
@@ -46,51 +47,41 @@ func (h handler) Handle(ctx context.Context, call api.Topic_Handler_handle) erro
 }
 
 type Subscription struct {
-	h       handler
-	resolve func(context.Context) error
+	h handler
+
+	err     error // future resolution error
+	f       *capnp.Future
+	release capnp.ReleaseFunc
 }
 
-func newSubscription(t api.Topic) Subscription {
-	h := newHandler()
-	c := api.Topic_Handler_ServerToClient(h, &defaultPolicy)
-
-	f, release := t.Subscribe(context.Background(),
-		func(ps api.Topic_subscribe_Params) error {
-			return ps.SetHandler(c)
-		})
-
+func newSubscription(t api.Topic) *Subscription {
 	var (
-		resolved bool
-		err      error
+		h          = newHandler()
+		c          = api.Topic_Handler_ServerToClient(h, &defaultPolicy)
+		f, release = t.Subscribe(
+			context.Background(),
+			func(ps api.Topic_subscribe_Params) error {
+				return ps.SetHandler(c)
+			})
 	)
-	resolve := func(ctx context.Context) error {
-		if resolved {
-			return err
-		}
 
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-
-		case <-f.Done():
-			resolved = true
-			defer release()
-
-			_, err = f.Struct()
-			return err
-		}
-	}
-
-	return Subscription{
+	return &Subscription{
 		h:       h,
-		resolve: resolve,
+		f:       f.Future,
+		release: release,
 	}
 }
 
-func (s Subscription) Cancel() { s.h.Shutdown() }
+func (s *Subscription) Cancel() {
+	if s.release != nil {
+		s.release()
+	}
 
-func (s Subscription) Next(ctx context.Context) ([]byte, error) {
-	if err := s.resolve(ctx); err != nil {
+	s.h.Shutdown()
+}
+
+func (s *Subscription) Next(ctx context.Context) ([]byte, error) {
+	if err := s.Resolve(ctx); err != nil {
 		return nil, err
 	}
 
@@ -104,6 +95,25 @@ func (s Subscription) Next(ctx context.Context) ([]byte, error) {
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
+}
+
+func (s *Subscription) Resolve(ctx context.Context) error {
+	if s.release != nil {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+
+		case <-s.f.Done():
+			_, s.err = s.f.Struct()
+			s.release()
+
+			// free memory
+			s.release = nil
+			s.f = nil
+		}
+	}
+
+	return s.err
 }
 
 type subHandler api.Topic_Handler

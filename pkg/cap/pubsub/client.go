@@ -51,7 +51,7 @@ func (t Topic) Publish(ctx context.Context, b []byte) error {
 	return err
 }
 
-func (t Topic) Subscribe() Subscription {
+func (t Topic) Subscribe() *Subscription {
 	return newSubscription((api.Topic)(t))
 }
 

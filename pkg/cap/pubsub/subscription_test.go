@@ -98,13 +98,27 @@ func TestSubscription(t *testing.T) {
 		sub := newSubscription(topic)
 
 		go func() {
-			select {
-			case <-ctx.Done():
-			case sub.h.ms <- []byte("test"):
+			for i := 0; i < 2; i++ {
+				select {
+				case <-ctx.Done():
+				case sub.h.ms <- []byte("test"):
+				}
 			}
 		}()
 
+		// NOTE:  check twice to make sure that sub's future is not
+		//        erroneously released by the first call to Next().
+
 		b, err := sub.Next(ctx)
+		require.NoError(t, err, "Next() should succeed")
+		assert.Equal(t, "test", string(b))
+
+		// If the future were to be accidentally released, ensure
+		// that the handler has adequate time to shut down.  This
+		// increases our chance of detecting the error.
+		time.Sleep(time.Millisecond * 10)
+
+		b, err = sub.Next(ctx)
 		require.NoError(t, err, "Next() should succeed")
 		assert.Equal(t, "test", string(b))
 	})
