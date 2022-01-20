@@ -35,6 +35,8 @@ require (
 
 require (
 	github.com/libp2p/go-libp2p-quic-transport v0.11.2
+	github.com/libp2p/go-libp2p-swarm v0.5.3
+	github.com/lthibault/go-libp2p-inproc-transport v0.0.1-alpha.7
 	github.com/lthibault/util v0.0.11
 	github.com/stretchr/testify v1.7.0
 	github.com/thejerf/suture/v4 v4.0.1
@@ -91,7 +93,6 @@ require (
 	github.com/libp2p/go-libp2p-pnet v0.2.0 // indirect
 	github.com/libp2p/go-libp2p-record v0.1.3 // indirect
 	github.com/libp2p/go-libp2p-routing-helpers v0.2.3 // indirect
-	github.com/libp2p/go-libp2p-swarm v0.5.3 // indirect
 	github.com/libp2p/go-libp2p-tls v0.2.0 // indirect
 	github.com/libp2p/go-libp2p-transport-upgrader v0.4.6 // indirect
 	github.com/libp2p/go-libp2p-yamux v0.5.4 // indirect
@@ -108,7 +109,6 @@ require (
 	github.com/libp2p/go-tcp-transport v0.2.8 // indirect
 	github.com/libp2p/go-ws-transport v0.5.0 // indirect
 	github.com/libp2p/go-yamux/v2 v2.2.0 // indirect
-	github.com/lthibault/go-libp2p-inproc-transport v0.0.1-alpha.7 // indirect
 	github.com/lthibault/jitterbug/v2 v2.2.3-0.20210828000604-93d421a45630 // indirect
 	github.com/lthibault/treap v0.1.4 // indirect
 	github.com/lucas-clemente/quic-go v0.21.2 // indirect

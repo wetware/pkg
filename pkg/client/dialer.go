@@ -18,6 +18,7 @@ import (
 
 	"github.com/wetware/casm/pkg/boot"
 	ww "github.com/wetware/ww/pkg"
+	"github.com/wetware/ww/pkg/cap/pubsub"
 )
 
 type RoutingFactory func(host.Host) (routing.Routing, error)
@@ -37,64 +38,62 @@ func NewDialer(opt ...Option) Dialer {
 }
 
 // Dial joins a cluster via 'addr', using the default Dialer.
-func Dial(ctx context.Context, addr string, opt ...Option) (Node, error) {
+func Dial(ctx context.Context, addr string, opt ...Option) (*Node, error) {
 	return DialDiscover(ctx, addrString(addr), opt...)
 }
 
 // DialDiscover joins a cluster via the supplied discovery service,
 // using the default dialer.
-func DialDiscover(ctx context.Context, d discovery.Discoverer, opt ...Option) (Node, error) {
+func DialDiscover(ctx context.Context, d discovery.Discoverer, opt ...Option) (*Node, error) {
 	return NewDialer(opt...).Dial(ctx, d)
 }
 
 // Dial creates a client and connects it to a cluster.  The context
 // can be safely cancelled when 'Dial' returns.
-func (d Dialer) Dial(ctx context.Context, join discovery.Discoverer) (n Node, err error) {
+func (d Dialer) Dial(ctx context.Context, join discovery.Discoverer) (*Node, error) {
 	// Enforce the semantic convention that 'ctx' is valid only for the duration
 	// of the call to 'Dial'.  Processes that outlive this call should use their
 	// own contexts.
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	n.ns = d.ns
-
-	n.h, err = libp2p.New(context.Background(), d.hostOpts...)
-	if err != nil {
-		return
-	}
-
-	if n.ps.Client, err = d.newRootCapability(ctx, n.h, join); err == nil {
-		// Block until the client is fully resolved. This is necessary because
-		// returning from 'Dial' will cause 'ctx' to be canceled, aborting the
-		// bootstrap process.
-		err = n.ps.Client.Resolve(ctx)
-	}
-
-	return
-}
-
-func (d Dialer) newRootCapability(ctx context.Context, h host.Host, join discovery.Discoverer) (*capnp.Client, error) {
-	peers, err := join.FindPeers(ctx, d.ns)
+	h, err := libp2p.New(context.Background(), d.hostOpts...)
 	if err != nil {
 		return nil, err
 	}
-
-	var s network.Stream
-	for info := range peers {
-		if err = h.Connect(ctx, info); err != nil {
-			continue
+	defer func() {
+		if err != nil {
+			h.Close()
 		}
+	}()
 
-		s, err = h.NewStream(ctx, info.ID,
-			ww.Subprotocol(d.ns, "packed"),
-			ww.Subprotocol(d.ns))
-		if err == nil {
-			break
+	c, err := d.newRootCapability(ctx, h, join)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err != nil {
+			c.Release()
 		}
+	}()
+
+	// Block until the client is fully resolved. This is necessary because
+	// returning from 'Dial' will cause 'ctx' to be canceled, aborting the
+	// bootstrap process.
+	if err = c.Resolve(ctx); err != nil {
+		return nil, err
 	}
 
+	return &Node{
+		ns: d.ns,
+		h:  h,
+		ps: pubsub.PubSub{Client: c},
+	}, nil
+}
+
+func (d Dialer) newRootCapability(ctx context.Context, h host.Host, join discovery.Discoverer) (*capnp.Client, error) {
+	s, err := d.dialStream(ctx, h, join)
 	if err != nil {
-		defer h.Close()
 		return nil, err
 	}
 
@@ -150,6 +149,34 @@ func (d Dialer) newRootCapability(ctx context.Context, h host.Host, join discove
 	})
 
 	return conn.Bootstrap(ctx), nil
+}
+
+func (d Dialer) dialStream(ctx context.Context, h host.Host, join discovery.Discoverer) (network.Stream, error) {
+	peers, err := join.FindPeers(ctx, d.ns)
+	if err != nil {
+		return nil, err
+	}
+
+	var s network.Stream
+	for info := range peers {
+		if err = h.Connect(ctx, info); err != nil {
+			continue
+		}
+
+		s, err = h.NewStream(ctx, info.ID,
+			ww.Subprotocol(d.ns, "packed"),
+			ww.Subprotocol(d.ns))
+		if err == nil {
+			break
+		}
+	}
+
+	// no peers discovered?
+	if s == nil && err == nil {
+		err = fmt.Errorf("find peers: %w", ctx.Err())
+	}
+
+	return s, err
 }
 
 func transportFor(s network.Stream) rpc.Transport {

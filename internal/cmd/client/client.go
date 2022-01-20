@@ -10,7 +10,7 @@ import (
 
 var (
 	logger log.Logger
-	node   client.Node
+	node   *client.Node
 )
 
 func Command() *cli.Command {
