@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path"
 
@@ -173,7 +174,7 @@ func (d Dialer) dialStream(ctx context.Context, h host.Host, join discovery.Disc
 
 	// no peers discovered?
 	if s == nil && err == nil {
-		err = fmt.Errorf("find peers: %w", ctx.Err())
+		err = errors.New("bootstrap failed: no peers found")
 	}
 
 	return s, err
