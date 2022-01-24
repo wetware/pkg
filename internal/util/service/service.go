@@ -33,8 +33,9 @@ func NewEventHook(log log.Logger, name string) suture.EventHook {
 				Parent:       ev.SupervisorName,
 				Restart:      ev.Restarting,
 				Backpressure: ev.CurrentFailures / ev.FailureThreshold,
+				Service:      ev.ServiceName,
 			}).
-				Warnf("caught exception in %s", ev.ServiceName)
+				Warn("caught exception")
 
 		case suture.EventServicePanic:
 			log.With(Exception{
@@ -42,8 +43,9 @@ func NewEventHook(log log.Logger, name string) suture.EventHook {
 				Parent:       ev.SupervisorName,
 				Restart:      ev.Restarting,
 				Backpressure: ev.CurrentFailures / ev.FailureThreshold,
+				Service:      ev.ServiceName,
 			}).
-				Warnf("unhandled exception in %s", ev.ServiceName)
+				Warn("unhandled exception")
 
 			fmt.Fprintf(os.Stdout, "%s\n%s\n",
 				ev.PanicMsg,
@@ -52,7 +54,8 @@ func NewEventHook(log log.Logger, name string) suture.EventHook {
 		case suture.EventStopTimeout:
 			log.
 				WithField("parent", ev.SupervisorName).
-				Fatalf("%s failed to stop in a timely manner", ev.ServiceName)
+				WithField("service", ev.ServiceName).
+				Fatal("failed to stop in a timely manner")
 		}
 	}
 }
@@ -63,6 +66,7 @@ type Exception struct {
 	Parent       string      `json:"parent" cbor:"parent"`
 	Restart      bool        `json:"restart" cbor:"restart"`
 	Backpressure float64     `json:"backpressure" cbor:"backpressure"`
+	Service      string      `json:"service" cbor:"service"`
 }
 
 func (e Exception) GoString() string {
