@@ -35,7 +35,7 @@ func TestDialer(t *testing.T) {
 				libp2p.NoListenAddrs,
 				libp2p.NoTransports,
 				libp2p.Transport(inproc.New())))
-		assert.ErrorIs(t, err, context.Canceled, "should fail with context.Cancel")
+		assert.EqualError(t, err, "bootstrap failed: no peers found")
 		assert.Nil(t, n, "should return nil client node")
 	})
 

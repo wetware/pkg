@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"path"
 
-	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/discovery"
@@ -68,15 +67,17 @@ func (d Dialer) Dial(ctx context.Context, join discovery.Discoverer) (*Node, err
 		}
 	}()
 
-	c, err := d.newRootCapability(ctx, h, join)
+	conn, err := d.dialRPC(ctx, h, join)
 	if err != nil {
 		return nil, err
 	}
 	defer func() {
 		if err != nil {
-			c.Release()
+			conn.Close()
 		}
 	}()
+
+	c := conn.Bootstrap(ctx)
 
 	// Block until the client is fully resolved. This is necessary because
 	// returning from 'Dial' will cause 'ctx' to be canceled, aborting the
@@ -86,13 +87,14 @@ func (d Dialer) Dial(ctx context.Context, join discovery.Discoverer) (*Node, err
 	}
 
 	return &Node{
-		ns: d.ns,
-		h:  h,
-		ps: pubsub.PubSub{Client: c},
+		ns:   d.ns,
+		h:    h,
+		conn: conn,
+		ps:   pubsub.PubSub{Client: c},
 	}, nil
 }
 
-func (d Dialer) newRootCapability(ctx context.Context, h host.Host, join discovery.Discoverer) (*capnp.Client, error) {
+func (d Dialer) dialRPC(ctx context.Context, h host.Host, join discovery.Discoverer) (*rpc.Conn, error) {
 	s, err := d.dialStream(ctx, h, join)
 	if err != nil {
 		return nil, err
@@ -149,7 +151,7 @@ func (d Dialer) newRootCapability(ctx context.Context, h host.Host, join discove
 		// BootstrapClient: authProvider.Client,
 	})
 
-	return conn.Bootstrap(ctx), nil
+	return conn, nil
 }
 
 func (d Dialer) dialStream(ctx context.Context, h host.Host, join discovery.Discoverer) (network.Stream, error) {
