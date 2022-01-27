@@ -33,22 +33,18 @@ var defaultPolicy = server.Policy{
 // In order to export a given topic through multiple capabilities,
 // Factory tracks existing topics internally.  See 'Join' for more details.
 type Factory struct {
+	cq      chan struct{}
 	ps      TopicJoiner
 	ts      topicManager
-	cq      <-chan struct{}
-	cancel  context.CancelFunc
 	onJoin  chan evtTopicJoinRequested
 	onLeave chan evtTopicReleased
 }
 
-func New(ctx context.Context, ps TopicJoiner) Factory {
-	ctx, cancel := context.WithCancel(ctx)
-
+func New(ps TopicJoiner) Factory {
 	f := Factory{
 		ps:      ps,
 		ts:      make(topicManager),
-		cq:      ctx.Done(),
-		cancel:  cancel,
+		cq:      make(chan struct{}),
 		onJoin:  make(chan evtTopicJoinRequested),
 		onLeave: make(chan evtTopicReleased), // TODO:  buffer? (finalizer is single-threaded)
 	}
@@ -58,39 +54,48 @@ func New(ctx context.Context, ps TopicJoiner) Factory {
 	return f
 }
 
-func (s Factory) run() {
+func (f Factory) run() {
 	for {
 		select {
-		case evt := <-s.onJoin:
-			if t, err := s.ts.GetOrCreate(s.ps, evt.Topic); err != nil {
+		case evt := <-f.onJoin:
+			if t, err := f.ts.GetOrCreate(f.ps, evt.Topic); err != nil {
 				evt.Err <- err
 			} else {
 				evt.Res <- t
 			}
 
-		case evt := <-s.onLeave:
-			evt.Err <- s.ts.Release(evt.Topic)
+		case evt := <-f.onLeave:
+			evt.Err <- f.ts.Release(evt.Topic)
 
-		case <-s.cq:
+		case <-f.cq:
 			return
 		}
 	}
 }
 
-func (s Factory) Close() error {
-	s.cancel()
-	return s.ts.Close()
+func (f Factory) Close() error {
+	// capability not provided?
+	if f.cq == nil {
+		return nil
+	}
+
+	select {
+	case <-f.cq:
+		return fmt.Errorf("already %w", ErrClosed) // support errors.Is
+	default:
+		return f.ts.Close()
+	}
 }
 
-func (s Factory) New(p *server.Policy) PubSub {
+func (f Factory) New(p *server.Policy) PubSub {
 	if p == nil {
 		p = &defaultPolicy
 	}
 
-	return PubSub(api.PubSub_ServerToClient(s, p))
+	return PubSub(api.PubSub_ServerToClient(f, p))
 }
 
-func (s Factory) Join(ctx context.Context, call api.PubSub_join) error {
+func (f Factory) Join(ctx context.Context, call api.PubSub_join) error {
 	call.Ack()
 
 	name, err := call.Args().Name()
@@ -107,12 +112,12 @@ func (s Factory) Join(ctx context.Context, call api.PubSub_join) error {
 	cherr := make(chan error, 1)
 
 	select {
-	case s.onJoin <- evtTopicJoinRequested{
+	case f.onJoin <- evtTopicJoinRequested{
 		Topic: name,
 		Res:   topic,
 		Err:   cherr,
 	}:
-	case <-s.cq:
+	case <-f.cq:
 		return ErrClosed
 	case <-ctx.Done():
 		return ctx.Err()
@@ -121,21 +126,21 @@ func (s Factory) Join(ctx context.Context, call api.PubSub_join) error {
 	select {
 	case t := <-topic:
 		return res.SetTopic(api.Topic_ServerToClient(
-			s.newTopicCap(t),
+			f.newTopicCap(t),
 			&defaultPolicy))
 	case err := <-cherr:
 		return err
-	case <-s.cq:
+	case <-f.cq:
 		return ErrClosed
 	case <-ctx.Done():
 		return ctx.Err()
 	}
 }
 
-func (s Factory) newTopicCap(t *pubsub.Topic) topicCap {
+func (f Factory) newTopicCap(t *pubsub.Topic) topicCap {
 	var r = &topicReleaser{
-		cq:     s.cq,
-		signal: s.onLeave,
+		cq:     f.cq,
+		signal: f.onLeave,
 	}
 
 	// Ensure we decrement the refcount, even if the user forgets to

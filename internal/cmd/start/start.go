@@ -121,12 +121,11 @@ type serverConfig struct {
 }
 
 func node(c *cli.Context, config serverConfig) (*server.Node, error) {
-	n, err := server.New(config.Host, config.PubSub,
+	n, err := server.New(c.Context, config.Host, config.PubSub,
 		server.WithLogger(config.Log),
-		server.WithClusterOpts(
-			cluster.WithLogger(config.Log),
-			// cluster.WithMeta(...),
-			cluster.WithNamespace(c.String("ns"))))
+		server.WithNamespace(c.String("ns")),
+		server.WithClusterConfig(
+			cluster.WithMeta(nil) /* TODO */))
 
 	if err == nil {
 		config.Lifecycle.Append(closer(n))

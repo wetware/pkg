@@ -23,7 +23,7 @@ require (
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/sirupsen/logrus v1.8.1
 	github.com/urfave/cli/v2 v2.3.0
-	github.com/wetware/casm v0.0.0-20220126200416-80b147bf649d
+	github.com/wetware/casm v0.0.0-20220128000754-5f7a376b9ebf
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/fx v1.15.0
 	go.uber.org/zap v1.19.1 // indirect
@@ -34,10 +34,10 @@ require (
 )
 
 require (
+	github.com/golang/mock v1.6.0
 	github.com/libp2p/go-libp2p-quic-transport v0.11.2
 	github.com/libp2p/go-libp2p-swarm v0.5.3
 	github.com/lthibault/go-libp2p-inproc-transport v0.0.1-alpha.7
-	github.com/lthibault/util v0.0.11
 	github.com/stretchr/testify v1.7.0
 	github.com/thejerf/suture/v4 v4.0.1
 	github.com/wetware/matrix v1.0.0-alpha.18
@@ -111,6 +111,7 @@ require (
 	github.com/libp2p/go-yamux/v2 v2.2.0 // indirect
 	github.com/lthibault/jitterbug/v2 v2.2.3-0.20210828000604-93d421a45630 // indirect
 	github.com/lthibault/treap v0.1.4 // indirect
+	github.com/lthibault/util v0.0.11 // indirect
 	github.com/lucas-clemente/quic-go v0.21.2 // indirect
 	github.com/marten-seemann/qtls-go1-15 v0.1.5 // indirect
 	github.com/marten-seemann/qtls-go1-16 v0.1.4 // indirect

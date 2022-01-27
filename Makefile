@@ -27,7 +27,7 @@ clean-capnp-pubsub:
 	@rm -rf internal/api/pubsub
 
 
-mocks: cleanmocks
+mocks: clean-mocks
 # This roundabout call to 'go generate' allows us to:
 #  - use modules
 #  - prevent grep missing (totally fine) from causing nonzero exit

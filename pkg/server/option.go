@@ -5,32 +5,37 @@ import (
 	"github.com/wetware/casm/pkg/cluster"
 )
 
-// Option type for Node
-type Option func(*Node)
+type Option func(*Joiner)
 
 func WithLogger(l log.Logger) Option {
 	if l == nil {
 		l = log.New()
 	}
 
-	return func(n *Node) {
-		n.log = l
+	return func(j *Joiner) {
+		j.log = l
 	}
 }
 
-func WithClusterOpts(opt ...cluster.Option) Option {
-	opt = append([]cluster.Option{
-		cluster.WithNamespace("ww"),
-	}, opt...)
+func WithNamespace(ns string) Option {
+	if ns == "" {
+		ns = "ww"
+	}
 
-	return func(n *Node) {
-		n.clusterOpt = opt
+	return func(j *Joiner) {
+		j.ns = ns
+	}
+}
+
+func WithClusterConfig(opt ...cluster.Option) Option {
+	return func(j *Joiner) {
+		j.opts = opt
 	}
 }
 
 func withDefault(opt []Option) []Option {
-	return append([]Option{
+	return []Option{
 		WithLogger(nil),
-		WithClusterOpts(),
-	}, opt...)
+		WithNamespace(""),
+	}
 }
