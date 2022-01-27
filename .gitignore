@@ -17,3 +17,6 @@
 # Wetware
 cmd/scratch/*
 .envrc
+
+# VSCode
+.vscode/**
