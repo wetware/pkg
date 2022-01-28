@@ -50,7 +50,10 @@ func (j Joiner) Join(ctx context.Context, h host.Host, ps PubSub) (*Node, error)
 
 	var cs = newCapSet(
 		anchor.New(c),
-		pscap.New(ps))
+		&pscap.Factory{
+			TopicJoiner: ps,
+			Log:         j.log,
+		})
 
 	var n = &Node{
 		id: id,

@@ -21,10 +21,10 @@ type capSet struct {
 	cq chan struct{}
 
 	Anchor anchor.Factory
-	PubSub pscap.Factory
+	PubSub *pscap.Factory
 }
 
-func newCapSet(a anchor.Factory, ps pscap.Factory) capSet {
+func newCapSet(a anchor.Factory, ps *pscap.Factory) capSet {
 	return capSet{
 		cq:     make(chan struct{}),
 		Anchor: a,

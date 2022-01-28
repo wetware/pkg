@@ -17,7 +17,6 @@ import (
 	rpcutil "github.com/wetware/ww/internal/util/rpc"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/cap/anchor"
-	"github.com/wetware/ww/pkg/cap/pubsub"
 )
 
 const ns = "ww.test"
@@ -79,7 +78,7 @@ func TestRPC_conn_lifecycle(t *testing.T) {
 
 		cs := newCapSet(
 			anchor.New(c),
-			pubsub.Factory{})
+			nil)
 		cs.registerRPC(h0, log)
 		defer cs.Close()
 		defer cs.unregisterRPC(h0)
@@ -150,7 +149,7 @@ func TestRPC_conn_lifecycle(t *testing.T) {
 
 		cs := newCapSet(
 			anchor.New(c),
-			pubsub.Factory{})
+			nil)
 		cs.registerRPC(h0, log)
 		defer cs.unregisterRPC(h0)
 
@@ -201,7 +200,7 @@ func TestCapSet(t *testing.T) {
 
 		cs := newCapSet(
 			anchor.New(c),
-			pubsub.Factory{})
+			nil)
 
 		err := cs.Close()
 		assert.NoError(t, err, "should close cleanly")

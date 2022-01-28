@@ -4,11 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"runtime"
 	"sync"
 
+	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/server"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/lthibault/log"
+	ctxutil "github.com/lthibault/util/ctx"
+	syncutil "github.com/lthibault/util/sync"
 	api "github.com/wetware/ww/internal/api/pubsub"
 	"go.uber.org/multierr"
 	"golang.org/x/sync/semaphore"
@@ -33,59 +36,28 @@ var defaultPolicy = server.Policy{
 // In order to export a given topic through multiple capabilities,
 // Factory tracks existing topics internally.  See 'Join' for more details.
 type Factory struct {
-	cq      chan struct{}
-	ts      topicManager
-	onJoin  chan evtTopicJoinRequested
-	onLeave chan evtTopicReleased
+	TopicJoiner
+	Log log.Logger
+
+	mu sync.RWMutex
+	ts map[string]*topicRecord
 }
 
-func New(ps TopicJoiner) Factory {
-	f := Factory{
-		ts:      newTopicManager(ps),
-		cq:      make(chan struct{}),
-		onJoin:  make(chan evtTopicJoinRequested),
-		onLeave: make(chan evtTopicReleased), // TODO:  buffer? (finalizer is single-threaded)
-	}
+func (f *Factory) Close() (err error) {
+	// capability provided?
+	if f != nil {
+		f.mu.Lock()
+		defer f.mu.Unlock()
 
-	go f.run()
-
-	return f
-}
-
-func (f Factory) run() {
-	for {
-		select {
-		case evt := <-f.onJoin:
-			if t, err := f.ts.GetOrCreate(evt.Topic); err != nil {
-				evt.Err <- err
-			} else {
-				evt.Res <- t
-			}
-
-		case evt := <-f.onLeave:
-			evt.Err <- f.ts.Release(evt.Topic)
-
-		case <-f.cq:
-			return
+		for _, topic := range f.ts {
+			err = multierr.Append(err, topic.Close())
 		}
 	}
+
+	return
 }
 
-func (f Factory) Close() error {
-	// capability not provided?
-	if f.cq == nil {
-		return nil
-	}
-
-	select {
-	case <-f.cq:
-		return fmt.Errorf("already %w", ErrClosed) // support errors.Is
-	default:
-		return f.ts.Close()
-	}
-}
-
-func (f Factory) New(p *server.Policy) PubSub {
+func (f *Factory) New(p *server.Policy) PubSub {
 	if p == nil {
 		p = &defaultPolicy
 	}
@@ -93,10 +65,15 @@ func (f Factory) New(p *server.Policy) PubSub {
 	return PubSub(api.PubSub_ServerToClient(f, p))
 }
 
-func (f Factory) Join(ctx context.Context, call api.PubSub_join) error {
+func (f *Factory) Join(ctx context.Context, call api.PubSub_join) error {
 	call.Ack()
 
 	name, err := call.Args().Name()
+	if err != nil {
+		return err
+	}
+
+	t, err := f.getOrCreate(name)
 	if err != nil {
 		return err
 	}
@@ -106,185 +83,145 @@ func (f Factory) Join(ctx context.Context, call api.PubSub_join) error {
 		return err
 	}
 
-	topic := make(chan *pubsub.Topic, 1) // TODO:  pool
-	cherr := make(chan error, 1)
-
-	select {
-	case f.onJoin <- evtTopicJoinRequested{
-		Topic: name,
-		Res:   topic,
-		Err:   cherr,
-	}:
-	case <-f.cq:
-		return ErrClosed
-	case <-ctx.Done():
-		return ctx.Err()
-	}
-
-	select {
-	case t := <-topic:
-		return res.SetTopic(api.Topic_ServerToClient(
-			f.newTopicCap(t),
-			&defaultPolicy))
-	case err := <-cherr:
-		return err
-	case <-f.cq:
-		return ErrClosed
-	case <-ctx.Done():
-		return ctx.Err()
-	}
+	return res.SetTopic(api.Topic_ServerToClient(
+		f.newTopicCap(t),
+		&defaultPolicy))
 }
 
-func (f Factory) newTopicCap(t *pubsub.Topic) topicCap {
-	var r = &topicReleaser{
-		cq:     f.cq,
-		signal: f.onLeave,
+func (f *Factory) getOrCreate(topic string) (t *pubsub.Topic, err error) {
+	f.mu.RLock()
+
+	// fast path - already exists?
+	var ok bool
+	if t, ok = f.getAndIncr(topic); ok {
+		defer f.mu.RUnlock()
+		return
 	}
 
-	// Ensure we decrement the refcount, even if the user forgets to
-	// release the topic.
-	runtime.SetFinalizer(r, func(r releaser) {
-		_ = r.Release(t)
-	})
+	// slow path
+	f.mu.RUnlock()
+	f.mu.Lock()
+	defer f.mu.Unlock()
 
-	return topicCap{
-		t:   t,
-		ref: r, // r MUST be a pointer type (see SetFinalizer)
-	}
-}
+	// topic may have been added while acquiring write-lock
+	if t, ok = f.getAndIncr(topic); !ok {
+		// initialize map?
+		if f.ts == nil {
+			f.ts = make(map[string]*topicRecord, 1)
+		}
 
-type refCountedTopic struct {
-	Ref uint16
-	T   *pubsub.Topic
-}
-
-type topicManager struct {
-	ps TopicJoiner
-	ts map[string]*refCountedTopic
-}
-
-func newTopicManager(ps TopicJoiner) topicManager {
-	return topicManager{
-		ps: ps,
-		ts: make(map[string]*refCountedTopic),
-	}
-}
-
-func (tm topicManager) Close() (err error) {
-	for _, topic := range tm.ts {
-		err = multierr.Append(err, topic.T.Close())
+		t, err = f.joinTopic(topic)
 	}
 
 	return
 }
 
-func (tm topicManager) GetOrCreate(topic string) (*pubsub.Topic, error) {
-	// fast path - already exists?
-	if rt, ok := tm.ts[topic]; ok {
-		rt.Ref++
-		return rt.T, nil
+// getAndIncr returns the designated topic and increments its refcount,
+// if it exists.  Callers MUST hold f.mu.
+func (f *Factory) getAndIncr(topic string) (t *pubsub.Topic, ok bool) {
+	var rec *topicRecord
+	if rec, ok = f.ts[topic]; ok {
+		rec.Ref.Incr()
+		t = rec.Topic
 	}
 
-	// slow path - join topic
-	t, err := tm.ps.Join(topic)
-	if err == nil {
-		tm.ts[topic] = &refCountedTopic{
-			Ref: 1,
-			T:   t,
+	return
+}
+
+// joinTopic and assign a refcounted topic to tm.ts.  Callers MUST hold a
+// write-lock on f.mu.
+func (f *Factory) joinTopic(topic string) (t *pubsub.Topic, err error) {
+	if t, err = f.TopicJoiner.Join(topic); err == nil {
+		f.ts[topic] = &topicRecord{
+			Ref:   1,
+			Topic: t,
 		}
 	}
 
-	return t, err
+	return
 }
 
-func (tm topicManager) Release(topic string) error {
-	if rt, ok := tm.ts[topic]; ok {
-		if rt.Ref--; rt.Ref == 0 {
-			defer delete(tm.ts, topic)
-			return rt.T.Close()
+// Caller MUST hold a write-lock on f.mu.
+func (f *Factory) leaveTopic(topic string) error {
+	if rec, ok := f.ts[topic]; ok {
+		if rec.Ref.Decr() == 0 {
+			delete(f.ts, topic)
+			return rec.Topic.Close() // don't decorate error (see rec.Close)
 		}
 
 		return nil
 	}
 
-	return fmt.Errorf("refcount error: topic '%s' not in manager", topic)
+	return errors.New("not found")
 }
 
-type evtTopicJoinRequested struct {
-	Topic string
-	Res   chan<- *pubsub.Topic
-	Err   chan<- error
+type topicRecord struct {
+	Ref syncutil.Ctr
+	*pubsub.Topic
 }
 
-type evtTopicReleased struct {
-	Topic string
-	Err   chan<- error
-}
-
-type topicCap struct {
-	t   *pubsub.Topic
-	ref releaser
-}
-
-func (tc topicCap) Publish(ctx context.Context, call api.Topic_publish) error {
-	call.Ack()
-
-	b, err := call.Args().Msg()
-	if err != nil {
-		return err
+func (rec topicRecord) Close() (err error) {
+	if err = rec.Topic.Close(); err != nil {
+		err = fmt.Errorf("close %s: %w", rec, err)
 	}
 
-	return tc.t.Publish(ctx, b)
+	return
 }
 
-func (tc topicCap) Subscribe(ctx context.Context, call api.Topic_subscribe) error {
-	call.Ack()
+type topic struct {
+	*pubsub.Topic
+	cq      ctxutil.C
+	release capnp.ReleaseFunc
+}
 
-	sub, err := tc.t.Subscribe()
+func (f *Factory) newTopicCap(t *pubsub.Topic) topic {
+	var cq = make(chan struct{})
+
+	release := func() {
+		close(cq)
+
+		f.mu.Lock()
+		defer f.mu.Unlock()
+
+		if err := f.leaveTopic(t.String()); err != nil {
+			if f.Log == nil {
+				f.Log = log.New(log.WithLevel(log.ErrorLevel))
+			}
+
+			f.Log.
+				WithError(err).
+				Errorf("failed to release topic '%s'", t)
+		}
+	}
+
+	return topic{
+		Topic:   t,
+		cq:      cq,
+		release: release,
+	}
+}
+
+func (t topic) Shutdown() {
+	t.release()
+}
+
+func (t topic) Publish(ctx context.Context, call api.Topic_publish) error {
+	b, err := call.Args().Msg()
 	if err == nil {
-		go subHandler{
-			handler: call.Args().Handler().AddRef(),
-			buffer:  semaphore.NewWeighted(int64(call.Args().BufSize())),
-		}.
-			Handle(context.TODO(), sub)
+		err = t.Topic.Publish(ctx, b)
 	}
 
 	return err
 }
 
-// We use this interface to enforce the use of a pointer type in topicCap.release.
-// This is required in order for runtime.SetFinalizer to function correctly.
-type releaser interface {
-	Release(*pubsub.Topic) error
-}
+func (t topic) Subscribe(_ context.Context, call api.Topic_subscribe) error {
+	sub, err := t.Topic.Subscribe()
+	if err == nil {
+		go subHandler{
+			handler: call.Args().Handler().AddRef(),
+			buffer:  semaphore.NewWeighted(int64(call.Args().BufSize())),
+		}.Handle(t.cq, sub)
+	}
 
-type topicReleaser struct {
-	once   sync.Once
-	cq     <-chan struct{}
-	signal chan<- evtTopicReleased
-}
-
-// NOTE:  pointer method is ESSENTIAL for enforcing SetFinalizer constraint.
-//        It forces the use of a *topicReleaser in topicCap.release.
-func (r *topicReleaser) Release(t *pubsub.Topic) (err error) {
-	r.once.Do(func() {
-		cherr := make(chan error, 1) // TODO: pool?
-
-		evt := evtTopicReleased{
-			Topic: t.String(),
-			Err:   cherr,
-		}
-
-		select {
-		case r.signal <- evt:
-			select {
-			case err = <-cherr:
-			case <-r.cq: // closing; swallow error
-			}
-
-		case <-r.cq:
-		}
-	})
-
-	return
+	return err
 }

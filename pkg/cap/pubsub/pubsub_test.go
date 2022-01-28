@@ -5,7 +5,9 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/golang/mock/gomock"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	logtest "github.com/lthibault/log/test"
 	syncutil "github.com/lthibault/util/sync"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,6 +19,14 @@ import (
 func TestPubSub(t *testing.T) {
 	t.Parallel()
 
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	const topic = "test"
+
+	// The logger called with ERROR level if a factory invariant is violated.
+	log := logtest.NewMockLogger(ctrl)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -27,13 +37,16 @@ func TestPubSub(t *testing.T) {
 	gs, err := pubsub.NewGossipSub(ctx, h)
 	require.NoError(t, err)
 
-	factory := pscap.New(gs)
+	factory := pscap.Factory{
+		TopicJoiner: gs,
+		Log:         log,
+	}
 	defer factory.Close()
 
 	ps := factory.New(nil)
 	defer ps.Release()
 
-	f, release := ps.Join(ctx, "test")
+	f, release := ps.Join(ctx, topic)
 	defer release()
 
 	sub := f.Topic().Subscribe()
@@ -54,6 +67,17 @@ func TestPubSub(t *testing.T) {
 func TestPubSub_concurrent(t *testing.T) {
 	t.Parallel()
 
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	const (
+		topic = "test"
+		n     = 32
+	)
+
+	// The logger called with ERROR level if a factory invariant is violated.
+	log := logtest.NewMockLogger(ctrl)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -61,13 +85,15 @@ func TestPubSub_concurrent(t *testing.T) {
 
 	h := sim.MustHost(ctx)
 
-	gs, err := pubsub.NewFloodSub(ctx, h)
+	gs, err := pubsub.NewGossipSub(ctx, h)
 	require.NoError(t, err)
 
-	f := pscap.New(gs)
+	f := pscap.Factory{
+		TopicJoiner: gs,
+		Log:         log,
+	}
 	defer f.Close()
 
-	const n = 32
 	var wg sync.WaitGroup
 	var b = syncutil.NewBarrierChan(n)
 	wg.Add(n)
@@ -79,7 +105,7 @@ func TestPubSub_concurrent(t *testing.T) {
 			ps := f.New(nil)
 			defer ps.Release()
 
-			f, release := ps.Join(ctx, "test")
+			f, release := ps.Join(ctx, topic)
 			defer release()
 
 			sub := f.Topic().Subscribe()
