@@ -34,7 +34,6 @@ var defaultPolicy = server.Policy{
 // Factory tracks existing topics internally.  See 'Join' for more details.
 type Factory struct {
 	cq      chan struct{}
-	ps      TopicJoiner
 	ts      topicManager
 	onJoin  chan evtTopicJoinRequested
 	onLeave chan evtTopicReleased
@@ -42,8 +41,7 @@ type Factory struct {
 
 func New(ps TopicJoiner) Factory {
 	f := Factory{
-		ps:      ps,
-		ts:      make(topicManager),
+		ts:      newTopicManager(ps),
 		cq:      make(chan struct{}),
 		onJoin:  make(chan evtTopicJoinRequested),
 		onLeave: make(chan evtTopicReleased), // TODO:  buffer? (finalizer is single-threaded)
@@ -58,7 +56,7 @@ func (f Factory) run() {
 	for {
 		select {
 		case evt := <-f.onJoin:
-			if t, err := f.ts.GetOrCreate(f.ps, evt.Topic); err != nil {
+			if t, err := f.ts.GetOrCreate(evt.Topic); err != nil {
 				evt.Err <- err
 			} else {
 				evt.Res <- t
@@ -160,27 +158,37 @@ type refCountedTopic struct {
 	T   *pubsub.Topic
 }
 
-type topicManager map[string]*refCountedTopic
+type topicManager struct {
+	ps TopicJoiner
+	ts map[string]*refCountedTopic
+}
 
-func (ts topicManager) Close() (err error) {
-	for _, topic := range ts {
+func newTopicManager(ps TopicJoiner) topicManager {
+	return topicManager{
+		ps: ps,
+		ts: make(map[string]*refCountedTopic),
+	}
+}
+
+func (tm topicManager) Close() (err error) {
+	for _, topic := range tm.ts {
 		err = multierr.Append(err, topic.T.Close())
 	}
 
 	return
 }
 
-func (ts topicManager) GetOrCreate(ps TopicJoiner, topic string) (*pubsub.Topic, error) {
+func (tm topicManager) GetOrCreate(topic string) (*pubsub.Topic, error) {
 	// fast path - already exists?
-	if rt, ok := ts[topic]; ok {
+	if rt, ok := tm.ts[topic]; ok {
 		rt.Ref++
 		return rt.T, nil
 	}
 
 	// slow path - join topic
-	t, err := ps.Join(topic)
+	t, err := tm.ps.Join(topic)
 	if err == nil {
-		ts[topic] = &refCountedTopic{
+		tm.ts[topic] = &refCountedTopic{
 			Ref: 1,
 			T:   t,
 		}
@@ -189,10 +197,10 @@ func (ts topicManager) GetOrCreate(ps TopicJoiner, topic string) (*pubsub.Topic,
 	return t, err
 }
 
-func (ts topicManager) Release(topic string) error {
-	if rt, ok := ts[topic]; ok {
+func (tm topicManager) Release(topic string) error {
+	if rt, ok := tm.ts[topic]; ok {
 		if rt.Ref--; rt.Ref == 0 {
-			defer delete(ts, topic)
+			defer delete(tm.ts, topic)
 			return rt.T.Close()
 		}
 
