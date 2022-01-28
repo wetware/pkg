@@ -26,6 +26,7 @@ func TestPubSub(t *testing.T) {
 	require.NoError(t, err)
 
 	factory := pscap.New(gs)
+	defer factory.Close()
 
 	ps := factory.New(nil)
 	defer ps.Release()
