@@ -23,6 +23,12 @@ import (
 )
 
 var flags = []cli.Flag{
+	&cli.StringFlag{
+		Name:    "ns",
+		Usage:   "cluster namespace",
+		Value:   "ww",
+		EnvVars: []string{"WW_NS"},
+	},
 	&cli.StringSliceFlag{
 		Name:    "listen",
 		Aliases: []string{"a"},
@@ -38,12 +44,6 @@ var flags = []cli.Flag{
 		Usage:   "bootstrap discovery addr (cidr url)",
 		Value:   "tcp://127.0.0.1:8822/24", // TODO:  this should default to mudp
 		EnvVars: []string{"WW_DISCOVER"},
-	},
-	&cli.StringFlag{
-		Name:    "ns",
-		Usage:   "cluster namespace",
-		Value:   "ww",
-		EnvVars: []string{"WW_NS"},
 	},
 }
 
