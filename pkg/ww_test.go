@@ -23,6 +23,7 @@ func TestProto(t *testing.T) {
 	const ns = "test"
 	match := ww.NewMatcher(ns)
 	proto := ww.Subprotocol(ns)
+	t.Log(proto)
 
 	assert.True(t, match(string(proto)),
 		"matcher should match subprotocol")
