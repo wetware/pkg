@@ -71,6 +71,8 @@ func TestClientServer_integration(t *testing.T) {
 		defer top.Release()
 
 		sub := top.Subscribe()
+		defer sub.Cancel()
+
 		time.Sleep(time.Millisecond)
 
 		err = top.Publish(ctx, []byte("hello, world!"))
