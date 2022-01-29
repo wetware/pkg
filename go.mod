@@ -38,11 +38,13 @@ require (
 	github.com/libp2p/go-libp2p-quic-transport v0.11.2
 	github.com/libp2p/go-libp2p-swarm v0.5.3
 	github.com/lthibault/go-libp2p-inproc-transport v0.0.1-alpha.7
+	github.com/lthibault/util v0.0.11
 	github.com/stretchr/testify v1.7.0
 	github.com/thejerf/suture/v4 v4.0.1
 	github.com/wetware/matrix v1.0.0-alpha.18
 	go.uber.org/multierr v1.7.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
+	gopkg.in/alexcesaro/statsd.v2 v2.0.0
 )
 
 require (
@@ -111,7 +113,6 @@ require (
 	github.com/libp2p/go-yamux/v2 v2.2.0 // indirect
 	github.com/lthibault/jitterbug/v2 v2.2.3-0.20210828000604-93d421a45630 // indirect
 	github.com/lthibault/treap v0.1.4 // indirect
-	github.com/lthibault/util v0.0.11 // indirect
 	github.com/lucas-clemente/quic-go v0.21.2 // indirect
 	github.com/marten-seemann/qtls-go1-15 v0.1.5 // indirect
 	github.com/marten-seemann/qtls-go1-16 v0.1.4 // indirect

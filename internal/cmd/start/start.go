@@ -18,6 +18,7 @@ import (
 	"github.com/wetware/casm/pkg/cluster"
 	logutil "github.com/wetware/ww/internal/util/log"
 	serviceutil "github.com/wetware/ww/internal/util/service"
+	statsdutil "github.com/wetware/ww/internal/util/statsd"
 	"github.com/wetware/ww/pkg/runtime"
 	"github.com/wetware/ww/pkg/server"
 )
@@ -44,6 +45,46 @@ var flags = []cli.Flag{
 		Usage:   "bootstrap discovery addr (cidr url)",
 		Value:   "tcp://127.0.0.1:8822/24", // TODO:  this should default to mudp
 		EnvVars: []string{"WW_DISCOVER"},
+	},
+
+	// statsd metrics
+	&cli.BoolFlag{
+		Name:    "statsd",
+		Usage:   "enable statsd metrics",
+		EnvVars: []string{"WW_STATSD_ENABLE"},
+	},
+	&cli.StringFlag{
+		Name:    "statsd-addr",
+		Usage:   "statsd daemon host:port",
+		Value:   "localhost:8125",
+		EnvVars: []string{"WW_STATSD"},
+	},
+	&cli.StringSliceFlag{
+		Name:    "statsd-tag",
+		Usage:   "add statsd tag",
+		EnvVars: []string{"WW_STATSD_TAGS"},
+		Hidden:  true,
+	},
+	&cli.StringFlag{
+		Name:    "statsd-tagfmt",
+		Usage:   "influx, datadog",
+		Value:   "influx",
+		EnvVars: []string{"WW_STATSD_TAGFMT"},
+		Hidden:  true,
+	},
+	&cli.Float64Flag{
+		Name:    "statsd-sample-rate",
+		Usage:   "proportion of metrics to send",
+		Value:   .1,
+		EnvVars: []string{"WW_STATSD_SAMPLE_RATE"},
+		Hidden:  true,
+	},
+	&cli.DurationFlag{
+		Name:    "statsd-flush",
+		Usage:   "buffer flush interval (0=disable)",
+		Value:   time.Millisecond * 200,
+		EnvVars: []string{"WW_STATSD_FLUSH"},
+		Hidden:  true,
 	},
 }
 
@@ -84,6 +125,7 @@ func bind(c *cli.Context) fx.Option {
 		fx.Supply(c),
 		fx.Provide(
 			logutil.New,
+			statsdutil.New,
 			supervisor,
 			localhost,
 			node))
