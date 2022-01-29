@@ -34,8 +34,8 @@ func WithClusterConfig(opt ...cluster.Option) Option {
 }
 
 func withDefault(opt []Option) []Option {
-	return []Option{
+	return append([]Option{
 		WithLogger(nil),
 		WithNamespace(""),
-	}
+	}, opt...)
 }
