@@ -23,14 +23,20 @@ func NewCrawler(c *cli.Context, log log.Logger) (boot.Crawler, error) {
 		return boot.Crawler{}, err
 	}
 
+	cidr := path.Join(u.Hostname(), u.Path) // e.g. '10.0.1.0/24'
+	log = log.
+		WithField("net", u.Scheme).
+		WithField("port", port).
+		WithField("cidr", cidr)
+
 	return boot.Crawler{
-		Logger: log.WithField("scan", u.String()),
+		Logger: log,
 		Dialer: new(net.Dialer),
 		Strategy: &boot.ScanSubnet{
-			Logger: log.WithField("scan", u.String()),
+			Logger: log,
 			Net:    u.Scheme,
 			Port:   port,
-			CIDR:   path.Join(u.Hostname(), u.Path), // e.g. '10.0.1.0/24'
+			CIDR:   cidr, // e.g. '10.0.1.0/24'
 		},
 	}, nil
 }
