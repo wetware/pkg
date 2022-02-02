@@ -39,10 +39,11 @@ func (cs capSet) Close() error {
 
 	default:
 		close(cs.cq)
-		return multierr.Combine(
-			cs.Anchor.Close(),
-			cs.PubSub.Close())
 	}
+
+	return multierr.Combine(
+		cs.Anchor.Close(),
+		cs.PubSub.Close())
 }
 
 // String returns the namespace containing the capability set.

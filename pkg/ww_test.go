@@ -94,7 +94,8 @@ func TestClientServer_integration(t *testing.T) {
 		require.NoError(t, err, "should resolve topic")
 		defer top.Release()
 
-		sub := top.Subscribe()
+		sub, err := top.Subscribe(ctx)
+		require.NoError(t, err, "should subscribe successfully")
 		defer sub.Cancel()
 
 		time.Sleep(time.Millisecond)
