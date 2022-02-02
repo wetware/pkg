@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 	mx "github.com/wetware/matrix/pkg"
 	mock_anchor "github.com/wetware/ww/internal/test/mock/pkg/cap/anchor"
-	rpcutil "github.com/wetware/ww/internal/util/rpc"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/cap/anchor"
 )
@@ -63,11 +62,6 @@ func TestRPC_conn_lifecycle(t *testing.T) {
 			Return(log).
 			AnyTimes()
 
-		// ErrReporter
-		log.EXPECT().
-			Debug(renderEq("rpc: remote abort: connection closed")).
-			Times(1)
-
 		// <-conn.Done()
 		log.EXPECT().
 			Debug(renderEq("client hung up")).
@@ -95,11 +89,7 @@ func TestRPC_conn_lifecycle(t *testing.T) {
 		s, err := h1.NewStream(ctx, h0.ID(), ww.Subprotocol(ns))
 		require.NoError(t, err, "should successfully open stram")
 
-		conn := rpc.NewConn(rpc.NewStreamTransport(s), &rpc.Options{
-			ErrorReporter: rpcutil.ErrReporterFunc(func(err error) {
-				assert.NoError(t, err, "unexpected protocol error")
-			}),
-		})
+		conn := rpc.NewConn(rpc.NewStreamTransport(s), nil)
 
 		client := conn.Bootstrap(ctx)
 		err = client.Resolve(ctx)
@@ -170,11 +160,7 @@ func TestRPC_conn_lifecycle(t *testing.T) {
 		s, err := h1.NewStream(ctx, h0.ID(), ww.Subprotocol(ns))
 		require.NoError(t, err, "should successfully open stram")
 
-		conn := rpc.NewConn(rpc.NewStreamTransport(s), &rpc.Options{
-			ErrorReporter: rpcutil.ErrReporterFunc(func(err error) {
-				assert.NoError(t, err, "unexpected protocol error")
-			}),
-		})
+		conn := rpc.NewConn(rpc.NewStreamTransport(s), nil)
 		defer conn.Close()
 
 		client := conn.Bootstrap(ctx)

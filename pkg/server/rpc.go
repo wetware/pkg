@@ -11,7 +11,6 @@ import (
 	"go.uber.org/multierr"
 
 	protoutil "github.com/wetware/casm/pkg/util/proto"
-	rpcutil "github.com/wetware/ww/internal/util/rpc"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/cap/anchor"
 	pscap "github.com/wetware/ww/pkg/cap/pubsub"
@@ -80,13 +79,6 @@ func (cs capSet) newHandler(log log.Logger, f transportFactory) network.StreamHa
 
 		conn := rpc.NewConn(f.NewTransport(s), &rpc.Options{
 			BootstrapClient: cs.PubSub.New(nil).Client, // TODO:  AuthNegotiator or somesuch
-			ErrorReporter: rpcutil.ErrReporterFunc(func(err error) {
-				select {
-				case <-cs.cq:
-				default:
-					slog.Debug(err)
-				}
-			}),
 		})
 		defer conn.Close()
 
