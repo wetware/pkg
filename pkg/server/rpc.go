@@ -81,7 +81,11 @@ func (cs capSet) newHandler(log log.Logger, f transportFactory) network.StreamHa
 		conn := rpc.NewConn(f.NewTransport(s), &rpc.Options{
 			BootstrapClient: cs.PubSub.New(nil).Client, // TODO:  AuthNegotiator or somesuch
 			ErrorReporter: rpcutil.ErrReporterFunc(func(err error) {
-				slog.Debug(err)
+				select {
+				case <-cs.cq:
+				default:
+					slog.Debug(err)
+				}
 			}),
 		})
 		defer conn.Close()

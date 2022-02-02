@@ -48,6 +48,11 @@ func TestRPC_conn_lifecycle(t *testing.T) {
 			h1  = sim.MustHost(ctx)
 		)
 
+		defer func() {
+			require.NoError(t, h0.Close(), "host h0 should close cleanly")
+			require.NoError(t, h1.Close(), "host h1 should close cleanly")
+		}()
+
 		log := logtest.NewMockLogger(ctrl)
 		log.EXPECT().
 			With(gomock.Any()).
@@ -111,9 +116,6 @@ func TestRPC_conn_lifecycle(t *testing.T) {
 	t.Run("Shutdown", func(t *testing.T) {
 		t.Parallel()
 
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
@@ -122,6 +124,14 @@ func TestRPC_conn_lifecycle(t *testing.T) {
 			h0  = sim.MustHost(ctx)
 			h1  = sim.MustHost(ctx)
 		)
+
+		defer func() {
+			require.NoError(t, h0.Close(), "host h0 should close cleanly")
+			require.NoError(t, h1.Close(), "host h1 should close cleanly")
+		}()
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
 
 		log := logtest.NewMockLogger(ctrl)
 		log.EXPECT().
