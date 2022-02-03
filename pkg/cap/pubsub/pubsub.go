@@ -37,7 +37,7 @@ type Factory struct {
 	cq  chan struct{}
 	log log.Logger
 
-	ps TopicJoiner
+	ps joinDecorator
 
 	mu sync.RWMutex
 	wg sync.WaitGroup // blocks shutdown until all tasks are released
@@ -47,7 +47,7 @@ type Factory struct {
 func New(ps TopicJoiner, opt ...Option) *Factory {
 	var f = &Factory{
 		cq: make(chan struct{}),
-		ps: ps,
+		ps: joinDecorator{ps},
 		ts: make(map[string]*refCountedTopic),
 	}
 
@@ -238,4 +238,14 @@ func (t *refCountedTopic) handle(args api.Topic_subscribe_Params, sub *pubsub.Su
 
 		h.Handle(t.ctx, sub)
 	}()
+}
+
+type joinDecorator struct{ TopicJoiner }
+
+func (jd joinDecorator) Join(ns string, opt ...pubsub.TopicOpt) (t *pubsub.Topic, err error) {
+	if t, err = jd.TopicJoiner.Join(ns, opt...); err != nil {
+		err = fmt.Errorf("%s: %w", ns, err) // decorate with namespace
+	}
+
+	return
 }
