@@ -3,6 +3,7 @@
 [![Godoc Reference](https://img.shields.io/badge/godoc-reference-blue.svg?style=flat-square)](https://godoc.org/github.com/wetware/ww)
 [![Go Report Card](https://goreportcard.com/badge/github.com/SentimensRG/ctx?style=flat-square)](https://goreportcard.com/report/github.com/wetware/ww)
 ![tests](https://github.com/wetware/ww/workflows/Go/badge.svg)
+[![Matrix](https://img.shields.io/matrix/wetware:matrix.org?color=lightpink&label=Get%20Help&logo=matrix&style=flat-square)](https://matrix.to/#/#wetware:matrix.org)
 
 **Wetware is the language of the cloud.**  It is an alternative to [Kubernetes](https://kubernetes.io/), [Mesos](https://mesos.apache.org/) and [OpenShift](https://www.openshift.com/) that turns any group of networked computers -- including cloud-based instances -- into a programmable IaaS/PaaS cluster.
 
