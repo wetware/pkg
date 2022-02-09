@@ -16,10 +16,10 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/wetware/casm/pkg/cluster"
+	"github.com/wetware/ww/internal/runtime"
 	logutil "github.com/wetware/ww/internal/util/log"
 	serviceutil "github.com/wetware/ww/internal/util/service"
 	statsdutil "github.com/wetware/ww/internal/util/statsd"
-	"github.com/wetware/ww/pkg/runtime"
 	"github.com/wetware/ww/pkg/server"
 )
 
