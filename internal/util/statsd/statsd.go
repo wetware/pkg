@@ -66,7 +66,7 @@ func sample(c *cli.Context) statsd.Option {
 }
 
 // key with random component to avoid collision
-const key = "ww.util.statsd:Fp+&(<[.~10}>\\>nI!bzeJZX"
+const key = "ww.util.statsd:0U7]3|~FAJOM#;jXWbA&Gxby"
 
 // Bind a global logger instance to the CLI context.
 // Future calls to New will return this cached logger.

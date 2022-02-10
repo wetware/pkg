@@ -9,9 +9,10 @@ import (
 	"github.com/thejerf/suture/v4"
 	"github.com/urfave/cli/v2"
 	logutil "github.com/wetware/ww/internal/util/log"
+	statsdutil "github.com/wetware/ww/internal/util/statsd"
 )
 
-func NewEventHook(c *cli.Context, name string) suture.EventHook {
+func NewEventHook(c *cli.Context) suture.EventHook {
 	return func(e suture.Event) {
 		switch ev := e.(type) {
 		case suture.EventBackoff:
@@ -25,24 +26,34 @@ func NewEventHook(c *cli.Context, name string) suture.EventHook {
 				Infof("%s resumed", ev.SupervisorName)
 
 		case suture.EventServiceTerminate:
-			logutil.New(c).With(Exception{
-				Value:        ev.Err,
-				Parent:       ev.SupervisorName,
-				Restart:      ev.Restarting,
-				Backpressure: ev.CurrentFailures / ev.FailureThreshold,
-				Service:      ev.ServiceName,
-			}).
-				Warn("caught exception")
+			logutil.New(c).
+				With(Exception{
+					Value:        ev.Err,
+					Parent:       ev.SupervisorName,
+					Restart:      ev.Restarting,
+					Backpressure: ev.CurrentFailures / ev.FailureThreshold,
+					Service:      ev.ServiceName,
+				}).Warn("caught exception")
+
+			bucket := fmt.Sprintf("%s.%s.", ev.SupervisorName, ev.ServiceName)
+			statsdutil.Must(c).Increment(bucket + "restarts")
+			if ev.Err != nil {
+				statsdutil.Must(c).Increment(bucket + "errors")
+			}
 
 		case suture.EventServicePanic:
-			logutil.New(c).With(Exception{
-				Value:        name,
-				Parent:       ev.SupervisorName,
-				Restart:      ev.Restarting,
-				Backpressure: ev.CurrentFailures / ev.FailureThreshold,
-				Service:      ev.ServiceName,
-			}).
-				Warn("unhandled exception")
+			logutil.New(c).
+				With(Exception{
+					Value:        fmt.Errorf(ev.PanicMsg),
+					Parent:       ev.SupervisorName,
+					Restart:      ev.Restarting,
+					Backpressure: ev.CurrentFailures / ev.FailureThreshold,
+					Service:      ev.ServiceName,
+				}).Warn("unhandled exception")
+
+			bucket := fmt.Sprintf("%s.%s.", ev.SupervisorName, ev.ServiceName)
+			statsdutil.Must(c).Increment(bucket + "restarts")
+			statsdutil.Must(c).Increment(bucket + "panics")
 
 			// Print to stdout to avoid interferring with log
 			// collection daemons.
