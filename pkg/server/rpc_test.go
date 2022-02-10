@@ -111,7 +111,7 @@ func TestRPC_conn_lifecycle(t *testing.T) {
 
 		var (
 			sim = mx.New(ctx)
-			h0  = sim.MustHost(context.Background()) // ensure h1 closes first
+			h0  = sim.MustHost(context.Background())
 			h1  = sim.MustHost(context.Background())
 		)
 
@@ -135,7 +135,7 @@ func TestRPC_conn_lifecycle(t *testing.T) {
 
 		// <-cq
 		log.EXPECT().
-			Debug(renderEq("shutting down")).
+			Debug(gomock.Any()).
 			Times(1)
 
 		c := mock_anchor.NewMockCluster(ctrl)
