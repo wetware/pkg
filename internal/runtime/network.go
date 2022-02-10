@@ -21,6 +21,7 @@ import (
 
 	"github.com/wetware/casm/pkg/boot"
 	bootutil "github.com/wetware/ww/internal/util/boot"
+	statsdutil "github.com/wetware/ww/internal/util/statsd"
 )
 
 var network = fx.Provide(
@@ -50,7 +51,9 @@ func routing(c *cli.Context, h host.Host, lx fx.Lifecycle) (*dual.DHT, error) {
 }
 
 func overlay(c *cli.Context, h host.Host, d discovery.Discovery) (*pubsub.PubSub, error) {
-	return pubsub.NewGossipSub(c.Context, h, pubsub.WithDiscovery(d))
+	return pubsub.NewGossipSub(c.Context, h,
+		pubsub.WithRawTracer(statsdutil.NewPubSubTracer(c)),
+		pubsub.WithDiscovery(d))
 }
 
 type bootstrapConfig struct {
