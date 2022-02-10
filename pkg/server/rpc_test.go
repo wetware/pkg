@@ -111,8 +111,8 @@ func TestRPC_conn_lifecycle(t *testing.T) {
 
 		var (
 			sim = mx.New(ctx)
-			h0  = sim.MustHost(ctx)
-			h1  = sim.MustHost(ctx)
+			h0  = sim.MustHost(context.Background()) // ensure h1 closes first
+			h1  = sim.MustHost(context.Background())
 		)
 
 		defer func() {
