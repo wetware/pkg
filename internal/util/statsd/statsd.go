@@ -1,59 +1,49 @@
 package statsdutil
 
 import (
-	"github.com/lthibault/log"
 	"github.com/urfave/cli/v2"
 	logutil "github.com/wetware/ww/internal/util/log"
+	ww "github.com/wetware/ww/pkg"
 	"gopkg.in/alexcesaro/statsd.v2"
 )
 
+var tags = []string{
+	"ww", ww.Version,
+}
+
+// Must returns a new statsd client and panics if an error
+// is encountered.
+func Must(c *cli.Context) *statsd.Client {
+	s, err := New(c)
+	if err != nil {
+		panic(err)
+	}
+	return s
+}
+
 // New statsd client.
-func New(c *cli.Context, log log.Logger) (*statsd.Client, error) {
-	return statsd.New(
-		addr(c),
-		mute(c),
-		tags(c),
-		tagfmt(c),
-		prefix(c),
-		sample(c),
-		logger(c, log),
-		flushInterval(c))
+func New(c *cli.Context) (*statsd.Client, error) {
+	if s := get(c); s != nil {
+		return s, nil
+	}
+
+	return bind(c)
 }
 
 func addr(c *cli.Context) statsd.Option {
-	return statsd.Address(c.String("statsd-addr"))
-}
-
-func mute(c *cli.Context) statsd.Option {
-	return statsd.Mute(!c.Bool("statsd"))
-}
-
-func prefix(c *cli.Context) statsd.Option {
-	return statsd.Prefix("ww.")
-}
-
-func logger(c *cli.Context, l log.Logger) statsd.Option {
-	if l == nil {
-		l = logutil.New(c)
+	if c.IsSet("statsd") {
+		return statsd.Address(c.String("statsd"))
 	}
 
-	l = l.WithField("statsd", c.String("statsd-addr"))
+	return statsd.Address(":8125")
+}
+
+func logger(c *cli.Context) statsd.Option {
 	return statsd.ErrorHandler(func(err error) {
-		l.Error(err)
+		logutil.New(c).
+			WithField("statsd", c.String("statsd-addr")).
+			Error(err)
 	})
-}
-
-func tags(c *cli.Context) statsd.Option {
-	var tags = []string{"ww"}
-	if c.IsSet("statsd-tag") {
-		if c.String("ns") != tags[0] {
-			tags = append(tags, c.String("ns"))
-		}
-
-		tags = append(tags, c.StringSlice("statsd-tag")...)
-	}
-
-	return statsd.Tags(tags...)
 }
 
 func tagfmt(c *cli.Context) statsd.Option {
@@ -70,11 +60,40 @@ func tagfmt(c *cli.Context) statsd.Option {
 	return statsd.TagsFormat(fmt)
 }
 
-func flushInterval(c *cli.Context) statsd.Option {
-	return statsd.FlushPeriod(c.Duration("statsd-flush"))
-}
-
 func sample(c *cli.Context) statsd.Option {
 	samp := c.Float64("statsd-sample-rate")
 	return statsd.SampleRate(float32(samp))
+}
+
+// key with random component to avoid collision
+const key = "ww.util.statsd:Fp+&(<[.~10}>\\>nI!bzeJZX"
+
+// Bind a global logger instance to the CLI context.
+// Future calls to New will return this cached logger.
+func bind(c *cli.Context) (*statsd.Client, error) {
+	s, err := statsd.New(
+		addr(c),
+		tagfmt(c),
+		sample(c),
+		logger(c),
+		statsd.Prefix("ww."),
+		statsd.Tags(tags...),
+		statsd.Mute(!c.IsSet("statsd")),
+		statsd.FlushPeriod(c.Duration("statsd-flush")))
+
+	if err == nil {
+		c.App.Metadata[key] = func() *statsd.Client {
+			return s
+		}
+	}
+
+	return s, err
+}
+
+func get(c *cli.Context) *statsd.Client {
+	if statsd, ok := c.App.Metadata[key].(func() *statsd.Client); ok {
+		return statsd()
+	}
+
+	return nil
 }
