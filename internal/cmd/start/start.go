@@ -7,6 +7,7 @@ import (
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/metrics"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	libp2pquic "github.com/libp2p/go-libp2p-quic-transport"
 	"github.com/lthibault/log"
@@ -84,8 +85,9 @@ func bind(c *cli.Context) fx.Option {
 		runtime.Bind(),
 		fx.Supply(c),
 		fx.Provide(
-			logutil.New,
+			statsdutil.NewBandwidthCounter,
 			statsdutil.New,
+			logutil.New,
 			supervisor,
 			localhost,
 			node))
@@ -101,11 +103,12 @@ func supervisor(c *cli.Context) *suture.Supervisor {
 	})
 }
 
-func localhost(c *cli.Context, lx fx.Lifecycle) (host.Host, error) {
+func localhost(c *cli.Context, lx fx.Lifecycle, b *metrics.BandwidthCounter) (host.Host, error) {
 	h, err := libp2p.New(c.Context,
 		libp2p.NoTransports,
 		libp2p.Transport(libp2pquic.NewTransport),
-		libp2p.ListenAddrStrings(c.StringSlice("listen")...))
+		libp2p.ListenAddrStrings(c.StringSlice("listen")...),
+		libp2p.BandwidthReporter(b))
 	if err == nil {
 		lx.Append(closer(h))
 	}
