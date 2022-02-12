@@ -13,15 +13,15 @@ struct Record {
     seq @2 :UInt64;
 }
 
-struct PushedIteration {
+struct Iteration {
     record @0 :Record;
     dedadline @1 :Int64;
 }
 
 interface Routing {
-    iter @0 (handler :Handler) -> ();
+    iter @0 (handler :Handler, bufSize :Int32) -> ();
     lookup @1 (peerID :Text) -> (record :Record, ok :Bool);
     interface Handler {
-        handle @0 (pi :PushedIteration) -> ();
+        handle @0 (iterations :List(Iteration)) -> ();
     }
 }

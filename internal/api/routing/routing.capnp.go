@@ -95,47 +95,47 @@ func (p Record_Future) Struct() (Record, error) {
 	return Record{s}, err
 }
 
-type PushedIteration struct{ capnp.Struct }
+type Iteration struct{ capnp.Struct }
 
-// PushedIteration_TypeID is the unique identifier for the type PushedIteration.
-const PushedIteration_TypeID = 0xc2ad1ddee90a4454
+// Iteration_TypeID is the unique identifier for the type Iteration.
+const Iteration_TypeID = 0xdc52a9a7339d80cd
 
-func NewPushedIteration(s *capnp.Segment) (PushedIteration, error) {
+func NewIteration(s *capnp.Segment) (Iteration, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
-	return PushedIteration{st}, err
+	return Iteration{st}, err
 }
 
-func NewRootPushedIteration(s *capnp.Segment) (PushedIteration, error) {
+func NewRootIteration(s *capnp.Segment) (Iteration, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
-	return PushedIteration{st}, err
+	return Iteration{st}, err
 }
 
-func ReadRootPushedIteration(msg *capnp.Message) (PushedIteration, error) {
+func ReadRootIteration(msg *capnp.Message) (Iteration, error) {
 	root, err := msg.Root()
-	return PushedIteration{root.Struct()}, err
+	return Iteration{root.Struct()}, err
 }
 
-func (s PushedIteration) String() string {
-	str, _ := text.Marshal(0xc2ad1ddee90a4454, s.Struct)
+func (s Iteration) String() string {
+	str, _ := text.Marshal(0xdc52a9a7339d80cd, s.Struct)
 	return str
 }
 
-func (s PushedIteration) Record() (Record, error) {
+func (s Iteration) Record() (Record, error) {
 	p, err := s.Struct.Ptr(0)
 	return Record{Struct: p.Struct()}, err
 }
 
-func (s PushedIteration) HasRecord() bool {
+func (s Iteration) HasRecord() bool {
 	return s.Struct.HasPtr(0)
 }
 
-func (s PushedIteration) SetRecord(v Record) error {
+func (s Iteration) SetRecord(v Record) error {
 	return s.Struct.SetPtr(0, v.Struct.ToPtr())
 }
 
 // NewRecord sets the record field to a newly
 // allocated Record struct, preferring placement in s's segment.
-func (s PushedIteration) NewRecord() (Record, error) {
+func (s Iteration) NewRecord() (Record, error) {
 	ss, err := NewRecord(s.Struct.Segment())
 	if err != nil {
 		return Record{}, err
@@ -144,43 +144,41 @@ func (s PushedIteration) NewRecord() (Record, error) {
 	return ss, err
 }
 
-func (s PushedIteration) Dedadline() int64 {
+func (s Iteration) Dedadline() int64 {
 	return int64(s.Struct.Uint64(0))
 }
 
-func (s PushedIteration) SetDedadline(v int64) {
+func (s Iteration) SetDedadline(v int64) {
 	s.Struct.SetUint64(0, uint64(v))
 }
 
-// PushedIteration_List is a list of PushedIteration.
-type PushedIteration_List struct{ capnp.List }
+// Iteration_List is a list of Iteration.
+type Iteration_List struct{ capnp.List }
 
-// NewPushedIteration creates a new list of PushedIteration.
-func NewPushedIteration_List(s *capnp.Segment, sz int32) (PushedIteration_List, error) {
+// NewIteration creates a new list of Iteration.
+func NewIteration_List(s *capnp.Segment, sz int32) (Iteration_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1}, sz)
-	return PushedIteration_List{l}, err
+	return Iteration_List{l}, err
 }
 
-func (s PushedIteration_List) At(i int) PushedIteration { return PushedIteration{s.List.Struct(i)} }
+func (s Iteration_List) At(i int) Iteration { return Iteration{s.List.Struct(i)} }
 
-func (s PushedIteration_List) Set(i int, v PushedIteration) error {
-	return s.List.SetStruct(i, v.Struct)
-}
+func (s Iteration_List) Set(i int, v Iteration) error { return s.List.SetStruct(i, v.Struct) }
 
-func (s PushedIteration_List) String() string {
-	str, _ := text.MarshalList(0xc2ad1ddee90a4454, s.List)
+func (s Iteration_List) String() string {
+	str, _ := text.MarshalList(0xdc52a9a7339d80cd, s.List)
 	return str
 }
 
-// PushedIteration_Future is a wrapper for a PushedIteration promised by a client call.
-type PushedIteration_Future struct{ *capnp.Future }
+// Iteration_Future is a wrapper for a Iteration promised by a client call.
+type Iteration_Future struct{ *capnp.Future }
 
-func (p PushedIteration_Future) Struct() (PushedIteration, error) {
+func (p Iteration_Future) Struct() (Iteration, error) {
 	s, err := p.Future.Struct()
-	return PushedIteration{s}, err
+	return Iteration{s}, err
 }
 
-func (p PushedIteration_Future) Record() Record_Future {
+func (p Iteration_Future) Record() Record_Future {
 	return Record_Future{Future: p.Future.Field(0, nil)}
 }
 
@@ -199,7 +197,7 @@ func (c Routing) Iter(ctx context.Context, params func(Routing_iter_Params) erro
 		},
 	}
 	if params != nil {
-		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
+		s.ArgsSize = capnp.ObjectSize{DataSize: 8, PointerCount: 1}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Routing_iter_Params{Struct: s}) }
 	}
 	ans, release := c.Client.SendCall(ctx, s)
@@ -432,28 +430,28 @@ func (s Routing_Handler_handle_Params) String() string {
 	return str
 }
 
-func (s Routing_Handler_handle_Params) Pi() (PushedIteration, error) {
+func (s Routing_Handler_handle_Params) Iterations() (Iteration_List, error) {
 	p, err := s.Struct.Ptr(0)
-	return PushedIteration{Struct: p.Struct()}, err
+	return Iteration_List{List: p.List()}, err
 }
 
-func (s Routing_Handler_handle_Params) HasPi() bool {
+func (s Routing_Handler_handle_Params) HasIterations() bool {
 	return s.Struct.HasPtr(0)
 }
 
-func (s Routing_Handler_handle_Params) SetPi(v PushedIteration) error {
-	return s.Struct.SetPtr(0, v.Struct.ToPtr())
+func (s Routing_Handler_handle_Params) SetIterations(v Iteration_List) error {
+	return s.Struct.SetPtr(0, v.List.ToPtr())
 }
 
-// NewPi sets the pi field to a newly
-// allocated PushedIteration struct, preferring placement in s's segment.
-func (s Routing_Handler_handle_Params) NewPi() (PushedIteration, error) {
-	ss, err := NewPushedIteration(s.Struct.Segment())
+// NewIterations sets the iterations field to a newly
+// allocated Iteration_List, preferring placement in s's segment.
+func (s Routing_Handler_handle_Params) NewIterations(n int32) (Iteration_List, error) {
+	l, err := NewIteration_List(s.Struct.Segment(), n)
 	if err != nil {
-		return PushedIteration{}, err
+		return Iteration_List{}, err
 	}
-	err = s.Struct.SetPtr(0, ss.Struct.ToPtr())
-	return ss, err
+	err = s.Struct.SetPtr(0, l.List.ToPtr())
+	return l, err
 }
 
 // Routing_Handler_handle_Params_List is a list of Routing_Handler_handle_Params.
@@ -484,10 +482,6 @@ type Routing_Handler_handle_Params_Future struct{ *capnp.Future }
 func (p Routing_Handler_handle_Params_Future) Struct() (Routing_Handler_handle_Params, error) {
 	s, err := p.Future.Struct()
 	return Routing_Handler_handle_Params{s}, err
-}
-
-func (p Routing_Handler_handle_Params_Future) Pi() PushedIteration_Future {
-	return PushedIteration_Future{Future: p.Future.Field(0, nil)}
 }
 
 type Routing_Handler_handle_Results struct{ capnp.Struct }
@@ -551,12 +545,12 @@ type Routing_iter_Params struct{ capnp.Struct }
 const Routing_iter_Params_TypeID = 0xcaef48df88fdb195
 
 func NewRouting_iter_Params(s *capnp.Segment) (Routing_iter_Params, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
 	return Routing_iter_Params{st}, err
 }
 
 func NewRootRouting_iter_Params(s *capnp.Segment) (Routing_iter_Params, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
 	return Routing_iter_Params{st}, err
 }
 
@@ -588,12 +582,20 @@ func (s Routing_iter_Params) SetHandler(v Routing_Handler) error {
 	return s.Struct.SetPtr(0, in.ToPtr())
 }
 
+func (s Routing_iter_Params) BufSize() int32 {
+	return int32(s.Struct.Uint32(0))
+}
+
+func (s Routing_iter_Params) SetBufSize(v int32) {
+	s.Struct.SetUint32(0, uint32(v))
+}
+
 // Routing_iter_Params_List is a list of Routing_iter_Params.
 type Routing_iter_Params_List struct{ capnp.List }
 
 // NewRouting_iter_Params creates a new list of Routing_iter_Params.
 func NewRouting_iter_Params_List(s *capnp.Segment, sz int32) (Routing_iter_Params_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1}, sz)
 	return Routing_iter_Params_List{l}, err
 }
 
@@ -841,51 +843,53 @@ func (p Routing_lookup_Results_Future) Record() Record_Future {
 	return Record_Future{Future: p.Future.Field(0, nil)}
 }
 
-const schema_fcf6ac08e448a6ac = "x\xda\x94TQH,U\x18\xfe\xbfs\xce\xb4*\x9a" +
-	"{v\x84hA#\xd9 \xc5L\xdb\x1ed#v\x13" +
-	"\xa5U\x8a\xf6,>\xf4\xe2\xc3\xe0\x0e:\xb8\xed\xae\xb3" +
-	"\xb3\x04A\x98\x82\x94B\x0f=\x04\x06Q\x81\x10\x12\x8a" +
-	"\xd4[A\x04\xbd\x14\xbei\x0fI\x90\x12\xf4\xd2KA" +
-	"\x0f\xf7\xe9\xca\\\xce\xcc\x9d\x9d\xbd\xf7\xaa\xf7\xde\xa79" +
-	"s\xf8\xe7\xfb\xfe\xff\xfb\xbe\x7f&vQ`\x93\xc6\xef" +
-	"\x82HM\x19O\xf8\x15\xe7+\xeb\x87o~\xfa\x80\xe4" +
-	"0\x88\x0c$\x88\xb2\x8am\x82`.\xb2<\xc1\x9f\xdf" +
-	"\x99\xddL/\xeem\x92J\x81\xf9\x07_\x17\xff\xee:" +
-	"\xb8u;\xac4\xdfg\xc7\xe66\xd3\xa7-vD\xf0" +
-	"\x87\x8e\xf6\xf7\xffH6\xbf \x99\xe2q-\xc1\x1c\xe4" +
-	"\xa7\xe6\x08\x7f\x8a\xc8\x9c\xe4\x1f\x9a\x1b<A\xe4o\xbd" +
-	"r\xf9\xe3\xf0\xd8\xbf{\xa4\xd2hs;|^s\xb7" +
-	"\xf8\xbb\x04\x7fa\xa6\xe7\x9f\xf3\xc1\xc3\x9f57\xee\xe3" +
-	"\xce\x9e\xf0\x14\xcc\xbf4\x92\xf9gP\xfd\xe9\xb7\x97\x1f" +
-	"]\x14\xff;&\x99n\xc3\xbd*^\xd2p\xb3B\x8f" +
-	"2t\xb6\xfd^\xf3\xbbgOI\xa6y\xdc*!k" +
-	"\x8b\x14\xcc\x96\xd0Pk\xe2u\xf33}\xf2\x7fu\xdf" +
-	"\xbe\x18<\xef\xfe-\x84\xd3W\xd9\x0d\x91\x03\x09\xff\xfb" +
-	"C\xf7\xfc\xad\x9e\xcf\xcf:\x89\x1c1\xad\x89\xd6\x02\xa2" +
-	"\x8fO\xbe\xfce\xf7\xb5'\xff\x0fE\x0d>\xfdD\xec" +
-	"\x80&|\xab\xe1\xbc\xe8\xd6[\x9e\xe1\xd4\x96\xc7\x97\xac" +
-	"F\xad\x91+\xd7[\x9e~+Z\xb5J\xd5v\xc7W" +
-	"\x82g\xa6d\xb9\xd6;MR\x82\x0b\"\x01\"\xd9\x97" +
-	"&R]\x1cj\x80\x817\x1c$c}\x08H\x12\xda" +
-	"\xe8\xac\x03\xdd^\xaa\xbb\x15\xa2\x12\xa0z\xdbP\xb3\xa3" +
-	"D\xaa\xc0\xa1\xde`\x00\x06\xb4\xfcrn\x98H\xcdp" +
-	"\xa8\x12\x83d\x18\x00#\x92o\xea\xcb\"\x87Z`\xe8" +
-	"o\xd8\xb6\x8b^b\xe8%$<\xaf\x0a\x83\x18\x0cB" +
-	"\xa2i\xaf\xa1\x9b\x18\xba\xaf\xe9!\x98\x10\xcbJ\xa0\xd3" +
-	"\x04L\xaf\xdf\x9dYuq\x83\xa8m \"\xe9\xe5\xe4" +
-	"(1\xf9\\\x02hk\x8e(5\xf2\xe9\x1c1\xd9\x97" +
-	"\xe8w<\xdb- _\xad\xd7W[\x8d\x02J\x88{" +
-	"\x10\x0f\xaa\x1c\x96e\xcav\xb3U\xf5\x9a\x81\xa0\x91(" +
-	"#9\"\x95\xe1P\x13\xb1(/h\xcd\x9f\xe7P/" +
-	"3\xe4\xdd@K$\xe3\x9d\x08u\xe7\xf5U\x80\x18\xd0" +
-	"1>\x8f\xa9K\xad\xe6\x8a]\x99\xf3l\xd7\xf2\x9c:" +
-	"j\xda\x8a\x87\xb0\x96\x89\xd4\x18\x87\x9a\xba\x81\xd5\xaf\xd8" +
-	"\x15\xabRuj\x04;r\xe2*\xfahr\xadS\xa6" +
-	"\xf4L\x10\xab\xceTM\xc7\xa9Z\x0f\xb3\xe7B\xc66" +
-	"\x11 o\x06\x0eM\x84\xab\xe7\x12\x81\x91\xd1O\x05\xd1" +
-	"\"H\xa9\xcd2\x12\xf9\x90\xe0^\x97\xae\xeb\xb5\x9c\x0f" +
-	"Mz\x04;\xafX\x96\\<V^\x07wn&\x8a" +
-	"\xeec,a;&w\x02\x00\x00\xff\xff1Dm\xbe"
+const schema_fcf6ac08e448a6ac = "x\xda\x94\x94A\x88\x1bU\x18\xc7\xff\xff\xf7\xde8\xbb" +
+	"\x92\xb6y;\x0bb\xc0\x8aK\x84Zj\xdd5\x1eJ" +
+	"D\x12C\x17\x93b1/ZP\xa1\x87\xb1\x19\xeb\xd0" +
+	"\x98\x89\x93\x04\xa1\xb0l]\x10m\xc1\x83\x87\x82\x82U" +
+	"\xa1\xa0U+Eo\x0a\xe2Q)x\xb0\x1e,\xa2-" +
+	"\x88\x1eU\xf0\xe0\xc92\xf2fL&\xb5\xdb\xaa\xa7L" +
+	"^>\xf2\xfb\xbe\xdf\xf7\x7f\xb3\xfc\x01\xebb\xc5\xf9V" +
+	"\x01f\x8fsS\xd2\x0d\xdf\xf6?}\xff\xf3c\xd0K" +
+	"\x04\x1c\xba@\xc5\x88\x0d\x82\xdeAQ\x03\x93}'V" +
+	"7J\x07Oo\xc0,P$g\xdfi\xfe4w\xf6" +
+	"\x8f?\xb3J\xefUq\xde;%\xec\xd3\xeb\xe2\x1c\x98" +
+	"l?w\xe6\xccw\xc5\xe1\x9b\xd0\x0b2\xaf\x05\xbd\x15" +
+	"y\xc1{@\xde\x02x\xab\xf2%\xef\xa4t\x81\xe4\xc5" +
+	"\xfb\xaf|\xb6\xb4\xeb\xd7\xd30%N\xd9kr\x9fe" +
+	"\x1f\x97\xcf\x83\xc9\xc9\x8f\xae\xbc|\xb9\xf9\xdb\xf9\xab*" +
+	"~\x96\xf7\xda\x8a_\xd2\x8a\xed\x17\x8f\x1f\x1d~|\xc7" +
+	"\x05\xe8\x92\xcc\xe9`\xa5\xa5\x16\xe8=\xa1lk\x07\xd4" +
+	"C\xde\x9a}J\xbe\x8c\x1f\xbf|\xdb\xa5\xf9o\xa0K" +
+	"\x04\xecQ%PUB%\x9f|\x18_z\xe4\xe67" +
+	".f\xbfd\xa0\xfd\xaaaA\x07\x94\xd5\xf0\xd5\xb1S" +
+	"\x95w\xdf\xeb|o5\xf0\x9f\x1a\xc6\xeaG\xef\x85\x94" +
+	"\xb5\xa6lW\xaf|\xfd\xd6\x17\xaf=\xb8\xf5\xf7Lj" +
+	"\xca\xf9A\x9d \x96\x13\x7f\x10\xde\x13G\xe3\x91\x13\xf6" +
+	"\x0f\xef>\xe4\x0f\xfa\x83j'\x1a\x8f\xec\xb7\xa6\xdf\xef" +
+	"\xf6\x82x\xf73\xe9g\xb9\xed\xc7\xfe\xb3C\x18%\x15" +
+	"\xa0\x08\xe8-O\x02\xa6 iv\x08&\xe1(\x88\xfd" +
+	"Q\x18A\xf6\x87\xdc\x0a\xb6%Y\xcc\xbb\x04\xed\xe1\x14" +
+	"'fp\xc1\xa1(\xee\x02m\xd2\x14\xa6\xff\xbd\xba\x13" +
+	"0uI\xf3\xb0 \xb9hm\xeb\xd6\x12`\xf6J\x9a" +
+	"\xb6\xa0\x16\\\xa4\x00\xf4~{\xd8\x944\x8f\x09n\x1b" +
+	"\x04A\xcc\x02\x04\x0b\xa0;\x1a\xf5\xe8@\xd0\x01\xdda" +
+	"\xf0\x1c\xe7!8\x7f\x9d\x1e\xd2\x91y\xd8(\xce\xae\x90" +
+	"\x8d\xf5\xbf%\x989\xe9\x00\xd3\xfds\xb28\xbd\xb2\x13" +
+	"B\xdf\xe9\x92\xd3\x8dq\x12#}k\x15Boq\xb7" +
+	"Y5u\xd6zQtd<\xa8\xb3\xcd\xbc\x07u\xad" +
+	"\xf6\xac\xac\xdc\x09\x86\xe3\xdeh\x08\x98\xb9\xa9\x94\xbb\xaa" +
+	"\x80)K\x9a\xe5\\\xca\xdd%\xc0\xec\x904\xf7\x09\xd6" +
+	"\xe2\xd4%\x8b\xf9%\x01Y\x04et\x84\x84 g\xc6" +
+	"\x97\xd7\xa2m\xa3\xe5\xf6\xed\xe9\xa2g\xb1\x8dM\xb0\x8d" +
+	"\x1c\xbb\x9e%$\xa6\xce\xdd\x81\xd4\xe0\xfaS\xe3\xa7\x1f" +
+	"\x0d\x8f\x06T\x10T7\x86g\xa6\x19\xdb\x1c\xa8\xd4\xf6" +
+	"\xe4U\xc0I|\xb5\xb6F\x1d\xb7\x96\x01\xafVy\xbd" +
+	"y:\xb5\xcc\xe4\x7fp\xbeI\xc4\xab\xe9\x02h\x16\x05" +
+	"k6]\xad\xbd\x93|m\x96\xa3Vz\x09\xdc0\xea" +
+	"\xdb)\xfeeq\x1d\xc0\xec\x924{n\xb0\xb8\xa4\x1b" +
+	"t\xfdn/\xec\x83\xc1$\xcc\xff\xe3\xceNC\xf4W" +
+	"\x00\x00\x00\xff\xff!\x96x\xcd"
 
 func init() {
 	schemas.Register(schema_fcf6ac08e448a6ac,
@@ -893,10 +897,10 @@ func init() {
 		0x82a35d1a82458a4a,
 		0x9e7310daa8a8af1e,
 		0xa3ee2c22bdfd3b85,
-		0xc2ad1ddee90a4454,
 		0xcaef48df88fdb195,
 		0xd221b2737a89d81e,
 		0xd309de1ddf5872c8,
 		0xd89c0a4fde72adb9,
+		0xdc52a9a7339d80cd,
 		0xf20e4198c79fd18d)
 }

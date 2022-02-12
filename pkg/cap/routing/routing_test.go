@@ -22,7 +22,7 @@ var (
 	waitFor     = 10 * time.Second
 )
 
-func TestRoutingIter(t *testing.T){
+func TestRoutingIter(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -32,27 +32,21 @@ func TestRoutingIter(t *testing.T){
 	s := RoutingServer{cs[0]}
 	c := s.NewClient(nil)
 
-	time.Sleep(5*time.Second)
-	fut, release := c.Iter(ctx)
-	defer release()
-	it := fut.Iterator()
-	it.Next(ctx, 1)
-	recs, err := it.Records(ctx)
-	if err!=nil{
-		t.Error(err)
-	}
-	println(len(recs), recs[0])
-	println(len(recs), recs[0].Peer())
-
+	time.Sleep(5 * time.Second)
+	it := c.Iter(ctx)
+	it.Next(ctx)
+	rec := it.Record(ctx)
+	println(rec)
+	println(rec.Peer())
 
 	/* assert.Eventually(t,
-		func() bool {
-			return len(clusterView(ctx, &c)) == nodesAmount
-		},
-		time.Second*5,
-		time.Millisecond*10,
-		"peers should receive each other's bootstrap messages") */
-	
+	func() bool {
+		return len(clusterView(ctx, &c)) == nodesAmount
+	},
+	time.Second*5,
+	time.Millisecond*10,
+	"peers should receive each other's bootstrap messages") */
+
 }
 
 func initCluster(ctx context.Context, sim mx.Simulation) {
@@ -107,7 +101,7 @@ func initCluster(ctx context.Context, sim mx.Simulation) {
 
 	it := fut.Iterator()
 	println("Records len:", len(it.Records(ctx)))
-	
+
 	for ;len(it.Records(ctx))>0; it.Next(ctx, 1) {
 		ps = append(ps, it.Records(ctx)[0].Peer())
 		println("Records len:", len(it.Records(ctx)))
