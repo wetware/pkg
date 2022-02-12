@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 	mx "github.com/wetware/matrix/pkg"
 	mock_anchor "github.com/wetware/ww/internal/test/mock/pkg/cap/anchor"
-	rpcutil "github.com/wetware/ww/internal/util/rpc"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/cap/anchor"
 )
@@ -48,6 +47,11 @@ func TestRPC_conn_lifecycle(t *testing.T) {
 			h1  = sim.MustHost(ctx)
 		)
 
+		defer func() {
+			require.NoError(t, h0.Close(), "host h0 should close cleanly")
+			require.NoError(t, h1.Close(), "host h1 should close cleanly")
+		}()
+
 		log := logtest.NewMockLogger(ctrl)
 		log.EXPECT().
 			With(gomock.Any()).
@@ -57,11 +61,6 @@ func TestRPC_conn_lifecycle(t *testing.T) {
 			WithField(gomock.Any(), gomock.Any()).
 			Return(log).
 			AnyTimes()
-
-		// ErrReporter
-		log.EXPECT().
-			Debug(renderEq("rpc: remote abort: connection closed")).
-			Times(1)
 
 		// <-conn.Done()
 		log.EXPECT().
@@ -90,11 +89,7 @@ func TestRPC_conn_lifecycle(t *testing.T) {
 		s, err := h1.NewStream(ctx, h0.ID(), ww.Subprotocol(ns))
 		require.NoError(t, err, "should successfully open stram")
 
-		conn := rpc.NewConn(rpc.NewStreamTransport(s), &rpc.Options{
-			ErrorReporter: rpcutil.ErrReporterFunc(func(err error) {
-				assert.NoError(t, err, "unexpected protocol error")
-			}),
-		})
+		conn := rpc.NewConn(rpc.NewStreamTransport(s), nil)
 
 		client := conn.Bootstrap(ctx)
 		err = client.Resolve(ctx)
@@ -111,17 +106,22 @@ func TestRPC_conn_lifecycle(t *testing.T) {
 	t.Run("Shutdown", func(t *testing.T) {
 		t.Parallel()
 
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
 		var (
 			sim = mx.New(ctx)
-			h0  = sim.MustHost(ctx)
-			h1  = sim.MustHost(ctx)
+			h0  = sim.MustHost(context.Background())
+			h1  = sim.MustHost(context.Background())
 		)
+
+		defer func() {
+			require.NoError(t, h0.Close(), "host h0 should close cleanly")
+			require.NoError(t, h1.Close(), "host h1 should close cleanly")
+		}()
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
 
 		log := logtest.NewMockLogger(ctrl)
 		log.EXPECT().
@@ -135,7 +135,7 @@ func TestRPC_conn_lifecycle(t *testing.T) {
 
 		// <-cq
 		log.EXPECT().
-			Debug(renderEq("shutting down")).
+			Debug(gomock.Any()).
 			Times(1)
 
 		c := mock_anchor.NewMockCluster(ctrl)
@@ -160,11 +160,7 @@ func TestRPC_conn_lifecycle(t *testing.T) {
 		s, err := h1.NewStream(ctx, h0.ID(), ww.Subprotocol(ns))
 		require.NoError(t, err, "should successfully open stram")
 
-		conn := rpc.NewConn(rpc.NewStreamTransport(s), &rpc.Options{
-			ErrorReporter: rpcutil.ErrReporterFunc(func(err error) {
-				assert.NoError(t, err, "unexpected protocol error")
-			}),
-		})
+		conn := rpc.NewConn(rpc.NewStreamTransport(s), nil)
 		defer conn.Close()
 
 		client := conn.Bootstrap(ctx)

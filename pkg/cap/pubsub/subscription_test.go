@@ -2,11 +2,8 @@ package pubsub
 
 import (
 	"context"
-	"fmt"
 	"testing"
-	"time"
 
-	"capnproto.org/go/capnp/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	api "github.com/wetware/ww/internal/api/pubsub"
@@ -22,10 +19,15 @@ func TestHandler(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		h := newHandler()
-		h.ms = make(chan []byte, 1)
+		ms := make(chan []byte, 1)
+		h := handler{
+			ms:      ms,
+			release: func() {},
+		}
 
 		c := api.Topic_Handler_ServerToClient(h, nil)
+		defer c.Release()
+
 		f, release := c.Handle(ctx, func(ps api.Topic_Handler_handle_Params) error {
 			return ps.SetMsg([]byte("test"))
 		})
@@ -33,53 +35,29 @@ func TestHandler(t *testing.T) {
 
 		_, err := f.Struct()
 		assert.NoError(t, err, "call to Handle should succeed")
-		assert.Equal(t, "test", string(<-h.ms), "unexpected message")
+		assert.Equal(t, "test", string(<-ms), "unexpected message")
 	})
 
-	t.Run("ConcurrentRelease", func(t *testing.T) {
+	t.Run("Release", func(t *testing.T) {
 		t.Parallel()
 
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
 		var (
-			h     = newHandler()
-			cherr = make(chan error, 1)
-			sync  = make(chan struct{})
-			c     = api.Topic_Handler_ServerToClient(h, nil)
+			called bool
+			ms     = make(chan []byte, 1)
 		)
 
-		go func() {
-			f, release := c.Handle(ctx, func(ps api.Topic_Handler_handle_Params) error {
-				defer close(sync)
-				return ps.SetMsg([]byte("test"))
-			})
-			defer release()
+		h := handler{
+			ms:      ms,
+			release: func() { called = true },
+		}
 
-			_, err := f.Struct()
-			cherr <- err
-		}()
+		c := api.Topic_Handler_ServerToClient(h, nil)
+		c.Release()
 
-		<-sync
-		time.Sleep(time.Millisecond * 10) // ensure the goroutine is blocked
-		require.NotPanics(t, h.Shutdown,
-			"h.release() should not panic")
+		require.True(t, called, "should call release function")
 
-		assert.EqualError(t, <-cherr,
-			"pubsub.capnp:Topic.Handler.handle: closed",
-			"should return ErrClosed from concurrent call to handler")
-
-		// Now that the handler has been released, subsequent calls to Handle
-		// should also fail with Errclosed
-		f, release := c.Handle(ctx, func(ps api.Topic_Handler_handle_Params) error {
-			return ps.SetMsg([]byte("test"))
-		})
-		defer release()
-
-		_, err := f.Struct()
-		assert.EqualError(t, err,
-			"pubsub.capnp:Topic.Handler.handle: closed",
-			"should return ErrClosed from synchronous call to released handler")
+		_, ok := <-ms
+		assert.False(t, ok, "should close message channel when released")
 	})
 }
 
@@ -87,144 +65,51 @@ func TestSubscription(t *testing.T) {
 	t.Parallel()
 	t.Helper()
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	var called bool
+	topic := api.Topic_ServerToClient(mockTopicServer(func() { called = true }), nil)
+	defer func() {
+		topic.Release()
+		require.True(t, called, "should release topic when canceling sub")
+	}()
+
+	ms := make(chan []byte, 1)
+	ms <- []byte("test")
+
+	sub, err := newSubscription(ctx, topic, ms)
+	require.NoError(t, err, "should create new subscription")
+	require.NotNil(t, sub, "should return a subscription client")
+
 	t.Run("Next", func(t *testing.T) {
-		t.Parallel()
-
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		ch := make(mockTopicServer, 1)
-		topic := api.Topic_ServerToClient(ch, nil)
-		sub := newSubscription(topic, 32)
-
-		cherr := make(chan error, 1)
-		go func() {
-			defer close(cherr)
-			h := api.Topic_Handler{Client: <-ch}
-
-			for i := 0; i < 2; i++ {
-				f, release := h.Handle(ctx,
-					func(ps api.Topic_Handler_handle_Params) error {
-						return ps.SetMsg([]byte("test"))
-					})
-
-				_, err := f.Struct()
-				release()
-
-				if err != nil {
-					cherr <- err
-				}
-			}
-		}()
-
-		// NOTE:  check twice to make sure that sub's future is not
-		//        erroneously released by the first call to Next().
-
 		b, err := sub.Next(ctx)
-		require.NoError(t, err, "Next() should succeed")
-		assert.Equal(t, "test", string(b))
-
-		b, err = sub.Next(ctx)
-		require.NoError(t, err, "Next() should succeed")
-		assert.Equal(t, "test", string(b))
-
-		require.NoError(t, <-cherr,
-			"test invariant violated: handler must succeed")
+		require.NoError(t, err, "should return message")
+		require.Equal(t, "test", string(b))
 	})
 
-	t.Run("ContextCancel", func(t *testing.T) {
-		t.Parallel()
-
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		ch := make(mockTopicServer, 1)
-		topic := api.Topic_ServerToClient(ch, nil)
-		sub := newSubscription(topic, 32)
-
-		aborted, abort := context.WithCancel(ctx)
-		abort()
-
-		b, err := sub.Next(aborted)
-		require.ErrorIs(t, err, context.Canceled)
-		assert.Nil(t, b)
+	t.Run("NextWithCanceledCtx", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(ctx)
+		cancel()
+		_, err = sub.Next(ctx)
+		require.ErrorIs(t, err, context.Canceled, "should abort")
 	})
 
-	t.Run("Cancel", func(t *testing.T) {
-		t.Parallel()
-
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		ch := make(mockTopicServer, 1)
-		topic := api.Topic_ServerToClient(ch, nil)
-		sub := newSubscription(topic, 32)
-
+	t.Run("NextWithCanceledSub", func(t *testing.T) {
 		sub.Cancel()
-		require.NotPanics(t, sub.Cancel,
-			"sub.Cancel() should be idempotent")
-
-		b, err := sub.Next(ctx)
-		require.ErrorIs(t, err, ErrClosed, "should receive ErrClosed")
-		require.Nil(t, b, "message should be nil")
-
-		// Try again to check that the resolve function is short-circuited.
-		// This is probably a bit pedantic, but it increases test coverage,
-		// and also seems to help trigger the <-ctx.Done() condition.
-		b, err = sub.Next(ctx)
-		require.ErrorIs(t, err, ErrClosed, "should receive ErrClosed")
-		require.Nil(t, b, "message should be nil")
-	})
-
-	t.Run("HandlerReleased", func(t *testing.T) {
-		t.Parallel()
-
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		ch := make(mockTopicServer, 1)
-		topic := api.Topic_ServerToClient(ch, nil)
-		sub := newSubscription(topic, 32)
-
-		(<-ch).Release()
-
-		b, err := sub.Next(ctx)
-		require.ErrorIs(t, err, ErrClosed, "should receive ErrClosed")
-		require.Nil(t, b, "message should be nil")
-	})
-
-	t.Run("ResolveFailure", func(t *testing.T) {
-		t.Parallel()
-
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		topic := api.Topic_ServerToClient(errTopicServer{}, nil)
-		sub := newSubscription(topic, 32)
-
-		b, err := sub.Next(ctx)
-		require.EqualError(t, err, "pubsub.capnp:Topic.subscribe: test")
-		require.Nil(t, b, "message should be nil")
+		_, err = sub.Next(ctx)
+		require.ErrorIs(t, err, ErrClosed, "should be closed")
 	})
 }
 
-type mockTopicServer chan *capnp.Client
+type mockTopicServer func()
+
+func (f mockTopicServer) Shutdown() { f() }
 
 func (mockTopicServer) Publish(context.Context, api.Topic_publish) error {
 	panic("NOT IMPLEMENTED")
 }
 
-func (ch mockTopicServer) Subscribe(ctx context.Context, call api.Topic_subscribe) error {
-	ch <- call.Args().Handler().AddRef().Client
+func (ch mockTopicServer) Subscribe(context.Context, api.Topic_subscribe) error {
 	return nil
-}
-
-type errTopicServer struct{}
-
-func (errTopicServer) Publish(context.Context, api.Topic_publish) error {
-	panic("NOT IMPLEMENTED")
-}
-
-func (errTopicServer) Subscribe(ctx context.Context, call api.Topic_subscribe) error {
-	return fmt.Errorf("test")
 }

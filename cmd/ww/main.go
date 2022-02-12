@@ -7,6 +7,7 @@ package main
 
 import (
 	"os"
+	"time"
 
 	"github.com/lthibault/log"
 	"github.com/urfave/cli/v2"
@@ -20,6 +21,7 @@ import (
 var logger log.Logger
 
 var flags = []cli.Flag{
+	// Logging
 	&cli.StringFlag{
 		Name:    "logfmt",
 		Aliases: []string{"f"},
@@ -33,6 +35,35 @@ var flags = []cli.Flag{
 		Value:   "info",
 		EnvVars: []string{"WW_LOGLVL"},
 	},
+
+	// Statsd
+	&cli.StringFlag{
+		Name:    "statsd",
+		Usage:   "statsd daemon host:port (default: disabled)",
+		EnvVars: []string{"WW_STATSD"},
+	},
+	&cli.StringFlag{
+		Name:    "statsd-tagfmt",
+		Usage:   "tag format {influx, datadog}",
+		Value:   "influx",
+		EnvVars: []string{"WW_STATSD_TAGFMT"},
+	},
+	&cli.Float64Flag{
+		Name:    "statsd-sample-rate",
+		Usage:   "proportion of metrics to send",
+		Value:   .1,
+		EnvVars: []string{"WW_STATSD_SAMPLE_RATE"},
+		Hidden:  true,
+	},
+	&cli.DurationFlag{
+		Name:    "statsd-flush",
+		Usage:   "buffer flush interval (0=disable)",
+		Value:   time.Millisecond * 200,
+		EnvVars: []string{"WW_STATSD_FLUSH"},
+		Hidden:  true,
+	},
+
+	// Misc.
 	&cli.BoolFlag{
 		Name:    "prettyprint",
 		Aliases: []string{"pp"},
@@ -44,10 +75,6 @@ var flags = []cli.Flag{
 var commands = []*cli.Command{
 	start.Command(),
 	client.Command(),
-	// discover.Command(),
-	// shell.Command(),
-	// keygen.Command(),
-	// boot.Command(),
 }
 
 func before() cli.BeforeFunc {

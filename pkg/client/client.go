@@ -41,7 +41,7 @@ func (n Node) Done() <-chan struct{} {
 }
 
 func (n Node) Close() error {
-	n.ps.Release() // belt-and-suspenders
+	n.ps.Release()
 
 	return multierr.Combine(
 		n.conn.Close(),

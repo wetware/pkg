@@ -5,10 +5,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/mock/gomock"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/host"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	inproc "github.com/lthibault/go-libp2p-inproc-transport"
+	logtest "github.com/lthibault/log/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/wetware/casm/pkg/boot"
@@ -32,6 +34,25 @@ func TestProto(t *testing.T) {
 func TestClientServer_integration(t *testing.T) {
 	t.Parallel()
 
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	log := logtest.NewMockLogger(ctrl)
+	log.EXPECT().
+		WithField(gomock.Any(), gomock.Any()).
+		Return(log).
+		AnyTimes()
+	log.EXPECT().
+		With(gomock.Any()).
+		Return(log).
+		AnyTimes()
+	log.EXPECT().
+		Trace(gomock.Any()).
+		AnyTimes()
+	log.EXPECT().
+		Debug(gomock.Any()).
+		AnyTimes()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -45,13 +66,15 @@ func TestClientServer_integration(t *testing.T) {
 	ps, err := pubsub.NewGossipSub(ctx, h)
 	require.NoError(t, err, "should create gossipsub")
 
-	sn, err := server.New(ctx, h, ps)
+	sn, err := server.New(ctx, h, ps,
+		server.WithLogger(log))
 	require.NoError(t, err, "should spawn server")
 	defer func() {
 		assert.NoError(t, sn.Close(), "server should close gracefully")
 	}()
 
 	cn, err := client.DialDiscover(ctx, boot.StaticAddrs{*host.InfoFromHost(h)},
+		client.WithLogger(log),
 		client.WithHostOpts(
 			libp2p.NoListenAddrs,
 			libp2p.NoTransports,
@@ -62,7 +85,7 @@ func TestClientServer_integration(t *testing.T) {
 	}()
 
 	t.Run("PubSub", func(t *testing.T) {
-		const topic = "test"
+		const topic = "test.pubsub.send_recv"
 
 		f, release := cn.PubSub().Join(ctx, topic)
 		defer release()
@@ -71,7 +94,8 @@ func TestClientServer_integration(t *testing.T) {
 		require.NoError(t, err, "should resolve topic")
 		defer top.Release()
 
-		sub := top.Subscribe()
+		sub, err := top.Subscribe(ctx)
+		require.NoError(t, err, "should subscribe successfully")
 		defer sub.Cancel()
 
 		time.Sleep(time.Millisecond)

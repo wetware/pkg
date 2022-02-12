@@ -6,53 +6,63 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/lthibault/log"
 	"github.com/thejerf/suture/v4"
+	"github.com/urfave/cli/v2"
+	logutil "github.com/wetware/ww/internal/util/log"
+	statsdutil "github.com/wetware/ww/internal/util/statsd"
 )
 
-func New(log log.Logger, name string) *suture.Supervisor {
-	return suture.New(name, suture.Spec{
-		EventHook: NewEventHook(log, name),
-	})
-}
-
-func NewEventHook(log log.Logger, name string) suture.EventHook {
+func NewEventHook(c *cli.Context) suture.EventHook {
 	return func(e suture.Event) {
 		switch ev := e.(type) {
 		case suture.EventBackoff:
-			log.WithFields(ev.Map()).Debugf("%s suspended", ev.SupervisorName)
+			logutil.New(c).
+				WithFields(ev.Map()).
+				Debugf("%s suspended", ev.SupervisorName)
 
 		case suture.EventResume:
-			log.
+			logutil.New(c).
 				WithField("parent", ev.SupervisorName).
 				Infof("%s resumed", ev.SupervisorName)
 
 		case suture.EventServiceTerminate:
-			log.With(Exception{
-				Value:        ev.Err,
-				Parent:       ev.SupervisorName,
-				Restart:      ev.Restarting,
-				Backpressure: ev.CurrentFailures / ev.FailureThreshold,
-				Service:      ev.ServiceName,
-			}).
-				Warn("caught exception")
+			logutil.New(c).
+				With(Exception{
+					Value:        ev.Err,
+					Parent:       ev.SupervisorName,
+					Restart:      ev.Restarting,
+					Backpressure: ev.CurrentFailures / ev.FailureThreshold,
+					Service:      ev.ServiceName,
+				}).Warn("caught exception")
+
+			bucket := fmt.Sprintf("%s.%s.", ev.SupervisorName, ev.ServiceName)
+			statsdutil.Must(c).Increment(bucket + "restarts")
+			if ev.Err != nil {
+				statsdutil.Must(c).Increment(bucket + "errors")
+			}
 
 		case suture.EventServicePanic:
-			log.With(Exception{
-				Value:        name,
-				Parent:       ev.SupervisorName,
-				Restart:      ev.Restarting,
-				Backpressure: ev.CurrentFailures / ev.FailureThreshold,
-				Service:      ev.ServiceName,
-			}).
-				Warn("unhandled exception")
+			logutil.New(c).
+				With(Exception{
+					Value:        fmt.Errorf(ev.PanicMsg),
+					Parent:       ev.SupervisorName,
+					Restart:      ev.Restarting,
+					Backpressure: ev.CurrentFailures / ev.FailureThreshold,
+					Service:      ev.ServiceName,
+				}).Warn("unhandled exception")
 
+			bucket := fmt.Sprintf("%s.%s.", ev.SupervisorName, ev.ServiceName)
+			statsdutil.Must(c).Increment(bucket + "restarts")
+			statsdutil.Must(c).Increment(bucket + "panics")
+
+			// Print to stdout to avoid interferring with log
+			// collection daemons.
 			fmt.Fprintf(os.Stdout, "%s\n%s\n",
 				ev.PanicMsg,
 				ev.Stacktrace)
 
 		case suture.EventStopTimeout:
-			log.
+			logutil.New(c).
 				WithField("parent", ev.SupervisorName).
 				WithField("service", ev.ServiceName).
 				Fatal("failed to stop in a timely manner")
