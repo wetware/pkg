@@ -10,6 +10,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	//"github.com/stretchr/testify/assert"
 	"github.com/wetware/casm/pkg/cluster"
 	mx "github.com/wetware/matrix/pkg"
 )
@@ -18,8 +19,6 @@ var (
 	nodesAmount = 10
 	hs          = make([]host.Host, nodesAmount)
 	cs          = make([]*cluster.Node, nodesAmount)
-	tick        = 100 * time.Millisecond
-	waitFor     = 10 * time.Second
 )
 
 func TestRoutingIter(t *testing.T) {
@@ -28,16 +27,14 @@ func TestRoutingIter(t *testing.T) {
 
 	sim := mx.New(ctx)
 	initCluster(ctx, sim)
+	defer closeCluster()
 
-	s := RoutingServer{cs[0]}
+	s := RoutingServer{cs[0], ctx}
 	c := s.NewClient(nil)
 
 	time.Sleep(5 * time.Second)
-	it := c.Iter(ctx)
-	it.Next(ctx)
-	rec := it.Record(ctx)
-	println(rec)
-	println(rec.Peer())
+
+	println(len(clusterView(ctx, &c)))
 
 	/* assert.Eventually(t,
 	func() bool {
@@ -95,16 +92,22 @@ func initCluster(ctx context.Context, sim mx.Simulation) {
 	wg.Wait()
 }
 
-/* func clusterView(ctx context.Context, c *RoutingClient) (ps peer.IDSlice) {
-	fut, release := c.Iter(ctx)
-	defer release()
-
-	it := fut.Iterator()
-	println("Records len:", len(it.Records(ctx)))
-
-	for ;len(it.Records(ctx))>0; it.Next(ctx, 1) {
-		ps = append(ps, it.Records(ctx)[0].Peer())
-		println("Records len:", len(it.Records(ctx)))
+func closeCluster() {
+	for i := 0; i < len(cs); i++ {
+		cs[i].Close()
+		hs[i].Close()
 	}
+}
+
+func clusterView(ctx context.Context, c *RoutingClient) (ps peer.IDSlice) {
+	it := c.Iter(ctx)
+	defer it.Finish()
+
+	println("Cluster view")
+	for ; it.Record(ctx) != nil; it.Next(ctx) {
+		println(it.Record(ctx).Peer()[:5])
+		ps = append(ps, it.Record(ctx).Peer())
+	}
+
 	return
-} */
+}

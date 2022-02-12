@@ -14,7 +14,7 @@ type RoutingClient struct {
 }
 
 func (rt RoutingClient) Iter(ctx context.Context) *IteratorV2 {
-	return newIterator(rt.rt, 1)
+	return newIterator(ctx, rt.rt, 1)
 }
 
 // Lookup

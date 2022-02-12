@@ -2,7 +2,6 @@ package routing
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"capnproto.org/go/capnp/v3"
@@ -11,25 +10,38 @@ import (
 	api "github.com/wetware/ww/internal/api/routing"
 )
 
+type iteration struct {
+	rec      cluster.Record
+	deadline int64
+}
+
+func newIteration(capIt api.Iteration) iteration {
+	rec, _ := capIt.Record()
+	return iteration{rec: newRecord(rec), deadline: capIt.Dedadline()}
+}
+
+func newIterations(capIts api.Iteration_List) []iteration {
+	its := make([]iteration, 0, capIts.Len())
+	for i := 0; i < capIts.Len(); i++ {
+		its = append(its, newIteration(capIts.At(i)))
+	}
+	return its
+}
+
 type handler struct {
-	cq chan struct{}
-	ms chan api.Iteration_List
+	ms      chan []iteration
+	release capnp.ReleaseFunc
 }
 
 func newHandler() handler {
 	return handler{
-		cq: make(chan struct{}),
-		ms: make(chan api.Iteration_List),
+		ms: make(chan []iteration),
 	}
 }
 
 func (h handler) Shutdown() {
-	select {
-	case <-h.cq:
-		return
-	default:
-		close(h.cq)
-	}
+	close(h.ms)
+	h.release()
 }
 
 func (h handler) Handle(ctx context.Context, call api.Routing_Handler_handle) error {
@@ -39,10 +51,8 @@ func (h handler) Handle(ctx context.Context, call api.Routing_Handler_handle) er
 	}
 
 	select {
-	case h.ms <- iterations:
+	case h.ms <- newIterations(iterations):
 		return nil
-	case <-h.cq:
-		return errors.New("closed")
 	case <-ctx.Done():
 		return ctx.Err()
 	}
@@ -54,40 +64,44 @@ type IteratorV2 struct {
 	err     error // future resolution error
 	f       *capnp.Future
 	release capnp.ReleaseFunc
-	it      api.Iteration_List
+	it      []iteration
 	i       int
 }
 
-func newIterator(r api.Routing, bufSize int32) *IteratorV2 {
-	var (
-		h = newHandler()
-		c = api.Routing_Handler_ServerToClient(h, &server.Policy{
-			MaxConcurrentCalls: int(bufSize),
-			AnswerQueueSize:    int(bufSize),
-		})
+func newIterator(ctx context.Context, r api.Routing, bufSize int32) *IteratorV2 {
+	h := newHandler()
+	c := api.Routing_Handler_ServerToClient(h, &server.Policy{
+		MaxConcurrentCalls: int(bufSize),
+		AnswerQueueSize:    int(bufSize),
+	})
 
-		f, release = r.Iter(
-			context.Background(),
-			func(ps api.Routing_iter_Params) error {
-				ps.SetBufSize(bufSize)
-				return ps.SetHandler(c)
-			})
-	)
+	f, release := r.Iter(
+		context.Background(),
+		func(ps api.Routing_iter_Params) error {
+			ps.SetBufSize(bufSize)
+			return ps.SetHandler(c.AddRef())
+		})
+	defer release()
+
+	select {
+	case <-ctx.Done():
+		return nil
+	case <-f.Done():
+		if _, err := f.Struct(); err != nil {
+			return nil
+		}
+	}
 
 	return &IteratorV2{
 		h:       h,
 		f:       f.Future,
-		release: release,
+		release: c.AddRef().Release,
 		i:       -1,
 	}
 }
 
 func (it *IteratorV2) Cancel() {
-	if it.release != nil {
-		it.release()
-	}
-
-	it.h.Shutdown()
+	it.release()
 }
 
 func (it *IteratorV2) Next(ctx context.Context) {
@@ -95,20 +109,20 @@ func (it *IteratorV2) Next(ctx context.Context) {
 		return
 	}
 
-	if it.it.Len() > 0 && it.i < it.it.Len() {
+	if len(it.it) > 0 && it.i+1 < len(it.it) {
 		it.i++
 		return
 	}
 
 	it.i = 0
+	it.it = nil
 
 	select {
-	case iteration := <-it.h.ms:
-		it.it = iteration
+	case iteration, ok := <-it.h.ms:
+		if ok {
+			it.it = iteration
+		}
 		return
-	case <-it.h.cq:
-		return
-
 	case <-ctx.Done():
 		return
 	}
@@ -119,23 +133,17 @@ func (it *IteratorV2) Record(ctx context.Context) cluster.Record {
 		it.Next(ctx)
 	}
 
-	if it.isFinished() {
+	if it.it == nil {
 		return nil
 	}
-
-	rec, err := it.it.At(it.i).Record()
-	if err != nil {
-		return nil
-	}
-
-	return newRecord(rec)
+	return it.it[it.i].rec
 }
 
 func (it *IteratorV2) Deadline() time.Time {
 	if it.isFirstCall() {
 		it.Next(context.Background())
 	}
-	return time.UnixMicro(it.it.At(it.i).Dedadline())
+	return time.UnixMicro(it.it[it.i].deadline)
 }
 
 func (it *IteratorV2) Finish() {
@@ -144,15 +152,6 @@ func (it *IteratorV2) Finish() {
 
 func (it *IteratorV2) isFirstCall() bool {
 	return it.i == -1
-}
-
-func (it *IteratorV2) isFinished() bool {
-	select {
-	case <-it.h.cq:
-		return true
-	default:
-		return false
-	}
 }
 
 // Resolve blocks until the subscription is ready, the underlying
@@ -190,6 +189,7 @@ func (sh subHandler) Handle(ctx context.Context, it cluster.Iterator) {
 
 	for {
 		if it.Record() == nil {
+			println("Calling release on handler")
 			return
 		}
 		sh.send(ctx, it, cancel)

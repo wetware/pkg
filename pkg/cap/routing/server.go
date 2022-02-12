@@ -18,6 +18,7 @@ var defaultPolicy = server.Policy{
 
 type RoutingServer struct {
 	node *cluster.Node
+	ctx  context.Context
 }
 
 func (rs *RoutingServer) NewClient(policy *server.Policy) RoutingClient {
@@ -28,7 +29,7 @@ func (rs *RoutingServer) Iter(ctx context.Context, call api.Routing_iter) error 
 	go subHandler{
 		handler: call.Args().Handler().AddRef(),
 		bufSize: call.Args().BufSize(),
-	}.Handle(ctx, rs.node.View().Iter())
+	}.Handle(rs.ctx, rs.node.View().Iter())
 	return nil
 }
 
