@@ -34,7 +34,6 @@ type handler struct {
 }
 
 func (h handler) Shutdown() {
-	println("Shutdown")
 	close(h.ms)
 	h.release()
 }
@@ -53,7 +52,7 @@ func (h handler) Handle(ctx context.Context, call api.Routing_Handler_handle) er
 	}
 }
 
-type IteratorV2 struct {
+type Iterator struct {
 	h handler
 
 	err     error // future resolution error
@@ -63,7 +62,7 @@ type IteratorV2 struct {
 	i       int
 }
 
-func newIterator(ctx context.Context, r api.Routing, bufSize int32) *IteratorV2 {
+func newIterator(ctx context.Context, r api.Routing, bufSize int32) *Iterator {
 	h := handler{
 		ms:      make(chan []iteration),
 		release: r.AddRef().Release,
@@ -91,7 +90,7 @@ func newIterator(ctx context.Context, r api.Routing, bufSize int32) *IteratorV2 
 		}
 	}
 
-	return &IteratorV2{
+	return &Iterator{
 		h:       h,
 		f:       f.Future,
 		release: c.AddRef().Release,
@@ -99,7 +98,7 @@ func newIterator(ctx context.Context, r api.Routing, bufSize int32) *IteratorV2 
 	}
 }
 
-func (it *IteratorV2) Next(ctx context.Context) {
+func (it *Iterator) Next(ctx context.Context) {
 	if err := it.Resolve(ctx); err != nil {
 		return
 	}
@@ -123,7 +122,7 @@ func (it *IteratorV2) Next(ctx context.Context) {
 	}
 }
 
-func (it *IteratorV2) Record(ctx context.Context) cluster.Record {
+func (it *Iterator) Record(ctx context.Context) cluster.Record {
 	if it.isFirstCall() {
 		it.Next(ctx)
 	}
@@ -134,25 +133,25 @@ func (it *IteratorV2) Record(ctx context.Context) cluster.Record {
 	return it.it[it.i].rec
 }
 
-func (it *IteratorV2) Deadline() time.Time {
+func (it *Iterator) Deadline() time.Time {
 	if it.isFirstCall() {
 		it.Next(context.Background())
 	}
 	return time.UnixMicro(it.it[it.i].deadline)
 }
 
-func (it *IteratorV2) Finish() {
+func (it *Iterator) Finish() {
 	//TODO: clean up?
 }
 
-func (it *IteratorV2) isFirstCall() bool {
+func (it *Iterator) isFirstCall() bool {
 	return it.i == -1
 }
 
 // Resolve blocks until the subscription is ready, the underlying
 // RPC call fails, or the context expires. If the RPC call fails,
 // the subscription is automatically canceled.
-func (it *IteratorV2) Resolve(ctx context.Context) error {
+func (it *Iterator) Resolve(ctx context.Context) error {
 	if it.release != nil {
 		select {
 		case <-ctx.Done():
@@ -185,27 +184,34 @@ func (sh subHandler) Handle(ctx context.Context, it cluster.Iterator) {
 			return
 		}
 		sh.send(ctx, it, cancel)
-		it.Next()
 	}
 }
 
 func (sh subHandler) send(ctx context.Context, it cluster.Iterator, abort func()) {
+	recs := make([]cluster.Record, 0, sh.bufSize)
+	deadlines := make([]time.Time, 0, sh.bufSize)
+	for i := 0; i < int(sh.bufSize) && it.Record() != nil; i++ {
+		recs = append(recs, it.Record())
+		deadlines = append(deadlines, it.Deadline())
+		it.Next()
+	}
+
 	f, release := sh.handler.Handle(ctx,
 		func(ps api.Routing_Handler_handle_Params) error {
-			its, err := ps.NewIterations(int32(sh.bufSize))
+			its, err := ps.NewIterations(int32(len(recs)))
 			if err != nil {
 				abort()
 			}
-			for i := 0; i < int(sh.bufSize); i++ {
+			for i := 0; i < len(recs); i++ {
 				rec, err := its.At(i).NewRecord()
 				if err != nil {
 					abort()
 				}
-				rec.SetPeer(string(it.Record().Peer()))
-				rec.SetSeq(it.Record().Seq())
-				rec.SetTtl(int64(it.Record().TTL()))
+				rec.SetPeer(string(recs[i].Peer()))
+				rec.SetSeq(recs[i].Seq())
+				rec.SetTtl(int64(recs[i].TTL()))
 
-				its.At(i).SetDedadline(it.Deadline().UnixMicro())
+				its.At(i).SetDedadline(deadlines[i].UnixMicro())
 			}
 			return nil
 		})

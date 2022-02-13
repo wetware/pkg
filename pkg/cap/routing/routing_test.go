@@ -34,7 +34,7 @@ func TestRoutingIter(t *testing.T) {
 
 	assert.Eventually(t,
 		func() bool {
-			return len(clusterView(ctx, &c)) == nodesAmount
+			return len(clusterView(ctx, &c, 2)) == nodesAmount
 		},
 		time.Second*5,
 		time.Millisecond*10,
@@ -117,13 +117,11 @@ func closeCluster() {
 	}
 }
 
-func clusterView(ctx context.Context, c *RoutingClient) (ps peer.IDSlice) {
-	it := c.Iter(ctx)
+func clusterView(ctx context.Context, c *RoutingClient, bufSize int32) (ps peer.IDSlice) {
+	it := c.Iter(ctx, bufSize)
 	defer it.Finish()
 
-	println("Cluster view")
 	for ; it.Record(ctx) != nil; it.Next(ctx) {
-		println(it.Record(ctx).Peer()[:5])
 		ps = append(ps, it.Record(ctx).Peer())
 	}
 
