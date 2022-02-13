@@ -31,6 +31,7 @@ func newIterations(capIts api.Iteration_List) []iteration {
 type handler struct {
 	ms      chan []iteration
 	release capnp.ReleaseFunc
+	ctx     context.Context
 }
 
 func (h handler) Shutdown() {
@@ -49,23 +50,27 @@ func (h handler) Handle(ctx context.Context, call api.Routing_Handler_handle) er
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
+	case <-h.ctx.Done():
+		return h.ctx.Err()
 	}
 }
 
 type Iterator struct {
 	h handler
 
-	err     error // future resolution error
-	f       *capnp.Future
-	release capnp.ReleaseFunc
-	it      []iteration
-	i       int
+	f      *capnp.Future
+	cancel context.CancelFunc
+	it     []iteration
+	i      int
 }
 
 func newIterator(ctx context.Context, r api.Routing, bufSize int32) *Iterator {
+	ctx, cancel := context.WithCancel(ctx)
+
 	h := handler{
 		ms:      make(chan []iteration),
 		release: r.AddRef().Release,
+		ctx:     ctx,
 	}
 	c := api.Routing_Handler_ServerToClient(h, &server.Policy{
 		MaxConcurrentCalls: int(bufSize),
@@ -74,7 +79,7 @@ func newIterator(ctx context.Context, r api.Routing, bufSize int32) *Iterator {
 	defer c.Release()
 
 	f, release := r.Iter(
-		context.Background(),
+		ctx,
 		func(ps api.Routing_iter_Params) error {
 			ps.SetBufSize(bufSize)
 			return ps.SetHandler(c.AddRef())
@@ -91,18 +96,14 @@ func newIterator(ctx context.Context, r api.Routing, bufSize int32) *Iterator {
 	}
 
 	return &Iterator{
-		h:       h,
-		f:       f.Future,
-		release: c.AddRef().Release,
-		i:       -1,
+		h:      h,
+		f:      f.Future,
+		cancel: cancel,
+		i:      -1,
 	}
 }
 
 func (it *Iterator) Next(ctx context.Context) {
-	if err := it.Resolve(ctx); err != nil {
-		return
-	}
-
 	if len(it.it) > 0 && it.i+1 < len(it.it) {
 		it.i++
 		return
@@ -141,33 +142,11 @@ func (it *Iterator) Deadline() time.Time {
 }
 
 func (it *Iterator) Finish() {
-	//TODO: clean up?
+	it.cancel()
 }
 
 func (it *Iterator) isFirstCall() bool {
 	return it.i == -1
-}
-
-// Resolve blocks until the subscription is ready, the underlying
-// RPC call fails, or the context expires. If the RPC call fails,
-// the subscription is automatically canceled.
-func (it *Iterator) Resolve(ctx context.Context) error {
-	if it.release != nil {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-
-		case <-it.f.Done():
-			_, it.err = it.f.Struct()
-			it.release()
-
-			// free memory
-			it.release = nil
-			it.f = nil
-		}
-	}
-
-	return it.err
 }
 
 type subHandler struct {
@@ -178,11 +157,17 @@ type subHandler struct {
 func (sh subHandler) Handle(ctx context.Context, it cluster.Iterator) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-
 	for {
 		if it.Record() == nil {
 			return
 		}
+
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
 		sh.send(ctx, it, cancel)
 	}
 }
@@ -217,6 +202,11 @@ func (sh subHandler) send(ctx context.Context, it cluster.Iterator, abort func()
 		})
 	defer release()
 
+	select {
+	case <-f.Done():
+	case <-ctx.Done():
+		return
+	}
 	// Abort the subscription if we receive a 'call on released client' exception.
 	// This signals that the remote end has canceled their subscription.
 	//
