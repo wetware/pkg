@@ -73,8 +73,8 @@ func newIterator(ctx context.Context, r api.Routing, bufSize int32) *Iterator {
 		ctx:     ctx,
 	}
 	c := api.Routing_Handler_ServerToClient(h, &server.Policy{
-		MaxConcurrentCalls: int(bufSize),
-		AnswerQueueSize:    int(bufSize),
+		MaxConcurrentCalls: cap(h.ms),
+		AnswerQueueSize:    cap(h.ms),
 	})
 	defer c.Release()
 

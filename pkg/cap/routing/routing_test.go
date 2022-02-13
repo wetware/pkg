@@ -16,10 +16,10 @@ import (
 )
 
 var (
-	nodesAmount = 10
+	nodesAmount = 5
 )
 
-type testCluster struct {
+type Cluster struct {
 	hs []host.Host
 	cs []*cluster.Node
 }
@@ -32,7 +32,7 @@ func TestRoutingIter(t *testing.T) {
 
 	sim := mx.New(ctx)
 	cl := newCluster(ctx, sim)
-	defer cl.closeCluster()
+	defer cl.Close()
 
 	s := RoutingServer{cl.cs[0], ctx}
 	c := s.NewClient(nil)
@@ -53,7 +53,7 @@ func TestRoutingLookup(t *testing.T) {
 	defer cancel()
 
 	cl := newCluster(ctx, mx.New(ctx))
-	defer cl.closeCluster()
+	defer cl.Close()
 
 	s := RoutingServer{cl.cs[0], ctx}
 	c := s.NewClient(nil)
@@ -70,9 +70,9 @@ func TestRoutingLookup(t *testing.T) {
 
 }
 
-func newCluster(ctx context.Context, sim mx.Simulation) *testCluster {
+func newCluster(ctx context.Context, sim mx.Simulation) *Cluster {
 	var (
-		cl = testCluster{
+		cl = Cluster{
 			hs: make([]host.Host, nodesAmount),
 			cs: make([]*cluster.Node, nodesAmount),
 		}
@@ -123,7 +123,7 @@ func newCluster(ctx context.Context, sim mx.Simulation) *testCluster {
 	return &cl
 }
 
-func (cl *testCluster) closeCluster() {
+func (cl *Cluster) Close() {
 	for i := 0; i < len(cl.cs); i++ {
 		cl.cs[i].Close()
 		cl.hs[i].Close()
