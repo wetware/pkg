@@ -2,15 +2,15 @@ package routing
 
 import (
 	"context"
+	"math/rand"
 	"sync"
 	"testing"
 	"time"
 
-	//"github.com/stretchr/testify/assert"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	//"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/assert"
 	"github.com/wetware/casm/pkg/cluster"
 	mx "github.com/wetware/matrix/pkg"
 )
@@ -32,17 +32,35 @@ func TestRoutingIter(t *testing.T) {
 	s := RoutingServer{cs[0], ctx}
 	c := s.NewClient(nil)
 
-	time.Sleep(5 * time.Second)
+	assert.Eventually(t,
+		func() bool {
+			return len(clusterView(ctx, &c)) == nodesAmount
+		},
+		time.Second*5,
+		time.Millisecond*10,
+		"peers should receive each other's bootstrap messages")
+}
 
-	println(len(clusterView(ctx, &c)))
+func TestRoutingLookup(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	/* assert.Eventually(t,
-	func() bool {
-		return len(clusterView(ctx, &c)) == nodesAmount
-	},
-	time.Second*5,
-	time.Millisecond*10,
-	"peers should receive each other's bootstrap messages") */
+	sim := mx.New(ctx)
+	initCluster(ctx, sim)
+	defer closeCluster()
+
+	s := RoutingServer{cs[0], ctx}
+	c := s.NewClient(nil)
+
+	id := hs[rand.Intn(nodesAmount)].ID()
+	assert.Eventually(t,
+		func() bool {
+			rec, ok := c.Lookup(ctx, id)
+			return ok && rec.Peer() == peer.ID(id.String())
+		},
+		time.Second*5,
+		time.Millisecond*10,
+		"peers should receive each other's bootstrap messages")
 
 }
 

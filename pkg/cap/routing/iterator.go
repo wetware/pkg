@@ -33,13 +33,8 @@ type handler struct {
 	release capnp.ReleaseFunc
 }
 
-func newHandler() handler {
-	return handler{
-		ms: make(chan []iteration),
-	}
-}
-
 func (h handler) Shutdown() {
+	println("Shutdown")
 	close(h.ms)
 	h.release()
 }
@@ -69,11 +64,15 @@ type IteratorV2 struct {
 }
 
 func newIterator(ctx context.Context, r api.Routing, bufSize int32) *IteratorV2 {
-	h := newHandler()
+	h := handler{
+		ms:      make(chan []iteration),
+		release: r.AddRef().Release,
+	}
 	c := api.Routing_Handler_ServerToClient(h, &server.Policy{
 		MaxConcurrentCalls: int(bufSize),
 		AnswerQueueSize:    int(bufSize),
 	})
+	defer c.Release()
 
 	f, release := r.Iter(
 		context.Background(),
@@ -98,10 +97,6 @@ func newIterator(ctx context.Context, r api.Routing, bufSize int32) *IteratorV2 
 		release: c.AddRef().Release,
 		i:       -1,
 	}
-}
-
-func (it *IteratorV2) Cancel() {
-	it.release()
 }
 
 func (it *IteratorV2) Next(ctx context.Context) {
@@ -147,7 +142,7 @@ func (it *IteratorV2) Deadline() time.Time {
 }
 
 func (it *IteratorV2) Finish() {
-	it.release()
+	//TODO: clean up?
 }
 
 func (it *IteratorV2) isFirstCall() bool {
@@ -183,13 +178,10 @@ type subHandler struct {
 
 func (sh subHandler) Handle(ctx context.Context, it cluster.Iterator) {
 	ctx, cancel := context.WithCancel(ctx)
-	defer sh.handler.Release()
-	defer it.Finish()
 	defer cancel()
 
 	for {
 		if it.Record() == nil {
-			println("Calling release on handler")
 			return
 		}
 		sh.send(ctx, it, cancel)

@@ -17,31 +17,22 @@ func (rt RoutingClient) Iter(ctx context.Context) *IteratorV2 {
 	return newIterator(ctx, rt.rt, 1)
 }
 
-// Lookup
 func (rt RoutingClient) Lookup(ctx context.Context, peerID peer.ID) (cluster.Record, bool) {
 	fr, release := rt.rt.Lookup(ctx, func(r api.Routing_lookup_Params) error {
 		return r.SetPeerID(string(peerID))
 	})
 	defer release()
 
-	rec, ok, _ := FutureLookup{fr}.Struct()
-	return rec, ok
-}
-
-type FutureLookup struct {
-	fl api.Routing_lookup_Results_Future
-}
-
-func (fl FutureLookup) Struct() (cluster.Record, bool, error) {
-	s, err := fl.fl.Struct()
+	s, err := fr.Struct()
 	if err != nil {
-		return nil, false, err
+		return nil, false
 	}
+
 	rec, err := s.Record()
 	if err != nil {
-		return nil, s.Ok(), nil
+		return nil, false
 	}
-	return newRecord(rec), s.Ok(), nil
+	return newRecord(rec), s.Ok()
 }
 
 func newRecord(capRec api.Record) cluster.Record {

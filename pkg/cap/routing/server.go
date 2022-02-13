@@ -26,10 +26,19 @@ func (rs *RoutingServer) NewClient(policy *server.Policy) RoutingClient {
 }
 
 func (rs *RoutingServer) Iter(ctx context.Context, call api.Routing_iter) error {
-	go subHandler{
+	h := subHandler{
 		handler: call.Args().Handler().AddRef(),
 		bufSize: call.Args().BufSize(),
-	}.Handle(rs.ctx, rs.node.View().Iter())
+	}
+	it := rs.node.View().Iter()
+
+	go func() {
+		defer h.handler.Release()
+		defer it.Finish()
+
+		h.Handle(rs.ctx, it)
+	}()
+
 	return nil
 }
 
@@ -38,7 +47,7 @@ func (rs *RoutingServer) Lookup(_ context.Context, call api.Routing_lookup) erro
 	if err != nil {
 		return err
 	}
-	crec, ok := rs.node.View().Lookup(peer.ID(peerID))
+	capRec, ok := rs.node.View().Lookup(peer.ID(peerID))
 	results, err := call.AllocResults()
 	if err != nil {
 		return err
@@ -47,10 +56,13 @@ func (rs *RoutingServer) Lookup(_ context.Context, call api.Routing_lookup) erro
 	if err != nil {
 		return err
 	}
-	rec.SetPeer(crec.Peer().String())
-	rec.SetTtl(int64(crec.TTL()))
-	rec.SetSeq(crec.Seq())
 
 	results.SetOk(ok)
+
+	if ok {
+		rec.SetPeer(capRec.Peer().String())
+		rec.SetTtl(int64(capRec.TTL()))
+		rec.SetSeq(capRec.Seq())
+	}
 	return nil
 }
