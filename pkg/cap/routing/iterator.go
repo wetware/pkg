@@ -40,7 +40,6 @@ func (h handler) Handle(ctx context.Context, call api.Routing_Handler_handle) er
 type Iterator struct {
 	h handler
 
-	f      *capnp.Future
 	cancel context.CancelFunc
 	it     []iteration
 	i      int
@@ -79,7 +78,6 @@ func newIterator(r api.Routing, bufSize int32) *Iterator {
 
 	return &Iterator{
 		h:      h,
-		f:      f.Future,
 		cancel: cancel,
 		i:      -1,
 	}
