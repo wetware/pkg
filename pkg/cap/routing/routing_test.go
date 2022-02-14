@@ -46,6 +46,34 @@ func TestRoutingIter(t *testing.T) {
 		"peers should receive each other's bootstrap messages")
 }
 
+func TestRoutingIterClosedUnexpected(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sim := mx.New(ctx)
+	cl := newCluster(ctx, sim)
+	defer cl.Close()
+
+	assert.Eventually(t,
+		func() bool {
+			ctx1, cancel1 := context.WithCancel(ctx)
+			ctx2, cancel2 := context.WithCancel(ctx)
+			defer cancel2()
+
+			s := RoutingServer{cl.cs[0], ctx1}
+			c := s.NewClient(nil)
+
+			it := c.Iter(1)
+			cancel1()
+			return it.Next(ctx2) == ErrClosedUnexpected
+		},
+		time.Second*5,
+		time.Millisecond*10,
+		"when the server fails, the iterator should raise an error")
+}
+
 func TestRoutingLookup(t *testing.T) {
 	t.Parallel()
 
@@ -61,8 +89,8 @@ func TestRoutingLookup(t *testing.T) {
 	id := cl.hs[rand.Intn(nodesAmount)].ID()
 	assert.Eventually(t,
 		func() bool {
-			rec, ok := c.Lookup(ctx, id)
-			return ok && rec.Peer() == peer.ID(id.String())
+			rec, err := c.Lookup(ctx, id)
+			return err == nil && rec.Peer() == peer.ID(id.String())
 		},
 		time.Second*8,
 		time.Millisecond*10,

@@ -2,12 +2,15 @@ package routing
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/peer"
 	cluster "github.com/wetware/casm/pkg/cluster/routing"
 	api "github.com/wetware/ww/internal/api/routing"
 )
+
+var ErrNotFound = errors.New("not found")
 
 type RoutingClient struct {
 	rt api.Routing
@@ -17,7 +20,7 @@ func (rt RoutingClient) Iter(bufSize int32) *Iterator {
 	return newIterator(rt.rt, bufSize)
 }
 
-func (rt RoutingClient) Lookup(ctx context.Context, peerID peer.ID) (cluster.Record, bool) {
+func (rt RoutingClient) Lookup(ctx context.Context, peerID peer.ID) (cluster.Record, error) {
 	fr, release := rt.rt.Lookup(ctx, func(r api.Routing_lookup_Params) error {
 		return r.SetPeerID(string(peerID))
 	})
@@ -25,26 +28,30 @@ func (rt RoutingClient) Lookup(ctx context.Context, peerID peer.ID) (cluster.Rec
 
 	s, err := fr.Struct()
 	if err != nil {
-		return nil, false
+		return nil, err
+	}
+
+	if !s.Ok() {
+		return nil, ErrNotFound
 	}
 
 	rec, err := s.Record()
 	if err != nil {
-		return nil, false
+		return nil, err
 	}
-	return newRecord(rec), s.Ok()
+	return newRecord(rec)
 }
 
-func newRecord(capRec api.Record) cluster.Record {
+func newRecord(capRec api.Record) (cluster.Record, error) {
 	peerID, err := capRec.Peer()
 	if err != nil {
-		peerID = ""
+		return nil, err
 	}
 	return Record{
 		peerID: peer.ID(peerID),
 		ttl:    time.Duration(capRec.Ttl()),
 		seq:    capRec.Seq(),
-	}
+	}, nil
 }
 
 type Record struct {

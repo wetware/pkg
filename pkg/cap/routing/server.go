@@ -79,6 +79,7 @@ func (sh serverIterator) ServeHandler(ctx context.Context, it routing.Iterator) 
 	defer cancel()
 	for {
 		if it.Record() == nil {
+			sh.send(ctx, it, cancel) // send an empty iteration as a signal
 			return
 		}
 
