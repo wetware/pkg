@@ -131,7 +131,7 @@ func (cl *Cluster) Close() {
 }
 
 func clusterView(ctx context.Context, c *RoutingClient, bufSize int32) (ps peer.IDSlice) {
-	it := c.Iter(ctx, bufSize)
+	it := c.Iter(bufSize)
 	defer it.Finish()
 
 	for ; it.Record(ctx) != nil; it.Next(ctx) {

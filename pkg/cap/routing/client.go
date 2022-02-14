@@ -13,8 +13,8 @@ type RoutingClient struct {
 	rt api.Routing
 }
 
-func (rt RoutingClient) Iter(ctx context.Context, bufSize int32) *Iterator {
-	return newIterator(ctx, rt.rt, bufSize)
+func (rt RoutingClient) Iter(bufSize int32) *Iterator {
+	return newIterator(rt.rt, bufSize)
 }
 
 func (rt RoutingClient) Lookup(ctx context.Context, peerID peer.ID) (cluster.Record, bool) {

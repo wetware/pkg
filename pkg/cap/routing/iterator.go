@@ -10,24 +10,6 @@ import (
 	api "github.com/wetware/ww/internal/api/routing"
 )
 
-type iteration struct {
-	rec      cluster.Record
-	deadline int64
-}
-
-func newIteration(capIt api.Iteration) iteration {
-	rec, _ := capIt.Record()
-	return iteration{rec: newRecord(rec), deadline: capIt.Dedadline()}
-}
-
-func newIterations(capIts api.Iteration_List) []iteration {
-	its := make([]iteration, 0, capIts.Len())
-	for i := 0; i < capIts.Len(); i++ {
-		its = append(its, newIteration(capIts.At(i)))
-	}
-	return its
-}
-
 type handler struct {
 	ms      chan []iteration
 	release capnp.ReleaseFunc
@@ -64,8 +46,8 @@ type Iterator struct {
 	i      int
 }
 
-func newIterator(ctx context.Context, r api.Routing, bufSize int32) *Iterator {
-	ctx, cancel := context.WithCancel(ctx)
+func newIterator(r api.Routing, bufSize int32) *Iterator {
+	ctx, cancel := context.WithCancel(context.Background())
 
 	h := handler{
 		ms:      make(chan []iteration),
@@ -149,69 +131,20 @@ func (it *Iterator) isFirstCall() bool {
 	return it.i == -1
 }
 
-type subHandler struct {
-	handler api.Routing_Handler
-	bufSize int32
+type iteration struct {
+	rec      cluster.Record
+	deadline int64
 }
 
-func (sh subHandler) Handle(ctx context.Context, it cluster.Iterator) {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	for {
-		if it.Record() == nil {
-			return
-		}
-
-		select {
-		case <-ctx.Done():
-			return
-		default:
-		}
-
-		sh.send(ctx, it, cancel)
-	}
+func newIteration(capIt api.Iteration) iteration {
+	rec, _ := capIt.Record()
+	return iteration{rec: newRecord(rec), deadline: capIt.Dedadline()}
 }
 
-func (sh subHandler) send(ctx context.Context, it cluster.Iterator, abort func()) {
-	recs := make([]cluster.Record, 0, sh.bufSize)
-	deadlines := make([]time.Time, 0, sh.bufSize)
-	for i := 0; i < int(sh.bufSize) && it.Record() != nil; i++ {
-		recs = append(recs, it.Record())
-		deadlines = append(deadlines, it.Deadline())
-		it.Next()
+func newIterations(capIts api.Iteration_List) []iteration {
+	its := make([]iteration, 0, capIts.Len())
+	for i := 0; i < capIts.Len(); i++ {
+		its = append(its, newIteration(capIts.At(i)))
 	}
-
-	f, release := sh.handler.Handle(ctx,
-		func(ps api.Routing_Handler_handle_Params) error {
-			its, err := ps.NewIterations(int32(len(recs)))
-			if err != nil {
-				abort()
-			}
-			for i := 0; i < len(recs); i++ {
-				rec, err := its.At(i).NewRecord()
-				if err != nil {
-					abort()
-				}
-				rec.SetPeer(string(recs[i].Peer()))
-				rec.SetSeq(recs[i].Seq())
-				rec.SetTtl(int64(recs[i].TTL()))
-
-				its.At(i).SetDedadline(deadlines[i].UnixMicro())
-			}
-			return nil
-		})
-	defer release()
-
-	select {
-	case <-f.Done():
-	case <-ctx.Done():
-		return
-	}
-	// Abort the subscription if we receive a 'call on released client' exception.
-	// This signals that the remote end has canceled their subscription.
-	//
-	// TODO:  test specifically for 'capnp: call on released client'.
-	if _, err := f.Struct(); err != nil {
-		abort()
-	}
+	return its
 }
