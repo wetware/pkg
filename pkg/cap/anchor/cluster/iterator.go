@@ -48,7 +48,6 @@ func (h handler) Handle(ctx context.Context, call api.Cluster_Handler_handle) er
 type Iterator struct {
 	h handler
 
-	f      *capnp.Future
 	cancel context.CancelFunc
 	it     []iteration
 	i      int
@@ -88,7 +87,6 @@ func newIterator(r api.Cluster, bufSize int32) *Iterator {
 
 	return &Iterator{
 		h:      h,
-		f:      f.Future,
 		cancel: cancel,
 		it:     nil,
 		i:      -1,
