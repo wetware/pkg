@@ -29,17 +29,17 @@ func (rs *ClusterServer) NewClient(policy *server.Policy) ClusterClient {
 
 func (rs *ClusterServer) Iter(ctx context.Context, call api.Cluster_iter) error {
 	h := serverIterator{
-		handler: call.Args().Handler().AddRef(),
+		handler: call.Args().Handler(),
 		bufSize: call.Args().BufSize(),
 	}
+	defer h.handler.Release()
+
 	it := rs.node.View().Iter()
+	defer it.Finish()
 
-	go func() {
-		defer h.handler.Release()
-		defer it.Finish()
+	call.Ack()
 
-		h.ServeHandler(rs.ctx, it)
-	}()
+	h.ServeHandler(rs.ctx, it)
 
 	return nil
 }
@@ -77,6 +77,7 @@ type serverIterator struct {
 func (sh serverIterator) ServeHandler(ctx context.Context, it routing.Iterator) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
 	for {
 		if it.Record() == nil {
 			sh.send(ctx, it, cancel) // send an empty iteration as a signal
@@ -117,7 +118,7 @@ func (sh serverIterator) send(ctx context.Context, it routing.Iterator, abort fu
 				rec.SetSeq(recs[i].Seq())
 				rec.SetTtl(int64(recs[i].TTL()))
 
-				its.At(i).SetDedadline(deadlines[i].UnixMicro())
+				its.At(i).SetDeadline(deadlines[i].UnixMicro())
 			}
 			return nil
 		})

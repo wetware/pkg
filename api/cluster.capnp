@@ -15,7 +15,7 @@ struct Record {
 
 struct Iteration {
     record @0 :Record;
-    dedadline @1 :Int64;
+    deadline @1 :Int64;
 }
 
 interface Cluster {

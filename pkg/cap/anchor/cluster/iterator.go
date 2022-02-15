@@ -48,6 +48,7 @@ func (h handler) Handle(ctx context.Context, call api.Cluster_Handler_handle) er
 type Iterator struct {
 	h handler
 
+	fut    capnp.Future
 	cancel context.CancelFunc
 	it     []iteration
 	i      int
@@ -68,7 +69,7 @@ func newIterator(r api.Cluster, bufSize int32) *Iterator {
 	})
 	defer c.Release()
 
-	f, release := r.Iter(
+	fut, release := r.Iter(
 		ctx,
 		func(ps api.Cluster_iter_Params) error {
 			ps.SetBufSize(bufSize)
@@ -76,17 +77,9 @@ func newIterator(r api.Cluster, bufSize int32) *Iterator {
 		})
 	defer release()
 
-	select {
-	case <-ctx.Done():
-		return nil
-	case <-f.Done():
-		if _, err := f.Struct(); err != nil {
-			return nil
-		}
-	}
-
 	return &Iterator{
 		h:      h,
+		fut:    fut,
 		cancel: cancel,
 		it:     nil,
 		i:      -1,
@@ -115,6 +108,10 @@ func (it *Iterator) Next(ctx context.Context) error {
 			return ErrClosedUnexpected
 		}
 		return nil
+
+	case <-it.fut.Done():
+		_, err := it.fut.Struct()
+		return err
 
 	case <-ctx.Done():
 		return ctx.Err()
@@ -161,7 +158,7 @@ func newIteration(capIt api.Iteration) (iteration, error) {
 	if err != nil {
 		return iteration{}, err
 	}
-	return iteration{rec: rec, deadline: capIt.Dedadline()}, nil
+	return iteration{rec: rec, deadline: capIt.Deadline()}, nil
 }
 
 func newIterations(capIts api.Iteration_List) ([]iteration, error) {
