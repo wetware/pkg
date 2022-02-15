@@ -1,4 +1,4 @@
-package routing
+package cluster
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/server"
 	cluster "github.com/wetware/casm/pkg/cluster/routing"
-	api "github.com/wetware/ww/internal/api/routing"
+	api "github.com/wetware/ww/internal/api/cluster"
 )
 
 var ErrClosedUnexpected = errors.New("closed unexpected")
@@ -24,7 +24,7 @@ func (h handler) Shutdown() {
 	h.release()
 }
 
-func (h handler) Handle(ctx context.Context, call api.Routing_Handler_handle) error {
+func (h handler) Handle(ctx context.Context, call api.Cluster_Handler_handle) error {
 	iterations, err := call.Args().Iterations()
 	if err != nil {
 		return err
@@ -55,7 +55,7 @@ type Iterator struct {
 	closed bool
 }
 
-func newIterator(r api.Routing, bufSize int32) *Iterator {
+func newIterator(r api.Cluster, bufSize int32) *Iterator {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	h := handler{
@@ -63,7 +63,7 @@ func newIterator(r api.Routing, bufSize int32) *Iterator {
 		release: r.AddRef().Release,
 		ctx:     ctx,
 	}
-	c := api.Routing_Handler_ServerToClient(h, &server.Policy{
+	c := api.Cluster_Handler_ServerToClient(h, &server.Policy{
 		MaxConcurrentCalls: cap(h.ms),
 		AnswerQueueSize:    cap(h.ms),
 	})
@@ -71,7 +71,7 @@ func newIterator(r api.Routing, bufSize int32) *Iterator {
 
 	f, release := r.Iter(
 		ctx,
-		func(ps api.Routing_iter_Params) error {
+		func(ps api.Cluster_iter_Params) error {
 			ps.SetBufSize(bufSize)
 			return ps.SetHandler(c.AddRef())
 		})

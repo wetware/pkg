@@ -1,4 +1,4 @@
-package routing
+package cluster
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/wetware/casm/pkg/cluster"
 	mx "github.com/wetware/matrix/pkg"
 )
@@ -24,7 +25,7 @@ type Cluster struct {
 	cs []*cluster.Node
 }
 
-func TestRoutingIter(t *testing.T) {
+func TestClusterIter(t *testing.T) {
 	t.Parallel()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -34,7 +35,7 @@ func TestRoutingIter(t *testing.T) {
 	cl := newCluster(ctx, sim)
 	defer cl.Close()
 
-	s := RoutingServer{cl.cs[0], ctx}
+	s := ClusterServer{cl.cs[0], ctx}
 	c := s.NewClient(nil)
 
 	assert.Eventually(t,
@@ -46,7 +47,7 @@ func TestRoutingIter(t *testing.T) {
 		"peers should receive each other's bootstrap messages")
 }
 
-func TestRoutingIterClosedUnexpected(t *testing.T) {
+func TestClusterIterClosedUnexpected(t *testing.T) {
 	t.Parallel()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -62,7 +63,7 @@ func TestRoutingIterClosedUnexpected(t *testing.T) {
 			ctx2, cancel2 := context.WithCancel(ctx)
 			defer cancel2()
 
-			s := RoutingServer{cl.cs[0], ctx1}
+			s := ClusterServer{cl.cs[0], ctx1}
 			c := s.NewClient(nil)
 
 			it := c.Iter(1)
@@ -74,7 +75,7 @@ func TestRoutingIterClosedUnexpected(t *testing.T) {
 		"when the server fails, the iterator should raise an error")
 }
 
-func TestRoutingLookup(t *testing.T) {
+func TestClusterLookup(t *testing.T) {
 	t.Parallel()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -83,19 +84,46 @@ func TestRoutingLookup(t *testing.T) {
 	cl := newCluster(ctx, mx.New(ctx))
 	defer cl.Close()
 
-	s := RoutingServer{cl.cs[0], ctx}
+	s := ClusterServer{cl.cs[0], ctx}
 	c := s.NewClient(nil)
 
 	id := cl.hs[rand.Intn(nodesAmount)].ID()
 	assert.Eventually(t,
 		func() bool {
 			rec, err := c.Lookup(ctx, id)
-			return err == nil && rec.Peer() == peer.ID(id.String())
+			return err == nil && rec != nil && rec.Peer() == peer.ID(id.String())
 		},
 		time.Second*8,
 		time.Millisecond*10,
 		"peers should receive each other's bootstrap messages")
+}
 
+func TestClusterLookupNotFound(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sim := mx.New(ctx)
+	cl := newCluster(ctx, sim)
+	defer cl.Close()
+
+	s := ClusterServer{cl.cs[0], ctx}
+	c := s.NewClient(nil)
+
+	h, err := sim.NewHost(ctx)
+	require.NoError(t, err)
+
+	id := h.ID()
+
+	assert.Eventually(t,
+		func() bool {
+			peer, err := c.Lookup(ctx, id)
+			return err == nil && peer == nil
+		},
+		time.Second*8,
+		time.Millisecond*10,
+		"peers should receive each other's bootstrap messages")
 }
 
 func newCluster(ctx context.Context, sim mx.Simulation) *Cluster {
@@ -158,7 +186,7 @@ func (cl *Cluster) Close() {
 	}
 }
 
-func clusterView(ctx context.Context, c *RoutingClient, bufSize int32) (ps peer.IDSlice) {
+func clusterView(ctx context.Context, c *ClusterClient, bufSize int32) (ps peer.IDSlice) {
 	it := c.Iter(bufSize)
 	defer it.Finish()
 

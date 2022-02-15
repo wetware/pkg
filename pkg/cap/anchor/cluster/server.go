@@ -1,4 +1,4 @@
-package routing
+package cluster
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/wetware/casm/pkg/cluster"
 	"github.com/wetware/casm/pkg/cluster/routing"
-	api "github.com/wetware/ww/internal/api/routing"
+	api "github.com/wetware/ww/internal/api/cluster"
 )
 
 var defaultPolicy = server.Policy{
@@ -18,16 +18,16 @@ var defaultPolicy = server.Policy{
 	AnswerQueueSize:    64,
 }
 
-type RoutingServer struct {
+type ClusterServer struct {
 	node *cluster.Node
 	ctx  context.Context
 }
 
-func (rs *RoutingServer) NewClient(policy *server.Policy) RoutingClient {
-	return RoutingClient{api.Routing_ServerToClient(rs, policy)}
+func (rs *ClusterServer) NewClient(policy *server.Policy) ClusterClient {
+	return ClusterClient{api.Cluster_ServerToClient(rs, policy)}
 }
 
-func (rs *RoutingServer) Iter(ctx context.Context, call api.Routing_iter) error {
+func (rs *ClusterServer) Iter(ctx context.Context, call api.Cluster_iter) error {
 	h := serverIterator{
 		handler: call.Args().Handler().AddRef(),
 		bufSize: call.Args().BufSize(),
@@ -44,7 +44,7 @@ func (rs *RoutingServer) Iter(ctx context.Context, call api.Routing_iter) error 
 	return nil
 }
 
-func (rs *RoutingServer) Lookup(_ context.Context, call api.Routing_lookup) error {
+func (rs *ClusterServer) Lookup(_ context.Context, call api.Cluster_lookup) error {
 	peerID, err := call.Args().PeerID()
 	if err != nil {
 		return err
@@ -70,7 +70,7 @@ func (rs *RoutingServer) Lookup(_ context.Context, call api.Routing_lookup) erro
 }
 
 type serverIterator struct {
-	handler api.Routing_Handler
+	handler api.Cluster_Handler
 	bufSize int32
 }
 
@@ -103,7 +103,7 @@ func (sh serverIterator) send(ctx context.Context, it routing.Iterator, abort fu
 	}
 
 	f, release := sh.handler.Handle(ctx,
-		func(ps api.Routing_Handler_handle_Params) error {
+		func(ps api.Cluster_Handler_handle_Params) error {
 			its, err := ps.NewIterations(int32(len(recs)))
 			if err != nil {
 				abort()

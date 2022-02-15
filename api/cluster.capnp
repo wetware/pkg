@@ -2,8 +2,8 @@ using Go = import "/go.capnp";
 
 @0xfcf6ac08e448a6ac;
 
-$Go.package("routing");
-$Go.import("github.com/wetware/ww/internal/api/routing");
+$Go.package("cluster");
+$Go.import("github.com/wetware/ww/internal/api/cluster");
 
 
 
@@ -18,7 +18,7 @@ struct Iteration {
     dedadline @1 :Int64;
 }
 
-interface Routing {
+interface Cluster {
     iter @0 (handler :Handler, bufSize :Int32) -> ();
     lookup @1 (peerID :Text) -> (record :Record, ok :Bool);
     interface Handler {

@@ -1,4 +1,4 @@
-package routing
+package cluster
 
 import (
 	"context"
@@ -7,21 +7,21 @@ import (
 
 	"github.com/libp2p/go-libp2p-core/peer"
 	cluster "github.com/wetware/casm/pkg/cluster/routing"
-	api "github.com/wetware/ww/internal/api/routing"
+	api "github.com/wetware/ww/internal/api/cluster"
 )
 
 var ErrNotFound = errors.New("not found")
 
-type RoutingClient struct {
-	rt api.Routing
+type ClusterClient struct {
+	cl api.Cluster
 }
 
-func (rt RoutingClient) Iter(bufSize int32) *Iterator {
-	return newIterator(rt.rt, bufSize)
+func (cl ClusterClient) Iter(bufSize int32) *Iterator {
+	return newIterator(cl.cl, bufSize)
 }
 
-func (rt RoutingClient) Lookup(ctx context.Context, peerID peer.ID) (cluster.Record, error) {
-	fr, release := rt.rt.Lookup(ctx, func(r api.Routing_lookup_Params) error {
+func (cl ClusterClient) Lookup(ctx context.Context, peerID peer.ID) (cluster.Record, error) {
+	fr, release := cl.cl.Lookup(ctx, func(r api.Cluster_lookup_Params) error {
 		return r.SetPeerID(string(peerID))
 	})
 	defer release()
@@ -32,7 +32,7 @@ func (rt RoutingClient) Lookup(ctx context.Context, peerID peer.ID) (cluster.Rec
 	}
 
 	if !s.Ok() {
-		return nil, ErrNotFound
+		return nil, nil
 	}
 
 	rec, err := s.Record()
