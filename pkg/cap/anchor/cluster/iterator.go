@@ -3,6 +3,7 @@ package cluster
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"capnproto.org/go/capnp/v3"
@@ -11,7 +12,6 @@ import (
 	api "github.com/wetware/ww/internal/api/cluster"
 )
 
-var ErrClosedUnexpected = errors.New("closed unexpectedly")
 var ErrClosed = errors.New("closed")
 
 type handler struct {
@@ -122,7 +122,7 @@ func (it *Iterator) Next(ctx context.Context) error {
 			it.recs = iteration
 			return nil
 		}
-		err = ErrClosedUnexpected
+		err = fmt.Errorf("%s unexpectedly", ErrClosed)
 	case <-it.fut.Done():
 		_, err = it.fut.Struct()
 	case <-ctx.Done():
