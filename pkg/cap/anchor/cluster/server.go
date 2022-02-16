@@ -19,37 +19,25 @@ var defaultPolicy = server.Policy{
 }
 
 type ClusterServer struct {
-	node *cluster.Node
+	view cluster.View
 	ctx  context.Context
 }
 
-func (rs *ClusterServer) NewClient(policy *server.Policy) ClusterClient {
-	return ClusterClient{api.Cluster_ServerToClient(rs, policy)}
+func (cs *ClusterServer) NewClient(policy *server.Policy) ClusterClient {
+	return ClusterClient{api.Cluster_ServerToClient(cs, policy)}
 }
 
-func (rs *ClusterServer) Iter(ctx context.Context, call api.Cluster_iter) error {
-	h := serverIterator{
-		handler: call.Args().Handler().AddRef(),
-		bufSize: call.Args().BufSize(),
-	}
-	it := rs.node.View().Iter()
-
-	go func() {
-		defer h.handler.Release()
-		defer it.Finish()
-
-		h.ServeHandler(rs.ctx, it)
-	}()
-
-	return nil
+func (cs *ClusterServer) Iter(ctx context.Context, call api.Cluster_iter) error {
+	call.Ack()
+	return cs.serveHandler(ctx, call.Args().Handler(), call.Args().BufSize())
 }
 
-func (rs *ClusterServer) Lookup(_ context.Context, call api.Cluster_lookup) error {
+func (cs *ClusterServer) Lookup(_ context.Context, call api.Cluster_lookup) error {
 	peerID, err := call.Args().PeerID()
 	if err != nil {
 		return err
 	}
-	capRec, ok := rs.node.View().Lookup(peer.ID(peerID))
+	capRec, ok := cs.view.Lookup(peer.ID(peerID))
 	results, err := call.AllocResults()
 	if err != nil {
 		return err
@@ -70,54 +58,55 @@ func (rs *ClusterServer) Lookup(_ context.Context, call api.Cluster_lookup) erro
 }
 
 type serverIterator struct {
+	it      routing.Iterator
 	handler api.Cluster_Handler
 	bufSize int32
 }
 
-func (sh serverIterator) ServeHandler(ctx context.Context, it routing.Iterator) {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	for {
-		if it.Record() == nil {
-			sh.send(ctx, it, cancel) // send an empty iteration as a signal
-			return
-		}
+func (cs *ClusterServer) serveHandler(ctx context.Context, handler api.Cluster_Handler, bufSize int32) error {
+	sit := serverIterator{cs.view.Iter(), handler, bufSize}
+	defer sit.it.Finish()
 
+	for {
+		if sit.it.Record() == nil {
+			cs.send(ctx, sit) // send an empty iteration as a signal
+			return nil
+		}
 		select {
 		case <-ctx.Done():
-			return
+			return ctx.Err()
+		case <-cs.ctx.Done():
+			return cs.ctx.Err()
 		default:
+			err := cs.send(ctx, sit)
+			if err != nil {
+				return err
+			}
 		}
-
-		sh.send(ctx, it, cancel)
 	}
 }
 
-func (sh serverIterator) send(ctx context.Context, it routing.Iterator, abort func()) {
-	recs := make([]routing.Record, 0, sh.bufSize)
-	deadlines := make([]time.Time, 0, sh.bufSize)
-	for i := 0; i < int(sh.bufSize) && it.Record() != nil; i++ {
-		recs = append(recs, it.Record())
-		deadlines = append(deadlines, it.Deadline())
-		it.Next()
+func (cs *ClusterServer) send(ctx context.Context, sit serverIterator) error {
+	recs := make([]routing.Record, 0, sit.bufSize)
+	deadlines := make([]time.Time, 0, sit.bufSize)
+	for i := 0; i < int(sit.bufSize) && sit.it.Record() != nil; i++ {
+		recs = append(recs, sit.it.Record())
+		deadlines = append(deadlines, sit.it.Deadline())
+		sit.it.Next()
 	}
 
-	f, release := sh.handler.Handle(ctx,
+	now := time.Now()
+
+	f, release := sit.handler.Handle(ctx,
 		func(ps api.Cluster_Handler_handle_Params) error {
-			its, err := ps.NewIterations(int32(len(recs)))
+			its, err := ps.NewRecords(int32(len(recs)))
 			if err != nil {
-				abort()
+				return err
 			}
 			for i := 0; i < len(recs); i++ {
-				rec, err := its.At(i).NewRecord()
-				if err != nil {
-					abort()
-				}
-				rec.SetPeer(string(recs[i].Peer()))
-				rec.SetSeq(recs[i].Seq())
-				rec.SetTtl(int64(recs[i].TTL()))
-
-				its.At(i).SetDedadline(deadlines[i].UnixMicro())
+				its.At(i).SetPeer(string(recs[i].Peer()))
+				its.At(i).SetSeq(recs[i].Seq())
+				its.At(i).SetTtl(deadlines[i].Sub(now).Microseconds())
 			}
 			return nil
 		})
@@ -125,11 +114,11 @@ func (sh serverIterator) send(ctx context.Context, it routing.Iterator, abort fu
 
 	select {
 	case <-f.Done():
+		_, err := f.Struct()
+		return err
 	case <-ctx.Done():
-		return
-	}
-
-	if _, err := f.Struct(); err != nil {
-		abort()
+		return ctx.Err()
+	case <-cs.ctx.Done():
+		return cs.ctx.Err()
 	}
 }
