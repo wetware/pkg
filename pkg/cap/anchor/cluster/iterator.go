@@ -3,6 +3,7 @@ package cluster
 import (
 	"context"
 	"errors"
+	"time"
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/server"
@@ -127,6 +128,17 @@ func (it *Iterator) Record(ctx context.Context) cluster.Record {
 		return nil
 	}
 	return it.recs[it.i]
+}
+
+func (it *Iterator) Deadline(ctx context.Context) time.Time {
+	if it.isFirstCall() {
+		it.Next(ctx)
+	}
+
+	if it.finished || len(it.recs) == 0 {
+		return time.UnixMicro(0)
+	}
+	return time.Now().Add(it.recs[it.i].TTL())
 }
 
 func (it *Iterator) Finish() {

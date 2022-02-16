@@ -60,16 +60,16 @@ func newRecord(capRec api.Cluster_Record) (cluster.Record, error) {
 		return nil, err
 	}
 	return Record{
-		peerID: peer.ID(peerID),
-		ttl:    time.Duration(capRec.Ttl()),
-		seq:    capRec.Seq(),
+		peerID:   peer.ID(peerID),
+		deadline: time.Now().Add(time.Duration(capRec.Ttl())),
+		seq:      capRec.Seq(),
 	}, nil
 }
 
 type Record struct {
-	peerID peer.ID
-	ttl    time.Duration
-	seq    uint64
+	peerID   peer.ID
+	deadline time.Time
+	seq      uint64
 }
 
 func (rec Record) Peer() peer.ID {
@@ -77,7 +77,7 @@ func (rec Record) Peer() peer.ID {
 }
 
 func (rec Record) TTL() time.Duration {
-	return rec.ttl
+	return time.Until(rec.deadline)
 }
 
 func (rec Record) Seq() uint64 {
