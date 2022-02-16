@@ -10,6 +10,7 @@ import (
 	context "context"
 )
 
+<<<<<<< HEAD
 type Record struct{ capnp.Struct }
 
 // Record_TypeID is the unique identifier for the type Record.
@@ -182,6 +183,8 @@ func (p Iteration_Future) Record() Record_Future {
 	return Record_Future{Future: p.Future.Field(0, nil)}
 }
 
+=======
+>>>>>>> feature/cluster
 type Cluster struct{ Client *capnp.Client }
 
 // Cluster_TypeID is the unique identifier for the type Cluster.
@@ -430,25 +433,25 @@ func (s Cluster_Handler_handle_Params) String() string {
 	return str
 }
 
-func (s Cluster_Handler_handle_Params) Iterations() (Iteration_List, error) {
+func (s Cluster_Handler_handle_Params) Records() (Cluster_Record_List, error) {
 	p, err := s.Struct.Ptr(0)
-	return Iteration_List{List: p.List()}, err
+	return Cluster_Record_List{List: p.List()}, err
 }
 
-func (s Cluster_Handler_handle_Params) HasIterations() bool {
+func (s Cluster_Handler_handle_Params) HasRecords() bool {
 	return s.Struct.HasPtr(0)
 }
 
-func (s Cluster_Handler_handle_Params) SetIterations(v Iteration_List) error {
+func (s Cluster_Handler_handle_Params) SetRecords(v Cluster_Record_List) error {
 	return s.Struct.SetPtr(0, v.List.ToPtr())
 }
 
-// NewIterations sets the iterations field to a newly
-// allocated Iteration_List, preferring placement in s's segment.
-func (s Cluster_Handler_handle_Params) NewIterations(n int32) (Iteration_List, error) {
-	l, err := NewIteration_List(s.Struct.Segment(), n)
+// NewRecords sets the records field to a newly
+// allocated Cluster_Record_List, preferring placement in s's segment.
+func (s Cluster_Handler_handle_Params) NewRecords(n int32) (Cluster_Record_List, error) {
+	l, err := NewCluster_Record_List(s.Struct.Segment(), n)
 	if err != nil {
-		return Iteration_List{}, err
+		return Cluster_Record_List{}, err
 	}
 	err = s.Struct.SetPtr(0, l.List.ToPtr())
 	return l, err
@@ -537,6 +540,91 @@ type Cluster_Handler_handle_Results_Future struct{ *capnp.Future }
 func (p Cluster_Handler_handle_Results_Future) Struct() (Cluster_Handler_handle_Results, error) {
 	s, err := p.Future.Struct()
 	return Cluster_Handler_handle_Results{s}, err
+}
+
+type Cluster_Record struct{ capnp.Struct }
+
+// Cluster_Record_TypeID is the unique identifier for the type Cluster_Record.
+const Cluster_Record_TypeID = 0xaa4e2a5d60de9e67
+
+func NewCluster_Record(s *capnp.Segment) (Cluster_Record, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 16, PointerCount: 1})
+	return Cluster_Record{st}, err
+}
+
+func NewRootCluster_Record(s *capnp.Segment) (Cluster_Record, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 16, PointerCount: 1})
+	return Cluster_Record{st}, err
+}
+
+func ReadRootCluster_Record(msg *capnp.Message) (Cluster_Record, error) {
+	root, err := msg.Root()
+	return Cluster_Record{root.Struct()}, err
+}
+
+func (s Cluster_Record) String() string {
+	str, _ := text.Marshal(0xaa4e2a5d60de9e67, s.Struct)
+	return str
+}
+
+func (s Cluster_Record) Peer() (string, error) {
+	p, err := s.Struct.Ptr(0)
+	return p.Text(), err
+}
+
+func (s Cluster_Record) HasPeer() bool {
+	return s.Struct.HasPtr(0)
+}
+
+func (s Cluster_Record) PeerBytes() ([]byte, error) {
+	p, err := s.Struct.Ptr(0)
+	return p.TextBytes(), err
+}
+
+func (s Cluster_Record) SetPeer(v string) error {
+	return s.Struct.SetText(0, v)
+}
+
+func (s Cluster_Record) Ttl() int64 {
+	return int64(s.Struct.Uint64(0))
+}
+
+func (s Cluster_Record) SetTtl(v int64) {
+	s.Struct.SetUint64(0, uint64(v))
+}
+
+func (s Cluster_Record) Seq() uint64 {
+	return s.Struct.Uint64(8)
+}
+
+func (s Cluster_Record) SetSeq(v uint64) {
+	s.Struct.SetUint64(8, v)
+}
+
+// Cluster_Record_List is a list of Cluster_Record.
+type Cluster_Record_List struct{ capnp.List }
+
+// NewCluster_Record creates a new list of Cluster_Record.
+func NewCluster_Record_List(s *capnp.Segment, sz int32) (Cluster_Record_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 16, PointerCount: 1}, sz)
+	return Cluster_Record_List{l}, err
+}
+
+func (s Cluster_Record_List) At(i int) Cluster_Record { return Cluster_Record{s.List.Struct(i)} }
+
+func (s Cluster_Record_List) Set(i int, v Cluster_Record) error { return s.List.SetStruct(i, v.Struct) }
+
+func (s Cluster_Record_List) String() string {
+	str, _ := text.MarshalList(0xaa4e2a5d60de9e67, s.List)
+	return str
+}
+
+// Cluster_Record_Future is a wrapper for a Cluster_Record promised by a client call.
+type Cluster_Record_Future struct{ *capnp.Future }
+
+func (p Cluster_Record_Future) Struct() (Cluster_Record, error) {
+	s, err := p.Future.Struct()
+	return Cluster_Record{s}, err
 }
 
 type Cluster_iter_Params struct{ capnp.Struct }
@@ -777,25 +865,25 @@ func (s Cluster_lookup_Results) String() string {
 	return str
 }
 
-func (s Cluster_lookup_Results) Record() (Record, error) {
+func (s Cluster_lookup_Results) Record() (Cluster_Record, error) {
 	p, err := s.Struct.Ptr(0)
-	return Record{Struct: p.Struct()}, err
+	return Cluster_Record{Struct: p.Struct()}, err
 }
 
 func (s Cluster_lookup_Results) HasRecord() bool {
 	return s.Struct.HasPtr(0)
 }
 
-func (s Cluster_lookup_Results) SetRecord(v Record) error {
+func (s Cluster_lookup_Results) SetRecord(v Cluster_Record) error {
 	return s.Struct.SetPtr(0, v.Struct.ToPtr())
 }
 
 // NewRecord sets the record field to a newly
-// allocated Record struct, preferring placement in s's segment.
-func (s Cluster_lookup_Results) NewRecord() (Record, error) {
-	ss, err := NewRecord(s.Struct.Segment())
+// allocated Cluster_Record struct, preferring placement in s's segment.
+func (s Cluster_lookup_Results) NewRecord() (Cluster_Record, error) {
+	ss, err := NewCluster_Record(s.Struct.Segment())
 	if err != nil {
-		return Record{}, err
+		return Cluster_Record{}, err
 	}
 	err = s.Struct.SetPtr(0, ss.Struct.ToPtr())
 	return ss, err
@@ -839,6 +927,7 @@ func (p Cluster_lookup_Results_Future) Struct() (Cluster_lookup_Results, error) 
 	return Cluster_lookup_Results{s}, err
 }
 
+<<<<<<< HEAD
 func (p Cluster_lookup_Results_Future) Record() Record_Future {
 	return Record_Future{Future: p.Future.Field(0, nil)}
 }
@@ -890,17 +979,65 @@ const schema_fcf6ac08e448a6ac = "x\xda\x8c\x93Oh\\U\x14\xc6\xbf\xef\xde7\xbe)" +
 	"D{$a7\xdb\xea)\xa0J^\x00H\x05\xce\xde" +
 	"n\xbe\xf2l\xf95\x8f\x16\x04-\xf0\xef\x00\x00\x00\xff" +
 	"\xff\x02#m\xe8"
+=======
+func (p Cluster_lookup_Results_Future) Record() Cluster_Record_Future {
+	return Cluster_Record_Future{Future: p.Future.Field(0, nil)}
+}
+
+const schema_fcf6ac08e448a6ac = "x\xda\x8c\x93AHT]\x1c\xc5\xff\xe7\xde\xf7\xbe7" +
+	"\x82:\xde\xef\x89\x94\x88\x82(\xd6\x90\xa6\xe4j\x16\xcd" +
+	"4\x19)\x94\xcc57-*G}\xa59:\xe3\x9b" +
+	"\x19\xc4$f\x11\x11\xad\"ZD\x1b!\x88\xa80\x82" +
+	"H\x17\x81\x9b\\T\x0b\xdbD\xd0\xc2\x82\xa0\x16\xba+" +
+	"(\x90\xca\x17\xf7\x8d\xf3\x9e#\x1a\xad\x86{\xef\x7f\xce" +
+	"\xf9\x9ds\xefk\x9fF\x94u\xe8y\x8dHv\xea\xff" +
+	"9\xedKuw6\x06\xd6\xae\x93\xa8\xe4\xce\xdc\xfd\xee" +
+	"\xcf\x81\xb9\x1f\xbf\x88`6\xb3\xa7f+k!2\x8f" +
+	"\xb0k\xe6Mf\x109\x0b\x9d\xe7V\xbf\xae\xb5\xdc " +
+	"Q\x0f\"\x1d\x06\xd1\xa1i6\x08\x82y\x95E\x08\xce" +
+	"\xdb\x997{f\x9f\x1f\xbcE\xa2\xc6\x1b\x98g\x8dj" +
+	"`\xd1\x1dX\xea\x9f|y\xb7w\xf1\x01\x89\x1a\xee{" +
+	"\x13\xcc\x0f\xec\x9b\xb9\xaaL\xcc/\xec\xb8Y\xc1\x95\xdd" +
+	"\xca\xbd\x91+u\xf5\xeb\x0fI\xd6\xc0\x93\xfb\xceBJ" +
+	"\xee7\x9b\"8\x17f?\x0e\x9c\x09\xf5>R\x13\xcc" +
+	"\xd7s'\xcd\xd3|\xcd\xb4\x94\x90\x99\xe0O\x08\xce\x8b" +
+	"\xf7\xe9\x85Wg\xe7\x9f\x15\xe04%\xb6\xcekA\x9a" +
+	"3\xf1s\xea\xc0\xe3\xdb\x97_\x17r\xb9'\x9f\xf8E" +
+	"urx%<\xd3\xb8\xbe\xbcQ\x82\xb0\xcc\xffW\x08" +
+	"\xef\xf8\x14\xb5:C\xc9\\&k\xd9m\x18J\xa4'" +
+	"\xd2\xe1\xa3\xc9\x06w-\x03\xd8\x9a\xb6,\xe6\xb3\x0a=" +
+	"\x9c\xefNL\x0c'-;\xd2g\x0d\xa5\xeca\x19\xe0" +
+	":\x91g\x86\"\xa9\xe8\x08\x11\x13\xcd\x06\xfcfQ," +
+	"E\xec\x0d\x13\x13\x15Fp4k\xd9QD\x92\xa9\xd4" +
+	"X.\x1dE\x1c\xf0\x98\xb4\"Sa\xb9i\xda6\xe2" +
+	"\xfe6\xc5\x13\xb6\x91\x18\xcfH\x8dkD\x1a\x88DE" +
+	"\x8cH\x068d\x13C\xdev\xd12\xa8$\xc49P" +
+	"\xe5\x07 \xa8M\xcf\x85\x97\xba\x14@vR\x0fo\xaa" +
+	"W3D\xd2\x96e\xf7t\xa1\x9c\x18\xca\xb7h\xb1\xed" +
+	"\xc4\x0d.r\x1c\x90\x9a\xdbQ\xf1\x09\xa2xgB\xa8" +
+	"\x1et#RHUZ\xc0\xceh}V&\x98Kf" +
+	"32\xe0\xb1\xedWlM\x1c\xb2\x9d\x01\xa8Vw-" +
+	"Zk\x89\xe4>\x0e\xd9\xc9\x10)\xb4\xb1\xad\x85*\x02" +
+	"O\x8d\x01\xc4\x80\xddC\xf4YA\xf5_\x95\xa1\xdc3" +
+	"<\x16\"\x92Q\x0ey\xc27\xeci$\x92]\x1c2" +
+	"\xce \x18\xaa\xc1\x88\xc4I\xb5\xd9\xcd!\xfb\x19\x82\xaa" +
+	"\xb5bgF6\x9b\x84N\x0c:\xc1\xc8X\x93(#" +
+	"\x86\xb2\xdd\xefE\xbd\x13\x15=\x97\xe4\xd9\xcc?>\x91" +
+	"bS\x7f\xd5\x8c'\xec\xc48J\xda\x8c\xed\xd0f\xcc" +
+	"o3_\x90\xb7!\xfcO\x84\x00A\xc8\x0f\xe6\xce\x9f" +
+	"\x1a\xbddA#\x06\x8d\xf0'\x00\x00\xff\xff&\x97N" +
+	"\x92"
+>>>>>>> feature/cluster
 
 func init() {
 	schemas.Register(schema_fcf6ac08e448a6ac,
-		0x82a35d1a82458a4a,
 		0x89ea60fe991cc330,
 		0x8f27eaf1e95f34b6,
 		0x932fba9e18ce7bd3,
 		0xa8bd4ea1c77154c3,
 		0xa9f91e1c8368a4dc,
+		0xaa4e2a5d60de9e67,
 		0xb4b55ec8b670d8c2,
 		0xc97d97ad2c77fb6e,
-		0xdc52a9a7339d80cd,
 		0xfecdf9227b3adc3e)
 }

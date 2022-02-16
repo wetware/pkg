@@ -35,7 +35,7 @@ func TestClusterIter(t *testing.T) {
 	cl := newCluster(ctx, sim)
 	defer cl.Close()
 
-	s := ClusterServer{cl.cs[0], ctx}
+	s := ClusterServer{cl.cs[0].View(), ctx}
 	c := s.NewClient(nil)
 
 	assert.Eventually(t,
@@ -63,16 +63,37 @@ func TestClusterIterClosedUnexpected(t *testing.T) {
 			ctx2, cancel2 := context.WithCancel(ctx)
 			defer cancel2()
 
-			s := ClusterServer{cl.cs[0], ctx1}
+			s := ClusterServer{cl.cs[0].View(), ctx1}
 			c := s.NewClient(nil)
 
 			it := c.Iter(1)
+			defer it.Finish()
+
 			cancel1()
-			return it.Next(ctx2) == ErrClosedUnexpected
+			return it.Next(ctx2) != nil
 		},
 		time.Second*5,
 		time.Millisecond*10,
 		"when the server fails, the iterator should raise an error")
+}
+
+func TestClusterClosed(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sim := mx.New(ctx)
+	cl := newCluster(ctx, sim)
+	defer cl.Close()
+
+	s := ClusterServer{cl.cs[0].View(), ctx}
+	c := s.NewClient(nil)
+
+	it := c.Iter(1)
+	it.Finish()
+
+	require.ErrorIs(t, it.Next(ctx), ErrClosed)
 }
 
 func TestClusterLookup(t *testing.T) {
@@ -84,7 +105,7 @@ func TestClusterLookup(t *testing.T) {
 	cl := newCluster(ctx, mx.New(ctx))
 	defer cl.Close()
 
-	s := ClusterServer{cl.cs[0], ctx}
+	s := ClusterServer{cl.cs[0].View(), ctx}
 	c := s.NewClient(nil)
 
 	id := cl.hs[rand.Intn(nodesAmount)].ID()
@@ -108,7 +129,7 @@ func TestClusterLookupNotFound(t *testing.T) {
 	cl := newCluster(ctx, sim)
 	defer cl.Close()
 
-	s := ClusterServer{cl.cs[0], ctx}
+	s := ClusterServer{cl.cs[0].View(), ctx}
 	c := s.NewClient(nil)
 
 	h, err := sim.NewHost(ctx)

@@ -42,7 +42,19 @@ func (cl ClusterClient) Lookup(ctx context.Context, peerID peer.ID) (cluster.Rec
 	return newRecord(rec)
 }
 
-func newRecord(capRec api.Record) (cluster.Record, error) {
+func newRecords(capRecs api.Cluster_Record_List) ([]cluster.Record, error) {
+	recs := make([]cluster.Record, 0, capRecs.Len())
+	for i := 0; i < capRecs.Len(); i++ {
+		rec, err := newRecord(capRecs.At(i))
+		if err != nil {
+			return nil, err
+		}
+		recs = append(recs, rec)
+	}
+	return recs, nil
+}
+
+func newRecord(capRec api.Cluster_Record) (cluster.Record, error) {
 	peerID, err := capRec.Peer()
 	if err != nil {
 		return nil, err

@@ -3,7 +3,6 @@ package cluster
 import (
 	"context"
 	"errors"
-	"time"
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/server"
@@ -11,12 +10,12 @@ import (
 	api "github.com/wetware/ww/internal/api/cluster"
 )
 
-var ErrClosedUnexpected = errors.New("closed unexpected")
+var ErrClosedUnexpected = errors.New("closed unexpectedly")
+var ErrClosed = errors.New("closed")
 
 type handler struct {
-	ms      chan []iteration
+	ms      chan []cluster.Record
 	release capnp.ReleaseFunc
-	ctx     context.Context
 }
 
 func (h handler) Shutdown() {
@@ -25,43 +24,41 @@ func (h handler) Shutdown() {
 }
 
 func (h handler) Handle(ctx context.Context, call api.Cluster_Handler_handle) error {
-	iterations, err := call.Args().Iterations()
+	capRecs, err := call.Args().Records()
 	if err != nil {
 		return err
 	}
 
-	its, err := newIterations(iterations)
+	recs, err := newRecords(capRecs)
 	if err != nil {
 		return err
 	}
 
 	select {
-	case h.ms <- its:
+	case h.ms <- recs:
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
-	case <-h.ctx.Done():
-		return h.ctx.Err()
 	}
 }
 
 type Iterator struct {
 	h handler
 
-	fut    capnp.Future
-	cancel context.CancelFunc
-	it     []iteration
-	i      int
-	closed bool
+	fut     *capnp.Future
+	release capnp.ReleaseFunc
+	cancel  context.CancelFunc
+
+	recs []cluster.Record
+	i    int
+
+	finished bool
 }
 
 func newIterator(r api.Cluster, bufSize int32) *Iterator {
-	ctx, cancel := context.WithCancel(context.Background())
-
 	h := handler{
-		ms:      make(chan []iteration),
+		ms:      make(chan []cluster.Record),
 		release: r.AddRef().Release,
-		ctx:     ctx,
 	}
 	c := api.Cluster_Handler_ServerToClient(h, &server.Policy{
 		MaxConcurrentCalls: cap(h.ms),
@@ -69,53 +66,56 @@ func newIterator(r api.Cluster, bufSize int32) *Iterator {
 	})
 	defer c.Release()
 
-	fut, release := r.Iter(
+	ctx, cancel := context.WithCancel(context.Background())
+
+	f, release := r.Iter(
 		ctx,
 		func(ps api.Cluster_iter_Params) error {
 			ps.SetBufSize(bufSize)
 			return ps.SetHandler(c.AddRef())
 		})
-	defer release()
 
 	return &Iterator{
-		h:      h,
-		fut:    fut,
-		cancel: cancel,
-		it:     nil,
-		i:      -1,
-		closed: false,
+		h: h,
+
+		fut:     f.Future,
+		release: release,
+		cancel:  cancel,
+
+		recs: nil,
+		i:    -1,
+
+		finished: false,
 	}
 }
 
 func (it *Iterator) Next(ctx context.Context) error {
-	if it.it != nil && len(it.it) > 0 && it.i+1 < len(it.it) {
+	if it.finished {
+		return ErrClosed
+	}
+
+	if it.recs != nil && len(it.recs) > 0 && it.i+1 < len(it.recs) {
 		it.i++
 		return nil
 	}
 
-	it.i = 0
-	it.it = nil
+	var err error
 
 	select {
 	case iteration, ok := <-it.h.ms:
 		if ok {
-			it.it = iteration
-			if len(iteration) == 0 {
-				it.closed = true
-			}
-		} else if !it.closed {
-			it.Finish()
-			return ErrClosedUnexpected
+			it.i = 0
+			it.recs = iteration
+			return nil
 		}
-		return nil
-
+		err = ErrClosedUnexpected
 	case <-it.fut.Done():
-		_, err := it.fut.Struct()
-		return err
-
+		_, err = it.fut.Struct()
 	case <-ctx.Done():
-		return ctx.Err()
+		err = ctx.Err()
 	}
+	it.Finish()
+	return err
 }
 
 func (it *Iterator) Record(ctx context.Context) cluster.Record {
@@ -123,52 +123,21 @@ func (it *Iterator) Record(ctx context.Context) cluster.Record {
 		it.Next(ctx)
 	}
 
-	if it.it == nil || it.closed {
+	if it.finished || len(it.recs) == 0 {
 		return nil
 	}
-	return it.it[it.i].rec
-}
-
-func (it *Iterator) Deadline() time.Time {
-	if it.isFirstCall() {
-		it.Next(context.Background())
-	}
-	if it.it == nil || it.closed {
-		return time.UnixMicro(0)
-	}
-	return time.UnixMicro(it.it[it.i].deadline)
+	return it.recs[it.i]
 }
 
 func (it *Iterator) Finish() {
-	it.cancel()
+	if !it.finished {
+		it.finished = true
+		it.recs = nil
+		it.cancel()
+		it.release()
+	}
 }
 
 func (it *Iterator) isFirstCall() bool {
 	return it.i == -1
-}
-
-type iteration struct {
-	rec      cluster.Record
-	deadline int64
-}
-
-func newIteration(capIt api.Iteration) (iteration, error) {
-	capRec, _ := capIt.Record()
-	rec, err := newRecord(capRec)
-	if err != nil {
-		return iteration{}, err
-	}
-	return iteration{rec: rec, deadline: capIt.Deadline()}, nil
-}
-
-func newIterations(capIts api.Iteration_List) ([]iteration, error) {
-	its := make([]iteration, 0, capIts.Len())
-	for i := 0; i < capIts.Len(); i++ {
-		it, err := newIteration(capIts.At(i))
-		if err != nil {
-			return nil, err
-		}
-		its = append(its, it)
-	}
-	return its, nil
 }
