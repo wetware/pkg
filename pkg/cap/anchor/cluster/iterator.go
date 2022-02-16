@@ -30,7 +30,7 @@ func (h handler) Handle(ctx context.Context, call api.Cluster_Handler_handle) er
 		return err
 	}
 
-	recs, err := newRecords(capRecs)
+	recs, err := newRecords(time.Now(), capRecs)
 	if err != nil {
 		return err
 	}
@@ -41,6 +41,18 @@ func (h handler) Handle(ctx context.Context, call api.Cluster_Handler_handle) er
 	case <-ctx.Done():
 		return ctx.Err()
 	}
+}
+
+func newRecords(t time.Time, capRecs api.Cluster_Record_List) ([]cluster.Record, error) {
+	recs := make([]cluster.Record, 0, capRecs.Len())
+	for i := 0; i < capRecs.Len(); i++ {
+		rec, err := newRecord(t, capRecs.At(i))
+		if err != nil {
+			return nil, err
+		}
+		recs = append(recs, rec)
+	}
+	return recs, nil
 }
 
 type Iterator struct {
