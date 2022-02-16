@@ -40,7 +40,7 @@ require (
 	github.com/lthibault/go-libp2p-inproc-transport v0.0.1-alpha.7
 	github.com/lthibault/util v0.0.11
 	github.com/stretchr/testify v1.7.0
-	github.com/thejerf/suture/v4 v4.0.1
+	github.com/thejerf/suture/v4 v4.0.2
 	github.com/wetware/matrix v1.0.0-alpha.18
 	go.uber.org/multierr v1.7.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
