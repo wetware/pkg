@@ -60,7 +60,6 @@ type Iterator struct {
 
 	fut     *capnp.Future
 	release capnp.ReleaseFunc
-	cancel  context.CancelFunc
 
 	recs []cluster.Record
 	i    int
@@ -91,9 +90,11 @@ func newIterator(r api.Cluster, bufSize int32) *Iterator {
 	return &Iterator{
 		h: h,
 
-		fut:     f.Future,
-		release: release,
-		cancel:  cancel,
+		fut: f.Future,
+		release: func() {
+			cancel()
+			release()
+		},
 
 		recs: nil,
 		i:    -1,
@@ -157,7 +158,6 @@ func (it *Iterator) Finish() {
 	if !it.finished {
 		it.finished = true
 		it.recs = nil
-		it.cancel()
 		it.release()
 	}
 }
