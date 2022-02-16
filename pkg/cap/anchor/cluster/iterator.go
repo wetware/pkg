@@ -3,6 +3,7 @@ package cluster
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"capnproto.org/go/capnp/v3"
@@ -11,7 +12,6 @@ import (
 	api "github.com/wetware/ww/internal/api/cluster"
 )
 
-var ErrClosedUnexpected = errors.New("closed unexpectedly")
 var ErrClosed = errors.New("closed")
 
 type handler struct {
@@ -30,7 +30,7 @@ func (h handler) Handle(ctx context.Context, call api.Cluster_Handler_handle) er
 		return err
 	}
 
-	recs, err := newRecords(capRecs)
+	recs, err := newRecords(time.Now(), capRecs)
 	if err != nil {
 		return err
 	}
@@ -43,12 +43,23 @@ func (h handler) Handle(ctx context.Context, call api.Cluster_Handler_handle) er
 	}
 }
 
+func newRecords(t time.Time, capRecs api.Cluster_Record_List) ([]cluster.Record, error) {
+	recs := make([]cluster.Record, 0, capRecs.Len())
+	for i := 0; i < capRecs.Len(); i++ {
+		rec, err := newRecord(t, capRecs.At(i))
+		if err != nil {
+			return nil, err
+		}
+		recs = append(recs, rec)
+	}
+	return recs, nil
+}
+
 type Iterator struct {
 	h handler
 
 	fut     *capnp.Future
 	release capnp.ReleaseFunc
-	cancel  context.CancelFunc
 
 	recs []cluster.Record
 	i    int
@@ -79,9 +90,11 @@ func newIterator(r api.Cluster, bufSize int32) *Iterator {
 	return &Iterator{
 		h: h,
 
-		fut:     f.Future,
-		release: release,
-		cancel:  cancel,
+		fut: f.Future,
+		release: func() {
+			cancel()
+			release()
+		},
 
 		recs: nil,
 		i:    -1,
@@ -109,7 +122,7 @@ func (it *Iterator) Next(ctx context.Context) error {
 			it.recs = iteration
 			return nil
 		}
-		err = ErrClosedUnexpected
+		err = fmt.Errorf("%s unexpectedly", ErrClosed)
 	case <-it.fut.Done():
 		_, err = it.fut.Struct()
 	case <-ctx.Done():
@@ -145,7 +158,6 @@ func (it *Iterator) Finish() {
 	if !it.finished {
 		it.finished = true
 		it.recs = nil
-		it.cancel()
 		it.release()
 	}
 }

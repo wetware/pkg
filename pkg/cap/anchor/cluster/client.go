@@ -39,29 +39,17 @@ func (cl Client) Lookup(ctx context.Context, peerID peer.ID) (cluster.Record, er
 	if err != nil {
 		return nil, err
 	}
-	return newRecord(rec)
+	return newRecord(time.Now(), rec)
 }
 
-func newRecords(capRecs api.Cluster_Record_List) ([]cluster.Record, error) {
-	recs := make([]cluster.Record, 0, capRecs.Len())
-	for i := 0; i < capRecs.Len(); i++ {
-		rec, err := newRecord(capRecs.At(i))
-		if err != nil {
-			return nil, err
-		}
-		recs = append(recs, rec)
-	}
-	return recs, nil
-}
-
-func newRecord(capRec api.Cluster_Record) (cluster.Record, error) {
+func newRecord(t time.Time, capRec api.Cluster_Record) (cluster.Record, error) {
 	peerID, err := capRec.Peer()
 	if err != nil {
 		return nil, err
 	}
 	return Record{
 		peerID:   peer.ID(peerID),
-		deadline: time.Now().Add(time.Duration(capRec.Ttl())),
+		deadline: t.Add(time.Duration(capRec.Ttl())),
 		seq:      capRec.Seq(),
 	}, nil
 }
