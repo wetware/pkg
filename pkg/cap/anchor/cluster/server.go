@@ -23,8 +23,8 @@ type ClusterServer struct {
 	ctx  context.Context
 }
 
-func (cs *ClusterServer) NewClient(policy *server.Policy) ClusterClient {
-	return ClusterClient{api.Cluster_ServerToClient(cs, policy)}
+func (cs *ClusterServer) NewClient(policy *server.Policy) Client {
+	return Client(api.Cluster_ServerToClient(cs, policy))
 }
 
 func (cs *ClusterServer) Iter(ctx context.Context, call api.Cluster_iter) error {

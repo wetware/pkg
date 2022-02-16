@@ -10,18 +10,18 @@ import (
 	api "github.com/wetware/ww/internal/api/cluster"
 )
 
+const bufSize = int32(8)
+
 var ErrNotFound = errors.New("not found")
 
-type ClusterClient struct {
-	cl api.Cluster
+type Client api.Cluster
+
+func (cl Client) Iter() *Iterator {
+	return newIterator(api.Cluster(cl), bufSize)
 }
 
-func (cl ClusterClient) Iter(bufSize int32) *Iterator {
-	return newIterator(cl.cl, bufSize)
-}
-
-func (cl ClusterClient) Lookup(ctx context.Context, peerID peer.ID) (cluster.Record, error) {
-	fr, release := cl.cl.Lookup(ctx, func(r api.Cluster_lookup_Params) error {
+func (cl Client) Lookup(ctx context.Context, peerID peer.ID) (cluster.Record, error) {
+	fr, release := api.Cluster(cl).Lookup(ctx, func(r api.Cluster_lookup_Params) error {
 		return r.SetPeerID(string(peerID))
 	})
 	defer release()

@@ -66,7 +66,7 @@ func TestClusterIterClosedUnexpected(t *testing.T) {
 			s := ClusterServer{cl.cs[0].View(), ctx1}
 			c := s.NewClient(nil)
 
-			it := c.Iter(1)
+			it := c.Iter()
 			defer it.Finish()
 
 			cancel1()
@@ -90,7 +90,7 @@ func TestClusterClosed(t *testing.T) {
 	s := ClusterServer{cl.cs[0].View(), ctx}
 	c := s.NewClient(nil)
 
-	it := c.Iter(1)
+	it := c.Iter()
 	it.Finish()
 
 	require.ErrorIs(t, it.Next(ctx), ErrClosed)
@@ -207,8 +207,8 @@ func (cl *Cluster) Close() {
 	}
 }
 
-func clusterView(ctx context.Context, c *ClusterClient, bufSize int32) (ps peer.IDSlice) {
-	it := c.Iter(bufSize)
+func clusterView(ctx context.Context, c *Client, bufSize int32) (ps peer.IDSlice) {
+	it := c.Iter()
 	defer it.Finish()
 
 	for ; it.Record(ctx) != nil; it.Next(ctx) {
