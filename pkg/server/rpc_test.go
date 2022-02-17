@@ -167,7 +167,7 @@ func TestRPC_conn_lifecycle(t *testing.T) {
 		err = client.Resolve(ctx)
 		require.NoError(t, err, "should resolve successfully")
 
-		time.Sleep(time.Millisecond * 10)
+		time.Sleep(time.Millisecond * 100)
 
 		err = cs.Close()
 		require.NoError(t, err, "capSet should close cleanly")

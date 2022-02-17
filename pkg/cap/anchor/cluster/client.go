@@ -10,14 +10,14 @@ import (
 	api "github.com/wetware/ww/internal/api/cluster"
 )
 
-const bufSize = int32(8)
-
 var ErrNotFound = errors.New("not found")
 
 type Client api.Cluster
 
 func (cl Client) Iter() *Iterator {
-	return newIterator(api.Cluster(cl), bufSize)
+	const bufSize = 0 // defaults to 32
+	const lim = 0     // defaults to 16
+	return newIterator(api.Cluster(cl), bufSize, lim)
 }
 
 func (cl Client) Lookup(ctx context.Context, peerID peer.ID) (cluster.Record, error) {

@@ -3,7 +3,6 @@ package cluster
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"capnproto.org/go/capnp/v3"
@@ -12,7 +11,7 @@ import (
 	api "github.com/wetware/ww/internal/api/cluster"
 )
 
-var ErrClosed = errors.New("closed")
+var ErrExhausted = errors.New("exhausted")
 
 type handler struct {
 	ms      chan []cluster.Record
@@ -24,23 +23,24 @@ func (h handler) Shutdown() {
 	h.release()
 }
 
-func (h handler) Handle(ctx context.Context, call api.Cluster_Handler_handle) error {
+func (h handler) Handle(_ context.Context, call api.Cluster_Handler_handle) error {
 	capRecs, err := call.Args().Records()
 	if err != nil {
 		return err
 	}
 
-	recs, err := newRecords(time.Now(), capRecs)
-	if err != nil {
-		return err
+	// Defensive programming.  Zero-length record slice causes Iterator.Next()
+	// to panic.
+	if capRecs.Len() == 0 {
+		return nil
 	}
 
-	select {
-	case h.ms <- recs:
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
+	recs, err := newRecords(time.Now(), capRecs)
+	if err == nil {
+		h.ms <- recs // buffered
 	}
+
+	return err
 }
 
 func newRecords(t time.Time, capRecs api.Cluster_Record_List) ([]cluster.Record, error) {
@@ -61,15 +61,14 @@ type Iterator struct {
 	fut     *capnp.Future
 	release capnp.ReleaseFunc
 
+	curr cluster.Record
 	recs []cluster.Record
-	i    int
-
-	finished bool
 }
 
-func newIterator(r api.Cluster, bufSize int32) *Iterator {
+func newIterator(r api.Cluster, bufSize, lim uint8) *Iterator {
+
 	h := handler{
-		ms:      make(chan []cluster.Record),
+		ms:      make(chan []cluster.Record, lim),
 		release: r.AddRef().Release,
 	}
 	c := api.Cluster_Handler_ServerToClient(h, &server.Policy{
@@ -79,11 +78,11 @@ func newIterator(r api.Cluster, bufSize int32) *Iterator {
 	defer c.Release()
 
 	ctx, cancel := context.WithCancel(context.Background())
-
 	f, release := r.Iter(
 		ctx,
 		func(ps api.Cluster_iter_Params) error {
 			ps.SetBufSize(bufSize)
+			ps.SetBufSize(lim)
 			return ps.SetHandler(c.AddRef())
 		})
 
@@ -95,73 +94,65 @@ func newIterator(r api.Cluster, bufSize int32) *Iterator {
 			cancel()
 			release()
 		},
-
-		recs: nil,
-		i:    -1,
-
-		finished: false,
 	}
 }
 
 func (it *Iterator) Next(ctx context.Context) error {
-	if it.finished {
-		return ErrClosed
-	}
-
-	if it.recs != nil && len(it.recs) > 0 && it.i+1 < len(it.recs) {
-		it.i++
-		return nil
-	}
-
-	var err error
-
-	select {
-	case iteration, ok := <-it.h.ms:
-		if ok {
-			it.i = 0
-			it.recs = iteration
-			return nil
+	if len(it.recs) == 0 {
+		if err := it.nextBatch(ctx); err != nil {
+			return err
 		}
-		err = fmt.Errorf("%s unexpectedly", ErrClosed)
-	case <-it.fut.Done():
-		_, err = it.fut.Struct()
-	case <-ctx.Done():
-		err = ctx.Err()
 	}
-	it.Finish()
-	return err
+
+	it.curr, it.recs = it.recs[0], it.recs[1:]
+	return nil
 }
 
-func (it *Iterator) Record(ctx context.Context) cluster.Record {
-	if it.isFirstCall() {
-		it.Next(ctx)
-	}
-
-	if it.finished || len(it.recs) == 0 {
-		return nil
-	}
-	return it.recs[it.i]
+func (it *Iterator) Record() cluster.Record {
+	return it.curr
 }
 
-func (it *Iterator) Deadline(ctx context.Context) time.Time {
-	if it.isFirstCall() {
-		it.Next(ctx)
+func (it *Iterator) Deadline() time.Time {
+	if it.curr == nil {
+		return time.Time{}
 	}
 
-	if it.finished || len(it.recs) == 0 {
-		return time.UnixMicro(0)
-	}
-	return time.Now().Add(it.recs[it.i].TTL())
+	return time.Now().Add(it.curr.TTL())
 }
 
 func (it *Iterator) Finish() {
-	if !it.finished {
-		it.finished = true
+	if it.recs != nil && it.curr != nil {
+		it.curr = nil
 		it.recs = nil
 		it.release()
 	}
 }
 
-func (it *Iterator) isFirstCall() bool {
-	return it.i == -1
+func (it *Iterator) nextBatch(ctx context.Context) (err error) {
+	select {
+	case recs, ok := <-it.h.ms:
+		if ok {
+			it.recs = recs
+			return
+		}
+
+		err = ErrExhausted
+		defer it.Finish()
+
+	case <-ctx.Done():
+		err = ctx.Err()
+		defer it.Finish()
+	}
+
+	select {
+	case <-it.fut.Done():
+		_, err = it.fut.Struct()
+		defer it.release()
+
+	case <-ctx.Done():
+		err = ctx.Err()
+		defer it.Finish()
+	}
+
+	return
 }
