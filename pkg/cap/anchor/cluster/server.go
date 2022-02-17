@@ -13,6 +13,11 @@ import (
 	"golang.org/x/sync/semaphore"
 )
 
+const (
+	defaultBatchSize   = 64
+	defaultMaxInflight = 16
+)
+
 var defaultPolicy = server.Policy{
 	// HACK:  raise MaxConcurrentCalls to mitigate known deadlock condition.
 	//        https://github.com/capnproto/go-capnproto2/issues/189
@@ -79,10 +84,10 @@ type batcher struct {
 
 func newBatcher(p api.Cluster_iter_Params) batcher {
 	return batcher{
-		lim:   newLimiter(p.Lim()),
+		lim:   newLimiter(),
 		h:     p.Handler(),
 		fs:    make(map[*capnp.Future]capnp.ReleaseFunc),
-		batch: newBatch(p.BufSize()),
+		batch: newBatch(),
 	}
 }
 
@@ -169,13 +174,9 @@ type batch struct {
 	rs []batchRecord
 }
 
-func newBatch(size uint8) batch {
-	if size == 0 {
-		size = 32
-	}
-
+func newBatch() batch {
 	return batch{
-		rs: make([]batchRecord, 0, size),
+		rs: make([]batchRecord, 0, defaultBatchSize),
 	}
 }
 
@@ -219,7 +220,7 @@ func (b *batch) FilterExpired() bool {
 	current := b.rs[:]
 	b.rs = b.rs[:0]
 	for _, r := range current {
-		if r.Deadline.Before(b.t) {
+		if b.t.Before(r.Deadline) {
 			b.rs = append(b.rs, r)
 		}
 	}
@@ -241,12 +242,8 @@ func (r batchRecord) SetParam(t time.Time, rec api.Cluster_Record) error {
 
 type limiter semaphore.Weighted
 
-func newLimiter(lim uint8) *limiter {
-	if lim == 0 {
-		lim = 16
-	}
-
-	return (*limiter)(semaphore.NewWeighted(int64(lim)))
+func newLimiter() *limiter {
+	return (*limiter)(semaphore.NewWeighted(defaultMaxInflight))
 }
 
 func (l *limiter) Acquire(ctx context.Context) error {

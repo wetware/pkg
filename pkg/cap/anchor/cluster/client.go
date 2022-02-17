@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"capnproto.org/go/capnp/v3"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cluster "github.com/wetware/casm/pkg/cluster/routing"
 	api "github.com/wetware/ww/internal/api/cluster"
@@ -14,10 +15,16 @@ var ErrNotFound = errors.New("not found")
 
 type Client api.Cluster
 
-func (cl Client) Iter() *Iterator {
-	const bufSize = 0 // defaults to 32
-	const lim = 0     // defaults to 16
-	return newIterator(api.Cluster(cl), bufSize, lim)
+func (cl Client) Iter(ctx context.Context) (*Iterator, capnp.ReleaseFunc) {
+	ctx, cancel := context.WithCancel(ctx)
+
+	h := make(handler, defaultMaxInflight)
+
+	it, release := newIterator(ctx, api.Cluster(cl), h)
+	return it, func() {
+		cancel()
+		release()
+	}
 }
 
 func (cl Client) Lookup(ctx context.Context, peerID peer.ID) (cluster.Record, error) {

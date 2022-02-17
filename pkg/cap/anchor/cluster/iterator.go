@@ -13,34 +13,28 @@ import (
 
 var ErrExhausted = errors.New("exhausted")
 
-type handler struct {
-	ms      chan []cluster.Record
-	release capnp.ReleaseFunc
-}
+type handler chan []cluster.Record
 
-func (h handler) Shutdown() {
-	close(h.ms)
-	h.release()
-}
+func (h handler) Shutdown() { close(h) }
 
-func (h handler) Handle(_ context.Context, call api.Cluster_Handler_handle) error {
+func (h handler) Handle(ctx context.Context, call api.Cluster_Handler_handle) error {
 	capRecs, err := call.Args().Records()
+	if err != nil || capRecs.Len() == 0 { // defensive
+		return err
+	}
+
+	recs, err := newRecords(time.Now(), capRecs)
 	if err != nil {
 		return err
 	}
 
-	// Defensive programming.  Zero-length record slice causes Iterator.Next()
-	// to panic.
-	if capRecs.Len() == 0 {
+	select {
+	case h <- recs:
 		return nil
-	}
 
-	recs, err := newRecords(time.Now(), capRecs)
-	if err == nil {
-		h.ms <- recs // buffered
+	case <-ctx.Done():
+		return ctx.Err()
 	}
-
-	return err
 }
 
 func newRecords(t time.Time, capRecs api.Cluster_Record_List) ([]cluster.Record, error) {
@@ -58,42 +52,33 @@ func newRecords(t time.Time, capRecs api.Cluster_Record_List) ([]cluster.Record,
 type Iterator struct {
 	h handler
 
-	fut     *capnp.Future
-	release capnp.ReleaseFunc
+	fut *capnp.Future
 
 	curr cluster.Record
 	recs []cluster.Record
 }
 
-func newIterator(r api.Cluster, bufSize, lim uint8) *Iterator {
-
-	h := handler{
-		ms:      make(chan []cluster.Record, lim),
-		release: r.AddRef().Release,
-	}
+func newIterator(ctx context.Context, r api.Cluster, h handler) (*Iterator, capnp.ReleaseFunc) {
 	c := api.Cluster_Handler_ServerToClient(h, &server.Policy{
-		MaxConcurrentCalls: cap(h.ms),
-		AnswerQueueSize:    cap(h.ms),
+		MaxConcurrentCalls: cap(h),
+		AnswerQueueSize:    cap(h),
 	})
-	defer c.Release()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	f, release := r.Iter(
-		ctx,
-		func(ps api.Cluster_iter_Params) error {
-			ps.SetBufSize(bufSize)
-			ps.SetBufSize(lim)
-			return ps.SetHandler(c.AddRef())
-		})
+	f, release := r.Iter(ctx, func(ps api.Cluster_iter_Params) error {
+		return ps.SetHandler(c)
+	})
 
-	return &Iterator{
-		h: h,
-
+	it := &Iterator{
+		h:   h,
 		fut: f.Future,
-		release: func() {
-			cancel()
+	}
+
+	return it, func() {
+		if it.recs != nil && it.curr != nil {
+			it.curr = nil
+			it.recs = nil
 			release()
-		},
+		}
 	}
 }
 
@@ -120,39 +105,26 @@ func (it *Iterator) Deadline() time.Time {
 	return time.Now().Add(it.curr.TTL())
 }
 
-func (it *Iterator) Finish() {
-	if it.recs != nil && it.curr != nil {
-		it.curr = nil
-		it.recs = nil
-		it.release()
-	}
-}
-
-func (it *Iterator) nextBatch(ctx context.Context) (err error) {
+func (it *Iterator) nextBatch(ctx context.Context) error {
+	var ok bool
 	select {
-	case recs, ok := <-it.h.ms:
+	case it.recs, ok = <-it.h:
 		if ok {
-			it.recs = recs
-			return
+			return nil
 		}
 
-		err = ErrExhausted
-		defer it.Finish()
+		select {
+		case <-it.fut.Done():
+			if _, err := it.fut.Struct(); err != nil {
+				return err
+			}
+			return ErrExhausted
+
+		case <-ctx.Done():
+		}
 
 	case <-ctx.Done():
-		err = ctx.Err()
-		defer it.Finish()
 	}
 
-	select {
-	case <-it.fut.Done():
-		_, err = it.fut.Struct()
-		defer it.release()
-
-	case <-ctx.Done():
-		err = ctx.Err()
-		defer it.Finish()
-	}
-
-	return
+	return ctx.Err()
 }

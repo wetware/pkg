@@ -7,7 +7,7 @@ $Go.import("github.com/wetware/ww/internal/api/cluster");
 
 
 interface Cluster {
-    iter @0 (handler :Handler, bufSize :UInt8, lim :UInt8) -> ();
+    iter @0 (handler :Handler) -> ();
     lookup @1 (peerID :Text) -> (record :Record, ok :Bool);
  
     interface Handler {
