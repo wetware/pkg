@@ -7,24 +7,20 @@ import (
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/server"
+	"github.com/libp2p/go-libp2p-core/peer"
 	cluster "github.com/wetware/casm/pkg/cluster/routing"
 	api "github.com/wetware/ww/internal/api/cluster"
 )
 
 var ErrExhausted = errors.New("exhausted")
 
-type handler chan []cluster.Record
+type handler chan []record
 
 func (h handler) Shutdown() { close(h) }
 
 func (h handler) Handle(ctx context.Context, call api.Cluster_Handler_handle) error {
-	capRecs, err := call.Args().Records()
-	if err != nil || capRecs.Len() == 0 { // defensive
-		return err
-	}
-
-	recs, err := newRecords(time.Now(), capRecs)
-	if err != nil {
+	recs, err := loadBatch(call.Args())
+	if err != nil || len(recs) == 0 { // defensive
 		return err
 	}
 
@@ -37,25 +33,45 @@ func (h handler) Handle(ctx context.Context, call api.Cluster_Handler_handle) er
 	}
 }
 
-func newRecords(t time.Time, capRecs api.Cluster_Record_List) ([]cluster.Record, error) {
-	recs := make([]cluster.Record, 0, capRecs.Len())
-	for i := 0; i < capRecs.Len(); i++ {
-		rec, err := newRecord(t, capRecs.At(i))
-		if err != nil {
-			return nil, err
-		}
-		recs = append(recs, rec)
+func loadBatch(args api.Cluster_Handler_handle_Params) ([]record, error) {
+	rs, err := args.Records()
+	if err != nil {
+		return nil, err
 	}
-	return recs, nil
+
+	batch := make([]record, rs.Len())
+	for i := range batch {
+		rec := Record(rs.At(i))
+
+		batch[i].ttl = rec.TTL()
+		batch[i].seq = rec.Seq()
+
+		if batch[i].id, err = rec.Peer(); err != nil {
+			break
+		}
+	}
+
+	return batch, nil
 }
+
+type record struct {
+	id  peer.ID
+	ttl time.Duration
+	seq uint64
+}
+
+func (r record) Peer() peer.ID      { return r.id }
+func (r record) TTL() time.Duration { return r.ttl }
+func (r record) Seq() uint64        { return r.seq }
 
 type Iterator struct {
 	h handler
 
+	Err error
 	fut *capnp.Future
 
 	curr cluster.Record
-	recs []cluster.Record
+	recs []record
 }
 
 func newIterator(ctx context.Context, r api.Cluster, h handler) (*Iterator, capnp.ReleaseFunc) {
@@ -84,8 +100,8 @@ func newIterator(ctx context.Context, r api.Cluster, h handler) (*Iterator, capn
 
 func (it *Iterator) Next(ctx context.Context) error {
 	if len(it.recs) == 0 {
-		if err := it.nextBatch(ctx); err != nil {
-			return err
+		if it.Err = it.nextBatch(ctx); it.Err != nil {
+			return it.Err
 		}
 	}
 

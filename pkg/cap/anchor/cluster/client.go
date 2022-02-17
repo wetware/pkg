@@ -7,7 +7,6 @@ import (
 
 	"capnproto.org/go/capnp/v3"
 	"github.com/libp2p/go-libp2p-core/peer"
-	cluster "github.com/wetware/casm/pkg/cluster/routing"
 	api "github.com/wetware/ww/internal/api/cluster"
 )
 
@@ -27,54 +26,40 @@ func (cl Client) Iter(ctx context.Context) (*Iterator, capnp.ReleaseFunc) {
 	}
 }
 
-func (cl Client) Lookup(ctx context.Context, peerID peer.ID) (cluster.Record, error) {
-	fr, release := api.Cluster(cl).Lookup(ctx, func(r api.Cluster_lookup_Params) error {
+func (cl Client) Lookup(ctx context.Context, peerID peer.ID) (FutureRecord, capnp.ReleaseFunc) {
+	f, release := api.Cluster(cl).Lookup(ctx, func(r api.Cluster_lookup_Params) error {
 		return r.SetPeerID(string(peerID))
 	})
-	defer release()
-
-	s, err := fr.Struct()
-	if err != nil {
-		return nil, err
-	}
-
-	if !s.Ok() {
-		return nil, nil
-	}
-
-	rec, err := s.Record()
-	if err != nil {
-		return nil, err
-	}
-	return newRecord(time.Now(), rec)
+	return FutureRecord(f), release
 }
 
-func newRecord(t time.Time, capRec api.Cluster_Record) (cluster.Record, error) {
-	peerID, err := capRec.Peer()
+type FutureRecord api.Cluster_lookup_Results_Future
+
+func (f FutureRecord) Struct() (Record, error) {
+	res, err := api.Cluster_lookup_Results_Future(f).Struct()
 	if err != nil {
-		return nil, err
+		return Record{}, err
 	}
-	return Record{
-		peerID:   peer.ID(peerID),
-		deadline: t.Add(time.Duration(capRec.Ttl())),
-		seq:      capRec.Seq(),
-	}, nil
+
+	rec, err := res.Record()
+	return Record(rec), err
 }
 
-type Record struct {
-	peerID   peer.ID
-	deadline time.Time
-	seq      uint64
-}
+type Record api.Cluster_Record
 
-func (rec Record) Peer() peer.ID {
-	return rec.peerID
+func (rec Record) Peer() (peer.ID, error) {
+	s, err := api.Cluster_Record(rec).Peer()
+	if err != nil {
+		return "", err
+	}
+
+	return peer.IDFromString(s)
 }
 
 func (rec Record) TTL() time.Duration {
-	return time.Until(rec.deadline)
+	return time.Duration(api.Cluster_Record(rec).Ttl())
 }
 
 func (rec Record) Seq() uint64 {
-	return rec.seq
+	return api.Cluster_Record(rec).Seq()
 }

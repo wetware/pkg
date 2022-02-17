@@ -68,7 +68,7 @@ func (cs *ClusterServer) Lookup(_ context.Context, call api.Cluster_lookup) erro
 	results.SetOk(ok)
 
 	if ok {
-		rec.SetPeer(capRec.Peer().String())
+		rec.SetPeer(string(capRec.Peer()))
 		rec.SetTtl(int64(capRec.TTL()))
 		rec.SetSeq(capRec.Seq())
 	}
