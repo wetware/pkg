@@ -24,7 +24,7 @@ func TestIter(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		view := mockView{
+		rt := routingTable{
 			{
 				id:  newID(),
 				ttl: time.Second * 10,
@@ -33,7 +33,7 @@ func TestIter(t *testing.T) {
 			},
 		}
 
-		c := (&cluster.ViewFactory{view}).NewClient(nil)
+		c := (&cluster.ViewFactory{rt}).NewClient(nil)
 
 		it, release := c.Iter(ctx)
 		defer release()
@@ -56,9 +56,9 @@ func TestIter(t *testing.T) {
 		defer cancel()
 
 		dl := time.Now().Add(time.Second * 10)
-		var view = make(mockView, 65)
-		for i := range view {
-			view[i] = record{
+		var rt = make(routingTable, 65)
+		for i := range rt {
+			rt[i] = record{
 				id:  newID(),
 				ttl: time.Second * 10,
 				seq: uint64(i),
@@ -66,7 +66,7 @@ func TestIter(t *testing.T) {
 			}
 		}
 
-		c := (&cluster.ViewFactory{view}).NewClient(nil)
+		c := (&cluster.ViewFactory{rt}).NewClient(nil)
 
 		it, release := c.Iter(ctx)
 		defer release()
@@ -76,7 +76,7 @@ func TestIter(t *testing.T) {
 
 			r := it.Record()
 			require.NotNil(t, r)
-			require.Equal(t, view[i].Peer(), r.Peer())
+			require.Equal(t, rt[i].Peer(), r.Peer())
 			require.Equal(t, uint64(i), r.Seq())
 			require.Greater(t, r.TTL(), time.Duration(0),
 				"should have positive, nonzero TTL")
@@ -84,46 +84,65 @@ func TestIter(t *testing.T) {
 
 		assert.NoError(t, it.Err, "should be exhausted")
 	})
+
+	t.Run("Cancel", func(t *testing.T) {
+		t.Parallel()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		var (
+			rt = blockingRoutingTable{ctx}
+			c  = (&cluster.ViewFactory{rt}).NewClient(nil)
+		)
+
+		it, release := c.Iter(ctx)
+		defer release()
+
+		ctx, cancel = context.WithCancel(ctx)
+		cancel()
+
+		ok := it.Next(ctx)
+		assert.False(t, ok, "should abort iteration")
+		assert.ErrorIs(t, it.Err, context.Canceled,
+			"should report context canceled")
+	})
 }
 
 func TestLookup(t *testing.T) {
 	t.Parallel()
 	t.Helper()
 
-	t.Run("Batch", func(t *testing.T) {
-		t.Parallel()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		dl := time.Now().Add(time.Second * 10)
-		var view = make(mockView, 65)
-		for i := range view {
-			view[i] = record{
-				id:  newID(),
-				ttl: time.Second * 10,
-				seq: uint64(i),
-				dl:  dl,
-			}
+	dl := time.Now().Add(time.Second * 10)
+	var view = make(routingTable, 65)
+	for i := range view {
+		view[i] = record{
+			id:  newID(),
+			ttl: time.Second * 10,
+			seq: uint64(i),
+			dl:  dl,
 		}
+	}
 
-		c := (&cluster.ViewFactory{view}).NewClient(nil)
+	c := (&cluster.ViewFactory{view}).NewClient(nil)
 
-		want := view[42]
+	want := view[42]
 
-		f, release := c.Lookup(ctx, want.id)
-		defer release()
+	f, release := c.Lookup(ctx, want.id)
+	defer release()
 
-		got, err := f.Struct()
-		require.NoError(t, err)
+	got, err := f.Struct()
+	require.NoError(t, err)
 
-		id, err := got.Peer()
-		require.NoError(t, err)
-		assert.Equal(t, want.Peer(), id)
+	id, err := got.Peer()
+	require.NoError(t, err)
+	assert.Equal(t, want.Peer(), id)
 
-		assert.Equal(t, got.Seq(), want.seq)
-		assert.Greater(t, got.TTL(), time.Duration(0))
-	})
+	assert.Equal(t, got.Seq(), want.seq)
+	assert.Greater(t, got.TTL(), time.Duration(0))
 }
 
 func newID() peer.ID {
@@ -139,6 +158,22 @@ func newID() peer.ID {
 
 	return id
 }
+
+type blockingRoutingTable struct{ ctx context.Context }
+
+func (b blockingRoutingTable) Iter() routing.Iterator {
+	return blockingRoutingTable{b.ctx}
+}
+
+func (b blockingRoutingTable) Lookup(id peer.ID) (routing.Record, bool) {
+	<-b.ctx.Done()
+	return nil, false
+}
+
+func (b blockingRoutingTable) Next()                { <-b.ctx.Done() }
+func (blockingRoutingTable) Record() routing.Record { return nil }
+func (blockingRoutingTable) Deadline() time.Time    { return time.Time{} }
+func (blockingRoutingTable) Finish()                {}
 
 type iter struct {
 	recs []record
@@ -178,15 +213,15 @@ func (r record) Peer() peer.ID      { return peer.ID(r.id) }
 func (r record) TTL() time.Duration { return r.ttl }
 func (r record) Seq() uint64        { return r.seq }
 
-type mockView []record
+type routingTable []record
 
-func (v mockView) Iter() routing.Iterator {
+func (v routingTable) Iter() routing.Iterator {
 	return &iter{
 		recs: v,
 	}
 }
 
-func (v mockView) Lookup(id peer.ID) (routing.Record, bool) {
+func (v routingTable) Lookup(id peer.ID) (routing.Record, bool) {
 	for _, r := range v {
 		if r.Peer() == id {
 			return r, true

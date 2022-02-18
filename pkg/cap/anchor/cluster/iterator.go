@@ -63,9 +63,9 @@ func (r record) Seq() uint64        { return r.seq }
 
 type Iterator struct {
 	h handler
+	f *capnp.Future
 
 	Err error
-	r   resolver
 
 	head record
 	tail []record
@@ -81,10 +81,7 @@ func newIterator(ctx context.Context, r api.View, h handler) (*Iterator, capnp.R
 		return ps.SetHandler(c)
 	})
 
-	return &Iterator{
-		h: h,
-		r: resolver(f),
-	}, release
+	return &Iterator{h: h, f: f.Future}, release
 }
 
 func (it *Iterator) Next(ctx context.Context) (more bool) {
@@ -108,7 +105,7 @@ func (it *Iterator) nextBatch(ctx context.Context) (err error) {
 	select {
 	case it.tail, ok = <-it.h:
 		if !ok {
-			err = it.r.Resolve(ctx)
+			_, err = it.f.Struct()
 		}
 
 	case <-ctx.Done():
@@ -116,17 +113,4 @@ func (it *Iterator) nextBatch(ctx context.Context) (err error) {
 	}
 
 	return
-}
-
-type resolver api.View_iter_Results_Future
-
-func (r resolver) Resolve(ctx context.Context) error {
-	select {
-	case <-r.Done():
-		_, err := r.Struct()
-		return err
-
-	case <-ctx.Done():
-		return ctx.Err()
-	}
 }

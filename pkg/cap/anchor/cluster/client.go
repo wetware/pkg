@@ -2,15 +2,12 @@ package cluster
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"capnproto.org/go/capnp/v3"
 	"github.com/libp2p/go-libp2p-core/peer"
 	api "github.com/wetware/ww/internal/api/cluster"
 )
-
-var ErrNotFound = errors.New("not found")
 
 type View api.View
 
