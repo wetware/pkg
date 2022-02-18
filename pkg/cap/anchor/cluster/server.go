@@ -7,7 +7,6 @@ import (
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/server"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/wetware/casm/pkg/cluster"
 	"github.com/wetware/casm/pkg/cluster/routing"
 	api "github.com/wetware/ww/internal/api/cluster"
 	"golang.org/x/sync/semaphore"
@@ -25,22 +24,30 @@ var defaultPolicy = server.Policy{
 	AnswerQueueSize:    64,
 }
 
-type ClusterServer struct{ cluster.View }
+// RoutingTable provides a global view of namespace peers.
+type RoutingTable interface {
+	Iter() routing.Iterator
+	Lookup(peer.ID) (routing.Record, bool)
+}
 
-func (cs *ClusterServer) NewClient(policy *server.Policy) Client {
+type ViewFactory struct {
+	View RoutingTable
+}
+
+func (f *ViewFactory) NewClient(policy *server.Policy) View {
 	if policy == nil {
 		policy = &defaultPolicy
 	}
 
-	return Client(api.Cluster_ServerToClient(cs, policy))
+	return View(api.View_ServerToClient(f, policy))
 }
 
-func (cs *ClusterServer) Iter(ctx context.Context, call api.Cluster_iter) error {
+func (f *ViewFactory) Iter(ctx context.Context, call api.View_iter) error {
 	call.Ack()
 
 	b := newBatcher(call.Args())
 
-	for it := cs.View.Iter(); it.Record() != nil; it.Next() {
+	for it := f.View.Iter(); it.Record() != nil; it.Next() {
 		if err := b.Send(ctx, it.Record(), it.Deadline()); err != nil {
 			it.Finish()
 			return err
@@ -50,12 +57,12 @@ func (cs *ClusterServer) Iter(ctx context.Context, call api.Cluster_iter) error 
 	return b.Wait(ctx)
 }
 
-func (cs *ClusterServer) Lookup(_ context.Context, call api.Cluster_lookup) error {
+func (f *ViewFactory) Lookup(_ context.Context, call api.View_lookup) error {
 	peerID, err := call.Args().PeerID()
 	if err != nil {
 		return err
 	}
-	capRec, ok := cs.View.Lookup(peer.ID(peerID))
+	capRec, ok := f.View.Lookup(peer.ID(peerID))
 	results, err := call.AllocResults()
 	if err != nil {
 		return err
@@ -77,12 +84,12 @@ func (cs *ClusterServer) Lookup(_ context.Context, call api.Cluster_lookup) erro
 
 type batcher struct {
 	lim   *limiter
-	h     api.Cluster_Handler
+	h     api.View_Handler
 	fs    map[*capnp.Future]capnp.ReleaseFunc // in-flight
 	batch batch
 }
 
-func newBatcher(p api.Cluster_iter_Params) batcher {
+func newBatcher(p api.View_iter_Params) batcher {
 	return batcher{
 		lim:   newLimiter(),
 		h:     p.Handler(),
@@ -193,8 +200,8 @@ func (b *batch) Add(r routing.Record, dl time.Time) bool {
 	return b.Full()
 }
 
-func (b *batch) Flush() func(api.Cluster_Handler_handle_Params) error {
-	return func(p api.Cluster_Handler_handle_Params) error {
+func (b *batch) Flush() func(api.View_Handler_handle_Params) error {
+	return func(p api.View_Handler_handle_Params) error {
 		defer func() {
 			b.rs = b.rs[:0]
 		}()
@@ -234,7 +241,7 @@ type batchRecord struct {
 	Deadline time.Time
 }
 
-func (r batchRecord) SetParam(t time.Time, rec api.Cluster_Record) error {
+func (r batchRecord) SetParam(t time.Time, rec api.View_Record) error {
 	rec.SetSeq(r.Seq)
 	rec.SetTtl(r.Deadline.Sub(t).Microseconds())
 	return rec.SetPeer(string(r.ID))

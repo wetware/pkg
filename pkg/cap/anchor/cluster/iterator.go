@@ -15,7 +15,7 @@ type handler chan []record
 
 func (h handler) Shutdown() { close(h) }
 
-func (h handler) Handle(ctx context.Context, call api.Cluster_Handler_handle) error {
+func (h handler) Handle(ctx context.Context, call api.View_Handler_handle) error {
 	recs, err := loadBatch(call.Args())
 	if err != nil || len(recs) == 0 { // defensive
 		return err
@@ -30,7 +30,7 @@ func (h handler) Handle(ctx context.Context, call api.Cluster_Handler_handle) er
 	}
 }
 
-func loadBatch(args api.Cluster_Handler_handle_Params) ([]record, error) {
+func loadBatch(args api.View_Handler_handle_Params) ([]record, error) {
 	rs, err := args.Records()
 	if err != nil {
 		return nil, err
@@ -67,17 +67,17 @@ type Iterator struct {
 	Err error
 	r   resolver
 
-	head cluster.Record
+	head record
 	tail []record
 }
 
-func newIterator(ctx context.Context, r api.Cluster, h handler) (*Iterator, capnp.ReleaseFunc) {
-	c := api.Cluster_Handler_ServerToClient(h, &server.Policy{
+func newIterator(ctx context.Context, r api.View, h handler) (*Iterator, capnp.ReleaseFunc) {
+	c := api.View_Handler_ServerToClient(h, &server.Policy{
 		MaxConcurrentCalls: cap(h),
 		AnswerQueueSize:    cap(h),
 	})
 
-	f, release := r.Iter(ctx, func(ps api.Cluster_iter_Params) error {
+	f, release := r.Iter(ctx, func(ps api.View_iter_Params) error {
 		return ps.SetHandler(c)
 	})
 
@@ -118,7 +118,7 @@ func (it *Iterator) nextBatch(ctx context.Context) (err error) {
 	return
 }
 
-type resolver api.Cluster_iter_Results_Future
+type resolver api.View_iter_Results_Future
 
 func (r resolver) Resolve(ctx context.Context) error {
 	select {

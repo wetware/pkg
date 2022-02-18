@@ -12,31 +12,31 @@ import (
 
 var ErrNotFound = errors.New("not found")
 
-type Client api.Cluster
+type View api.View
 
-func (cl Client) Iter(ctx context.Context) (*Iterator, capnp.ReleaseFunc) {
+func (cl View) Iter(ctx context.Context) (*Iterator, capnp.ReleaseFunc) {
 	ctx, cancel := context.WithCancel(ctx)
 
 	h := make(handler, defaultMaxInflight)
 
-	it, release := newIterator(ctx, api.Cluster(cl), h)
+	it, release := newIterator(ctx, api.View(cl), h)
 	return it, func() {
 		cancel()
 		release()
 	}
 }
 
-func (cl Client) Lookup(ctx context.Context, peerID peer.ID) (FutureRecord, capnp.ReleaseFunc) {
-	f, release := api.Cluster(cl).Lookup(ctx, func(r api.Cluster_lookup_Params) error {
+func (cl View) Lookup(ctx context.Context, peerID peer.ID) (FutureRecord, capnp.ReleaseFunc) {
+	f, release := api.View(cl).Lookup(ctx, func(r api.View_lookup_Params) error {
 		return r.SetPeerID(string(peerID))
 	})
 	return FutureRecord(f), release
 }
 
-type FutureRecord api.Cluster_lookup_Results_Future
+type FutureRecord api.View_lookup_Results_Future
 
 func (f FutureRecord) Struct() (Record, error) {
-	res, err := api.Cluster_lookup_Results_Future(f).Struct()
+	res, err := api.View_lookup_Results_Future(f).Struct()
 	if err != nil {
 		return Record{}, err
 	}
@@ -45,10 +45,10 @@ func (f FutureRecord) Struct() (Record, error) {
 	return Record(rec), err
 }
 
-type Record api.Cluster_Record
+type Record api.View_Record
 
 func (rec Record) Peer() (peer.ID, error) {
-	s, err := api.Cluster_Record(rec).Peer()
+	s, err := api.View_Record(rec).Peer()
 	if err != nil {
 		return "", err
 	}
@@ -57,9 +57,9 @@ func (rec Record) Peer() (peer.ID, error) {
 }
 
 func (rec Record) TTL() time.Duration {
-	return time.Duration(api.Cluster_Record(rec).Ttl())
+	return time.Duration(api.View_Record(rec).Ttl())
 }
 
 func (rec Record) Seq() uint64 {
-	return api.Cluster_Record(rec).Seq()
+	return api.View_Record(rec).Seq()
 }

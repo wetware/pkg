@@ -10,483 +10,483 @@ import (
 	context "context"
 )
 
-type Cluster struct{ Client *capnp.Client }
+type View struct{ Client *capnp.Client }
 
-// Cluster_TypeID is the unique identifier for the type Cluster.
-const Cluster_TypeID = 0x89ea60fe991cc330
+// View_TypeID is the unique identifier for the type View.
+const View_TypeID = 0x8a1df0335afc249a
 
-func (c Cluster) Iter(ctx context.Context, params func(Cluster_iter_Params) error) (Cluster_iter_Results_Future, capnp.ReleaseFunc) {
+func (c View) Iter(ctx context.Context, params func(View_iter_Params) error) (View_iter_Results_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
 		Method: capnp.Method{
-			InterfaceID:   0x89ea60fe991cc330,
+			InterfaceID:   0x8a1df0335afc249a,
 			MethodID:      0,
-			InterfaceName: "cluster.capnp:Cluster",
+			InterfaceName: "cluster.capnp:View",
 			MethodName:    "iter",
 		},
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Cluster_iter_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(View_iter_Params{Struct: s}) }
 	}
 	ans, release := c.Client.SendCall(ctx, s)
-	return Cluster_iter_Results_Future{Future: ans.Future()}, release
+	return View_iter_Results_Future{Future: ans.Future()}, release
 }
-func (c Cluster) Lookup(ctx context.Context, params func(Cluster_lookup_Params) error) (Cluster_lookup_Results_Future, capnp.ReleaseFunc) {
+func (c View) Lookup(ctx context.Context, params func(View_lookup_Params) error) (View_lookup_Results_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
 		Method: capnp.Method{
-			InterfaceID:   0x89ea60fe991cc330,
+			InterfaceID:   0x8a1df0335afc249a,
 			MethodID:      1,
-			InterfaceName: "cluster.capnp:Cluster",
+			InterfaceName: "cluster.capnp:View",
 			MethodName:    "lookup",
 		},
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Cluster_lookup_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(View_lookup_Params{Struct: s}) }
 	}
 	ans, release := c.Client.SendCall(ctx, s)
-	return Cluster_lookup_Results_Future{Future: ans.Future()}, release
+	return View_lookup_Results_Future{Future: ans.Future()}, release
 }
 
-func (c Cluster) AddRef() Cluster {
-	return Cluster{
+func (c View) AddRef() View {
+	return View{
 		Client: c.Client.AddRef(),
 	}
 }
 
-func (c Cluster) Release() {
+func (c View) Release() {
 	c.Client.Release()
 }
 
-// A Cluster_Server is a Cluster with a local implementation.
-type Cluster_Server interface {
-	Iter(context.Context, Cluster_iter) error
+// A View_Server is a View with a local implementation.
+type View_Server interface {
+	Iter(context.Context, View_iter) error
 
-	Lookup(context.Context, Cluster_lookup) error
+	Lookup(context.Context, View_lookup) error
 }
 
-// Cluster_NewServer creates a new Server from an implementation of Cluster_Server.
-func Cluster_NewServer(s Cluster_Server, policy *server.Policy) *server.Server {
+// View_NewServer creates a new Server from an implementation of View_Server.
+func View_NewServer(s View_Server, policy *server.Policy) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(Cluster_Methods(nil, s), s, c, policy)
+	return server.New(View_Methods(nil, s), s, c, policy)
 }
 
-// Cluster_ServerToClient creates a new Client from an implementation of Cluster_Server.
+// View_ServerToClient creates a new Client from an implementation of View_Server.
 // The caller is responsible for calling Release on the returned Client.
-func Cluster_ServerToClient(s Cluster_Server, policy *server.Policy) Cluster {
-	return Cluster{Client: capnp.NewClient(Cluster_NewServer(s, policy))}
+func View_ServerToClient(s View_Server, policy *server.Policy) View {
+	return View{Client: capnp.NewClient(View_NewServer(s, policy))}
 }
 
-// Cluster_Methods appends Methods to a slice that invoke the methods on s.
+// View_Methods appends Methods to a slice that invoke the methods on s.
 // This can be used to create a more complicated Server.
-func Cluster_Methods(methods []server.Method, s Cluster_Server) []server.Method {
+func View_Methods(methods []server.Method, s View_Server) []server.Method {
 	if cap(methods) == 0 {
 		methods = make([]server.Method, 0, 2)
 	}
 
 	methods = append(methods, server.Method{
 		Method: capnp.Method{
-			InterfaceID:   0x89ea60fe991cc330,
+			InterfaceID:   0x8a1df0335afc249a,
 			MethodID:      0,
-			InterfaceName: "cluster.capnp:Cluster",
+			InterfaceName: "cluster.capnp:View",
 			MethodName:    "iter",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.Iter(ctx, Cluster_iter{call})
+			return s.Iter(ctx, View_iter{call})
 		},
 	})
 
 	methods = append(methods, server.Method{
 		Method: capnp.Method{
-			InterfaceID:   0x89ea60fe991cc330,
+			InterfaceID:   0x8a1df0335afc249a,
 			MethodID:      1,
-			InterfaceName: "cluster.capnp:Cluster",
+			InterfaceName: "cluster.capnp:View",
 			MethodName:    "lookup",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.Lookup(ctx, Cluster_lookup{call})
+			return s.Lookup(ctx, View_lookup{call})
 		},
 	})
 
 	return methods
 }
 
-// Cluster_iter holds the state for a server call to Cluster.iter.
+// View_iter holds the state for a server call to View.iter.
 // See server.Call for documentation.
-type Cluster_iter struct {
+type View_iter struct {
 	*server.Call
 }
 
 // Args returns the call's arguments.
-func (c Cluster_iter) Args() Cluster_iter_Params {
-	return Cluster_iter_Params{Struct: c.Call.Args()}
+func (c View_iter) Args() View_iter_Params {
+	return View_iter_Params{Struct: c.Call.Args()}
 }
 
 // AllocResults allocates the results struct.
-func (c Cluster_iter) AllocResults() (Cluster_iter_Results, error) {
+func (c View_iter) AllocResults() (View_iter_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Cluster_iter_Results{Struct: r}, err
+	return View_iter_Results{Struct: r}, err
 }
 
-// Cluster_lookup holds the state for a server call to Cluster.lookup.
+// View_lookup holds the state for a server call to View.lookup.
 // See server.Call for documentation.
-type Cluster_lookup struct {
+type View_lookup struct {
 	*server.Call
 }
 
 // Args returns the call's arguments.
-func (c Cluster_lookup) Args() Cluster_lookup_Params {
-	return Cluster_lookup_Params{Struct: c.Call.Args()}
+func (c View_lookup) Args() View_lookup_Params {
+	return View_lookup_Params{Struct: c.Call.Args()}
 }
 
 // AllocResults allocates the results struct.
-func (c Cluster_lookup) AllocResults() (Cluster_lookup_Results, error) {
+func (c View_lookup) AllocResults() (View_lookup_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 8, PointerCount: 1})
-	return Cluster_lookup_Results{Struct: r}, err
+	return View_lookup_Results{Struct: r}, err
 }
 
-type Cluster_Handler struct{ Client *capnp.Client }
+type View_Handler struct{ Client *capnp.Client }
 
-// Cluster_Handler_TypeID is the unique identifier for the type Cluster_Handler.
-const Cluster_Handler_TypeID = 0xa8bd4ea1c77154c3
+// View_Handler_TypeID is the unique identifier for the type View_Handler.
+const View_Handler_TypeID = 0xee93a663b2a23c03
 
-func (c Cluster_Handler) Handle(ctx context.Context, params func(Cluster_Handler_handle_Params) error) (Cluster_Handler_handle_Results_Future, capnp.ReleaseFunc) {
+func (c View_Handler) Handle(ctx context.Context, params func(View_Handler_handle_Params) error) (View_Handler_handle_Results_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
 		Method: capnp.Method{
-			InterfaceID:   0xa8bd4ea1c77154c3,
+			InterfaceID:   0xee93a663b2a23c03,
 			MethodID:      0,
-			InterfaceName: "cluster.capnp:Cluster.Handler",
+			InterfaceName: "cluster.capnp:View.Handler",
 			MethodName:    "handle",
 		},
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Cluster_Handler_handle_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(View_Handler_handle_Params{Struct: s}) }
 	}
 	ans, release := c.Client.SendCall(ctx, s)
-	return Cluster_Handler_handle_Results_Future{Future: ans.Future()}, release
+	return View_Handler_handle_Results_Future{Future: ans.Future()}, release
 }
 
-func (c Cluster_Handler) AddRef() Cluster_Handler {
-	return Cluster_Handler{
+func (c View_Handler) AddRef() View_Handler {
+	return View_Handler{
 		Client: c.Client.AddRef(),
 	}
 }
 
-func (c Cluster_Handler) Release() {
+func (c View_Handler) Release() {
 	c.Client.Release()
 }
 
-// A Cluster_Handler_Server is a Cluster_Handler with a local implementation.
-type Cluster_Handler_Server interface {
-	Handle(context.Context, Cluster_Handler_handle) error
+// A View_Handler_Server is a View_Handler with a local implementation.
+type View_Handler_Server interface {
+	Handle(context.Context, View_Handler_handle) error
 }
 
-// Cluster_Handler_NewServer creates a new Server from an implementation of Cluster_Handler_Server.
-func Cluster_Handler_NewServer(s Cluster_Handler_Server, policy *server.Policy) *server.Server {
+// View_Handler_NewServer creates a new Server from an implementation of View_Handler_Server.
+func View_Handler_NewServer(s View_Handler_Server, policy *server.Policy) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(Cluster_Handler_Methods(nil, s), s, c, policy)
+	return server.New(View_Handler_Methods(nil, s), s, c, policy)
 }
 
-// Cluster_Handler_ServerToClient creates a new Client from an implementation of Cluster_Handler_Server.
+// View_Handler_ServerToClient creates a new Client from an implementation of View_Handler_Server.
 // The caller is responsible for calling Release on the returned Client.
-func Cluster_Handler_ServerToClient(s Cluster_Handler_Server, policy *server.Policy) Cluster_Handler {
-	return Cluster_Handler{Client: capnp.NewClient(Cluster_Handler_NewServer(s, policy))}
+func View_Handler_ServerToClient(s View_Handler_Server, policy *server.Policy) View_Handler {
+	return View_Handler{Client: capnp.NewClient(View_Handler_NewServer(s, policy))}
 }
 
-// Cluster_Handler_Methods appends Methods to a slice that invoke the methods on s.
+// View_Handler_Methods appends Methods to a slice that invoke the methods on s.
 // This can be used to create a more complicated Server.
-func Cluster_Handler_Methods(methods []server.Method, s Cluster_Handler_Server) []server.Method {
+func View_Handler_Methods(methods []server.Method, s View_Handler_Server) []server.Method {
 	if cap(methods) == 0 {
 		methods = make([]server.Method, 0, 1)
 	}
 
 	methods = append(methods, server.Method{
 		Method: capnp.Method{
-			InterfaceID:   0xa8bd4ea1c77154c3,
+			InterfaceID:   0xee93a663b2a23c03,
 			MethodID:      0,
-			InterfaceName: "cluster.capnp:Cluster.Handler",
+			InterfaceName: "cluster.capnp:View.Handler",
 			MethodName:    "handle",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.Handle(ctx, Cluster_Handler_handle{call})
+			return s.Handle(ctx, View_Handler_handle{call})
 		},
 	})
 
 	return methods
 }
 
-// Cluster_Handler_handle holds the state for a server call to Cluster_Handler.handle.
+// View_Handler_handle holds the state for a server call to View_Handler.handle.
 // See server.Call for documentation.
-type Cluster_Handler_handle struct {
+type View_Handler_handle struct {
 	*server.Call
 }
 
 // Args returns the call's arguments.
-func (c Cluster_Handler_handle) Args() Cluster_Handler_handle_Params {
-	return Cluster_Handler_handle_Params{Struct: c.Call.Args()}
+func (c View_Handler_handle) Args() View_Handler_handle_Params {
+	return View_Handler_handle_Params{Struct: c.Call.Args()}
 }
 
 // AllocResults allocates the results struct.
-func (c Cluster_Handler_handle) AllocResults() (Cluster_Handler_handle_Results, error) {
+func (c View_Handler_handle) AllocResults() (View_Handler_handle_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Cluster_Handler_handle_Results{Struct: r}, err
+	return View_Handler_handle_Results{Struct: r}, err
 }
 
-type Cluster_Handler_handle_Params struct{ capnp.Struct }
+type View_Handler_handle_Params struct{ capnp.Struct }
 
-// Cluster_Handler_handle_Params_TypeID is the unique identifier for the type Cluster_Handler_handle_Params.
-const Cluster_Handler_handle_Params_TypeID = 0x8f27eaf1e95f34b6
+// View_Handler_handle_Params_TypeID is the unique identifier for the type View_Handler_handle_Params.
+const View_Handler_handle_Params_TypeID = 0x8eb96dceb6a99ebd
 
-func NewCluster_Handler_handle_Params(s *capnp.Segment) (Cluster_Handler_handle_Params, error) {
+func NewView_Handler_handle_Params(s *capnp.Segment) (View_Handler_handle_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Cluster_Handler_handle_Params{st}, err
+	return View_Handler_handle_Params{st}, err
 }
 
-func NewRootCluster_Handler_handle_Params(s *capnp.Segment) (Cluster_Handler_handle_Params, error) {
+func NewRootView_Handler_handle_Params(s *capnp.Segment) (View_Handler_handle_Params, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Cluster_Handler_handle_Params{st}, err
+	return View_Handler_handle_Params{st}, err
 }
 
-func ReadRootCluster_Handler_handle_Params(msg *capnp.Message) (Cluster_Handler_handle_Params, error) {
+func ReadRootView_Handler_handle_Params(msg *capnp.Message) (View_Handler_handle_Params, error) {
 	root, err := msg.Root()
-	return Cluster_Handler_handle_Params{root.Struct()}, err
+	return View_Handler_handle_Params{root.Struct()}, err
 }
 
-func (s Cluster_Handler_handle_Params) String() string {
-	str, _ := text.Marshal(0x8f27eaf1e95f34b6, s.Struct)
+func (s View_Handler_handle_Params) String() string {
+	str, _ := text.Marshal(0x8eb96dceb6a99ebd, s.Struct)
 	return str
 }
 
-func (s Cluster_Handler_handle_Params) Records() (Cluster_Record_List, error) {
+func (s View_Handler_handle_Params) Records() (View_Record_List, error) {
 	p, err := s.Struct.Ptr(0)
-	return Cluster_Record_List{List: p.List()}, err
+	return View_Record_List{List: p.List()}, err
 }
 
-func (s Cluster_Handler_handle_Params) HasRecords() bool {
+func (s View_Handler_handle_Params) HasRecords() bool {
 	return s.Struct.HasPtr(0)
 }
 
-func (s Cluster_Handler_handle_Params) SetRecords(v Cluster_Record_List) error {
+func (s View_Handler_handle_Params) SetRecords(v View_Record_List) error {
 	return s.Struct.SetPtr(0, v.List.ToPtr())
 }
 
 // NewRecords sets the records field to a newly
-// allocated Cluster_Record_List, preferring placement in s's segment.
-func (s Cluster_Handler_handle_Params) NewRecords(n int32) (Cluster_Record_List, error) {
-	l, err := NewCluster_Record_List(s.Struct.Segment(), n)
+// allocated View_Record_List, preferring placement in s's segment.
+func (s View_Handler_handle_Params) NewRecords(n int32) (View_Record_List, error) {
+	l, err := NewView_Record_List(s.Struct.Segment(), n)
 	if err != nil {
-		return Cluster_Record_List{}, err
+		return View_Record_List{}, err
 	}
 	err = s.Struct.SetPtr(0, l.List.ToPtr())
 	return l, err
 }
 
-// Cluster_Handler_handle_Params_List is a list of Cluster_Handler_handle_Params.
-type Cluster_Handler_handle_Params_List struct{ capnp.List }
+// View_Handler_handle_Params_List is a list of View_Handler_handle_Params.
+type View_Handler_handle_Params_List struct{ capnp.List }
 
-// NewCluster_Handler_handle_Params creates a new list of Cluster_Handler_handle_Params.
-func NewCluster_Handler_handle_Params_List(s *capnp.Segment, sz int32) (Cluster_Handler_handle_Params_List, error) {
+// NewView_Handler_handle_Params creates a new list of View_Handler_handle_Params.
+func NewView_Handler_handle_Params_List(s *capnp.Segment, sz int32) (View_Handler_handle_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return Cluster_Handler_handle_Params_List{l}, err
+	return View_Handler_handle_Params_List{l}, err
 }
 
-func (s Cluster_Handler_handle_Params_List) At(i int) Cluster_Handler_handle_Params {
-	return Cluster_Handler_handle_Params{s.List.Struct(i)}
+func (s View_Handler_handle_Params_List) At(i int) View_Handler_handle_Params {
+	return View_Handler_handle_Params{s.List.Struct(i)}
 }
 
-func (s Cluster_Handler_handle_Params_List) Set(i int, v Cluster_Handler_handle_Params) error {
+func (s View_Handler_handle_Params_List) Set(i int, v View_Handler_handle_Params) error {
 	return s.List.SetStruct(i, v.Struct)
 }
 
-func (s Cluster_Handler_handle_Params_List) String() string {
-	str, _ := text.MarshalList(0x8f27eaf1e95f34b6, s.List)
+func (s View_Handler_handle_Params_List) String() string {
+	str, _ := text.MarshalList(0x8eb96dceb6a99ebd, s.List)
 	return str
 }
 
-// Cluster_Handler_handle_Params_Future is a wrapper for a Cluster_Handler_handle_Params promised by a client call.
-type Cluster_Handler_handle_Params_Future struct{ *capnp.Future }
+// View_Handler_handle_Params_Future is a wrapper for a View_Handler_handle_Params promised by a client call.
+type View_Handler_handle_Params_Future struct{ *capnp.Future }
 
-func (p Cluster_Handler_handle_Params_Future) Struct() (Cluster_Handler_handle_Params, error) {
+func (p View_Handler_handle_Params_Future) Struct() (View_Handler_handle_Params, error) {
 	s, err := p.Future.Struct()
-	return Cluster_Handler_handle_Params{s}, err
+	return View_Handler_handle_Params{s}, err
 }
 
-type Cluster_Handler_handle_Results struct{ capnp.Struct }
+type View_Handler_handle_Results struct{ capnp.Struct }
 
-// Cluster_Handler_handle_Results_TypeID is the unique identifier for the type Cluster_Handler_handle_Results.
-const Cluster_Handler_handle_Results_TypeID = 0xc97d97ad2c77fb6e
+// View_Handler_handle_Results_TypeID is the unique identifier for the type View_Handler_handle_Results.
+const View_Handler_handle_Results_TypeID = 0x8390b923d29e3b12
 
-func NewCluster_Handler_handle_Results(s *capnp.Segment) (Cluster_Handler_handle_Results, error) {
+func NewView_Handler_handle_Results(s *capnp.Segment) (View_Handler_handle_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Cluster_Handler_handle_Results{st}, err
+	return View_Handler_handle_Results{st}, err
 }
 
-func NewRootCluster_Handler_handle_Results(s *capnp.Segment) (Cluster_Handler_handle_Results, error) {
+func NewRootView_Handler_handle_Results(s *capnp.Segment) (View_Handler_handle_Results, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Cluster_Handler_handle_Results{st}, err
+	return View_Handler_handle_Results{st}, err
 }
 
-func ReadRootCluster_Handler_handle_Results(msg *capnp.Message) (Cluster_Handler_handle_Results, error) {
+func ReadRootView_Handler_handle_Results(msg *capnp.Message) (View_Handler_handle_Results, error) {
 	root, err := msg.Root()
-	return Cluster_Handler_handle_Results{root.Struct()}, err
+	return View_Handler_handle_Results{root.Struct()}, err
 }
 
-func (s Cluster_Handler_handle_Results) String() string {
-	str, _ := text.Marshal(0xc97d97ad2c77fb6e, s.Struct)
+func (s View_Handler_handle_Results) String() string {
+	str, _ := text.Marshal(0x8390b923d29e3b12, s.Struct)
 	return str
 }
 
-// Cluster_Handler_handle_Results_List is a list of Cluster_Handler_handle_Results.
-type Cluster_Handler_handle_Results_List struct{ capnp.List }
+// View_Handler_handle_Results_List is a list of View_Handler_handle_Results.
+type View_Handler_handle_Results_List struct{ capnp.List }
 
-// NewCluster_Handler_handle_Results creates a new list of Cluster_Handler_handle_Results.
-func NewCluster_Handler_handle_Results_List(s *capnp.Segment, sz int32) (Cluster_Handler_handle_Results_List, error) {
+// NewView_Handler_handle_Results creates a new list of View_Handler_handle_Results.
+func NewView_Handler_handle_Results_List(s *capnp.Segment, sz int32) (View_Handler_handle_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return Cluster_Handler_handle_Results_List{l}, err
+	return View_Handler_handle_Results_List{l}, err
 }
 
-func (s Cluster_Handler_handle_Results_List) At(i int) Cluster_Handler_handle_Results {
-	return Cluster_Handler_handle_Results{s.List.Struct(i)}
+func (s View_Handler_handle_Results_List) At(i int) View_Handler_handle_Results {
+	return View_Handler_handle_Results{s.List.Struct(i)}
 }
 
-func (s Cluster_Handler_handle_Results_List) Set(i int, v Cluster_Handler_handle_Results) error {
+func (s View_Handler_handle_Results_List) Set(i int, v View_Handler_handle_Results) error {
 	return s.List.SetStruct(i, v.Struct)
 }
 
-func (s Cluster_Handler_handle_Results_List) String() string {
-	str, _ := text.MarshalList(0xc97d97ad2c77fb6e, s.List)
+func (s View_Handler_handle_Results_List) String() string {
+	str, _ := text.MarshalList(0x8390b923d29e3b12, s.List)
 	return str
 }
 
-// Cluster_Handler_handle_Results_Future is a wrapper for a Cluster_Handler_handle_Results promised by a client call.
-type Cluster_Handler_handle_Results_Future struct{ *capnp.Future }
+// View_Handler_handle_Results_Future is a wrapper for a View_Handler_handle_Results promised by a client call.
+type View_Handler_handle_Results_Future struct{ *capnp.Future }
 
-func (p Cluster_Handler_handle_Results_Future) Struct() (Cluster_Handler_handle_Results, error) {
+func (p View_Handler_handle_Results_Future) Struct() (View_Handler_handle_Results, error) {
 	s, err := p.Future.Struct()
-	return Cluster_Handler_handle_Results{s}, err
+	return View_Handler_handle_Results{s}, err
 }
 
-type Cluster_Record struct{ capnp.Struct }
+type View_Record struct{ capnp.Struct }
 
-// Cluster_Record_TypeID is the unique identifier for the type Cluster_Record.
-const Cluster_Record_TypeID = 0xaa4e2a5d60de9e67
+// View_Record_TypeID is the unique identifier for the type View_Record.
+const View_Record_TypeID = 0xcdcf42beb2537d20
 
-func NewCluster_Record(s *capnp.Segment) (Cluster_Record, error) {
+func NewView_Record(s *capnp.Segment) (View_Record, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 16, PointerCount: 1})
-	return Cluster_Record{st}, err
+	return View_Record{st}, err
 }
 
-func NewRootCluster_Record(s *capnp.Segment) (Cluster_Record, error) {
+func NewRootView_Record(s *capnp.Segment) (View_Record, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 16, PointerCount: 1})
-	return Cluster_Record{st}, err
+	return View_Record{st}, err
 }
 
-func ReadRootCluster_Record(msg *capnp.Message) (Cluster_Record, error) {
+func ReadRootView_Record(msg *capnp.Message) (View_Record, error) {
 	root, err := msg.Root()
-	return Cluster_Record{root.Struct()}, err
+	return View_Record{root.Struct()}, err
 }
 
-func (s Cluster_Record) String() string {
-	str, _ := text.Marshal(0xaa4e2a5d60de9e67, s.Struct)
+func (s View_Record) String() string {
+	str, _ := text.Marshal(0xcdcf42beb2537d20, s.Struct)
 	return str
 }
 
-func (s Cluster_Record) Peer() (string, error) {
+func (s View_Record) Peer() (string, error) {
 	p, err := s.Struct.Ptr(0)
 	return p.Text(), err
 }
 
-func (s Cluster_Record) HasPeer() bool {
+func (s View_Record) HasPeer() bool {
 	return s.Struct.HasPtr(0)
 }
 
-func (s Cluster_Record) PeerBytes() ([]byte, error) {
+func (s View_Record) PeerBytes() ([]byte, error) {
 	p, err := s.Struct.Ptr(0)
 	return p.TextBytes(), err
 }
 
-func (s Cluster_Record) SetPeer(v string) error {
+func (s View_Record) SetPeer(v string) error {
 	return s.Struct.SetText(0, v)
 }
 
-func (s Cluster_Record) Ttl() int64 {
+func (s View_Record) Ttl() int64 {
 	return int64(s.Struct.Uint64(0))
 }
 
-func (s Cluster_Record) SetTtl(v int64) {
+func (s View_Record) SetTtl(v int64) {
 	s.Struct.SetUint64(0, uint64(v))
 }
 
-func (s Cluster_Record) Seq() uint64 {
+func (s View_Record) Seq() uint64 {
 	return s.Struct.Uint64(8)
 }
 
-func (s Cluster_Record) SetSeq(v uint64) {
+func (s View_Record) SetSeq(v uint64) {
 	s.Struct.SetUint64(8, v)
 }
 
-// Cluster_Record_List is a list of Cluster_Record.
-type Cluster_Record_List struct{ capnp.List }
+// View_Record_List is a list of View_Record.
+type View_Record_List struct{ capnp.List }
 
-// NewCluster_Record creates a new list of Cluster_Record.
-func NewCluster_Record_List(s *capnp.Segment, sz int32) (Cluster_Record_List, error) {
+// NewView_Record creates a new list of View_Record.
+func NewView_Record_List(s *capnp.Segment, sz int32) (View_Record_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 16, PointerCount: 1}, sz)
-	return Cluster_Record_List{l}, err
+	return View_Record_List{l}, err
 }
 
-func (s Cluster_Record_List) At(i int) Cluster_Record { return Cluster_Record{s.List.Struct(i)} }
+func (s View_Record_List) At(i int) View_Record { return View_Record{s.List.Struct(i)} }
 
-func (s Cluster_Record_List) Set(i int, v Cluster_Record) error { return s.List.SetStruct(i, v.Struct) }
+func (s View_Record_List) Set(i int, v View_Record) error { return s.List.SetStruct(i, v.Struct) }
 
-func (s Cluster_Record_List) String() string {
-	str, _ := text.MarshalList(0xaa4e2a5d60de9e67, s.List)
+func (s View_Record_List) String() string {
+	str, _ := text.MarshalList(0xcdcf42beb2537d20, s.List)
 	return str
 }
 
-// Cluster_Record_Future is a wrapper for a Cluster_Record promised by a client call.
-type Cluster_Record_Future struct{ *capnp.Future }
+// View_Record_Future is a wrapper for a View_Record promised by a client call.
+type View_Record_Future struct{ *capnp.Future }
 
-func (p Cluster_Record_Future) Struct() (Cluster_Record, error) {
+func (p View_Record_Future) Struct() (View_Record, error) {
 	s, err := p.Future.Struct()
-	return Cluster_Record{s}, err
+	return View_Record{s}, err
 }
 
-type Cluster_iter_Params struct{ capnp.Struct }
+type View_iter_Params struct{ capnp.Struct }
 
-// Cluster_iter_Params_TypeID is the unique identifier for the type Cluster_iter_Params.
-const Cluster_iter_Params_TypeID = 0xfecdf9227b3adc3e
+// View_iter_Params_TypeID is the unique identifier for the type View_iter_Params.
+const View_iter_Params_TypeID = 0xd929e054f82b286c
 
-func NewCluster_iter_Params(s *capnp.Segment) (Cluster_iter_Params, error) {
+func NewView_iter_Params(s *capnp.Segment) (View_iter_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Cluster_iter_Params{st}, err
+	return View_iter_Params{st}, err
 }
 
-func NewRootCluster_iter_Params(s *capnp.Segment) (Cluster_iter_Params, error) {
+func NewRootView_iter_Params(s *capnp.Segment) (View_iter_Params, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Cluster_iter_Params{st}, err
+	return View_iter_Params{st}, err
 }
 
-func ReadRootCluster_iter_Params(msg *capnp.Message) (Cluster_iter_Params, error) {
+func ReadRootView_iter_Params(msg *capnp.Message) (View_iter_Params, error) {
 	root, err := msg.Root()
-	return Cluster_iter_Params{root.Struct()}, err
+	return View_iter_Params{root.Struct()}, err
 }
 
-func (s Cluster_iter_Params) String() string {
-	str, _ := text.Marshal(0xfecdf9227b3adc3e, s.Struct)
+func (s View_iter_Params) String() string {
+	str, _ := text.Marshal(0xd929e054f82b286c, s.Struct)
 	return str
 }
 
-func (s Cluster_iter_Params) Handler() Cluster_Handler {
+func (s View_iter_Params) Handler() View_Handler {
 	p, _ := s.Struct.Ptr(0)
-	return Cluster_Handler{Client: p.Interface().Client()}
+	return View_Handler{Client: p.Interface().Client()}
 }
 
-func (s Cluster_iter_Params) HasHandler() bool {
+func (s View_iter_Params) HasHandler() bool {
 	return s.Struct.HasPtr(0)
 }
 
-func (s Cluster_iter_Params) SetHandler(v Cluster_Handler) error {
+func (s View_iter_Params) SetHandler(v View_Handler) error {
 	if !v.Client.IsValid() {
 		return s.Struct.SetPtr(0, capnp.Ptr{})
 	}
@@ -495,311 +495,308 @@ func (s Cluster_iter_Params) SetHandler(v Cluster_Handler) error {
 	return s.Struct.SetPtr(0, in.ToPtr())
 }
 
-// Cluster_iter_Params_List is a list of Cluster_iter_Params.
-type Cluster_iter_Params_List struct{ capnp.List }
+// View_iter_Params_List is a list of View_iter_Params.
+type View_iter_Params_List struct{ capnp.List }
 
-// NewCluster_iter_Params creates a new list of Cluster_iter_Params.
-func NewCluster_iter_Params_List(s *capnp.Segment, sz int32) (Cluster_iter_Params_List, error) {
+// NewView_iter_Params creates a new list of View_iter_Params.
+func NewView_iter_Params_List(s *capnp.Segment, sz int32) (View_iter_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return Cluster_iter_Params_List{l}, err
+	return View_iter_Params_List{l}, err
 }
 
-func (s Cluster_iter_Params_List) At(i int) Cluster_iter_Params {
-	return Cluster_iter_Params{s.List.Struct(i)}
-}
+func (s View_iter_Params_List) At(i int) View_iter_Params { return View_iter_Params{s.List.Struct(i)} }
 
-func (s Cluster_iter_Params_List) Set(i int, v Cluster_iter_Params) error {
+func (s View_iter_Params_List) Set(i int, v View_iter_Params) error {
 	return s.List.SetStruct(i, v.Struct)
 }
 
-func (s Cluster_iter_Params_List) String() string {
-	str, _ := text.MarshalList(0xfecdf9227b3adc3e, s.List)
+func (s View_iter_Params_List) String() string {
+	str, _ := text.MarshalList(0xd929e054f82b286c, s.List)
 	return str
 }
 
-// Cluster_iter_Params_Future is a wrapper for a Cluster_iter_Params promised by a client call.
-type Cluster_iter_Params_Future struct{ *capnp.Future }
+// View_iter_Params_Future is a wrapper for a View_iter_Params promised by a client call.
+type View_iter_Params_Future struct{ *capnp.Future }
 
-func (p Cluster_iter_Params_Future) Struct() (Cluster_iter_Params, error) {
+func (p View_iter_Params_Future) Struct() (View_iter_Params, error) {
 	s, err := p.Future.Struct()
-	return Cluster_iter_Params{s}, err
+	return View_iter_Params{s}, err
 }
 
-func (p Cluster_iter_Params_Future) Handler() Cluster_Handler {
-	return Cluster_Handler{Client: p.Future.Field(0, nil).Client()}
+func (p View_iter_Params_Future) Handler() View_Handler {
+	return View_Handler{Client: p.Future.Field(0, nil).Client()}
 }
 
-type Cluster_iter_Results struct{ capnp.Struct }
+type View_iter_Results struct{ capnp.Struct }
 
-// Cluster_iter_Results_TypeID is the unique identifier for the type Cluster_iter_Results.
-const Cluster_iter_Results_TypeID = 0xb4b55ec8b670d8c2
+// View_iter_Results_TypeID is the unique identifier for the type View_iter_Results.
+const View_iter_Results_TypeID = 0xe6df611247a8fc13
 
-func NewCluster_iter_Results(s *capnp.Segment) (Cluster_iter_Results, error) {
+func NewView_iter_Results(s *capnp.Segment) (View_iter_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Cluster_iter_Results{st}, err
+	return View_iter_Results{st}, err
 }
 
-func NewRootCluster_iter_Results(s *capnp.Segment) (Cluster_iter_Results, error) {
+func NewRootView_iter_Results(s *capnp.Segment) (View_iter_Results, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Cluster_iter_Results{st}, err
+	return View_iter_Results{st}, err
 }
 
-func ReadRootCluster_iter_Results(msg *capnp.Message) (Cluster_iter_Results, error) {
+func ReadRootView_iter_Results(msg *capnp.Message) (View_iter_Results, error) {
 	root, err := msg.Root()
-	return Cluster_iter_Results{root.Struct()}, err
+	return View_iter_Results{root.Struct()}, err
 }
 
-func (s Cluster_iter_Results) String() string {
-	str, _ := text.Marshal(0xb4b55ec8b670d8c2, s.Struct)
+func (s View_iter_Results) String() string {
+	str, _ := text.Marshal(0xe6df611247a8fc13, s.Struct)
 	return str
 }
 
-// Cluster_iter_Results_List is a list of Cluster_iter_Results.
-type Cluster_iter_Results_List struct{ capnp.List }
+// View_iter_Results_List is a list of View_iter_Results.
+type View_iter_Results_List struct{ capnp.List }
 
-// NewCluster_iter_Results creates a new list of Cluster_iter_Results.
-func NewCluster_iter_Results_List(s *capnp.Segment, sz int32) (Cluster_iter_Results_List, error) {
+// NewView_iter_Results creates a new list of View_iter_Results.
+func NewView_iter_Results_List(s *capnp.Segment, sz int32) (View_iter_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return Cluster_iter_Results_List{l}, err
+	return View_iter_Results_List{l}, err
 }
 
-func (s Cluster_iter_Results_List) At(i int) Cluster_iter_Results {
-	return Cluster_iter_Results{s.List.Struct(i)}
+func (s View_iter_Results_List) At(i int) View_iter_Results {
+	return View_iter_Results{s.List.Struct(i)}
 }
 
-func (s Cluster_iter_Results_List) Set(i int, v Cluster_iter_Results) error {
+func (s View_iter_Results_List) Set(i int, v View_iter_Results) error {
 	return s.List.SetStruct(i, v.Struct)
 }
 
-func (s Cluster_iter_Results_List) String() string {
-	str, _ := text.MarshalList(0xb4b55ec8b670d8c2, s.List)
+func (s View_iter_Results_List) String() string {
+	str, _ := text.MarshalList(0xe6df611247a8fc13, s.List)
 	return str
 }
 
-// Cluster_iter_Results_Future is a wrapper for a Cluster_iter_Results promised by a client call.
-type Cluster_iter_Results_Future struct{ *capnp.Future }
+// View_iter_Results_Future is a wrapper for a View_iter_Results promised by a client call.
+type View_iter_Results_Future struct{ *capnp.Future }
 
-func (p Cluster_iter_Results_Future) Struct() (Cluster_iter_Results, error) {
+func (p View_iter_Results_Future) Struct() (View_iter_Results, error) {
 	s, err := p.Future.Struct()
-	return Cluster_iter_Results{s}, err
+	return View_iter_Results{s}, err
 }
 
-type Cluster_lookup_Params struct{ capnp.Struct }
+type View_lookup_Params struct{ capnp.Struct }
 
-// Cluster_lookup_Params_TypeID is the unique identifier for the type Cluster_lookup_Params.
-const Cluster_lookup_Params_TypeID = 0x932fba9e18ce7bd3
+// View_lookup_Params_TypeID is the unique identifier for the type View_lookup_Params.
+const View_lookup_Params_TypeID = 0xf495a555c9344000
 
-func NewCluster_lookup_Params(s *capnp.Segment) (Cluster_lookup_Params, error) {
+func NewView_lookup_Params(s *capnp.Segment) (View_lookup_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Cluster_lookup_Params{st}, err
+	return View_lookup_Params{st}, err
 }
 
-func NewRootCluster_lookup_Params(s *capnp.Segment) (Cluster_lookup_Params, error) {
+func NewRootView_lookup_Params(s *capnp.Segment) (View_lookup_Params, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Cluster_lookup_Params{st}, err
+	return View_lookup_Params{st}, err
 }
 
-func ReadRootCluster_lookup_Params(msg *capnp.Message) (Cluster_lookup_Params, error) {
+func ReadRootView_lookup_Params(msg *capnp.Message) (View_lookup_Params, error) {
 	root, err := msg.Root()
-	return Cluster_lookup_Params{root.Struct()}, err
+	return View_lookup_Params{root.Struct()}, err
 }
 
-func (s Cluster_lookup_Params) String() string {
-	str, _ := text.Marshal(0x932fba9e18ce7bd3, s.Struct)
+func (s View_lookup_Params) String() string {
+	str, _ := text.Marshal(0xf495a555c9344000, s.Struct)
 	return str
 }
 
-func (s Cluster_lookup_Params) PeerID() (string, error) {
+func (s View_lookup_Params) PeerID() (string, error) {
 	p, err := s.Struct.Ptr(0)
 	return p.Text(), err
 }
 
-func (s Cluster_lookup_Params) HasPeerID() bool {
+func (s View_lookup_Params) HasPeerID() bool {
 	return s.Struct.HasPtr(0)
 }
 
-func (s Cluster_lookup_Params) PeerIDBytes() ([]byte, error) {
+func (s View_lookup_Params) PeerIDBytes() ([]byte, error) {
 	p, err := s.Struct.Ptr(0)
 	return p.TextBytes(), err
 }
 
-func (s Cluster_lookup_Params) SetPeerID(v string) error {
+func (s View_lookup_Params) SetPeerID(v string) error {
 	return s.Struct.SetText(0, v)
 }
 
-// Cluster_lookup_Params_List is a list of Cluster_lookup_Params.
-type Cluster_lookup_Params_List struct{ capnp.List }
+// View_lookup_Params_List is a list of View_lookup_Params.
+type View_lookup_Params_List struct{ capnp.List }
 
-// NewCluster_lookup_Params creates a new list of Cluster_lookup_Params.
-func NewCluster_lookup_Params_List(s *capnp.Segment, sz int32) (Cluster_lookup_Params_List, error) {
+// NewView_lookup_Params creates a new list of View_lookup_Params.
+func NewView_lookup_Params_List(s *capnp.Segment, sz int32) (View_lookup_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return Cluster_lookup_Params_List{l}, err
+	return View_lookup_Params_List{l}, err
 }
 
-func (s Cluster_lookup_Params_List) At(i int) Cluster_lookup_Params {
-	return Cluster_lookup_Params{s.List.Struct(i)}
+func (s View_lookup_Params_List) At(i int) View_lookup_Params {
+	return View_lookup_Params{s.List.Struct(i)}
 }
 
-func (s Cluster_lookup_Params_List) Set(i int, v Cluster_lookup_Params) error {
+func (s View_lookup_Params_List) Set(i int, v View_lookup_Params) error {
 	return s.List.SetStruct(i, v.Struct)
 }
 
-func (s Cluster_lookup_Params_List) String() string {
-	str, _ := text.MarshalList(0x932fba9e18ce7bd3, s.List)
+func (s View_lookup_Params_List) String() string {
+	str, _ := text.MarshalList(0xf495a555c9344000, s.List)
 	return str
 }
 
-// Cluster_lookup_Params_Future is a wrapper for a Cluster_lookup_Params promised by a client call.
-type Cluster_lookup_Params_Future struct{ *capnp.Future }
+// View_lookup_Params_Future is a wrapper for a View_lookup_Params promised by a client call.
+type View_lookup_Params_Future struct{ *capnp.Future }
 
-func (p Cluster_lookup_Params_Future) Struct() (Cluster_lookup_Params, error) {
+func (p View_lookup_Params_Future) Struct() (View_lookup_Params, error) {
 	s, err := p.Future.Struct()
-	return Cluster_lookup_Params{s}, err
+	return View_lookup_Params{s}, err
 }
 
-type Cluster_lookup_Results struct{ capnp.Struct }
+type View_lookup_Results struct{ capnp.Struct }
 
-// Cluster_lookup_Results_TypeID is the unique identifier for the type Cluster_lookup_Results.
-const Cluster_lookup_Results_TypeID = 0xa9f91e1c8368a4dc
+// View_lookup_Results_TypeID is the unique identifier for the type View_lookup_Results.
+const View_lookup_Results_TypeID = 0xe54acc44b61fd7ef
 
-func NewCluster_lookup_Results(s *capnp.Segment) (Cluster_lookup_Results, error) {
+func NewView_lookup_Results(s *capnp.Segment) (View_lookup_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
-	return Cluster_lookup_Results{st}, err
+	return View_lookup_Results{st}, err
 }
 
-func NewRootCluster_lookup_Results(s *capnp.Segment) (Cluster_lookup_Results, error) {
+func NewRootView_lookup_Results(s *capnp.Segment) (View_lookup_Results, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
-	return Cluster_lookup_Results{st}, err
+	return View_lookup_Results{st}, err
 }
 
-func ReadRootCluster_lookup_Results(msg *capnp.Message) (Cluster_lookup_Results, error) {
+func ReadRootView_lookup_Results(msg *capnp.Message) (View_lookup_Results, error) {
 	root, err := msg.Root()
-	return Cluster_lookup_Results{root.Struct()}, err
+	return View_lookup_Results{root.Struct()}, err
 }
 
-func (s Cluster_lookup_Results) String() string {
-	str, _ := text.Marshal(0xa9f91e1c8368a4dc, s.Struct)
+func (s View_lookup_Results) String() string {
+	str, _ := text.Marshal(0xe54acc44b61fd7ef, s.Struct)
 	return str
 }
 
-func (s Cluster_lookup_Results) Record() (Cluster_Record, error) {
+func (s View_lookup_Results) Record() (View_Record, error) {
 	p, err := s.Struct.Ptr(0)
-	return Cluster_Record{Struct: p.Struct()}, err
+	return View_Record{Struct: p.Struct()}, err
 }
 
-func (s Cluster_lookup_Results) HasRecord() bool {
+func (s View_lookup_Results) HasRecord() bool {
 	return s.Struct.HasPtr(0)
 }
 
-func (s Cluster_lookup_Results) SetRecord(v Cluster_Record) error {
+func (s View_lookup_Results) SetRecord(v View_Record) error {
 	return s.Struct.SetPtr(0, v.Struct.ToPtr())
 }
 
 // NewRecord sets the record field to a newly
-// allocated Cluster_Record struct, preferring placement in s's segment.
-func (s Cluster_lookup_Results) NewRecord() (Cluster_Record, error) {
-	ss, err := NewCluster_Record(s.Struct.Segment())
+// allocated View_Record struct, preferring placement in s's segment.
+func (s View_lookup_Results) NewRecord() (View_Record, error) {
+	ss, err := NewView_Record(s.Struct.Segment())
 	if err != nil {
-		return Cluster_Record{}, err
+		return View_Record{}, err
 	}
 	err = s.Struct.SetPtr(0, ss.Struct.ToPtr())
 	return ss, err
 }
 
-func (s Cluster_lookup_Results) Ok() bool {
+func (s View_lookup_Results) Ok() bool {
 	return s.Struct.Bit(0)
 }
 
-func (s Cluster_lookup_Results) SetOk(v bool) {
+func (s View_lookup_Results) SetOk(v bool) {
 	s.Struct.SetBit(0, v)
 }
 
-// Cluster_lookup_Results_List is a list of Cluster_lookup_Results.
-type Cluster_lookup_Results_List struct{ capnp.List }
+// View_lookup_Results_List is a list of View_lookup_Results.
+type View_lookup_Results_List struct{ capnp.List }
 
-// NewCluster_lookup_Results creates a new list of Cluster_lookup_Results.
-func NewCluster_lookup_Results_List(s *capnp.Segment, sz int32) (Cluster_lookup_Results_List, error) {
+// NewView_lookup_Results creates a new list of View_lookup_Results.
+func NewView_lookup_Results_List(s *capnp.Segment, sz int32) (View_lookup_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1}, sz)
-	return Cluster_lookup_Results_List{l}, err
+	return View_lookup_Results_List{l}, err
 }
 
-func (s Cluster_lookup_Results_List) At(i int) Cluster_lookup_Results {
-	return Cluster_lookup_Results{s.List.Struct(i)}
+func (s View_lookup_Results_List) At(i int) View_lookup_Results {
+	return View_lookup_Results{s.List.Struct(i)}
 }
 
-func (s Cluster_lookup_Results_List) Set(i int, v Cluster_lookup_Results) error {
+func (s View_lookup_Results_List) Set(i int, v View_lookup_Results) error {
 	return s.List.SetStruct(i, v.Struct)
 }
 
-func (s Cluster_lookup_Results_List) String() string {
-	str, _ := text.MarshalList(0xa9f91e1c8368a4dc, s.List)
+func (s View_lookup_Results_List) String() string {
+	str, _ := text.MarshalList(0xe54acc44b61fd7ef, s.List)
 	return str
 }
 
-// Cluster_lookup_Results_Future is a wrapper for a Cluster_lookup_Results promised by a client call.
-type Cluster_lookup_Results_Future struct{ *capnp.Future }
+// View_lookup_Results_Future is a wrapper for a View_lookup_Results promised by a client call.
+type View_lookup_Results_Future struct{ *capnp.Future }
 
-func (p Cluster_lookup_Results_Future) Struct() (Cluster_lookup_Results, error) {
+func (p View_lookup_Results_Future) Struct() (View_lookup_Results, error) {
 	s, err := p.Future.Struct()
-	return Cluster_lookup_Results{s}, err
+	return View_lookup_Results{s}, err
 }
 
-func (p Cluster_lookup_Results_Future) Record() Cluster_Record_Future {
-	return Cluster_Record_Future{Future: p.Future.Field(0, nil)}
+func (p View_lookup_Results_Future) Record() View_Record_Future {
+	return View_Record_Future{Future: p.Future.Field(0, nil)}
 }
 
-const schema_fcf6ac08e448a6ac = "x\xda\x8c\x93AH\x14m\x1c\xc6\xff\xcf\xff\x9d\xf9f" +
-	"\x05u}\xbfY\xe4\xfbD\x14D\xb1\x964%O{" +
-	"h73R(\xd9W\xbct\xa8\xdct\xc8tu\xd7" +
-	"\xd9]$$\xf6\x10\x11\x9d\":D\x17!\x88\xa80" +
-	"\x82H\x0f\x81\x97<T\x07\xbbD\xd0\xc1\x82\xa0\x0ez" +
-	"+(\x90\xca\x89w\xd6\xddU\xd1\xe8\xb4\xcc\xbc\xff}" +
-	"\x9e\xdf\xf3\xbc\xff\xe9\x18C\x8c;\xcd\xbcA\xa4\xba\xcc" +
-	"\x7f\xbc\x8e\xa5\xfa\xdb\x1bCk\xd7HV\x0bo\xee^" +
-	"\xef\xa7\xc0\xdc\xf7\x9fD\xb0[\xf8\x89\xdd\xc6\xadD\xf6" +
-	"\x11\xbej\xdf`\x8b\xc8[\xe8:\xbb\xfae\xad\xf5:" +
-	"\xc9\x06\x10\x99\xb0\x88\x0e]\xe4s \xd8W8J\xf0" +
-	"\xde\xcc\xbc\xfeo\xf6\xd9\xc1\x9b$kK\x03\xf3\xdc\xa4" +
-	"\x07\x16\xfd\x81\xa5\xc1\xa9\x17w\xfa\x17\xef\x93\xac\x15e" +
-	"o\x82\xfd\x9e\xbf\xda\xab\xda\xc4\xfe\xcc\xc7\xed*\xa1\xed" +
-	"V\xee\x8e^\xaeoX\x7f@\xaa\x16%\xb9o\x1c\xd6" +
-	"r\xbfx\x9a\xe0\x9d\x9f\xfd0t:\xdc\xffPOp" +
-	"Y\xcf\x9f\xb4O\x895\xdb\xd1BvB<&x\xcf" +
-	"\xdf\xa5\x17^\x9e\x99\x7fZ\x803\xb4\xd8\xba\xa8\x03\x19" +
-	"\xde\xe4\x8f\xe9\x03\x8fn]zU\xc8\xe5\x9f|\x14c" +
-	"\xfa\xe4\xf0Jd\xa6i}yck\xa0e\xf1\xaf&" +
-	"x+\xa2\xd4\xe6\x0d's\x99\xac\xe3\xb6c8\x91\x9e" +
-	"LG\x8e&\x1b\xfdg\x15\xc0\xd6\xb0\x15\xddeTi" +
-	"F\xf2\xbd\x89\xc9\x91\xa4\xe3F\x07\x9c\xe1\x94;\xa2\x02" +
-	"\xc2$*y\xa1\x08*;\xc3\xc4\xb2\xc5B\xb9X\x14" +
-	";\x91\xffG\x88e\x95\x15\xbc\x90u\xdc\x18\xa2\xc9T" +
-	"j<\x97\x8e!\x0e\x94\x98\x8c\"S\xe1q\xd3\xb4}" +
-	"\xd4\xffm\x8e'\\+1\x91Q\x860\x88\x0c\x10\xc9" +
-	"\xaan\"\x15\x10P\xcd\x8c\xbc\xeb\xa3ePM\x88\x0b" +
-	"\xa0\xa6\x1c\x80\xa0_\x96\\\xc4v\x97\x02\xc8n\xea\x91" +
-	"M\xf5\x10#\x9av\x1c\xb7\xaf\x07\x95\xc4\xa8\xdc\xa2\xc5" +
-	";\x89\x1b}\xe48\xa0\x0c\xbf\xa3\xe2\x06\xa2xeR" +
-	"\xea\x1eL+ZH\xb5\xbd\x80\xdd\xd1\x06\x9cL0\x97" +
-	"\xccfT\xa0\xc4\xb6_\xb35\x0b\xa8\x0e\x06\x10\xd2\xdb" +
-	"&\xdb\xea\x88\xd4>\x01\xd5\xc5\x88\x16\xda\xd8\xd1B\x0d" +
-	"A\xa4\xc6\x01b`\xef\x10\x03NP\xffWg\xa8," +
-	"\x19\x1e\x0b\x13\xa9\x98\x80:Q6\xeck\"R=\x02" +
-	"*\xce\x90\x8c\x10\x98H\x9e\xd4/{\x05\xd4 #\xa8" +
-	"[+vfe\xb3I\x98\xc40\x09V\xc6\x99B\x05" +
-	"1*\xf6\xbe\x17\xbd':z.)\xb2\x99\xbf\\\x91" +
-	"bS\x7f\xd4\x8c'\xdc\xc4\x04v\xdd\xa3\x10#_\x90" +
-	"r!\xcb\x9f\x03\x01\x92\xf0;\x00\x00\xff\xff\xd0\x9fH" +
-	"\xb1"
+const schema_fcf6ac08e448a6ac = "x\xda\x8c\x93OH\x14Q\x1c\xc7\x7f\xdf\xf7f\x9c5" +
+	"\xfc\xf7|^,\xa2\xa8\x95\xd4P\x14=m\xc1l\xa2" +
+	"\xf8\x87\x82}f\x1d\xba-\xeb\x80\xe2\xea\xae3+\x9e" +
+	"d\x0f\x1d\x82\x0e\x11D\x17\x0fBA\x92\xa0\x04B\x82" +
+	"\x87\xbau\x10\xb2\xc0K\x14D\x1d\xaacu\x88\x88\x90" +
+	"&\xdeN3\xb3\x89A\xa7]\x86\x1f\x9f\xef\x9f\xdf\xef" +
+	"\xf5L!\xcdz\xcd\xb2A\xa4\xfa\xcd\x1a\xbf\xf9\xdc\xca" +
+	"\xde\xe9\xed\xdb\xd7I\x1c\x03\x91a\x11\xf5\xb5\xb1q\x90" +
+	"\xe1/'\xf7\xaf\xf5}=~\x93D\x03\xf7\xd7WG" +
+	">$\xd6\xbf\xef\x13A\x0a\xb6,[\xd9\x19\"\xd9\xc5" +
+	"n\xc8%f\x11\xf9OV\xd6\xb6^\xccn\xdf\x0a0" +
+	"&4\xc7ac \xc8yf\x13\xfc\x93K\x977\x9f" +
+	"\x0e\xbc\xdc%%\xc1bveR\xdec{rCs" +
+	"\xe4\x1a{D\xf0\xf3\xedg\x7fL\xbc\xefxMB\x86" +
+	"4y\x81\xff$\xc8!\xaea_^\x9d\xd8\x1a|>" +
+	"\xf6Q\xc3b9\xde\xac\xe5f\xf9\"\xc1\x97\xfb\x0f\x87" +
+	"\x9b\xb3\xef>\x05\x84J\xac\x1d\xcet,~\xfe\xfef" +
+	"n\xf5\xceg\x12\x92\xc7>\x08r\x83\xbf\x91\xdb\\K" +
+	"=\xe6\xc3\xf2\xad\xfe\xf7+\xdd\xbfs\xe5\xc1\xddo\xb1" +
+	"\x8d\xbeg\xfc\x88V\xd9\xe56u\xf9\xb9\xfc\x82Wr" +
+	"\xdcn#\x97-\xce\x15SW\xa7\x9d\xc5\xee\x91\xec\xdc" +
+	"d\xdeq\xbb\xa7*\xbf\xc9q\xc7[\xc8\x97\xe0E\xb3" +
+	"\x08g\xb9\xb3\xa8\x12@\x95\xa1\xda\x81\xb8&a\xa6\xca" +
+	"\x7fP\xf6\xb8\x93+\xb8\x93*\xc1M\xa2\xa8\x1b\x84\x11" +
+	"Eo'1\xd1f\x01\xa1\xdd\xb8\x1f\xd1\x9a\"&\xea" +
+	"\xad\xc6\xe9\x92\xe3\xa6a\xe7\x0b\x85\x99\x85b\x1a\x19\xe0" +
+	"\x7f\xccg\xb2nv\xd6#R\x067\x88\x0c\x10\x89\xfa" +
+	"\x01\"\x95\xe0PI\x86\xb2[1\xe6\xa1\x81\x90\xe1@" +
+	"Sl\x9f\xa0?F\x1a\xacJ\xa3\x92\x06\x93\x19@\xd5" +
+	"E\xd8\xa1N\"\x95\xe6P\x17\x19\x80\x16\xbdU1z" +
+	"\x8aH\x0dr\xa8\x0c\x83`h\x01#\x12\x97\xf4\xc7\x11" +
+	"\x0e5\xc1\xd0Xt\x1c\x17u\xc4PG\xb0J\xa5<" +
+	"Lb0\x09\x96\xe7\xcc\xa3\x96\x18j\xff\xe1A\xd7\x91" +
+	"\xb4\x83x\x87\x85ka(\x07\x1d\xb8\x10\xf1\x86\x08\x10" +
+	"UD^E\x0c\x9a\x8d\xd6\xad\x12\x11\xb4#E\xa4\x92" +
+	"\x1c\xaa'\x8e\xd6u\x94H\xb5s\xa8~\x06;h\xf1" +
+	"@{M\x04^\x98\x01\x88\x01U\x925\x07C\x04\x82" +
+	"\x1e\x85\x03\x07\x97\xc9\x1dW7mTn'|\xa5\x08" +
+	"_\xbd\x10\xfa>L\xcb\x0e\xc2\xfe}\x18\x87\xc4;\xec" +
+	" Rqg\xb6^\xc8\xe8`\xb8\x92\xdf\x01\x00\x00\xff" +
+	"\xff\xff54u"
 
 func init() {
 	schemas.Register(schema_fcf6ac08e448a6ac,
-		0x89ea60fe991cc330,
-		0x8f27eaf1e95f34b6,
-		0x932fba9e18ce7bd3,
-		0xa8bd4ea1c77154c3,
-		0xa9f91e1c8368a4dc,
-		0xaa4e2a5d60de9e67,
-		0xb4b55ec8b670d8c2,
-		0xc97d97ad2c77fb6e,
-		0xfecdf9227b3adc3e)
+		0x8390b923d29e3b12,
+		0x8a1df0335afc249a,
+		0x8eb96dceb6a99ebd,
+		0xcdcf42beb2537d20,
+		0xd929e054f82b286c,
+		0xe54acc44b61fd7ef,
+		0xe6df611247a8fc13,
+		0xee93a663b2a23c03,
+		0xf495a555c9344000)
 }

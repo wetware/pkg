@@ -33,7 +33,7 @@ func TestIter(t *testing.T) {
 			},
 		}
 
-		c := (&cluster.ClusterServer{view}).NewClient(nil)
+		c := (&cluster.ViewFactory{view}).NewClient(nil)
 
 		it, release := c.Iter(ctx)
 		defer release()
@@ -66,7 +66,7 @@ func TestIter(t *testing.T) {
 			}
 		}
 
-		c := (&cluster.ClusterServer{view}).NewClient(nil)
+		c := (&cluster.ViewFactory{view}).NewClient(nil)
 
 		it, release := c.Iter(ctx)
 		defer release()
@@ -107,7 +107,7 @@ func TestLookup(t *testing.T) {
 			}
 		}
 
-		c := (&cluster.ClusterServer{view}).NewClient(nil)
+		c := (&cluster.ViewFactory{view}).NewClient(nil)
 
 		want := view[42]
 
