@@ -2,7 +2,6 @@ package cluster
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"capnproto.org/go/capnp/v3"
@@ -11,8 +10,6 @@ import (
 	cluster "github.com/wetware/casm/pkg/cluster/routing"
 	api "github.com/wetware/ww/internal/api/cluster"
 )
-
-var ErrExhausted = errors.New("exhausted")
 
 type handler chan []record
 
@@ -68,10 +65,10 @@ type Iterator struct {
 	h handler
 
 	Err error
-	fut *capnp.Future
+	r   resolver
 
-	curr cluster.Record
-	recs []record
+	head cluster.Record
+	tail []record
 }
 
 func newIterator(ctx context.Context, r api.Cluster, h handler) (*Iterator, capnp.ReleaseFunc) {
@@ -84,63 +81,52 @@ func newIterator(ctx context.Context, r api.Cluster, h handler) (*Iterator, capn
 		return ps.SetHandler(c)
 	})
 
-	it := &Iterator{
-		h:   h,
-		fut: f.Future,
-	}
-
-	return it, func() {
-		if it.recs != nil && it.curr != nil {
-			it.curr = nil
-			it.recs = nil
-			release()
-		}
-	}
+	return &Iterator{
+		h: h,
+		r: resolver(f),
+	}, release
 }
 
-func (it *Iterator) Next(ctx context.Context) error {
-	if len(it.recs) == 0 {
-		if it.Err = it.nextBatch(ctx); it.Err != nil {
-			return it.Err
-		}
+func (it *Iterator) Next(ctx context.Context) (more bool) {
+	if len(it.tail) == 0 {
+		it.Err = it.nextBatch(ctx)
 	}
 
-	it.curr, it.recs = it.recs[0], it.recs[1:]
-	return nil
+	if more = it.Err == nil && len(it.tail) > 0; more {
+		it.head, it.tail = it.tail[0], it.tail[1:]
+	}
+
+	return
 }
 
 func (it *Iterator) Record() cluster.Record {
-	return it.curr
+	return it.head
 }
 
-func (it *Iterator) Deadline() time.Time {
-	if it.curr == nil {
-		return time.Time{}
-	}
-
-	return time.Now().Add(it.curr.TTL())
-}
-
-func (it *Iterator) nextBatch(ctx context.Context) error {
+func (it *Iterator) nextBatch(ctx context.Context) (err error) {
 	var ok bool
 	select {
-	case it.recs, ok = <-it.h:
-		if ok {
-			return nil
-		}
-
-		select {
-		case <-it.fut.Done():
-			if _, err := it.fut.Struct(); err != nil {
-				return err
-			}
-			return ErrExhausted
-
-		case <-ctx.Done():
+	case it.tail, ok = <-it.h:
+		if !ok {
+			err = it.r.Resolve(ctx)
 		}
 
 	case <-ctx.Done():
+		err = ctx.Err()
 	}
 
-	return ctx.Err()
+	return
+}
+
+type resolver api.Cluster_iter_Results_Future
+
+func (r resolver) Resolve(ctx context.Context) error {
+	select {
+	case <-r.Done():
+		_, err := r.Struct()
+		return err
+
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }

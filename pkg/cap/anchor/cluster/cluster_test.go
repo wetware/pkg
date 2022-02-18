@@ -38,14 +38,15 @@ func TestIter(t *testing.T) {
 		it, release := c.Iter(ctx)
 		defer release()
 
-		err := it.Next(ctx)
-		assert.NoError(t, err)
+		ok := it.Next(ctx)
+		require.True(t, ok, "should advance iterator")
+		require.NoError(t, it.Err, "should succeed")
 
-		assert.NotNil(t, it.Record())
-		assert.NotZero(t, it.Deadline())
+		assert.NotZero(t, it.Record())
 
-		assert.ErrorIs(t, it.Next(ctx), cluster.ErrExhausted)
-		assert.ErrorIs(t, it.Err, cluster.ErrExhausted)
+		ok = it.Next(ctx)
+		require.False(t, ok, "should not advance iterator")
+		assert.NoError(t, it.Err, "should be exhausted")
 	})
 
 	t.Run("Batch", func(t *testing.T) {
@@ -70,7 +71,7 @@ func TestIter(t *testing.T) {
 		it, release := c.Iter(ctx)
 		defer release()
 
-		for i := 0; it.Next(ctx) == nil; i++ {
+		for i := 0; it.Next(ctx); i++ {
 			require.NoError(t, it.Err)
 
 			r := it.Record()
@@ -81,7 +82,7 @@ func TestIter(t *testing.T) {
 				"should have positive, nonzero TTL")
 		}
 
-		assert.ErrorIs(t, cluster.ErrExhausted, it.Err)
+		assert.NoError(t, it.Err, "should be exhausted")
 	})
 }
 
