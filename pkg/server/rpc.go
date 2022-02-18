@@ -2,6 +2,7 @@ package server
 
 import (
 	"errors"
+	"fmt"
 	"io"
 
 	"capnproto.org/go/capnp/v3/rpc"
@@ -12,21 +13,21 @@ import (
 
 	protoutil "github.com/wetware/casm/pkg/util/proto"
 	ww "github.com/wetware/ww/pkg"
-	"github.com/wetware/ww/pkg/cap/anchor"
 	pscap "github.com/wetware/ww/pkg/cap/pubsub"
 )
 
 type capSet struct {
+	NS string
 	cq chan struct{}
 
-	Anchor anchor.Factory
 	PubSub *pscap.Factory
 }
 
-func newCapSet(a anchor.Factory, ps *pscap.Factory) capSet {
+func newCapSet(ns fmt.Stringer, ps *pscap.Factory) capSet {
 	return capSet{
-		cq:     make(chan struct{}),
-		Anchor: a,
+		NS: ns.String(),
+		cq: make(chan struct{}),
+		// Anchor: a,
 		PubSub: ps,
 	}
 }
@@ -41,35 +42,35 @@ func (cs capSet) Close() error {
 	}
 
 	return multierr.Combine(
-		cs.Anchor.Close(),
+		// cs.Anchor.Close(),
 		cs.PubSub.Close())
 }
 
-// String returns the namespace containing the capability set.
-func (cs capSet) String() string {
-	return cs.Anchor.String()
-}
+// // String returns the namespace containing the capability set.
+// func (cs capSet) String() string {
+// 	return cs.Anchor.String()
+// }
 
 func (cs capSet) registerRPC(h host.Host, log log.Logger) {
 	var (
-		match       = ww.NewMatcher(cs.String())
+		match       = ww.NewMatcher(cs.NS)
 		matchPacked = match.Then(protoutil.Exactly("packed"))
 	)
 
 	h.SetStreamHandlerMatch(
-		ww.Subprotocol(cs.String()),
+		ww.Subprotocol(cs.NS),
 		match,
 		cs.newHandler(log, rpc.NewStreamTransport))
 
 	h.SetStreamHandlerMatch(
-		ww.Subprotocol(cs.String(), "packed"),
+		ww.Subprotocol(cs.NS, "packed"),
 		matchPacked,
 		cs.newHandler(log, rpc.NewPackedStreamTransport))
 }
 
 func (cs capSet) unregisterRPC(h host.Host) {
-	h.RemoveStreamHandler(ww.Subprotocol(cs.String()))
-	h.RemoveStreamHandler(ww.Subprotocol(cs.String(), "packed"))
+	h.RemoveStreamHandler(ww.Subprotocol(cs.NS))
+	h.RemoveStreamHandler(ww.Subprotocol(cs.NS, "packed"))
 }
 
 func (cs capSet) newHandler(log log.Logger, f transportFactory) network.StreamHandler {

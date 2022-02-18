@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/wetware/casm/pkg/cluster/routing"
-	"github.com/wetware/ww/pkg/cap/anchor/cluster"
+	"github.com/wetware/ww/pkg/cap/cluster"
 )
 
 func TestIter(t *testing.T) {

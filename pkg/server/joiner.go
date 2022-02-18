@@ -10,7 +10,6 @@ import (
 	"github.com/lthibault/log"
 
 	"github.com/wetware/casm/pkg/cluster"
-	"github.com/wetware/ww/pkg/cap/anchor"
 	pscap "github.com/wetware/ww/pkg/cap/pubsub"
 )
 
@@ -48,8 +47,7 @@ func (j Joiner) Join(ctx context.Context, h host.Host, ps PubSub) (*Node, error)
 		return nil, fmt.Errorf("join cluster: %w", err)
 	}
 
-	var cs = newCapSet(
-		anchor.New(c),
+	var cs = newCapSet(c,
 		pscap.New(ps, pscap.WithLogger(j.log)))
 
 	var n = &Node{

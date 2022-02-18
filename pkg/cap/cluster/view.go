@@ -33,7 +33,7 @@ type ViewFactory struct {
 	View RoutingTable
 }
 
-func (f *ViewFactory) NewClient(policy *server.Policy) View {
+func (f ViewFactory) NewClient(policy *server.Policy) View {
 	if policy == nil {
 		policy = &defaultPolicy
 	}
@@ -41,7 +41,7 @@ func (f *ViewFactory) NewClient(policy *server.Policy) View {
 	return View(api.View_ServerToClient(f, policy))
 }
 
-func (f *ViewFactory) Iter(ctx context.Context, call api.View_iter) error {
+func (f ViewFactory) Iter(ctx context.Context, call api.View_iter) error {
 	call.Ack()
 
 	b := newBatcher(call.Args())
@@ -56,7 +56,7 @@ func (f *ViewFactory) Iter(ctx context.Context, call api.View_iter) error {
 	return b.Wait(ctx)
 }
 
-func (f *ViewFactory) Lookup(_ context.Context, call api.View_lookup) error {
+func (f ViewFactory) Lookup(_ context.Context, call api.View_lookup) error {
 	peerID, err := call.Args().PeerID()
 	if err != nil {
 		return err
@@ -80,6 +80,162 @@ func (f *ViewFactory) Lookup(_ context.Context, call api.View_lookup) error {
 	}
 	return nil
 }
+
+type View api.View
+
+func (cl View) Iter(ctx context.Context) (*Iterator, capnp.ReleaseFunc) {
+	ctx, cancel := context.WithCancel(ctx)
+
+	h := make(handler, defaultMaxInflight)
+
+	it, release := newIterator(ctx, api.View(cl), h)
+	return it, func() {
+		cancel()
+		release()
+	}
+}
+
+func (cl View) Lookup(ctx context.Context, peerID peer.ID) (FutureRecord, capnp.ReleaseFunc) {
+	f, release := api.View(cl).Lookup(ctx, func(r api.View_lookup_Params) error {
+		return r.SetPeerID(string(peerID))
+	})
+	return FutureRecord(f), release
+}
+
+type FutureRecord api.View_lookup_Results_Future
+
+func (f FutureRecord) Struct() (Record, error) {
+	res, err := api.View_lookup_Results_Future(f).Struct()
+	if err != nil {
+		return Record{}, err
+	}
+
+	rec, err := res.Record()
+	return Record(rec), err
+}
+
+type Record api.View_Record
+
+func (rec Record) Peer() (peer.ID, error) {
+	s, err := api.View_Record(rec).Peer()
+	if err != nil {
+		return "", err
+	}
+
+	return peer.IDFromString(s)
+}
+
+func (rec Record) TTL() time.Duration {
+	return time.Duration(api.View_Record(rec).Ttl())
+}
+
+func (rec Record) Seq() uint64 {
+	return api.View_Record(rec).Seq()
+}
+
+type Iterator struct {
+	h <-chan []record
+	f *capnp.Future
+
+	Err error
+
+	head record
+	tail []record
+}
+
+func newIterator(ctx context.Context, r api.View, h handler) (*Iterator, capnp.ReleaseFunc) {
+	c := api.View_Handler_ServerToClient(h, &server.Policy{
+		MaxConcurrentCalls: cap(h),
+		AnswerQueueSize:    cap(h),
+	})
+
+	f, release := r.Iter(ctx, func(ps api.View_iter_Params) error {
+		return ps.SetHandler(c)
+	})
+
+	return &Iterator{h: h, f: f.Future}, release
+}
+
+func (it *Iterator) Next(ctx context.Context) (more bool) {
+	if len(it.tail) == 0 {
+		it.Err = it.nextBatch(ctx)
+	}
+
+	if more = it.Err == nil && len(it.tail) > 0; more {
+		it.head, it.tail = it.tail[0], it.tail[1:]
+	}
+
+	return
+}
+
+func (it *Iterator) Record() routing.Record {
+	return it.head
+}
+
+func (it *Iterator) nextBatch(ctx context.Context) (err error) {
+	var ok bool
+	select {
+	case it.tail, ok = <-it.h:
+		if !ok {
+			_, err = it.f.Struct()
+		}
+
+	case <-ctx.Done():
+		err = ctx.Err()
+	}
+
+	return
+}
+
+type handler chan []record
+
+func (h handler) Shutdown() { close(h) }
+
+func (h handler) Handle(ctx context.Context, call api.View_Handler_handle) error {
+	recs, err := loadBatch(call.Args())
+	if err != nil || len(recs) == 0 { // defensive
+		return err
+	}
+
+	select {
+	case h <- recs:
+		return nil
+
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func loadBatch(args api.View_Handler_handle_Params) ([]record, error) {
+	rs, err := args.Records()
+	if err != nil {
+		return nil, err
+	}
+
+	batch := make([]record, rs.Len())
+	for i := range batch {
+		rec := Record(rs.At(i))
+
+		batch[i].ttl = rec.TTL()
+		batch[i].seq = rec.Seq()
+
+		if batch[i].id, err = rec.Peer(); err != nil {
+			break
+		}
+	}
+
+	return batch, nil
+}
+
+type record struct {
+	id  peer.ID
+	ttl time.Duration
+	seq uint64
+}
+
+func (r record) Peer() peer.ID      { return r.id }
+func (r record) TTL() time.Duration { return r.ttl }
+func (r record) Seq() uint64        { return r.seq }
 
 type batcher struct {
 	lim   *limiter

@@ -15,7 +15,6 @@ import (
 	mx "github.com/wetware/matrix/pkg"
 	mock_anchor "github.com/wetware/ww/internal/test/mock/pkg/cap/anchor"
 	ww "github.com/wetware/ww/pkg"
-	"github.com/wetware/ww/pkg/cap/anchor"
 )
 
 const ns = "ww.test"
@@ -75,9 +74,7 @@ func TestRPC_conn_lifecycle(t *testing.T) {
 			Close().
 			Times(1)
 
-		cs := newCapSet(
-			anchor.New(c),
-			nil)
+		cs := newCapSet(namespace(ns), nil)
 		cs.registerRPC(h0, log)
 		defer cs.Close()
 		defer cs.unregisterRPC(h0)
@@ -147,9 +144,7 @@ func TestRPC_conn_lifecycle(t *testing.T) {
 			Close().
 			Times(1)
 
-		cs := newCapSet(
-			anchor.New(c),
-			nil)
+		cs := newCapSet(namespace(ns), nil)
 		cs.registerRPC(h0, log)
 		defer cs.unregisterRPC(h0)
 
@@ -194,9 +189,7 @@ func TestCapSet(t *testing.T) {
 			Return(nil).
 			Times(1)
 
-		cs := newCapSet(
-			anchor.New(c),
-			nil)
+		cs := newCapSet(namespace("test"), nil)
 
 		err := cs.Close()
 		assert.NoError(t, err, "should close cleanly")
@@ -215,3 +208,7 @@ func (m renderEq) String() string {
 func (m renderEq) Matches(x interface{}) bool {
 	return fmt.Sprintf("%s", x) == string(m)
 }
+
+type namespace string
+
+func (ns namespace) String() string { return string(ns) }

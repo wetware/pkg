@@ -24,7 +24,7 @@ func (n *Node) Close() error {
 }
 
 // String returns the cluster namespace
-func (n *Node) String() string { return n.c.String() }
+func (n *Node) String() string { return n.c.NS }
 
 func (n *Node) Loggable() map[string]interface{} {
 	return map[string]interface{}{
