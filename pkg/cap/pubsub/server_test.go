@@ -3,6 +3,7 @@ package pubsub_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -14,7 +15,7 @@ import (
 	pscap "github.com/wetware/ww/pkg/cap/pubsub"
 )
 
-func TestPubSub(t *testing.T) {
+func TestPubSub_refcount(t *testing.T) {
 	t.Parallel()
 
 	const topic = "test"
@@ -25,6 +26,8 @@ func TestPubSub(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
+	// Use mock logger to detect refcounting errors.  The mock
+	// will fail with unexpected calls.
 	log := logtest.NewMockLogger(ctrl)
 	log.EXPECT().
 		WithField(gomock.Any(), gomock.Any()).
@@ -56,8 +59,11 @@ func TestPubSub(t *testing.T) {
 	ps := pscap.PubSub{p.Client()}
 	defer ps.Release()
 
+	// ensure topic doesn't leak
 	for i := 0; i < 2; i++ {
 		func() {
+			ch := make(chan []byte, 1)
+
 			f, release := ps.Join(ctx, topic)
 			defer release()
 
@@ -65,17 +71,20 @@ func TestPubSub(t *testing.T) {
 			require.NoError(t, err, "should resolve topic")
 			defer top.Release()
 
-			sub, err := top.Subscribe(ctx)
+			cancel, err := top.Subscribe(ctx, ch)
 			require.NoError(t, err, "should subscribe")
-			require.NotNil(t, sub, "should return non-nil subscription")
-			defer sub.Cancel()
+			require.NotNil(t, cancel, "should return a cancellation function")
+			defer cancel()
 
 			err = top.Publish(ctx, []byte("test"))
 			require.NoError(t, err, "should publish message")
 
-			b, err := sub.Next(ctx)
-			require.NoError(t, err, "should receive message")
-			require.NotNil(t, b, "message should contain data")
+			require.Eventually(t, func() bool {
+				return len(ch) == cap(ch)
+			}, time.Millisecond*10, time.Millisecond, "should receive message")
+
+			assert.Equal(t, "test", string(<-ch),
+				"should match previously-published message")
 		}()
 	}
 }

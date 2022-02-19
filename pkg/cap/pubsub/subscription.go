@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"capnproto.org/go/capnp/v3"
-	"capnproto.org/go/capnp/v3/server"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	api "github.com/wetware/ww/internal/api/pubsub"
 	"golang.org/x/sync/semaphore"
@@ -32,61 +31,6 @@ func (h handler) Handle(ctx context.Context, call api.Topic_Handler_handle) erro
 
 	case <-ctx.Done():
 		return ctx.Err()
-	}
-}
-
-type Subscription struct {
-	ms      <-chan []byte
-	release capnp.ReleaseFunc
-}
-
-func newSubscription(ctx context.Context, t api.Topic, ms chan []byte) (*Subscription, error) {
-	h := handler{
-		ms:      ms,
-		release: t.AddRef().Release,
-	}
-
-	hc := api.Topic_Handler_ServerToClient(h, &server.Policy{
-		MaxConcurrentCalls: cap(ms),
-		AnswerQueueSize:    cap(ms),
-	})
-	defer hc.Release() // ensure h.Shutdown is called on error; see return
-
-	f, release := t.Subscribe(ctx,
-		func(ps api.Topic_subscribe_Params) error {
-			ps.SetBufSize(uint8(cap(ms)))
-			return ps.SetHandler(hc.AddRef()) // NOTE: incr refcount
-		})
-	defer release()
-
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case <-f.Done():
-		if _, err := f.Struct(); err != nil {
-			return nil, err
-		}
-	}
-
-	return &Subscription{
-		ms:      ms,
-		release: hc.AddRef().Release, // offset the deferred hc.Release
-	}, nil
-}
-
-func (s *Subscription) Cancel() { s.release() }
-
-func (s *Subscription) Next(ctx context.Context) ([]byte, error) {
-	select {
-	case b, ok := <-s.ms:
-		if ok {
-			return b, nil
-		}
-
-		return nil, ErrClosed
-
-	case <-ctx.Done():
-		return nil, ctx.Err()
 	}
 }
 

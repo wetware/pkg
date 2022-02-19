@@ -4,19 +4,12 @@ package client
 import (
 	"context"
 
+	"runtime"
+
 	"capnproto.org/go/capnp/v3/rpc"
-	"github.com/libp2p/go-libp2p-core/peer"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	pscap "github.com/wetware/ww/pkg/cap/pubsub"
 	"github.com/wetware/ww/pkg/vat"
 )
-
-type PubSub interface {
-	Join(topic string, opt ...pubsub.TopicOpt) (*pubsub.Topic, error)
-	Subscribe(topic string, opts ...pubsub.SubOpt) (*pubsub.Subscription, error)
-	GetTopics() []string
-	ListPeers(topic string) []peer.ID
-}
 
 type Node struct {
 	vat  vat.Network
@@ -55,4 +48,21 @@ func (n Node) Close() error {
 	return n.conn.Close()
 }
 
-func (n Node) PubSub() pscap.PubSub { return n.ps }
+func (n Node) Join(ctx context.Context, topic string) *Topic {
+	var f, release = n.ps.Join(ctx, topic)
+
+	t := &Topic{f: f}
+	t.Release = func() {
+		release()
+		t.Release = nil
+	}
+
+	// Ensure finalizer is called if users get sloppy.
+	runtime.SetFinalizer(t, func(t *Topic) {
+		if t.Release != nil {
+			t.Release()
+		}
+	})
+
+	return t
+}

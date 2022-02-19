@@ -21,6 +21,7 @@ var defaultPolicy = server.Policy{
 	// HACK:  raise MaxConcurrentCalls to mitigate known deadlock condition.
 	//        https://github.com/capnproto/go-capnproto2/issues/189
 	MaxConcurrentCalls: 64,
+	AnswerQueueSize:    64,
 }
 
 // RoutingTable provides a global view of namespace peers.
