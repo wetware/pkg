@@ -57,7 +57,7 @@ func vatNetwork(c *cli.Context, lx fx.Lifecycle, b *metrics.BandwidthCounter) (m
 
 	lx.Append(closer(mod.Vat.Host))
 
-	dht, err := dual.New(c.Context, mod.Vat.Host,
+	mod.DHT, err = dual.New(c.Context, mod.Vat.Host,
 		dual.LanDHTOption(dht.Mode(dht.ModeServer)),
 		dual.WanDHTOption(dht.Mode(dht.ModeAuto)))
 	if err != nil {
@@ -66,14 +66,14 @@ func vatNetwork(c *cli.Context, lx fx.Lifecycle, b *metrics.BandwidthCounter) (m
 
 	lx.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			return dht.Bootstrap(ctx)
+			return mod.DHT.Bootstrap(ctx)
 		},
 		OnStop: func(context.Context) error {
-			return dht.Close()
+			return mod.DHT.Close()
 		},
 	})
 
-	mod.Vat.Host = routedhost.Wrap(mod.Vat.Host, dht)
+	mod.Vat.Host = routedhost.Wrap(mod.Vat.Host, mod.DHT)
 	return
 }
 
