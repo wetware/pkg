@@ -47,13 +47,13 @@ func TestPubSub(t *testing.T) {
 	gs, err := pubsub.NewGossipSub(ctx, h)
 	require.NoError(t, err)
 
-	factory := pscap.New(gs, pscap.WithLogger(log))
+	p := pscap.New(gs, pscap.WithLogger(log))
 	defer func() {
-		assert.NoError(t, factory.Close(), "factory should close gracefully")
-		assert.ErrorIs(t, factory.Close(), pscap.ErrClosed)
+		assert.NoError(t, p.Close(), "factory should close gracefully")
+		assert.ErrorIs(t, p.Close(), pscap.ErrClosed)
 	}()
 
-	ps := factory.New(nil)
+	ps := pscap.PubSub{p.Client()}
 	defer ps.Release()
 
 	for i := 0; i < 2; i++ {

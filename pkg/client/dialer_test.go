@@ -8,7 +8,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	swarm "github.com/libp2p/go-libp2p-swarm"
-	"github.com/libp2p/go-libp2p/config"
 	inproc "github.com/lthibault/go-libp2p-inproc-transport"
 	ma "github.com/multiformats/go-multiaddr"
 
@@ -16,8 +15,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/wetware/casm/pkg/boot"
-	mx "github.com/wetware/matrix/pkg"
 	"github.com/wetware/ww/pkg/client"
+	"github.com/wetware/ww/pkg/vat"
 )
 
 func TestDialer(t *testing.T) {
@@ -28,13 +27,18 @@ func TestDialer(t *testing.T) {
 		t.Parallel()
 
 		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		vat := newVat(ctx)
+
+		ctx, cancel = context.WithCancel(context.Background())
 		cancel() // NOTE:  eagerly canceled
 
-		n, err := client.DialDiscover(ctx, boot.StaticAddrs(nil),
-			client.WithHostOpts(
-				libp2p.NoListenAddrs,
-				libp2p.NoTransports,
-				libp2p.Transport(inproc.New())))
+		n, err := client.Dialer{
+			Vat:  vat,
+			Boot: boot.StaticAddrs(nil),
+		}.Dial(ctx)
+
 		assert.EqualError(t, err, "bootstrap failed: no peers found")
 		assert.Nil(t, n, "should return nil client node")
 	})
@@ -55,11 +59,10 @@ func TestDialer(t *testing.T) {
 			},
 		}
 
-		n, err := client.DialDiscover(ctx, boot.StaticAddrs{info},
-			client.WithHostOpts(
-				libp2p.NoListenAddrs,
-				libp2p.NoTransports,
-				libp2p.Transport(inproc.New())))
+		n, err := client.Dialer{
+			Vat:  newVat(ctx),
+			Boot: boot.StaticAddrs{info},
+		}.Dial(ctx)
 
 		derr := new(swarm.DialError)
 		assert.ErrorAs(t, err, &derr,
@@ -81,29 +84,34 @@ func TestDialer(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		var f = &hostFactory{inproc.NewEnv()}
+		h, err := libp2p.New(ctx,
+			libp2p.NoListenAddrs,
+			libp2p.NoTransports,
+			libp2p.ListenAddrStrings("/inproc/~"),
+			libp2p.Transport(inproc.New()))
+		require.NoError(t, err, "must succeed")
 
-		h := mx.New(ctx, mx.WithHostFactory(f)).MustHost(ctx)
-		info := *host.InfoFromHost(h)
-
-		n, err := client.DialDiscover(ctx, boot.StaticAddrs{info},
-			client.WithHostOpts(
-				libp2p.NoListenAddrs,
-				libp2p.NoTransports,
-				libp2p.Transport(inproc.New(inproc.WithEnv(f.Env)))))
+		n, err := client.Dialer{
+			Vat:  newVat(ctx),
+			Boot: boot.StaticAddrs{*host.InfoFromHost(h)},
+		}.Dial(ctx)
 
 		assert.EqualError(t, err, "protocol not supported")
-
 		assert.Nil(t, n, "should return nil client node")
 	})
 }
 
-type hostFactory struct{ inproc.Env }
-
-func (f hostFactory) NewHost(ctx context.Context, _ []config.Option) (host.Host, error) {
-	return libp2p.New(ctx,
+func newVat(ctx context.Context) vat.Network {
+	h, err := libp2p.New(ctx,
 		libp2p.NoListenAddrs,
 		libp2p.NoTransports,
-		libp2p.ListenAddrStrings("/inproc/~"),
-		libp2p.Transport(inproc.New(inproc.WithEnv(f.Env))))
+		libp2p.Transport(inproc.New()))
+	if err != nil {
+		panic(err)
+	}
+
+	return vat.Network{
+		NS:   "test",
+		Host: h,
+	}
 }

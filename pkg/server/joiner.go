@@ -5,12 +5,12 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/libp2p/go-libp2p-core/host"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/lthibault/log"
 
 	"github.com/wetware/casm/pkg/cluster"
 	pscap "github.com/wetware/ww/pkg/cap/pubsub"
+	"github.com/wetware/ww/pkg/vat"
 )
 
 type PubSub interface {
@@ -20,7 +20,6 @@ type PubSub interface {
 }
 
 type Joiner struct {
-	ns   string
 	log  log.Logger
 	opts []cluster.Option
 }
@@ -33,42 +32,49 @@ func NewJoiner(opt ...Option) Joiner {
 	return j
 }
 
-func (j Joiner) Join(ctx context.Context, h host.Host, ps PubSub) (*Node, error) {
+func (j Joiner) Join(ctx context.Context, vat vat.Network, ps PubSub) (*Node, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	// generate instance ID
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return nil, fmt.Errorf("uuid: %w", err)
 	}
 
-	c, err := cluster.New(ctx, ps, j.options(h, id)...)
+	// join the cluster topic
+	c, err := cluster.New(ctx, ps, j.options(vat, id)...)
 	if err != nil {
 		return nil, fmt.Errorf("join cluster: %w", err)
 	}
 
-	var cs = newCapSet(c,
+	// export default capabilities
+	vat.Export(
+		pscap.Capability,
 		pscap.New(ps, pscap.WithLogger(j.log)))
 
-	var n = &Node{
-		id: id,
-		h:  h,
-		c:  cs,
-	}
+	// vat.Export(
+	// 	anchor.Capability,
+	// 	anchor.New())
 
-	cs.registerRPC(n.h, j.log.With(n))
+	// etc ...
 
-	return n, c.Bootstrap(ctx)
+	// Bootstrap the node
+	return &Node{
+		id:  id,
+		vat: vat,
+		c:   c,
+	}, c.Bootstrap(ctx)
 }
 
-func (j Joiner) options(h host.Host, u uuid.UUID) []cluster.Option {
+func (j Joiner) options(vat vat.Network, u uuid.UUID) []cluster.Option {
 	log := j.log.
-		WithField("id", h.ID()).
-		WithField("ns", j.ns).
+		WithField("id", vat.Host.ID()).
+		WithField("ns", vat.NS).
 		WithField("instance", u)
 
 	return append([]cluster.Option{
 		cluster.WithLogger(log),
-		cluster.WithNamespace(j.ns),
+		cluster.WithNamespace(vat.NS),
 	}, j.opts...)
 }

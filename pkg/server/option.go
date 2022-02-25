@@ -17,16 +17,6 @@ func WithLogger(l log.Logger) Option {
 	}
 }
 
-func WithNamespace(ns string) Option {
-	if ns == "" {
-		ns = "ww"
-	}
-
-	return func(j *Joiner) {
-		j.ns = ns
-	}
-}
-
 func WithClusterConfig(opt ...cluster.Option) Option {
 	return func(j *Joiner) {
 		j.opts = opt
@@ -36,6 +26,5 @@ func WithClusterConfig(opt ...cluster.Option) Option {
 func withDefault(opt []Option) []Option {
 	return append([]Option{
 		WithLogger(nil),
-		WithNamespace(""),
 	}, opt...)
 }

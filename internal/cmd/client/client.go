@@ -3,14 +3,11 @@ package client
 import (
 	"github.com/lthibault/log"
 	"github.com/urfave/cli/v2"
-	bootutil "github.com/wetware/ww/internal/util/boot"
-	logutil "github.com/wetware/ww/internal/util/log"
-	"github.com/wetware/ww/pkg/client"
 )
 
 var (
 	logger log.Logger
-	node   *client.Node
+	// node   *client.Node
 )
 
 func Command() *cli.Command {
@@ -65,21 +62,32 @@ func Subscribe() *cli.Command {
 				Usage: "pubsub topic (\"\" is the cluster topic)",
 			},
 		},
-		Before: before,
+		// Before: before,
 		Action: subscribe,
 	}
 }
 
-func before(c *cli.Context) error {
-	logger = logutil.New(c)
+// func before(c *cli.Context) error {
+// 	boot, err := bootutil.NewCrawler(c)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	crawler, err := bootutil.NewCrawler(c, logger)
-	if err != nil {
-		return err
-	}
+// 	h, err := libp2p.New(c.Context,
+// 		libp2p.NoTransports,
+// 		libp2p.NoListenAddrs,
+// 		libp2p.Transport(libp2pquic.NewTransport))
+// 	if err != nil {
+// 		return err
+// 	}
 
-	node, err = client.DialDiscover(c.Context, crawler,
-		client.WithLogger(logger),
-		client.WithNamespace(c.String("ns")))
-	return err
-}
+// 	node, err = client.Dialer{
+// 		Boot: boot,
+// 		Vat: vat.Network{
+// 			NS:   c.String("ns"),
+// 			Host: h,
+// 		},
+// 	}.Dial(c.Context)
+
+// 	return err
+// }
