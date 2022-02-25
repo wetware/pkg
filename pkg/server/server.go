@@ -3,33 +3,33 @@ package server
 
 import (
 	"context"
+	"io"
 
 	"github.com/google/uuid"
-	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/wetware/ww/pkg/vat"
 )
 
 type Node struct {
-	id uuid.UUID // instance ID
-	h  host.Host
-	c  capSet
+	id  uuid.UUID // instance ID
+	vat vat.Network
+	c   io.Closer
 }
 
-func New(ctx context.Context, h host.Host, ps PubSub, opt ...Option) (*Node, error) {
-	return NewJoiner(opt...).Join(ctx, h, ps)
+func New(ctx context.Context, vat vat.Network, ps PubSub, opt ...Option) (*Node, error) {
+	return NewJoiner(opt...).Join(ctx, vat, ps)
 }
 
 func (n *Node) Close() error {
-	n.c.unregisterRPC(n.h)
 	return n.c.Close()
 }
 
 // String returns the cluster namespace
-func (n *Node) String() string { return n.c.NS }
+func (n *Node) String() string { return n.vat.NS }
 
 func (n *Node) Loggable() map[string]interface{} {
 	return map[string]interface{}{
 		"ns":       n.String(),
-		"id":       n.h.ID(),
+		"id":       n.vat.Host.ID(),
 		"instance": n.id,
 	}
 }

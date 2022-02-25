@@ -17,6 +17,7 @@ import (
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/client"
 	"github.com/wetware/ww/pkg/server"
+	"github.com/wetware/ww/pkg/vat"
 )
 
 func TestProto(t *testing.T) {
@@ -66,19 +67,23 @@ func TestClientServer_integration(t *testing.T) {
 	ps, err := pubsub.NewGossipSub(ctx, h)
 	require.NoError(t, err, "should create gossipsub")
 
-	sn, err := server.New(ctx, h, ps,
+	sn, err := server.New(ctx, vat.Network{NS: "test", Host: h}, ps,
 		server.WithLogger(log))
 	require.NoError(t, err, "should spawn server")
 	defer func() {
 		assert.NoError(t, sn.Close(), "server should close gracefully")
 	}()
 
-	cn, err := client.DialDiscover(ctx, boot.StaticAddrs{*host.InfoFromHost(h)},
-		client.WithLogger(log),
-		client.WithHostOpts(
-			libp2p.NoListenAddrs,
-			libp2p.NoTransports,
-			libp2p.Transport(inproc.New())))
+	h2, err := libp2p.New(ctx,
+		libp2p.NoListenAddrs,
+		libp2p.NoTransports,
+		libp2p.Transport(inproc.New()))
+	require.NoError(t, err, "must succeed")
+
+	cn, err := client.Dialer{
+		Boot: boot.StaticAddrs{*host.InfoFromHost(h)},
+		Vat:  vat.Network{NS: "test", Host: h2},
+	}.Dial(ctx)
 	require.NoError(t, err, "should dial cluster")
 	defer func() {
 		assert.NoError(t, cn.Close(), "client should close gracefully")

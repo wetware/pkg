@@ -3,6 +3,7 @@ package cluster_test
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"testing"
 	"time"
 
@@ -102,10 +103,10 @@ func TestIter(t *testing.T) {
 		ctx, cancel = context.WithCancel(ctx)
 		cancel()
 
-		ok := it.Next(ctx)
-		assert.False(t, ok, "should abort iteration")
-		assert.ErrorIs(t, it.Err, context.Canceled,
-			"should report context canceled")
+		assert.Eventually(t, func() bool {
+			return !it.Next(ctx) && errors.Is(it.Err, context.Canceled)
+		}, time.Second, time.Millisecond*10,
+			"should eventually report context.Canceled")
 	})
 }
 

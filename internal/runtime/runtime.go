@@ -6,11 +6,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/metrics"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	libp2pquic "github.com/libp2p/go-libp2p-quic-transport"
 	"github.com/lthibault/log"
 	"github.com/thejerf/suture/v4"
 	"github.com/urfave/cli/v2"
@@ -19,6 +15,7 @@ import (
 	serviceutil "github.com/wetware/ww/internal/util/service"
 	statsdutil "github.com/wetware/ww/internal/util/statsd"
 	"github.com/wetware/ww/pkg/server"
+	"github.com/wetware/ww/pkg/vat"
 	"go.uber.org/fx"
 )
 
@@ -36,7 +33,6 @@ var (
 
 	localnode = fx.Provide(
 		supervisor,
-		localhost,
 		node)
 )
 
@@ -155,32 +151,18 @@ func supervisor(c *cli.Context) *suture.Supervisor {
 	})
 }
 
-func localhost(c *cli.Context, lx fx.Lifecycle, b *metrics.BandwidthCounter) (host.Host, error) {
-	h, err := libp2p.New(c.Context,
-		libp2p.NoTransports,
-		libp2p.Transport(libp2pquic.NewTransport),
-		libp2p.ListenAddrStrings(c.StringSlice("listen")...),
-		libp2p.BandwidthReporter(b))
-	if err == nil {
-		lx.Append(closer(h))
-	}
-
-	return h, err
-}
-
 type serverConfig struct {
 	fx.In
 
 	Log       log.Logger
-	Host      host.Host
+	Vat       vat.Network
 	PubSub    *pubsub.PubSub
 	Lifecycle fx.Lifecycle
 }
 
 func node(c *cli.Context, config serverConfig) (*server.Node, error) {
-	n, err := server.New(c.Context, config.Host, config.PubSub,
+	n, err := server.New(c.Context, config.Vat, config.PubSub,
 		server.WithLogger(config.Log),
-		server.WithNamespace(c.String("ns")),
 		server.WithClusterConfig(
 			cluster.WithMeta(nil) /* TODO */))
 

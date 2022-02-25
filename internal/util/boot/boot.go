@@ -6,13 +6,13 @@ import (
 	"path"
 	"strconv"
 
-	"github.com/lthibault/log"
 	"github.com/wetware/casm/pkg/boot/crawl"
+	logutil "github.com/wetware/ww/internal/util/log"
 
 	"github.com/urfave/cli/v2"
 )
 
-func NewCrawler(c *cli.Context, log log.Logger) (crawl.Crawler, error) {
+func NewCrawler(c *cli.Context) (crawl.Crawler, error) {
 	u, err := url.Parse(c.String("discover"))
 	if err != nil {
 		return crawl.Crawler{}, err
@@ -24,7 +24,7 @@ func NewCrawler(c *cli.Context, log log.Logger) (crawl.Crawler, error) {
 	}
 
 	cidr := path.Join(u.Hostname(), u.Path) // e.g. '10.0.1.0/24'
-	log = log.
+	log := logutil.New(c).
 		WithField("net", u.Scheme).
 		WithField("port", port).
 		WithField("cidr", cidr)
