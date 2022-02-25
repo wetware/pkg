@@ -10,7 +10,6 @@ import (
 	ds "github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/discovery"
-	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/metrics"
 	disc "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -78,8 +77,8 @@ func vatNetwork(c *cli.Context, lx fx.Lifecycle, b *metrics.BandwidthCounter) (m
 	return
 }
 
-func overlay(c *cli.Context, h host.Host, d discovery.Discovery) (*pubsub.PubSub, error) {
-	return pubsub.NewGossipSub(c.Context, h,
+func overlay(c *cli.Context, vat vat.Network, d discovery.Discovery) (*pubsub.PubSub, error) {
+	return pubsub.NewGossipSub(c.Context, vat.Host,
 		pubsub.WithRawTracer(statsdutil.NewPubSubTracer(c)),
 		pubsub.WithDiscovery(d))
 }
