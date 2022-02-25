@@ -92,24 +92,21 @@ func TestClientServer_integration(t *testing.T) {
 	t.Run("PubSub", func(t *testing.T) {
 		const topic = "test.pubsub.send_recv"
 
-		f, release := cn.PubSub().Join(ctx, topic)
-		defer release()
-
-		top, err := f.Struct()
-		require.NoError(t, err, "should resolve topic")
+		top := cn.Join(ctx, topic)
 		defer top.Release()
 
 		sub, err := top.Subscribe(ctx)
 		require.NoError(t, err, "should subscribe successfully")
 		defer sub.Cancel()
 
-		time.Sleep(time.Millisecond)
-
 		err = top.Publish(ctx, []byte("hello, world!"))
 		require.NoError(t, err, "should publish message")
 
-		b, err := sub.Next(ctx)
-		require.NoError(t, err, "should receive message")
-		assert.Equal(t, "hello, world!", string(b))
+		require.Eventually(t, func() bool {
+			return len(sub.C) > 0
+		}, time.Millisecond*10, time.Millisecond, "should receive a message")
+
+		assert.Equal(t, "hello, world!", string(<-sub.C),
+			"should match previously-published message")
 	})
 }
