@@ -16,19 +16,19 @@ import (
 	"github.com/lthibault/log"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
-	"github.com/wetware/casm/pkg/boot"
+	"github.com/wetware/casm/pkg/boot/crawl"
 )
 
 // ww client discover scan -s tcp://127.0.0.0:8822/24
 func Crawl() *cli.Command {
-	var b boot.Crawler
+	var b crawl.Crawler
 
 	return &cli.Command{
 		Name:   "crawl",
 		Usage:  "scan an IP range for cluster hosts",
 		Flags:  scanFlags,
 		Before: beforeScan(&b),
-		Action: crawl(&b),
+		Action: scan(&b),
 	}
 }
 
@@ -89,10 +89,10 @@ var publishFlags = []cli.Flag{
 	SCAN
 */
 
-func beforeScan(s *boot.Crawler) cli.BeforeFunc {
+func beforeScan(s *crawl.Crawler) cli.BeforeFunc {
 	return func(c *cli.Context) (err error) {
 		s.Logger = logger
-		s.Strategy = &boot.ScanSubnet{
+		s.Strategy = &crawl.ScanSubnet{
 			Logger: logger,
 			Net:    c.String("net"),
 			Port:   c.Int("port"),
@@ -103,7 +103,7 @@ func beforeScan(s *boot.Crawler) cli.BeforeFunc {
 	}
 }
 
-func crawl(b *boot.Crawler) cli.ActionFunc {
+func scan(b *crawl.Crawler) cli.ActionFunc {
 	return func(c *cli.Context) error {
 		peers, err := b.FindPeers(c.Context, "")
 		if err != nil {

@@ -23,7 +23,7 @@ require (
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/sirupsen/logrus v1.8.1
 	github.com/urfave/cli/v2 v2.3.0
-	github.com/wetware/casm v0.0.0-20220129232653-480152d9ffcc
+	github.com/wetware/casm v0.0.0-20220225184021-4ef5cd8f292d
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/fx v1.16.0
 	go.uber.org/zap v1.19.1 // indirect
@@ -144,7 +144,6 @@ require (
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/spacemonkeygo/spacelog v0.0.0-20180420211403-2296661a0572 // indirect
-	github.com/thejerf/suture v4.0.1+incompatible // indirect
 	github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 // indirect
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7 // indirect
 	github.com/whyrusleeping/timecache v0.0.0-20160911033111-cfcb2f1abfee // indirect

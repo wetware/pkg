@@ -20,6 +20,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/wetware/casm/pkg/boot"
+	"github.com/wetware/casm/pkg/boot/crawl"
 	bootutil "github.com/wetware/ww/internal/util/boot"
 	statsdutil "github.com/wetware/ww/internal/util/statsd"
 )
@@ -64,8 +65,8 @@ type bootstrapConfig struct {
 	Datastore ds.Batching
 	DHT       *dual.DHT
 
-	Crawler    boot.Crawler
-	Beacon     boot.Beacon
+	Crawler    crawl.Crawler
+	Beacon     crawl.Beacon
 	Supervisor *suture.Supervisor
 
 	Lifecycle fx.Lifecycle
@@ -108,18 +109,18 @@ func bootstrap(c *cli.Context, config bootstrapConfig) (discovery.Discovery, err
 	}, nil
 }
 
-func beacon(c *cli.Context, log log.Logger, h host.Host) (boot.Beacon, error) {
+func beacon(c *cli.Context, log log.Logger, h host.Host) (crawl.Beacon, error) {
 	u, err := url.Parse(c.String("discover"))
 	if err != nil {
-		return boot.Beacon{}, err
+		return crawl.Beacon{}, err
 	}
 
 	port, err := strconv.Atoi(u.Port())
 	if err != nil {
-		return boot.Beacon{}, err
+		return crawl.Beacon{}, err
 	}
 
-	return boot.Beacon{
+	return crawl.Beacon{
 		Logger: log.WithField("beacon_port", port),
 		Addr:   &net.TCPAddr{Port: port},
 		Host:   h,

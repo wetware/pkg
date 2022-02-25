@@ -74,7 +74,6 @@ github.com/aws/aws-sdk-go v1.27.0/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN
 github.com/aws/aws-sdk-go-v2 v0.18.0/go.mod h1:JWVYvqSMppoMJC0x5wdwiImzgXTI9FuZwxzkQq9wy+g=
 github.com/benbjohnson/clock v1.0.2/go.mod h1:bGMdMPoPVvcYyt1gHDf4J2KE153Yf9BuiUKYMaxlTDM=
 github.com/benbjohnson/clock v1.0.3/go.mod h1:bGMdMPoPVvcYyt1gHDf4J2KE153Yf9BuiUKYMaxlTDM=
-github.com/benbjohnson/clock v1.1.0 h1:Q92kusRqC1XV2MjkWETPvjJVqKetz1OzxZB7mHJLju8=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
 github.com/benbjohnson/clock v1.3.0 h1:ip6w0uFQkncKQ979AypyG0ER7mqUSBdKLOgAle/AT8A=
 github.com/benbjohnson/clock v1.3.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
@@ -999,10 +998,6 @@ github.com/stretchr/testify v1.7.0 h1:nwc3DEeHmmLAfoZucVR881uASk0Mfjw8xYJ99tb5Cc
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/syndtr/goleveldb v1.0.0/go.mod h1:ZVVdQEZoIme9iO1Ch2Jdy24qqXrMMOU6lpPAyBWyWuQ=
 github.com/tarm/serial v0.0.0-20180830185346-98f6abe2eb07/go.mod h1:kDXzergiv9cbyO7IOYJZWg1U88JhDg3PB6klq9Hg2pA=
-github.com/thejerf/suture v4.0.1+incompatible h1:LTfgYphYG8ebxe0QWjvKD2k4tk4NtC5xwxDI/qeF3Mg=
-github.com/thejerf/suture v4.0.1+incompatible/go.mod h1:ibKwrVj+Uzf3XZdAiNWUouPaAbSoemxOHLmJmwheEMc=
-github.com/thejerf/suture/v4 v4.0.1 h1:CLnC1wxLAiHA5zTbbvhSWMupVuGe5ZJ7YddWE3lvb4M=
-github.com/thejerf/suture/v4 v4.0.1/go.mod h1:g0e8vwskm9tI0jRjxrnA6lSr0q6OfPdWJVX7G5bVWRs=
 github.com/thejerf/suture/v4 v4.0.2 h1:VxIH/J8uYvqJY1+9fxi5GBfGRkRZ/jlSOP6x9HijFQc=
 github.com/thejerf/suture/v4 v4.0.2/go.mod h1:g0e8vwskm9tI0jRjxrnA6lSr0q6OfPdWJVX7G5bVWRs=
 github.com/tinylib/msgp v1.1.5 h1:2gXmtWueD2HefZHQe1QOy9HVzmFrLOVvsXwXBQ0ayy0=
@@ -1022,6 +1017,8 @@ github.com/warpfork/go-wish v0.0.0-20200122115046-b9ea61034e4a h1:G++j5e0OC488te
 github.com/warpfork/go-wish v0.0.0-20200122115046-b9ea61034e4a/go.mod h1:x6AKhvSSexNrVSrViXSHUEbICjmGXhtgABaHIySUSGw=
 github.com/wetware/casm v0.0.0-20220129232653-480152d9ffcc h1:qLyDA4NRovLd5qf0MPWTkIXz1bFPdpBk1DKHVALLSPU=
 github.com/wetware/casm v0.0.0-20220129232653-480152d9ffcc/go.mod h1:IEfTZQ4IuZtOyIPDkDtFfHvcD/u1kVLKfulz9xcptVc=
+github.com/wetware/casm v0.0.0-20220225184021-4ef5cd8f292d h1:gfAveMzaHYj5TevsxBaw7ehQZBp0fB0EDUH48GqV/+E=
+github.com/wetware/casm v0.0.0-20220225184021-4ef5cd8f292d/go.mod h1:IEfTZQ4IuZtOyIPDkDtFfHvcD/u1kVLKfulz9xcptVc=
 github.com/wetware/matrix v1.0.0-alpha.17/go.mod h1:Amn22v5AokspzNpka0Y0HNHkBSDo0MUf+JxkxVcs6h0=
 github.com/wetware/matrix v1.0.0-alpha.18 h1:au4xMIAU1zz5X9gLc9as04W6Y2vqkTKn62wihYg7wDQ=
 github.com/wetware/matrix v1.0.0-alpha.18/go.mod h1:QF5tprOw2yk7syU+KDU+75dtb/guiCDKjxDfHF7L5R4=
@@ -1071,8 +1068,6 @@ go.uber.org/atomic v1.9.0/go.mod h1:fEN4uk6kAWBTFdckzkM89CLk9XfWZrxpCo0nPH17wJc=
 go.uber.org/dig v1.12.0 h1:l1GQeZpEbss0/M4l/ZotuBndCrkMdjnygzgcuOjAdaY=
 go.uber.org/dig v1.12.0/go.mod h1:X34SnWGr8Fyla9zQNO2GSO2D+TIuqB14OS8JhYocIyw=
 go.uber.org/fx v1.14.2/go.mod h1:rwjmT7CaZIiLgflUER9FCWCSkDGiRv/VDBxg32Inoy8=
-go.uber.org/fx v1.15.0 h1:kcfBpAm98n0ksanyyZLFE/Q3T7yPi13Ge2liu3TxR+A=
-go.uber.org/fx v1.15.0/go.mod h1:jI3RazQUhGv5KkpZIRv+kuP4CcgX3fnc0qX8bLnzbx8=
 go.uber.org/fx v1.16.0 h1:N8i80+X1DCX+qMRiKzM+jPPZiIiyK/bVCysga3+B+1w=
 go.uber.org/fx v1.16.0/go.mod h1:OMoT5BnXcOaiexlpjtpE4vcAmzyDKyRs9TRYXCzamx8=
 go.uber.org/goleak v1.0.0/go.mod h1:8a7PlsEVH3e/a/GLqe5IIrQx6GzcnRmZEufDUTk4A7A=
