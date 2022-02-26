@@ -51,6 +51,13 @@ type Network struct {
 	Host host.Host
 }
 
+func (n Network) Loggable() map[string]interface{} {
+	return map[string]interface{}{
+		"ns": n.NS,
+		"id": n.Host.ID(),
+	}
+}
+
 // Connect to a capability hostend on vat.  The context is used only
 // when negotiating network connections and is safe to cancel when a
 // call to 'Connect' returns. The RPC connection is returned without

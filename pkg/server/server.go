@@ -27,9 +27,7 @@ func (n *Node) Close() error {
 func (n *Node) String() string { return n.vat.NS }
 
 func (n *Node) Loggable() map[string]interface{} {
-	return map[string]interface{}{
-		"ns":       n.String(),
-		"id":       n.vat.Host.ID(),
-		"instance": n.id,
-	}
+	m := n.vat.Loggable()
+	m["instance"] = n.id
+	return m
 }

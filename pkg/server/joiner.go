@@ -51,7 +51,7 @@ func (j Joiner) Join(ctx context.Context, vat vat.Network, ps PubSub) (*Node, er
 	// export default capabilities
 	vat.Export(
 		pscap.Capability,
-		pscap.New(ps, pscap.WithLogger(j.log)))
+		pscap.New(vat.NS, ps, pscap.WithLogger(j.log.With(vat))))
 
 	// vat.Export(
 	// 	anchor.Capability,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 
 	"capnproto.org/go/capnp/v3"
@@ -43,10 +44,10 @@ type Provider struct {
 	ts map[string]*refCountedTopic
 }
 
-func New(ps TopicJoiner, opt ...Option) *Provider {
+func New(ns string, ps TopicJoiner, opt ...Option) *Provider {
 	var f = &Provider{
 		cq: make(chan struct{}),
-		ps: joinDecorator{ps},
+		ps: joinDecorator{NS: ns, TopicJoiner: ps},
 		ts: make(map[string]*refCountedTopic),
 	}
 
@@ -235,11 +236,17 @@ func (t *refCountedTopic) handle(args api.Topic_subscribe_Params, sub *pubsub.Su
 	}()
 }
 
-type joinDecorator struct{ TopicJoiner }
+type joinDecorator struct {
+	NS string
+	TopicJoiner
+}
 
-func (jd joinDecorator) Join(ns string, opt ...pubsub.TopicOpt) (t *pubsub.Topic, err error) {
-	if t, err = jd.TopicJoiner.Join(ns, opt...); err != nil {
-		err = fmt.Errorf("%s: %w", ns, err) // decorate with namespace
+func (jd joinDecorator) Join(topic string, opt ...pubsub.TopicOpt) (t *pubsub.Topic, err error) {
+	// Scope the topic to the namespace.
+	topic = fmt.Sprintf("%s.%s", jd.NS, strings.Trim(topic, "."))
+
+	if t, err = jd.TopicJoiner.Join(topic, opt...); err != nil {
+		err = fmt.Errorf("%s: %w", topic, err)
 	}
 
 	return

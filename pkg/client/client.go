@@ -21,10 +21,7 @@ type Node struct {
 func (n Node) String() string { return n.vat.NS }
 
 func (n Node) Loggable() map[string]interface{} {
-	return map[string]interface{}{
-		"ns": n.String(),
-		"id": n.vat.Host.ID(),
-	}
+	return n.vat.Loggable()
 }
 
 // Bootstrap blocks until the context expires, or the
