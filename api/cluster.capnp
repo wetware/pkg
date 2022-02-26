@@ -6,6 +6,23 @@ $Go.package("cluster");
 $Go.import("github.com/wetware/ww/internal/api/cluster");
 
 
+interface Anchor {
+    ls @0 (path :List(Text), handler :Handler) -> ();
+    walk @1 (path :List(Text)) -> (anchor :Anchor);
+
+    interface Handler {
+        handle @0 (anchors :List(Anchor)) -> ();
+    }
+}
+
+interface Host extends(Anchor) {
+    host @0 () -> (host :Text);
+}
+
+interface Container extends(Anchor){
+    
+}
+
 interface View {
     iter @0 (handler :Handler) -> ();
     lookup @1 (peerID :Text) -> (record :Record, ok :Bool);
