@@ -7,16 +7,12 @@ import (
 
 	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/libp2p/go-libp2p-core/discovery"
-	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/routing"
 
 	"github.com/wetware/casm/pkg/boot"
 	"github.com/wetware/ww/pkg/cap/pubsub"
 	"github.com/wetware/ww/pkg/vat"
 )
-
-type RoutingFactory func(host.Host) (routing.Routing, error)
 
 type Addr string
 
