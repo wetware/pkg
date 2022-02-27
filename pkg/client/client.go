@@ -75,7 +75,8 @@ func (n Node) Join(ctx context.Context, topic string) *Topic {
 
 func (n Node) Ls(ctx context.Context, path []string) (anchor.AnchorIterator, error) {
 	if len(path) == 0 {
-		// TODO: return View iterator wrapped in Anchor transformer
+		it, releae := n.view.Iter(ctx)
+		return anchor.HostAnchorIterator{Vat: n.vat, It: it, Release: releae}, nil
 	}
 
 	a, err := n.hostAnchor(ctx, path)

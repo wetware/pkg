@@ -11,7 +11,12 @@ interface Anchor {
     walk @1 (path :List(Text)) -> (anchor :Anchor);
 
     interface Handler {
-        handle @0 (anchors :List(Anchor)) -> ();
+        handle @0 (anchors :List(AnchorElement)) -> ();
+
+        struct AnchorElement{
+            name @0 :Text;
+            anchor @1 :Anchor;
+        }
     }
 }
 
