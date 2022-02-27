@@ -1051,6 +1051,38 @@ type Container struct{ Client *capnp.Client }
 // Container_TypeID is the unique identifier for the type Container.
 const Container_TypeID = 0xf6015788be04b4e3
 
+func (c Container) Get(ctx context.Context, params func(Container_get_Params) error) (Container_get_Results_Future, capnp.ReleaseFunc) {
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0xf6015788be04b4e3,
+			MethodID:      0,
+			InterfaceName: "cluster.capnp:Container",
+			MethodName:    "get",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Container_get_Params{Struct: s}) }
+	}
+	ans, release := c.Client.SendCall(ctx, s)
+	return Container_get_Results_Future{Future: ans.Future()}, release
+}
+func (c Container) Set(ctx context.Context, params func(Container_set_Params) error) (Container_set_Results_Future, capnp.ReleaseFunc) {
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0xf6015788be04b4e3,
+			MethodID:      1,
+			InterfaceName: "cluster.capnp:Container",
+			MethodName:    "set",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Container_set_Params{Struct: s}) }
+	}
+	ans, release := c.Client.SendCall(ctx, s)
+	return Container_set_Results_Future{Future: ans.Future()}, release
+}
 func (c Container) Ls(ctx context.Context, params func(Anchor_ls_Params) error) (Anchor_ls_Results_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
 		Method: capnp.Method{
@@ -1096,6 +1128,10 @@ func (c Container) Release() {
 
 // A Container_Server is a Container with a local implementation.
 type Container_Server interface {
+	Get(context.Context, Container_get) error
+
+	Set(context.Context, Container_set) error
+
 	Ls(context.Context, Anchor_ls) error
 
 	Walk(context.Context, Anchor_walk) error
@@ -1117,8 +1153,32 @@ func Container_ServerToClient(s Container_Server, policy *server.Policy) Contain
 // This can be used to create a more complicated Server.
 func Container_Methods(methods []server.Method, s Container_Server) []server.Method {
 	if cap(methods) == 0 {
-		methods = make([]server.Method, 0, 2)
+		methods = make([]server.Method, 0, 4)
 	}
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xf6015788be04b4e3,
+			MethodID:      0,
+			InterfaceName: "cluster.capnp:Container",
+			MethodName:    "get",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Get(ctx, Container_get{call})
+		},
+	})
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xf6015788be04b4e3,
+			MethodID:      1,
+			InterfaceName: "cluster.capnp:Container",
+			MethodName:    "set",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Set(ctx, Container_set{call})
+		},
+	})
 
 	methods = append(methods, server.Method{
 		Method: capnp.Method{
@@ -1145,6 +1205,286 @@ func Container_Methods(methods []server.Method, s Container_Server) []server.Met
 	})
 
 	return methods
+}
+
+// Container_get holds the state for a server call to Container.get.
+// See server.Call for documentation.
+type Container_get struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c Container_get) Args() Container_get_Params {
+	return Container_get_Params{Struct: c.Call.Args()}
+}
+
+// AllocResults allocates the results struct.
+func (c Container_get) AllocResults() (Container_get_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Container_get_Results{Struct: r}, err
+}
+
+// Container_set holds the state for a server call to Container.set.
+// See server.Call for documentation.
+type Container_set struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c Container_set) Args() Container_set_Params {
+	return Container_set_Params{Struct: c.Call.Args()}
+}
+
+// AllocResults allocates the results struct.
+func (c Container_set) AllocResults() (Container_set_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Container_set_Results{Struct: r}, err
+}
+
+type Container_get_Params struct{ capnp.Struct }
+
+// Container_get_Params_TypeID is the unique identifier for the type Container_get_Params.
+const Container_get_Params_TypeID = 0xe13b74cbca1636d7
+
+func NewContainer_get_Params(s *capnp.Segment) (Container_get_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Container_get_Params{st}, err
+}
+
+func NewRootContainer_get_Params(s *capnp.Segment) (Container_get_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Container_get_Params{st}, err
+}
+
+func ReadRootContainer_get_Params(msg *capnp.Message) (Container_get_Params, error) {
+	root, err := msg.Root()
+	return Container_get_Params{root.Struct()}, err
+}
+
+func (s Container_get_Params) String() string {
+	str, _ := text.Marshal(0xe13b74cbca1636d7, s.Struct)
+	return str
+}
+
+// Container_get_Params_List is a list of Container_get_Params.
+type Container_get_Params_List struct{ capnp.List }
+
+// NewContainer_get_Params creates a new list of Container_get_Params.
+func NewContainer_get_Params_List(s *capnp.Segment, sz int32) (Container_get_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	return Container_get_Params_List{l}, err
+}
+
+func (s Container_get_Params_List) At(i int) Container_get_Params {
+	return Container_get_Params{s.List.Struct(i)}
+}
+
+func (s Container_get_Params_List) Set(i int, v Container_get_Params) error {
+	return s.List.SetStruct(i, v.Struct)
+}
+
+func (s Container_get_Params_List) String() string {
+	str, _ := text.MarshalList(0xe13b74cbca1636d7, s.List)
+	return str
+}
+
+// Container_get_Params_Future is a wrapper for a Container_get_Params promised by a client call.
+type Container_get_Params_Future struct{ *capnp.Future }
+
+func (p Container_get_Params_Future) Struct() (Container_get_Params, error) {
+	s, err := p.Future.Struct()
+	return Container_get_Params{s}, err
+}
+
+type Container_get_Results struct{ capnp.Struct }
+
+// Container_get_Results_TypeID is the unique identifier for the type Container_get_Results.
+const Container_get_Results_TypeID = 0xad17e9bd30bae1da
+
+func NewContainer_get_Results(s *capnp.Segment) (Container_get_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Container_get_Results{st}, err
+}
+
+func NewRootContainer_get_Results(s *capnp.Segment) (Container_get_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Container_get_Results{st}, err
+}
+
+func ReadRootContainer_get_Results(msg *capnp.Message) (Container_get_Results, error) {
+	root, err := msg.Root()
+	return Container_get_Results{root.Struct()}, err
+}
+
+func (s Container_get_Results) String() string {
+	str, _ := text.Marshal(0xad17e9bd30bae1da, s.Struct)
+	return str
+}
+
+func (s Container_get_Results) Data() ([]byte, error) {
+	p, err := s.Struct.Ptr(0)
+	return []byte(p.Data()), err
+}
+
+func (s Container_get_Results) HasData() bool {
+	return s.Struct.HasPtr(0)
+}
+
+func (s Container_get_Results) SetData(v []byte) error {
+	return s.Struct.SetData(0, v)
+}
+
+// Container_get_Results_List is a list of Container_get_Results.
+type Container_get_Results_List struct{ capnp.List }
+
+// NewContainer_get_Results creates a new list of Container_get_Results.
+func NewContainer_get_Results_List(s *capnp.Segment, sz int32) (Container_get_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return Container_get_Results_List{l}, err
+}
+
+func (s Container_get_Results_List) At(i int) Container_get_Results {
+	return Container_get_Results{s.List.Struct(i)}
+}
+
+func (s Container_get_Results_List) Set(i int, v Container_get_Results) error {
+	return s.List.SetStruct(i, v.Struct)
+}
+
+func (s Container_get_Results_List) String() string {
+	str, _ := text.MarshalList(0xad17e9bd30bae1da, s.List)
+	return str
+}
+
+// Container_get_Results_Future is a wrapper for a Container_get_Results promised by a client call.
+type Container_get_Results_Future struct{ *capnp.Future }
+
+func (p Container_get_Results_Future) Struct() (Container_get_Results, error) {
+	s, err := p.Future.Struct()
+	return Container_get_Results{s}, err
+}
+
+type Container_set_Params struct{ capnp.Struct }
+
+// Container_set_Params_TypeID is the unique identifier for the type Container_set_Params.
+const Container_set_Params_TypeID = 0xd8107c88f2d8bdfa
+
+func NewContainer_set_Params(s *capnp.Segment) (Container_set_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Container_set_Params{st}, err
+}
+
+func NewRootContainer_set_Params(s *capnp.Segment) (Container_set_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Container_set_Params{st}, err
+}
+
+func ReadRootContainer_set_Params(msg *capnp.Message) (Container_set_Params, error) {
+	root, err := msg.Root()
+	return Container_set_Params{root.Struct()}, err
+}
+
+func (s Container_set_Params) String() string {
+	str, _ := text.Marshal(0xd8107c88f2d8bdfa, s.Struct)
+	return str
+}
+
+func (s Container_set_Params) Data() ([]byte, error) {
+	p, err := s.Struct.Ptr(0)
+	return []byte(p.Data()), err
+}
+
+func (s Container_set_Params) HasData() bool {
+	return s.Struct.HasPtr(0)
+}
+
+func (s Container_set_Params) SetData(v []byte) error {
+	return s.Struct.SetData(0, v)
+}
+
+// Container_set_Params_List is a list of Container_set_Params.
+type Container_set_Params_List struct{ capnp.List }
+
+// NewContainer_set_Params creates a new list of Container_set_Params.
+func NewContainer_set_Params_List(s *capnp.Segment, sz int32) (Container_set_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return Container_set_Params_List{l}, err
+}
+
+func (s Container_set_Params_List) At(i int) Container_set_Params {
+	return Container_set_Params{s.List.Struct(i)}
+}
+
+func (s Container_set_Params_List) Set(i int, v Container_set_Params) error {
+	return s.List.SetStruct(i, v.Struct)
+}
+
+func (s Container_set_Params_List) String() string {
+	str, _ := text.MarshalList(0xd8107c88f2d8bdfa, s.List)
+	return str
+}
+
+// Container_set_Params_Future is a wrapper for a Container_set_Params promised by a client call.
+type Container_set_Params_Future struct{ *capnp.Future }
+
+func (p Container_set_Params_Future) Struct() (Container_set_Params, error) {
+	s, err := p.Future.Struct()
+	return Container_set_Params{s}, err
+}
+
+type Container_set_Results struct{ capnp.Struct }
+
+// Container_set_Results_TypeID is the unique identifier for the type Container_set_Results.
+const Container_set_Results_TypeID = 0xf135411ec88044d8
+
+func NewContainer_set_Results(s *capnp.Segment) (Container_set_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Container_set_Results{st}, err
+}
+
+func NewRootContainer_set_Results(s *capnp.Segment) (Container_set_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Container_set_Results{st}, err
+}
+
+func ReadRootContainer_set_Results(msg *capnp.Message) (Container_set_Results, error) {
+	root, err := msg.Root()
+	return Container_set_Results{root.Struct()}, err
+}
+
+func (s Container_set_Results) String() string {
+	str, _ := text.Marshal(0xf135411ec88044d8, s.Struct)
+	return str
+}
+
+// Container_set_Results_List is a list of Container_set_Results.
+type Container_set_Results_List struct{ capnp.List }
+
+// NewContainer_set_Results creates a new list of Container_set_Results.
+func NewContainer_set_Results_List(s *capnp.Segment, sz int32) (Container_set_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	return Container_set_Results_List{l}, err
+}
+
+func (s Container_set_Results_List) At(i int) Container_set_Results {
+	return Container_set_Results{s.List.Struct(i)}
+}
+
+func (s Container_set_Results_List) Set(i int, v Container_set_Results) error {
+	return s.List.SetStruct(i, v.Struct)
+}
+
+func (s Container_set_Results_List) String() string {
+	str, _ := text.MarshalList(0xf135411ec88044d8, s.List)
+	return str
+}
+
+// Container_set_Results_Future is a wrapper for a Container_set_Results promised by a client call.
+type Container_set_Results_Future struct{ *capnp.Future }
+
+func (p Container_set_Results_Future) Struct() (Container_set_Results, error) {
+	s, err := p.Future.Struct()
+	return Container_set_Results{s}, err
 }
 
 type View struct{ Client *capnp.Client }
@@ -1883,84 +2223,94 @@ func (p View_lookup_Results_Future) Record() View_Record_Future {
 	return View_Record_Future{Future: p.Future.Field(0, nil)}
 }
 
-const schema_fcf6ac08e448a6ac = "x\xda\x8cV}\x88T\xe5\x17>\xe7\xde\xfb\xce;\xf3" +
-	"\xc3u|}WD\x7f\x89\xa2+\xe9\x96\x8b\xa2PM" +
-	"\x1f3m+;k\x0as\xd5>\x10\"n\xbb7f" +
-	"s>\xd6{\xef\xb4\x04\x85\xa4\xf8\xd5\x1f&\xc6R\x0a" +
-	"\x19\x84\x9a\x86Q\x88\x09\xf3G\x1b\x0a!\x1bm\xc1\x9a" +
-	"\xe4Ja\xa0n\x10\xd5\x16\xa5\xd5\xb2u\xe3}\xef\xdc" +
-	"\x8f\x9d\x1d\xca\xbfvv\xe6p\x9e\xe7<\xe79\xcf\xbd" +
-	"+'\x94\x8c\xb2\x8a\xfc\x1e\x07\xd0\xf3$\xe6\xce\xbe\xff" +
-	"\xc8\xc8\x92\xea\x81\x9d\xc0\xfe\x8f\x00\x1a\x05Xmh\x1b" +
-	"\x114\xf7\x87\x91%\xd5\xa3\xbb.\xef\x05\xb6\x00\xdd\xc4" +
-	"\xa2\x0b'\xdez.?\x0eD\x11%\x1b\xb4-\xc8\x0d" +
-	"Q\xcd\x9f\xd2\xfa\x01\xdd\xc3-\x93[V\xff\xbc\xe0\x15" +
-	"`3U\xf7\xd4\xf1\xec\xf5\xf8\xa9[\x93\x00\xc8\xab\xda" +
-	"a~N\xbb\x13\x80_\xd2\xf6\xf0\xa5\x84\x02\xb8\x1f\x1d" +
-	"9y\xf6\xf3bu\xbf\x87IPtl\"\xeb\x10\x90" +
-	"\xcf#i@\xf7\xe6\x97\xebw\xed?\xf8\xe4\xab\xc0x" +
-	"P\xd0E\x14Q\xb0A\x16\xd0\x8bO\xf7L\x0e\xbe8" +
-	"0\x0d\xaeH\x0e\xf3\x8a\x00\xe1\xdbH'?D\xe6\x02" +
-	"\xb8\xd7\xab\x95M\x8f\x9e\xd7\x8ez\xdd$\xe9}d\x02" +
-	"4\xf7\x9e\x1f\xe9\xb5\x1d\x8b\x9f\x7f\x07\xd8\x9c\x00\xa6H" +
-	"f\x0b\x98\x8a\x84\xf9\xf5\xa1_.\xec\xb6\xfe\xfa\xc0+" +
-	"\x90\xe2\x0c\x08\x1a\x9a\xfb\xc9h\xd7\x1d+\x0e\xee\x1b\x9c" +
-	"F\xe0\x05\xf2.\x7fY\xc0\xf2}d\x0f\x1f\x95\xf3\x8e" +
-	"]=\xa0\xbfq\xe5\xd3\xc1(\xce9\xf2?\x813$" +
-	"q\x16\xbd\xb4\xe9\xf4`\xfb\x17\xc3\xa0sTB-e" +
-	"%\xff\x93\x8cp\x12\x13\x9f0\xf6>\xa0{i\xe0\xbd" +
-	"\xddg\x86\xfa/\xd6\xba\x89}\xf0C\xb1\x09@\xfef" +
-	"L\xac\xa2\xb0\xec\xae?6\x7f\xbb|4\"\x1eOP" +
-	"\xf1{\x13\x15`\xa7\xbe3w\\\xfex\xfe\xd7b\xaf" +
-	">\x9b\x15t\x8b`s\x9f,\x18\xffj\xe1\xd9\x8e\xcf" +
-	"\xd6\xdd\x10l\x82\x8a^*u\xd9F\x05\xc4\xb3{7" +
-	"g\xc7w\xbe>\xe6\xb5\x90\xba\x0c\xd3g\x84.|\xf2" +
-	"D\xe7l\xe3\xeaX\xa8\xf5\xea*\x95\x8a\xa9\x0f\xbc}" +
-	"\xba\xfb\xf8k?\x01\xe3j8\xa2`M\xaf\xf0\x93T" +
-	"\xb0<F;\xf9\xb0\xf8\x14\xda\x8d\xcdQC\xad\x01\xf9" +
-	"\x87\xf4{~\x8e\x0ay\x87i'\xbf)\x8a\xff\xce\xac" +
-	"\x19z\xec\xd8\xc0o\x11\xaf|C\xa5\xb87\xe48\xd7" +
-	"\xceh\x83{\x9f\xc0[\xd3VE\xe2\xe7yS\\\xca" +
-	"\x13\xa7<\x11\x9f\x0bw\xbb\xdd\x85\x8a\xed\x98V\x9b\xd6" +
-	"m\xf4\x95\xfaR\x8f\xf7\x9a\xfdmY\xa3\xd4S0\xad" +
-	"\xb6\xbc\xfc\xdb\xb2\xd1\xb4+\x05\x07\xed\xfa\xda\x87K\xdd" +
-	"\xf9\xb2\x15T{\xff\xae-\x98ES-99D=" +
-	"\xaej\x00\x1a\x02\xb0\xe5\xad\x00z\x8b\x8a\xfaJ\x05\x19" +
-	"b\xb3\x90\x99\xadH\x01\xe8\xcbT\xd4\xd7(\x98,\x19" +
-	"E\x13g\x80\x823\x00\xd3\x86l\x85,\xaa\x042\xc0" +
-	"\x80\x01\xfalU\xb3_\x8f#F\xc4N\xb4\x87\xeeb" +
-	"$\xb5\xbdF/\xbd\xd1\xec.[=z\\%\x00\x81" +
-	"e\xd0_\x1f[\xd5\x0a\x0a[J\x11}uCW\xb0" +
-	"y)PX\x13M\xf6:\xa6\x95\xc1t\xa1\\\xdeZ" +
-	"\xe9\xcb`\x0e\xf1v\xe4\xcb\x19\x96Q\xb4\x01t-\x90" +
-	"\xa3\xa9\x1d@\x8f\xab\xa8\xb7(\xb8\xdd\x92\xc4l\x9c\x09" +
-	"\x98S\x11g\x85\xf4\x01\xc5\x97\x01\x86\xeaad\xcb\xb6" +
-	"\xd3\x96/\xdbNm1\xf6\x94\xce\xad\xb5\xce\xcd\x0a&" +
-	"E\x91\xafi\xbdt\xd9\xb2j\xcb%iR\x10?2" +
-	"\xd0O\"\xc6\x84 \x84\xca&\x19\xd45\xc4\xc86 " +
-	"h\xa7\xd4\x93J{\xf3\xd6\xb3\xae\x99\xa5\xdf(l\x0d" +
-	"\x0c\x15\xe5\x9d\x0ay\xff\xf7\xfa\xc9\x94\x9e\x05;P\xc2" +
-	"/\xf0\x7fO\x8a\x02\xc9=<0l\xf7=Q3\x83" +
-	"\x9f/\xe8\xa7\x1f[5\xbff\x86 \xc9\xd0\x8fN6" +
-	"\xafU\x9aA-\xd8\x19L\x8aq\xa6\x1a\xa1\xc1\xb8\x8d" +
-	"\x0c\xd0\x1a\x1a \xd9g8y\x7f\xfbb[\xd1\x9d+" +
-	"\x11_I\x07c\x8fX\xda\x8c\xa0\xd3Z\xd1)\xa3\xa2" +
-	"\xbe^A\xff\xb0\xba\x16\x03\xe8\x1d*\xea9\x05\x99\x82" +
-	"\xcd\xa8\x00\xb0\x0d\xe2\xcb\xac\x8a\xfaf\x01i\x9a\x96\xef" +
-	"\x0c\xea8\x05$\xa0 \x01\xa4\xb6\xb9\x0d\x13\xa0`b" +
-	":\x87P\xed\xda\x8a\x1b\xddw&r\xdf\x0f\x0a\x97\xdf" +
-	"\xab\xa2\xde\xd1x\xc8\xed\xde\x81\x88E\x07\xdb\xa9[t" +
-	"t|q}\x01t\x83[jV\xa2\x1d\x83@\xa8\xeb" +
-	"\xd88\xbb\"\xa7\xaa6\xee..\xd5\xf3e\xe4R\x83" +
-	"7\x86\xc6\x97*i{i\x11z>\"Z*\x0c\xc5" +
-	" \x13\xe7\x87\x99\x98\xf6\x92\xa1.\x11f\x01\xaa\xe5\xad" +
-	"\x88\xa0 \xde\xee\\\x02\x9c\x16\x9c\xf0(c\xf5\xba6" +
-	">\xa00\xceT\xd3\x0a\xc3\xc2\x7f\x9dA\xff]\x8a\xb1" +
-	"\x94\x0c\x8b\xb4\x877\xf5\"\x94zfIy{\xe2(" +
-	"\xc37.\xb4\\\xff\xf9\x01\x0b\xcd\xa2YrjX\xfe" +
-	"\xc3\x1b\xfdG\xf0\xbfb5\x10\xbe\xd1\xf5E\xc3F\x9c" +
-	"BW\xc7\xb4\x98\xac\xb1~\xa4\\r\x8c\xde\x92iA" +
-	"\x0e1\xa7\x92\xfa\x1c\xfc'\x00\x00\xff\xff\x8e\x89\xf3A"
+const schema_fcf6ac08e448a6ac = "x\xda\x94V{l\x14\xd5\x17>gf\xe7QB)" +
+	"\x97[~\xfc\xa8V\xb0\x94\x08U\x1a\x1a\xf0\xc1\xa2\xee" +
+	"RK\xda\"$\x1d@\x11\xfe1c;\xd2\xca>\xca" +
+	"\xce\xd4\xfa\x07\x06\x03)T\x13\x111D%\x11\x83A" +
+	"\x04\x03Q\x09%\xa9IkBB\x10|E\x90\xd0\x12" +
+	"\x09\x12\x10\x83Q\x11\x1fDIq\xcc\xbd\xb3wf\xba" +
+	"\x1d\x05\xffjw\xf7\xcc9\xdf\xf9\xcew\xbe933" +
+	"rR\xaaQ\x96\x8d\x020\x9eQTw\xdc\xdc\xed\xc7" +
+	"\xa7\xf4n^\x0f\xe4\x16\x04\x88i\x00\xb3\x88\xb2\x18!" +
+	"\xe6\xfep|J\xef\xce\xae\x81n \xe5\xe8\x16M>" +
+	"\xb2\xfb\xcd\xa7Z/\x83\"\xb1\x90\xeb\xb1\x15H\x89\xa2" +
+	"\x01\xd0b\xa5\x13\xd0\xddV9\xb4b\xd6\xcf\xe5/\x00" +
+	"\x19#\xbb{w5\\\xd0\xf7^\x1d\x02@\xda\xa6l" +
+	"\xa3\xab\x95;\x00h\x97\xb2\x91\x9ed\x8f\xb8}\xdb\xf7" +
+	"\x1c\xfc<\xdd\xbb\xc9\xab\xa9 \xcb\xd8\xa7,@@z" +
+	"TI\x00\xba\xbf\x7f\xb5\xb0k\xd3\x96\xc7^\x02B\xfd" +
+	"\x80?\x15\x89\x05\\\xe7\x01\xda\x89\xc7[\x86\xfa\xd7l" +
+	"\x1dQ\xae\\\xddF\xa7\xaa\x0c\xd7\xedj=mT'" +
+	"\x00\xb8\x17z;\x96<|(\xb6\xd3\xcb\xc6Z\xa4s" +
+	"\xd4k\x10s\xef\xfdQ;\xbf\xae\xe2\xe9w\x80\x8c\xf7" +
+	"\xcb\x94\xab\xe3X\x99\xa9*+s\xfa\xdc\x873\xfb." +
+	"M\xd8\x07\xe4\xff~\xc0|\xb5\x82\x05,\xe2\x01\xbf>" +
+	"x\xe5\xc8\x86\xdc\xf5\xf7\xbd\x0c\x9c\xbd\xb4*1\xf6\x0e" +
+	"\x0f6\xde:c\xcb\xf3\xfd#\x10\x1a\xea\xbbt9\xc3" +
+	"EMu#\xfd\x80au/\x9e\xddl\xbcv\xfaX" +
+	"\x7f\x18\xc8\xeb\xea(Vg\x07\xaf3\xf9\xd9%\xfb\xfb" +
+	"k\xbf\xf8\x0c\x0c\x8aR@6\x8f\xa4_\xaa\xc7\xe9\x19" +
+	"\xde\xf3\xa0\xfa\x1e\xa0{r\xeb\xbe\x0d\x07\x8ev\x9e\xc8" +
+	"gc\x03\xa3\xab\xb5k\x80\xb4Cc\xb3\xba\xd67\xf0" +
+	"K\xf7\x9a\xb1\x03\xe1\xae\xceie\xac\xda%\x8dUK" +
+	"M\xbb\xf3\x8f\xa5\xdfL\x1f\x0c\xd1O\x8bt\x96\xa0X" +
+	"g\xbf\xef\xfd\xceZ7\xf0Q\xd9\xd7L\x19\"\xc1\x0c" +
+	"}\x05K0\x87\x07\x9c\xba\xe7\x7f\xc7>q\xe6\x9e\xf3" +
+	"*pZ\xda\xf42F\xcb\xe5S\x93\x0e\xd6}\xba\xe0" +
+	"[\xd6\x88\xff\xac\xa1s\xce\x97\xeb\x0c\xdd\x93\xddK\x1b" +
+	".\xaf\x7f\xf5\xa2\x97\x9c?\xdb\xa3?\xc1\x9e\xa5C\xbb" +
+	"\xeb\xc7\x99g/\x06s\x9c\xb5C\xe7d\xcb\xf7\xbf\xb5" +
+	"\xbfy\xd7+?\x01\xa1r\xc0\x0e \xed\xd2O\xd3\x97" +
+	"u\x86\xffE\xbd\x9e\xf6\xb0\xff\x02)\x93\xf1r0&" +
+	"@\xfa\x86\xfe=\xdd\xa3\xb3\xc9\xf4\xe8\xf5\xf4\x0c\x0f\x1e" +
+	"\xa8{\xee\xe3\xdb\xe6\xdd}%\xd4\xc9a\xbd\x02!\xf6" +
+	"Wr\xf6\xd1G\xde\xde\xfa[H\xa1\xfbt>\xb1\x1e" +
+	"N\xc1\xf9\x03\xb1\xfe\xeeexu\xc4\xfcO\xea\x87\xbc" +
+	"\xdctP\xdfH\xa7\x17M\x80\xbb\xdc\xe6T\x87\xedX" +
+	"\xb9\xeaX\xb3\xd9\x9ei\x8f?\xdafuV7\x98\x99" +
+	"\x96\x94\x95\xabn\xe5\x7f+\x17[vG\xcaA\xbb0" +
+	"v^\xa6\xb95\x9b\xf3\xa3\xbd\x8f\xf3SV\xda\x923" +
+	"N\x13\xa2\xa1\xcb1\x80\x18\x02\x90\xe9U\x00F\xa5\x8c" +
+	"\xc6L\x09\x09b)\x1b\x00\x99\x11\x070\xa6\xc9h\xcc" +
+	"\x96\xb0$c\xa6-\x1c\x0d\x12\x8e\x06L\x98<\x15\x92" +
+	"0GH\x00}\x04(\xd0\xcaV\xa7\xa1#\x86\xc6P" +
+	"T\x1bH\x96(\xf1\xb5yx\x89\xc5Vs6\xd7b" +
+	"\xe8\xb2\x02\xe0\xcb\x0c\xc5`IM\x15Hd\xaa\x86(" +
+	"\xd8\x0d\xf4B&\xc6A\"\xc5ZI\x9bc\xe5\x92\x98" +
+	"He\xb3\xab:\xda\x93\xd8\x84x3\xf45\x9993" +
+	"m\x03\x181\x9f\x8e\xe2Z\x00C\x97\xd1\xa8\x94pm" +
+	"\x8e\x03\xb3q\x0c`\x93\x8c86\x80\x0f\xc8\xbe\xf4k" +
+	"\xc8^\x8d\x86\xac\xedT\xb7fm'?\x18{X\xe6" +
+	"\xaa|\xe6R\x09KX\x90\xe0\xb4\x90\xba\x86\xacl\xf3" +
+	"!\xc58!\xc2\xa8P\xf8\x1f!\x8c\x10E\xe3I\x92" +
+	"h\xc4\x10C\xd3\x00?\x9dT\x08*\xe1\xf5[\x88:" +
+	"/\x96N3\xb5\xca\x17T\x18w<\xc0}\xe3\xf1\xe7" +
+	"s>\x94\xcd8f[\xc6\xcaU\xaf\xb4<6\xb4\x94" +
+	"c\xff\x13\x1b-\xa6cb1HX\x1c\xca\xa4\x0cC" +
+	"\x97\xb2}NE\x80\xf8\xbd\x84\x05p\x16\x82%\xc6Z" +
+	"\xa1\xae\xbc\xac\x84\xfd\xa10gRS\x96\x97\x95o\xb4" +
+	"(\xac\x9fL\xac\xe2\xb2\x92Sv\x12K\x181\xc3%" +
+	"\x15A\\\x94\x94\xaa\x02)\x95\xb4\x9bN\xab\xd0\x11\x9b" +
+	"{X=RH\xa1|\x17\xb0\x85\x8d\x7f\xb4\x9fi>" +
+	"\xcb\x94\x94\xd1X(\xa1X\xd1\xc6\x0a\x00\xa3NF\xa3" +
+	"IB\"a)J\x00d\x11\xfb\xb2AFc)+" +
+	"iY9\xa11\xcdqR\xa8\x80\x84\x0a\xa0f[\xab" +
+	"\xb1\x08$,\x1a\x89!`;/\x96(\xa7H\x86\x9c" +
+	"\xe2\x01\xb6/\xf7\xc9h\xd4E7\xb9\xd6[5&\x19" +
+	"\x7f:7\x92\x8cm9\x9cO9\xfd\xdf\x14\x13\xe6\x91" +
+	"\x19\x82\xdfC\xc4z\x97Jah\xbeG\x15@\x8b\xb6" +
+	"\xd3\x90{\xc8\xd1\xd9\x99yx\xab\x122\x0f\xfft\x8a" +
+	"6\x8f\xe1+\x93O^\x18\xc4{\xf3\\.\xd8\xd5\xd0" +
+	"\x88\xe2\x81\x99\xfb^^\x16xy\xc2s\xb4\x02'\x1b" +
+	"\x0b(gW!\x82\x84x\xb3\xcd\x8b\x95\xf6\xa3\xd5B" +
+	"\xf2\xa3\xd75\xb0a\xd9\xca\x05&'\x8e?\x14\x97'" +
+	"!qnr\x09\xaf\xde\xf0\xfd\x93\x0a\x91\x95\xf0Mg" +
+	"\x16\x10\xdc\xa7\x98s\xc5{\x0f&Yi+\xe3\xe4k" +
+	"\x89C\x05\xc5Q\xf1\xaf\xb5\"\xd59\xa2\xfb\x88\xf1D" +
+	"9B\xd8J\xd9z6\xd6\x8dx\x09H\x05\xf5\xc0{" +
+	"]3\xe0\xe2\x80Bq\x81\x92\x9a\x0a\xe1a\xe2|C" +
+	"q\x9b\x90\x89\x15\xdc\xc3\xb4\x95\x96\x93d;\x1f\xf1\xaa" +
+	"\xf8;\x00\x00\xff\xff`3jH"
 
 func init() {
 	schemas.Register(schema_fcf6ac08e448a6ac,
@@ -1972,18 +2322,22 @@ func init() {
 		0x957cbefc645fd307,
 		0xa404c24b5375b9e4,
 		0xa7762282e307ed37,
+		0xad17e9bd30bae1da,
 		0xb0fd7286c7f13ef3,
 		0xbe89922d1c49d9c5,
 		0xbecada985190dfe6,
 		0xcdcf42beb2537d20,
 		0xd377c9b486ad95d5,
+		0xd8107c88f2d8bdfa,
 		0xd929e054f82b286c,
 		0xdc1abfd88265e7ac,
+		0xe13b74cbca1636d7,
 		0xe54acc44b61fd7ef,
 		0xe69783ef48548866,
 		0xe6df611247a8fc13,
 		0xee93a663b2a23c03,
 		0xef686a9fa8c72009,
+		0xf135411ec88044d8,
 		0xf495a555c9344000,
 		0xf6015788be04b4e3)
 }

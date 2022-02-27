@@ -38,10 +38,10 @@ type Stream interface {
 }
 
 type ClientProvider interface {
-	// Client returns the client capability to be exported.  It is called
+	// CapClient returns the client capability to be exported.  It is called
 	// once for each incoming Stream, so implementations may either share
 	// a single global object, or instantiate a new object for each call.
-	Client() *capnp.Client
+	CapClient() *capnp.Client
 }
 
 // Network wraps a libp2p Host and provides a high-level interface to
@@ -94,7 +94,7 @@ func (n Network) Export(c Capability, boot ClientProvider) {
 			defer s.Close()
 
 			conn := rpc.NewConn(c.Upgrade(s), &rpc.Options{
-				BootstrapClient: boot.Client(),
+				BootstrapClient: boot.CapClient(),
 			})
 			defer conn.Close()
 

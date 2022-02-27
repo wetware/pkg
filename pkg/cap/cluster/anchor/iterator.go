@@ -18,9 +18,11 @@ type Iterator struct {
 
 	head ContainerAnchor
 	tail []ContainerAnchor
+
+	err error
 }
 
-func newIterator(ctx context.Context, anchor api.Anchor, path []string) (Iterator, error) {
+func newIterator(ctx context.Context, anchor api.Anchor, path []string) (*Iterator, error) {
 	h := handler{path: path, recv: make(chan []ContainerAnchor, defaultMaxInflight)}
 
 	fut, release := anchor.Ls(ctx, func(a api.Anchor_ls_Params) error {
@@ -41,24 +43,25 @@ func newIterator(ctx context.Context, anchor api.Anchor, path []string) (Iterato
 		return a.SetHandler(c)
 	})
 
-	return Iterator{path: path, recv: h.recv, fut: fut.Future, release: release}, nil
+	return &Iterator{path: path, recv: h.recv, fut: fut.Future, release: release}, nil
 }
 
-func (it Iterator) Next(ctx context.Context) error {
+func (it *Iterator) Next(ctx context.Context) bool {
 	if len(it.tail) == 0 {
-		if err := it.nextBatch(ctx); err != nil {
-			return err
+		if it.err = it.nextBatch(ctx); it.err != nil {
+			return false
 		}
 	}
 
 	if len(it.tail) > 0 {
 		it.head, it.tail = it.tail[0], it.tail[1:]
+		return true
 	}
 
-	return nil
+	return false
 }
 
-func (it Iterator) nextBatch(ctx context.Context) (err error) {
+func (it *Iterator) nextBatch(ctx context.Context) (err error) {
 	var ok bool
 	select {
 	case it.tail, ok = <-it.recv:
@@ -73,12 +76,16 @@ func (it Iterator) nextBatch(ctx context.Context) (err error) {
 	return
 }
 
-func (it Iterator) Finish() {
+func (it *Iterator) Finish() {
 	it.release()
 }
 
-func (it Iterator) Anchor() Anchor {
+func (it *Iterator) Anchor() Anchor {
 	return it.head
+}
+
+func (it *Iterator) Err() error {
+	return it.err
 }
 
 type handler struct {

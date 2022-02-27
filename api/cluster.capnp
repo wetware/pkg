@@ -25,7 +25,8 @@ interface Host extends(Anchor) {
 }
 
 interface Container extends(Anchor){
-    
+    get @0 () -> (data :Data);
+    set @1 (data :Data) -> ();
 }
 
 interface View {
