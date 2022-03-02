@@ -21,6 +21,11 @@ var flags = []cli.Flag{
 			"/ip6/::0/udp/2020/quic"),
 		EnvVars: []string{"WW_LISTEN"},
 	},
+	&cli.StringSliceFlag{
+		Name:    "join",
+		Usage:   "join cluster through current member address",
+		EnvVars: []string{"WW_JOIN"},
+	},
 	&cli.StringFlag{
 		Name:    "discover",
 		Aliases: []string{"d"},

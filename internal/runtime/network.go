@@ -25,6 +25,7 @@ import (
 
 	"github.com/wetware/casm/pkg/boot"
 	"github.com/wetware/casm/pkg/boot/crawl"
+	"github.com/wetware/casm/pkg/pex"
 	bootutil "github.com/wetware/ww/internal/util/boot"
 	statsdutil "github.com/wetware/ww/internal/util/statsd"
 	"github.com/wetware/ww/pkg/vat"
@@ -86,7 +87,7 @@ func overlay(c *cli.Context, vat vat.Network, d discovery.Discovery) (*pubsub.Pu
 type bootstrapConfig struct {
 	fx.In
 
-	Logger    log.Logger
+	Log       log.Logger
 	Vat       vat.Network
 	Datastore ds.Batching
 	DHT       *dual.DHT
@@ -98,7 +99,11 @@ type bootstrapConfig struct {
 	Lifecycle fx.Lifecycle
 }
 
-func bootstrap(config bootstrapConfig) (discovery.Discovery, error) {
+func (config bootstrapConfig) Logger() log.Logger {
+	return config.Log.With(config.Vat)
+}
+
+func bootstrap(c *cli.Context, config bootstrapConfig) (discovery.Discovery, error) {
 	config.Lifecycle.Append(fx.Hook{
 		OnStart: func(context.Context) error {
 			config.Supervisor.Add(config.Beacon)
@@ -114,23 +119,21 @@ func bootstrap(config bootstrapConfig) (discovery.Discovery, error) {
 		Advertiser: config.Beacon,
 	}
 
-	// TODO:  enable PeX when testing is complete
-
-	// // Wrap the bootstrap discovery service in a peer sampling service.
-	// px, err := pex.New(c.Context, config.Host,
-	// 	pex.WithLogger(config.Logger),
-	// 	pex.WithDatastore(config.Datastore),
-	// 	pex.WithDiscovery(d))
-	// if err != nil {
-	// 	return nil, err
-	// }
+	// Wrap the bootstrap discovery service in a peer sampling service.
+	px, err := pex.New(c.Context, config.Vat.Host,
+		pex.WithLogger(config.Logger()),
+		pex.WithDatastore(config.Datastore),
+		pex.WithDiscovery(d))
+	if err != nil {
+		return nil, err
+	}
 
 	// If the namespace matches the cluster pubsub topic,
 	// fetch peers from PeX, which itself will fall back
 	// on the bootstrap services.
 	return boot.Namespace{
 		Match:   pubsubTopic(config.Vat.NS),
-		Target:  d,
+		Target:  px,
 		Default: disc.NewRoutingDiscovery(config.DHT),
 	}, nil
 }
