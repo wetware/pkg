@@ -32,7 +32,7 @@ func NewCrawler(c *cli.Context) (crawl.Crawler, error) {
 	return crawl.Crawler{
 		Logger: log,
 		Dialer: new(net.Dialer),
-		Strategy: &crawl.ScanSubnet{
+		Strategy: &crawl.Subnet{
 			Logger: log,
 			Net:    u.Scheme,
 			Port:   port,

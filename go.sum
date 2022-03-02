@@ -350,8 +350,9 @@ github.com/ipfs/go-datastore v0.4.0/go.mod h1:SX/xMIKoCszPqp+z9JhPYCmoOoXTvaa13X
 github.com/ipfs/go-datastore v0.4.1/go.mod h1:SX/xMIKoCszPqp+z9JhPYCmoOoXTvaa13XEbGtsFUhA=
 github.com/ipfs/go-datastore v0.4.4/go.mod h1:SX/xMIKoCszPqp+z9JhPYCmoOoXTvaa13XEbGtsFUhA=
 github.com/ipfs/go-datastore v0.4.5/go.mod h1:eXTcaaiN6uOlVCLS9GjJUJtlvJfM3xk23w3fyfrmmJs=
-github.com/ipfs/go-datastore v0.4.6 h1:zU2cmweykxJ+ziXnA2cPtsLe8rdR/vrthOipLPuf6kc=
 github.com/ipfs/go-datastore v0.4.6/go.mod h1:XSipLSc64rFKSFRFGo1ecQl+WhYce3K7frtpHkyPFUc=
+github.com/ipfs/go-datastore v0.5.0 h1:rQicVCEacWyk4JZ6G5bD9TKR7lZEG1MWcG7UdWYrFAU=
+github.com/ipfs/go-datastore v0.5.0/go.mod h1:9zhEApYMTl17C8YDp7JmU7sQZi2/wqiYh73hakZ90Bk=
 github.com/ipfs/go-detect-race v0.0.1 h1:qX/xay2W3E4Q1U7d9lNs1sU9nvguX0a7319XbyQ6cOk=
 github.com/ipfs/go-detect-race v0.0.1/go.mod h1:8BNT7shDZPo99Q74BpGMK+4D8Mn4j46UU0LZ723meps=
 github.com/ipfs/go-ds-badger v0.0.2/go.mod h1:Y3QpeSFWQf6MopLTiZD+VT6IC1yZqaGmjvRcKeSGij8=
@@ -1017,6 +1018,8 @@ github.com/warpfork/go-wish v0.0.0-20200122115046-b9ea61034e4a h1:G++j5e0OC488te
 github.com/warpfork/go-wish v0.0.0-20200122115046-b9ea61034e4a/go.mod h1:x6AKhvSSexNrVSrViXSHUEbICjmGXhtgABaHIySUSGw=
 github.com/wetware/casm v0.0.0-20220225230436-4c5a007db1f5 h1:a5y4hsWdb2ji5G1FNsoOph3PZhItZN6KEE4PsqfDZxM=
 github.com/wetware/casm v0.0.0-20220225230436-4c5a007db1f5/go.mod h1:IEfTZQ4IuZtOyIPDkDtFfHvcD/u1kVLKfulz9xcptVc=
+github.com/wetware/casm v0.0.0-20220302163224-6ae33a8edc28 h1:qEFwXOf+Xio3Mbw6Mjxjx62SzhFBBb0wEDK/Nxo7+J4=
+github.com/wetware/casm v0.0.0-20220302163224-6ae33a8edc28/go.mod h1:IEfTZQ4IuZtOyIPDkDtFfHvcD/u1kVLKfulz9xcptVc=
 github.com/wetware/matrix v1.0.0-alpha.17/go.mod h1:Amn22v5AokspzNpka0Y0HNHkBSDo0MUf+JxkxVcs6h0=
 github.com/wetware/matrix v1.0.0-alpha.18 h1:au4xMIAU1zz5X9gLc9as04W6Y2vqkTKn62wihYg7wDQ=
 github.com/wetware/matrix v1.0.0-alpha.18/go.mod h1:QF5tprOw2yk7syU+KDU+75dtb/guiCDKjxDfHF7L5R4=

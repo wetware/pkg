@@ -92,7 +92,7 @@ var publishFlags = []cli.Flag{
 func beforeScan(s *crawl.Crawler) cli.BeforeFunc {
 	return func(c *cli.Context) (err error) {
 		s.Logger = logger
-		s.Strategy = &crawl.ScanSubnet{
+		s.Strategy = &crawl.Subnet{
 			Logger: logger,
 			Net:    c.String("net"),
 			Port:   c.Int("port"),

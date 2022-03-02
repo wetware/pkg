@@ -8,7 +8,7 @@ require (
 	github.com/davidlazar/go-crypto v0.0.0-20200604182044-b73af7476f6c // indirect
 	github.com/google/uuid v1.3.0
 	github.com/huin/goupnp v1.0.2 // indirect
-	github.com/ipfs/go-datastore v0.4.6
+	github.com/ipfs/go-datastore v0.5.0
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	github.com/koron/go-ssdp v0.0.2 // indirect
 	github.com/libp2p/go-libp2p v0.15.0
@@ -23,7 +23,7 @@ require (
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/sirupsen/logrus v1.8.1
 	github.com/urfave/cli/v2 v2.3.0
-	github.com/wetware/casm v0.0.0-20220225230436-4c5a007db1f5
+	github.com/wetware/casm v0.0.0-20220302163224-6ae33a8edc28
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/fx v1.16.0
 	go.uber.org/zap v1.19.1 // indirect
