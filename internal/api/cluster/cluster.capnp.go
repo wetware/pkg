@@ -25,7 +25,7 @@ func (c Anchor) Ls(ctx context.Context, params func(Anchor_ls_Params) error) (An
 		},
 	}
 	if params != nil {
-		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 2}
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Anchor_ls_Params{Struct: s}) }
 	}
 	ans, release := c.Client.SendCall(ctx, s)
@@ -124,7 +124,7 @@ func (c Anchor_ls) Args() Anchor_ls_Params {
 
 // AllocResults allocates the results struct.
 func (c Anchor_ls) AllocResults() (Anchor_ls_Results, error) {
-	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
 	return Anchor_ls_Results{Struct: r}, err
 }
 
@@ -145,147 +145,59 @@ func (c Anchor_walk) AllocResults() (Anchor_walk_Results, error) {
 	return Anchor_walk_Results{Struct: r}, err
 }
 
-type Anchor_Handler struct{ Client *capnp.Client }
+type Anchor_Child struct{ capnp.Struct }
 
-// Anchor_Handler_TypeID is the unique identifier for the type Anchor_Handler.
-const Anchor_Handler_TypeID = 0xef686a9fa8c72009
+// Anchor_Child_TypeID is the unique identifier for the type Anchor_Child.
+const Anchor_Child_TypeID = 0x95dd102833f224c5
 
-func (c Anchor_Handler) Handle(ctx context.Context, params func(Anchor_Handler_handle_Params) error) (Anchor_Handler_handle_Results_Future, capnp.ReleaseFunc) {
-	s := capnp.Send{
-		Method: capnp.Method{
-			InterfaceID:   0xef686a9fa8c72009,
-			MethodID:      0,
-			InterfaceName: "cluster.capnp:Anchor.Handler",
-			MethodName:    "handle",
-		},
-	}
-	if params != nil {
-		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Anchor_Handler_handle_Params{Struct: s}) }
-	}
-	ans, release := c.Client.SendCall(ctx, s)
-	return Anchor_Handler_handle_Results_Future{Future: ans.Future()}, release
-}
-
-func (c Anchor_Handler) AddRef() Anchor_Handler {
-	return Anchor_Handler{
-		Client: c.Client.AddRef(),
-	}
-}
-
-func (c Anchor_Handler) Release() {
-	c.Client.Release()
-}
-
-// A Anchor_Handler_Server is a Anchor_Handler with a local implementation.
-type Anchor_Handler_Server interface {
-	Handle(context.Context, Anchor_Handler_handle) error
-}
-
-// Anchor_Handler_NewServer creates a new Server from an implementation of Anchor_Handler_Server.
-func Anchor_Handler_NewServer(s Anchor_Handler_Server, policy *server.Policy) *server.Server {
-	c, _ := s.(server.Shutdowner)
-	return server.New(Anchor_Handler_Methods(nil, s), s, c, policy)
-}
-
-// Anchor_Handler_ServerToClient creates a new Client from an implementation of Anchor_Handler_Server.
-// The caller is responsible for calling Release on the returned Client.
-func Anchor_Handler_ServerToClient(s Anchor_Handler_Server, policy *server.Policy) Anchor_Handler {
-	return Anchor_Handler{Client: capnp.NewClient(Anchor_Handler_NewServer(s, policy))}
-}
-
-// Anchor_Handler_Methods appends Methods to a slice that invoke the methods on s.
-// This can be used to create a more complicated Server.
-func Anchor_Handler_Methods(methods []server.Method, s Anchor_Handler_Server) []server.Method {
-	if cap(methods) == 0 {
-		methods = make([]server.Method, 0, 1)
-	}
-
-	methods = append(methods, server.Method{
-		Method: capnp.Method{
-			InterfaceID:   0xef686a9fa8c72009,
-			MethodID:      0,
-			InterfaceName: "cluster.capnp:Anchor.Handler",
-			MethodName:    "handle",
-		},
-		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.Handle(ctx, Anchor_Handler_handle{call})
-		},
-	})
-
-	return methods
-}
-
-// Anchor_Handler_handle holds the state for a server call to Anchor_Handler.handle.
-// See server.Call for documentation.
-type Anchor_Handler_handle struct {
-	*server.Call
-}
-
-// Args returns the call's arguments.
-func (c Anchor_Handler_handle) Args() Anchor_Handler_handle_Params {
-	return Anchor_Handler_handle_Params{Struct: c.Call.Args()}
-}
-
-// AllocResults allocates the results struct.
-func (c Anchor_Handler_handle) AllocResults() (Anchor_Handler_handle_Results, error) {
-	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Anchor_Handler_handle_Results{Struct: r}, err
-}
-
-type Anchor_Handler_AnchorElement struct{ capnp.Struct }
-
-// Anchor_Handler_AnchorElement_TypeID is the unique identifier for the type Anchor_Handler_AnchorElement.
-const Anchor_Handler_AnchorElement_TypeID = 0x88d885a4b923d2ec
-
-func NewAnchor_Handler_AnchorElement(s *capnp.Segment) (Anchor_Handler_AnchorElement, error) {
+func NewAnchor_Child(s *capnp.Segment) (Anchor_Child, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
-	return Anchor_Handler_AnchorElement{st}, err
+	return Anchor_Child{st}, err
 }
 
-func NewRootAnchor_Handler_AnchorElement(s *capnp.Segment) (Anchor_Handler_AnchorElement, error) {
+func NewRootAnchor_Child(s *capnp.Segment) (Anchor_Child, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
-	return Anchor_Handler_AnchorElement{st}, err
+	return Anchor_Child{st}, err
 }
 
-func ReadRootAnchor_Handler_AnchorElement(msg *capnp.Message) (Anchor_Handler_AnchorElement, error) {
+func ReadRootAnchor_Child(msg *capnp.Message) (Anchor_Child, error) {
 	root, err := msg.Root()
-	return Anchor_Handler_AnchorElement{root.Struct()}, err
+	return Anchor_Child{root.Struct()}, err
 }
 
-func (s Anchor_Handler_AnchorElement) String() string {
-	str, _ := text.Marshal(0x88d885a4b923d2ec, s.Struct)
+func (s Anchor_Child) String() string {
+	str, _ := text.Marshal(0x95dd102833f224c5, s.Struct)
 	return str
 }
 
-func (s Anchor_Handler_AnchorElement) Name() (string, error) {
+func (s Anchor_Child) Name() (string, error) {
 	p, err := s.Struct.Ptr(0)
 	return p.Text(), err
 }
 
-func (s Anchor_Handler_AnchorElement) HasName() bool {
+func (s Anchor_Child) HasName() bool {
 	return s.Struct.HasPtr(0)
 }
 
-func (s Anchor_Handler_AnchorElement) NameBytes() ([]byte, error) {
+func (s Anchor_Child) NameBytes() ([]byte, error) {
 	p, err := s.Struct.Ptr(0)
 	return p.TextBytes(), err
 }
 
-func (s Anchor_Handler_AnchorElement) SetName(v string) error {
+func (s Anchor_Child) SetName(v string) error {
 	return s.Struct.SetText(0, v)
 }
 
-func (s Anchor_Handler_AnchorElement) Anchor() Anchor {
+func (s Anchor_Child) Anchor() Anchor {
 	p, _ := s.Struct.Ptr(1)
 	return Anchor{Client: p.Interface().Client()}
 }
 
-func (s Anchor_Handler_AnchorElement) HasAnchor() bool {
+func (s Anchor_Child) HasAnchor() bool {
 	return s.Struct.HasPtr(1)
 }
 
-func (s Anchor_Handler_AnchorElement) SetAnchor(v Anchor) error {
+func (s Anchor_Child) SetAnchor(v Anchor) error {
 	if !v.Client.IsValid() {
 		return s.Struct.SetPtr(1, capnp.Ptr{})
 	}
@@ -294,172 +206,34 @@ func (s Anchor_Handler_AnchorElement) SetAnchor(v Anchor) error {
 	return s.Struct.SetPtr(1, in.ToPtr())
 }
 
-// Anchor_Handler_AnchorElement_List is a list of Anchor_Handler_AnchorElement.
-type Anchor_Handler_AnchorElement_List struct{ capnp.List }
+// Anchor_Child_List is a list of Anchor_Child.
+type Anchor_Child_List struct{ capnp.List }
 
-// NewAnchor_Handler_AnchorElement creates a new list of Anchor_Handler_AnchorElement.
-func NewAnchor_Handler_AnchorElement_List(s *capnp.Segment, sz int32) (Anchor_Handler_AnchorElement_List, error) {
+// NewAnchor_Child creates a new list of Anchor_Child.
+func NewAnchor_Child_List(s *capnp.Segment, sz int32) (Anchor_Child_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2}, sz)
-	return Anchor_Handler_AnchorElement_List{l}, err
+	return Anchor_Child_List{l}, err
 }
 
-func (s Anchor_Handler_AnchorElement_List) At(i int) Anchor_Handler_AnchorElement {
-	return Anchor_Handler_AnchorElement{s.List.Struct(i)}
-}
+func (s Anchor_Child_List) At(i int) Anchor_Child { return Anchor_Child{s.List.Struct(i)} }
 
-func (s Anchor_Handler_AnchorElement_List) Set(i int, v Anchor_Handler_AnchorElement) error {
-	return s.List.SetStruct(i, v.Struct)
-}
+func (s Anchor_Child_List) Set(i int, v Anchor_Child) error { return s.List.SetStruct(i, v.Struct) }
 
-func (s Anchor_Handler_AnchorElement_List) String() string {
-	str, _ := text.MarshalList(0x88d885a4b923d2ec, s.List)
+func (s Anchor_Child_List) String() string {
+	str, _ := text.MarshalList(0x95dd102833f224c5, s.List)
 	return str
 }
 
-// Anchor_Handler_AnchorElement_Future is a wrapper for a Anchor_Handler_AnchorElement promised by a client call.
-type Anchor_Handler_AnchorElement_Future struct{ *capnp.Future }
+// Anchor_Child_Future is a wrapper for a Anchor_Child promised by a client call.
+type Anchor_Child_Future struct{ *capnp.Future }
 
-func (p Anchor_Handler_AnchorElement_Future) Struct() (Anchor_Handler_AnchorElement, error) {
+func (p Anchor_Child_Future) Struct() (Anchor_Child, error) {
 	s, err := p.Future.Struct()
-	return Anchor_Handler_AnchorElement{s}, err
+	return Anchor_Child{s}, err
 }
 
-func (p Anchor_Handler_AnchorElement_Future) Anchor() Anchor {
+func (p Anchor_Child_Future) Anchor() Anchor {
 	return Anchor{Client: p.Future.Field(1, nil).Client()}
-}
-
-type Anchor_Handler_handle_Params struct{ capnp.Struct }
-
-// Anchor_Handler_handle_Params_TypeID is the unique identifier for the type Anchor_Handler_handle_Params.
-const Anchor_Handler_handle_Params_TypeID = 0xdc1abfd88265e7ac
-
-func NewAnchor_Handler_handle_Params(s *capnp.Segment) (Anchor_Handler_handle_Params, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Anchor_Handler_handle_Params{st}, err
-}
-
-func NewRootAnchor_Handler_handle_Params(s *capnp.Segment) (Anchor_Handler_handle_Params, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Anchor_Handler_handle_Params{st}, err
-}
-
-func ReadRootAnchor_Handler_handle_Params(msg *capnp.Message) (Anchor_Handler_handle_Params, error) {
-	root, err := msg.Root()
-	return Anchor_Handler_handle_Params{root.Struct()}, err
-}
-
-func (s Anchor_Handler_handle_Params) String() string {
-	str, _ := text.Marshal(0xdc1abfd88265e7ac, s.Struct)
-	return str
-}
-
-func (s Anchor_Handler_handle_Params) Anchors() (Anchor_Handler_AnchorElement_List, error) {
-	p, err := s.Struct.Ptr(0)
-	return Anchor_Handler_AnchorElement_List{List: p.List()}, err
-}
-
-func (s Anchor_Handler_handle_Params) HasAnchors() bool {
-	return s.Struct.HasPtr(0)
-}
-
-func (s Anchor_Handler_handle_Params) SetAnchors(v Anchor_Handler_AnchorElement_List) error {
-	return s.Struct.SetPtr(0, v.List.ToPtr())
-}
-
-// NewAnchors sets the anchors field to a newly
-// allocated Anchor_Handler_AnchorElement_List, preferring placement in s's segment.
-func (s Anchor_Handler_handle_Params) NewAnchors(n int32) (Anchor_Handler_AnchorElement_List, error) {
-	l, err := NewAnchor_Handler_AnchorElement_List(s.Struct.Segment(), n)
-	if err != nil {
-		return Anchor_Handler_AnchorElement_List{}, err
-	}
-	err = s.Struct.SetPtr(0, l.List.ToPtr())
-	return l, err
-}
-
-// Anchor_Handler_handle_Params_List is a list of Anchor_Handler_handle_Params.
-type Anchor_Handler_handle_Params_List struct{ capnp.List }
-
-// NewAnchor_Handler_handle_Params creates a new list of Anchor_Handler_handle_Params.
-func NewAnchor_Handler_handle_Params_List(s *capnp.Segment, sz int32) (Anchor_Handler_handle_Params_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return Anchor_Handler_handle_Params_List{l}, err
-}
-
-func (s Anchor_Handler_handle_Params_List) At(i int) Anchor_Handler_handle_Params {
-	return Anchor_Handler_handle_Params{s.List.Struct(i)}
-}
-
-func (s Anchor_Handler_handle_Params_List) Set(i int, v Anchor_Handler_handle_Params) error {
-	return s.List.SetStruct(i, v.Struct)
-}
-
-func (s Anchor_Handler_handle_Params_List) String() string {
-	str, _ := text.MarshalList(0xdc1abfd88265e7ac, s.List)
-	return str
-}
-
-// Anchor_Handler_handle_Params_Future is a wrapper for a Anchor_Handler_handle_Params promised by a client call.
-type Anchor_Handler_handle_Params_Future struct{ *capnp.Future }
-
-func (p Anchor_Handler_handle_Params_Future) Struct() (Anchor_Handler_handle_Params, error) {
-	s, err := p.Future.Struct()
-	return Anchor_Handler_handle_Params{s}, err
-}
-
-type Anchor_Handler_handle_Results struct{ capnp.Struct }
-
-// Anchor_Handler_handle_Results_TypeID is the unique identifier for the type Anchor_Handler_handle_Results.
-const Anchor_Handler_handle_Results_TypeID = 0xe69783ef48548866
-
-func NewAnchor_Handler_handle_Results(s *capnp.Segment) (Anchor_Handler_handle_Results, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Anchor_Handler_handle_Results{st}, err
-}
-
-func NewRootAnchor_Handler_handle_Results(s *capnp.Segment) (Anchor_Handler_handle_Results, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Anchor_Handler_handle_Results{st}, err
-}
-
-func ReadRootAnchor_Handler_handle_Results(msg *capnp.Message) (Anchor_Handler_handle_Results, error) {
-	root, err := msg.Root()
-	return Anchor_Handler_handle_Results{root.Struct()}, err
-}
-
-func (s Anchor_Handler_handle_Results) String() string {
-	str, _ := text.Marshal(0xe69783ef48548866, s.Struct)
-	return str
-}
-
-// Anchor_Handler_handle_Results_List is a list of Anchor_Handler_handle_Results.
-type Anchor_Handler_handle_Results_List struct{ capnp.List }
-
-// NewAnchor_Handler_handle_Results creates a new list of Anchor_Handler_handle_Results.
-func NewAnchor_Handler_handle_Results_List(s *capnp.Segment, sz int32) (Anchor_Handler_handle_Results_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return Anchor_Handler_handle_Results_List{l}, err
-}
-
-func (s Anchor_Handler_handle_Results_List) At(i int) Anchor_Handler_handle_Results {
-	return Anchor_Handler_handle_Results{s.List.Struct(i)}
-}
-
-func (s Anchor_Handler_handle_Results_List) Set(i int, v Anchor_Handler_handle_Results) error {
-	return s.List.SetStruct(i, v.Struct)
-}
-
-func (s Anchor_Handler_handle_Results_List) String() string {
-	str, _ := text.MarshalList(0xe69783ef48548866, s.List)
-	return str
-}
-
-// Anchor_Handler_handle_Results_Future is a wrapper for a Anchor_Handler_handle_Results promised by a client call.
-type Anchor_Handler_handle_Results_Future struct{ *capnp.Future }
-
-func (p Anchor_Handler_handle_Results_Future) Struct() (Anchor_Handler_handle_Results, error) {
-	s, err := p.Future.Struct()
-	return Anchor_Handler_handle_Results{s}, err
 }
 
 type Anchor_ls_Params struct{ capnp.Struct }
@@ -468,12 +242,12 @@ type Anchor_ls_Params struct{ capnp.Struct }
 const Anchor_ls_Params_TypeID = 0xd377c9b486ad95d5
 
 func NewAnchor_ls_Params(s *capnp.Segment) (Anchor_ls_Params, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
 	return Anchor_ls_Params{st}, err
 }
 
 func NewRootAnchor_ls_Params(s *capnp.Segment) (Anchor_ls_Params, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
 	return Anchor_ls_Params{st}, err
 }
 
@@ -511,30 +285,12 @@ func (s Anchor_ls_Params) NewPath(n int32) (capnp.TextList, error) {
 	return l, err
 }
 
-func (s Anchor_ls_Params) Handler() Anchor_Handler {
-	p, _ := s.Struct.Ptr(1)
-	return Anchor_Handler{Client: p.Interface().Client()}
-}
-
-func (s Anchor_ls_Params) HasHandler() bool {
-	return s.Struct.HasPtr(1)
-}
-
-func (s Anchor_ls_Params) SetHandler(v Anchor_Handler) error {
-	if !v.Client.IsValid() {
-		return s.Struct.SetPtr(1, capnp.Ptr{})
-	}
-	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(v.Client))
-	return s.Struct.SetPtr(1, in.ToPtr())
-}
-
 // Anchor_ls_Params_List is a list of Anchor_ls_Params.
 type Anchor_ls_Params_List struct{ capnp.List }
 
 // NewAnchor_ls_Params creates a new list of Anchor_ls_Params.
 func NewAnchor_ls_Params_List(s *capnp.Segment, sz int32) (Anchor_ls_Params_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2}, sz)
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
 	return Anchor_ls_Params_List{l}, err
 }
 
@@ -557,22 +313,18 @@ func (p Anchor_ls_Params_Future) Struct() (Anchor_ls_Params, error) {
 	return Anchor_ls_Params{s}, err
 }
 
-func (p Anchor_ls_Params_Future) Handler() Anchor_Handler {
-	return Anchor_Handler{Client: p.Future.Field(1, nil).Client()}
-}
-
 type Anchor_ls_Results struct{ capnp.Struct }
 
 // Anchor_ls_Results_TypeID is the unique identifier for the type Anchor_ls_Results.
 const Anchor_ls_Results_TypeID = 0xb0fd7286c7f13ef3
 
 func NewAnchor_ls_Results(s *capnp.Segment) (Anchor_ls_Results, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
 	return Anchor_ls_Results{st}, err
 }
 
 func NewRootAnchor_ls_Results(s *capnp.Segment) (Anchor_ls_Results, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
 	return Anchor_ls_Results{st}, err
 }
 
@@ -586,12 +338,36 @@ func (s Anchor_ls_Results) String() string {
 	return str
 }
 
+func (s Anchor_ls_Results) Children() (Anchor_Child_List, error) {
+	p, err := s.Struct.Ptr(0)
+	return Anchor_Child_List{List: p.List()}, err
+}
+
+func (s Anchor_ls_Results) HasChildren() bool {
+	return s.Struct.HasPtr(0)
+}
+
+func (s Anchor_ls_Results) SetChildren(v Anchor_Child_List) error {
+	return s.Struct.SetPtr(0, v.List.ToPtr())
+}
+
+// NewChildren sets the children field to a newly
+// allocated Anchor_Child_List, preferring placement in s's segment.
+func (s Anchor_ls_Results) NewChildren(n int32) (Anchor_Child_List, error) {
+	l, err := NewAnchor_Child_List(s.Struct.Segment(), n)
+	if err != nil {
+		return Anchor_Child_List{}, err
+	}
+	err = s.Struct.SetPtr(0, l.List.ToPtr())
+	return l, err
+}
+
 // Anchor_ls_Results_List is a list of Anchor_ls_Results.
 type Anchor_ls_Results_List struct{ capnp.List }
 
 // NewAnchor_ls_Results creates a new list of Anchor_ls_Results.
 func NewAnchor_ls_Results_List(s *capnp.Segment, sz int32) (Anchor_ls_Results_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
 	return Anchor_ls_Results_List{l}, err
 }
 
@@ -803,7 +579,7 @@ func (c Host) Ls(ctx context.Context, params func(Anchor_ls_Params) error) (Anch
 		},
 	}
 	if params != nil {
-		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 2}
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Anchor_ls_Params{Struct: s}) }
 	}
 	ans, release := c.Client.SendCall(ctx, s)
@@ -1093,7 +869,7 @@ func (c Container) Ls(ctx context.Context, params func(Anchor_ls_Params) error) 
 		},
 	}
 	if params != nil {
-		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 2}
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Anchor_ls_Params{Struct: s}) }
 	}
 	ans, release := c.Client.SendCall(ctx, s)
@@ -2223,103 +1999,95 @@ func (p View_lookup_Results_Future) Record() View_Record_Future {
 	return View_Record_Future{Future: p.Future.Field(0, nil)}
 }
 
-const schema_fcf6ac08e448a6ac = "x\xda\x94V{l\x14\xd5\x17>gf\xe7QB)" +
-	"\x97[~\xfc\xa8V\xb0\x94\x08U\x1a\x1a\xf0\xc1\xa2\xee" +
-	"RK\xda\"$\x1d@\x11\xfe1c;\xd2\xca>\xca" +
-	"\xce\xd4\xfa\x07\x06\x03)T\x13\x111D%\x11\x83A" +
-	"\x04\x03Q\x09%\xa9IkBB\x10|E\x90\xd0\x12" +
-	"\x09\x12\x10\x83Q\x11\x1fDIq\xcc\xbd\xb3wf\xba" +
-	"\x1d\x05\xffjw\xf7\xcc9\xdf\xf9\xcew\xbe933" +
-	"rR\xaaQ\x96\x8d\x020\x9eQTw\xdc\xdc\xed\xc7" +
-	"\xa7\xf4n^\x0f\xe4\x16\x04\x88i\x00\xb3\x88\xb2\x18!" +
-	"\xe6\xfep|J\xef\xce\xae\x81n \xe5\xe8\x16M>" +
-	"\xb2\xfb\xcd\xa7Z/\x83\"\xb1\x90\xeb\xb1\x15H\x89\xa2" +
-	"\x01\xd0b\xa5\x13\xd0\xddV9\xb4b\xd6\xcf\xe5/\x00" +
-	"\x19#\xbb{w5\\\xd0\xf7^\x1d\x02@\xda\xa6l" +
-	"\xa3\xab\x95;\x00h\x97\xb2\x91\x9ed\x8f\xb8}\xdb\xf7" +
-	"\x1c\xfc<\xdd\xbb\xc9\xab\xa9 \xcb\xd8\xa7,@@z" +
-	"TI\x00\xba\xbf\x7f\xb5\xb0k\xd3\x96\xc7^\x02B\xfd" +
-	"\x80?\x15\x89\x05\\\xe7\x01\xda\x89\xc7[\x86\xfa\xd7l" +
-	"\x1dQ\xae\\\xddF\xa7\xaa\x0c\xd7\xedj=mT'" +
-	"\x00\xb8\x17z;\x96<|(\xb6\xd3\xcb\xc6Z\xa4s" +
-	"\xd4k\x10s\xef\xfdQ;\xbf\xae\xe2\xe9w\x80\x8c\xf7" +
-	"\xcb\x94\xab\xe3X\x99\xa9*+s\xfa\xdc\x873\xfb." +
-	"M\xd8\x07\xe4\xff~\xc0|\xb5\x82\x05,\xe2\x01\xbf>" +
-	"x\xe5\xc8\x86\xdc\xf5\xf7\xbd\x0c\x9c\xbd\xb4*1\xf6\x0e" +
-	"\x0f6\xde:c\xcb\xf3\xfd#\x10\x1a\xea\xbbt9\xc3" +
-	"EMu#\xfd\x80au/\x9e\xddl\xbcv\xfaX" +
-	"\x7f\x18\xc8\xeb\xea(Vg\x07\xaf3\xf9\xd9%\xfb\xfb" +
-	"k\xbf\xf8\x0c\x0c\x8aR@6\x8f\xa4_\xaa\xc7\xe9\x19" +
-	"\xde\xf3\xa0\xfa\x1e\xa0{r\xeb\xbe\x0d\x07\x8ev\x9e\xc8" +
-	"gc\x03\xa3\xab\xb5k\x80\xb4Cc\xb3\xba\xd67\xf0" +
-	"K\xf7\x9a\xb1\x03\xe1\xae\xceie\xac\xda%\x8dUK" +
-	"M\xbb\xf3\x8f\xa5\xdfL\x1f\x0c\xd1O\x8bt\x96\xa0X" +
-	"g\xbf\xef\xfd\xceZ7\xf0Q\xd9\xd7L\x19\"\xc1\x0c" +
-	"}\x05K0\x87\x07\x9c\xba\xe7\x7f\xc7>q\xe6\x9e\xf3" +
-	"*pZ\xda\xf42F\xcb\xe5S\x93\x0e\xd6}\xba\xe0" +
-	"[\xd6\x88\xff\xac\xa1s\xce\x97\xeb\x0c\xdd\x93\xddK\x1b" +
-	".\xaf\x7f\xf5\xa2\x97\x9c?\xdb\xa3?\xc1\x9e\xa5C\xbb" +
-	"\xeb\xc7\x99g/\x06s\x9c\xb5C\xe7d\xcb\xf7\xbf\xb5" +
-	"\xbfy\xd7+?\x01\xa1r\xc0\x0e \xed\xd2O\xd3\x97" +
-	"u\x86\xffE\xbd\x9e\xf6\xb0\xff\x02)\x93\xf1r0&" +
-	"@\xfa\x86\xfe=\xdd\xa3\xb3\xc9\xf4\xe8\xf5\xf4\x0c\x0f\x1e" +
-	"\xa8{\xee\xe3\xdb\xe6\xdd}%\xd4\xc9a\xbd\x02!\xf6" +
-	"Wr\xf6\xd1G\xde\xde\xfa[H\xa1\xfbt>\xb1\x1e" +
-	"N\xc1\xf9\x03\xb1\xfe\xeeexu\xc4\xfcO\xea\x87\xbc" +
-	"\xdctP\xdfH\xa7\x17M\x80\xbb\xdc\xe6T\x87\xedX" +
-	"\xb9\xeaX\xb3\xd9\x9ei\x8f?\xdafuV7\x98\x99" +
-	"\x96\x94\x95\xabn\xe5\x7f+\x17[vG\xcaA\xbb0" +
-	"v^\xa6\xb95\x9b\xf3\xa3\xbd\x8f\xf3SV\xda\x923" +
-	"N\x13\xa2\xa1\xcb1\x80\x18\x02\x90\xe9U\x00F\xa5\x8c" +
-	"\xc6L\x09\x09b)\x1b\x00\x99\x11\x070\xa6\xc9h\xcc" +
-	"\x96\xb0$c\xa6-\x1c\x0d\x12\x8e\x06L\x98<\x15\x92" +
-	"0GH\x00}\x04(\xd0\xcaV\xa7\xa1#\x86\xc6P" +
-	"T\x1bH\x96(\xf1\xb5yx\x89\xc5Vs6\xd7b" +
-	"\xe8\xb2\x02\xe0\xcb\x0c\xc5`IM\x15Hd\xaa\x86(" +
-	"\xd8\x0d\xf4B&\xc6A\"\xc5ZI\x9bc\xe5\x92\x98" +
-	"He\xb3\xab:\xda\x93\xd8\x84x3\xf45\x9993" +
-	"m\x03\x181\x9f\x8e\xe2Z\x00C\x97\xd1\xa8\x94pm" +
-	"\x8e\x03\xb3q\x0c`\x93\x8c86\x80\x0f\xc8\xbe\xf4k" +
-	"\xc8^\x8d\x86\xac\xedT\xb7fm'?\x18{X\xe6" +
-	"\xaa|\xe6R\x09KX\x90\xe0\xb4\x90\xba\x86\xacl\xf3" +
-	"!\xc58!\xc2\xa8P\xf8\x1f!\x8c\x10E\xe3I\x92" +
-	"h\xc4\x10C\xd3\x00?\x9dT\x08*\xe1\xf5[\x88:" +
-	"/\x96N3\xb5\xca\x17T\x18w<\xc0}\xe3\xf1\xe7" +
-	"s>\x94\xcd8f[\xc6\xcaU\xaf\xb4<6\xb4\x94" +
-	"c\xff\x13\x1b-\xa6cb1HX\x1c\xca\xa4\x0cC" +
-	"\x97\xb2}NE\x80\xf8\xbd\x84\x05p\x16\x82%\xc6Z" +
-	"\xa1\xae\xbc\xac\x84\xfd\xa10gRS\x96\x97\x95o\xb4" +
-	"(\xac\x9fL\xac\xe2\xb2\x92Sv\x12K\x181\xc3%" +
-	"\x15A\\\x94\x94\xaa\x02)\x95\xb4\x9bN\xab\xd0\x11\x9b" +
-	"{X=RH\xa1|\x17\xb0\x85\x8d\x7f\xb4\x9fi>" +
-	"\xcb\x94\x94\xd1X(\xa1X\xd1\xc6\x0a\x00\xa3NF\xa3" +
-	"IB\"a)J\x00d\x11\xfb\xb2AFc)+" +
-	"iY9\xa11\xcdqR\xa8\x80\x84\x0a\xa0f[\xab" +
-	"\xb1\x08$,\x1a\x89!`;/\x96(\xa7H\x86\x9c" +
-	"\xe2\x01\xb6/\xf7\xc9h\xd4E7\xb9\xd6[5&\x19" +
-	"\x7f:7\x92\x8cm9\x9cO9\xfd\xdf\x14\x13\xe6\x91" +
-	"\x19\x82\xdfC\xc4z\x97Jah\xbeG\x15@\x8b\xb6" +
-	"\xd3\x90{\xc8\xd1\xd9\x99yx\xab\x122\x0f\xfft\x8a" +
-	"6\x8f\xe1+\x93O^\x18\xc4{\xf3\\.\xd8\xd5\xd0" +
-	"\x88\xe2\x81\x99\xfb^^\x16xy\xc2s\xb4\x02'\x1b" +
-	"\x0b(gW!\x82\x84x\xb3\xcd\x8b\x95\xf6\xa3\xd5B" +
-	"\xf2\xa3\xd75\xb0a\xd9\xca\x05&'\x8e?\x14\x97'" +
-	"!qnr\x09\xaf\xde\xf0\xfd\x93\x0a\x91\x95\xf0Mg" +
-	"\x16\x10\xdc\xa7\x98s\xc5{\x0f&Yi+\xe3\xe4k" +
-	"\x89C\x05\xc5Q\xf1\xaf\xb5\"\xd59\xa2\xfb\x88\xf1D" +
-	"9B\xd8J\xd9z6\xd6\x8dx\x09H\x05\xf5\xc0{" +
-	"]3\xe0\xe2\x80Bq\x81\x92\x9a\x0a\xe1a\xe2|C" +
-	"q\x9b\x90\x89\x15\xdc\xc3\xb4\x95\x96\x93d;\x1f\xf1\xaa" +
-	"\xf8;\x00\x00\xff\xff`3jH"
+const schema_fcf6ac08e448a6ac = "x\xda\x9cVml\x14U\x17>\xe7\xce\xcc\xce\xf6M" +
+	"K{\xb9\xf0\xd6\"\x8a\xd6\x1aK\x95\x86Z\xd0\xb8\xa8" +
+	"\xbb\x94\x1aZ\xc4\xd8\xe1\xc3\xaf?f\xd2N\xd8\x0d\xd3" +
+	"\xdd:3\xb5!\xc1\xe0G\x044\x11\x11\xb3\x89\xf0\x83" +
+	"\x04#(\x06\xa2!\x84\xa4&4\x91\x84((\x9a\x80" +
+	"\x06hb\x90\xf0\x91\xf0\xc3\x8f\xa2\x10C\xaac\xee\x9d" +
+	"\xbd3\xc3\xee\xaa\xe8\xaf&\xdb3\xcfy\xces\x9e\xf3" +
+	"\xcc\xcc\x9d\xa9dH\x87\xf6x\x0d\x80ak\x09\x7f\xea" +
+	"\x82\xed\xc7\xef\x18\xdd\xfc\x0a\xd0\x9b\x11@\xd5\x01:\xdf" +
+	"P\x97!\xa8\xfe\xb6\x96\xc9g:\x7f\xbe\xe5u\xa0S" +
+	"\x14\x7f\xcf\xae\x9e\xf3\xc9=W'\x01\x90\xadQ\xb7\xb1" +
+	"\x97\xd4\xbb\x00XQ\xdd\xc0.\xf0g\xfc\x83\xdbw\x1f" +
+	"\xf8jptS\x00\xa3!\xc79\xa6.A@vZ" +
+	"M\x03\xfaW\xbeY\xfa\xea\xa6-O\xbd\x09\x94\x85\x05" +
+	"5\x1a\xe1\x05u\x1a/\xd0O<;09\xb6\xb6X" +
+	"\xd1n\x8e\xb6\x8d\xcd\xd7t\x00\xd6\xa1-fOk\x8d" +
+	"\x00\xfe\xe1\x96\xcb\x9d\xad\x0d\xdf\x15\x81NG\xff\xf0\xe9" +
+	"\xde\x99s\xb6\xbc6\x06\x1a\xe1U\xbd\xda8[)\xea" +
+	"\x0dm\x04\xd0??:\xbc\xfc\xd1C\xea{Ag\xce" +
+	"\x96\xed\xd5\xae\x81\xea\xdf\xff\x83~\xee\xe5\xe6\xe7\xdf\xe7" +
+	" \x92\xd2[\xdaTNi\xab\xa04~\xf6\x93\xb9\x07" +
+	"/5\xee\x05zSX0\xaa5\xf3\x82OE\xc1/" +
+	"\x0fO|\xb6\xde\xf9\xfd\xe38\xc2\xd9`\xa8\x0b\xa2 " +
+	"\xa4V>TS\xe2Cv{\xa2\x11\x80\xcdNl`" +
+	"k\x12\\\xc3\x8bg6\x1b\xef\x8c\x1f\x1d\x8b\xa3\x99\x89" +
+	"\xffq\xb4\\\x82\xa3\xdd\xf6\xc2\xf2}c]_\x1f\x03" +
+	"\x83!\x89\xf6#*\xd9\xd6\xc4q\xb6\x93\xe3\xb0\x1d\x89" +
+	"\x8f\x00\xfdo\x8b{\xd7\xef?2r\"\x86\xc6\x1e\xd0" +
+	"\xaf\x01\xb2\x87t\x0ev\xed\xe0\xa9\xcb\x1b\xd76\x9c\x8a" +
+	"\x0f7\xa8\xcf\xe0\xdd\x86E\x81\xddz\xf7o+\xbe\x9f" +
+	"}:\xb61V\x14\x00[\xc5\xffO\xde\xf7\xff\xa3_" +
+	"x\x0b\xce\x06\x00\xc29\xa3\xfcy\xd5\xff\xe9\xe4\xac\x03" +
+	"\xdd_.\xb9\xc0y\x86\xd8;t\xa1\xecn\x9d\xef\x84" +
+	"M~\xb0x\xaay\xe6b\xb4\x93N-I\xf8\xb3\xca" +
+	"\x83\xef\xee\xeb\xdf\xf5\xf6\x8f@\x99\x12\x8d\x08\xc8.\xe9" +
+	"\xe3\xec\x8a\xceIL\xe8\x8bYS\x92+v\xaa\xfb\xc5" +
+	"\xcfo]8\x7f\"F\x01\x93\xcd\x08\xea\x1f\x99yG" +
+	"V\xee,\xfe\x1a3\xdb%](9!\xb8\x9f\xdb\xaf" +
+	"\x8em|\x12\xafV\xec\x85&\x0f\x05\xd8lzr\x03" +
+	"\xb3\x92\x8dp\x8f\xdfo\x0f\xbb\x9e\xe5\xb4\xab\xfd\xe6P" +
+	"~(\xf5D\xce\x1ai\xef1\xf3\x03\xb6\xe5\xb4g\xc5" +
+	"\xdf\x96e\x96;l{\xe8\x86\xb5(k\x15k\xc4H" +
+	"\"\xc6\xe6\xaa\xe9\x8a\x16I\xb5\xd4\xba\x12Tz\x99\xd5" +
+	"_p\x06\x8c\xa4\xa2\x01\x84\xe2\xa3T\x8av\xb4\x01\xa1" +
+	"w\xea\x88r\xb6Hf\xda\x94\x02B\xeb\xf4\xfa\x9cg" +
+	"9\x19L\xdb\x85\xc2\xea\xe1\xa1\x0c\xf6!\xde\x08\xf9>" +
+	"\xd31\x07]\x00CUT\x00\x15\x01h]\x17\x80\x91" +
+	"T\xd0h!\xb8\xce\x11\xc4\\\x9c\x02\xd8\xa7 6D" +
+	"\xf4\x01\xf9\x8fa\x0f%\xe8\xd1Sp\xbd\xf6l\xc1\xf5" +
+	"J\xb2\xb8\xd7!\xb7\x95\x90\xa7\x11\xac\xe7EX\x0b\x04" +
+	"kc((Q\x14\xd7\xebC4T!\x88\xbcb\x94" +
+	"AB)\x17D\xd3\x05H\x06\x0d\x15c\xe7\x06\x10\xc2" +
+	"\x91\x00na\xbe?[p\xda\x17es\x8a=\xc0a" +
+	"\x93!\xa5\xd9\x9cR\x8b\x82\xc6\\\x82\x14q\x1a\xf7," +
+	"\x9d\x93\x020Z\x154\xe6\x11\xac\xcf\x9b\x83\x96\xe4\x99" +
+	"6\x05\x12\xd2X7D\x1a\x1b\x80\x94\xcb\x90\x0e\x14." +
+	"\xd7\xa9Di\xc4\xb4W\x87\x06\x8a+\x95\x8a\x94\xfa\xe7" +
+	"\xa6%\xccE\x85\xbcg\xe6\xf2\x96\xd3\xbe\xca\x0a\xf4\xd7" +
+	"m\xcf\xfd+\xfd\x07L\xcf\xc4: XW\x89Tb" +
+	"g\xbbU\xb7\xb8\x04\xc0\xa8U\xd0h%\xe8\xf7gs" +
+	"\xf6\x80c\xe5\x01 \xf2H\x98\xd0e\x1eA\x89^\xcf" +
+	"\xe1\x83\xad\x85a\x8e\xf7\xceZ\xc4\xc1JG #\x0c" +
+	"e\xce\xd2\x8e\x19\xa5#\x08\xc3\x12e\x8a\xd3\xa66q" +
+	"\x04\x8a\xedf\xb0\x9e\x8bz\xfd\x01T\x11\xbd\x9a\xf1\xdb" +
+	"\"\xe3\xd7\x0f\x99^VN\xc4\xb7?\xa5r\xc9\xe2\x9e" +
+	"\xc4\xe5\xa2pUm\x88\xf4\x08G\xca(h,%(" +
+	"M\xd5\xdb\x0c`t+h\xf4\x11\xa4\x04\xa7!\x01\xa0" +
+	"\x8f\xf1\x1f{\x144V\xf0\x96\x96\xe5H\xa7\xe9\x9eg" +
+	"\xa3\x06\x045@\xdd\xb5\x9e\xc3\x1a XS\xc9!\xda" +
+	"T\xc9h\xffe\x9e\x0a\xff\xb8\x96'\x04R\x06\xff\x9d" +
+	"}\xe2\xc2\xf0<\xaaF\xaa+\x02Y\x17\x84\x10\xb7v" +
+	"\x18\x917b\xed\x12\xb5\xf2\"\xd16\xc8\xbf\xe8\xa6b" +
+	"\xa7\x9e\x8aN=\xbc\xf4\x19\xd1\xa5\xa7\x83\xac+\xcb\xb8" +
+	"\x06@\xa5\xb0\x1a\x11\x08b\x8cW\xa2|Ry(\xb2" +
+	"\xa0<r\x15\xcb\x89\x02M~1\xa1\xfc\x02\xa34%" +
+	"\x02-\x1d(R\xd5\xbd\xd7\xafG\x9e\xf7\xdf\x89P\xcd" +
+	"\xe3\xf1`\xe1\x86\xeb\xed\xae\x08aR\xd6\x0f\x82\xc8\xe4" +
+	"\xc4\xe5{\x1f\xe5\xe7\x11\xedh\x96W)?*P\xbe" +
+	"\x99iS\xb3\xb8J}\x95\xe5e\xb8\x8b\xabD\xf5\x9f" +
+	"\x01\x00\x00\xff\xff\xdbY\xeet"
 
 func init() {
 	schemas.Register(schema_fcf6ac08e448a6ac,
 		0x8390b923d29e3b12,
-		0x88d885a4b923d2ec,
 		0x8a1df0335afc249a,
 		0x8eb96dceb6a99ebd,
 		0x8f58928e854cd4f5,
 		0x957cbefc645fd307,
+		0x95dd102833f224c5,
 		0xa404c24b5375b9e4,
 		0xa7762282e307ed37,
 		0xad17e9bd30bae1da,
@@ -2330,13 +2098,10 @@ func init() {
 		0xd377c9b486ad95d5,
 		0xd8107c88f2d8bdfa,
 		0xd929e054f82b286c,
-		0xdc1abfd88265e7ac,
 		0xe13b74cbca1636d7,
 		0xe54acc44b61fd7ef,
-		0xe69783ef48548866,
 		0xe6df611247a8fc13,
 		0xee93a663b2a23c03,
-		0xef686a9fa8c72009,
 		0xf135411ec88044d8,
 		0xf495a555c9344000,
 		0xf6015788be04b4e3)

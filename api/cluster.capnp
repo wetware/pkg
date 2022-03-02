@@ -7,16 +7,12 @@ $Go.import("github.com/wetware/ww/internal/api/cluster");
 
 
 interface Anchor {
-    ls @0 (path :List(Text), handler :Handler) -> ();
+    ls @0 (path :List(Text)) -> (children :List(Child));
     walk @1 (path :List(Text)) -> (anchor :Anchor);
 
-    interface Handler {
-        handle @0 (anchors :List(AnchorElement)) -> ();
-
-        struct AnchorElement{
-            name @0 :Text;
-            anchor @1 :Anchor;
-        }
+    struct Child {
+        name @0 :Text;
+        anchor @1 :Anchor;
     }
 }
 

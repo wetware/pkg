@@ -30,7 +30,6 @@ type ContainerAnchor struct {
 	path   []string
 	client api.Container
 
-	fut     api.Anchor_walk_Results_Future
 	release capnp.ReleaseFunc
 }
 
@@ -39,11 +38,28 @@ func (ca ContainerAnchor) Path() []string {
 }
 
 func (ca ContainerAnchor) Ls(ctx context.Context) (AnchorIterator, error) {
-	return newIterator(ctx, ca.fut.Anchor(), ca.Path())
+	fut, release := ca.client.Ls(ctx, func(a api.Anchor_ls_Params) error {
+		return nil
+	})
+	select {
+	case <-fut.Done():
+		results, err := fut.Struct()
+		if err != nil {
+			return nil, err
+		}
+		children, err := results.Children()
+		if err != nil {
+			return nil, err
+		} else {
+			return ContainerAnchorIterator{children: children, release: release}, err
+		}
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }
 
 func (ca ContainerAnchor) Walk(ctx context.Context, path []string) (Anchor, error) {
-	fut, release := ca.fut.Anchor().Walk(ctx, func(a api.Anchor_walk_Params) error {
+	fut, release := ca.client.Walk(ctx, func(a api.Anchor_walk_Params) error {
 		capPath, err := a.NewPath(int32(len(path)))
 		if err != nil {
 			return err
@@ -55,11 +71,11 @@ func (ca ContainerAnchor) Walk(ctx context.Context, path []string) (Anchor, erro
 		}
 		return nil
 	})
-	return ContainerAnchor{path: append(ca.Path(), path...), fut: fut, release: release}, nil
+	return ContainerAnchor{path: append(ca.Path(), path...), client: api.Container(fut.Anchor()), release: release}, nil
 }
 
 func (ca ContainerAnchor) Set(ctx context.Context, data []byte) error {
-	c := api.Container{Client: ca.fut.Anchor().Client}
+	c := api.Container{Client: ca.client.Client}
 	fut, release := c.Set(ctx, func(c api.Container_set_Params) error {
 		return c.SetData(data)
 	})
@@ -75,7 +91,7 @@ func (ca ContainerAnchor) Set(ctx context.Context, data []byte) error {
 }
 
 func (ca ContainerAnchor) Get(ctx context.Context) (data []byte, release func()) {
-	c := api.Container{Client: ca.fut.Anchor().Client}
+	c := api.Container{Client: ca.client.Client}
 	fut, release := c.Get(ctx, func(c api.Container_get_Params) error {
 		return nil
 	})
@@ -91,7 +107,38 @@ func (ca ContainerAnchor) Get(ctx context.Context) (data []byte, release func())
 		return data, release
 
 	}
-	return nil, nil // TODO
+}
+
+type ContainerAnchorIterator struct {
+	path []string
+
+	i        int
+	children api.Anchor_Child_List
+	release  capnp.ReleaseFunc
+
+	err error
+}
+
+func (it ContainerAnchorIterator) Next(context.Context) bool {
+	it.i++
+	return it.i < it.children.Len()
+}
+
+func (it ContainerAnchorIterator) Finish() {
+	// TODO
+}
+func (it ContainerAnchorIterator) Anchor() Anchor {
+	child := it.children.At(it.i)
+	name, err := child.Name()
+	if err != nil {
+		it.err = err
+		return nil
+	}
+
+	return ContainerAnchor{path: append(it.path, name), client: api.Container(child.Anchor())}
+}
+func (it ContainerAnchorIterator) Err() error {
+	return it.err
 }
 
 type ContainerAnchorServer struct {
@@ -107,18 +154,33 @@ func newContainerServer(n *node) *ContainerAnchorServer {
 }
 
 func (sv *ContainerAnchorServer) Ls(ctx context.Context, call api.Anchor_ls) error {
-	b := newBatcher(call.Args().Handler())
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
 
 	children, release := sv.tree.Children()
 	defer release()
 
-	for name, child := range children {
-		if err := b.Send(ctx, child.Server.Client(), name); err != nil {
-			return err
-		}
+	capChildren, err := results.NewChildren(int32(len(children)))
+	if err != nil {
+		return err
 	}
 
-	return b.Wait(ctx)
+	i := 0
+	for name, child := range children {
+		capChild := capChildren.At(i)
+		if err := capChild.SetAnchor(child.Server.Client()); err != nil {
+			return err
+		}
+
+		if err := capChild.SetName(name); err != nil {
+			return err
+		}
+		i++
+	}
+
+	return nil
 }
 
 func (sv *ContainerAnchorServer) Walk(ctx context.Context, call api.Anchor_walk) error {

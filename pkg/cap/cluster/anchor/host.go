@@ -29,9 +29,8 @@ type HostAnchor struct {
 	Peer peer.ID
 	Vat  vat.Network
 
-	Client api.Host
-
-	once sync.Once
+	once   sync.Once
+	client api.Host
 }
 
 func (ha HostAnchor) Path() []string {
@@ -43,8 +42,24 @@ func (ha HostAnchor) Ls(ctx context.Context) (AnchorIterator, error) {
 		return nil, err
 	}
 
-	anchor := api.Anchor{Client: ha.Client.Client}
-	return newIterator(ctx, anchor, ha.Path())
+	fut, release := ha.client.Ls(ctx, func(a api.Anchor_ls_Params) error {
+		return nil
+	})
+	select {
+	case <-fut.Done():
+		results, err := fut.Struct()
+		if err != nil {
+			return nil, err
+		}
+		children, err := results.Children()
+		if err != nil {
+			return nil, err
+		} else {
+			return ContainerAnchorIterator{children: children, release: release}, err
+		}
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }
 
 func (ha HostAnchor) Walk(ctx context.Context, path []string) (Anchor, error) {
@@ -52,7 +67,7 @@ func (ha HostAnchor) Walk(ctx context.Context, path []string) (Anchor, error) {
 		return nil, err
 	}
 
-	fut, release := ha.Client.Walk(ctx, func(a api.Anchor_walk_Params) error {
+	fut, release := ha.client.Walk(ctx, func(a api.Anchor_walk_Params) error {
 		capPath, err := a.NewPath(int32(len(path)))
 		if err != nil {
 			return err
@@ -65,7 +80,7 @@ func (ha HostAnchor) Walk(ctx context.Context, path []string) (Anchor, error) {
 		return nil
 	})
 
-	return ContainerAnchor{path: append(ha.Path(), path...), fut: fut, release: release}, nil
+	return ContainerAnchor{path: append(ha.Path(), path...), client: api.Container(fut.Anchor()), release: release}, nil
 }
 
 func (ha HostAnchor) bootstrapOnce(ctx context.Context) error {
@@ -74,7 +89,7 @@ func (ha HostAnchor) bootstrapOnce(ctx context.Context) error {
 		err  error
 	)
 
-	if ha.Client.Client != nil {
+	if ha.client.Client != nil {
 		return nil
 	}
 
@@ -84,10 +99,9 @@ func (ha HostAnchor) bootstrapOnce(ctx context.Context) error {
 			peer.AddrInfo{ID: ha.Peer},
 			Capability,
 		)
-		if err != nil {
-			return
+		if err == nil {
+			ha.client = api.Host{Client: conn.Bootstrap(ctx)}
 		}
-		ha.Client = api.Host{Client: conn.Bootstrap(ctx)}
 	})
 
 	return err
@@ -134,7 +148,7 @@ func NewHostAnchorServer(vat vat.Network, tree *node) HostAnchorServer {
 }
 
 func (sv HostAnchorServer) NewClient() HostAnchor {
-	return HostAnchor{Peer: sv.vat.Host.ID(), Client: api.Host(sv.Client())}
+	return HostAnchor{Peer: sv.vat.Host.ID(), client: api.Host(sv.Client())}
 }
 
 func (sv *HostAnchorServer) Host(ctx context.Context, call api.Host_host) error {
@@ -146,18 +160,33 @@ func (sv *HostAnchorServer) Host(ctx context.Context, call api.Host_host) error 
 }
 
 func (sv *HostAnchorServer) Ls(ctx context.Context, call api.Anchor_ls) error {
-	b := newBatcher(call.Args().Handler())
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
 
 	children, release := sv.tree.Children()
 	defer release()
 
-	for name, child := range children {
-		if err := b.Send(ctx, child.Server.Client(), name); err != nil {
-			return err
-		}
+	capChildren, err := results.NewChildren(int32(len(children)))
+	if err != nil {
+		return err
 	}
 
-	return b.Wait(ctx)
+	i := 0
+	for name, child := range children {
+		capChild := capChildren.At(i)
+		if err := capChild.SetAnchor(child.Server.Client()); err != nil {
+			return err
+		}
+
+		if err := capChild.SetName(name); err != nil {
+			return err
+		}
+		i++
+	}
+
+	return nil
 }
 
 func (sv *HostAnchorServer) Walk(ctx context.Context, call api.Anchor_walk) error {
