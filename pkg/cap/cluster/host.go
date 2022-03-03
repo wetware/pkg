@@ -1,4 +1,4 @@
-package anchor
+package cluster
 
 import (
 	"context"
@@ -9,15 +9,14 @@ import (
 	"capnproto.org/go/capnp/v3/server"
 	"github.com/libp2p/go-libp2p-core/peer"
 	api "github.com/wetware/ww/internal/api/cluster"
-	"github.com/wetware/ww/pkg/cap/cluster"
 	"github.com/wetware/ww/pkg/vat"
 )
 
 var (
-	Capability = vat.BasicCap{
+	HostCapability = vat.BasicCap{
 		"hostAnchor/packed",
 		"hostAnchor"}
-	defaultPolicy = server.Policy{
+	HostDefaultPolicy = server.Policy{
 		// HACK:  raise MaxConcurrentCalls to mitigate known deadlock condition.
 		//        https://github.com/capnproto/go-capnproto2/issues/189
 		MaxConcurrentCalls: 64,
@@ -55,7 +54,7 @@ func (ha HostAnchor) Ls(ctx context.Context) (AnchorIterator, error) {
 		if err != nil {
 			return nil, err
 		} else {
-			return ContainerAnchorIterator{children: children, release: release}, err
+			return &ContainerAnchorIterator{path: ha.Path(), children: children, release: release}, err
 		}
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -97,7 +96,7 @@ func (ha HostAnchor) bootstrapOnce(ctx context.Context) error {
 		conn, err = ha.Vat.Connect(
 			ctx,
 			peer.AddrInfo{ID: ha.Peer},
-			Capability,
+			HostCapability,
 		)
 		if err == nil {
 			ha.client = api.Host{Client: conn.Bootstrap(ctx)}
@@ -109,24 +108,27 @@ func (ha HostAnchor) bootstrapOnce(ctx context.Context) error {
 
 type HostAnchorIterator struct {
 	Vat     vat.Network
-	It      *cluster.Iterator
+	It      *Iterator
 	Release capnp.ReleaseFunc
 }
 
-func (hai HostAnchorIterator) Next(ctx context.Context) error {
-	hai.It.Next(ctx)
-	return hai.It.Err
+func (it HostAnchorIterator) Next(ctx context.Context) bool {
+	return it.It.Next(ctx)
 }
 
-func (hai HostAnchorIterator) Finish() {
-	hai.Release()
+func (it HostAnchorIterator) Finish() {
+	it.Release()
 }
 
-func (hai HostAnchorIterator) Anchor() Anchor {
+func (it HostAnchorIterator) Anchor() Anchor {
 	return HostAnchor{
-		Peer: hai.It.Record().Peer(),
-		Vat:  hai.Vat,
+		Peer: it.It.Record().Peer(),
+		Vat:  it.Vat,
 	}
+}
+
+func (it HostAnchorIterator) Err() error {
+	return it.It.Err
 }
 
 type HostAnchorServer struct {
@@ -143,7 +145,7 @@ func NewHostAnchorServer(vat vat.Network, tree *node) HostAnchorServer {
 		sv.tree = &node{Name: vat.Host.ID().String(), Server: sv, children: make(map[string]*node)}
 	}
 	sv.client = api.Host_ServerToClient(&sv, &defaultPolicy)
-	vat.Export(Capability, sv)
+	vat.Export(HostCapability, sv)
 	return sv
 }
 

@@ -1,4 +1,4 @@
-package anchor
+package cluster
 
 import (
 	"context"
@@ -19,11 +19,6 @@ var (
 		MaxConcurrentCalls: 64,
 		AnswerQueueSize:    64,
 	}
-)
-
-const (
-	defaultBatchSize   = 64
-	defaultMaxInflight = 8
 )
 
 type ContainerAnchor struct {
@@ -51,7 +46,7 @@ func (ca ContainerAnchor) Ls(ctx context.Context) (AnchorIterator, error) {
 		if err != nil {
 			return nil, err
 		} else {
-			return ContainerAnchorIterator{children: children, release: release}, err
+			return &ContainerAnchorIterator{path: ca.Path(), children: children, release: release}, err
 		}
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -119,16 +114,16 @@ type ContainerAnchorIterator struct {
 	err error
 }
 
-func (it ContainerAnchorIterator) Next(context.Context) bool {
+func (it *ContainerAnchorIterator) Next(context.Context) bool {
 	it.i++
-	return it.i < it.children.Len()
+	return it.i <= it.children.Len()
 }
 
-func (it ContainerAnchorIterator) Finish() {
+func (it *ContainerAnchorIterator) Finish() {
 	// TODO
 }
-func (it ContainerAnchorIterator) Anchor() Anchor {
-	child := it.children.At(it.i)
+func (it *ContainerAnchorIterator) Anchor() Anchor {
+	child := it.children.At(it.i - 1)
 	name, err := child.Name()
 	if err != nil {
 		it.err = err
@@ -137,7 +132,7 @@ func (it ContainerAnchorIterator) Anchor() Anchor {
 
 	return ContainerAnchor{path: append(it.path, name), client: api.Container(child.Anchor())}
 }
-func (it ContainerAnchorIterator) Err() error {
+func (it *ContainerAnchorIterator) Err() error {
 	return it.err
 }
 

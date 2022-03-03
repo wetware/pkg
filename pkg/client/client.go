@@ -84,7 +84,7 @@ func (n Node) Ls(ctx context.Context, path []string) (anchor.AnchorIterator, err
 		return nil, err
 	}
 
-	return a.Ls(ctx, path[1:])
+	return a.Ls(ctx)
 
 }
 
