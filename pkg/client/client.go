@@ -10,7 +10,6 @@ import (
 	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/wetware/ww/pkg/cap/cluster"
-	"github.com/wetware/ww/pkg/cap/cluster/anchor"
 	pscap "github.com/wetware/ww/pkg/cap/pubsub"
 	"github.com/wetware/ww/pkg/vat"
 )
@@ -73,10 +72,10 @@ func (n Node) Join(ctx context.Context, topic string) *Topic {
 	return t
 }
 
-func (n Node) Ls(ctx context.Context, path []string) (anchor.AnchorIterator, error) {
+func (n Node) Ls(ctx context.Context, path []string) (cluster.AnchorIterator, error) {
 	if len(path) == 0 {
 		it, releae := n.view.Iter(ctx)
-		return anchor.HostAnchorIterator{Vat: n.vat, It: it, Release: releae}, nil
+		return cluster.HostAnchorIterator{Vat: n.vat, It: it, Release: releae}, nil
 	}
 
 	a, err := n.hostAnchor(ctx, path)
@@ -88,7 +87,7 @@ func (n Node) Ls(ctx context.Context, path []string) (anchor.AnchorIterator, err
 
 }
 
-func (n Node) Walk(ctx context.Context, path []string) (anchor.Anchor, error) {
+func (n Node) Walk(ctx context.Context, path []string) (cluster.Anchor, error) {
 	if len(path) == 0 {
 		// TODO: return a RootAnchor that is equivalent to this same implementation
 		return nil, ErrInvalidPath
@@ -107,7 +106,7 @@ func (n Node) Walk(ctx context.Context, path []string) (anchor.Anchor, error) {
 
 }
 
-func (n Node) hostAnchor(ctx context.Context, path []string) (anchor.Anchor, error) {
+func (n Node) hostAnchor(ctx context.Context, path []string) (cluster.Anchor, error) {
 	fut, release := n.view.Lookup(ctx, peer.ID(path[0]))
 	defer release()
 
@@ -127,7 +126,7 @@ func (n Node) hostAnchor(ctx context.Context, path []string) (anchor.Anchor, err
 		return nil, err
 	}
 
-	return anchor.HostAnchor{
+	return cluster.HostAnchor{
 		Peer: peer,
 		Vat:  n.vat,
 	}, nil
