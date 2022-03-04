@@ -1,11 +1,17 @@
 package runtime
 
 import (
+	"context"
+	"os"
+	"path/filepath"
+
+	"github.com/lthibault/log"
+	"github.com/mitchellh/go-homedir"
+	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
 
-	// badger "github.com/ipfs/go-ds-badger2"
 	ds "github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/sync"
+	badgerds "github.com/ipfs/go-ds-badger2"
 
 	"github.com/wetware/casm/pkg/cluster/pulse"
 )
@@ -37,8 +43,41 @@ func (h hook) Prepare(pulse.Heartbeat) {
 	//           Cache results and periodically refresh them.
 }
 
-func storage() ds.Batching {
-	// TODO(enhancement):  use peristent datastore + namespacing + caching.
-	return sync.MutexWrap(ds.NewMapDatastore())
-	// return badger.NewDatastore(c.Path("store"), &badger.DefaultOptions)
+func storage(c *cli.Context, log log.Logger, lx fx.Lifecycle) ds.Batching {
+	path, err := homedir.Expand(c.Path("data"))
+	if err != nil {
+		log.WithField("data_dir", c.Path("data")).Fatal(err)
+	}
+
+	path = filepath.Join(path, "data")
+
+	if err = os.MkdirAll(path, 0700); err != nil {
+		log.Fatal(err)
+	}
+
+	log = log.WithField("data_dir", path)
+	badgerds.DefaultOptions.Logger = badgerLogger{log}
+
+	d, err := badgerds.NewDatastore(
+		filepath.Join(path, "data"),
+		&badgerds.DefaultOptions)
+	if err != nil {
+		log.Fatalf("badgerdb: %s", err)
+	}
+
+	lx.Append(closer(d))
+	lx.Append(fx.Hook{
+		OnStop: func(ctx context.Context) error {
+			log.Trace("syncing datastore")
+			return d.Sync(ctx, ds.NewKey("/"))
+		},
+	})
+
+	return d
+}
+
+type badgerLogger struct{ log.Logger }
+
+func (b badgerLogger) Warningf(fmt string, vs ...interface{}) {
+	b.Warnf(fmt, vs...)
 }

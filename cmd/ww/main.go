@@ -25,28 +25,35 @@ var flags = []cli.Flag{
 	&cli.StringFlag{
 		Name:    "logfmt",
 		Aliases: []string{"f"},
-		Usage:   "text, json, none",
+		Usage:   "`format` logs as text, json or none",
 		Value:   "text",
 		EnvVars: []string{"WW_LOGFMT"},
 	},
 	&cli.StringFlag{
 		Name:    "loglvl",
-		Usage:   "trace, debug, info, warn, error, fatal",
+		Usage:   "set logging `level` to trace, debug, info, warn, error or fatal",
 		Value:   "info",
 		EnvVars: []string{"WW_LOGLVL"},
 	},
-
+	&cli.PathFlag{
+		Name:    "data",
+		Usage:   "`path` to application data directory",
+		Value:   "~/.ww",
+		EnvVars: []string{"WW_DATA"},
+	},
 	// Statsd
 	&cli.StringFlag{
-		Name:    "statsd",
-		Usage:   "statsd daemon host:port (default: disabled)",
-		EnvVars: []string{"WW_STATSD"},
+		Name:        "statsd",
+		Usage:       "send metrics to statsd daemon on `host:port`",
+		EnvVars:     []string{"WW_STATSD"},
+		DefaultText: "disabled",
 	},
 	&cli.StringFlag{
 		Name:    "statsd-tagfmt",
-		Usage:   "tag format {influx, datadog}",
+		Usage:   "encode tags in influx or datadog `format`",
 		Value:   "influx",
 		EnvVars: []string{"WW_STATSD_TAGFMT"},
+		Hidden:  true,
 	},
 	&cli.Float64Flag{
 		Name:    "statsd-sample-rate",
@@ -57,7 +64,7 @@ var flags = []cli.Flag{
 	},
 	&cli.DurationFlag{
 		Name:    "statsd-flush",
-		Usage:   "buffer flush interval (0=disable)",
+		Usage:   "buffer flush `interval` (0=disable)",
 		Value:   time.Millisecond * 200,
 		EnvVars: []string{"WW_STATSD_FLUSH"},
 		Hidden:  true,
