@@ -20,8 +20,9 @@ func TestContainerWalk(t *testing.T) {
 	sim := mx.New(ctx)
 	hs := sim.MustHostSet(ctx, 2)
 
-	vat0 := vat.Network{NS: "test-container", Host: hs[0]}
-	server := cluster.NewHostAnchorServer(vat0, nil)
+	vat := vat.Network{NS: "test-container", Host: hs[0]}
+	server := cluster.NewHostAnchorServer(vat)
+	vat.Export(cluster.AnchorCapability, server)
 	client := server.NewClient()
 
 	a1, err := client.Walk(ctx, []string{"foo"})
@@ -47,8 +48,9 @@ func TestContainerLs(t *testing.T) {
 	sim := mx.New(ctx)
 	hs := sim.MustHostSet(ctx, 2)
 
-	vat0 := vat.Network{NS: "test-container", Host: hs[0]}
-	server := cluster.NewHostAnchorServer(vat0, nil)
+	vat := vat.Network{NS: "test-container", Host: hs[0]}
+	server := cluster.NewHostAnchorServer(vat)
+	vat.Export(cluster.AnchorCapability, server)
 	client := server.NewClient()
 
 	a1, err := client.Walk(ctx, []string{"foo"})
@@ -77,8 +79,9 @@ func TestContainerGetSet(t *testing.T) {
 	sim := mx.New(ctx)
 	hs := sim.MustHostSet(ctx, 2)
 
-	vat0 := vat.Network{NS: "test-container", Host: hs[0]}
-	server := cluster.NewHostAnchorServer(vat0, nil)
+	vat := vat.Network{NS: "test-container", Host: hs[0]}
+	server := cluster.NewHostAnchorServer(vat)
+	vat.Export(cluster.AnchorCapability, server)
 	client := server.NewClient()
 
 	a1, err := client.Walk(ctx, []string{"foo"})

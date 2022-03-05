@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	Capability = vat.BasicCap{
+	AnchorCapability = vat.BasicCap{
 		"anchor/packed",
 		"anchor"}
 )

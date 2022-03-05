@@ -34,7 +34,7 @@ func TestIter(t *testing.T) {
 			},
 		}
 
-		c := (&cluster.ViewFactory{rt}).NewClient(nil)
+		c := (&cluster.ViewServer{View: rt}).NewClient(nil)
 
 		it, release := c.Iter(ctx)
 		defer release()
@@ -67,7 +67,7 @@ func TestIter(t *testing.T) {
 			}
 		}
 
-		c := (&cluster.ViewFactory{rt}).NewClient(nil)
+		c := (&cluster.ViewServer{View: rt}).NewClient(nil)
 
 		it, release := c.Iter(ctx)
 		defer release()
@@ -94,7 +94,7 @@ func TestIter(t *testing.T) {
 
 		var (
 			rt = blockingRoutingTable{ctx}
-			c  = (&cluster.ViewFactory{rt}).NewClient(nil)
+			c  = (&cluster.ViewServer{View: rt}).NewClient(nil)
 		)
 
 		it, release := c.Iter(ctx)
@@ -128,7 +128,7 @@ func TestLookup(t *testing.T) {
 		}
 	}
 
-	c := (&cluster.ViewFactory{view}).NewClient(nil)
+	c := (&cluster.ViewServer{View: view}).NewClient(nil)
 
 	want := view[42]
 

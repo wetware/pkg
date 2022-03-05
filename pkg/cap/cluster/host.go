@@ -97,7 +97,7 @@ func (ha HostAnchor) bootstrapOnce(ctx context.Context) error {
 		conn, err = ha.vat.Connect(
 			ctx,
 			peer.AddrInfo{ID: ha.Peer},
-			Capability,
+			AnchorCapability,
 		)
 		if err == nil {
 			ha.client = api.Host{Client: conn.Bootstrap(ctx)}
@@ -140,13 +140,10 @@ type HostAnchorServer struct {
 	client api.Host
 }
 
-func NewHostAnchorServer(vat vat.Network, tree *node) HostAnchorServer {
-	sv := HostAnchorServer{vat: vat, tree: tree}
-	if tree == nil {
-		sv.tree = &node{Name: vat.Host.ID().String(), Server: sv, children: make(map[string]*node)}
-	}
+func NewHostAnchorServer(vat vat.Network) HostAnchorServer {
+	sv := HostAnchorServer{vat: vat}
+	sv.tree = &node{Name: vat.Host.ID().String(), Server: sv, children: make(map[string]*node)}
 	sv.client = api.Host_ServerToClient(&sv, &defaultPolicy)
-	vat.Export(Capability, sv)
 	return sv
 }
 

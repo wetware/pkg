@@ -31,7 +31,10 @@ func (n Node) Loggable() map[string]interface{} {
 func (n Node) Bootstrap(ctx context.Context) error {
 	// TODO:  update this when we replace 'ps' with a
 	//        capability set.
-	return n.ps.Client.Resolve(ctx)
+	if err := n.ps.Client.Resolve(ctx); err != nil {
+		return err
+	}
+	return n.view.Client.Resolve(ctx)
 }
 
 // Done returns a read-only channel that is closed when

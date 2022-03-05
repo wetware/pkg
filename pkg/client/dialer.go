@@ -10,6 +10,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/wetware/casm/pkg/boot"
+	"github.com/wetware/ww/pkg/cap/cluster"
 	"github.com/wetware/ww/pkg/cap/pubsub"
 	"github.com/wetware/ww/pkg/vat"
 )
@@ -54,26 +55,33 @@ func Dial(ctx context.Context, vat vat.Network, a Addr) (*Node, error) {
 // to abide by this rule may cause Node's underlying capabilities
 // to fail.
 func (d Dialer) Dial(ctx context.Context) (*Node, error) {
-	conn, err := d.join(ctx)
+	n := &Node{vat: d.Vat}
+
+	conn, err := d.join(ctx, pubsub.Capability)
 	if err != nil {
 		return nil, err
 	}
+	n.ps = pubsub.PubSub{Client: conn.Bootstrap(ctx)}
 
-	return &Node{
-		vat:  d.Vat,
-		conn: conn,
-		ps:   pubsub.PubSub{Client: conn.Bootstrap(ctx)},
-	}, nil
+	conn, err = d.join(ctx, cluster.ViewCapability)
+	if err != nil {
+		n.ps.Release()
+		return nil, err
+	}
+	n.view = cluster.View{Client: conn.Bootstrap(ctx)}
+
+	n.conn = conn
+	return n, nil
 }
 
-func (d Dialer) join(ctx context.Context) (conn *rpc.Conn, err error) {
+func (d Dialer) join(ctx context.Context, cap vat.Capability) (conn *rpc.Conn, err error) {
 	var peers <-chan peer.AddrInfo
 	if peers, err = d.Boot.FindPeers(ctx, d.Vat.NS); err != nil {
 		return nil, fmt.Errorf("discover: %w", err)
 	}
 
 	for info := range peers {
-		conn, err = d.Vat.Connect(ctx, info, pubsub.Capability)
+		conn, err = d.Vat.Connect(ctx, info, cap)
 		if err == nil {
 			break
 		}

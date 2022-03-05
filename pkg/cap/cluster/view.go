@@ -9,7 +9,14 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/wetware/casm/pkg/cluster/routing"
 	api "github.com/wetware/ww/internal/api/cluster"
+	"github.com/wetware/ww/pkg/vat"
 	"golang.org/x/sync/semaphore"
+)
+
+var (
+	ViewCapability = vat.BasicCap{
+		"view/packed",
+		"view"}
 )
 
 const (
@@ -30,11 +37,20 @@ type RoutingTable interface {
 	Lookup(peer.ID) (routing.Record, bool)
 }
 
-type ViewFactory struct {
+type ViewServer struct {
 	View RoutingTable
+
+	client api.View
 }
 
-func (f ViewFactory) NewClient(policy *server.Policy) View {
+func NewViewServer(rt RoutingTable) ViewServer {
+	vs := ViewServer{View: rt}
+
+	vs.client = api.View_ServerToClient(vs, &defaultPolicy)
+	return vs
+}
+
+func (f ViewServer) NewClient(policy *server.Policy) View {
 	if policy == nil {
 		policy = &defaultPolicy
 	}
@@ -42,7 +58,11 @@ func (f ViewFactory) NewClient(policy *server.Policy) View {
 	return View(api.View_ServerToClient(f, policy))
 }
 
-func (f ViewFactory) Iter(ctx context.Context, call api.View_iter) error {
+func (f ViewServer) Client() *capnp.Client {
+	return f.client.Client
+}
+
+func (f ViewServer) Iter(ctx context.Context, call api.View_iter) error {
 	call.Ack()
 
 	b := newBatcher(call.Args())
@@ -57,7 +77,7 @@ func (f ViewFactory) Iter(ctx context.Context, call api.View_iter) error {
 	return b.Wait(ctx)
 }
 
-func (f ViewFactory) Lookup(_ context.Context, call api.View_lookup) error {
+func (f ViewServer) Lookup(_ context.Context, call api.View_lookup) error {
 	peerID, err := call.Args().PeerID()
 	if err != nil {
 		return err

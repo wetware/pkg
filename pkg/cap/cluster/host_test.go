@@ -20,9 +20,9 @@ func TestHostWalk(t *testing.T) {
 	sim := mx.New(ctx)
 	hs := sim.MustHostSet(ctx, 2)
 
-	vat0 := vat.Network{NS: "test-host", Host: hs[0]}
-
-	server := cluster.NewHostAnchorServer(vat0, nil)
+	vat := vat.Network{NS: "test-host", Host: hs[0]}
+	server := cluster.NewHostAnchorServer(vat)
+	vat.Export(cluster.AnchorCapability, server)
 
 	client := server.NewClient()
 
@@ -43,9 +43,9 @@ func TestHostLs(t *testing.T) {
 	sim := mx.New(ctx)
 	hs := sim.MustHostSet(ctx, 2)
 
-	vat0 := vat.Network{NS: "test-host", Host: hs[0]}
-
-	server := cluster.NewHostAnchorServer(vat0, nil)
+	vat := vat.Network{NS: "test-host", Host: hs[0]}
+	server := cluster.NewHostAnchorServer(vat)
+	vat.Export(cluster.AnchorCapability, server)
 
 	client := server.NewClient()
 
