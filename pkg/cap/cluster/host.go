@@ -13,9 +13,6 @@ import (
 )
 
 var (
-	HostCapability = vat.BasicCap{
-		"hostAnchor/packed",
-		"hostAnchor"}
 	HostDefaultPolicy = server.Policy{
 		// HACK:  raise MaxConcurrentCalls to mitigate known deadlock condition.
 		//        https://github.com/capnproto/go-capnproto2/issues/189
@@ -26,7 +23,7 @@ var (
 
 type HostAnchor struct {
 	Peer peer.ID
-	Vat  vat.Network
+	vat  vat.Network
 
 	once   sync.Once
 	client api.Host
@@ -54,7 +51,7 @@ func (ha HostAnchor) Ls(ctx context.Context) (AnchorIterator, error) {
 		if err != nil {
 			return nil, err
 		} else {
-			return &ContainerAnchorIterator{path: ha.Path(), children: children, release: release}, err
+			return &containerAnchorIterator{path: ha.Path(), children: children, release: release}, err
 		}
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -62,6 +59,10 @@ func (ha HostAnchor) Ls(ctx context.Context) (AnchorIterator, error) {
 }
 
 func (ha HostAnchor) Walk(ctx context.Context, path []string) (Anchor, error) {
+	if len(path) == 0 {
+		return ha, nil
+	}
+
 	if err := ha.bootstrapOnce(ctx); err != nil {
 		return nil, err
 	}
@@ -79,7 +80,7 @@ func (ha HostAnchor) Walk(ctx context.Context, path []string) (Anchor, error) {
 		return nil
 	})
 
-	return ContainerAnchor{path: append(ha.Path(), path...), client: api.Container(fut.Anchor()), release: release}, nil
+	return containerAnchor{path: append(ha.Path(), path...), client: api.Container(fut.Anchor()), release: release}, nil
 }
 
 func (ha HostAnchor) bootstrapOnce(ctx context.Context) error {
@@ -93,10 +94,10 @@ func (ha HostAnchor) bootstrapOnce(ctx context.Context) error {
 	}
 
 	ha.once.Do(func() {
-		conn, err = ha.Vat.Connect(
+		conn, err = ha.vat.Connect(
 			ctx,
 			peer.AddrInfo{ID: ha.Peer},
-			HostCapability,
+			Capability,
 		)
 		if err == nil {
 			ha.client = api.Host{Client: conn.Bootstrap(ctx)}
@@ -106,29 +107,29 @@ func (ha HostAnchor) bootstrapOnce(ctx context.Context) error {
 	return err
 }
 
-type HostAnchorIterator struct {
-	Vat     vat.Network
-	It      *Iterator
-	Release capnp.ReleaseFunc
+type hostAnchorIterator struct {
+	vat     vat.Network
+	it      *Iterator
+	release capnp.ReleaseFunc
 }
 
-func (it HostAnchorIterator) Next(ctx context.Context) bool {
-	return it.It.Next(ctx)
+func (it hostAnchorIterator) Next(ctx context.Context) bool {
+	return it.it.Next(ctx)
 }
 
-func (it HostAnchorIterator) Finish() {
-	it.Release()
+func (it hostAnchorIterator) Finish() {
+	it.release()
 }
 
-func (it HostAnchorIterator) Anchor() Anchor {
+func (it hostAnchorIterator) Anchor() Anchor {
 	return HostAnchor{
-		Peer: it.It.Record().Peer(),
-		Vat:  it.Vat,
+		Peer: it.it.Record().Peer(),
+		vat:  it.vat,
 	}
 }
 
-func (it HostAnchorIterator) Err() error {
-	return it.It.Err
+func (it hostAnchorIterator) Err() error {
+	return it.it.Err
 }
 
 type HostAnchorServer struct {
@@ -145,20 +146,12 @@ func NewHostAnchorServer(vat vat.Network, tree *node) HostAnchorServer {
 		sv.tree = &node{Name: vat.Host.ID().String(), Server: sv, children: make(map[string]*node)}
 	}
 	sv.client = api.Host_ServerToClient(&sv, &defaultPolicy)
-	vat.Export(HostCapability, sv)
+	vat.Export(Capability, sv)
 	return sv
 }
 
 func (sv HostAnchorServer) NewClient() HostAnchor {
-	return HostAnchor{Peer: sv.vat.Host.ID(), client: api.Host(sv.Client())}
-}
-
-func (sv *HostAnchorServer) Host(ctx context.Context, call api.Host_host) error {
-	results, err := call.AllocResults()
-	if err != nil {
-		return err
-	}
-	return results.SetHost(sv.vat.Host.ID().String())
+	return HostAnchor{Peer: sv.vat.Host.ID(), client: api.Host(sv.Anchor())}
 }
 
 func (sv *HostAnchorServer) Ls(ctx context.Context, call api.Anchor_ls) error {
@@ -178,7 +171,7 @@ func (sv *HostAnchorServer) Ls(ctx context.Context, call api.Anchor_ls) error {
 	i := 0
 	for name, child := range children {
 		capChild := capChildren.At(i)
-		if err := capChild.SetAnchor(child.Server.Client()); err != nil {
+		if err := capChild.SetAnchor(child.Server.Anchor()); err != nil {
 			return err
 		}
 
@@ -213,13 +206,13 @@ func (sv *HostAnchorServer) Walk(ctx context.Context, call api.Anchor_walk) erro
 	if node.Server == nil {
 		node.Server = newContainerServer(node)
 	}
-	return results.SetAnchor(node.Server.Client())
+	return results.SetAnchor(node.Server.Anchor())
 }
 
-func (sv HostAnchorServer) Client() api.Anchor {
+func (sv HostAnchorServer) Anchor() api.Anchor {
 	return api.Anchor(sv.client)
 }
 
-func (sv HostAnchorServer) CapClient() *capnp.Client {
+func (sv HostAnchorServer) Client() *capnp.Client {
 	return sv.client.Client
 }

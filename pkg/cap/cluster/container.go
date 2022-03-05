@@ -6,13 +6,9 @@ import (
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/server"
 	api "github.com/wetware/ww/internal/api/cluster"
-	"github.com/wetware/ww/pkg/vat"
 )
 
 var (
-	ContainerCapability = vat.BasicCap{
-		"containerAnchor/packed",
-		"containerAnchor"}
 	containerDefaultPolicy = server.Policy{
 		// HACK:  raise MaxConcurrentCalls to mitigate known deadlock condition.
 		//        https://github.com/capnproto/go-capnproto2/issues/189
@@ -21,18 +17,18 @@ var (
 	}
 )
 
-type ContainerAnchor struct {
+type containerAnchor struct {
 	path   []string
 	client api.Container
 
 	release capnp.ReleaseFunc
 }
 
-func (ca ContainerAnchor) Path() []string {
+func (ca containerAnchor) Path() []string {
 	return ca.path
 }
 
-func (ca ContainerAnchor) Ls(ctx context.Context) (AnchorIterator, error) {
+func (ca containerAnchor) Ls(ctx context.Context) (AnchorIterator, error) {
 	fut, release := ca.client.Ls(ctx, func(a api.Anchor_ls_Params) error {
 		return nil
 	})
@@ -46,14 +42,18 @@ func (ca ContainerAnchor) Ls(ctx context.Context) (AnchorIterator, error) {
 		if err != nil {
 			return nil, err
 		} else {
-			return &ContainerAnchorIterator{path: ca.Path(), children: children, release: release}, err
+			return &containerAnchorIterator{path: ca.Path(), children: children, release: release}, err
 		}
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
 }
 
-func (ca ContainerAnchor) Walk(ctx context.Context, path []string) (Anchor, error) {
+func (ca containerAnchor) Walk(ctx context.Context, path []string) (Anchor, error) {
+	if len(path) == 0 {
+		return ca, nil
+	}
+
 	fut, release := ca.client.Walk(ctx, func(a api.Anchor_walk_Params) error {
 		capPath, err := a.NewPath(int32(len(path)))
 		if err != nil {
@@ -66,10 +66,10 @@ func (ca ContainerAnchor) Walk(ctx context.Context, path []string) (Anchor, erro
 		}
 		return nil
 	})
-	return ContainerAnchor{path: append(ca.Path(), path...), client: api.Container(fut.Anchor()), release: release}, nil
+	return containerAnchor{path: append(ca.Path(), path...), client: api.Container(fut.Anchor()), release: release}, nil
 }
 
-func (ca ContainerAnchor) Set(ctx context.Context, data []byte) error {
+func (ca containerAnchor) Set(ctx context.Context, data []byte) error {
 	c := api.Container{Client: ca.client.Client}
 	fut, release := c.Set(ctx, func(c api.Container_set_Params) error {
 		return c.SetData(data)
@@ -85,7 +85,7 @@ func (ca ContainerAnchor) Set(ctx context.Context, data []byte) error {
 	}
 }
 
-func (ca ContainerAnchor) Get(ctx context.Context) (data []byte, release func()) {
+func (ca containerAnchor) Get(ctx context.Context) (data []byte, release func()) {
 	c := api.Container{Client: ca.client.Client}
 	fut, release := c.Get(ctx, func(c api.Container_get_Params) error {
 		return nil
@@ -104,7 +104,7 @@ func (ca ContainerAnchor) Get(ctx context.Context) (data []byte, release func())
 	}
 }
 
-type ContainerAnchorIterator struct {
+type containerAnchorIterator struct {
 	path []string
 
 	i        int
@@ -114,15 +114,15 @@ type ContainerAnchorIterator struct {
 	err error
 }
 
-func (it *ContainerAnchorIterator) Next(context.Context) bool {
+func (it *containerAnchorIterator) Next(context.Context) bool {
 	it.i++
 	return it.i <= it.children.Len()
 }
 
-func (it *ContainerAnchorIterator) Finish() {
+func (it *containerAnchorIterator) Finish() {
 	// TODO
 }
-func (it *ContainerAnchorIterator) Anchor() Anchor {
+func (it *containerAnchorIterator) Anchor() Anchor {
 	child := it.children.At(it.i - 1)
 	name, err := child.Name()
 	if err != nil {
@@ -130,25 +130,25 @@ func (it *ContainerAnchorIterator) Anchor() Anchor {
 		return nil
 	}
 
-	return ContainerAnchor{path: append(it.path, name), client: api.Container(child.Anchor())}
+	return containerAnchor{path: append(it.path, name), client: api.Container(child.Anchor())}
 }
-func (it *ContainerAnchorIterator) Err() error {
+func (it *containerAnchorIterator) Err() error {
 	return it.err
 }
 
-type ContainerAnchorServer struct {
+type containerAnchorServer struct {
 	tree *node
 
 	client api.Container
 }
 
-func newContainerServer(n *node) *ContainerAnchorServer {
-	sv := ContainerAnchorServer{tree: n}
+func newContainerServer(n *node) *containerAnchorServer {
+	sv := containerAnchorServer{tree: n}
 	sv.client = api.Container_ServerToClient(&sv, &defaultPolicy)
 	return &sv
 }
 
-func (sv *ContainerAnchorServer) Ls(ctx context.Context, call api.Anchor_ls) error {
+func (sv *containerAnchorServer) Ls(ctx context.Context, call api.Anchor_ls) error {
 	results, err := call.AllocResults()
 	if err != nil {
 		return err
@@ -165,7 +165,7 @@ func (sv *ContainerAnchorServer) Ls(ctx context.Context, call api.Anchor_ls) err
 	i := 0
 	for name, child := range children {
 		capChild := capChildren.At(i)
-		if err := capChild.SetAnchor(child.Server.Client()); err != nil {
+		if err := capChild.SetAnchor(child.Server.Anchor()); err != nil {
 			return err
 		}
 
@@ -178,7 +178,7 @@ func (sv *ContainerAnchorServer) Ls(ctx context.Context, call api.Anchor_ls) err
 	return nil
 }
 
-func (sv *ContainerAnchorServer) Walk(ctx context.Context, call api.Anchor_walk) error {
+func (sv *containerAnchorServer) Walk(ctx context.Context, call api.Anchor_walk) error {
 	capPath, err := call.Args().Path()
 	if err != nil {
 		return err
@@ -200,10 +200,10 @@ func (sv *ContainerAnchorServer) Walk(ctx context.Context, call api.Anchor_walk)
 	if node.Server == nil {
 		node.Server = newContainerServer(node)
 	}
-	return results.SetAnchor(node.Server.Client())
+	return results.SetAnchor(node.Server.Anchor())
 }
 
-func (sv *ContainerAnchorServer) Get(ctx context.Context, call api.Container_get) error {
+func (sv *containerAnchorServer) Get(ctx context.Context, call api.Container_get) error {
 	data, ok := sv.tree.Value.Load().([]byte)
 	if !ok {
 		return nil
@@ -215,7 +215,7 @@ func (sv *ContainerAnchorServer) Get(ctx context.Context, call api.Container_get
 	return results.SetData(data)
 }
 
-func (sv *ContainerAnchorServer) Set(ctx context.Context, call api.Container_set) error {
+func (sv *containerAnchorServer) Set(ctx context.Context, call api.Container_set) error {
 	data, err := call.Args().Data()
 	if err != nil {
 		return err
@@ -224,10 +224,10 @@ func (sv *ContainerAnchorServer) Set(ctx context.Context, call api.Container_set
 	return nil
 }
 
-func (sv *ContainerAnchorServer) Client() api.Anchor {
+func (sv *containerAnchorServer) Anchor() api.Anchor {
 	return api.Anchor(sv.client)
 }
 
-func (sv *ContainerAnchorServer) Shutdown() {
+func (sv *containerAnchorServer) Shutdown() {
 	// TODO
 }

@@ -17,7 +17,7 @@ interface Anchor {
 }
 
 interface Host extends(Anchor) {
-    host @0 () -> (host :Text);
+    # TODO: specific Host methods
 }
 
 interface Container extends(Anchor){

@@ -2,11 +2,14 @@ package cluster
 
 import (
 	"context"
-	"errors"
+
+	"github.com/wetware/ww/pkg/vat"
 )
 
 var (
-	ErrInvalidPath = errors.New("invalid path")
+	Capability = vat.BasicCap{
+		"anchor/packed",
+		"anchor"}
 )
 
 type Anchor interface {
@@ -22,13 +25,7 @@ type AnchorIterator interface {
 	Err() error
 }
 
-type Host interface {
-	Anchor
-	Host() string
-}
-
 type Container interface {
-	Anchor
 	Set(ctx context.Context, data []byte) error
 	Get(ctx context.Context) (data []byte, release func())
 }

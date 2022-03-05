@@ -9,7 +9,7 @@ import (
 )
 
 type ServerAnchor interface {
-	Client() api.Anchor
+	Anchor() api.Anchor
 }
 
 type releaseFunc func()
