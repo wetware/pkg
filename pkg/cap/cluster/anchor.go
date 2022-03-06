@@ -14,6 +14,7 @@ var (
 
 type Anchor interface {
 	Path() []string
+	Name() string
 	Ls(ctx context.Context) (AnchorIterator, error)
 	Walk(ctx context.Context, path []string) (Anchor, error)
 }

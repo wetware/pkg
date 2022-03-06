@@ -29,11 +29,15 @@ type HostAnchor struct {
 	client api.Host
 }
 
-func (ha HostAnchor) Path() []string {
+func (ha *HostAnchor) Name() string {
+	return ha.Peer.String()
+}
+
+func (ha *HostAnchor) Path() []string {
 	return []string{ha.Peer.String()}
 }
 
-func (ha HostAnchor) Ls(ctx context.Context) (AnchorIterator, error) {
+func (ha *HostAnchor) Ls(ctx context.Context) (AnchorIterator, error) {
 	if err := ha.bootstrapOnce(ctx); err != nil {
 		return nil, err
 	}
@@ -58,7 +62,7 @@ func (ha HostAnchor) Ls(ctx context.Context) (AnchorIterator, error) {
 	}
 }
 
-func (ha HostAnchor) Walk(ctx context.Context, path []string) (Anchor, error) {
+func (ha *HostAnchor) Walk(ctx context.Context, path []string) (Anchor, error) {
 	if len(path) == 0 {
 		return ha, nil
 	}
@@ -83,17 +87,17 @@ func (ha HostAnchor) Walk(ctx context.Context, path []string) (Anchor, error) {
 	return containerAnchor{path: append(ha.Path(), path...), client: api.Container(fut.Anchor()), release: release}, nil
 }
 
-func (ha HostAnchor) bootstrapOnce(ctx context.Context) error {
+func (ha *HostAnchor) bootstrapOnce(ctx context.Context) error {
 	var (
 		conn *rpc.Conn
 		err  error
 	)
 
-	if ha.client.Client != nil {
-		return nil
-	}
-
 	ha.once.Do(func() {
+		if ha.client.Client != nil {
+			return
+		}
+
 		conn, err = ha.vat.Connect(
 			ctx,
 			peer.AddrInfo{ID: ha.Peer},
@@ -122,7 +126,7 @@ func (it hostAnchorIterator) Finish() {
 }
 
 func (it hostAnchorIterator) Anchor() Anchor {
-	return HostAnchor{
+	return &HostAnchor{
 		Peer: it.it.Record().Peer(),
 		vat:  it.vat,
 	}
@@ -147,8 +151,12 @@ func NewHostAnchorServer(vat vat.Network) HostAnchorServer {
 	return sv
 }
 
+func (sv HostAnchorServer) Client() *capnp.Client {
+	return api.Host_ServerToClient(&sv, &defaultPolicy).Client
+}
+
 func (sv HostAnchorServer) NewClient() HostAnchor {
-	return HostAnchor{Peer: sv.vat.Host.ID(), client: api.Host(sv.Anchor())}
+	return HostAnchor{Peer: sv.vat.Host.ID(), vat: sv.vat, client: api.Host(sv.Anchor())}
 }
 
 func (sv *HostAnchorServer) Ls(ctx context.Context, call api.Anchor_ls) error {
@@ -208,8 +216,4 @@ func (sv *HostAnchorServer) Walk(ctx context.Context, call api.Anchor_walk) erro
 
 func (sv HostAnchorServer) Anchor() api.Anchor {
 	return api.Anchor(sv.client)
-}
-
-func (sv HostAnchorServer) Client() *capnp.Client {
-	return sv.client.Client
 }

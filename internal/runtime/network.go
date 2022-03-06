@@ -49,7 +49,7 @@ type networkModule struct {
 func vatNetwork(c *cli.Context, lx fx.Lifecycle, b *metrics.BandwidthCounter) (mod networkModule, err error) {
 	mod.Vat.NS = c.String("ns")
 	mod.Vat.Host, err = libp2p.New(c.Context,
-		libp2p.NoTransports,
+		libp2p.DefaultTransports,
 		libp2p.Transport(libp2pquic.NewTransport),
 		libp2p.ListenAddrStrings(c.StringSlice("listen")...),
 		libp2p.BandwidthReporter(b))

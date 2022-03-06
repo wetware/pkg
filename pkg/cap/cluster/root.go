@@ -16,6 +16,10 @@ func NewRootAnchor(vat vat.Network, view *View) Anchor {
 	return rootAnchor{vat: vat, view: view}
 }
 
+func (r rootAnchor) Name() string {
+	return "/"
+}
+
 func (r rootAnchor) Path() []string {
 	return []string{}
 }
@@ -30,11 +34,10 @@ func (r rootAnchor) Walk(ctx context.Context, path []string) (Anchor, error) {
 		return r, nil
 	}
 
-	id, err := peer.IDFromString(path[0])
+	id, err := peer.Decode(path[0])
 	if err != nil {
 		return nil, err
 	}
-
 	host := HostAnchor{
 		Peer: id,
 		vat:  r.vat,

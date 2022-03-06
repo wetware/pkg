@@ -24,6 +24,14 @@ type containerAnchor struct {
 	release capnp.ReleaseFunc
 }
 
+func (ca containerAnchor) Name() string {
+	n := len(ca.Path()) - 1
+	if n >= 0 {
+		return ca.path[n]
+	}
+	return ""
+}
+
 func (ca containerAnchor) Path() []string {
 	return ca.path
 }

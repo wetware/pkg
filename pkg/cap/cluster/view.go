@@ -45,7 +45,6 @@ type ViewServer struct {
 
 func NewViewServer(rt RoutingTable) ViewServer {
 	vs := ViewServer{View: rt}
-
 	vs.client = api.View_ServerToClient(vs, &defaultPolicy)
 	return vs
 }
@@ -59,7 +58,7 @@ func (f ViewServer) NewClient(policy *server.Policy) View {
 }
 
 func (f ViewServer) Client() *capnp.Client {
-	return f.client.Client
+	return api.View_ServerToClient(f, &defaultPolicy).Client
 }
 
 func (f ViewServer) Iter(ctx context.Context, call api.View_iter) error {

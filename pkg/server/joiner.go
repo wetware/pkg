@@ -61,7 +61,6 @@ func (j Joiner) Join(ctx context.Context, vat vat.Network, ps PubSub) (*Node, er
 	vat.Export(
 		clcap.AnchorCapability,
 		clcap.NewHostAnchorServer(vat))
-
 	// etc ...
 
 	// Bootstrap the node
