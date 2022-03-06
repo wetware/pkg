@@ -352,6 +352,9 @@ github.com/ipfs/go-datastore v0.4.4/go.mod h1:SX/xMIKoCszPqp+z9JhPYCmoOoXTvaa13X
 github.com/ipfs/go-datastore v0.4.5/go.mod h1:eXTcaaiN6uOlVCLS9GjJUJtlvJfM3xk23w3fyfrmmJs=
 github.com/ipfs/go-datastore v0.4.6 h1:zU2cmweykxJ+ziXnA2cPtsLe8rdR/vrthOipLPuf6kc=
 github.com/ipfs/go-datastore v0.4.6/go.mod h1:XSipLSc64rFKSFRFGo1ecQl+WhYce3K7frtpHkyPFUc=
+github.com/ipfs/go-datastore v0.5.0/go.mod h1:9zhEApYMTl17C8YDp7JmU7sQZi2/wqiYh73hakZ90Bk=
+github.com/ipfs/go-datastore v0.5.1 h1:WkRhLuISI+XPD0uk3OskB0fYFSyqK8Ob5ZYew9Qa1nQ=
+github.com/ipfs/go-datastore v0.5.1/go.mod h1:9zhEApYMTl17C8YDp7JmU7sQZi2/wqiYh73hakZ90Bk=
 github.com/ipfs/go-detect-race v0.0.1 h1:qX/xay2W3E4Q1U7d9lNs1sU9nvguX0a7319XbyQ6cOk=
 github.com/ipfs/go-detect-race v0.0.1/go.mod h1:8BNT7shDZPo99Q74BpGMK+4D8Mn4j46UU0LZ723meps=
 github.com/ipfs/go-ds-badger v0.0.2/go.mod h1:Y3QpeSFWQf6MopLTiZD+VT6IC1yZqaGmjvRcKeSGij8=
@@ -523,6 +526,8 @@ github.com/libp2p/go-libp2p-discovery v0.5.1 h1:CJylx+h2+4+s68GvrM4pGNyfNhOYviWB
 github.com/libp2p/go-libp2p-discovery v0.5.1/go.mod h1:+srtPIU9gDaBNu//UHvcdliKBIcr4SfDcm0/PfPJLug=
 github.com/libp2p/go-libp2p-kad-dht v0.13.1 h1:wQgzOpoc+dcPVDb3h0HNWUjon5JiYEqsA4iNBUtIA7A=
 github.com/libp2p/go-libp2p-kad-dht v0.13.1/go.mod h1:iVdxmsKHVPQSCGPP4V/A+tDFCLsxrREZUBX8ohOcKDw=
+github.com/libp2p/go-libp2p-kad-dht v0.15.0 h1:Ke+Oj78gX5UDXnA6HBdrgvi+fStJxgYTDa51U0TsCLo=
+github.com/libp2p/go-libp2p-kad-dht v0.15.0/go.mod h1:rZtPxYu1TnHHz6n1RggdGrxUX/tA1C2/Wiw3ZMUDrU0=
 github.com/libp2p/go-libp2p-kbucket v0.3.1/go.mod h1:oyjT5O7tS9CQurok++ERgc46YLwEpuGoFq9ubvoUOio=
 github.com/libp2p/go-libp2p-kbucket v0.4.7 h1:spZAcgxifvFZHBD8tErvppbnNiKA5uokDu3CV7axu70=
 github.com/libp2p/go-libp2p-kbucket v0.4.7/go.mod h1:XyVo99AfQH0foSf176k4jY1xUJ2+jUJIZCSDm7r2YKk=
@@ -1017,6 +1022,12 @@ github.com/warpfork/go-wish v0.0.0-20200122115046-b9ea61034e4a h1:G++j5e0OC488te
 github.com/warpfork/go-wish v0.0.0-20200122115046-b9ea61034e4a/go.mod h1:x6AKhvSSexNrVSrViXSHUEbICjmGXhtgABaHIySUSGw=
 github.com/wetware/casm v0.0.0-20220225230436-4c5a007db1f5 h1:a5y4hsWdb2ji5G1FNsoOph3PZhItZN6KEE4PsqfDZxM=
 github.com/wetware/casm v0.0.0-20220225230436-4c5a007db1f5/go.mod h1:IEfTZQ4IuZtOyIPDkDtFfHvcD/u1kVLKfulz9xcptVc=
+github.com/wetware/casm v0.0.0-20220305171311-348b001c8435 h1:VGlHgl0AZ151+/Xn1QJBFi45sPysb+eLAnDfMg+I0co=
+github.com/wetware/casm v0.0.0-20220305171311-348b001c8435/go.mod h1:QBEJF0zFcn9lOjskfvUa9xLJyoXoMjeKimxxQcS/Uco=
+github.com/wetware/casm v0.0.0-20220305173352-2f706123bfaa h1:+zBzp4v4v4jJKQnV2zaeOkPHy+U/yxwqPmMYfi74B2Y=
+github.com/wetware/casm v0.0.0-20220305173352-2f706123bfaa/go.mod h1:QBEJF0zFcn9lOjskfvUa9xLJyoXoMjeKimxxQcS/Uco=
+github.com/wetware/casm v0.0.0-20220305174817-a9f2b6e0a59d h1:FX2hlG0hkS2zKFAp3xw37A9RmEMTdQ58aPGbK4VjlFU=
+github.com/wetware/casm v0.0.0-20220305174817-a9f2b6e0a59d/go.mod h1:QBEJF0zFcn9lOjskfvUa9xLJyoXoMjeKimxxQcS/Uco=
 github.com/wetware/matrix v1.0.0-alpha.17/go.mod h1:Amn22v5AokspzNpka0Y0HNHkBSDo0MUf+JxkxVcs6h0=
 github.com/wetware/matrix v1.0.0-alpha.18 h1:au4xMIAU1zz5X9gLc9as04W6Y2vqkTKn62wihYg7wDQ=
 github.com/wetware/matrix v1.0.0-alpha.18/go.mod h1:QF5tprOw2yk7syU+KDU+75dtb/guiCDKjxDfHF7L5R4=

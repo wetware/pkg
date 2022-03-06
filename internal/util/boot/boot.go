@@ -1,42 +1,18 @@
 package bootutil
 
 import (
-	"net"
-	"net/url"
-	"path"
-	"strconv"
+	"github.com/libp2p/go-libp2p-core/discovery"
+	"github.com/wetware/casm/pkg/boot"
+	"github.com/wetware/ww/pkg/vat"
 
-	"github.com/wetware/casm/pkg/boot/crawl"
-	logutil "github.com/wetware/ww/internal/util/log"
-
+	"github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
 )
 
-func NewCrawler(c *cli.Context) (crawl.Crawler, error) {
-	u, err := url.Parse(c.String("discover"))
+func NewDiscovery(c *cli.Context, vat vat.Network) (discovery.Discoverer, error) {
+	maddr, err := multiaddr.NewMultiaddr(c.String("discover"))
 	if err != nil {
-		return crawl.Crawler{}, err
+		return nil, err
 	}
-
-	port, err := strconv.Atoi(u.Port())
-	if err != nil {
-		return crawl.Crawler{}, err
-	}
-
-	cidr := path.Join(u.Hostname(), u.Path) // e.g. '10.0.1.0/24'
-	log := logutil.New(c).
-		WithField("net", u.Scheme).
-		WithField("port", port).
-		WithField("cidr", cidr)
-
-	return crawl.Crawler{
-		Logger: log,
-		Dialer: new(net.Dialer),
-		Strategy: &crawl.ScanSubnet{
-			Logger: log,
-			Net:    u.Scheme,
-			Port:   port,
-			CIDR:   cidr, // e.g. '10.0.1.0/24'
-		},
-	}, nil
+	return boot.Parse(vat.Host, maddr)
 }

@@ -25,7 +25,7 @@ var flags = []cli.Flag{
 		Name:    "discover",
 		Aliases: []string{"d"},
 		Usage:   "bootstrap discovery addr (cidr url)",
-		Value:   "tcp://127.0.0.1:8822/24", // TODO:  this should default to mudp
+		Value:   "/ip4/228.8.8.8/udp/8822/survey", // TODO:  this should default to survey
 		EnvVars: []string{"WW_DISCOVER"},
 	},
 }

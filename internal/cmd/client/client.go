@@ -44,7 +44,7 @@ func Discover() *cli.Command {
 		Name:  "discover",
 		Usage: "bootstrap client",
 		Subcommands: []*cli.Command{
-			Crawl(),
+			Scan(),
 			Publish(),
 		},
 	}

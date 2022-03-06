@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	ds "github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p"
@@ -25,6 +26,7 @@ import (
 
 	"github.com/wetware/casm/pkg/boot"
 	"github.com/wetware/casm/pkg/boot/crawl"
+	"github.com/wetware/casm/pkg/boot/survey"
 	bootutil "github.com/wetware/ww/internal/util/boot"
 	statsdutil "github.com/wetware/ww/internal/util/statsd"
 	"github.com/wetware/ww/pkg/vat"
@@ -34,7 +36,7 @@ var network = fx.Provide(
 	bootstrap,
 	vatNetwork,
 	overlay,
-	bootutil.NewCrawler,
+	bootutil.NewDiscovery,
 	beacon)
 
 type networkModule struct {
@@ -91,17 +93,17 @@ type bootstrapConfig struct {
 	Datastore ds.Batching
 	DHT       *dual.DHT
 
-	Crawler    crawl.Crawler
-	Beacon     crawl.Beacon
+	Discoverer discovery.Discoverer
+	Advertiser discovery.Advertiser
 	Supervisor *suture.Supervisor
 
 	Lifecycle fx.Lifecycle
 }
 
-func bootstrap(config bootstrapConfig) (discovery.Discovery, error) {
+func bootstrap(c *cli.Context, config bootstrapConfig) (discovery.Discovery, error) {
 	config.Lifecycle.Append(fx.Hook{
-		OnStart: func(context.Context) error {
-			config.Supervisor.Add(config.Beacon)
+		OnStart: func(ctx context.Context) error {
+			config.Supervisor.Add(Advertiser{Advertiser: config.Advertiser, ns: c.String("ns")})
 			return nil
 		},
 	})
@@ -110,8 +112,8 @@ func bootstrap(config bootstrapConfig) (discovery.Discovery, error) {
 		discovery.Discoverer
 		discovery.Advertiser
 	}{
-		Discoverer: config.Crawler,
-		Advertiser: config.Beacon,
+		Discoverer: config.Discoverer,
+		Advertiser: config.Advertiser,
 	}
 
 	// TODO:  enable PeX when testing is complete
@@ -135,12 +137,17 @@ func bootstrap(config bootstrapConfig) (discovery.Discovery, error) {
 	}, nil
 }
 
-func beacon(c *cli.Context, log log.Logger, vat vat.Network) (crawl.Beacon, error) {
+func beacon(c *cli.Context, log log.Logger, vat vat.Network, disc discovery.Discoverer) (discovery.Advertiser, error) {
+	if surv, ok := disc.(*survey.Surveyor); ok {
+		return surv, nil
+	} else if surv, ok := disc.(*survey.GradualSurveyor); ok {
+		return surv, nil
+	}
+
 	u, err := url.Parse(c.String("discover"))
 	if err != nil {
 		return crawl.Beacon{}, err
 	}
-
 	port, err := strconv.Atoi(u.Port())
 	if err != nil {
 		return crawl.Beacon{}, err
@@ -158,5 +165,27 @@ func pubsubTopic(match string) func(string) bool {
 
 	return func(s string) bool {
 		return match == strings.TrimPrefix(s, prefix)
+	}
+}
+
+type Advertiser struct {
+	discovery.Advertiser
+	ns string
+}
+
+func (a Advertiser) Serve(ctx context.Context) error {
+	for {
+		ttl, err := a.Advertise(ctx, a.ns)
+		if err != nil {
+			return err
+		}
+
+		timer := time.NewTimer(ttl)
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-timer.C:
+		}
 	}
 }

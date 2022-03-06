@@ -10,44 +10,58 @@ import (
 	"net"
 	"time"
 
+	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/discovery"
+	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/record"
+	libp2pquic "github.com/libp2p/go-libp2p-quic-transport"
 	"github.com/lthibault/log"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
-	"github.com/wetware/casm/pkg/boot/crawl"
+	"github.com/wetware/casm/pkg/boot"
 )
 
 // ww client discover scan -s tcp://127.0.0.0:8822/24
-func Crawl() *cli.Command {
-	var b crawl.Crawler
+func Scan() *cli.Command {
+	var (
+		h host.Host
+		d discovery.Discoverer
+	)
 
 	return &cli.Command{
-		Name:   "crawl",
+		Name:   "scan",
 		Usage:  "scan an IP range for cluster hosts",
 		Flags:  scanFlags,
-		Before: beforeScan(&b),
-		Action: scan(&b),
+		Before: beforeScan(&d, &h),
+		Action: scan(&d),
+		After:  afterScan(&h),
 	}
 }
 
 var scanFlags = []cli.Flag{
 	&cli.StringFlag{
-		Name:  "subnet",
-		Usage: "CIDR range to scan",
-		Value: "127.0.0.0/24",
-		// Aliases: []string{"-s"},
-		EnvVars: []string{"WW_DISCOVER"},
+		Name:    "ns",
+		Usage:   "cluster namespace",
+		Value:   "ww",
+		EnvVars: []string{"WW_NS"},
+	},
+	&cli.StringSliceFlag{
+		Name:    "listen",
+		Aliases: []string{"a"},
+		Usage:   "host listen address",
+		Value: cli.NewStringSlice(
+			"/ip4/0.0.0.0/udp/2020/quic",
+			"/ip6/::0/udp/2020/quic"),
+		EnvVars: []string{"WW_LISTEN"},
 	},
 	&cli.StringFlag{
-		Name:  "net",
-		Value: "tcp4",
-	},
-	&cli.IntFlag{
-		Name:  "port",
-		Usage: "port to scan",
-		Value: 8822,
+		Name:    "discover",
+		Aliases: []string{"d"},
+		Usage:   "bootstrap discovery addr (cidr url)",
+		Value:   "/ip4/228.8.8.8/udp/8822/survey", // TODO:  this should default to survey
+		EnvVars: []string{"WW_DISCOVER"},
 	},
 	&cli.DurationFlag{
 		Name:  "timeout",
@@ -89,23 +103,29 @@ var publishFlags = []cli.Flag{
 	SCAN
 */
 
-func beforeScan(s *crawl.Crawler) cli.BeforeFunc {
+func beforeScan(d *discovery.Discoverer, h *host.Host) cli.BeforeFunc {
 	return func(c *cli.Context) (err error) {
-		s.Logger = logger
-		s.Strategy = &crawl.ScanSubnet{
-			Logger: logger,
-			Net:    c.String("net"),
-			Port:   c.Int("port"),
-			CIDR:   c.String("subnet"),
+		maddr, err := multiaddr.NewMultiaddr(c.String("discover"))
+		if err != nil {
+			return err
 		}
 
-		return
+		*h, err = libp2p.New(c.Context,
+			libp2p.NoTransports,
+			libp2p.Transport(libp2pquic.NewTransport),
+			libp2p.ListenAddrStrings(c.StringSlice("listen")...))
+		if err != nil {
+			return err
+		}
+
+		*d, err = boot.Parse(*h, maddr)
+		return err
 	}
 }
 
-func scan(b *crawl.Crawler) cli.ActionFunc {
+func scan(d *discovery.Discoverer) cli.ActionFunc {
 	return func(c *cli.Context) error {
-		peers, err := b.FindPeers(c.Context, "")
+		peers, err := (*d).FindPeers(c.Context, c.String("ns"))
 		if err != nil {
 			return err
 		}
@@ -117,6 +137,15 @@ func scan(b *crawl.Crawler) cli.ActionFunc {
 			}
 		}
 
+		return nil
+	}
+}
+
+func afterScan(h *host.Host) cli.AfterFunc {
+	return func(c *cli.Context) error {
+		if *h != nil {
+			return (*h).Close()
+		}
 		return nil
 	}
 }
