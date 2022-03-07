@@ -1034,6 +1034,8 @@ github.com/viant/toolbox v0.24.0/go.mod h1:OxMCG57V0PXuIP2HNQrtJf2CjqdmbrOx5EkMI
 github.com/wangjia184/sortedset v0.0.0-20160527075905-f5d03557ba30/go.mod h1:YkocrP2K2tcw938x9gCOmT5G5eCD6jsTz0SZuyAqwIE=
 github.com/warpfork/go-wish v0.0.0-20200122115046-b9ea61034e4a h1:G++j5e0OC488te356JvdhaM8YS6nMsjLAYF7JxCv07w=
 github.com/warpfork/go-wish v0.0.0-20200122115046-b9ea61034e4a/go.mod h1:x6AKhvSSexNrVSrViXSHUEbICjmGXhtgABaHIySUSGw=
+github.com/wetware/casm v0.0.0-20220303164401-db8b777442f6 h1:PHcxsV3+kLQcTdPQMTGs7ALRmqkIM0ihVMsSwUD8dZ0=
+github.com/wetware/casm v0.0.0-20220303164401-db8b777442f6/go.mod h1:QBEJF0zFcn9lOjskfvUa9xLJyoXoMjeKimxxQcS/Uco=
 github.com/wetware/matrix v1.0.0-alpha.17/go.mod h1:Amn22v5AokspzNpka0Y0HNHkBSDo0MUf+JxkxVcs6h0=
 github.com/wetware/matrix v1.0.0-alpha.18 h1:au4xMIAU1zz5X9gLc9as04W6Y2vqkTKn62wihYg7wDQ=
 github.com/wetware/matrix v1.0.0-alpha.18/go.mod h1:QF5tprOw2yk7syU+KDU+75dtb/guiCDKjxDfHF7L5R4=
