@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"context"
+	"sync"
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/server"
@@ -77,6 +78,14 @@ func (ca containerAnchor) Walk(ctx context.Context, path []string) (Anchor, erro
 	return containerAnchor{path: append(ca.Path(), path...), client: api.Container(fut.Anchor()), release: release}, nil
 }
 
+func (ca containerAnchor) Release(ctx context.Context) error {
+	if err := ca.client.Client.Resolve(ctx); err != nil {
+		return err
+	}
+	ca.client.Release()
+	return nil
+}
+
 func (ca containerAnchor) Set(ctx context.Context, data []byte) error {
 	c := api.Container{Client: ca.client.Client}
 	fut, release := c.Set(ctx, func(c api.Container_set_Params) error {
@@ -93,22 +102,28 @@ func (ca containerAnchor) Set(ctx context.Context, data []byte) error {
 	}
 }
 
-func (ca containerAnchor) Get(ctx context.Context) (data []byte, release func()) {
+func (ca containerAnchor) Get(ctx context.Context) ([]byte, error) {
 	c := api.Container{Client: ca.client.Client}
 	fut, release := c.Get(ctx, func(c api.Container_get_Params) error {
 		return nil
 	})
+	defer release()
+
 	select {
 	case <-ctx.Done():
-		return nil, release
+		return nil, ctx.Err()
 	case <-fut.Done():
 		results, err := fut.Struct()
 		if err != nil {
-			return nil, release
+			return nil, err
 		}
-		data, _ := results.Data()
-		return data, release
-
+		tmpData, err := results.Data()
+		if len(tmpData) == 0 {
+			return nil, err
+		}
+		data := make([]byte, len(tmpData))
+		copy(data, tmpData)
+		return data, err
 	}
 }
 
@@ -147,12 +162,13 @@ func (it *containerAnchorIterator) Err() error {
 type containerAnchorServer struct {
 	tree *node
 
-	client api.Container
+	mu  sync.Mutex
+	ref int
 }
 
-func newContainerServer(n *node) *containerAnchorServer {
+func newContainerServer(n *node) ServerAnchor {
 	sv := containerAnchorServer{tree: n}
-	sv.client = api.Container_ServerToClient(&sv, &defaultPolicy)
+	n.Acquire()
 	return &sv
 }
 
@@ -204,10 +220,7 @@ func (sv *containerAnchorServer) Walk(ctx context.Context, call api.Anchor_walk)
 	if err != nil {
 		return err
 	}
-	node := sv.tree.Walk(path)
-	if node.Server == nil {
-		node.Server = newContainerServer(node)
-	}
+	node := sv.tree.Walk(path, newContainerServer)
 	return results.SetAnchor(node.Server.Anchor())
 }
 
@@ -233,9 +246,19 @@ func (sv *containerAnchorServer) Set(ctx context.Context, call api.Container_set
 }
 
 func (sv *containerAnchorServer) Anchor() api.Anchor {
-	return api.Anchor(sv.client)
+	sv.mu.Lock()
+	defer sv.mu.Unlock()
+
+	sv.ref++
+	return api.Anchor(api.Container_ServerToClient(sv, &defaultPolicy))
 }
 
 func (sv *containerAnchorServer) Shutdown() {
-	// TODO
+	sv.mu.Lock()
+	defer sv.mu.Unlock()
+	sv.ref--
+
+	if sv.ref == 0 {
+		sv.tree.Release()
+	}
 }

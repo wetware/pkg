@@ -55,13 +55,14 @@ func Dial(ctx context.Context, vat vat.Network, a Addr) (*Node, error) {
 // to abide by this rule may cause Node's underlying capabilities
 // to fail.
 func (d Dialer) Dial(ctx context.Context) (*Node, error) {
-	n := &Node{vat: d.Vat}
+	n := &Node{vat: d.Vat, conns: make([]*rpc.Conn, 0)}
 
 	conn, err := d.join(ctx, pubsub.Capability)
 	if err != nil {
 		return nil, err
 	}
 	n.ps = pubsub.PubSub{Client: conn.Bootstrap(ctx)}
+	n.conns = append(n.conns, conn)
 
 	conn, err = d.join(ctx, cluster.ViewCapability)
 	if err != nil {
@@ -69,8 +70,8 @@ func (d Dialer) Dial(ctx context.Context) (*Node, error) {
 		return nil, err
 	}
 	n.view = cluster.View{Client: conn.Bootstrap(ctx)}
+	n.conns = append(n.conns, conn)
 
-	n.conn = conn
 	return n, nil
 }
 
@@ -79,7 +80,6 @@ func (d Dialer) join(ctx context.Context, cap vat.Capability) (conn *rpc.Conn, e
 	if peers, err = d.Boot.FindPeers(ctx, d.Vat.NS); err != nil {
 		return nil, fmt.Errorf("discover: %w", err)
 	}
-
 	for info := range peers {
 		conn, err = d.Vat.Connect(ctx, info, cap)
 		if err == nil {

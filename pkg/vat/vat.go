@@ -75,10 +75,8 @@ func (n Network) Connect(ctx context.Context, vat peer.AddrInfo, c Capability) (
 		if err := n.Host.Connect(ctx, vat); err != nil {
 			return nil, err
 		}
-
 	}
 
-	println(n.Host, vat.ID, c)
 	s, err := n.Host.NewStream(ctx, vat.ID, n.protocolsFor(c)...)
 	if err != nil {
 		return nil, err

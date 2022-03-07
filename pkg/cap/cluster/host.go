@@ -87,6 +87,14 @@ func (ha *HostAnchor) Walk(ctx context.Context, path []string) (Anchor, error) {
 	return containerAnchor{path: append(ha.Path(), path...), client: api.Container(fut.Anchor()), release: release}, nil
 }
 
+func (ha *HostAnchor) Release(ctx context.Context) error {
+	if err := ha.client.Client.Resolve(ctx); err != nil {
+		return err
+	}
+	ha.client.Release()
+	return nil
+}
+
 func (ha *HostAnchor) bootstrapOnce(ctx context.Context) error {
 	var (
 		conn *rpc.Conn
@@ -207,13 +215,11 @@ func (sv *HostAnchorServer) Walk(ctx context.Context, call api.Anchor_walk) erro
 	if err != nil {
 		return err
 	}
-	node := sv.tree.Walk(path)
-	if node.Server == nil {
-		node.Server = newContainerServer(node)
-	}
+
+	node := sv.tree.Walk(path, newContainerServer)
 	return results.SetAnchor(node.Server.Anchor())
 }
 
 func (sv HostAnchorServer) Anchor() api.Anchor {
-	return api.Anchor(sv.client)
+	return api.Anchor{Client: sv.Client()}
 }

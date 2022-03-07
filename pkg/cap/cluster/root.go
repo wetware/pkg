@@ -45,3 +45,7 @@ func (r rootAnchor) Walk(ctx context.Context, path []string) (Anchor, error) {
 
 	return host.Walk(ctx, path[1:])
 }
+
+func (r rootAnchor) Release(context.Context) error {
+	return nil
+}

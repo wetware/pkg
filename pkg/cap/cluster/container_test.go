@@ -91,15 +91,13 @@ func TestContainerGetSet(t *testing.T) {
 	require.True(t, ok)
 	require.NotNil(t, c1)
 
-	data, release := c1.Get(ctx)
-	defer release()
+	data, err := c1.Get(ctx)
 	require.NoError(t, err)
-	require.Nil(t, data)
+	require.Empty(t, data)
 
 	err = c1.Set(ctx, []byte("test-container"))
 	require.NoError(t, err)
-	data, release = c1.Get(ctx)
-	defer release()
+	data, err = c1.Get(ctx)
 	require.NoError(t, err)
 	require.EqualValues(t, []byte("test-container"), data)
 }

@@ -37,6 +37,9 @@ var commands = []*cli.Command{
 	// Publish(),
 	Subscribe(),
 	Ls(),
+	Walk(),
+	Get(),
+	Set(),
 }
 
 // ww client discover

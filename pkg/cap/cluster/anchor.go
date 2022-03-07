@@ -17,6 +17,7 @@ type Anchor interface {
 	Name() string
 	Ls(ctx context.Context) (AnchorIterator, error)
 	Walk(ctx context.Context, path []string) (Anchor, error)
+	Release(ctx context.Context) error
 }
 
 type AnchorIterator interface {
@@ -28,5 +29,5 @@ type AnchorIterator interface {
 
 type Container interface {
 	Set(ctx context.Context, data []byte) error
-	Get(ctx context.Context) (data []byte, release func())
+	Get(ctx context.Context) ([]byte, error)
 }

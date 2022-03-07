@@ -26,15 +26,15 @@ func Ls() *cli.Command {
 
 	return &cli.Command{
 		Name:   "ls",
-		Usage:  "list information about cluster anchors",
-		Flags:  lsFlags,
-		Before: beforeLs(&d, &v),
+		Usage:  "list information about cluster path",
+		Flags:  clientFlags,
+		Before: beforeClient(&d, &v),
 		Action: ls(&d, &v),
-		After:  afterLs(&v),
+		After:  afterClient(&v),
 	}
 }
 
-var lsFlags = []cli.Flag{
+var clientFlags = []cli.Flag{
 	&cli.StringFlag{
 		Name:    "ns",
 		Usage:   "cluster namespace",
@@ -46,7 +46,7 @@ var lsFlags = []cli.Flag{
 		Aliases: []string{"a"},
 		Usage:   "host listen address",
 		Value: cli.NewStringSlice(
-			"/ip4/0.0.0.0/udp/0/quic",
+			"/ip4/0.0.0.0/tcp/0/quic",
 			"/ip6/::0/udp/0/quic"),
 		EnvVars: []string{"WW_LISTEN"},
 	},
@@ -59,7 +59,7 @@ var lsFlags = []cli.Flag{
 	},
 }
 
-func beforeLs(d *discovery.Discoverer, v *vat.Network) cli.BeforeFunc {
+func beforeClient(d *discovery.Discoverer, v *vat.Network) cli.BeforeFunc {
 	return func(c *cli.Context) error {
 		h, err := libp2p.New(c.Context,
 			libp2p.DefaultTransports,
@@ -117,12 +117,14 @@ func ls(d *discovery.Discoverer, v *vat.Network) cli.ActionFunc {
 		if n == nil {
 			return errors.New("no server found")
 		}
+		defer n.Close()
 
 		path := cleanPath(strings.Split(c.Args().First(), "/"))
 		anchor, err := n.Walk(c.Context, path)
 		if err != nil {
 			return err
 		}
+		defer anchor.Release(c.Context)
 
 		it, err := anchor.Ls(c.Context)
 		if err != nil {
@@ -139,7 +141,7 @@ func ls(d *discovery.Discoverer, v *vat.Network) cli.ActionFunc {
 	}
 }
 
-func afterLs(v *vat.Network) cli.AfterFunc {
+func afterClient(v *vat.Network) cli.AfterFunc {
 	return func(ctx *cli.Context) error {
 		if (*v).Host != nil {
 			return v.Host.Close()

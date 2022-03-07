@@ -89,7 +89,7 @@ func (n *node) Children() (map[string]*node, releaseFunc) {
 	}
 }
 
-func (n *node) Walk(path []string) (u *node) {
+func (n *node) Walk(path []string, serverCreator func(*node) ServerAnchor) (u *node) {
 	if len(path) == 0 {
 		return n
 	}
@@ -101,12 +101,15 @@ func (n *node) Walk(path []string) (u *node) {
 
 	if u = n.children[path[0]]; u == nil {
 		u = &node{Name: path[0], parent: n}
+		if serverCreator != nil {
+			u.Server = serverCreator(u)
+		}
 		n.children[path[0]] = u
 	}
 	u.Acquire()
 	n.mu.Unlock()
 
-	return u.Walk(path[1:])
+	return u.Walk(path[1:], serverCreator)
 }
 
 type ref syncutil.Ctr

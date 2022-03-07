@@ -12,10 +12,10 @@ import (
 )
 
 type Node struct {
-	vat  vat.Network
-	conn *rpc.Conn
-	ps   pscap.PubSub // conn's bootstrap capability
-	view cluster.View
+	vat   vat.Network
+	conns []*rpc.Conn
+	ps    pscap.PubSub // conn's bootstrap capability
+	view  cluster.View
 }
 
 // String returns the cluster namespace
@@ -40,13 +40,20 @@ func (n Node) Bootstrap(ctx context.Context) error {
 // Done returns a read-only channel that is closed when
 // 'n' becomes disconnected from the cluster.
 func (n Node) Done() <-chan struct{} {
-	return n.conn.Done()
+	return n.conns[0].Done()
 }
 
 func (n Node) Close() error {
 	n.ps.Release()
 
-	return n.conn.Close()
+	var err error
+
+	for _, conn := range n.conns {
+		if tmpErr := conn.Close(); tmpErr != nil {
+			err = tmpErr
+		}
+	}
+	return err
 }
 
 func (n Node) Join(ctx context.Context, topic string) *Topic {
