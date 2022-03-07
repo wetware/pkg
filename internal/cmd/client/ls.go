@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-core/discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	libp2pquic "github.com/libp2p/go-libp2p-quic-transport"
@@ -20,17 +20,17 @@ import (
 
 func Ls() *cli.Command {
 	var (
-		d discovery.Discoverer
 		v vat.Network
+		n *client.Node
 	)
 
 	return &cli.Command{
 		Name:   "ls",
 		Usage:  "list information about cluster path",
 		Flags:  clientFlags,
-		Before: beforeClient(&d, &v),
-		Action: ls(&d, &v),
-		After:  afterClient(&v),
+		Before: beforeAnchor(&v, &n),
+		Action: ls(&n),
+		After:  afterAnchor(&v),
 	}
 }
 
@@ -59,7 +59,7 @@ var clientFlags = []cli.Flag{
 	},
 }
 
-func beforeClient(d *discovery.Discoverer, v *vat.Network) cli.BeforeFunc {
+func beforeAnchor(v *vat.Network, n **client.Node) cli.BeforeFunc {
 	return func(c *cli.Context) error {
 		h, err := libp2p.New(c.Context,
 			libp2p.DefaultTransports,
@@ -76,6 +76,9 @@ func beforeClient(d *discovery.Discoverer, v *vat.Network) cli.BeforeFunc {
 		if err != nil {
 			return err
 		}
+		if err := dht.Bootstrap(c.Context); err != nil {
+			return err
+		}
 
 		h = routedhost.Wrap(h, dht)
 
@@ -89,22 +92,18 @@ func beforeClient(d *discovery.Discoverer, v *vat.Network) cli.BeforeFunc {
 			return err
 		}
 
-		*d, err = boot.Parse(h, maddr)
-		return err
-	}
-}
-
-func ls(d *discovery.Discoverer, v *vat.Network) cli.ActionFunc {
-	return func(c *cli.Context) error {
-		peers, err := (*d).FindPeers(c.Context, c.String("ns"))
+		d, err := boot.Parse(h, maddr)
 		if err != nil {
 			return err
 		}
 
-		var n *client.Node
+		peers, err := d.FindPeers(c.Context, c.String("ns"))
+		if err != nil {
+			return err
+		}
 
 		for info := range peers {
-			n, err = client.Dialer{
+			*n, err = client.Dialer{
 				Vat:  (*v),
 				Boot: boot.StaticAddrs{info},
 			}.Dial(c.Context)
@@ -113,12 +112,17 @@ func ls(d *discovery.Discoverer, v *vat.Network) cli.ActionFunc {
 			}
 			break
 		}
-
-		if n == nil {
+		if *n == nil {
 			return errors.New("no server found")
 		}
-		defer n.Close()
+		time.Sleep(100 * time.Millisecond) // add delay to propagate the peer to the DHT table
+		return nil
+	}
+}
 
+func ls(nn **client.Node) cli.ActionFunc {
+	return func(c *cli.Context) error {
+		n := *nn
 		path := cleanPath(strings.Split(c.Args().First(), "/"))
 		anchor, err := n.Walk(c.Context, path)
 		if err != nil {
@@ -141,7 +145,7 @@ func ls(d *discovery.Discoverer, v *vat.Network) cli.ActionFunc {
 	}
 }
 
-func afterClient(v *vat.Network) cli.AfterFunc {
+func afterAnchor(v *vat.Network) cli.AfterFunc {
 	return func(ctx *cli.Context) error {
 		if (*v).Host != nil {
 			return v.Host.Close()

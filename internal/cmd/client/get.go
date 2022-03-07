@@ -4,9 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/libp2p/go-libp2p-core/discovery"
 	"github.com/urfave/cli/v2"
-	"github.com/wetware/casm/pkg/boot"
 	"github.com/wetware/ww/pkg/cap/cluster"
 	"github.com/wetware/ww/pkg/client"
 	"github.com/wetware/ww/pkg/vat"
@@ -14,44 +12,23 @@ import (
 
 func Get() *cli.Command {
 	var (
-		d discovery.Discoverer
 		v vat.Network
+		n *client.Node
 	)
 
 	return &cli.Command{
 		Name:   "get",
 		Usage:  "set data in cluster path",
 		Flags:  clientFlags,
-		Before: beforeClient(&d, &v),
-		Action: get(&d, &v),
-		After:  afterClient(&v),
+		Before: beforeAnchor(&v, &n),
+		Action: get(&n),
+		After:  afterAnchor(&v),
 	}
 }
 
-func get(d *discovery.Discoverer, v *vat.Network) cli.ActionFunc {
+func get(nn **client.Node) cli.ActionFunc {
 	return func(c *cli.Context) error {
-		peers, err := (*d).FindPeers(c.Context, c.String("ns"))
-		if err != nil {
-			return err
-		}
-
-		var n *client.Node
-
-		for info := range peers {
-			n, err = client.Dialer{
-				Vat:  (*v),
-				Boot: boot.StaticAddrs{info},
-			}.Dial(c.Context)
-			if err != nil {
-				return err
-			}
-			break
-		}
-
-		if n == nil {
-			return errors.New("no server found")
-		}
-
+		n := *nn
 		path := cleanPath(strings.Split(c.Args().First(), "/"))
 		a, err := n.Walk(c.Context, path)
 		if err != nil {
