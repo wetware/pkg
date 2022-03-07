@@ -9,6 +9,7 @@ import (
 	"github.com/lthibault/log"
 
 	"github.com/wetware/casm/pkg/cluster"
+	clcap "github.com/wetware/ww/pkg/cap/cluster"
 	pscap "github.com/wetware/ww/pkg/cap/pubsub"
 	"github.com/wetware/ww/pkg/vat"
 )
@@ -53,9 +54,13 @@ func (j Joiner) Join(ctx context.Context, vat vat.Network, ps PubSub) (*Node, er
 		pscap.Capability,
 		pscap.New(vat.NS, ps, pscap.WithLogger(j.log.With(vat))))
 
-	// vat.Export(
-	// 	anchor.Capability,
-	// 	anchor.New())
+	vat.Export(
+		clcap.ViewCapability,
+		clcap.NewViewServer(c.View()))
+
+	vat.Export(
+		clcap.AnchorCapability,
+		clcap.NewHostAnchorServer(vat))
 
 	// etc ...
 

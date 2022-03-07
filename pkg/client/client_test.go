@@ -11,7 +11,9 @@ import (
 	inproc "github.com/lthibault/go-libp2p-inproc-transport"
 
 	"github.com/wetware/casm/pkg/boot"
-	api "github.com/wetware/ww/internal/api/pubsub"
+	clapi "github.com/wetware/ww/internal/api/cluster"
+	psapi "github.com/wetware/ww/internal/api/pubsub"
+	"github.com/wetware/ww/pkg/cap/cluster"
 	"github.com/wetware/ww/pkg/cap/pubsub"
 	"github.com/wetware/ww/pkg/client"
 	"github.com/wetware/ww/pkg/vat"
@@ -33,10 +35,12 @@ func TestClientServerIntegration(t *testing.T) {
 		libp2p.Transport(inproc.New()))
 	require.NoError(t, err, "must succeed")
 
-	vat.Network{
+	vat := vat.Network{
 		NS:   "test",
 		Host: h,
-	}.Export(pubsub.Capability, mockPubSub{})
+	}
+	vat.Export(pubsub.Capability, mockPubSub{})
+	vat.Export(cluster.ViewCapability, mockView{})
 
 	n, err := client.Dialer{
 		Vat:  newVat(ctx),
@@ -52,10 +56,24 @@ func TestClientServerIntegration(t *testing.T) {
 
 type mockPubSub struct{}
 
-func (mockPubSub) Join(ctx context.Context, call api.PubSub_join) error {
+func (mockPubSub) Join(ctx context.Context, call psapi.PubSub_join) error {
 	return fmt.Errorf("NOT IMPLEMENTED")
 }
 
 func (mockPubSub) Client() *capnp.Client {
-	return api.PubSub_ServerToClient(mockPubSub{}, nil).Client
+	return psapi.PubSub_ServerToClient(mockPubSub{}, nil).Client
+}
+
+type mockView struct{}
+
+func (mockView) Client() *capnp.Client {
+	return clapi.View_ServerToClient(mockView{}, nil).Client
+}
+
+func (mockView) Iter(ctx context.Context, call clapi.View_iter) error {
+	return fmt.Errorf("NOT IMPLEMENTED")
+}
+
+func (mockView) Lookup(ctx context.Context, call clapi.View_lookup) error {
+	return fmt.Errorf("NOT IMPLEMENTED")
 }
