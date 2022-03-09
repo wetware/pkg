@@ -26,12 +26,10 @@ func TestDialer(t *testing.T) {
 	t.Run("NoPeers", func(t *testing.T) {
 		t.Parallel()
 
+		vat := newVat()
+		defer vat.Host.Close()
+
 		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		vat := newVat(ctx)
-
-		ctx, cancel = context.WithCancel(context.Background())
 		cancel() // NOTE:  eagerly canceled
 
 		n, err := client.Dialer{
@@ -59,8 +57,11 @@ func TestDialer(t *testing.T) {
 			},
 		}
 
+		vat := newVat()
+		defer vat.Host.Close()
+
 		n, err := client.Dialer{
-			Vat:  newVat(ctx),
+			Vat:  vat,
 			Boot: boot.StaticAddrs{info},
 		}.Dial(ctx)
 
@@ -84,15 +85,19 @@ func TestDialer(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		h, err := libp2p.New(ctx,
+		h, err := libp2p.New(
 			libp2p.NoListenAddrs,
 			libp2p.NoTransports,
 			libp2p.ListenAddrStrings("/inproc/~"),
 			libp2p.Transport(inproc.New()))
 		require.NoError(t, err, "must succeed")
+		defer h.Close()
+
+		clt := newVat()
+		defer clt.Host.Close()
 
 		n, err := client.Dialer{
-			Vat:  newVat(ctx),
+			Vat:  clt,
 			Boot: boot.StaticAddrs{*host.InfoFromHost(h)},
 		}.Dial(ctx)
 
@@ -101,8 +106,8 @@ func TestDialer(t *testing.T) {
 	})
 }
 
-func newVat(ctx context.Context) vat.Network {
-	h, err := libp2p.New(ctx,
+func newVat() vat.Network {
+	h, err := libp2p.New(
 		libp2p.NoListenAddrs,
 		libp2p.NoTransports,
 		libp2p.Transport(inproc.New()))

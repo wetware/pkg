@@ -6,12 +6,14 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
+	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p-core/host"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	inproc "github.com/lthibault/go-libp2p-inproc-transport"
 	logtest "github.com/lthibault/log/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	mx "github.com/wetware/matrix/pkg"
 	pscap "github.com/wetware/ww/pkg/cap/pubsub"
 )
 
@@ -44,8 +46,8 @@ func TestPubSub_refcount(t *testing.T) {
 		Debug(gomock.Any()).
 		AnyTimes()
 
-	sim := mx.New(ctx)
-	h := sim.MustHost(ctx)
+	h := newTestHost()
+	defer h.Close()
 
 	gs, err := pubsub.NewGossipSub(ctx, h)
 	require.NoError(t, err)
@@ -87,4 +89,17 @@ func TestPubSub_refcount(t *testing.T) {
 				"should match previously-published message")
 		}()
 	}
+}
+
+func newTestHost() host.Host {
+	h, err := libp2p.New(
+		libp2p.NoListenAddrs,
+		libp2p.NoTransports,
+		libp2p.Transport(inproc.New()),
+		libp2p.ListenAddrStrings("/inproc/~"))
+	if err != nil {
+		panic(err)
+	}
+
+	return h
 }
