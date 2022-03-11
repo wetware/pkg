@@ -4,8 +4,11 @@ import (
 	"context"
 	"testing"
 
+	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p-core/host"
+	inproc "github.com/lthibault/go-libp2p-inproc-transport"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	mx "github.com/wetware/matrix/pkg"
 	"github.com/wetware/ww/pkg/cap/cluster"
 	"github.com/wetware/ww/pkg/vat"
 )
@@ -17,8 +20,8 @@ func TestHostWalk(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	sim := mx.New(ctx)
-	hs := sim.MustHostSet(ctx, 2)
+	hs := makeHosts(2)
+	closeAll(t, hs)
 
 	vat := vat.Network{NS: "test-host", Host: hs[0]}
 	server := cluster.NewHostAnchorServer(vat)
@@ -40,8 +43,8 @@ func TestHostLs(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	sim := mx.New(ctx)
-	hs := sim.MustHostSet(ctx, 2)
+	hs := makeHosts(2)
+	closeAll(t, hs)
 
 	vat := vat.Network{NS: "test-host", Host: hs[0]}
 	server := cluster.NewHostAnchorServer(vat)
@@ -60,4 +63,41 @@ func TestHostLs(t *testing.T) {
 	require.Equal(t, expectedPath, it.Anchor().Path())
 	require.False(t, it.Next(ctx))
 	require.Nil(t, it.Err())
+}
+
+func closeAll(t *testing.T, hs []host.Host) {
+	hmap(hs, func(i int, h host.Host) error {
+		assert.NoError(t, h.Close(), "should shutdown gracefully (index=%d)", i)
+		return nil
+	})
+}
+
+func hmap(hs []host.Host, f func(i int, h host.Host) error) (err error) {
+	for i, h := range hs {
+		if err = f(i, h); err != nil {
+			break
+		}
+	}
+	return
+}
+
+func makeHosts(n int) []host.Host {
+	hs := make([]host.Host, n)
+	for i := range hs {
+		hs[i] = newTestHost()
+	}
+	return hs
+}
+
+func newTestHost() host.Host {
+	h, err := libp2p.New(
+		libp2p.NoListenAddrs,
+		libp2p.NoTransports,
+		libp2p.Transport(inproc.New()),
+		libp2p.ListenAddrStrings("/inproc/~"))
+	if err != nil {
+		panic(err)
+	}
+
+	return h
 }

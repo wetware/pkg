@@ -28,22 +28,26 @@ func TestClientServerIntegration(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	h, err := libp2p.New(ctx,
+	h, err := libp2p.New(
 		libp2p.NoListenAddrs,
 		libp2p.NoTransports,
 		libp2p.ListenAddrStrings("/inproc/~"),
 		libp2p.Transport(inproc.New()))
 	require.NoError(t, err, "must succeed")
+	defer h.Close()
 
-	vat := vat.Network{
+	svr := vat.Network{
 		NS:   "test",
 		Host: h,
 	}
-	vat.Export(pubsub.Capability, mockPubSub{})
-	vat.Export(cluster.ViewCapability, mockView{})
+	svr.Export(pubsub.Capability, mockPubSub{})
+	svr.Export(cluster.ViewCapability, mockView{})
+
+	clt := newVat()
+	defer clt.Host.Close()
 
 	n, err := client.Dialer{
-		Vat:  newVat(ctx),
+		Vat:  clt,
 		Boot: boot.StaticAddrs{*host.InfoFromHost(h)},
 	}.Dial(ctx)
 

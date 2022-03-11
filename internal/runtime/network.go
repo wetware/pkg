@@ -47,7 +47,7 @@ type networkModule struct {
 
 func vatNetwork(c *cli.Context, lx fx.Lifecycle, b *metrics.BandwidthCounter) (mod networkModule, err error) {
 	mod.Vat.NS = c.String("ns")
-	mod.Vat.Host, err = libp2p.New(c.Context,
+	mod.Vat.Host, err = libp2p.New(
 		libp2p.NoTransports,
 		libp2p.Transport(libp2pquic.NewTransport),
 		libp2p.ListenAddrStrings(c.StringSlice("listen")...),
@@ -120,13 +120,14 @@ func bootstrap(c *cli.Context, config bootstrapConfig) (discovery.Discovery, err
 	}
 
 	// Wrap the bootstrap discovery service in a peer sampling service.
-	px, err := pex.New(c.Context, config.Vat.Host,
+	px, err := pex.New(config.Vat.Host,
 		pex.WithLogger(config.Logger()),
 		pex.WithDatastore(config.Datastore),
 		pex.WithDiscovery(d))
 	if err != nil {
 		return nil, err
 	}
+	config.Lifecycle.Append(closer(px))
 
 	// If the namespace matches the cluster pubsub topic,
 	// fetch peers from PeX, which itself will fall back

@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	mx "github.com/wetware/matrix/pkg"
 	"github.com/wetware/ww/pkg/cap/cluster"
 	"github.com/wetware/ww/pkg/vat"
 )
@@ -17,8 +16,8 @@ func TestContainerWalk(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	sim := mx.New(ctx)
-	hs := sim.MustHostSet(ctx, 2)
+	hs := makeHosts(2)
+	closeAll(t, hs)
 
 	vat := vat.Network{NS: "test-container", Host: hs[0]}
 	server := cluster.NewHostAnchorServer(vat)
@@ -45,8 +44,8 @@ func TestContainerLs(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	sim := mx.New(ctx)
-	hs := sim.MustHostSet(ctx, 2)
+	hs := makeHosts(2)
+	closeAll(t, hs)
 
 	vat := vat.Network{NS: "test-container", Host: hs[0]}
 	server := cluster.NewHostAnchorServer(vat)
@@ -76,8 +75,8 @@ func TestContainerGetSet(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	sim := mx.New(ctx)
-	hs := sim.MustHostSet(ctx, 2)
+	hs := makeHosts(2)
+	closeAll(t, hs)
 
 	vat := vat.Network{NS: "test-container", Host: hs[0]}
 	server := cluster.NewHostAnchorServer(vat)
