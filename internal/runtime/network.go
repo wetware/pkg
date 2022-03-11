@@ -2,8 +2,10 @@ package runtime
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/url"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -37,7 +39,7 @@ var network = fx.Provide(
 	vatNetwork,
 	overlay,
 	bootutil.NewDiscovery,
-	beacon)
+	advertiser)
 
 type networkModule struct {
 	fx.Out
@@ -103,7 +105,7 @@ type bootstrapConfig struct {
 func bootstrap(c *cli.Context, config bootstrapConfig) (discovery.Discovery, error) {
 	config.Lifecycle.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			config.Supervisor.Add(Advertiser{Advertiser: config.Advertiser, ns: c.String("ns")})
+			config.Supervisor.Add(advertiseService{Advertiser: config.Advertiser, ns: c.String("ns")})
 			return nil
 		},
 	})
@@ -137,13 +139,22 @@ func bootstrap(c *cli.Context, config bootstrapConfig) (discovery.Discovery, err
 	}, nil
 }
 
-func beacon(c *cli.Context, log log.Logger, vat vat.Network, disc discovery.Discoverer) (discovery.Advertiser, error) {
-	if surv, ok := disc.(*survey.Surveyor); ok {
-		return surv, nil
-	} else if surv, ok := disc.(*survey.GradualSurveyor); ok {
-		return surv, nil
+func advertiser(c *cli.Context, log log.Logger, vat vat.Network, disc discovery.Discoverer) (discovery.Advertiser, error) {
+	switch d := disc.(type) {
+	case *survey.Surveyor:
+		return d, nil
+	case *survey.GradualSurveyor:
+		return d, nil
+	case discovery.Advertiser:
+		return d, nil
+	case *crawl.Crawler:
+		return newBeacon(c, log, vat)
+	default:
+		return nil, fmt.Errorf("unknown advertiser for %s", reflect.TypeOf(d))
 	}
+}
 
+func newBeacon(c *cli.Context, log log.Logger, vat vat.Network) (crawl.Beacon, error) {
 	u, err := url.Parse(c.String("discover"))
 	if err != nil {
 		return crawl.Beacon{}, err
@@ -168,24 +179,22 @@ func pubsubTopic(match string) func(string) bool {
 	}
 }
 
-type Advertiser struct {
+type advertiseService struct {
 	discovery.Advertiser
 	ns string
 }
 
-func (a Advertiser) Serve(ctx context.Context) error {
+func (a advertiseService) Serve(ctx context.Context) error {
 	for {
 		ttl, err := a.Advertise(ctx, a.ns)
 		if err != nil {
 			return err
 		}
 
-		timer := time.NewTimer(ttl)
-
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-timer.C:
+		case <-time.After(ttl):
 		}
 	}
 }

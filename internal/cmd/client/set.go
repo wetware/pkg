@@ -6,31 +6,23 @@ import (
 
 	"github.com/urfave/cli/v2"
 	"github.com/wetware/ww/pkg/cap/cluster"
-	"github.com/wetware/ww/pkg/client"
-	"github.com/wetware/ww/pkg/vat"
 )
 
 func Set() *cli.Command {
-	var (
-		v vat.Network
-		n *client.Node
-	)
-
 	return &cli.Command{
 		Name:   "set",
 		Usage:  "set data in cluster path",
 		Flags:  clientFlags,
-		Before: beforeAnchor(&v, &n),
-		Action: set(&n),
-		After:  afterAnchor(&v),
+		Before: beforeAnchor(),
+		Action: set(),
+		After:  afterAnchor(),
 	}
 }
 
-func set(nn **client.Node) cli.ActionFunc {
+func set() cli.ActionFunc {
 	return func(c *cli.Context) error {
-		n := *nn
 		path := cleanPath(strings.Split(c.Args().First(), "/"))
-		a, err := n.Walk(c.Context, path)
+		a, err := node.Walk(c.Context, path)
 		if err != nil {
 			return err
 		}

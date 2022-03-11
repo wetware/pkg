@@ -38,7 +38,7 @@ func (ca containerAnchor) Path() []string {
 }
 
 func (ca containerAnchor) Ls(ctx context.Context) (AnchorIterator, error) {
-	fut, release := ca.client.Ls(ctx, func(a api.Anchor_ls_Params) error {
+	fut, release := ca.client.Ls(ctx, func(ps api.Anchor_ls_Params) error {
 		return nil
 	})
 	select {
@@ -63,8 +63,8 @@ func (ca containerAnchor) Walk(ctx context.Context, path []string) (Anchor, erro
 		return ca, nil
 	}
 
-	fut, release := ca.client.Walk(ctx, func(a api.Anchor_walk_Params) error {
-		capPath, err := a.NewPath(int32(len(path)))
+	fut, release := ca.client.Walk(ctx, func(ps api.Anchor_walk_Params) error {
+		capPath, err := ps.NewPath(int32(len(path)))
 		if err != nil {
 			return err
 		}
@@ -88,8 +88,8 @@ func (ca containerAnchor) Release(ctx context.Context) error {
 
 func (ca containerAnchor) Set(ctx context.Context, data []byte) error {
 	c := api.Container{Client: ca.client.Client}
-	fut, release := c.Set(ctx, func(c api.Container_set_Params) error {
-		return c.SetData(data)
+	fut, release := c.Set(ctx, func(ps api.Container_set_Params) error {
+		return ps.SetData(data)
 	})
 	defer release()
 
@@ -104,7 +104,7 @@ func (ca containerAnchor) Set(ctx context.Context, data []byte) error {
 
 func (ca containerAnchor) Get(ctx context.Context) ([]byte, error) {
 	c := api.Container{Client: ca.client.Client}
-	fut, release := c.Get(ctx, func(c api.Container_get_Params) error {
+	fut, release := c.Get(ctx, func(ps api.Container_get_Params) error {
 		return nil
 	})
 	defer release()

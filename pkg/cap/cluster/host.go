@@ -42,7 +42,7 @@ func (ha *HostAnchor) Ls(ctx context.Context) (AnchorIterator, error) {
 		return nil, err
 	}
 
-	fut, release := ha.client.Ls(ctx, func(a api.Anchor_ls_Params) error {
+	fut, release := ha.client.Ls(ctx, func(ps api.Anchor_ls_Params) error {
 		return nil
 	})
 	select {
@@ -71,8 +71,8 @@ func (ha *HostAnchor) Walk(ctx context.Context, path []string) (Anchor, error) {
 		return nil, err
 	}
 
-	fut, release := ha.client.Walk(ctx, func(a api.Anchor_walk_Params) error {
-		capPath, err := a.NewPath(int32(len(path)))
+	fut, release := ha.client.Walk(ctx, func(ps api.Anchor_walk_Params) error {
+		capPath, err := ps.NewPath(int32(len(path)))
 		if err != nil {
 			return err
 		}

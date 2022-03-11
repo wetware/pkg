@@ -12,8 +12,6 @@ import (
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/discovery"
-	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/record"
 	libp2pquic "github.com/libp2p/go-libp2p-quic-transport"
@@ -23,46 +21,19 @@ import (
 	"github.com/wetware/casm/pkg/boot"
 )
 
-// ww client discover scan -s tcp://127.0.0.0:8822/24
+// ww client discover scan -s /ip4/228.8.8.8/udp/8822/survey
 func Scan() *cli.Command {
-	var (
-		h host.Host
-		d discovery.Discoverer
-	)
-
 	return &cli.Command{
 		Name:   "scan",
 		Usage:  "scan an IP range for cluster hosts",
 		Flags:  scanFlags,
-		Before: beforeScan(&d, &h),
-		Action: scan(&d),
-		After:  afterScan(&h),
+		Before: beforeScan(),
+		Action: scan(),
+		After:  afterScan(),
 	}
 }
 
 var scanFlags = []cli.Flag{
-	&cli.StringFlag{
-		Name:    "ns",
-		Usage:   "cluster namespace",
-		Value:   "ww",
-		EnvVars: []string{"WW_NS"},
-	},
-	&cli.StringSliceFlag{
-		Name:    "listen",
-		Aliases: []string{"a"},
-		Usage:   "host listen address",
-		Value: cli.NewStringSlice(
-			"/ip4/0.0.0.0/udp/2020/quic",
-			"/ip6/::0/udp/2020/quic"),
-		EnvVars: []string{"WW_LISTEN"},
-	},
-	&cli.StringFlag{
-		Name:    "discover",
-		Aliases: []string{"d"},
-		Usage:   "bootstrap discovery addr (cidr url)",
-		Value:   "/ip4/228.8.8.8/udp/8822/survey", // TODO:  this should default to survey
-		EnvVars: []string{"WW_DISCOVER"},
-	},
 	&cli.DurationFlag{
 		Name:  "timeout",
 		Usage: "per-connection timeout",
@@ -103,14 +74,14 @@ var publishFlags = []cli.Flag{
 	SCAN
 */
 
-func beforeScan(d *discovery.Discoverer, h *host.Host) cli.BeforeFunc {
+func beforeScan() cli.BeforeFunc {
 	return func(c *cli.Context) (err error) {
 		maddr, err := multiaddr.NewMultiaddr(c.String("discover"))
 		if err != nil {
 			return err
 		}
 
-		*h, err = libp2p.New(c.Context,
+		h, err = libp2p.New(c.Context,
 			libp2p.NoTransports,
 			libp2p.Transport(libp2pquic.NewTransport),
 			libp2p.ListenAddrStrings(c.StringSlice("listen")...))
@@ -118,14 +89,14 @@ func beforeScan(d *discovery.Discoverer, h *host.Host) cli.BeforeFunc {
 			return err
 		}
 
-		*d, err = boot.Parse(*h, maddr)
+		d, err = boot.Parse(h, maddr)
 		return err
 	}
 }
 
-func scan(d *discovery.Discoverer) cli.ActionFunc {
+func scan() cli.ActionFunc {
 	return func(c *cli.Context) error {
-		peers, err := (*d).FindPeers(c.Context, c.String("ns"))
+		peers, err := d.FindPeers(c.Context, c.String("ns"))
 		if err != nil {
 			return err
 		}
@@ -141,10 +112,10 @@ func scan(d *discovery.Discoverer) cli.ActionFunc {
 	}
 }
 
-func afterScan(h *host.Host) cli.AfterFunc {
+func afterScan() cli.AfterFunc {
 	return func(c *cli.Context) error {
-		if *h != nil {
-			return (*h).Close()
+		if h != nil {
+			return h.Close()
 		}
 		return nil
 	}

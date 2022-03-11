@@ -1,13 +1,18 @@
 package client
 
 import (
+	"github.com/libp2p/go-libp2p-core/discovery"
+	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/lthibault/log"
 	"github.com/urfave/cli/v2"
+	"github.com/wetware/ww/pkg/client"
 )
 
 var (
 	logger log.Logger
-	// node   *client.Node
+	h      host.Host
+	d      discovery.Discoverer
+	node   *client.Node
 )
 
 func Command() *cli.Command {
@@ -18,14 +23,24 @@ func Command() *cli.Command {
 			&cli.StringFlag{
 				Name:    "discover",
 				Aliases: []string{"d"},
-				Usage:   "bootstrap discovery addr in URL-CIDR format",
-				Value:   "tcp://127.0.0.1:8822/24", // TODO:  this should default to mudp
+				Usage:   "bootstrap discovery addr (multiaddress url)",
+				Value:   "/ip4/228.8.8.8/udp/8822/survey",
+				EnvVars: []string{"WW_DISCOVER"},
 			},
 			&cli.StringFlag{
 				Name:    "ns",
 				Usage:   "cluster namespace",
 				Value:   "ww",
 				EnvVars: []string{"WW_NS"},
+			},
+			&cli.StringSliceFlag{
+				Name:    "listen",
+				Aliases: []string{"l"},
+				Usage:   "host listen address",
+				Value: cli.NewStringSlice(
+					"/ip4/0.0.0.0/tcp/0/quic",
+					"/ip6/::0/udp/0/quic"),
+				EnvVars: []string{"WW_LISTEN"},
 			},
 		},
 		Subcommands: commands,
