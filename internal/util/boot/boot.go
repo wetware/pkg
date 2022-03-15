@@ -1,42 +1,46 @@
 package bootutil
 
 import (
-	"net"
-	"net/url"
-	"path"
-	"strconv"
+	"errors"
 
-	"github.com/wetware/casm/pkg/boot/crawl"
-	logutil "github.com/wetware/ww/internal/util/log"
+	"github.com/libp2p/go-libp2p-core/discovery"
+	"github.com/libp2p/go-libp2p-core/host"
+	ma "github.com/multiformats/go-multiaddr"
+	"github.com/wetware/casm/pkg/boot"
+	"github.com/wetware/ww/pkg/client"
+	"github.com/wetware/ww/pkg/vat"
 
 	"github.com/urfave/cli/v2"
 )
 
-func NewCrawler(c *cli.Context) (crawl.Crawler, error) {
-	u, err := url.Parse(c.String("discover"))
-	if err != nil {
-		return crawl.Crawler{}, err
+func New(c *cli.Context, h host.Host) (discovery.Discoverer, error) {
+	if c.IsSet("addr") {
+		return boot.NewStaticAddrStrings(c.StringSlice("addr")...)
 	}
 
-	port, err := strconv.Atoi(u.Port())
-	if err != nil {
-		return crawl.Crawler{}, err
+	if c.String("discover") == "" {
+		return nil, errors.New("must provide -discover or -addr flag")
 	}
 
-	cidr := path.Join(u.Hostname(), u.Path) // e.g. '10.0.1.0/24'
-	log := logutil.New(c).
-		WithField("net", u.Scheme).
-		WithField("port", port).
-		WithField("cidr", cidr)
+	addr, err := ma.NewMultiaddr(c.String("discover"))
+	if err != nil {
+		return nil, err
+	}
 
-	return crawl.Crawler{
-		Logger: log,
-		Dialer: new(net.Dialer),
-		Strategy: &crawl.Subnet{
-			Logger: log,
-			Net:    u.Scheme,
-			Port:   port,
-			CIDR:   cidr, // e.g. '10.0.1.0/24'
+	return boot.Parse(h, addr)
+}
+
+func Dial(c *cli.Context, h host.Host) (*client.Node, error) {
+	b, err := New(c, h)
+	if err != nil {
+		return nil, err
+	}
+
+	return client.Dialer{
+		Boot: b,
+		Vat: vat.Network{
+			NS:   c.String("ns"),
+			Host: h,
 		},
-	}, nil
+	}.Dial(c.Context)
 }

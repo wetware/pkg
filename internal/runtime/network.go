@@ -2,24 +2,28 @@ package runtime
 
 import (
 	"context"
+	"fmt"
 	"net"
-	"net/url"
-	"strconv"
 	"strings"
+	"time"
 
 	ds "github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/discovery"
 	"github.com/libp2p/go-libp2p-core/metrics"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/peerstore"
 	disc "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	libp2pquic "github.com/libp2p/go-libp2p-quic-transport"
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
+	ma "github.com/multiformats/go-multiaddr"
+	manet "github.com/multiformats/go-multiaddr/net"
+	"github.com/thejerf/suture/v4"
 
 	"github.com/lthibault/log"
-	"github.com/thejerf/suture/v4"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
 
@@ -33,9 +37,8 @@ import (
 
 var network = fx.Provide(
 	bootstrap,
-	vatNetwork,
+	vatnet,
 	overlay,
-	bootutil.NewCrawler,
 	beacon)
 
 type networkModule struct {
@@ -45,7 +48,7 @@ type networkModule struct {
 	DHT *dual.DHT
 }
 
-func vatNetwork(c *cli.Context, lx fx.Lifecycle, b *metrics.BandwidthCounter) (mod networkModule, err error) {
+func vatnet(c *cli.Context, lx fx.Lifecycle, b *metrics.BandwidthCounter) (mod networkModule, err error) {
 	mod.Vat.NS = c.String("ns")
 	mod.Vat.Host, err = libp2p.New(
 		libp2p.NoTransports,
@@ -87,13 +90,10 @@ func overlay(c *cli.Context, vat vat.Network, d discovery.Discovery) (*pubsub.Pu
 type bootstrapConfig struct {
 	fx.In
 
-	Log       log.Logger
-	Vat       vat.Network
-	Datastore ds.Batching
-	DHT       *dual.DHT
-
-	Crawler    crawl.Crawler
-	Beacon     crawl.Beacon
+	Log        log.Logger
+	Vat        vat.Network
+	Datastore  ds.Batching
+	DHT        *dual.DHT
 	Supervisor *suture.Supervisor
 
 	Lifecycle fx.Lifecycle
@@ -104,26 +104,41 @@ func (config bootstrapConfig) Logger() log.Logger {
 }
 
 func bootstrap(c *cli.Context, config bootstrapConfig) (discovery.Discovery, error) {
-	config.Lifecycle.Append(fx.Hook{
-		OnStart: func(context.Context) error {
-			config.Supervisor.Add(config.Beacon)
-			return nil
-		},
-	})
+	d, err := bootutil.New(c, config.Vat.Host)
+	if err != nil {
+		return nil, err
+	}
 
-	d := struct {
-		discovery.Discoverer
-		discovery.Advertiser
-	}{
-		Discoverer: config.Crawler,
-		Advertiser: config.Beacon,
+	var b = bootstrapper{
+		Log:        config.Logger(),
+		Discoverer: d,
+	}
+
+	switch x := d.(type) {
+	case discovery.Advertiser:
+		b.Advertiser = x
+
+	case crawl.Crawler:
+		a, err := beacon(c, b.Log, config.Vat)
+		if err != nil {
+			err = fmt.Errorf("beacon: %w", err)
+		}
+
+		config.Lifecycle.Append(fx.Hook{
+			OnStart: func(context.Context) error {
+				config.Supervisor.Add(a)
+				return nil
+			},
+		})
+
+		b.Advertiser = a
 	}
 
 	// Wrap the bootstrap discovery service in a peer sampling service.
 	px, err := pex.New(config.Vat.Host,
 		pex.WithLogger(config.Logger()),
 		pex.WithDatastore(config.Datastore),
-		pex.WithDiscovery(d))
+		pex.WithDiscovery(b))
 	if err != nil {
 		return nil, err
 	}
@@ -139,22 +154,56 @@ func bootstrap(c *cli.Context, config bootstrapConfig) (discovery.Discovery, err
 	}, nil
 }
 
+type bootstrapper struct {
+	Log log.Logger
+	discovery.Discoverer
+	discovery.Advertiser
+}
+
+func (b bootstrapper) FindPeers(ctx context.Context, ns string, opt ...discovery.Option) (<-chan peer.AddrInfo, error) {
+	b.Log.Debug("bootstrapping namespace")
+	return b.Discoverer.FindPeers(ctx, ns, opt...)
+}
+
+func (b bootstrapper) Advertise(ctx context.Context, ns string, opt ...discovery.Option) (time.Duration, error) {
+	if b.Advertiser == nil {
+		return peerstore.PermanentAddrTTL, nil
+	}
+
+	b.Log.Debug("advertising namespace")
+	return b.Advertiser.Advertise(ctx, ns, opt...)
+}
+
 func beacon(c *cli.Context, log log.Logger, vat vat.Network) (crawl.Beacon, error) {
-	u, err := url.Parse(c.String("discover"))
-	if err != nil {
-		return crawl.Beacon{}, err
-	}
-
-	port, err := strconv.Atoi(u.Port())
-	if err != nil {
-		return crawl.Beacon{}, err
-	}
-
+	addr, err := cidrToListenAddr(c)
 	return crawl.Beacon{
-		Logger: log.WithField("beacon_port", port),
-		Addr:   &net.TCPAddr{Port: port},
+		Logger: log.WithField("beacon", c.String("discover")),
+		Addr:   addr,
 		Host:   vat.Host,
-	}, nil
+	}, err
+}
+
+func cidrToListenAddr(c *cli.Context) (net.Addr, error) {
+	maddr, err := ma.NewMultiaddr(c.String("discover"))
+	if err != nil {
+		return nil, err
+	}
+
+	network, addr, err := manet.DialArgs(maddr)
+	if err != nil {
+		return nil, err
+	}
+
+	switch network {
+	case "tcp", "tcp4", "tcp6":
+		return net.ResolveTCPAddr(network, addr)
+
+	case "udp", "udp4", "udp6":
+		return net.ResolveUDPAddr(network, addr)
+
+	default:
+		return nil, fmt.Errorf("invalid network: %s", network)
+	}
 }
 
 func pubsubTopic(match string) func(string) bool {
