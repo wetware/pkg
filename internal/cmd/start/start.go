@@ -29,7 +29,7 @@ var flags = []cli.Flag{
 	&cli.StringFlag{
 		Name:    "discover",
 		Aliases: []string{"d"},
-		Usage:   "bootstrap discovery addr (cidr url)",
+		Usage:   "bootstrap discovery multiaddr",
 		Value:   "/ip4/127.0.0.1/udp/8822/survey",
 		EnvVars: []string{"WW_DISCOVER"},
 	},
