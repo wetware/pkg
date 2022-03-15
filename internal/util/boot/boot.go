@@ -7,6 +7,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/wetware/casm/pkg/boot"
+	logutil "github.com/wetware/ww/internal/util/log"
 	"github.com/wetware/ww/pkg/client"
 	"github.com/wetware/ww/pkg/vat"
 
@@ -27,7 +28,7 @@ func New(c *cli.Context, h host.Host) (discovery.Discoverer, error) {
 		return nil, err
 	}
 
-	return boot.Parse(h, addr)
+	return boot.New(logutil.New(c), h, addr)
 }
 
 func Dial(c *cli.Context, h host.Host) (*client.Node, error) {
