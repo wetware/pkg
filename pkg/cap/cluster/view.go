@@ -104,47 +104,38 @@ func (f ViewServer) Lookup(_ context.Context, call api.View_lookup) error {
 
 type View api.View
 
-func (cl View) Iter(ctx context.Context) (*Iterator, capnp.ReleaseFunc) {
+func (v View) Iter(ctx context.Context) (*RecordStream, capnp.ReleaseFunc) {
 	ctx, cancel := context.WithCancel(ctx)
 
 	h := make(handler, defaultMaxInflight)
 
-	it, release := newIterator(ctx, api.View(cl), h)
+	it, release := newIterator(ctx, api.View(v), h)
 	return it, func() {
 		cancel()
 		release()
 	}
 }
 
-func (cl View) Lookup(ctx context.Context, peerID peer.ID) (FutureRecord, capnp.ReleaseFunc) {
-	f, release := api.View(cl).Lookup(ctx, func(r api.View_lookup_Params) error {
+func (v View) Lookup(ctx context.Context, peerID peer.ID) (routing.Record, error) {
+	f, release := api.View(v).Lookup(ctx, func(r api.View_lookup_Params) error {
 		return r.SetPeerID(string(peerID))
 	})
-	return FutureRecord(f), release
-}
+	defer release()
 
-type FutureRecord api.View_lookup_Results_Future
-
-func (f FutureRecord) Struct() (Record, error) {
-	res, err := api.View_lookup_Results_Future(f).Struct()
+	res, err := f.Struct()
 	if err != nil {
-		return Record{}, err
+		return nil, err
 	}
 
-	rec, err := res.Record()
-	return Record(rec), err
+	r, err := res.Record()
+	if err != nil {
+		return nil, err
+	}
+
+	return recordFromCapnp(r)
 }
 
 type Record api.View_Record
-
-func (rec Record) Peer() (peer.ID, error) {
-	s, err := api.View_Record(rec).Peer()
-	if err != nil {
-		return "", err
-	}
-
-	return peer.IDFromString(s)
-}
 
 func (rec Record) TTL() time.Duration {
 	return time.Duration(api.View_Record(rec).Ttl())
@@ -154,7 +145,7 @@ func (rec Record) Seq() uint64 {
 	return api.View_Record(rec).Seq()
 }
 
-type Iterator struct {
+type RecordStream struct {
 	h <-chan []record
 	f *capnp.Future
 
@@ -164,7 +155,7 @@ type Iterator struct {
 	tail []record
 }
 
-func newIterator(ctx context.Context, r api.View, h handler) (*Iterator, capnp.ReleaseFunc) {
+func newIterator(ctx context.Context, r api.View, h handler) (*RecordStream, capnp.ReleaseFunc) {
 	c := api.View_Handler_ServerToClient(h, &server.Policy{
 		MaxConcurrentCalls: cap(h),
 		AnswerQueueSize:    cap(h),
@@ -174,10 +165,10 @@ func newIterator(ctx context.Context, r api.View, h handler) (*Iterator, capnp.R
 		return ps.SetHandler(c)
 	})
 
-	return &Iterator{h: h, f: f.Future}, release
+	return &RecordStream{h: h, f: f.Future}, release
 }
 
-func (it *Iterator) Next(ctx context.Context) (more bool) {
+func (it *RecordStream) Next(ctx context.Context) (more bool) {
 	if len(it.tail) == 0 {
 		it.Err = it.nextBatch(ctx)
 	}
@@ -189,11 +180,9 @@ func (it *Iterator) Next(ctx context.Context) (more bool) {
 	return
 }
 
-func (it *Iterator) Record() routing.Record {
-	return it.head
-}
+func (it *RecordStream) Record() routing.Record { return it.head }
 
-func (it *Iterator) nextBatch(ctx context.Context) (err error) {
+func (it *RecordStream) nextBatch(ctx context.Context) (err error) {
 	var ok bool
 	select {
 	case it.tail, ok = <-it.h:
@@ -235,23 +224,30 @@ func loadBatch(args api.View_Handler_handle_Params) ([]record, error) {
 
 	batch := make([]record, rs.Len())
 	for i := range batch {
-		rec := Record(rs.At(i))
-
-		batch[i].ttl = rec.TTL()
-		batch[i].seq = rec.Seq()
-
-		if batch[i].id, err = rec.Peer(); err != nil {
+		batch[i], err = recordFromCapnp(rs.At(i))
+		if err != nil {
 			break
 		}
 	}
 
-	return batch, nil
+	return batch, err
 }
 
 type record struct {
 	id  peer.ID
 	ttl time.Duration
 	seq uint64
+}
+
+func recordFromCapnp(r api.View_Record) (rec record, err error) {
+	var s string
+	if s, err = r.Peer(); err == nil {
+		rec.seq = r.Seq()
+		rec.ttl = time.Duration(r.Ttl())
+		rec.id, err = peer.IDFromString(s)
+	}
+
+	return
 }
 
 func (r record) Peer() peer.ID      { return r.id }

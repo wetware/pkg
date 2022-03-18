@@ -132,16 +132,10 @@ func TestLookup(t *testing.T) {
 
 	want := view[42]
 
-	f, release := c.Lookup(ctx, want.id)
-	defer release()
-
-	got, err := f.Struct()
+	got, err := c.Lookup(ctx, want.id)
 	require.NoError(t, err)
 
-	id, err := got.Peer()
-	require.NoError(t, err)
-	assert.Equal(t, want.Peer(), id)
-
+	assert.Equal(t, want.Peer(), got.Peer())
 	assert.Equal(t, got.Seq(), want.seq)
 	assert.Greater(t, got.TTL(), time.Duration(0))
 }

@@ -3,9 +3,11 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"runtime"
 
 	"capnproto.org/go/capnp/v3/rpc"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/wetware/ww/pkg/cap/cluster"
 	pscap "github.com/wetware/ww/pkg/cap/pubsub"
 	"github.com/wetware/ww/pkg/vat"
@@ -68,10 +70,41 @@ func (n Node) Join(ctx context.Context, topic string) *Topic {
 	return t
 }
 
-func (n Node) Ls(ctx context.Context) (cluster.AnchorIterator, error) {
-	return cluster.NewRootAnchor(n.vat, &n.view).Ls(ctx)
+func (n Node) Path() []string { return nil }
+
+func (n Node) Ls(ctx context.Context) Iterator {
+	s, release := n.view.Iter(ctx)
+
+	it := &hostSet{
+		ctx:          ctx,
+		dialer:       dialer(n.vat),
+		RecordStream: s,
+	}
+
+	it.release = func() {
+		runtime.SetFinalizer(it, nil)
+		release()
+	}
+
+	runtime.SetFinalizer(it, func(*hostSet) {
+		release()
+	})
+
+	return it
 }
 
-func (n Node) Walk(ctx context.Context, path []string) (cluster.Anchor, error) {
-	return cluster.NewRootAnchor(n.vat, &n.view).Walk(ctx, path)
+func (n Node) Walk(ctx context.Context, path []string) Anchor {
+	if len(path) == 0 {
+		return n
+	}
+
+	id, err := peer.Decode(path[0])
+	if err != nil {
+		return newErrorHost(fmt.Errorf("invalid id: %w", err))
+	}
+
+	return (*Host)(&cluster.Host{
+		Dialer: dialer(n.vat),
+		Info:   peer.AddrInfo{ID: id},
+	}).Walk(ctx, path[1:])
 }
