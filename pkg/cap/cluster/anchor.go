@@ -33,36 +33,12 @@ type Host struct {
 }
 
 func (h *Host) Ls(ctx context.Context) (*RegisterMap, capnp.ReleaseFunc) {
-	f, release := h.resolve(ctx).Ls(ctx, nil)
-
-	res, err := f.Struct()
-	if err != nil {
-		release()
-		return errmap(err), func() {}
-	}
-
-	cs, err := res.Children()
-	if err != nil {
-		release()
-		return errmap(err), func() {}
-	}
-
-	return regmap(cs), release
+	return listChildren(ctx, h.resolve(ctx))
 }
 
 // Walk to the register located at path.  Panics if len(path) == 0.
 func (h *Host) Walk(ctx context.Context, path []string) (Register, capnp.ReleaseFunc) {
-	if len(path) == 0 {
-		// We need to return a Register, so no way of implementing a nop walk
-		// for host.  Returning an interface is not viable either, since Host
-		// will be wrapped in client.Host, and users must be able to use type
-		// assertions. The client.Host is responsible for checking the length
-		// of the path and performing a nop walk if it is zero.
-		panic("zero-length path")
-	}
-
-	f, release := h.resolve(ctx).Walk(ctx, walkParam(path))
-	return Register(f.Anchor()), release
+	return walkPath(ctx, h.resolve(ctx), path)
 }
 
 func (h *Host) resolve(ctx context.Context) cluster.Anchor {
@@ -114,7 +90,26 @@ func (rs *RegisterMap) Register() Register {
 type Register cluster.Anchor
 
 func (r Register) Ls(ctx context.Context) (*RegisterMap, capnp.ReleaseFunc) {
-	f, release := cluster.Anchor(r).Ls(ctx, nil)
+	return listChildren(ctx, cluster.Anchor(r))
+}
+
+// Walk to the register located at path.  Panics if len(path) == 0.
+func (r Register) Walk(ctx context.Context, path []string) (Register, capnp.ReleaseFunc) {
+	return walkPath(ctx, cluster.Anchor(r), path)
+}
+
+func (r Register) AddRef() Register {
+	return Register(cluster.Anchor(r) /*.AddRef()*/)
+}
+
+/*
+
+	Generic methods for client implementations
+
+*/
+
+func listChildren(ctx context.Context, a cluster.Anchor) (*RegisterMap, capnp.ReleaseFunc) {
+	f, release := a.Ls(ctx, nil)
 
 	res, err := f.Struct()
 	if err != nil {
@@ -131,24 +126,17 @@ func (r Register) Ls(ctx context.Context) (*RegisterMap, capnp.ReleaseFunc) {
 	return regmap(cs), release
 }
 
-func (r Register) Walk(ctx context.Context, path []string) (Register, capnp.ReleaseFunc) {
+func walkPath(ctx context.Context, a cluster.Anchor, path []string) (Register, capnp.ReleaseFunc) {
 	if len(path) == 0 {
-		return r, cluster.Anchor(r).AddRef().Release
+		// While not strictly necessary, requiring non-empty paths
+		// simplifies the ref-counting logic considerably.  Nop walks
+		// are implemented by client.register, which wraps this type.
+		panic("zero-length path")
 	}
 
-	f, release := cluster.Anchor(r).Walk(ctx, walkParam(path))
+	f, release := a.Walk(ctx, walkParam(path))
 	return Register(f.Anchor()), release
 }
-
-func (r Register) AddRef() Register {
-	return Register(cluster.Anchor(r).AddRef())
-}
-
-/*
-
-	Generic methods for client implementations
-
-*/
 
 func walkParam(path []string) func(cluster.Anchor_walk_Params) error {
 	return func(ps cluster.Anchor_walk_Params) error {
@@ -288,7 +276,7 @@ type nodeMap map[string]node
 
 func (m nodeMap) GetOrCreate(name string, parent maybeParent) node {
 	if n, ok := m[name]; ok {
-		return n.AddRef()
+		return n
 	}
 
 	// slow path - create new node
@@ -332,6 +320,9 @@ func (p maybeParent) Bind(f func(n *node) maybeParent) maybeParent {
 }
 
 // func addref(n *node) maybeParent {
+// 	n.mu.RLock()
+// 	defer n.mu.RUnlock()
+
 // 	u := n.AddRef()
 // 	return just(&u)
 // }
