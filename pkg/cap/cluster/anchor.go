@@ -203,6 +203,8 @@ type node struct {
 }
 
 func (n node) Shutdown() {
+	// BUG:  This isn't getting called for Host's immediate children
+	//       because their parent is nil.
 	n.parent.Bind(func(p *node) maybeParent {
 		defer p.Release()
 
