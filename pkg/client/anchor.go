@@ -10,6 +10,7 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/wetware/ww/pkg/cap/cluster"
 	"github.com/wetware/ww/pkg/vat"
+	"golang.org/x/sync/errgroup"
 )
 
 type Iterator interface {
@@ -49,6 +50,20 @@ func (h *Host) Addrs() []ma.Multiaddr { return (*cluster.Host)(h).Info.Addrs }
 
 func (h *Host) Path() []string {
 	return []string{(*cluster.Host)(h).Info.ID.String()}
+}
+
+func (h *Host) Join(ctx context.Context, peers ...peer.AddrInfo) error {
+	var g errgroup.Group
+	for _, p := range peers {
+		g.Go(h.joinOne(ctx, p))
+	}
+	return g.Wait()
+}
+
+func (h *Host) joinOne(ctx context.Context, info peer.AddrInfo) func() error {
+	return func() error {
+		return (*cluster.Host)(h).Join(ctx, info)
+	}
 }
 
 func (h *Host) Ls(ctx context.Context) Iterator {

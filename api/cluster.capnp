@@ -5,19 +5,25 @@ using Go = import "/go.capnp";
 $Go.package("cluster");
 $Go.import("github.com/wetware/ww/internal/api/cluster");
 
+using PeerID = Text;
+
 
 interface Anchor {
     ls @0 (path :List(Text)) -> (children :List(Child));
-    walk @1 (path :List(Text)) -> (anchor :Anchor);
-
     struct Child {
         name @0 :Text;
         anchor @1 :Anchor;
     }
+
+    walk @1 (path :List(Text)) -> (anchor :Anchor);
 }
 
 interface Host extends(Anchor) {
-    # TODO: specific Host methods
+    join @0 (peer :AddrInfo) -> ();
+    struct AddrInfo {
+        id  @0 :PeerID;
+        addrs @1 :List(Data);
+    }
 }
 
 interface Container extends(Anchor){
@@ -27,15 +33,15 @@ interface Container extends(Anchor){
 
 interface View {
     iter @0 (handler :Handler) -> ();
-    lookup @1 (peerID :Text) -> (record :Record, ok :Bool);
+    lookup @1 (peerID :PeerID) -> (record :Record, ok :Bool);
  
     interface Handler {
         handle @0 (records :List(Record)) -> ();
     }
  
     struct Record {
-        peer @0 :Text;
-        ttl @1 :Int64;
-        seq @2 :UInt64;
+        peer @0 :PeerID;
+        ttl  @1 :Int64;
+        seq  @2 :UInt64;
     }
 }

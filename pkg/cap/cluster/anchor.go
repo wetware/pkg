@@ -7,6 +7,7 @@ import (
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/wetware/casm/pkg/pex"
 	"github.com/wetware/ww/internal/api/cluster"
 	"github.com/wetware/ww/pkg/vat"
 )
@@ -32,16 +33,31 @@ type Host struct {
 	Dialer Dialer
 }
 
+func (h *Host) Join(ctx context.Context, info peer.AddrInfo) error {
+	f, resolve := h.resolve(ctx).Join(ctx, func(ps cluster.Host_join_Params) error {
+		peer, err := ps.NewPeer()
+		if err != nil {
+			return err
+		}
+
+		return bindHostInfo(peer, info)
+	})
+	defer resolve()
+
+	_, err := f.Struct()
+	return err
+}
+
 func (h *Host) Ls(ctx context.Context) (*RegisterMap, capnp.ReleaseFunc) {
-	return listChildren(ctx, h.resolve(ctx))
+	return listChildren(ctx, cluster.Anchor(h.resolve(ctx)))
 }
 
 // Walk to the register located at path.  Panics if len(path) == 0.
 func (h *Host) Walk(ctx context.Context, path []string) (Register, capnp.ReleaseFunc) {
-	return walkPath(ctx, h.resolve(ctx), path)
+	return walkPath(ctx, cluster.Anchor(h.resolve(ctx)), path)
 }
 
-func (h *Host) resolve(ctx context.Context) cluster.Anchor {
+func (h *Host) resolve(ctx context.Context) cluster.Host {
 	h.once.Do(func() {
 		if h.Client == nil {
 			if conn, err := h.Dialer.Dial(ctx, h.Info); err != nil {
@@ -52,7 +68,7 @@ func (h *Host) resolve(ctx context.Context) cluster.Anchor {
 		}
 	})
 
-	return cluster.Anchor{Client: h.Client}
+	return cluster.Host{Client: h.Client}
 }
 
 type RegisterMap struct {
@@ -162,17 +178,34 @@ func walkParam(path []string) func(cluster.Anchor_walk_Params) error {
 type HostServer struct {
 	mu       sync.RWMutex
 	children nodeMap
-	anchor   cluster.Anchor
+	client   *capnp.Client
+	vat      vat.Network
 }
 
-func NewHost() *HostServer {
-	s := &HostServer{children: make(map[string]node)}
-	s.anchor = cluster.Anchor_ServerToClient(s, &defaultPolicy)
+func NewHost(vat vat.Network) *HostServer {
+	s := &HostServer{
+		children: make(map[string]node),
+		vat:      vat,
+	}
+
+	s.client = cluster.Host_ServerToClient(s, &defaultPolicy).Client
 	return s
 }
 
-func (s *HostServer) Client() *capnp.Client {
-	return s.anchor.Client
+func (s *HostServer) Client() *capnp.Client { return s.client }
+
+func (s *HostServer) Join(ctx context.Context, call cluster.Host_join) error {
+	host, err := call.Args().Peer()
+	if err != nil {
+		return err
+	}
+
+	var info peer.AddrInfo
+	if err = bindAddrInfo(&info, host); err != nil {
+		return err
+	}
+
+	return new(pex.PeerExchange).Bootstrap(ctx, s.vat.NS, info)
 }
 
 func (s *HostServer) Ls(_ context.Context, call cluster.Anchor_ls) error {
@@ -186,7 +219,7 @@ func (s *HostServer) Walk(_ context.Context, call cluster.Anchor_walk) error {
 	return walkHandler{
 		Lock:     &s.mu,
 		Parent:   nothing(),
-		Anchor:   s.anchor,
+		Anchor:   cluster.Anchor{Client: s.client},
 		Children: s.children,
 	}.ServeRPC(call)
 }
@@ -233,18 +266,6 @@ func (n node) AddRef() node {
 
 func (n node) Release() {
 	n.Anchor.Release() // nil-safe
-}
-
-func (n node) Lock() {
-	if n.mu != nil {
-		n.mu.Lock()
-	}
-}
-
-func (n node) Unlock() {
-	if n.mu != nil {
-		n.mu.Unlock()
-	}
 }
 
 func (n node) Path() (path []string) {
@@ -320,14 +341,6 @@ func (p maybeParent) Bind(f func(n *node) maybeParent) maybeParent {
 
 	return f(p.node)
 }
-
-// func addref(n *node) maybeParent {
-// 	n.mu.RLock()
-// 	defer n.mu.RUnlock()
-
-// 	u := n.AddRef()
-// 	return just(&u)
-// }
 
 /*
 

@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/wetware/ww/pkg/cap/cluster"
+	"github.com/wetware/ww/pkg/vat"
 )
 
 func TestAnchor(t *testing.T) {
@@ -16,7 +17,7 @@ func TestAnchor(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := cluster.NewHost()
+	s := cluster.NewHost(vat.Network{})
 
 	h := cluster.Host{
 		Client: s.Client(),

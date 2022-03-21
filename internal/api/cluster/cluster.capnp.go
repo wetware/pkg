@@ -553,6 +553,22 @@ type Host struct{ Client *capnp.Client }
 // Host_TypeID is the unique identifier for the type Host.
 const Host_TypeID = 0x957cbefc645fd307
 
+func (c Host) Join(ctx context.Context, params func(Host_join_Params) error) (Host_join_Results_Future, capnp.ReleaseFunc) {
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0x957cbefc645fd307,
+			MethodID:      0,
+			InterfaceName: "cluster.capnp:Host",
+			MethodName:    "join",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Host_join_Params{Struct: s}) }
+	}
+	ans, release := c.Client.SendCall(ctx, s)
+	return Host_join_Results_Future{Future: ans.Future()}, release
+}
 func (c Host) Ls(ctx context.Context, params func(Anchor_ls_Params) error) (Anchor_ls_Results_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
 		Method: capnp.Method{
@@ -598,6 +614,8 @@ func (c Host) Release() {
 
 // A Host_Server is a Host with a local implementation.
 type Host_Server interface {
+	Join(context.Context, Host_join) error
+
 	Ls(context.Context, Anchor_ls) error
 
 	Walk(context.Context, Anchor_walk) error
@@ -619,8 +637,20 @@ func Host_ServerToClient(s Host_Server, policy *server.Policy) Host {
 // This can be used to create a more complicated Server.
 func Host_Methods(methods []server.Method, s Host_Server) []server.Method {
 	if cap(methods) == 0 {
-		methods = make([]server.Method, 0, 2)
+		methods = make([]server.Method, 0, 3)
 	}
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0x957cbefc645fd307,
+			MethodID:      0,
+			InterfaceName: "cluster.capnp:Host",
+			MethodName:    "join",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Join(ctx, Host_join{call})
+		},
+	})
 
 	methods = append(methods, server.Method{
 		Method: capnp.Method{
@@ -647,6 +677,252 @@ func Host_Methods(methods []server.Method, s Host_Server) []server.Method {
 	})
 
 	return methods
+}
+
+// Host_join holds the state for a server call to Host.join.
+// See server.Call for documentation.
+type Host_join struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c Host_join) Args() Host_join_Params {
+	return Host_join_Params{Struct: c.Call.Args()}
+}
+
+// AllocResults allocates the results struct.
+func (c Host_join) AllocResults() (Host_join_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Host_join_Results{Struct: r}, err
+}
+
+type Host_AddrInfo struct{ capnp.Struct }
+
+// Host_AddrInfo_TypeID is the unique identifier for the type Host_AddrInfo.
+const Host_AddrInfo_TypeID = 0xc46371f8329421db
+
+func NewHost_AddrInfo(s *capnp.Segment) (Host_AddrInfo, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
+	return Host_AddrInfo{st}, err
+}
+
+func NewRootHost_AddrInfo(s *capnp.Segment) (Host_AddrInfo, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
+	return Host_AddrInfo{st}, err
+}
+
+func ReadRootHost_AddrInfo(msg *capnp.Message) (Host_AddrInfo, error) {
+	root, err := msg.Root()
+	return Host_AddrInfo{root.Struct()}, err
+}
+
+func (s Host_AddrInfo) String() string {
+	str, _ := text.Marshal(0xc46371f8329421db, s.Struct)
+	return str
+}
+
+func (s Host_AddrInfo) Id() (string, error) {
+	p, err := s.Struct.Ptr(0)
+	return p.Text(), err
+}
+
+func (s Host_AddrInfo) HasId() bool {
+	return s.Struct.HasPtr(0)
+}
+
+func (s Host_AddrInfo) IdBytes() ([]byte, error) {
+	p, err := s.Struct.Ptr(0)
+	return p.TextBytes(), err
+}
+
+func (s Host_AddrInfo) SetId(v string) error {
+	return s.Struct.SetText(0, v)
+}
+
+func (s Host_AddrInfo) Addrs() (capnp.DataList, error) {
+	p, err := s.Struct.Ptr(1)
+	return capnp.DataList{List: p.List()}, err
+}
+
+func (s Host_AddrInfo) HasAddrs() bool {
+	return s.Struct.HasPtr(1)
+}
+
+func (s Host_AddrInfo) SetAddrs(v capnp.DataList) error {
+	return s.Struct.SetPtr(1, v.List.ToPtr())
+}
+
+// NewAddrs sets the addrs field to a newly
+// allocated capnp.DataList, preferring placement in s's segment.
+func (s Host_AddrInfo) NewAddrs(n int32) (capnp.DataList, error) {
+	l, err := capnp.NewDataList(s.Struct.Segment(), n)
+	if err != nil {
+		return capnp.DataList{}, err
+	}
+	err = s.Struct.SetPtr(1, l.List.ToPtr())
+	return l, err
+}
+
+// Host_AddrInfo_List is a list of Host_AddrInfo.
+type Host_AddrInfo_List struct{ capnp.List }
+
+// NewHost_AddrInfo creates a new list of Host_AddrInfo.
+func NewHost_AddrInfo_List(s *capnp.Segment, sz int32) (Host_AddrInfo_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2}, sz)
+	return Host_AddrInfo_List{l}, err
+}
+
+func (s Host_AddrInfo_List) At(i int) Host_AddrInfo { return Host_AddrInfo{s.List.Struct(i)} }
+
+func (s Host_AddrInfo_List) Set(i int, v Host_AddrInfo) error { return s.List.SetStruct(i, v.Struct) }
+
+func (s Host_AddrInfo_List) String() string {
+	str, _ := text.MarshalList(0xc46371f8329421db, s.List)
+	return str
+}
+
+// Host_AddrInfo_Future is a wrapper for a Host_AddrInfo promised by a client call.
+type Host_AddrInfo_Future struct{ *capnp.Future }
+
+func (p Host_AddrInfo_Future) Struct() (Host_AddrInfo, error) {
+	s, err := p.Future.Struct()
+	return Host_AddrInfo{s}, err
+}
+
+type Host_join_Params struct{ capnp.Struct }
+
+// Host_join_Params_TypeID is the unique identifier for the type Host_join_Params.
+const Host_join_Params_TypeID = 0xa404c24b5375b9e4
+
+func NewHost_join_Params(s *capnp.Segment) (Host_join_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Host_join_Params{st}, err
+}
+
+func NewRootHost_join_Params(s *capnp.Segment) (Host_join_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Host_join_Params{st}, err
+}
+
+func ReadRootHost_join_Params(msg *capnp.Message) (Host_join_Params, error) {
+	root, err := msg.Root()
+	return Host_join_Params{root.Struct()}, err
+}
+
+func (s Host_join_Params) String() string {
+	str, _ := text.Marshal(0xa404c24b5375b9e4, s.Struct)
+	return str
+}
+
+func (s Host_join_Params) Peer() (Host_AddrInfo, error) {
+	p, err := s.Struct.Ptr(0)
+	return Host_AddrInfo{Struct: p.Struct()}, err
+}
+
+func (s Host_join_Params) HasPeer() bool {
+	return s.Struct.HasPtr(0)
+}
+
+func (s Host_join_Params) SetPeer(v Host_AddrInfo) error {
+	return s.Struct.SetPtr(0, v.Struct.ToPtr())
+}
+
+// NewPeer sets the peer field to a newly
+// allocated Host_AddrInfo struct, preferring placement in s's segment.
+func (s Host_join_Params) NewPeer() (Host_AddrInfo, error) {
+	ss, err := NewHost_AddrInfo(s.Struct.Segment())
+	if err != nil {
+		return Host_AddrInfo{}, err
+	}
+	err = s.Struct.SetPtr(0, ss.Struct.ToPtr())
+	return ss, err
+}
+
+// Host_join_Params_List is a list of Host_join_Params.
+type Host_join_Params_List struct{ capnp.List }
+
+// NewHost_join_Params creates a new list of Host_join_Params.
+func NewHost_join_Params_List(s *capnp.Segment, sz int32) (Host_join_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return Host_join_Params_List{l}, err
+}
+
+func (s Host_join_Params_List) At(i int) Host_join_Params { return Host_join_Params{s.List.Struct(i)} }
+
+func (s Host_join_Params_List) Set(i int, v Host_join_Params) error {
+	return s.List.SetStruct(i, v.Struct)
+}
+
+func (s Host_join_Params_List) String() string {
+	str, _ := text.MarshalList(0xa404c24b5375b9e4, s.List)
+	return str
+}
+
+// Host_join_Params_Future is a wrapper for a Host_join_Params promised by a client call.
+type Host_join_Params_Future struct{ *capnp.Future }
+
+func (p Host_join_Params_Future) Struct() (Host_join_Params, error) {
+	s, err := p.Future.Struct()
+	return Host_join_Params{s}, err
+}
+
+func (p Host_join_Params_Future) Peer() Host_AddrInfo_Future {
+	return Host_AddrInfo_Future{Future: p.Future.Field(0, nil)}
+}
+
+type Host_join_Results struct{ capnp.Struct }
+
+// Host_join_Results_TypeID is the unique identifier for the type Host_join_Results.
+const Host_join_Results_TypeID = 0x8f58928e854cd4f5
+
+func NewHost_join_Results(s *capnp.Segment) (Host_join_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Host_join_Results{st}, err
+}
+
+func NewRootHost_join_Results(s *capnp.Segment) (Host_join_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Host_join_Results{st}, err
+}
+
+func ReadRootHost_join_Results(msg *capnp.Message) (Host_join_Results, error) {
+	root, err := msg.Root()
+	return Host_join_Results{root.Struct()}, err
+}
+
+func (s Host_join_Results) String() string {
+	str, _ := text.Marshal(0x8f58928e854cd4f5, s.Struct)
+	return str
+}
+
+// Host_join_Results_List is a list of Host_join_Results.
+type Host_join_Results_List struct{ capnp.List }
+
+// NewHost_join_Results creates a new list of Host_join_Results.
+func NewHost_join_Results_List(s *capnp.Segment, sz int32) (Host_join_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	return Host_join_Results_List{l}, err
+}
+
+func (s Host_join_Results_List) At(i int) Host_join_Results {
+	return Host_join_Results{s.List.Struct(i)}
+}
+
+func (s Host_join_Results_List) Set(i int, v Host_join_Results) error {
+	return s.List.SetStruct(i, v.Struct)
+}
+
+func (s Host_join_Results_List) String() string {
+	str, _ := text.MarshalList(0x8f58928e854cd4f5, s.List)
+	return str
+}
+
+// Host_join_Results_Future is a wrapper for a Host_join_Results promised by a client call.
+type Host_join_Results_Future struct{ *capnp.Future }
+
+func (p Host_join_Results_Future) Struct() (Host_join_Results, error) {
+	s, err := p.Future.Struct()
+	return Host_join_Results{s}, err
 }
 
 type Container struct{ Client *capnp.Client }
@@ -1826,94 +2102,107 @@ func (p View_lookup_Results_Future) Record() View_Record_Future {
 	return View_Record_Future{Future: p.Future.Field(0, nil)}
 }
 
-const schema_fcf6ac08e448a6ac = "x\xda\x9cVkh\x1cU\x14>\xe7\xce\xcc\xde\x8d$" +
-	"\xdd\xdc\xdejL\xb4\xd6\xae\x11\xd3hC\xd7\xb4\x8a[" +
-	"u\xb7i\xa4iQ\xd8\xa9UQ\x10\x19v\x87f\xe9" +
-	"d7\xceN\x0cBK}@\xd3\x0a\x95V\x09h~" +
-	"T\x14Z\x1f4hJS\x88\x90\xfc\x10\x8a\xb6\xbe\xa0" +
-	"E\x9a\x04J\x0d}\x80?\xaa\xa6J\x91\x12\x1d\xb93" +
-	";\x8flV\x89\xfe\xca\xb2\xf9\xf6;\xdf9\xe7;\xdf" +
-	"\xcc\x9aK$M\x12\xca{Q\x005\xa7D\xec\xa5\xeb" +
-	"\x0f\x9d\xb9k\xec\xc0\xeb\xc0nC\x00\x99\x02\xb4\xaf\x93" +
-	"\xb7\"\xc8\xf6P\xf3\xdcs\xed\xbf.\x7f\x03\xd8\x12\xc9" +
-	">z\xa4\xebR\xf4\xe8\xf59\x00\xe4+\xe5!\xbeJ" +
-	"\xbe\x07\x80?\"\x0f\xf0\xfd\xe27\xf6\xf8\xa1\x8fO|" +
-	"\xd73\xf6\xa6K\xa3\xa0\xe0\xe9\x93\xb7  \x7fUN" +
-	"\x01\xda\xf4\xec\x0b\xb9\xb9\x89\x9d\x83\x0b\xd8F\xe4!>" +
-	"&8\xf8\xa8L\xf9\xa8\xdc\x00`\x9fl\xbe\xd6\xdeR" +
-	"\x7f~\x10\xd8\xcdh\x9f\x9c\xda|\xfb\xea\xb7\xf6M\x80" +
-	"B\x04\xea\xb0<\xcdG\x1c\xfc\xb0\xdc\x0fh?x\x95" +
-	"^|-\xfe\xd2\x87\x02\xebU\xaeQ\x96\x8a\xcaL\x11" +
-	"\x95\xa7g>_3\xfeS\xc30\xb0[}@B\x89" +
-	"\x0b\xc0C\x0e\xe0\xb7Gg\xbf\xdcc\xfe\xf9Y\x98\xe1" +
-	"Y\x85\x08\xc0\xf3\x0e\xc0WP\xa9\xfd\xa0\xf2\x09\x7fW" +
-	"i\x00\xe0\xef+\x03|V\x11\x93\xb8r\xe1\x80\xfa\xce" +
-	"\xf4\xe9\x890\xdb\x94r\x93`\x9bq\xd8\xee\xdc\xf5\xe4" +
-	"\xb1\x89\x8e\xef\xbf\x05\x95#\x09\xa6\xec 9\x8b\x9c\xe1" +
-	"\xcb#\xe2Sc\xe4S@\xfb\x87\xc1\xe1=\xc7O\xf5" +
-	"\x9f\x0d\xb1\xf1\x91\xc8\x0d@>\x1a\x11d7\xc6'\xaf" +
-	"\xed\xddY?\x19n\xeer\xa4IT\xbb\xea\x00\x8c\x96" +
-	"{\xff\xd8\xf6\xe3\xaa)`\xdc'\xa8\xa3\x82\x80Q\xf1" +
-	"\xffs\x0f\xdcr\xfakk\xfd\x8cK\xe0\xec?A\x9b" +
-	"\xc4\xfe\x7f9\xb7\xe2D\xe77[.\x0b\x9d>w#" +
-	"u&\xbb\x92\x8a\xd1\xf3\xb9\x8f6-\xd5.\\q\xb9" +
-	"\x9d\xdf\xee\xa2D\xfcVz\xf8\x83c\xd9#o\xff\x0c" +
-	"\x8cKA\x8b\x80\\\xa3\xd3\xbc\x87\x0a\x11y\xba\x89\x1f" +
-	"\x14\x9f\xec\xc9\xceW\xbe\xbac\xc3\xba\xd9\x90\x84\x97i" +
-	"\x1cA\xfe+\xbd\xf6\xd4S\x87\x07\x7f\x0f\xa4\xb7k\xd4" +
-	"\x99d\xde\xd1~\xf1\xb8<\xb1\xf7\x19\xbc\xbe`/\xfb" +
-	"\xe8\x17.7\xdfO\x07\xf8y\xda\x00\xf7\xd9Y\xa3\xaf" +
-	"d\xe9f\x9b\x9c\xd5z\x0b\xbd\xc9\xa7\xf3z\x7f[\x97" +
-	"V\xc8\x19\xba\xd9\xd6\xed\xfcm\xde\xaa\x97\xfa\x0c\x0bK" +
-	">\x16=\xac\xa4\xf7\xabQ\xc4P_5\x1d\xc1\"\x99" +
-	"\x92\xdc]\xa6Jm\xd5\xb3E3\xa7F%\x05\xc0\x1f" +
-	">z\x93b\x89V \xecn\x8a\xe8\xf5\x16\x8c\x995" +
-	"&\x81\xb0:\x1a\xcb[\xba\x99\xc6\x94Q,\xee\xe8\xeb" +
-	"Mc\x06q1\xe23\x9a\xa9\xf5\x94\x00TY\x92\x01" +
-	"d\x04`u\x1d\x00jTB\xb5\x99\xe0n\xd3\x11V" +
-	"\xc2%\x80\x19\x09\xb1>\x90\x0f(\xbe\xacl\xba\xab(" +
-	"\x95\xac\x0cbFRT\x19CG\x00\xe0C\x89\x0b\xdd" +
-	"P\xc8v\x17\xcd\xb6\x8d\xddy\xc9\xc8e\x10\xd5\xa8/" +
-	"aU+\x80\xda,\xa1\xba\x86 C\\&\x9c\xc4V" +
-	"'\x01\xd4\x16\x09\xd5\xb5\x04c\x05\xadG\xc7Z X" +
-	"\x0b\x98\xd2\x1c&d\xa1j\x88,$N\x9aW\xb1_" +
-	"3v\xf8[\x0b7\x9e,7\xbe\x8c,\x9esc\xb1" +
-	"`i\xf9\x82n\xb6m\xd7-\x87\x95\x1a\xd6<\xd6\xd6" +
-	"\x805\x96\xd3,\x0d\xeb\x80`\xdd?\xaa3Jem" +
-	"\xa5yK\xd9\x02\xa0\xd6J\xa8\xb6\x10\xb4\xb3\xddy#" +
-	"g\xea\x05\x00\x08\x16\xe3\xa7_\xf5\xc5l(\xc4\x04\xbd" +
-	"\xbb\x14?(\xf1\xfe\x15\x1b\x05Y\xd9y^n\xa0\x17" +
-	"n,\xd1Tv\x9e\x9fP\xe8E'klu\x9c'" +
-	"\x19\xa54\xc6\xc4P\xe7\xbb\xae\xca\xd0\xab\xb9\xad5p" +
-	"[\xacW\xb3\xba\xbd\x8e\xc4r\xc3}\x90\x90\x89\x9ds" +
-	"A\xc74\xb5>\xd3c\x82)-\xa1\xfa8A\xcf3" +
-	"\x9b\xe3\x00j\xa7\x84j\x86 #\xb8\x0c\x09\x00{B" +
-	"|\xd9%\xa1\xbaM\x94\xd4u\xd33\x12\xb5,\x03\x15" +
-	" \xa8\x00\xd2\x92\xfe\"\xd6\x00\xc1\x9a\x85\x1a\x82M\xa5" +
-	"\xdc\x8e\xfeO?\x0b\xfcS\xd2-g@R\xcf\x7f\xb3" +
-	"Ox0\"\x04\xaa\x89\xea\x08Hv\xbb\x97/\xac\xed" +
-	"\xe7\xd2b\xac]\x96V\x09r\xca\xba\xa1\x13\xdcT\xe8" +
-	"\x92\x93\xc1%\xfb\x87\xdc\x14\x1cr\xca\x0d\x98\x8a`\xa9" +
-	"\x07\x94\x8a;\x10\x81 \x86tE*;\xf5\x0e\xc5\x03" +
-	"T\xe6\x9c\xa4\x9b\xc2#\xb2cn\xefe\x03\xbd\x97\x17" +
-	"\xc6Dt*4\xe5N\xa4\xaa{\xe7\xaf\xc7;\xef\x7f" +
-	"\x1bB5\x8f\x87\x83E\x18ns\xa7g\xb9\xca-\xfa" +
-	"\xf5\xc0MD!\xdc{\xd8\xa2\xf7N\xc2\x12q\xef*" +
-	"\xbd'9z\x8fC\xd6\x18w\xae\x92n\xd7\xad\xb4p" +
-	"\xb1\x95\xc6\xca$\xfe;\x00\x00\xff\xffC\x12\xb6\x99"
+const schema_fcf6ac08e448a6ac = "x\xda\x94Vml\x14U\x17>g>v\xa6oZ" +
+	"\xb6\x97\x0b/o\xfb\x8aH-\xb1Ti(\x05M\x16" +
+	"\xe3.\xa5\x84\xb6B\xd2\x01\xeaWb\xccdw\xa0+" +
+	"\xdb\xdd2;\xb5\x7f0\x18\x8d\x80\xfe@\x826\x11\x12" +
+	"I0\x16\xc4\xd0\xa8\x04HjB\x13\x88DA\xd1\x04" +
+	"$@\x0dA\x04I\xf8\x81\x0a\x0aAR\x1cs\xef\xec" +
+	"\x9d\x19\xb6\xcb\x87\xbf\xba\xd9=}\xces\x9e\xf3\x9cg" +
+	"f\xe6R9!5\xaa;\xca\x00\x8c\x1e5\xe2\x8e\x9f" +
+	"\xbb\xf5\xd8\xc3C\x1b\xdf\x00\xf2\x7f\x04P4\x80\xa6!" +
+	"e\x09\x82\xe2n\xa9\x1d}\xa1\xe9\xf7\xc9o\x03\x19'" +
+	"\xbb\xbb\xb6\xb7^\xd0w]\x1f\x05@:\xa0l\xa1\x83" +
+	"\xca#\x00\xf4\x80\xb2\x8e\x12U\x03p\xf7o\xdd\xb9\xef" +
+	"\xbb\xee\xa1\x0d\x1e\x8c\x8a\x0c\xe7/\xa5\x1d\x01\xa9\xaa\xc6" +
+	"\x01\xddk?,zs\xc3\xa6\xe7\xde\x01BE\x9f9" +
+	"\xaa\xc4\xfah\xc7_J\x8d\x0e\xaf\xee\x1f\xd3\xa7J\xdd" +
+	"B\xa7\xaa\x93\x00\xe8\x0cu!\xedd\x9f\xdcC\xb5W" +
+	"\x9b\xea*\xcf\xf4\x03\x99\x88\xee\xa1\xd3m\x0f\xcc\xd8\xf4" +
+	"\xd60\xa8\x92\x06@\x17\xa8#\xd4`l\xe8b\xb5\x0f" +
+	"\xd0\xbd0\xd4\xbb\xf4\xe9\x83\xcaG^K\xce\x89\xeeT" +
+	"o\x02\xd2AN\xe9\x89\xcb\xda\xf9\xd7k^\xd9\xc1\xb0" +
+	"\x04\xe7\xa3\xeax\xc6\xf9\x04/\x189\xf7\xc5\xcc\xfd\x97" +
+	"&\x0d\x02\xf9\x9f_pM\xada\x05\xb7x\xc1\x1fO" +
+	"]\xf9j\xad}\xeb\xb30\xc2\xe4\x88\xc4\x0a\xa6FX" +
+	"\x81\xcf\xb0x\xb6\xce\xc8'\xf4\xc5\x08\x9b\xcd\x8a\xac\xa3" +
+	"{#L\xc3\x8bg7\x1a\xef\x8f\x1c\x19\x0e\xa3}\x10" +
+	"\xf9\x0fC\x1b\xe0h?N}o\xd6\x8dU\xc9/\xd9" +
+	"@\x81l\xde\xf0'\"?\xd3s\x0c\x86\x9e\x89\xb0\xe1" +
+	"\x1fzu\xe9\xee\xe1\xe6\xef\x8f\x82AQ\x0av\xe9\xa9" +
+	"\xd0\xa6\x1d\xa3\x9d\x1a\xfbdh\x9f\x02\xba'\xfa\x07\xd7" +
+	"\xee9\xdcw<\xd4\x99^\xd2\x98R\x975\xd6\xf8\xe6" +
+	"\xfeSW\xd7\xaf\xae<\x15\x16b\xb2^\xcd\x98M\xd3" +
+	"YA\xa6\xee\xd1\x1b\xcb~\x9a~:,\xf5\x02\x9d\x01" +
+	"\xb4\xf1\xdfO>\xfe\xdf#\xdf8s\xcfy\x00|\xfb" +
+	"i\xf6\xff\x8a\xfb\xdb\xc9)\xfbZ\xbem\xff\x85\xf1\xf4" +
+	"\xb1\x0d\x9do\xe1y\x9dMBG?^8\xde<{" +
+	"1\xe4\x9c\xbd:w\x8e\xfc\xe4\x87\xbb\x93\xdb\xdf\xfd\x15" +
+	"\x08\x95\x83\x11\x01\xe9f}\x84\x0e\xe8\x8c\xc46}!" +
+	"=\xcc>\xb9\xa7Z^\xfb\xfa\xc1ys\xae\x84(|" +
+	"\xae\xd7 (\x7f'f\x1f\xee\x1c\xe8\xff3\xa0\xde\xb4" +
+	"Y\xe7\xaao\xe3\xdc\xcf\xefQ\x86\xd7?\x8b\xd7\xc7\xec" +
+	"\xf0\x80~\xd0\xc3\xa6\x87\xf4utb\xd9$x\xccM" +
+	"fz\xf3\x8ee7(I\xb3'\xdb\x13{&m\xf5" +
+	"5\xb4\x9a\xd9T\xc6\xb2\x1b\xba\xf8\xdf\xda%V\xbe7" +
+	"\xe3`\xde\xafEQ+[}\x86\x8e\x18\x9a\xab\xac9" +
+	"X$Qck\x0aP\xf1%V2g\xa7\x0c]V" +
+	"\x01|\xf1Q(E\x1a\xebA\"\xd34D1[ " +
+	"3\xa9\x8a\x81D*\xb4h\xda\xb1\xec\x04\xc63\xb9\xdc" +
+	"\xca\xde\x9e\x04v \xde\x0f\xf9\x0e\xd36\xbb\xf3\x00\x86" +
+	"\"+\x00\x0a\x02\x90\x8af\x00C\x97\xd1\xa8\x95p\x8d" +
+	"\xcd\x89\xe5q\x1c`\x87\x8cX\x19\xd0\x07d_\xfa=" +
+	"T\xafGk.\xef4\xbc\x9cKg\x0b\xb2\xe4A\x14" +
+	"\x88\xdf\xe5\xbcc(\x186?\xb6\xbb\xf3R)\xbb-" +
+	"\xbb<\x07\x9c\x09\x13A\x1c;\x8a\xa0!\x84\x89\xa0j" +
+	"Q\x86\x9e@\x8e\xe1\x9f#\x80OD\xf2\x1a\xcd\xcb&" +
+	"\xbbrv\xc3\xfc\xae\xb4\x9cIu \x1a\xba?\xe0\xf4" +
+	"z\x00\xa3VFc\xa6\x84\x04q\x02\xf3)\x99\x11\x03" +
+	"0\xead4fK\x18\xcd\x9a\xdd\x16\x96\x83\x84\xe5\x80" +
+	"q\x93#!\x09uC$\xa1\xd1\xa5\xe2\xd1\xe3\x9e\xaa" +
+	"aM\xeb\x0b\x9aN\x900\xdacY6V\x06\x02\x00" +
+	"be\x08N\xbem\x80>3\xb3\xd2\xb7X\x181\x16" +
+	" \xde\x9bb\x01s~.\xeb\x98\xe9\xace7\xac\xb0" +
+	"\x1c\x8e\xaae\x9c;\xf2L\x99\x8e\x89\x15 a\xc5\x1d" +
+	"\xd9e\xf2\xfe\x9e\xc3(\xed\x00F\xb9\x8cF\x9d\x84n" +
+	"\xb2+\x9dI\xd9V\x16\x00\x02\x17\xf9\xb1_\xe4\"\x14" +
+	"\xe8Q\x06\xef\xed\xd8\x7fB\xe0\xac)\xf3\x19X\xe1L" +
+	"D\xc8\xa1Hm\xd2X]8\x13?zQ<\x13H" +
+	"U=?\x139\x93O`\x94\x89z\xfb\x89\x94\x10\xbd" +
+	"\xd4i\xd4\x07\xa7\x11\xed1\x9d.1\x11\xf3\xca\xb8;" +
+	"X\x82{[\xcb.\xcf\x15\xb9\xb0\xba\x94\x0bg\x15\\" +
+	"\xd8\"\xa1\x9cN\x09\x0fN1S)\xdb?\xc2\x8a\xd2" +
+	"\xcd\xf8y\xf3 An\xf8r\xbf\xd5\x02F;!\xa3" +
+	"\xb1HB\xd1\xa9\xad\x06\xc0h\x91\xd1\xe8\x90\x90H8" +
+	"\x01%\x00\xb2\x98}\xd9*\xa3\xb1L\xd8\xb4@@s" +
+	"\x9c\x0c\xaa \xa1\x0a\xa8\xe5\xadUX\x06\x12\x96\x8d\xe5" +
+	"\x10\xd8\xe2.7p/\xf1\xc6\x985o9|\x1br" +
+	"\xf7\xbf\xf3jX\x18\x16\x8f\xa5H5\x07 k\xbcL" +
+	"dw\xe4'\xf6\xfd\xdcQ\x81Zq\x11o\xeb\xc5q" +
+	"p\xc0\xa1\xfd\xc7\x82\xfd\xfb\xeb\xaf\x0eB(\xeeEo" +
+	"Q\xe4V\x02\xca\xb9\x95\x88 !\x86xE\x8a'-" +
+	"\x9d\xbe\xc1\x13@\xb6l\xe6\x11/k\xc5\xcb\x1e\x8a\x97" +
+	"GBb<k\xe3\x9e\"%O\xe5\xf6\xf5\x88,\xb9" +
+	"\x9b\x08\xa5\x0e*\x9cb\xccpm-\xc2r\xc5[\xf4" +
+	"\xfb\x81wG\x8c\xb8x\x0dA\xf1fG\x1akD\x04" +
+	"\x88w\x1c\x14/\x0a\xa4\xaa\x86G\x80\xb6\xc2r\x12\xcc" +
+	"\xc5\xce\xd8\xa7\xc8?\x01\x00\x00\xff\xff\xb3\xfa\x1f\xf5"
 
 func init() {
 	schemas.Register(schema_fcf6ac08e448a6ac,
 		0x8390b923d29e3b12,
 		0x8a1df0335afc249a,
 		0x8eb96dceb6a99ebd,
+		0x8f58928e854cd4f5,
 		0x957cbefc645fd307,
 		0x95dd102833f224c5,
+		0xa404c24b5375b9e4,
 		0xa7762282e307ed37,
 		0xad17e9bd30bae1da,
 		0xb0fd7286c7f13ef3,
 		0xbe89922d1c49d9c5,
 		0xbecada985190dfe6,
+		0xc46371f8329421db,
 		0xcdcf42beb2537d20,
 		0xd377c9b486ad95d5,
 		0xd8107c88f2d8bdfa,
