@@ -19,7 +19,7 @@ interface Anchor {
 }
 
 interface Host extends(Anchor) {
-    join @0 (peer :AddrInfo) -> ();
+    join @0 (peers :List(AddrInfo)) -> ();
     struct AddrInfo {
         id  @0 :PeerID;
         addrs @1 :List(Data);

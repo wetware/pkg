@@ -5,8 +5,11 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/lthibault/log"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/wetware/casm/pkg/cluster"
 	clcap "github.com/wetware/ww/pkg/cap/cluster"
@@ -21,8 +24,9 @@ type PubSub interface {
 }
 
 type Joiner struct {
-	log  log.Logger
-	opts []cluster.Option
+	log      log.Logger
+	newMerge func(vat.Network) clcap.MergeStrategy
+	opts     []cluster.Option
 }
 
 func NewJoiner(opt ...Option) Joiner {
@@ -60,7 +64,7 @@ func (j Joiner) Join(ctx context.Context, vat vat.Network, ps PubSub) (*Node, er
 
 	vat.Export(
 		clcap.AnchorCapability,
-		clcap.NewHost(vat))
+		clcap.NewHost(j.newMerge(vat)))
 
 	// etc ...
 
@@ -82,4 +86,36 @@ func (j Joiner) options(vat vat.Network, u uuid.UUID) []cluster.Option {
 		cluster.WithLogger(log),
 		cluster.WithNamespace(vat.NS),
 	}, j.opts...)
+}
+
+type basicMerge struct{ host.Host }
+
+func newMergeFactory(m clcap.MergeStrategy) func(vat.Network) clcap.MergeStrategy {
+	if m != nil {
+		return func(vat.Network) clcap.MergeStrategy { return m }
+	}
+
+	return func(vat vat.Network) clcap.MergeStrategy {
+		return basicMerge{vat.Host}
+	}
+}
+
+func (m basicMerge) Merge(ctx context.Context, peers []peer.AddrInfo) error {
+	var g errgroup.Group
+
+	for _, info := range peers {
+		g.Go(m.connector(ctx, info))
+	}
+
+	return g.Wait()
+}
+
+func (m basicMerge) connector(ctx context.Context, info peer.AddrInfo) func() error {
+	return func() (err error) {
+		if err = m.Connect(ctx, info); err != nil {
+			err = fmt.Errorf("%s: %w", info.ID.ShortString(), err)
+		}
+
+		return
+	}
 }

@@ -3,10 +3,13 @@ package server
 import (
 	"github.com/lthibault/log"
 	"github.com/wetware/casm/pkg/cluster"
+	clcap "github.com/wetware/ww/pkg/cap/cluster"
 )
 
 type Option func(*Joiner)
 
+// WithLogger sets the logger for the peer exchange.
+// If l == nil, a default logger is used.
 func WithLogger(l log.Logger) Option {
 	if l == nil {
 		l = log.New()
@@ -14,6 +17,16 @@ func WithLogger(l log.Logger) Option {
 
 	return func(j *Joiner) {
 		j.log = l
+	}
+}
+
+// WithMerge specifies how the host node should merge clusters
+// during Join calls. If m == nil, a default strategy is used,
+// which simply connects to the remote vat.
+func WithMerge(m clcap.MergeStrategy) Option {
+	f := newMergeFactory(m)
+	return func(j *Joiner) {
+		j.newMerge = f
 	}
 }
 

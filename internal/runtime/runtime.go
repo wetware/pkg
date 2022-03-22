@@ -6,17 +6,19 @@ import (
 	"io"
 	"time"
 
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/lthibault/log"
 	"github.com/thejerf/suture/v4"
 	"github.com/urfave/cli/v2"
 	"github.com/wetware/casm/pkg/cluster"
-	logutil "github.com/wetware/ww/internal/util/log"
+	"github.com/wetware/casm/pkg/pex"
 	serviceutil "github.com/wetware/ww/internal/util/service"
-	statsdutil "github.com/wetware/ww/internal/util/statsd"
 	"github.com/wetware/ww/pkg/server"
 	"github.com/wetware/ww/pkg/vat"
 	"go.uber.org/fx"
+	"golang.org/x/sync/errgroup"
 )
 
 /****************************************************************************
@@ -25,24 +27,16 @@ import (
  *                                                                          *
  ****************************************************************************/
 
-var (
-	instrumentation = fx.Provide(
-		statsdutil.NewBandwidthCounter,
-		statsdutil.New,
-		logutil.New)
-
-	localnode = fx.Provide(
-		supervisor,
-		node)
-)
+var localnode = fx.Provide(
+	supervisor,
+	node)
 
 func Serve(c *cli.Context) error {
 	var app = fx.New(fx.NopLogger,
 		fx.Supply(c),
-		instrumentation,
-		localnode,
-		network,
 		system,
+		network,
+		localnode,
 		fx.Invoke(bind))
 
 	if err := start(c, app); err != nil {
@@ -154,29 +148,97 @@ func supervisor(c *cli.Context) *suture.Supervisor {
 type serverConfig struct {
 	fx.In
 
-	Log       log.Logger
-	Vat       vat.Network
-	PubSub    *pubsub.PubSub
+	Log    log.Logger
+	Vat    vat.Network
+	PubSub *pubsub.PubSub
+	PeX    *pex.PeerExchange
+	DHT    *dual.DHT
+
 	Lifecycle fx.Lifecycle
+}
+
+func (config serverConfig) Logger() log.Logger {
+	return config.Log.With(config.Vat)
+}
+
+func (config serverConfig) MergeStrategy() mergeFromPeX {
+	return mergeFromPeX{
+		ns:  config.Vat.NS,
+		pex: config.PeX,
+		dht: config.DHT,
+	}
+}
+
+func (config serverConfig) ClusterOpts() []cluster.Option {
+	return []cluster.Option{
+		cluster.WithMeta(nil)}
+}
+
+func (config serverConfig) SetCloser(c io.Closer) {
+	config.Lifecycle.Append(closer(c))
 }
 
 func node(c *cli.Context, config serverConfig) (*server.Node, error) {
 	n, err := server.New(c.Context, config.Vat, config.PubSub,
-		server.WithLogger(config.Log),
-		server.WithClusterConfig(
-			cluster.WithMeta(nil) /* TODO */))
+		server.WithLogger(config.Logger()),
+		server.WithMerge(config.MergeStrategy()),
+		server.WithClusterConfig(config.ClusterOpts()...))
 
 	if err == nil {
-		config.Lifecycle.Append(closer(n))
+		config.SetCloser(n)
 	}
 
 	return n, err
 }
 
+type mergeFromPeX struct {
+	ns  string
+	pex *pex.PeerExchange
+	dht *dual.DHT
+}
+
+func (m mergeFromPeX) Merge(ctx context.Context, peers []peer.AddrInfo) error {
+	var g errgroup.Group
+
+	for _, info := range peers {
+		g.Go(m.merger(ctx, info))
+	}
+
+	return g.Wait()
+
+}
+
+func (m mergeFromPeX) merger(ctx context.Context, info peer.AddrInfo) func() error {
+	return func() error {
+		if err := m.PerformGossipRound(ctx, info); err != nil {
+			return fmt.Errorf("%s: %w", info.ID.ShortString(), err)
+		}
+
+		return m.RefreshDHT(ctx)
+	}
+}
+
+func (m mergeFromPeX) PerformGossipRound(ctx context.Context, info peer.AddrInfo) (err error) {
+	if err = m.pex.Bootstrap(ctx, m.ns, info); err != nil {
+		err = fmt.Errorf("pex: %w", err)
+	}
+
+	return
+}
+
+func (m mergeFromPeX) RefreshDHT(ctx context.Context) error {
+	log.New().Warn("TODO:  implement runtime.mergeFromPex.RefreshDHT")
+	return nil
+}
+
 func closer(c io.Closer) fx.Hook {
 	return fx.Hook{
-		OnStop: func(context.Context) error {
-			return c.Close()
-		},
+		OnStop: onclose(c),
+	}
+}
+
+func onclose(c io.Closer) func(context.Context) error {
+	return func(context.Context) error {
+		return c.Close()
 	}
 }

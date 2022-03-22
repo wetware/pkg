@@ -3,13 +3,14 @@ package runtime
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
-	"strings"
 	"time"
 
 	ds "github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/discovery"
+	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
@@ -32,53 +33,111 @@ import (
 	"github.com/wetware/casm/pkg/pex"
 	bootutil "github.com/wetware/ww/internal/util/boot"
 	statsdutil "github.com/wetware/ww/internal/util/statsd"
+	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/vat"
 )
 
 var network = fx.Provide(
-	bootstrap,
 	vatnet,
 	overlay,
-	beacon)
+	discover,
+	bootstrap,
+	peercache)
 
-type networkModule struct {
-	fx.Out
+type routingConfig struct {
+	fx.In
 
-	Vat vat.Network
-	DHT *dual.DHT
+	CLI       *cli.Context
+	Metrics   *metrics.BandwidthCounter
+	Lifecycle fx.Lifecycle
 }
 
-func vatnet(c *cli.Context, lx fx.Lifecycle, b *metrics.BandwidthCounter) (mod networkModule, err error) {
-	mod.Vat.NS = c.String("ns")
-	mod.Vat.Host, err = libp2p.New(
+func (config routingConfig) ListenAddrs() []string {
+	return config.CLI.StringSlice("listen")
+}
+
+func (config routingConfig) NewHost() (h host.Host, err error) {
+	h, err = libp2p.New(
 		libp2p.NoTransports,
 		libp2p.Transport(libp2pquic.NewTransport),
-		libp2p.ListenAddrStrings(c.StringSlice("listen")...),
-		libp2p.BandwidthReporter(b))
-	if err != nil {
-		return
+		libp2p.ListenAddrStrings(config.ListenAddrs()...),
+		libp2p.BandwidthReporter(config.Metrics))
+	if err == nil {
+		config.Lifecycle.Append(closer(h))
 	}
 
-	lx.Append(closer(mod.Vat.Host))
-
-	mod.DHT, err = dual.New(c.Context, mod.Vat.Host,
-		dual.LanDHTOption(dht.Mode(dht.ModeServer)),
-		dual.WanDHTOption(dht.Mode(dht.ModeAuto)))
-	if err != nil {
-		return
-	}
-
-	lx.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			return mod.DHT.Bootstrap(ctx)
-		},
-		OnStop: func(context.Context) error {
-			return mod.DHT.Close()
-		},
-	})
-
-	mod.Vat.Host = routedhost.Wrap(mod.Vat.Host, mod.DHT)
 	return
+}
+
+func (config routingConfig) LANOpt() []dht.Option {
+	return []dht.Option{
+		dht.Mode(dht.ModeServer),
+		dht.ProtocolPrefix(ww.Subprotocol(config.CLI.String("ns"))),
+		dht.ProtocolExtension("lan")}
+}
+
+func (config routingConfig) WANOpt() []dht.Option {
+	return []dht.Option{
+		dht.Mode(dht.ModeAuto),
+		dht.ProtocolPrefix(ww.Subprotocol(config.CLI.String("ns"))),
+		dht.ProtocolExtension("wan")}
+}
+
+func (config routingConfig) NewDHT(h host.Host) (*dual.DHT, error) {
+	// TODO:  Use dht.BootstrapPeersFunc to get bootstrap peers from PeX?
+	//        This might allow us to greatly simplify our architecture and
+	//        runtime initialization.  In particular:
+	//
+	//          1. The DHT could query PeX directly, eliminating the need for
+	//             dynamic dispatch via boot.Namespace.
+	//
+	//          2. The server.Joiner type could be simplified, and perhaps
+	//             eliminated entirely.
+
+	d, err := dual.New(config.CLI.Context, h,
+		dual.LanDHTOption(config.LANOpt()...),
+		dual.WanDHTOption(config.WANOpt()...))
+
+	if err == nil {
+		config.Lifecycle.Append(fx.Hook{
+			OnStart: d.Bootstrap,
+			OnStop:  onclose(d),
+		})
+	}
+
+	return d, err
+}
+
+func routing(config routingConfig) (*dual.DHT, error) {
+	h, err := config.NewHost()
+	if err != nil {
+		return nil, err
+	}
+
+	return config.NewDHT(h)
+}
+
+type vatConfig struct {
+	fx.In
+
+	CLI       *cli.Context
+	DHT       *dual.DHT
+	Lifecycle fx.Lifecycle
+}
+
+func (vat vatConfig) Namespace() string {
+	return vat.CLI.String("ns")
+}
+
+func (vat vatConfig) Host() host.Host {
+	return vat.DHT.WAN.Host()
+}
+
+func vatnet(config vatConfig) vat.Network {
+	return vat.Network{
+		NS:   config.Namespace(),
+		Host: routedhost.Wrap(config.Host(), config.DHT),
+	}
 }
 
 func overlay(c *cli.Context, vat vat.Network, d discovery.Discovery) (*pubsub.PubSub, error) {
@@ -87,77 +146,130 @@ func overlay(c *cli.Context, vat vat.Network, d discovery.Discovery) (*pubsub.Pu
 		pubsub.WithDiscovery(d))
 }
 
-type bootstrapConfig struct {
+type discoveryConfig struct {
 	fx.In
 
-	Log        log.Logger
-	Vat        vat.Network
-	Datastore  ds.Batching
-	DHT        *dual.DHT
-	Supervisor *suture.Supervisor
-
-	Lifecycle fx.Lifecycle
+	Vat vat.Network
+	PeX *pex.PeerExchange
+	DHT *dual.DHT
 }
 
-func (config bootstrapConfig) Logger() log.Logger {
-	return config.Log.With(config.Vat)
+func (config discoveryConfig) matchNS() func(string) bool {
+	bootTopic := "floodsub:" + config.Vat.NS
+	return func(ns string) bool {
+		return ns == bootTopic
+	}
 }
 
-func bootstrap(c *cli.Context, config bootstrapConfig) (discovery.Discovery, error) {
-	d, err := bootutil.New(c, config.Vat.Host)
-	if err != nil {
-		return nil, err
-	}
-
-	var b = bootstrapper{
-		Log:        config.Logger(),
-		Discoverer: d,
-	}
-
-	switch x := d.(type) {
-	case discovery.Advertiser:
-		b.Advertiser = x
-
-	case crawl.Crawler:
-		a, err := beacon(c, b.Log, config.Vat)
-		if err != nil {
-			err = fmt.Errorf("beacon: %w", err)
-		}
-
-		config.Lifecycle.Append(fx.Hook{
-			OnStart: func(context.Context) error {
-				config.Supervisor.Add(a)
-				return nil
-			},
-		})
-
-		b.Advertiser = a
-	}
-
-	// Wrap the bootstrap discovery service in a peer sampling service.
-	px, err := pex.New(config.Vat.Host,
-		pex.WithLogger(config.Logger()),
-		pex.WithDatastore(config.Datastore),
-		pex.WithDiscovery(b))
-	if err != nil {
-		return nil, err
-	}
-	config.Lifecycle.Append(closer(px))
-
+// discover constructs the top-level discovery service, which dynamically
+// dispatches advertisements and search queries to either:
+//
+// 1. the bootstrap service, iff the namespace matches the cluster topic; else
+// 2. the DHT-backed ambient peer discovery service.
+func discover(config discoveryConfig) (discovery.Discovery, error) {
 	// If the namespace matches the cluster pubsub topic,
 	// fetch peers from PeX, which itself will fall back
 	// on the bootstrap services.
 	return boot.Namespace{
-		Match:   pubsubTopic(config.Vat.NS),
-		Target:  px,
+		Match:   config.matchNS(),
+		Target:  config.PeX,
 		Default: disc.NewRoutingDiscovery(config.DHT),
 	}, nil
+}
+
+type pexConfig struct {
+	fx.In
+
+	Log       log.Logger
+	Vat       vat.Network
+	Datastore ds.Batching
+	Boot      bootstrapper
+	Lifecycle fx.Lifecycle
+}
+
+func (config pexConfig) Host() host.Host {
+	return config.Vat.Host
+}
+
+func (config pexConfig) Logger() log.Logger {
+	return config.Log.With(config.Vat)
+}
+
+func (config pexConfig) SetCloseHook(c io.Closer) {
+	config.Lifecycle.Append(closer(c))
+}
+
+func peercache(config pexConfig) (*pex.PeerExchange, error) {
+	px, err := pex.New(config.Host(),
+		pex.WithLogger(config.Logger()),
+		pex.WithDatastore(config.Datastore),
+		pex.WithDiscovery(config.Boot))
+
+	if err == nil {
+		config.SetCloseHook(px)
+	}
+
+	return px, err
+}
+
+type bootConfig struct {
+	fx.In
+
+	CLI        *cli.Context
+	Log        log.Logger
+	Vat        vat.Network
+	Supervisor *suture.Supervisor
+	Lifecycle  fx.Lifecycle
+}
+
+func (config bootConfig) Logger() log.Logger {
+	return config.Log.With(config.Vat)
+}
+
+func (config bootConfig) Host() host.Host {
+	return config.Vat.Host
+}
+
+func (config bootConfig) NewBeacon() (b crawl.Beacon, err error) {
+	if b.Addr, err = cidrToListenAddr(config.CLI); err == nil {
+		b.Logger = config.Logger().WithField("beacon", b.Addr)
+		b.Host = config.Vat.Host
+		config.AddService(b)
+	}
+
+	return
+}
+
+func (config bootConfig) AddService(s suture.Service) {
+	config.Lifecycle.Append(fx.Hook{
+		OnStart: func(context.Context) error {
+			config.Supervisor.Add(s)
+			return nil
+		},
+	})
 }
 
 type bootstrapper struct {
 	Log log.Logger
 	discovery.Discoverer
 	discovery.Advertiser
+}
+
+func bootstrap(config bootConfig) (b bootstrapper, err error) {
+	b.Log = config.Logger()
+	b.Discoverer, err = bootutil.New(config.CLI, config.Host())
+
+	if err == nil {
+		switch x := b.Discoverer.(type) {
+		case discovery.Advertiser:
+			b.Advertiser = x
+
+		case crawl.Crawler:
+			b.Advertiser, err = config.NewBeacon()
+		}
+	}
+
+	return
 }
 
 func (b bootstrapper) FindPeers(ctx context.Context, ns string, opt ...discovery.Option) (<-chan peer.AddrInfo, error) {
@@ -172,15 +284,6 @@ func (b bootstrapper) Advertise(ctx context.Context, ns string, opt ...discovery
 
 	b.Log.Debug("advertising namespace")
 	return b.Advertiser.Advertise(ctx, ns, opt...)
-}
-
-func beacon(c *cli.Context, log log.Logger, vat vat.Network) (crawl.Beacon, error) {
-	addr, err := cidrToListenAddr(c)
-	return crawl.Beacon{
-		Logger: log.WithField("beacon", c.String("discover")),
-		Addr:   addr,
-		Host:   vat.Host,
-	}, err
 }
 
 func cidrToListenAddr(c *cli.Context) (net.Addr, error) {
@@ -203,13 +306,5 @@ func cidrToListenAddr(c *cli.Context) (net.Addr, error) {
 
 	default:
 		return nil, fmt.Errorf("invalid network: %s", network)
-	}
-}
-
-func pubsubTopic(match string) func(string) bool {
-	const prefix = "floodsub:"
-
-	return func(s string) bool {
-		return match == strings.TrimPrefix(s, prefix)
 	}
 }

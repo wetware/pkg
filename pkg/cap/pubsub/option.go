@@ -6,6 +6,8 @@ import (
 
 type Option func(*Provider)
 
+// WithLogger sets the logger for the peer exchange.
+// If l == nil, a default logger is used.
 func WithLogger(l log.Logger) Option {
 	if l == nil {
 		l = log.New()

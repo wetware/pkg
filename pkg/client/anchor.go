@@ -10,7 +10,6 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/wetware/ww/pkg/cap/cluster"
 	"github.com/wetware/ww/pkg/vat"
-	"golang.org/x/sync/errgroup"
 )
 
 type Iterator interface {
@@ -37,37 +36,30 @@ func (d dialer) Dial(ctx context.Context, info peer.AddrInfo) (*rpc.Conn, error)
 }
 
 // Host anchor represents a machine instance.
-type Host cluster.Host
+type Host struct {
+	dialer dialer
+	host   *cluster.Host
+}
 
-func newErrorHost(err error) *Host {
-	return (*Host)(&cluster.Host{
+func newErrorHost(err error) Host {
+	return Host{host: &cluster.Host{
 		Client: capnp.ErrorClient(err),
-	})
+	}}
 }
 
-func (h *Host) ID() peer.ID           { return (*cluster.Host)(h).Info.ID }
-func (h *Host) Addrs() []ma.Multiaddr { return (*cluster.Host)(h).Info.Addrs }
+func (h Host) ID() peer.ID           { return h.host.Info.ID }
+func (h Host) Addrs() []ma.Multiaddr { return h.host.Info.Addrs }
 
-func (h *Host) Path() []string {
-	return []string{(*cluster.Host)(h).Info.ID.String()}
+func (h Host) Path() []string {
+	return []string{h.host.Info.ID.String()}
 }
 
-func (h *Host) Join(ctx context.Context, peers ...peer.AddrInfo) error {
-	var g errgroup.Group
-	for _, p := range peers {
-		g.Go(h.joinOne(ctx, p))
-	}
-	return g.Wait()
+func (h Host) Join(ctx context.Context, peers ...peer.AddrInfo) error {
+	return h.host.Join(ctx, h.dialer, peers)
 }
 
-func (h *Host) joinOne(ctx context.Context, info peer.AddrInfo) func() error {
-	return func() error {
-		return (*cluster.Host)(h).Join(ctx, info)
-	}
-}
-
-func (h *Host) Ls(ctx context.Context) Iterator {
-	rs, release := (*cluster.Host)(h).Ls(ctx)
+func (h Host) Ls(ctx context.Context) Iterator {
+	rs, release := h.host.Ls(ctx, h.dialer)
 
 	it := &registerMap{
 		RegisterMap: rs,
@@ -86,12 +78,12 @@ func (h *Host) Ls(ctx context.Context) Iterator {
 	return it
 }
 
-func (h *Host) Walk(ctx context.Context, path []string) Anchor {
+func (h Host) Walk(ctx context.Context, path []string) Anchor {
 	if len(path) == 0 {
 		return h
 	}
 
-	r, release := (*cluster.Host)(h).Walk(ctx, path)
+	r, release := h.host.Walk(ctx, h.dialer, path)
 	runtime.SetFinalizer(&r, func(*cluster.Register) {
 		release()
 	})
@@ -120,12 +112,14 @@ func (hs *hostSet) Next() (more bool) {
 }
 
 func (hs *hostSet) Anchor() Anchor {
-	return (*Host)(&cluster.Host{
-		Dialer: hs.dialer,
-		Info: peer.AddrInfo{
-			ID: hs.RecordStream.Record().Peer(),
+	return Host{
+		dialer: hs.dialer,
+		host: &cluster.Host{
+			Info: peer.AddrInfo{
+				ID: hs.RecordStream.Record().Peer(),
+			},
 		},
-	})
+	}
 }
 
 type registerMap struct {

@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/wetware/ww/pkg/cap/cluster"
-	"github.com/wetware/ww/pkg/vat"
 )
 
 func TestAnchor(t *testing.T) {
@@ -17,14 +16,14 @@ func TestAnchor(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := cluster.NewHost(vat.Network{})
+	s := cluster.NewHost(nil)
 
 	h := cluster.Host{
-		Client: s.Client(),
+		Client: s.Client(), // pre-resolved; can pass nil Dialer/MergeStrategy to methods.
 	}
 
 	t.Run("Empty", func(t *testing.T) {
-		rs, release := h.Ls(ctx)
+		rs, release := h.Ls(ctx, nil)
 		require.NotNil(t, rs, "should return register set")
 		require.NotNil(t, release, "should return release function")
 		defer release()
@@ -35,12 +34,12 @@ func TestAnchor(t *testing.T) {
 	t.Run("NotEmpty", func(t *testing.T) {
 		path := []string{"alpha"}
 
-		r, release := h.Walk(ctx, path)
+		r, release := h.Walk(ctx, nil, path)
 		require.NotZero(t, r, "should return register")
 		require.NotNil(t, release, "should return release function")
 		defer release()
 
-		rs, release := h.Ls(ctx)
+		rs, release := h.Ls(ctx, nil)
 		require.NotNil(t, rs, "should return register set")
 		require.NotNil(t, release, "should return release function")
 		defer release()
@@ -53,13 +52,13 @@ func TestAnchor(t *testing.T) {
 	t.Run("MultiLevel/Empty", func(t *testing.T) {
 		path := []string{"alpha", "bravo"}
 
-		r, release := h.Walk(ctx, path)
+		r, release := h.Walk(ctx, nil, path)
 		require.NotZero(t, r, "should return register")
 		require.NotNil(t, release, "should return release function")
 		defer release()
 
 		// root should have child 'alpha'
-		rs, release := h.Ls(ctx)
+		rs, release := h.Ls(ctx, nil)
 		require.NotNil(t, rs, "should return register set")
 		require.NotNil(t, release, "should return release function")
 		defer release()
@@ -69,7 +68,7 @@ func TestAnchor(t *testing.T) {
 		assert.Equal(t, []string{"alpha"}, ss)
 
 		// alpha should have child 'bravo'
-		r, release = h.Walk(ctx, []string{"alpha"})
+		r, release = h.Walk(ctx, nil, []string{"alpha"})
 		defer release()
 
 		rs, release = r.Ls(ctx)
@@ -83,7 +82,7 @@ func TestAnchor(t *testing.T) {
 	t.Run("AnchorRelease", func(t *testing.T) {
 		runtime.GC()
 
-		rs, release := h.Ls(ctx)
+		rs, release := h.Ls(ctx, nil)
 		require.NotNil(t, rs, "should return register set")
 		require.NotNil(t, release, "should return release function")
 		defer release()

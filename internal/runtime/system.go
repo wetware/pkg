@@ -14,12 +14,8 @@ import (
 	badgerds "github.com/ipfs/go-ds-badger2"
 
 	"github.com/wetware/casm/pkg/cluster/pulse"
-)
-
-// system module:  interacts with local file storage.
-var system = fx.Provide(
-	storage,
-	heartbeat,
+	logutil "github.com/wetware/ww/internal/util/log"
+	statsdutil "github.com/wetware/ww/internal/util/statsd"
 )
 
 /*******************************************************************************
@@ -27,6 +23,24 @@ var system = fx.Provide(
  *  system.go is responsible for interacting with the local operating system.  *
  *                                                                             *
  *******************************************************************************/
+
+// system module:  interacts with local file storage.
+var system = fx.Provide(
+	storage,
+	heartbeat,
+	observability,
+)
+
+var observability = fx.Provide(
+	logging,
+	statsdutil.New,
+	statsdutil.NewBandwidthCounter)
+
+func logging(c *cli.Context) log.Logger {
+	return logutil.New(c).With(log.F{
+		"ns": c.String("ns"),
+	})
+}
 
 // hook populates heartbeat messages with system information from the
 // operating system.

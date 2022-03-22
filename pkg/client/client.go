@@ -103,8 +103,8 @@ func (n Node) Walk(ctx context.Context, path []string) Anchor {
 		return newErrorHost(fmt.Errorf("invalid id: %w", err))
 	}
 
-	return (*Host)(&cluster.Host{
-		Dialer: dialer(n.vat),
-		Info:   peer.AddrInfo{ID: id},
-	}).Walk(ctx, path[1:])
+	return Host{
+		dialer: dialer(n.vat),
+		host:   &cluster.Host{Info: peer.AddrInfo{ID: id}},
+	}.Walk(ctx, path[1:])
 }
