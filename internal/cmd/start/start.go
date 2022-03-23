@@ -17,8 +17,8 @@ var flags = []cli.Flag{
 		Aliases: []string{"a"},
 		Usage:   "host listen address",
 		Value: cli.NewStringSlice(
-			"/ip4/0.0.0.0/udp/2020/quic",
-			"/ip6/::0/udp/2020/quic"),
+			"/ip4/0.0.0.0/udp/0/quic",
+			"/ip6/::0/udp/0/quic"),
 		EnvVars: []string{"WW_LISTEN"},
 	},
 	&cli.StringSliceFlag{

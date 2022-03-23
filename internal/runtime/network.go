@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/netip"
 	"time"
 
 	ds "github.com/ipfs/go-datastore"
@@ -14,6 +15,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
+	"github.com/libp2p/go-libp2p-core/protocol"
 	disc "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
@@ -31,6 +33,7 @@ import (
 	"github.com/wetware/casm/pkg/boot"
 	"github.com/wetware/casm/pkg/boot/crawl"
 	"github.com/wetware/casm/pkg/pex"
+	protoutil "github.com/wetware/casm/pkg/util/proto"
 	bootutil "github.com/wetware/ww/internal/util/boot"
 	statsdutil "github.com/wetware/ww/internal/util/statsd"
 	ww "github.com/wetware/ww/pkg"
@@ -39,8 +42,8 @@ import (
 
 var network = fx.Provide(
 	vatnet,
+	routing,
 	overlay,
-	discover,
 	bootstrap,
 	peercache)
 
@@ -50,6 +53,15 @@ type routingConfig struct {
 	CLI       *cli.Context
 	Metrics   *metrics.BandwidthCounter
 	Lifecycle fx.Lifecycle
+}
+
+func routing(config routingConfig) (*dual.DHT, error) {
+	h, err := config.NewHost()
+	if err != nil {
+		return nil, err
+	}
+
+	return config.NewDHT(h)
 }
 
 func (config routingConfig) ListenAddrs() []string {
@@ -108,21 +120,19 @@ func (config routingConfig) NewDHT(h host.Host) (*dual.DHT, error) {
 	return d, err
 }
 
-func routing(config routingConfig) (*dual.DHT, error) {
-	h, err := config.NewHost()
-	if err != nil {
-		return nil, err
-	}
-
-	return config.NewDHT(h)
-}
-
 type vatConfig struct {
 	fx.In
 
 	CLI       *cli.Context
 	DHT       *dual.DHT
 	Lifecycle fx.Lifecycle
+}
+
+func vatnet(config vatConfig) vat.Network {
+	return vat.Network{
+		NS:   config.Namespace(),
+		Host: routedhost.Wrap(config.Host(), config.DHT),
+	}
 }
 
 func (vat vatConfig) Namespace() string {
@@ -133,50 +143,6 @@ func (vat vatConfig) Host() host.Host {
 	return vat.DHT.WAN.Host()
 }
 
-func vatnet(config vatConfig) vat.Network {
-	return vat.Network{
-		NS:   config.Namespace(),
-		Host: routedhost.Wrap(config.Host(), config.DHT),
-	}
-}
-
-func overlay(c *cli.Context, vat vat.Network, d discovery.Discovery) (*pubsub.PubSub, error) {
-	return pubsub.NewGossipSub(c.Context, vat.Host,
-		pubsub.WithRawTracer(statsdutil.NewPubSubTracer(c)),
-		pubsub.WithDiscovery(d))
-}
-
-type discoveryConfig struct {
-	fx.In
-
-	Vat vat.Network
-	PeX *pex.PeerExchange
-	DHT *dual.DHT
-}
-
-func (config discoveryConfig) matchNS() func(string) bool {
-	bootTopic := "floodsub:" + config.Vat.NS
-	return func(ns string) bool {
-		return ns == bootTopic
-	}
-}
-
-// discover constructs the top-level discovery service, which dynamically
-// dispatches advertisements and search queries to either:
-//
-// 1. the bootstrap service, iff the namespace matches the cluster topic; else
-// 2. the DHT-backed ambient peer discovery service.
-func discover(config discoveryConfig) (discovery.Discovery, error) {
-	// If the namespace matches the cluster pubsub topic,
-	// fetch peers from PeX, which itself will fall back
-	// on the bootstrap services.
-	return boot.Namespace{
-		Match:   config.matchNS(),
-		Target:  config.PeX,
-		Default: disc.NewRoutingDiscovery(config.DHT),
-	}, nil
-}
-
 type pexConfig struct {
 	fx.In
 
@@ -185,18 +151,6 @@ type pexConfig struct {
 	Datastore ds.Batching
 	Boot      bootstrapper
 	Lifecycle fx.Lifecycle
-}
-
-func (config pexConfig) Host() host.Host {
-	return config.Vat.Host
-}
-
-func (config pexConfig) Logger() log.Logger {
-	return config.Log.With(config.Vat)
-}
-
-func (config pexConfig) SetCloseHook(c io.Closer) {
-	config.Lifecycle.Append(closer(c))
 }
 
 func peercache(config pexConfig) (*pex.PeerExchange, error) {
@@ -212,6 +166,18 @@ func peercache(config pexConfig) (*pex.PeerExchange, error) {
 	return px, err
 }
 
+func (config pexConfig) Host() host.Host {
+	return config.Vat.Host
+}
+
+func (config pexConfig) Logger() log.Logger {
+	return config.Log.With(config.Vat)
+}
+
+func (config pexConfig) SetCloseHook(c io.Closer) {
+	config.Lifecycle.Append(closer(c))
+}
+
 type bootConfig struct {
 	fx.In
 
@@ -220,6 +186,29 @@ type bootConfig struct {
 	Vat        vat.Network
 	Supervisor *suture.Supervisor
 	Lifecycle  fx.Lifecycle
+}
+
+type bootstrapper struct {
+	Log log.Logger
+	discovery.Discoverer
+	discovery.Advertiser
+}
+
+func bootstrap(config bootConfig) (b bootstrapper, err error) {
+	b.Log = config.Logger()
+	b.Discoverer, err = bootutil.New(config.CLI, config.Host())
+
+	if err == nil {
+		switch x := b.Discoverer.(type) {
+		case discovery.Advertiser:
+			b.Advertiser = x
+
+		case crawl.Crawler:
+			b.Advertiser, err = config.NewBeacon()
+		}
+	}
+
+	return
 }
 
 func (config bootConfig) Logger() log.Logger {
@@ -249,29 +238,6 @@ func (config bootConfig) AddService(s suture.Service) {
 	})
 }
 
-type bootstrapper struct {
-	Log log.Logger
-	discovery.Discoverer
-	discovery.Advertiser
-}
-
-func bootstrap(config bootConfig) (b bootstrapper, err error) {
-	b.Log = config.Logger()
-	b.Discoverer, err = bootutil.New(config.CLI, config.Host())
-
-	if err == nil {
-		switch x := b.Discoverer.(type) {
-		case discovery.Advertiser:
-			b.Advertiser = x
-
-		case crawl.Crawler:
-			b.Advertiser, err = config.NewBeacon()
-		}
-	}
-
-	return
-}
-
 func (b bootstrapper) FindPeers(ctx context.Context, ns string, opt ...discovery.Option) (<-chan peer.AddrInfo, error) {
 	b.Log.Debug("bootstrapping namespace")
 	return b.Discoverer.FindPeers(ctx, ns, opt...)
@@ -297,14 +263,153 @@ func cidrToListenAddr(c *cli.Context) (net.Addr, error) {
 		return nil, err
 	}
 
+	ap, err := netip.ParseAddrPort(addr)
+	if err != nil {
+		return nil, err
+	}
+
 	switch network {
 	case "tcp", "tcp4", "tcp6":
-		return net.ResolveTCPAddr(network, addr)
+		return &net.TCPAddr{
+			IP:   toBeaconIP(ap),
+			Zone: ap.Addr().Zone(),
+			Port: int(ap.Port()),
+		}, nil
 
 	case "udp", "udp4", "udp6":
-		return net.ResolveUDPAddr(network, addr)
+		return &net.UDPAddr{
+			IP:   toBeaconIP(ap),
+			Zone: ap.Addr().Zone(),
+			Port: int(ap.Port()),
+		}, nil
 
 	default:
 		return nil, fmt.Errorf("invalid network: %s", network)
 	}
+}
+
+func toBeaconIP(ap netip.AddrPort) net.IP {
+	switch addr := ap.Addr(); {
+	case addr.IsUnspecified(), addr.IsLoopback():
+		return addr.AsSlice() // e.g. 0.0.0.0 or 127.0.0.1
+
+	case addr.Is4():
+		return net.IPv4zero
+
+	default:
+		return net.IPv6zero
+	}
+}
+
+type overlayConfig struct {
+	fx.In
+
+	CLI    *cli.Context
+	Vat    vat.Network
+	PeX    *pex.PeerExchange
+	DHT    *dual.DHT
+	Tracer *statsdutil.PubSubTracer
+}
+
+func overlay(config overlayConfig) (*pubsub.PubSub, error) {
+	return pubsub.NewGossipSub(config.Context(), config.Host(),
+		pubsub.WithPeerExchange(true),
+		pubsub.WithMaxMessageSize(1024),
+		pubsub.WithRawTracer(config.Tracer),
+		pubsub.WithDiscovery(config.Discovery()),
+		pubsub.WithProtocolMatchFn(config.ProtoMatchFunc()),
+		pubsub.WithGossipSubProtocols(config.Subprotocols()))
+}
+
+func (config overlayConfig) Context() context.Context {
+	return config.CLI.Context
+}
+
+func (config overlayConfig) Namespace() string {
+	return config.Vat.NS
+}
+
+func (config overlayConfig) Host() host.Host {
+	return config.Vat.Host
+}
+
+func (config overlayConfig) Discovery() discovery.Discovery {
+	// Dynamically dispatche advertisements and search queries to either:
+	//
+	// 1. the bootstrap service, iff the namespace matches the cluster topic; else
+	// 2. the DHT-backed ambient peer discovery service.
+	return boot.Namespace{
+		Match:   config.bootMatcher(),
+		Target:  config.PeX,
+		Default: disc.NewRoutingDiscovery(config.DHT),
+	}
+}
+
+func (config overlayConfig) bootMatcher() func(string) bool {
+	bootTopic := "floodsub:" + config.Namespace()
+	return func(ns string) bool {
+		return ns == bootTopic
+	}
+}
+
+func (config overlayConfig) Proto() protocol.ID {
+	// TODO:  remove topic-scoping to namespace in 'pubsub' cap,
+	//        since we are now scoping at the protocol level.
+	//        Allow empty topic.
+	//
+	//        For security, the cluster topic should not be present
+	//        in the root pubsub capability server.  This will result
+	//        in a 'topic already exists' error if clients attemtp to
+	//        join the empty topic.  The cluster topic should instead
+	//        be provided as an entirely separate capability, negoaiated
+	//        outside of the PubSub cap.
+
+	// /casm/<casm-version>/ww/<version>/<ns>/meshsub/1.1.0
+	return protoutil.Join(
+		ww.Subprotocol(config.Namespace()),
+		pubsub.GossipSubID_v11)
+}
+
+func (config overlayConfig) Matcher() protoutil.MatchFunc {
+	proto, version := protoutil.Split(pubsub.GossipSubID_v11)
+	return protoutil.Match(
+		ww.NewMatcher(config.Namespace()),
+		protoutil.Exactly(string(proto)),
+		protoutil.SemVer(string(version)))
+}
+
+func (config overlayConfig) ProtoMatchFunc() pubsub.ProtocolMatchFn {
+	match := config.Matcher()
+
+	return func(local string) func(string) bool {
+		if !match(local) {
+			panic(fmt.Sprintf("match failed for local protocol %s", local))
+		}
+
+		return match
+	}
+}
+
+func (config overlayConfig) Features() func(pubsub.GossipSubFeature, protocol.ID) bool {
+	supportGossip := config.Matcher()
+
+	_, version := protoutil.Split(config.Proto())
+	supportsPX := protoutil.Suffix(version)
+
+	return func(feat pubsub.GossipSubFeature, proto protocol.ID) bool {
+		switch feat {
+		case pubsub.GossipSubFeatureMesh:
+			return supportGossip(string(proto))
+
+		case pubsub.GossipSubFeaturePX:
+			return supportsPX(string(proto))
+
+		default:
+			return false
+		}
+	}
+}
+
+func (config overlayConfig) Subprotocols() ([]protocol.ID, func(pubsub.GossipSubFeature, protocol.ID) bool) {
+	return []protocol.ID{config.Proto()}, config.Features()
 }

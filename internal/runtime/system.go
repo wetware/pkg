@@ -25,16 +25,17 @@ import (
  *******************************************************************************/
 
 // system module:  interacts with local file storage.
-var system = fx.Provide(
-	storage,
-	heartbeat,
+var system = fx.Options(
 	observability,
-)
+	fx.Provide(
+		storage,
+		heartbeat))
 
 var observability = fx.Provide(
 	logging,
 	statsdutil.New,
-	statsdutil.NewBandwidthCounter)
+	statsdutil.NewBandwidthCounter,
+	statsdutil.NewPubSubTracer)
 
 func logging(c *cli.Context) log.Logger {
 	return logutil.New(c).With(log.F{
