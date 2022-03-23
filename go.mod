@@ -40,7 +40,6 @@ require (
 	github.com/libp2p/go-libp2p-swarm v0.9.0
 	github.com/lthibault/go-libp2p-inproc-transport v0.1.0
 	github.com/lthibault/util v0.0.11
-	github.com/mitchellh/go-homedir v1.1.0
 	github.com/stretchr/testify v1.7.0
 	github.com/thejerf/suture/v4 v4.0.2
 	go.uber.org/multierr v1.8.0

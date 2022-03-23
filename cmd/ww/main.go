@@ -36,10 +36,10 @@ var flags = []cli.Flag{
 		EnvVars: []string{"WW_LOGLVL"},
 	},
 	&cli.PathFlag{
-		Name:    "data",
-		Usage:   "`path` to application data directory",
-		Value:   "~/.ww",
-		EnvVars: []string{"WW_DATA"},
+		Name:        "data",
+		Usage:       "persist cache data to `path`",
+		DefaultText: "disabled",
+		EnvVars:     []string{"WW_DATA"},
 	},
 	// Statsd
 	&cli.StringFlag{

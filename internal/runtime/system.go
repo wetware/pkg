@@ -2,15 +2,16 @@ package runtime
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/lthibault/log"
-	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
 
 	ds "github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/sync"
 	badgerds "github.com/ipfs/go-ds-badger2"
 
 	"github.com/wetware/casm/pkg/cluster/pulse"
@@ -58,37 +59,71 @@ func (h hook) Prepare(pulse.Heartbeat) {
 	//           Cache results and periodically refresh them.
 }
 
-func storage(c *cli.Context, log log.Logger, lx fx.Lifecycle) ds.Batching {
-	path, err := homedir.Expand(c.Path("data"))
+type storageConfig struct {
+	fx.In
+
+	CLI *cli.Context
+	Log log.Logger
+
+	Lifecycle fx.Lifecycle
+}
+
+func (config storageConfig) IsVolatile() bool {
+	return !config.CLI.IsSet("data")
+}
+
+func (config storageConfig) StoragePath() string {
+	return filepath.Join(config.CLI.Path("data"), "data")
+}
+
+func (config storageConfig) Logger() badgerLogger {
+	if config.IsVolatile() {
+		return badgerLogger{config.Log}
+	}
+
+	return badgerLogger{
+		config.Log.WithField("data_dir", config.StoragePath()),
+	}
+}
+
+func (config storageConfig) VolatileStorage() ds.Batching {
+	return sync.MutexWrap(ds.NewMapDatastore())
+}
+
+func (config storageConfig) PersistentStorage() (ds.Batching, error) {
+	err := os.MkdirAll(config.StoragePath(), 0700)
 	if err != nil {
-		log.WithField("data_dir", c.Path("data")).Fatal(err)
+		return nil, fmt.Errorf("mkdir: %w", err)
 	}
 
-	path = filepath.Join(path, "data")
+	badgerds.DefaultOptions.Logger = config.Logger()
 
-	if err = os.MkdirAll(path, 0700); err != nil {
-		log.Fatal(err)
-	}
-
-	log = log.WithField("data_dir", path)
-	badgerds.DefaultOptions.Logger = badgerLogger{log}
-
-	d, err := badgerds.NewDatastore(
-		filepath.Join(path, "data"),
+	return badgerds.NewDatastore(
+		config.StoragePath(),
 		&badgerds.DefaultOptions)
-	if err != nil {
-		log.Fatalf("badgerdb: %s", err)
-	}
+}
 
-	lx.Append(closer(d))
-	lx.Append(fx.Hook{
+func (config storageConfig) SyncOnClose(d ds.Datastore) {
+	config.Lifecycle.Append(closer(d))
+	config.Lifecycle.Append(fx.Hook{
 		OnStop: func(ctx context.Context) error {
 			log.Trace("syncing datastore")
 			return d.Sync(ctx, ds.NewKey("/"))
 		},
 	})
+}
 
-	return d
+func storage(config storageConfig) (ds.Batching, error) {
+	if config.IsVolatile() {
+		return config.VolatileStorage(), nil
+	}
+
+	d, err := config.PersistentStorage()
+	if err == nil {
+		config.SyncOnClose(d)
+	}
+
+	return d, err
 }
 
 type badgerLogger struct{ log.Logger }
