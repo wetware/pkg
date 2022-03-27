@@ -11,10 +11,10 @@ func TestProto(t *testing.T) {
 	t.Parallel()
 
 	const ns = "test"
-	match := ww.NewMatcher(ns)
+	matcher := ww.NewMatcher(ns)
 	proto := ww.Subprotocol(ns)
 	t.Log(proto)
 
-	assert.True(t, match(string(proto)),
+	assert.True(t, matcher.MatchProto(proto),
 		"matcher should match subprotocol")
 }

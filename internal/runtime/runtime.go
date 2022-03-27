@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -227,9 +228,8 @@ func (m mergeFromPeX) PerformGossipRound(ctx context.Context, info peer.AddrInfo
 }
 
 func (m mergeFromPeX) RefreshDHT(ctx context.Context) error {
-	log.New().Warn("TODO:  implement runtime.mergeFromPex.RefreshDHT")
-	// FIXME:  YOU ARE HERE
-	return nil
+	// FIXME:  implement DHT refresh
+	return errors.New("NOT IMPLEMENTED")
 }
 
 func closer(c io.Closer) fx.Hook {

@@ -16,7 +16,7 @@ type BasicCap []protocol.ID
 func (c BasicCap) Protocols() []protocol.ID { return c }
 
 func (c BasicCap) Upgrade(s Stream) rpc.Transport {
-	if packed(string(s.Protocol())) {
+	if packed.MatchProto(s.Protocol()) {
 		return rpc.NewPackedStreamTransport(s)
 	}
 

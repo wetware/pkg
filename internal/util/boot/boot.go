@@ -3,7 +3,6 @@ package bootutil
 import (
 	"errors"
 
-	"github.com/libp2p/go-libp2p-core/discovery"
 	"github.com/libp2p/go-libp2p-core/host"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/wetware/casm/pkg/boot"
@@ -14,7 +13,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func New(c *cli.Context, h host.Host) (discovery.Discoverer, error) {
+func New(c *cli.Context, h host.Host) (boot.DiscoveryCloser, error) {
 	if c.IsSet("addr") {
 		return boot.NewStaticAddrStrings(c.StringSlice("addr")...)
 	}
@@ -28,7 +27,7 @@ func New(c *cli.Context, h host.Host) (discovery.Discoverer, error) {
 		return nil, err
 	}
 
-	return boot.New(logutil.New(c), h, addr)
+	return boot.Discover(logutil.New(c), h, addr)
 }
 
 func Dial(c *cli.Context, h host.Host) (*client.Node, error) {

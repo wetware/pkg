@@ -31,14 +31,6 @@ type Dialer struct {
 	Boot discovery.Discoverer
 }
 
-// func NewDialer(vat vat.Network, opt ...Option) Dialer {
-// 	var d = Dialer{vat: vat}
-// 	for _, option := range withDefault(opt) {
-// 		option(&d)
-// 	}
-// 	return d
-// }
-
 // Dial is a convenience function that joins a cluster using the
 // supplied address string.
 //

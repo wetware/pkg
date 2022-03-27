@@ -30,7 +30,7 @@ var flags = []cli.Flag{
 		Name:    "discover",
 		Aliases: []string{"d"},
 		Usage:   "bootstrap discovery multiaddr",
-		Value:   "/ip4/127.0.0.1/udp/8822/survey",
+		Value:   "/ip4/228.8.8.8/udp/8822/multicast/lo0",
 		EnvVars: []string{"WW_DISCOVER"},
 	},
 }

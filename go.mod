@@ -22,7 +22,7 @@ require (
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/sirupsen/logrus v1.8.1
 	github.com/urfave/cli/v2 v2.3.0
-	github.com/wetware/casm v0.0.0-20220322202238-2d6b16337051
+	github.com/wetware/casm v0.0.0-20220327043856-db395f5c7232
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/fx v1.17.0
 	go.uber.org/zap v1.19.1 // indirect
@@ -155,6 +155,7 @@ require (
 	go.opencensus.io v0.23.0 // indirect
 	go.uber.org/dig v1.14.0 // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3 // indirect
+	golang.org/x/time v0.0.0-20220224211638-0e9765cccd65 // indirect
 	golang.org/x/tools v0.1.10 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect

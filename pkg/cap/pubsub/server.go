@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
 
 	"capnproto.org/go/capnp/v3"
@@ -37,7 +36,7 @@ type Provider struct {
 	cq  chan struct{}
 	log log.Logger
 
-	ps joinDecorator
+	ps TopicJoiner
 
 	mu sync.RWMutex
 	wg sync.WaitGroup // blocks shutdown until all tasks are released
@@ -47,7 +46,7 @@ type Provider struct {
 func New(ns string, ps TopicJoiner, opt ...Option) *Provider {
 	var f = &Provider{
 		cq: make(chan struct{}),
-		ps: joinDecorator{NS: ns, TopicJoiner: ps},
+		ps: ps,
 		ts: make(map[string]*refCountedTopic),
 	}
 
@@ -234,20 +233,4 @@ func (t *refCountedTopic) handle(args api.Topic_subscribe_Params, sub *pubsub.Su
 
 		h.Handle(t.ctx, sub)
 	}()
-}
-
-type joinDecorator struct {
-	NS string
-	TopicJoiner
-}
-
-func (jd joinDecorator) Join(topic string, opt ...pubsub.TopicOpt) (t *pubsub.Topic, err error) {
-	// Scope the topic to the namespace.
-	topic = fmt.Sprintf("%s.%s", jd.NS, strings.Trim(topic, "."))
-
-	if t, err = jd.TopicJoiner.Join(topic, opt...); err != nil {
-		err = fmt.Errorf("%s: %w", topic, err)
-	}
-
-	return
 }

@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net"
-	"net/netip"
 	"time"
 
 	ds "github.com/ipfs/go-datastore"
@@ -14,7 +12,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	disc "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -22,16 +19,12 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	libp2pquic "github.com/libp2p/go-libp2p-quic-transport"
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
-	ma "github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr/net"
-	"github.com/thejerf/suture/v4"
 
 	"github.com/lthibault/log"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
 
 	"github.com/wetware/casm/pkg/boot"
-	"github.com/wetware/casm/pkg/boot/crawl"
 	"github.com/wetware/casm/pkg/pex"
 	protoutil "github.com/wetware/casm/pkg/util/proto"
 	bootutil "github.com/wetware/ww/internal/util/boot"
@@ -181,34 +174,10 @@ func (config pexConfig) SetCloseHook(c io.Closer) {
 type bootConfig struct {
 	fx.In
 
-	CLI        *cli.Context
-	Log        log.Logger
-	Vat        vat.Network
-	Supervisor *suture.Supervisor
-	Lifecycle  fx.Lifecycle
-}
-
-type bootstrapper struct {
-	Log log.Logger
-	discovery.Discoverer
-	discovery.Advertiser
-}
-
-func bootstrap(config bootConfig) (b bootstrapper, err error) {
-	b.Log = config.Logger()
-	b.Discoverer, err = bootutil.New(config.CLI, config.Host())
-
-	if err == nil {
-		switch x := b.Discoverer.(type) {
-		case discovery.Advertiser:
-			b.Advertiser = x
-
-		case crawl.Crawler:
-			b.Advertiser, err = config.NewBeacon()
-		}
-	}
-
-	return
+	CLI       *cli.Context
+	Log       log.Logger
+	Vat       vat.Network
+	Lifecycle fx.Lifecycle
 }
 
 func (config bootConfig) Logger() log.Logger {
@@ -219,86 +188,35 @@ func (config bootConfig) Host() host.Host {
 	return config.Vat.Host
 }
 
-func (config bootConfig) NewBeacon() (b crawl.Beacon, err error) {
-	if b.Addr, err = cidrToListenAddr(config.CLI); err == nil {
-		b.Logger = config.Logger().WithField("beacon", b.Addr)
-		b.Host = config.Vat.Host
-		config.AddService(b)
-	}
-
-	return
+func (config bootConfig) SetCloseHook(c io.Closer) {
+	config.Lifecycle.Append(closer(c))
 }
 
-func (config bootConfig) AddService(s suture.Service) {
-	config.Lifecycle.Append(fx.Hook{
-		OnStart: func(context.Context) error {
-			config.Supervisor.Add(s)
-			return nil
-		},
-	})
+type bootstrapper struct {
+	Log log.Logger
+	discovery.Discovery
+}
+
+func bootstrap(config bootConfig) (bootstrapper, error) {
+	b, err := bootutil.New(config.CLI, config.Host())
+	if err == nil {
+		config.SetCloseHook(b)
+	}
+
+	return bootstrapper{
+		Log:       config.Logger(),
+		Discovery: b,
+	}, err
 }
 
 func (b bootstrapper) FindPeers(ctx context.Context, ns string, opt ...discovery.Option) (<-chan peer.AddrInfo, error) {
 	b.Log.Debug("bootstrapping namespace")
-	return b.Discoverer.FindPeers(ctx, ns, opt...)
+	return b.Discovery.FindPeers(ctx, ns, opt...)
 }
 
 func (b bootstrapper) Advertise(ctx context.Context, ns string, opt ...discovery.Option) (time.Duration, error) {
-	if b.Advertiser == nil {
-		return peerstore.PermanentAddrTTL, nil
-	}
-
 	b.Log.Debug("advertising namespace")
-	return b.Advertiser.Advertise(ctx, ns, opt...)
-}
-
-func cidrToListenAddr(c *cli.Context) (net.Addr, error) {
-	maddr, err := ma.NewMultiaddr(c.String("discover"))
-	if err != nil {
-		return nil, err
-	}
-
-	network, addr, err := manet.DialArgs(maddr)
-	if err != nil {
-		return nil, err
-	}
-
-	ap, err := netip.ParseAddrPort(addr)
-	if err != nil {
-		return nil, err
-	}
-
-	switch network {
-	case "tcp", "tcp4", "tcp6":
-		return &net.TCPAddr{
-			IP:   toBeaconIP(ap),
-			Zone: ap.Addr().Zone(),
-			Port: int(ap.Port()),
-		}, nil
-
-	case "udp", "udp4", "udp6":
-		return &net.UDPAddr{
-			IP:   toBeaconIP(ap),
-			Zone: ap.Addr().Zone(),
-			Port: int(ap.Port()),
-		}, nil
-
-	default:
-		return nil, fmt.Errorf("invalid network: %s", network)
-	}
-}
-
-func toBeaconIP(ap netip.AddrPort) net.IP {
-	switch addr := ap.Addr(); {
-	case addr.IsUnspecified(), addr.IsLoopback():
-		return addr.AsSlice() // e.g. 0.0.0.0 or 127.0.0.1
-
-	case addr.Is4():
-		return net.IPv4zero
-
-	default:
-		return net.IPv6zero
-	}
+	return b.Discovery.Advertise(ctx, ns, opt...)
 }
 
 type overlayConfig struct {
@@ -353,16 +271,12 @@ func (config overlayConfig) bootMatcher() func(string) bool {
 }
 
 func (config overlayConfig) Proto() protocol.ID {
-	// TODO:  remove topic-scoping to namespace in 'pubsub' cap,
-	//        since we are now scoping at the protocol level.
-	//        Allow empty topic.
-	//
-	//        For security, the cluster topic should not be present
-	//        in the root pubsub capability server.  This will result
-	//        in a 'topic already exists' error if clients attemtp to
-	//        join the empty topic.  The cluster topic should instead
-	//        be provided as an entirely separate capability, negoaiated
-	//        outside of the PubSub cap.
+	// FIXME: For security, the cluster topic should not be present
+	//        in the root pubsub capability server.
+
+	//        The cluster topic should instead be provided as an
+	//        entirely separate capability, negoaiated outside of
+	//        the PubSub cap.
 
 	// /casm/<casm-version>/ww/<version>/<ns>/meshsub/1.1.0
 	return protoutil.Join(
@@ -382,11 +296,11 @@ func (config overlayConfig) ProtoMatchFunc() pubsub.ProtocolMatchFn {
 	match := config.Matcher()
 
 	return func(local string) func(string) bool {
-		if !match(local) {
-			panic(fmt.Sprintf("match failed for local protocol %s", local))
+		if match.Match(local) {
+			return match.Match
 		}
 
-		return match
+		panic(fmt.Sprintf("match failed for local protocol %s", local))
 	}
 }
 
@@ -399,10 +313,10 @@ func (config overlayConfig) Features() func(pubsub.GossipSubFeature, protocol.ID
 	return func(feat pubsub.GossipSubFeature, proto protocol.ID) bool {
 		switch feat {
 		case pubsub.GossipSubFeatureMesh:
-			return supportGossip(string(proto))
+			return supportGossip.MatchProto(proto)
 
 		case pubsub.GossipSubFeaturePX:
-			return supportsPX(string(proto))
+			return supportsPX.MatchProto(proto)
 
 		default:
 			return false
