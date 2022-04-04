@@ -94,6 +94,6 @@ func view(c *cli.Context) ([]client.Anchor, error) {
 	return as, it.Err()
 }
 
-func hostpath(info peer.AddrInfo) []string {
-	return []string{info.ID.String()}
-}
+// func hostpath(info peer.AddrInfo) []string {
+// 	return []string{info.ID.String()}
+// }
