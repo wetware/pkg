@@ -17,7 +17,6 @@ import (
 
 func TestMultipleClients(t *testing.T) {
 	t.Parallel()
-	t.Helper()
 
 	const N = 10
 
