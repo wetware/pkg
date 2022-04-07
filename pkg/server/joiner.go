@@ -60,7 +60,7 @@ func (j Joiner) Join(ctx context.Context, vat vat.Network, ps PubSub) (*Node, er
 
 	vat.Export(
 		clcap.ViewCapability,
-		clcap.NewViewServer(c.View()))
+		clcap.ViewServer{View: c.View()})
 
 	vat.Export(
 		clcap.AnchorCapability,

@@ -41,12 +41,6 @@ type ViewServer struct {
 	View RoutingTable
 }
 
-func NewViewServer(rt RoutingTable) ViewServer {
-	vs := ViewServer{View: rt}
-
-	return vs
-}
-
 func (f ViewServer) NewClient(policy *server.Policy) View {
 	if policy == nil {
 		policy = &defaultPolicy
