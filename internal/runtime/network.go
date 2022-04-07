@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	ds "github.com/ipfs/go-datastore"
@@ -211,12 +212,12 @@ func bootstrap(config bootConfig) (bootstrapper, error) {
 
 func (b bootstrapper) FindPeers(ctx context.Context, ns string, opt ...discovery.Option) (<-chan peer.AddrInfo, error) {
 	b.Log.Debug("bootstrapping namespace")
-	return b.Discovery.FindPeers(ctx, ns, opt...)
+	return b.Discovery.FindPeers(ctx, strings.TrimPrefix(ns, "floodsub:"), opt...)
 }
 
 func (b bootstrapper) Advertise(ctx context.Context, ns string, opt ...discovery.Option) (time.Duration, error) {
 	b.Log.Debug("advertising namespace")
-	return b.Discovery.Advertise(ctx, ns, opt...)
+	return b.Discovery.Advertise(ctx, strings.TrimPrefix(ns, "floodsub:"), opt...)
 }
 
 type overlayConfig struct {

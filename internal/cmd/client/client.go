@@ -41,7 +41,7 @@ func Command() *cli.Command {
 		Subcommands: subcommands,
 
 		Before: func(c *cli.Context) error {
-			logger = logutil.New(c)
+			logger = logutil.New(c).WithField("ns", c.String("ns"))
 			return nil
 		},
 
