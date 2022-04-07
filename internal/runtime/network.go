@@ -233,7 +233,6 @@ type overlayConfig struct {
 func overlay(config overlayConfig) (*pubsub.PubSub, error) {
 	return pubsub.NewGossipSub(config.Context(), config.Host(),
 		pubsub.WithPeerExchange(true),
-		pubsub.WithMaxMessageSize(1024),
 		pubsub.WithRawTracer(config.Tracer),
 		pubsub.WithDiscovery(config.Discovery()),
 		pubsub.WithProtocolMatchFn(config.ProtoMatchFunc()),
