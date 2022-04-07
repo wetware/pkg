@@ -15,6 +15,18 @@ import (
 	"github.com/wetware/ww/pkg/cap/cluster"
 )
 
+func TestMultipleClients(t *testing.T) {
+	t.Parallel()
+	t.Helper()
+
+	const N = 10
+
+	server := &cluster.ViewServer{View: make(routingTable, 65)}
+	for i := 0; i < N; i++ {
+		require.NotEmpty(t, server.Client())
+	}
+}
+
 func TestIter(t *testing.T) {
 	t.Parallel()
 	t.Helper()
