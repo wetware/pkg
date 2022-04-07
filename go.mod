@@ -1,6 +1,6 @@
 module github.com/wetware/ww
 
-go 1.17
+go 1.18
 
 require (
 	capnproto.org/go/capnp/v3 v3.0.0-alpha.1
@@ -22,7 +22,7 @@ require (
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/sirupsen/logrus v1.8.1
 	github.com/urfave/cli/v2 v2.3.0
-	github.com/wetware/casm v0.0.0-20220327043856-db395f5c7232
+	github.com/wetware/casm v0.0.0-20220407171640-497fac6e142c
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/fx v1.17.0
 	go.uber.org/zap v1.19.1 // indirect
@@ -162,5 +162,3 @@ require (
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	lukechampine.com/blake3 v1.1.6 // indirect
 )
-
-replace github.com/wetware/casm => /Users/lthibault/Go/src/github.com/wetware/casm
