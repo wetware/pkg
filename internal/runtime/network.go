@@ -223,9 +223,10 @@ func (b bootstrapper) Advertise(ctx context.Context, ns string, opt ...discovery
 type overlayConfig struct {
 	fx.In
 
-	CLI    *cli.Context
-	Vat    vat.Network
-	PeX    *pex.PeerExchange
+	CLI *cli.Context
+	Vat vat.Network
+	// PeX    *pex.PeerExchange  // TODO:  re-enable when PeX bugs are fixed
+	Boot   bootstrapper // TODO:  remove when PeX bugs are fixed
 	DHT    *dual.DHT
 	Tracer *statsdutil.PubSubTracer
 }
@@ -257,8 +258,9 @@ func (config overlayConfig) Discovery() discovery.Discovery {
 	// 1. the bootstrap service, iff the namespace matches the cluster topic; else
 	// 2. the DHT-backed ambient peer discovery service.
 	return boot.Namespace{
-		Match:   config.bootMatcher(),
-		Target:  config.PeX,
+		Match: config.bootMatcher(),
+		// Target:  config.PeX,  // TODO:  re-enable when PeX bugs are fixed
+		Target:  config.Boot, // TODO:  remove when PeX bugs are fixed
 		Default: disc.NewRoutingDiscovery(config.DHT),
 	}
 }
