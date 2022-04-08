@@ -79,7 +79,7 @@ func TestAnchor(t *testing.T) {
 		assert.Equal(t, []string{"bravo"}, ss)
 	})
 
-	t.Run("AnchorRelease", func(t *testing.T) {
+	t.Run("Release", func(t *testing.T) {
 		runtime.GC()
 
 		rs, release := h.Ls(ctx, nil)
@@ -88,6 +88,29 @@ func TestAnchor(t *testing.T) {
 		defer release()
 
 		assert.False(t, rs.More(), "should have zero children")
+	})
+
+	t.Run("ConcurrentRef", func(t *testing.T) {
+		// Check that a second reference keeps the subanchor alive
+		// when the first is released.
+
+		r0, release0 := h.Walk(ctx, nil, []string{"alpha"})
+		defer release0()
+		assert.NotZero(t, r0)
+
+		r1, release1 := h.Walk(ctx, nil, []string{"alpha"})
+		defer release1()
+		assert.NotZero(t, r1)
+
+		release0()
+		runtime.GC()
+
+		rs, release := h.Ls(ctx, nil)
+		require.NotNil(t, rs, "should return register set")
+		require.NotNil(t, release, "should return release function")
+		defer release()
+
+		assert.True(t, rs.More(), "should have one child")
 	})
 }
 

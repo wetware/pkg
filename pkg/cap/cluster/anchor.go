@@ -202,26 +202,26 @@ type MergeStrategy interface {
 }
 
 type HostServer struct {
-	mu       sync.RWMutex
-	children nodeMap
-	client   *capnp.Client
-
+	node    node
 	cluster MergeStrategy
 }
 
-func NewHost(m MergeStrategy) *HostServer {
-	s := &HostServer{
-		children: make(map[string]node),
-		cluster:  m,
+func NewHost(m MergeStrategy) HostServer {
+	s := HostServer{
+		cluster: m,
+		node: node{
+			cs: make(map[string]node),
+			mu: new(sync.RWMutex),
+		},
 	}
 
-	s.client = cluster.Host_ServerToClient(s, &defaultPolicy).Client
+	s.node.Anchor.Client = cluster.Host_ServerToClient(s, &defaultPolicy).Client
 	return s
 }
 
-func (s *HostServer) Client() *capnp.Client { return s.client }
+func (s HostServer) Client() *capnp.Client { return s.node.Anchor.Client }
 
-func (s *HostServer) Join(ctx context.Context, call cluster.Host_join) error {
+func (s HostServer) Join(ctx context.Context, call cluster.Host_join) error {
 	ps, err := call.Args().Peers()
 	if err != nil {
 		return err
@@ -237,20 +237,12 @@ func (s *HostServer) Join(ctx context.Context, call cluster.Host_join) error {
 	return s.cluster.Merge(ctx, peers)
 }
 
-func (s *HostServer) Ls(_ context.Context, call cluster.Anchor_ls) error {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	return s.children.HandleLs(call)
+func (s HostServer) Ls(ctx context.Context, call cluster.Anchor_ls) error {
+	return s.node.Ls(ctx, call)
 }
 
-func (s *HostServer) Walk(_ context.Context, call cluster.Anchor_walk) error {
-	return walkHandler{
-		Lock:     &s.mu,
-		Parent:   nothing(),
-		Anchor:   cluster.Anchor{Client: s.client},
-		Children: s.children,
-	}.ServeRPC(call)
+func (s HostServer) Walk(ctx context.Context, call cluster.Anchor_walk) error {
+	return s.node.Walk(ctx, call)
 }
 
 // node is theserver implemenation for host-local Anchors.
@@ -258,143 +250,54 @@ type node struct {
 	Name   string
 	Anchor cluster.Anchor // client capability for node
 
-	mu       *sync.RWMutex
-	parent   maybeParent
-	children nodeMap
-	value    interface{}
+	mu     *sync.RWMutex
+	parent *node
+	cs     map[string]node
+	// value  interface{}
 }
 
 func (n node) Shutdown() {
-	// BUG:  This isn't getting called for Host's immediate children
-	//       because their parent is nil.
-	n.parent.Bind(func(p *node) maybeParent {
-		defer p.Release()
+	defer n.parent.Release()
 
-		// We MUST release the lock before calling release, else the
-		// entire path will be locked.  If a concurrent call to walk
-		// were to descend the same path, a deadlock would occur.
-		p.mu.Lock()
-		defer p.mu.Unlock()
+	n.parent.mu.Lock()
+	defer n.parent.mu.Unlock()
 
-		delete(p.children, n.Name)
-
-		return nothing()
-	})
+	delete(n.parent.cs, n.Name)
 }
 
-func (n node) AddRef() node {
-	return node{
-		Name:     n.Name,
-		value:    n.value,
-		Anchor:   n.Anchor.AddRef(),
-		parent:   n.parent,
-		mu:       n.mu,
-		children: n.children,
+func (n node) Release() { n.Anchor.Release() }
+
+func (n node) AddRef() *node {
+	return &node{
+		Name:   n.Name,
+		Anchor: n.Anchor.AddRef(),
+		parent: n.parent,
+		cs:     n.cs,
+		mu:     n.mu,
 	}
-}
-
-func (n node) Release() {
-	n.Anchor.Release() // nil-safe
-}
-
-func (n node) Path() (path []string) {
-	n.parent.Bind(func(p *node) maybeParent {
-		path = p.Path()
-		return nothing()
-	})
-
-	return append(path, n.Name)
 }
 
 func (n node) Ls(_ context.Context, call cluster.Anchor_ls) error {
-	n.mu.RLock()
-	defer n.mu.RUnlock()
-
-	return n.children.HandleLs(call)
-}
-
-func (n node) Walk(ctx context.Context, call cluster.Anchor_walk) error {
-	return walkHandler{
-		Lock:     n.mu,
-		Parent:   n.parent,
-		Anchor:   n.Anchor,
-		Children: n.children,
-	}.ServeRPC(call)
-}
-
-// nodeMap is a generic mapping of names to child nodes.  It is used by
-// both Server and node.
-type nodeMap map[string]node
-
-func (m nodeMap) GetOrCreate(name string, parent maybeParent) node {
-	if n, ok := m[name]; ok {
-		return n
-	}
-
-	// slow path - create new node
-	n := node{
-		Name:     name,
-		mu:       new(sync.RWMutex),
-		parent:   parent,
-		children: make(nodeMap),
-	}
-
-	n.Anchor = cluster.Anchor_ServerToClient(n, &defaultPolicy)
-
-	m[name] = n
-	return n // ref = 1
-}
-
-// maybeParent is a simple sum type for parent references, which are
-// nullable.
-type maybeParent struct{ *node }
-
-func maybe(n *node) maybeParent {
-	return maybeParent{n}
-}
-
-func just(n *node) maybeParent {
-	if n == nil {
-		panic("just(nil)")
-	}
-
-	return maybeParent{n}
-}
-
-func nothing() maybeParent { return maybeParent{} }
-
-func (p maybeParent) Bind(f func(n *node) maybeParent) maybeParent {
-	if p.node == nil {
-		return nothing()
-	}
-
-	return f(p.node)
-}
-
-/*
-
-	Generic method handlers for all server implementations
-
-*/
-
-func (m nodeMap) HandleLs(call cluster.Anchor_ls) error {
 	res, err := call.AllocResults()
 	if err != nil {
 		return err
 	}
 
-	cs, err := res.NewChildren(int32(len(m)))
+	n.mu.RLock()
+	defer n.mu.RUnlock()
+
+	cs, err := res.NewChildren(int32(len(n.cs)))
 	if err != nil {
 		return err
 	}
 
 	var i int
-	for name, n := range m {
+	for name, n := range n.cs {
 		if err = cs.At(i).SetName(name); err != nil {
 			return err
 		}
 
-		if err = cs.At(i).SetAnchor(n.Anchor.AddRef()); err != nil {
+		if err = cs.At(i).SetAnchor(n.Anchor); err != nil {
 			return err
 		}
 	}
@@ -402,71 +305,58 @@ func (m nodeMap) HandleLs(call cluster.Anchor_ls) error {
 	return nil
 }
 
-type walkHandler struct {
-	Lock     sync.Locker
-	Parent   maybeParent
-	Anchor   cluster.Anchor
-	Children nodeMap
-}
-
-func (h walkHandler) ServeRPC(call cluster.Anchor_walk) error {
-	path, err := call.Args().Path()
-	if err != nil {
-		return err
-	}
-
-	return h.visitor(path).BindWalk(call)
-}
-
-func (h walkHandler) visitor(path capnp.TextList) visitor {
-	// This is the only stateful part of walkHandler. We
-	// update Parent/Anchor/Children in a loop until the
-	// destination is reached or an error is encountered.
-	for i := 0; i < path.Len(); i++ {
-		name, err := path.At(i)
-		if err != nil {
-			return abort(err) // TODO:  release parent
-		}
-
-		h = h.step(name)
-	}
-
-	return jump(h.Anchor)
-}
-
-func (h walkHandler) step(name string) walkHandler {
-	h.Lock.Lock()
-	defer h.Lock.Unlock()
-
-	n := h.Children.GetOrCreate(name, h.Parent)
-
-	return walkHandler{
-		Lock:     n.mu,
-		Parent:   n.parent,
-		Anchor:   n.Anchor,
-		Children: n.children,
-	}
-}
-
-type visitor func(func(cluster.Anchor) error) error
-
-func jump(a cluster.Anchor) visitor {
-	return func(visit func(cluster.Anchor) error) error {
-		return visit(a.AddRef())
-	}
-}
-
-func abort(err error) visitor {
-	return func(func(cluster.Anchor) error) error {
-		return err
-	}
-}
-
-func (bind visitor) BindWalk(call cluster.Anchor_walk) error {
+func (n node) Walk(ctx context.Context, call cluster.Anchor_walk) error {
 	res, err := call.AllocResults()
 	if err != nil {
 		return err
 	}
 
-	return bind(res.SetAnchor)
+	path, err := call.Args().Path()
+	if err != nil {
+		return err
+	}
+
+	c, err := n.walk(path)
+	if err != nil {
+		return err
+	}
+
+	return res.SetAnchor(c.Anchor)
+}
+
+func (n node) walk(path capnp.TextList) (*node, error) {
+	for i := 0; i < path.Len(); i++ {
+		name, err := path.At(i)
+		if err != nil {
+			return nil, err
+		}
+
+		n = n.child(name)
+	}
+
+	// BUG:  n's reference may have hit zero in the meantime,
+	//       which will cause a panic.  (Lock is held in n.child)
+	return n.AddRef(), nil
+}
+
+func (n node) child(name string) node {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
+	if c, ok := n.cs[name]; ok {
+		return c
+	}
+
+	// slow path - create new node
+	c := node{
+		Name:   name,
+		parent: n.AddRef(),
+		cs:     make(map[string]node),
+		mu:     new(sync.RWMutex),
+	}
+
+	c.Anchor = cluster.Anchor_ServerToClient(c, &defaultPolicy)
+	n.cs[name] = c
+
+	return c // ref = 1
 }
