@@ -11,6 +11,8 @@ var logger log.Logger
 var subcommands = []*cli.Command{
 	Ls(),
 	Join(),
+	Publish(),
+	Subscribe(),
 }
 
 func Command() *cli.Command {
