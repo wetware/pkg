@@ -1,12 +1,8 @@
 package client
 
 import (
-	"github.com/lthibault/log"
 	"github.com/urfave/cli/v2"
-	logutil "github.com/wetware/ww/internal/util/log"
 )
-
-var logger log.Logger
 
 var subcommands = []*cli.Command{
 	Ls(),
@@ -42,14 +38,7 @@ func Command() *cli.Command {
 		},
 		Subcommands: subcommands,
 
-		Before: func(c *cli.Context) error {
-			logger = logutil.New(c).WithField("ns", c.String("ns"))
-			return nil
-		},
-
-		// NOTE:  Do not call dial() here because certain commands may not
-		//        require a client node.  The shutdown hook checks whether
-		//        a client node was instantiated before calling Close().
-		After: shutdown(),
+		Before: setup(),
+		After:  teardown(),
 	}
 }

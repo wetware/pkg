@@ -199,7 +199,7 @@ type bootstrapper struct {
 }
 
 func bootstrap(config bootConfig) (bootstrapper, error) {
-	b, err := bootutil.New(config.CLI, config.Host())
+	b, err := bootutil.Listen(config.CLI, config.Host())
 	if err == nil {
 		config.SetCloseHook(b)
 	}

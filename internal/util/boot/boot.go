@@ -2,45 +2,124 @@ package bootutil
 
 import (
 	"errors"
+	"io"
+	"net"
 
+	"github.com/libp2p/go-libp2p-core/discovery"
 	"github.com/libp2p/go-libp2p-core/host"
 	ma "github.com/multiformats/go-multiaddr"
-	"github.com/wetware/casm/pkg/boot"
-	logutil "github.com/wetware/ww/internal/util/log"
-	"github.com/wetware/ww/pkg/client"
-	"github.com/wetware/ww/pkg/vat"
-
+	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
+	"github.com/wetware/casm/pkg/boot/crawl"
+	"github.com/wetware/casm/pkg/boot/socket"
+	"github.com/wetware/casm/pkg/boot/survey"
+	logutil "github.com/wetware/ww/internal/util/log"
 )
 
-func New(c *cli.Context, h host.Host) (boot.DiscoveryCloser, error) {
-	if c.IsSet("addr") {
-		return boot.NewStaticAddrStrings(c.StringSlice("addr")...)
-	}
+// ErrUnknownBootProto is returned when the multiaddr passed
+// to Parse does not contain a recognized boot protocol.
+var ErrUnknownBootProto = errors.New("unknown boot protocol")
 
-	if c.String("discover") == "" {
-		return nil, errors.New("must provide -discover or -addr flag")
-	}
-
-	addr, err := ma.NewMultiaddr(c.String("discover"))
-	if err != nil {
-		return nil, err
-	}
-
-	return boot.Discover(logutil.New(c), h, addr)
+type DiscoveryService interface {
+	discovery.Discovery
+	io.Closer
 }
 
-func Dial(c *cli.Context, h host.Host) (*client.Node, error) {
-	b, err := New(c, h)
+func Dial(c *cli.Context, h host.Host) (DiscoveryService, error) {
+	return newDiscovery(c, h, func(maddr ma.Multiaddr) (net.PacketConn, error) {
+		network, address, err := manet.DialArgs(maddr)
+		if err != nil {
+			return nil, err
+		}
+
+		addr, _, err := net.SplitHostPort(address)
+		if err != nil {
+			return nil, err
+		}
+
+		return net.ListenPacket(network, addr+":0")
+	})
+}
+
+func Listen(c *cli.Context, h host.Host) (DiscoveryService, error) {
+	return newDiscovery(c, h, func(maddr ma.Multiaddr) (net.PacketConn, error) {
+		network, address, err := manet.DialArgs(maddr)
+		if err != nil {
+			return nil, err
+		}
+
+		_, port, err := net.SplitHostPort(address)
+		if err != nil {
+			return nil, err
+		}
+
+		return net.ListenPacket(network, ":"+port)
+	})
+}
+
+func newDiscovery(c *cli.Context, h host.Host, newConn func(ma.Multiaddr) (net.PacketConn, error)) (DiscoveryService, error) {
+	log := logutil.New(c)
+
+	maddr, err := ma.NewMultiaddr(c.String("discover"))
 	if err != nil {
 		return nil, err
 	}
 
-	return client.Dialer{
-		Boot: b,
-		Vat: vat.Network{
-			NS:   c.String("ns"),
-			Host: h,
-		},
-	}.Dial(c.Context)
+	switch {
+	case crawler(maddr):
+		s, err := crawl.ParseCIDR(maddr)
+		if err != nil {
+			return nil, err
+		}
+
+		conn, err := newConn(maddr)
+		if err != nil {
+			return nil, err
+		}
+
+		return crawl.New(h, conn, s, socket.WithLogger(log)), nil
+
+	case multicast(maddr):
+		group, ifi, err := survey.ResolveMulticast(maddr)
+		if err != nil {
+			return nil, err
+		}
+
+		conn, err := survey.JoinMulticastGroup("udp", ifi, group)
+		if err != nil {
+			return nil, err
+		}
+
+		s := survey.New(h, conn, socket.WithLogger(log))
+
+		if !gradual(maddr) {
+			return s, nil
+		}
+
+		return survey.GradualSurveyor{Surveyor: s}, nil
+	}
+
+	return nil, ErrUnknownBootProto
+}
+
+func crawler(maddr ma.Multiaddr) bool {
+	return hasBootProto(maddr, crawl.P_CIDR)
+}
+
+func multicast(maddr ma.Multiaddr) bool {
+	return hasBootProto(maddr, survey.P_MULTICAST)
+}
+
+func gradual(maddr ma.Multiaddr) bool {
+	return hasBootProto(maddr, survey.P_SURVEY)
+}
+
+func hasBootProto(maddr ma.Multiaddr, code int) bool {
+	for _, p := range maddr.Protocols() {
+		if p.Code == code {
+			return true
+		}
+	}
+
+	return false
 }

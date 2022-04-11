@@ -19,7 +19,6 @@ func Join() *cli.Command {
 		Name:      "join",
 		Usage:     "merge the local cluster with the cluster(s) containing the muliaddr argument(s)",
 		ArgsUsage: "[multiaddrs...]",
-		Before:    dial(),
 		Action:    join(),
 	}
 }

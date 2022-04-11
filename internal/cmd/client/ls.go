@@ -13,7 +13,6 @@ func Ls() *cli.Command {
 	return &cli.Command{
 		Name:   "ls",
 		Usage:  "list anchor elements",
-		Before: dial(),
 		Action: ls(),
 	}
 }

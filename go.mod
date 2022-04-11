@@ -22,7 +22,7 @@ require (
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/sirupsen/logrus v1.8.1
 	github.com/urfave/cli/v2 v2.3.0
-	github.com/wetware/casm v0.0.0-20220408234755-836ce5d70c96
+	github.com/wetware/casm v0.0.0-20220411200807-00c3680939e7
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/fx v1.17.0
 	go.uber.org/zap v1.19.1 // indirect
@@ -42,7 +42,6 @@ require (
 	github.com/lthibault/util v0.0.11
 	github.com/stretchr/testify v1.7.0
 	github.com/thejerf/suture/v4 v4.0.2
-	go.uber.org/multierr v1.8.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	gopkg.in/alexcesaro/statsd.v2 v2.0.0
 )
@@ -154,6 +153,7 @@ require (
 	github.com/whyrusleeping/timecache v0.0.0-20160911033111-cfcb2f1abfee // indirect
 	go.opencensus.io v0.23.0 // indirect
 	go.uber.org/dig v1.14.0 // indirect
+	go.uber.org/multierr v1.8.0 // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3 // indirect
 	golang.org/x/time v0.0.0-20220224211638-0e9765cccd65 // indirect
 	golang.org/x/tools v0.1.10 // indirect

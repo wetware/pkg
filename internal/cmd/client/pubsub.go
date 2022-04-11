@@ -20,7 +20,6 @@ func Publish() *cli.Command {
 				Required: true,
 			},
 		},
-		Before: dial(),
 		Action: publish(),
 	}
 }
@@ -38,7 +37,6 @@ func Subscribe() *cli.Command {
 				Required: true,
 			},
 		},
-		Before: dial(),
 		Action: subscribe(),
 	}
 }

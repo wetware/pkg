@@ -41,26 +41,24 @@ func Dial(ctx context.Context, vat vat.Network, a Addr) (*Node, error) {
 }
 
 // Dial creates a client and connects it to a cluster.
-//
-// Note that 'ctx' MUST NOT be canceled unless Dial's error is
-// non-nil, or a previous call to Bootstrap has returned. Failure
-// to abide by this rule may cause Node's underlying capabilities
-// to fail.
 func (d Dialer) Dial(ctx context.Context) (*Node, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	n := &Node{vat: d.Vat}
 
 	conn, err := d.join(ctx, pubsub.Capability)
 	if err != nil {
 		return nil, err
 	}
-	n.ps = pubsub.PubSub{Client: conn.Bootstrap(ctx)}
+	n.ps = pubsub.PubSub{Client: conn.Bootstrap(context.Background())}
 
 	conn, err = d.join(ctx, cluster.ViewCapability)
 	if err != nil {
 		n.ps.Release()
 		return nil, err
 	}
-	n.view = cluster.View{Client: conn.Bootstrap(ctx)}
+	n.view = cluster.View{Client: conn.Bootstrap(context.Background())}
 
 	n.conn = conn
 	return n, nil
