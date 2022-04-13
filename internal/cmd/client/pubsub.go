@@ -3,6 +3,7 @@ package client
 import (
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/urfave/cli/v2"
 )
@@ -50,6 +51,11 @@ func publish() cli.ActionFunc {
 		if err != nil {
 			return err
 		}
+
+		// FIXME:  if we remove this, commands with sochastically hang.
+		//         Best guess is that this happens when they are pipelined
+		//         against a pending FutureTopic.
+		time.Sleep(time.Millisecond * 5)
 
 		return t.Publish(c.Context, b)
 	}
