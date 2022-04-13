@@ -27,17 +27,12 @@ type DiscoveryService interface {
 
 func Dial(c *cli.Context, h host.Host) (DiscoveryService, error) {
 	return newDiscovery(c, h, func(maddr ma.Multiaddr) (net.PacketConn, error) {
-		network, address, err := manet.DialArgs(maddr)
+		network, _, err := manet.DialArgs(maddr)
 		if err != nil {
 			return nil, err
 		}
 
-		addr, _, err := net.SplitHostPort(address)
-		if err != nil {
-			return nil, err
-		}
-
-		return net.ListenPacket(network, addr+":0")
+		return net.ListenPacket(network, ":0")
 	})
 }
 
