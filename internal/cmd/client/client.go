@@ -1,6 +1,8 @@
 package client
 
 import (
+	"time"
+
 	"github.com/urfave/cli/v2"
 )
 
@@ -34,6 +36,12 @@ func Command() *cli.Command {
 				Usage:   "cluster namespace",
 				Value:   "ww",
 				EnvVars: []string{"WW_NS"},
+			},
+			&cli.DurationFlag{
+				Name:    "timeout",
+				Usage:   "dial timeout",
+				Value:   time.Second * 15,
+				EnvVars: []string{"WW_CLIENT_TIMEOUT"},
 			},
 		},
 		Subcommands: subcommands,

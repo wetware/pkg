@@ -34,7 +34,7 @@ func setup() cli.BeforeFunc {
 				dialer),
 			fx.Invoke(dial))
 
-		ctx, cancel := context.WithTimeout(c.Context, time.Second*15)
+		ctx, cancel := context.WithTimeout(c.Context, c.Duration("timeout"))
 		defer cancel()
 
 		return app.Start(ctx)
