@@ -1064,6 +1064,8 @@ github.com/warpfork/go-wish v0.0.0-20200122115046-b9ea61034e4a h1:G++j5e0OC488te
 github.com/warpfork/go-wish v0.0.0-20200122115046-b9ea61034e4a/go.mod h1:x6AKhvSSexNrVSrViXSHUEbICjmGXhtgABaHIySUSGw=
 github.com/wetware/casm v0.0.0-20220413182316-cd89e13c7acf h1:K/+Lg3nHP5bRNnu4INx1OQMSvWbY5gA5m1CK5z5Hb1I=
 github.com/wetware/casm v0.0.0-20220413182316-cd89e13c7acf/go.mod h1:muBnhvJN3cX9JjJ/SmaBbYBC3gDziR7uTEhYGkR3kVs=
+github.com/wetware/casm v0.0.0-20220414223856-6332f15e034f h1:OKrGS4zJ39GHvbckUJ/T1t9tZOFxm4NQmJF/wDSaenc=
+github.com/wetware/casm v0.0.0-20220414223856-6332f15e034f/go.mod h1:muBnhvJN3cX9JjJ/SmaBbYBC3gDziR7uTEhYGkR3kVs=
 github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 h1:EKhdznlJHPMoKr0XTrX+IlJs1LH3lyx2nfr1dOlZ79k=
 github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1/go.mod h1:8UvriyWtv5Q5EOgjHaSseUEdkQfvwFv1I/In/O2M9gc=
 github.com/whyrusleeping/go-logging v0.0.0-20170515211332-0457bb6b88fc/go.mod h1:bopw91TMyo8J3tvftk8xmU2kPmlrt4nScJQZU2hE5EM=
