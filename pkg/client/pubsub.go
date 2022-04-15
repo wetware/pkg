@@ -8,9 +8,12 @@ import (
 )
 
 type Topic struct {
+	name    string
 	f       pubsub.FutureTopic
 	Release capnp.ReleaseFunc
 }
+
+func (t Topic) String() string { return t.name }
 
 func (t Topic) Publish(ctx context.Context, msg []byte) error {
 	return t.f.Topic().Publish(ctx, msg)

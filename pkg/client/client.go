@@ -54,7 +54,7 @@ func (n Node) Close() error {
 func (n Node) Join(ctx context.Context, topic string) *Topic {
 	var f, release = n.ps.Join(ctx, topic)
 
-	t := &Topic{f: f}
+	t := &Topic{f: f, name: topic}
 	t.Release = func() {
 		release()
 		t.Release = nil
