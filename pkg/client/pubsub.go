@@ -15,6 +15,12 @@ type Topic struct {
 
 func (t Topic) String() string { return t.name }
 
+func (t Topic) Loggable() map[string]interface{} {
+	return map[string]interface{}{
+		"topic": t.name,
+	}
+}
+
 func (t Topic) Publish(ctx context.Context, msg []byte) error {
 	return t.f.Topic().Publish(ctx, msg)
 }
