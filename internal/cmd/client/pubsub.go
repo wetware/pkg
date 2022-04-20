@@ -72,7 +72,7 @@ func subscribe() cli.ActionFunc {
 		}
 		defer sub.Cancel()
 
-		for msg := range sub.C {
+		for msg := range sub.Out() {
 			fmt.Fprintln(c.App.Writer, string(msg))
 		}
 

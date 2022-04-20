@@ -7,6 +7,7 @@ import (
 	"runtime"
 
 	"capnproto.org/go/capnp/v3/rpc"
+	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/wetware/ww/pkg/cap/cluster"
 	pscap "github.com/wetware/ww/pkg/cap/pubsub"
@@ -27,6 +28,9 @@ func (n Node) Loggable() map[string]interface{} {
 	return n.vat.Loggable()
 }
 
+// Host returns the underlying host for the client node.
+func (n Node) Host() host.Host { return n.vat.Host }
+
 // Bootstrap blocks until the context expires, or the
 // node's capabilities resolve.  It is safe to cancel
 // the context passed to Dial after this method returns.
@@ -36,6 +40,7 @@ func (n Node) Bootstrap(ctx context.Context) error {
 	if err := n.ps.Client.Resolve(ctx); err != nil {
 		return err
 	}
+
 	return n.view.Client.Resolve(ctx)
 }
 
@@ -45,25 +50,28 @@ func (n Node) Done() <-chan struct{} {
 	return n.conn.Done()
 }
 
+// Close the client connection.  Note that this does not
+// close the underlying host.
 func (n Node) Close() error {
 	n.ps.Release()
 
 	return n.conn.Close()
 }
 
-func (n Node) Join(ctx context.Context, topic string) *Topic {
+// Join a pubsub topic.
+func (n Node) Join(ctx context.Context, topic string) Topic {
 	var f, release = n.ps.Join(ctx, topic)
 
-	t := &Topic{f: f, name: topic}
-	t.Release = func() {
+	t := &futureTopic{f: f, name: topic}
+	t.release = func() {
 		release()
-		t.Release = nil
+		t.release = nil
 	}
 
 	// Ensure finalizer is called if users get sloppy.
-	runtime.SetFinalizer(t, func(t *Topic) {
-		if t.Release != nil {
-			t.Release()
+	runtime.SetFinalizer(t, func(t *futureTopic) {
+		if t.release != nil {
+			t.release()
 		}
 	})
 
