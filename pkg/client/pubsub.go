@@ -9,17 +9,17 @@ import (
 )
 
 type Topic interface {
-	String() string
 	log.Loggable
-	Release()
+	String() string
 	Publish(context.Context, []byte) error
 	Subscribe(context.Context) (Subscription, error)
+	Release()
 }
 
 type Subscription interface {
-	String() string
 	log.Loggable
-	Out() <-chan []byte
+	String() string
+	Next(context.Context) ([]byte, error)
 	Cancel()
 }
 
@@ -27,6 +27,7 @@ type futureTopic struct {
 	name    string
 	f       pubsub.FutureTopic
 	release capnp.ReleaseFunc
+	done    <-chan struct{} // rpc.Conn.Done()
 }
 
 func (t *futureTopic) String() string { return t.name }
@@ -53,6 +54,7 @@ func (t *futureTopic) Subscribe(ctx context.Context) (Subscription, error) {
 
 	cancel, err := topic.Subscribe(ctx, out)
 	return &subscription{
+		done:   t.done,
 		topic:  t,
 		c:      out,
 		cancel: cancel,
@@ -61,15 +63,41 @@ func (t *futureTopic) Subscribe(ctx context.Context) (Subscription, error) {
 }
 
 type subscription struct {
+	done   <-chan struct{} // rpc.Conn.Done()
 	topic  *futureTopic
 	c      <-chan []byte
 	cancel func()
 }
 
-func (s *subscription) Out() <-chan []byte { return s.c }
-func (s *subscription) Cancel()            { s.cancel() }
-func (s *subscription) String() string     { return s.topic.name }
+func (s *subscription) Cancel()        { s.cancel() }
+func (s *subscription) String() string { return s.topic.name }
 
 func (s *subscription) Loggable() map[string]interface{} {
 	return s.topic.Loggable()
+}
+
+func (s *subscription) Next(ctx context.Context) ([]byte, error) {
+	select {
+	case b := <-s.c:
+		return b, nil
+
+	case <-ctx.Done():
+		return nil, ctx.Err()
+
+	case <-s.done:
+		// Cluster connection was lost, but we may still have
+		// messages buffered in the channel.
+	}
+
+	// Consume remaining messages before returning error.
+	select {
+	case b := <-s.c:
+		return b, nil
+
+	case <-ctx.Done():
+		return nil, ctx.Err()
+
+	default:
+		return nil, ErrDisconnected
+	}
 }

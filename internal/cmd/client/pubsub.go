@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/urfave/cli/v2"
+	"github.com/wetware/ww/pkg/client"
 )
 
 func Publish() *cli.Command {
@@ -62,20 +63,34 @@ func publish() cli.ActionFunc {
 }
 
 func subscribe() cli.ActionFunc {
-	return func(c *cli.Context) error {
+	return func(c *cli.Context) (err error) {
+		var (
+			sub client.Subscription
+			msg []byte
+		)
+
 		t := node.Join(c.Context, c.String("topic"))
 		defer t.Release()
 
-		sub, err := t.Subscribe(c.Context)
+		sub, err = t.Subscribe(c.Context)
 		if err != nil {
-			return err
+			return
 		}
 		defer sub.Cancel()
 
-		for msg := range sub.Out() {
+		for {
+			msg, err = sub.Next(c.Context)
+			if err != nil {
+				break
+			}
+
 			fmt.Fprintln(c.App.Writer, string(msg))
 		}
 
-		return nil
+		if err == client.ErrDisconnected {
+			err = nil
+		}
+
+		return err
 	}
 }

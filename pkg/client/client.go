@@ -3,6 +3,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"runtime"
 
@@ -13,6 +14,10 @@ import (
 	pscap "github.com/wetware/ww/pkg/cap/pubsub"
 	"github.com/wetware/ww/pkg/vat"
 )
+
+// ErrDisconnected indicates that the client's connection to
+// the cluster was lost.
+var ErrDisconnected = errors.New("disconnected")
 
 type Node struct {
 	vat  vat.Network
@@ -62,10 +67,18 @@ func (n Node) Close() error {
 func (n Node) Join(ctx context.Context, topic string) Topic {
 	var f, release = n.ps.Join(ctx, topic)
 
-	t := &futureTopic{f: f, name: topic}
+	t := &futureTopic{
+		name: topic,
+		f:    f,
+		done: n.conn.Done(),
+	}
+
+	// Wrap the call to release in a function that ensures
+	// release is only called once.
 	t.release = func() {
 		release()
 		t.release = nil
+		runtime.SetFinalizer(t, nil)
 	}
 
 	// Ensure finalizer is called if users get sloppy.
