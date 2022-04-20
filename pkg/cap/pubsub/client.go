@@ -58,12 +58,10 @@ func (t Topic) Subscribe(ctx context.Context, ch chan<- []byte) (cancel func(), 
 		release: t.AddRef().Release,
 	}, &server.Policy{
 		MaxConcurrentCalls: cap(ch),
-		AnswerQueueSize:    cap(ch),
 	})
 	defer hc.Release() // ensure topic ref is released if we return an error
 
 	f, release := api.Topic(t).Subscribe(ctx, func(ps api.Topic_subscribe_Params) error {
-		ps.SetBufSize(uint8(cap(ch)))
 		return ps.SetHandler(hc.AddRef())
 	})
 	defer release()
@@ -82,4 +80,29 @@ func (t Topic) Release() { t.Client.Release() }
 
 func (t Topic) AddRef() Topic {
 	return Topic(api.Topic(t).AddRef())
+}
+
+type handler struct {
+	ms      chan<- []byte
+	release capnp.ReleaseFunc
+}
+
+func (h handler) Shutdown() {
+	close(h.ms)
+	h.release()
+}
+
+func (h handler) Handle(ctx context.Context, call api.Topic_Handler_handle) error {
+	b, err := call.Args().Msg()
+	if err != nil {
+		return err
+	}
+
+	select {
+	case h.ms <- b:
+		return nil
+
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }

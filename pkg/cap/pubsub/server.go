@@ -12,16 +12,12 @@ import (
 	"github.com/lthibault/log"
 	ctxutil "github.com/lthibault/util/ctx"
 	api "github.com/wetware/ww/internal/api/pubsub"
-	"golang.org/x/sync/semaphore"
 )
 
 var ErrClosed = errors.New("closed")
 
 var defaultPolicy = server.Policy{
-	// HACK:  raise MaxConcurrentCalls to mitigate known deadlock condition.
-	//        https://github.com/capnproto/go-capnproto2/issues/189
 	MaxConcurrentCalls: 64,
-	AnswerQueueSize:    64,
 }
 
 type TopicJoiner interface {
@@ -208,29 +204,47 @@ func (t *refCountedTopic) Subscribe(_ context.Context, call api.Topic_subscribe)
 	defer t.mu.Unlock()
 
 	sub, err := t.topic.Subscribe()
-	if err == nil {
-		if t.ref == 0 {
-			err = ErrClosed
-		} else {
-			t.ref++
-			t.handle(call.Args(), sub)
-		}
+	if err != nil {
+		return err
 	}
 
+	if t.ref == 0 {
+		return ErrClosed
+	}
+
+	t.ref++
+	go t.handle(sub, call.Args().Handler().AddRef())
+
+	return nil
+}
+
+func (t *refCountedTopic) handle(sub *pubsub.Subscription, h api.Topic_Handler) {
+	defer t.Release()
+	defer sub.Cancel()
+	defer h.Release()
+
+	for {
+		m, err := sub.Next(t.ctx)
+		if err != nil {
+			return
+		}
+
+		if t.send(h, m) != nil {
+			return
+		}
+	}
+}
+
+func (t *refCountedTopic) send(h api.Topic_Handler, m *pubsub.Message) error {
+	f, release := h.Handle(t.ctx, message(m))
+	defer release()
+
+	_, err := f.Struct()
 	return err
 }
 
-func (t *refCountedTopic) handle(args api.Topic_subscribe_Params, sub *pubsub.Subscription) {
-	h := subHandler{
-		handler: args.Handler().AddRef(),
-		buffer:  semaphore.NewWeighted(int64(args.BufSize())),
+func message(m *pubsub.Message) func(api.Topic_Handler_handle_Params) error {
+	return func(ps api.Topic_Handler_handle_Params) error {
+		return ps.SetMsg(m.Data)
 	}
-
-	go func() {
-		defer t.Release()
-		defer sub.Cancel()
-		defer h.handler.Release()
-
-		h.Handle(t.ctx, sub)
-	}()
 }

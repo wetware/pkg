@@ -25,10 +25,7 @@ const (
 )
 
 var defaultPolicy = server.Policy{
-	// HACK:  raise MaxConcurrentCalls to mitigate known deadlock condition.
-	//        https://github.com/capnproto/go-capnproto2/issues/189
 	MaxConcurrentCalls: 64,
-	AnswerQueueSize:    64,
 }
 
 // RoutingTable provides a global view of namespace peers.
@@ -149,7 +146,6 @@ type RecordStream struct {
 func newIterator(ctx context.Context, r api.View, h handler) (*RecordStream, capnp.ReleaseFunc) {
 	c := api.View_Handler_ServerToClient(h, &server.Policy{
 		MaxConcurrentCalls: cap(h),
-		AnswerQueueSize:    cap(h),
 	})
 
 	f, release := r.Iter(ctx, func(ps api.View_iter_Params) error {
