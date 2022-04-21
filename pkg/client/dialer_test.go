@@ -12,6 +12,7 @@ import (
 	swarm "github.com/libp2p/go-libp2p-swarm"
 	inproc "github.com/lthibault/go-libp2p-inproc-transport"
 	ma "github.com/multiformats/go-multiaddr"
+	"github.com/multiformats/go-multistream"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -107,7 +108,43 @@ func TestDialer(t *testing.T) {
 			Boot: boot.StaticAddrs{*host.InfoFromHost(h)},
 		}.Dial(ctx)
 
+		assert.ErrorIs(t, err, multistream.ErrNotSupported)
 		assert.EqualError(t, err, "protocol not supported")
+		assert.Nil(t, n, "should return nil client node")
+	})
+
+	t.Run("NamespaceMismatch", func(t *testing.T) {
+		t.Parallel()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		h, err := libp2p.New(
+			libp2p.NoListenAddrs,
+			libp2p.NoTransports,
+			libp2p.ListenAddrStrings("/inproc/~"),
+			libp2p.Transport(inproc.New()))
+		require.NoError(t, err, "must succeed")
+		defer h.Close()
+
+		clt := newVat()
+		defer clt.Host.Close()
+
+		clt.NS = "wrong.namespace"
+
+		svr := vat.Network{
+			NS:   "test",
+			Host: h,
+		}
+		svr.Export(pubsub.Capability, mockPubSub{})
+		svr.Export(cluster.ViewCapability, mockView{})
+
+		n, err := client.Dialer{
+			Vat:  clt,
+			Boot: boot.StaticAddrs{*host.InfoFromHost(h)},
+		}.Dial(ctx)
+
+		assert.ErrorIs(t, err, vat.ErrInvalidNS)
 		assert.Nil(t, n, "should return nil client node")
 	})
 
