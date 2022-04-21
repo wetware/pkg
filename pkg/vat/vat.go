@@ -3,17 +3,21 @@ package vat
 
 import (
 	"context"
-	"fmt"
+	"errors"
+	"strings"
 
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
+	"github.com/multiformats/go-multistream"
 	ww "github.com/wetware/ww/pkg"
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
 )
+
+var ErrInvalidNS = errors.New("invalid namespace")
 
 type Capability interface {
 	// Protocols returns the IDs for the given capability.
@@ -80,8 +84,15 @@ func (n Network) Connect(ctx context.Context, vat peer.AddrInfo, c Capability) (
 
 	s, err := n.Host.NewStream(ctx, vat.ID, n.protocolsFor(c)...)
 	if err != nil {
-		// TODO(someday):  https://github.com/libp2p/go-libp2p/issues/1416
-		return nil, fmt.Errorf("%w (ns=%s)", err, n.NS)
+		if err != multistream.ErrNotSupported {
+			return nil, err
+		}
+
+		if n.isInvalidNS(vat.ID, c) {
+			return nil, ErrInvalidNS
+		}
+
+		return nil, err // TODO:  catch multistream.ErrNotSupported
 	}
 
 	return rpc.NewConn(c.Upgrade(s), &rpc.Options{
@@ -120,6 +131,34 @@ func (n Network) protocolsFor(c Capability) []protocol.ID {
 		ps[i] = ww.Subprotocol(n.NS, id)
 	}
 	return ps
+}
+
+func (n Network) isInvalidNS(id peer.ID, c Capability) bool {
+	ps, err := n.Host.Peerstore().GetProtocols(id)
+	if err != nil {
+		return false
+	}
+
+	for _, proto := range ps {
+		if match(c, proto) {
+			// the remote peer supports the capability, so it
+			// has to be a namespace mismatch.
+			return true
+		}
+	}
+
+	return false // not a ns issue; proto actually unsupported
+}
+
+// match the protocol, ignoring namespace
+func match(c Capability, proto string) bool {
+	for _, p := range c.Protocols() {
+		if strings.HasSuffix(proto, string(p)) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func bootstrapper(c Capability) *capnp.Client {
