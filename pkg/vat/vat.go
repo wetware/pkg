@@ -3,6 +3,7 @@ package vat
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
@@ -79,7 +80,8 @@ func (n Network) Connect(ctx context.Context, vat peer.AddrInfo, c Capability) (
 
 	s, err := n.Host.NewStream(ctx, vat.ID, n.protocolsFor(c)...)
 	if err != nil {
-		return nil, err
+		// TODO(someday):  https://github.com/libp2p/go-libp2p/issues/1416
+		return nil, fmt.Errorf("%w (ns=%s)", err, n.NS)
 	}
 
 	return rpc.NewConn(c.Upgrade(s), &rpc.Options{
