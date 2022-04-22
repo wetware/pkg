@@ -20,17 +20,19 @@ import (
 )
 
 var (
-	app  *fx.App
-	node *client.Node
+	app    *fx.App
+	node   *client.Node
+	logger log.Logger
 )
 
 func setup() cli.BeforeFunc {
 	return func(c *cli.Context) error {
 		app = fx.New(fx.NopLogger,
 			fx.Supply(c),
+			fx.Populate(&logger),
 			fx.Provide(
 				localhost,
-				logger,
+				logging,
 				dialer),
 			fx.Invoke(dial))
 
@@ -50,7 +52,7 @@ func teardown() cli.AfterFunc {
 	}
 }
 
-func logger(c *cli.Context) log.Logger {
+func logging(c *cli.Context) log.Logger {
 	return logutil.New(c).With(discoveryFields(c))
 }
 

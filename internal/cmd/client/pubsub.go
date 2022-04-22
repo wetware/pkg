@@ -3,7 +3,6 @@ package client
 import (
 	"fmt"
 	"io"
-	"time"
 
 	"github.com/urfave/cli/v2"
 	"github.com/wetware/ww/pkg/client"
@@ -53,11 +52,6 @@ func publish() cli.ActionFunc {
 			return err
 		}
 
-		// FIXME:  if we remove this, commands with sochastically hang.
-		//         Best guess is that this happens when they are pipelined
-		//         against a pending FutureTopic.
-		time.Sleep(time.Millisecond * 5)
-
 		return t.Publish(c.Context, b)
 	}
 }
@@ -68,6 +62,8 @@ func subscribe() cli.ActionFunc {
 			sub client.Subscription
 			msg []byte
 		)
+
+		logger.Debug("connected to cluster")
 
 		t := node.Join(c.Context, c.String("topic"))
 		defer t.Release()
@@ -85,10 +81,6 @@ func subscribe() cli.ActionFunc {
 			}
 
 			fmt.Fprintln(c.App.Writer, string(msg))
-		}
-
-		if err == client.ErrDisconnected {
-			err = nil
 		}
 
 		return err
