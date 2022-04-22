@@ -92,7 +92,7 @@ func (h handler) Shutdown() {
 	h.release()
 }
 
-func (h handler) Handle(ctx context.Context, call api.Topic_Handler_handle) error {
+func (h handler) Handle(_ context.Context, call api.Topic_Handler_handle) error {
 	b, err := call.Args().Msg()
 	if err != nil {
 		return err
@@ -100,9 +100,8 @@ func (h handler) Handle(ctx context.Context, call api.Topic_Handler_handle) erro
 
 	select {
 	case h.ms <- b:
-		return nil
-
-	case <-ctx.Done():
-		return ctx.Err()
+	default:
 	}
+
+	return nil
 }
