@@ -37,6 +37,10 @@ func Subscribe() *cli.Command {
 				Usage:    "pubsub topic",
 				Required: true,
 			},
+			&cli.BoolFlag{
+				Name:  "hex",
+				Usage: "format output as hex",
+			},
 		},
 		Action: subscribe(),
 	}
@@ -74,15 +78,28 @@ func subscribe() cli.ActionFunc {
 		}
 		defer sub.Cancel()
 
+		print := newPrinter(c)
+
 		for {
 			msg, err = sub.Next(c.Context)
 			if err != nil {
 				break
 			}
 
-			fmt.Fprintln(c.App.Writer, string(msg))
+			print(msg)
 		}
 
 		return err
+	}
+}
+
+func newPrinter(c *cli.Context) func([]byte) {
+	var format = "%s\n"
+	if c.Bool("hex") {
+		format = "%x\n"
+	}
+
+	return func(b []byte) {
+		fmt.Fprintf(c.App.Writer, format, b)
 	}
 }
