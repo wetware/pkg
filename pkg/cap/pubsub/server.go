@@ -229,14 +229,14 @@ func (t *refCountedTopic) handle(sub *pubsub.Subscription, h api.Topic_Handler) 
 			return
 		}
 
-		if t.send(h, m) != nil {
+		if send(t.ctx, h, m) != nil {
 			return
 		}
 	}
 }
 
-func (t *refCountedTopic) send(h api.Topic_Handler, m *pubsub.Message) error {
-	f, release := h.Handle(t.ctx, message(m))
+func send(ctx context.Context, h api.Topic_Handler, m *pubsub.Message) error {
+	f, release := h.Handle(ctx, message(m))
 	defer release()
 
 	_, err := f.Struct()

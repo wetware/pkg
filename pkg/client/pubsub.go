@@ -4,79 +4,68 @@ import (
 	"context"
 
 	"capnproto.org/go/capnp/v3"
-	"github.com/ipfs/go-log"
 	"github.com/wetware/ww/pkg/cap/pubsub"
 )
 
-type Topic interface {
-	log.Loggable
-	String() string
-	Publish(context.Context, []byte) error
-	Subscribe(context.Context) (Subscription, error)
-	Release()
+type Topic struct {
+	Name   string
+	Client *capnp.Client
+	done   <-chan struct{} // rpc.Conn.Done()
 }
 
-type Subscription interface {
-	log.Loggable
-	String() string
-	Next(context.Context) ([]byte, error)
-	Cancel()
-}
+func (t Topic) String() string { return t.Name }
 
-type futureTopic struct {
-	name    string
-	f       pubsub.FutureTopic
-	release capnp.ReleaseFunc
-	done    <-chan struct{} // rpc.Conn.Done()
-}
-
-func (t *futureTopic) String() string { return t.name }
-
-func (t *futureTopic) Loggable() map[string]interface{} {
+func (t Topic) Loggable() map[string]interface{} {
 	return map[string]interface{}{
-		"topic": t.name,
+		"topic": t.Name,
 	}
 }
 
-func (t *futureTopic) Release() { t.release() }
-
-func (t *futureTopic) Publish(ctx context.Context, msg []byte) error {
-	return t.f.Topic().Publish(ctx, msg)
+func (t Topic) AddRef() Topic {
+	return Topic{
+		Name:   t.Name,
+		Client: t.Client.AddRef(),
+		done:   t.done,
+	}
 }
 
-func (t *futureTopic) Subscribe(ctx context.Context) (Subscription, error) {
-	topic, err := t.f.Struct()
-	if err != nil {
-		return nil, err
-	}
+func (t Topic) Release() { t.Client.Release() }
 
+func (t Topic) Publish(ctx context.Context, msg []byte) error {
+	return pubsub.Topic{Client: t.Client}.Publish(ctx, msg)
+}
+
+func (t Topic) Subscribe(ctx context.Context) (Subscription, error) {
 	out := make(chan []byte, 32)
 
-	cancel, err := topic.Subscribe(ctx, out)
-	return &subscription{
-		done:   t.done,
-		topic:  t,
-		c:      out,
+	cancel, err := pubsub.Topic{Client: t.Client}.Subscribe(ctx, out)
+	return Subscription{
+		name:   t.Name,
 		cancel: cancel,
+		c:      out,
+		done:   t.done,
 	}, err
 
 }
 
-type subscription struct {
-	done   <-chan struct{} // rpc.Conn.Done()
-	topic  *futureTopic
-	c      <-chan []byte
+type Subscription struct {
+	name   string
 	cancel func()
+	c      <-chan []byte
+	done   <-chan struct{} // rpc.Conn.Done()
 }
 
-func (s *subscription) Cancel()        { s.cancel() }
-func (s *subscription) String() string { return s.topic.name }
+func (s Subscription) String() string { return s.name }
 
-func (s *subscription) Loggable() map[string]interface{} {
-	return s.topic.Loggable()
+func (s Subscription) Loggable() map[string]interface{} {
+	return map[string]interface{}{
+		"topic": s.name,
+	}
 }
 
-func (s *subscription) Next(ctx context.Context) ([]byte, error) {
+func (s Subscription) Cancel() { s.cancel() }
+
+func (s Subscription) Next(ctx context.Context) ([]byte, error) {
 	select {
 	case b := <-s.c:
 		return b, nil
