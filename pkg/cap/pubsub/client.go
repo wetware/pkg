@@ -5,8 +5,9 @@ import (
 
 	capnp "capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/server"
-	"golang.org/x/sync/semaphore"
 
+	"github.com/wetware/ww/internal/api/channel"
+	chan_api "github.com/wetware/ww/internal/api/channel"
 	api "github.com/wetware/ww/internal/api/pubsub"
 )
 
@@ -66,23 +67,14 @@ func (t Topic) Publish(ctx context.Context, b []byte) error {
 }
 
 func (t Topic) Subscribe(ctx context.Context, ch chan<- []byte) (release capnp.ReleaseFunc, err error) {
-	h := api.Topic_Handler_ServerToClient(handler{
+	h := channel.Sender_ServerToClient(handler{
 		ms:      ch,
 		release: t.AddRef().Release,
 	}, &server.Policy{
 		MaxConcurrentCalls: cap(ch),
 	})
 
-	// Limit the number of in-flight requests to half of the channel's capacity.
-	// This prevents the server from running out of memory due to the unbounded
-	// send-queue in capnp.
-	//
-	// TODO:  make this configurable.
-	h.Client.SetFlowLimiter(newFlowLimiter(cap(ch) / 2))
-
-	f, release := api.Topic(t).Subscribe(ctx, func(ps api.Topic_subscribe_Params) error {
-		return ps.SetHandler(h)
-	})
+	f, release := api.Topic(t).Subscribe(ctx, sender(h))
 	defer release()
 
 	if _, err = f.Struct(); err == nil {
@@ -98,6 +90,12 @@ func (t Topic) AddRef() Topic {
 	return Topic(api.Topic(t).AddRef())
 }
 
+func sender(s chan_api.Sender) func(api.Topic_subscribe_Params) error {
+	return func(ps api.Topic_subscribe_Params) error {
+		return ps.SetChan(s)
+	}
+}
+
 type handler struct {
 	ms      chan<- []byte
 	release capnp.ReleaseFunc
@@ -108,14 +106,14 @@ func (h handler) Shutdown() {
 	h.release()
 }
 
-func (h handler) Handle(ctx context.Context, call api.Topic_Handler_handle) error {
-	b, err := call.Args().Msg()
+func (h handler) Send(ctx context.Context, call channel.Sender_send) error {
+	ptr, err := call.Args().Value()
 	if err != nil {
 		return err
 	}
 
 	select {
-	case h.ms <- b:
+	case h.ms <- ptr.Data():
 		return nil // fast path
 	default:
 	}
@@ -125,32 +123,9 @@ func (h handler) Handle(ctx context.Context, call api.Topic_Handler_handle) erro
 	call.Ack()
 
 	select {
-	case h.ms <- b:
+	case h.ms <- ptr.Data():
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
 	}
-}
-
-type flowLimiter semaphore.Weighted
-
-func newFlowLimiter(limit int) *flowLimiter {
-	sem := semaphore.NewWeighted(int64(max(1, limit)))
-	return (*flowLimiter)(sem)
-}
-
-func (f *flowLimiter) StartMessage(ctx context.Context, size uint64) (gotResponse func(), err error) {
-	if err = (*semaphore.Weighted)(f).Acquire(ctx, 1); err == nil {
-		gotResponse = func() { (*semaphore.Weighted)(f).Release(1) }
-	}
-
-	return
-}
-
-func max(x, y int) int {
-	if x < y {
-		return y
-	}
-
-	return x
 }

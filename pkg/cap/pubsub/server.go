@@ -12,6 +12,9 @@ import (
 	"github.com/lthibault/log"
 	ctxutil "github.com/lthibault/util/ctx"
 	api "github.com/wetware/ww/internal/api/pubsub"
+	"github.com/wetware/ww/pkg/cap/channel"
+	"golang.org/x/sync/errgroup"
+	"golang.org/x/sync/semaphore"
 )
 
 var ErrClosed = errors.New("closed")
@@ -212,48 +215,82 @@ func (t *refCountedTopic) Subscribe(_ context.Context, call api.Topic_subscribe)
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	sub, err := t.topic.Subscribe()
-	if err != nil {
-		return err
-	}
-
 	if t.ref == 0 {
 		return ErrClosed
 	}
 
-	t.ref++
-	go t.handle(sub, call.Args().Handler().AddRef())
+	s, err := t.subscribe(call.Args())
+	if err == nil {
+		go s.Stream()
+	}
 
-	return nil
+	return err
 }
 
-func (t *refCountedTopic) handle(sub *pubsub.Subscription, h api.Topic_Handler) {
-	defer t.Release()
-	defer sub.Cancel()
-	defer h.Release()
+// subscribe creates a flow-controlled subscription, capable of streaming
+// messages through args.Chan().
+//
+// Increments t.ref.  Callers MUST hold t.mu.
+func (t *refCountedTopic) subscribe(args api.Topic_subscribe_Params) (s subscription, err error) {
+	if s.sub, err = t.topic.Subscribe(); err == nil {
+		s.ch = channel.Sender(args.Chan().AddRef())
+		s.ch.Client.SetFlowLimiter(newFlowLimiter(32))
 
-	for {
-		m, err := sub.Next(t.ctx)
+		t.ref++
+		s.t = t
+	}
+
+	return
+}
+
+type subscription struct {
+	sub *pubsub.Subscription
+	ch  channel.Sender
+	t   *refCountedTopic
+}
+
+func (s *subscription) release() {
+	s.sub.Cancel()
+	s.ch.Release()
+	s.t.Release()
+}
+
+func (s *subscription) Stream() {
+	defer s.release()
+
+	ctx, cancel := context.WithCancel(s.t.ctx)
+	defer cancel()
+
+	g, ctx := errgroup.WithContext(ctx)
+
+	for ctx.Err() == nil {
+		m, err := s.sub.Next(ctx)
 		if err != nil {
 			return
 		}
 
-		if send(t.ctx, h, m) != nil {
-			return
-		}
+		g.Go(s.send(ctx, m))
 	}
 }
 
-func send(ctx context.Context, h api.Topic_Handler, m *pubsub.Message) error {
-	f, release := h.Handle(ctx, message(m))
-	defer release()
-
-	_, err := f.Struct()
-	return err
+func (s *subscription) send(ctx context.Context, m *pubsub.Message) func() error {
+	f, release := s.ch.Send(ctx, channel.Data(m.Data))
+	return func() error {
+		defer release()
+		return f.Err()
+	}
 }
 
-func message(m *pubsub.Message) func(api.Topic_Handler_handle_Params) error {
-	return func(ps api.Topic_Handler_handle_Params) error {
-		return ps.SetMsg(m.Data)
+type flowLimiter semaphore.Weighted
+
+func newFlowLimiter(limit int64) *flowLimiter {
+	return (*flowLimiter)(semaphore.NewWeighted(limit))
+}
+
+func (f *flowLimiter) StartMessage(ctx context.Context, size uint64) (gotResponse func(), err error) {
+	if err = (*semaphore.Weighted)(f).Acquire(ctx, 1); err == nil {
+		gotResponse = func() { (*semaphore.Weighted)(f).Release(1) }
 	}
+
+	return
 }
