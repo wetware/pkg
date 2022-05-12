@@ -26,9 +26,9 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/wetware/casm/pkg/boot"
+	bootutil "github.com/wetware/casm/pkg/boot/util"
 	"github.com/wetware/casm/pkg/pex"
 	protoutil "github.com/wetware/casm/pkg/util/proto"
-	bootutil "github.com/wetware/ww/internal/util/boot"
 	statsdutil "github.com/wetware/ww/internal/util/statsd"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/vat"
@@ -199,9 +199,11 @@ type bootstrapper struct {
 }
 
 func bootstrap(config bootConfig) (bootstrapper, error) {
-	b, err := bootutil.Listen(config.CLI, config.Host())
+	b, err := bootutil.ListenString(config.Host(), config.CLI.String("discover"))
 	if err == nil {
-		config.SetCloseHook(b)
+		if c, ok := b.(io.Closer); ok {
+			config.SetCloseHook(c)
+		}
 	}
 
 	return bootstrapper{

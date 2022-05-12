@@ -12,7 +12,7 @@ import (
 	"github.com/lthibault/log"
 	"github.com/urfave/cli/v2"
 	"github.com/wetware/casm/pkg/boot"
-	bootutil "github.com/wetware/ww/internal/util/boot"
+	bootutil "github.com/wetware/casm/pkg/boot/util"
 	logutil "github.com/wetware/ww/internal/util/log"
 	"github.com/wetware/ww/pkg/client"
 	"github.com/wetware/ww/pkg/vat"
@@ -84,8 +84,11 @@ func dialer(c *cli.Context, h host.Host, lx fx.Lifecycle) (d client.Dialer, err 
 		return
 	}
 
-	if d.Boot, err = bootutil.Dial(c, h); err == nil {
-		lx.Append(closer(d.Boot.(io.Closer)))
+	d.Boot, err = bootutil.DialString(h, c.String("discover"))
+	if err == nil {
+		if b, ok := d.Boot.(io.Closer); ok {
+			lx.Append(closer(b))
+		}
 	}
 
 	return
