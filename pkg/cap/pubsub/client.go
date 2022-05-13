@@ -78,7 +78,7 @@ func (t Topic) Subscribe(ctx context.Context, ch chan<- []byte) (cancel func(), 
 	})
 	defer release()
 
-	if _, err = f.Struct(); err != nil {
+	if _, err = f.Struct(); err == nil {
 		cancel = hc.AddRef().Release
 	}
 
