@@ -115,7 +115,7 @@ func (s *ReadCloserServer) Read(ctx context.Context, call api.Reader_read) error
 	}
 
 	results.SetN(int64(n))
-	return results.SetP(buffer)
+	return results.SetData(buffer)
 }
 
 func (s *ReadCloserServer) Close(context.Context, api.Closer_close) error {
@@ -127,7 +127,7 @@ type WriteCloserServer struct {
 }
 
 func (s *WriteCloserServer) Write(ctx context.Context, call api.Writer_write) error {
-	b, err := call.Args().P()
+	b, err := call.Args().Data()
 	if err != nil {
 		return err
 	}

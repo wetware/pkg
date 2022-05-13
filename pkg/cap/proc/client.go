@@ -108,7 +108,7 @@ func (c *ReadCloserClient) Read(ctx context.Context, b []byte) (n int, err error
 		if err != nil {
 			return 0, err
 		}
-		data, err := results.P()
+		data, err := results.Data()
 		if err != nil {
 			return 0, err
 		}
@@ -141,7 +141,7 @@ type WriteCloserClient struct {
 
 func (c *WriteCloserClient) Write(ctx context.Context, b []byte) (n int, err error) {
 	fut, release := c.client.Write(ctx, func(p api.Writer_write_Params) error {
-		return p.SetP(b)
+		return p.SetData(b)
 	})
 	defer release()
 

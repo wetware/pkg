@@ -10,8 +10,8 @@ interface UnixExecutor {
 }
 
 interface Cmd {
-    start @0 () -> (err :Text);
-    wait @1 () -> (err :Text);
+    start @0 () -> ();
+    wait @1 () -> ();
     stderrPipe @2 () -> (rc :ReadCloser);
     stdinPipe @3 () -> (wc :WriteCloser);
     stdoutPipe @4 () -> (rc :ReadCloser);
@@ -22,11 +22,11 @@ interface ReadCloser extends(Reader, Closer){}
 interface WriteCloser extends(Writer, Closer){}
 
 interface Reader {
-    read @0 (n: Int64) -> (p :Data, n: Int64);
+    read @0 (n: Int64) -> (data :Data, n: Int64);
 }
 
 interface Writer {
-    write @0 (p :Data) -> (n :Int64);
+    write @0 (data :Data) -> (n :Int64);
 }
 
 interface Closer {
