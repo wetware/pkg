@@ -9,6 +9,7 @@ $Go.import("github.com/wetware/ww/internal/api/pubsub");
 interface Topic {
     publish   @0 (msg :Data) -> ();
     subscribe @1 (handler :Handler) -> ();
+    name      @2 () -> (name :Text);
 
     interface Handler {
         handle @0 (msg :Data) -> ();

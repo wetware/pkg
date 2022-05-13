@@ -8,24 +8,39 @@ import (
 )
 
 type Topic struct {
-	Name   string
+	name   string
 	Client *capnp.Client
-	done   <-chan struct{} // rpc.Conn.Done()
 }
 
-func (t Topic) String() string { return t.Name }
+// NewTopic populates a Topic with the supplied name and capability.
+// It does not validate the name.
+func NewTopic(c *capnp.Client, name string) Topic {
+	return Topic{
+		name:   name,
+		Client: c,
+	}
+}
+
+// ResolveTopic populates a Topic from a raw capability client. It performs
+// an RPC call to determine the topic name and populates t with the result.
+func ResolveTopic(ctx context.Context, c *capnp.Client) (t Topic, err error) {
+	t.Client = c
+	t.name, err = pubsub.Topic{Client: c}.Name(ctx)
+	return
+}
+
+func (t Topic) String() string { return t.name }
 
 func (t Topic) Loggable() map[string]interface{} {
 	return map[string]interface{}{
-		"topic": t.Name,
+		"topic": t.name,
 	}
 }
 
 func (t Topic) AddRef() Topic {
 	return Topic{
-		Name:   t.Name,
+		name:   t.name,
 		Client: t.Client.AddRef(),
-		done:   t.done,
 	}
 }
 
@@ -40,10 +55,10 @@ func (t Topic) Subscribe(ctx context.Context) (Subscription, error) {
 
 	cancel, err := pubsub.Topic{Client: t.Client}.Subscribe(ctx, out)
 	return Subscription{
-		name:   t.Name,
+		name:   t.name,
 		cancel: cancel,
 		c:      out,
-		done:   t.done,
+		done:   t.Client.Done(),
 	}, err
 
 }
@@ -52,7 +67,7 @@ type Subscription struct {
 	name   string
 	cancel func()
 	c      <-chan []byte
-	done   <-chan struct{} // rpc.Conn.Done()
+	done   <-chan struct{}
 }
 
 func (s Subscription) String() string { return s.name }

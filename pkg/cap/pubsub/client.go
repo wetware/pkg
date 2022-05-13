@@ -42,6 +42,18 @@ func (ft FutureTopic) Struct() (Topic, error) {
 
 type Topic api.Topic
 
+func (t Topic) Name(ctx context.Context) (string, error) {
+	f, release := (api.Topic)(t).Name(ctx, nil)
+	defer release()
+
+	res, err := f.Struct()
+	if err != nil {
+		return "", err
+	}
+
+	return res.Name()
+}
+
 func (t Topic) Publish(ctx context.Context, b []byte) error {
 	f, release := (api.Topic)(t).Publish(ctx, func(ps api.Topic_publish_Params) error {
 		return ps.SetMsg(b)
