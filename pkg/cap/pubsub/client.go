@@ -5,6 +5,7 @@ import (
 
 	capnp "capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/server"
+	"golang.org/x/sync/semaphore"
 
 	api "github.com/wetware/ww/internal/api/pubsub"
 )
@@ -64,22 +65,28 @@ func (t Topic) Publish(ctx context.Context, b []byte) error {
 	return err
 }
 
-func (t Topic) Subscribe(ctx context.Context, ch chan<- []byte) (cancel func(), err error) {
-	hc := api.Topic_Handler_ServerToClient(handler{
+func (t Topic) Subscribe(ctx context.Context, ch chan<- []byte) (release capnp.ReleaseFunc, err error) {
+	h := api.Topic_Handler_ServerToClient(handler{
 		ms:      ch,
 		release: t.AddRef().Release,
 	}, &server.Policy{
 		MaxConcurrentCalls: cap(ch),
 	})
-	defer hc.Release() // ensure client cleanup on error
+
+	// Limit the number of in-flight requests to half of the channel's capacity.
+	// This prevents the server from running out of memory due to the unbounded
+	// send-queue in capnp.
+	//
+	// TODO:  make this configurable.
+	h.Client.SetFlowLimiter(newFlowLimiter(cap(ch) / 2))
 
 	f, release := api.Topic(t).Subscribe(ctx, func(ps api.Topic_subscribe_Params) error {
-		return ps.SetHandler(hc.AddRef())
+		return ps.SetHandler(h)
 	})
 	defer release()
 
 	if _, err = f.Struct(); err == nil {
-		cancel = hc.AddRef().Release
+		release = h.Release
 	}
 
 	return
@@ -113,4 +120,27 @@ func (h handler) Handle(_ context.Context, call api.Topic_Handler_handle) error 
 	}
 
 	return nil
+}
+
+type flowLimiter semaphore.Weighted
+
+func newFlowLimiter(limit int) *flowLimiter {
+	sem := semaphore.NewWeighted(int64(max(1, limit)))
+	return (*flowLimiter)(sem)
+}
+
+func (f *flowLimiter) StartMessage(ctx context.Context, size uint64) (gotResponse func(), err error) {
+	if err = (*semaphore.Weighted)(f).Acquire(ctx, 1); err == nil {
+		gotResponse = func() { (*semaphore.Weighted)(f).Release(1) }
+	}
+
+	return
+}
+
+func max(x, y int) int {
+	if x < y {
+		return y
+	}
+
+	return x
 }
