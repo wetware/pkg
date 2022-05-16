@@ -58,16 +58,13 @@ func (t Topic) Subscribe(ctx context.Context) (Subscription, error) {
 		name:   t.name,
 		cancel: cancel,
 		c:      out,
-		done:   t.Client.Done(),
 	}, err
-
 }
 
 type Subscription struct {
 	name   string
 	cancel func()
 	c      <-chan []byte
-	done   <-chan struct{}
 }
 
 func (s Subscription) String() string { return s.name }
@@ -82,26 +79,14 @@ func (s Subscription) Cancel() { s.cancel() }
 
 func (s Subscription) Next(ctx context.Context) ([]byte, error) {
 	select {
-	case b := <-s.c:
-		return b, nil
+	case b, ok := <-s.c:
+		if ok {
+			return b, nil
+		}
+
+		return nil, pubsub.ErrClosed
 
 	case <-ctx.Done():
 		return nil, ctx.Err()
-
-	case <-s.done:
-		// Cluster connection was lost, but we may still have
-		// messages buffered in the channel.
-	}
-
-	// Consume remaining messages before returning error.
-	select {
-	case b := <-s.c:
-		return b, nil
-
-	case <-ctx.Done():
-		return nil, ctx.Err()
-
-	default:
-		return nil, ErrDisconnected
 	}
 }
