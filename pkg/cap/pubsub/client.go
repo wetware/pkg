@@ -108,7 +108,7 @@ func (h handler) Shutdown() {
 	h.release()
 }
 
-func (h handler) Handle(_ context.Context, call api.Topic_Handler_handle) error {
+func (h handler) Handle(ctx context.Context, call api.Topic_Handler_handle) error {
 	b, err := call.Args().Msg()
 	if err != nil {
 		return err
@@ -116,10 +116,20 @@ func (h handler) Handle(_ context.Context, call api.Topic_Handler_handle) error 
 
 	select {
 	case h.ms <- b:
+		return nil // fast path
 	default:
 	}
 
-	return nil
+	// Slow path.  Spawn goroutine and block.  The FlowLimiter will limit the
+	// number of outstanding calls to Handle.
+	call.Ack()
+
+	select {
+	case h.ms <- b:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 type flowLimiter semaphore.Weighted
