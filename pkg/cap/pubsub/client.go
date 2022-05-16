@@ -154,26 +154,3 @@ func max(x, y int) int {
 
 	return x
 }
-
-type flowLimiter semaphore.Weighted
-
-func newFlowLimiter(limit int) *flowLimiter {
-	sem := semaphore.NewWeighted(int64(max(1, limit)))
-	return (*flowLimiter)(sem)
-}
-
-func (f *flowLimiter) StartMessage(ctx context.Context, size uint64) (gotResponse func(), err error) {
-	if err = (*semaphore.Weighted)(f).Acquire(ctx, 1); err == nil {
-		gotResponse = func() { (*semaphore.Weighted)(f).Release(1) }
-	}
-
-	return
-}
-
-func max(x, y int) int {
-	if x < y {
-		return y
-	}
-
-	return x
-}
