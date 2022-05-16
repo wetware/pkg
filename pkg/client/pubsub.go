@@ -84,7 +84,7 @@ func (s Subscription) Next(ctx context.Context) ([]byte, error) {
 			return b, nil
 		}
 
-		return nil, pubsub.ErrClosed
+		return nil, ErrDisconnected
 
 	case <-ctx.Done():
 		return nil, ctx.Err()
