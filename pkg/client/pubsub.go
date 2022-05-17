@@ -53,10 +53,10 @@ func (t Topic) Publish(ctx context.Context, msg []byte) error {
 func (t Topic) Subscribe(ctx context.Context) (Subscription, error) {
 	out := make(chan []byte, 32)
 
-	cancel, err := pubsub.Topic{Client: t.Client}.Subscribe(ctx, out)
+	release, err := pubsub.Topic{Client: t.Client}.Subscribe(ctx, out)
 	return Subscription{
 		name:   t.name,
-		cancel: cancel,
+		cancel: release,
 		c:      out,
 	}, err
 }
