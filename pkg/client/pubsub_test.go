@@ -1,4 +1,4 @@
-package pubsub
+package client_test
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	api "github.com/wetware/ww/internal/api/pubsub"
+	"github.com/wetware/ww/pkg/client"
 )
 
 func TestSubscription_refcount(t *testing.T) {
@@ -25,7 +26,9 @@ func TestSubscription_refcount(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		topic := Topic(api.Topic_ServerToClient(mockTopic{}, nil))
+		topic := client.NewTopic(
+			api.Topic_ServerToClient(mockTopic{}, nil).Client,
+			"")
 		defer topic.Release()
 
 		ctx = context.WithValue(ctx, keyHandlerCallback{},
@@ -43,23 +46,19 @@ func TestSubscription_refcount(t *testing.T) {
 				return err
 			}))
 
-		ch := make(chan []byte, 1)
+		sub, err := topic.Subscribe(ctx)
+		require.NoError(t, err, "should subscribe successfully")
+		defer sub.Cancel()
 
-		release, err := topic.Subscribe(ctx, ch)
-		require.NoError(t, err)
-		defer release()
-
-		// Ensure we have a message in the subscription channel. The
-		// handler should have already been closed, but we should be
+		// The handler should have already been closed, but we should be
 		// able to read the buffered message.
-		require.Len(t, ch, 1,
-			"message should be buffered in subscription channel")
+		b, err := sub.Next(ctx)
+		require.NoError(t, err, "should receive message")
+		assert.Equal(t, []byte("hello, world"), b, "should receive expected message")
 
-		assert.Equal(t, []byte("hello, world"), <-ch,
-			"should receive message")
-
-		_, ok := <-ch
-		require.False(t, ok, "channel should be closed")
+		b, err = sub.Next(ctx)
+		require.ErrorIs(t, err, client.ErrDisconnected, "subscription should be closed")
+		require.Nil(t, b, "should not return data")
 	})
 
 	t.Run("TopicReleasesHandler", func(t *testing.T) {
@@ -68,7 +67,9 @@ func TestSubscription_refcount(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		topic := Topic(api.Topic_ServerToClient(mockTopic{}, nil))
+		topic := client.NewTopic(
+			api.Topic_ServerToClient(mockTopic{}, nil).Client,
+			"")
 		defer topic.Release()
 
 		ctx = context.WithValue(ctx, keyHandlerCallback{},
@@ -82,27 +83,23 @@ func TestSubscription_refcount(t *testing.T) {
 				return err
 			}))
 
-		ch := make(chan []byte, 1)
-
-		release, err := topic.Subscribe(ctx, ch)
-		require.NoError(t, err)
-		defer release()
+		sub, err := topic.Subscribe(ctx)
+		require.NoError(t, err, "should subscribe successfully")
+		defer sub.Cancel()
 
 		// Release the topic AFTER we have written a message to the
 		// subscription channel.
 		topic.Release()
 
-		// Ensure we have a message in the subscription channel. The
-		// handler should have already been closed, but we should be
+		// The handler should have already been closed, but we should be
 		// able to read the buffered message.
-		require.Len(t, ch, 1,
-			"message should be buffered in subscription channel")
+		b, err := sub.Next(ctx)
+		require.NoError(t, err, "should receive message")
+		assert.Equal(t, []byte("hello, world"), b, "should receive expected message")
 
-		assert.Equal(t, []byte("hello, world"), <-ch,
-			"should receive message")
-
-		_, ok := <-ch
-		require.False(t, ok, "channel should be closed")
+		b, err = sub.Next(ctx)
+		require.ErrorIs(t, err, client.ErrDisconnected, "subscription should be closed")
+		require.Nil(t, b, "should not return data")
 	})
 }
 

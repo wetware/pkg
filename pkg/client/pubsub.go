@@ -4,100 +4,89 @@ import (
 	"context"
 
 	"capnproto.org/go/capnp/v3"
-	"github.com/ipfs/go-log"
 	"github.com/wetware/ww/pkg/cap/pubsub"
 )
 
-type Topic interface {
-	log.Loggable
-	String() string
-	Publish(context.Context, []byte) error
-	Subscribe(context.Context) (Subscription, error)
-	Release()
+type Topic struct {
+	name   string
+	Client *capnp.Client
 }
 
-type Subscription interface {
-	log.Loggable
-	String() string
-	Next(context.Context) ([]byte, error)
-	Cancel()
+// NewTopic populates a Topic with the supplied name and capability.
+// It does not validate the name.
+func NewTopic(c *capnp.Client, name string) Topic {
+	return Topic{
+		name:   name,
+		Client: c,
+	}
 }
 
-type futureTopic struct {
-	name    string
-	f       pubsub.FutureTopic
-	release capnp.ReleaseFunc
-	done    <-chan struct{} // rpc.Conn.Done()
+// ResolveTopic populates a Topic from a raw capability client. It performs
+// an RPC call to determine the topic name and populates t with the result.
+func ResolveTopic(ctx context.Context, c *capnp.Client) (t Topic, err error) {
+	t.Client = c
+	t.name, err = pubsub.Topic{Client: c}.Name(ctx)
+	return
 }
 
-func (t *futureTopic) String() string { return t.name }
+func (t Topic) String() string { return t.name }
 
-func (t *futureTopic) Loggable() map[string]interface{} {
+func (t Topic) Loggable() map[string]interface{} {
 	return map[string]interface{}{
 		"topic": t.name,
 	}
 }
 
-func (t *futureTopic) Release() { t.release() }
-
-func (t *futureTopic) Publish(ctx context.Context, msg []byte) error {
-	return t.f.Topic().Publish(ctx, msg)
+func (t Topic) AddRef() Topic {
+	return Topic{
+		name:   t.name,
+		Client: t.Client.AddRef(),
+	}
 }
 
-func (t *futureTopic) Subscribe(ctx context.Context) (Subscription, error) {
-	topic, err := t.f.Struct()
-	if err != nil {
-		return nil, err
-	}
+func (t Topic) Release() { t.Client.Release() }
 
+func (t Topic) Publish(ctx context.Context, msg []byte) error {
+	return pubsub.Topic{Client: t.Client}.Publish(ctx, msg)
+}
+
+func (t Topic) Subscribe(ctx context.Context) (Subscription, error) {
 	out := make(chan []byte, 32)
 
-	cancel, err := topic.Subscribe(ctx, out)
-	return &subscription{
-		done:   t.done,
-		topic:  t,
+	release, err := pubsub.Topic{Client: t.Client}.Subscribe(ctx, out)
+	return Subscription{
+		name:   t.name,
+		cancel: release,
 		c:      out,
-		cancel: cancel,
 	}, err
-
 }
 
-type subscription struct {
-	done   <-chan struct{} // rpc.Conn.Done()
-	topic  *futureTopic
-	c      <-chan []byte
+type Subscription struct {
+	name   string
 	cancel func()
+	c      <-chan []byte
 }
 
-func (s *subscription) Cancel()        { s.cancel() }
-func (s *subscription) String() string { return s.topic.name }
+func (s Subscription) String() string { return s.name }
 
-func (s *subscription) Loggable() map[string]interface{} {
-	return s.topic.Loggable()
-}
-
-func (s *subscription) Next(ctx context.Context) ([]byte, error) {
-	select {
-	case b := <-s.c:
-		return b, nil
-
-	case <-ctx.Done():
-		return nil, ctx.Err()
-
-	case <-s.done:
-		// Cluster connection was lost, but we may still have
-		// messages buffered in the channel.
+func (s Subscription) Loggable() map[string]interface{} {
+	return map[string]interface{}{
+		"topic": s.name,
 	}
+}
 
-	// Consume remaining messages before returning error.
+func (s Subscription) Cancel() { s.cancel() }
+
+func (s Subscription) Next(ctx context.Context) ([]byte, error) {
 	select {
-	case b := <-s.c:
-		return b, nil
+	case b, ok := <-s.c:
+		if ok {
+			return b, nil
+		}
+
+		return nil, ErrDisconnected
 
 	case <-ctx.Done():
 		return nil, ctx.Err()
-
-	default:
-		return nil, ErrDisconnected
 	}
 }

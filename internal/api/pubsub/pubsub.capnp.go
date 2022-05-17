@@ -47,6 +47,22 @@ func (c Topic) Subscribe(ctx context.Context, params func(Topic_subscribe_Params
 	ans, release := c.Client.SendCall(ctx, s)
 	return Topic_subscribe_Results_Future{Future: ans.Future()}, release
 }
+func (c Topic) Name(ctx context.Context, params func(Topic_name_Params) error) (Topic_name_Results_Future, capnp.ReleaseFunc) {
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0x986ea9282f106bb0,
+			MethodID:      2,
+			InterfaceName: "pubsub.capnp:Topic",
+			MethodName:    "name",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Topic_name_Params{Struct: s}) }
+	}
+	ans, release := c.Client.SendCall(ctx, s)
+	return Topic_name_Results_Future{Future: ans.Future()}, release
+}
 
 func (c Topic) AddRef() Topic {
 	return Topic{
@@ -63,6 +79,8 @@ type Topic_Server interface {
 	Publish(context.Context, Topic_publish) error
 
 	Subscribe(context.Context, Topic_subscribe) error
+
+	Name(context.Context, Topic_name) error
 }
 
 // Topic_NewServer creates a new Server from an implementation of Topic_Server.
@@ -81,7 +99,7 @@ func Topic_ServerToClient(s Topic_Server, policy *server.Policy) Topic {
 // This can be used to create a more complicated Server.
 func Topic_Methods(methods []server.Method, s Topic_Server) []server.Method {
 	if cap(methods) == 0 {
-		methods = make([]server.Method, 0, 2)
+		methods = make([]server.Method, 0, 3)
 	}
 
 	methods = append(methods, server.Method{
@@ -105,6 +123,18 @@ func Topic_Methods(methods []server.Method, s Topic_Server) []server.Method {
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
 			return s.Subscribe(ctx, Topic_subscribe{call})
+		},
+	})
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0x986ea9282f106bb0,
+			MethodID:      2,
+			InterfaceName: "pubsub.capnp:Topic",
+			MethodName:    "name",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Name(ctx, Topic_name{call})
 		},
 	})
 
@@ -143,6 +173,23 @@ func (c Topic_subscribe) Args() Topic_subscribe_Params {
 func (c Topic_subscribe) AllocResults() (Topic_subscribe_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
 	return Topic_subscribe_Results{Struct: r}, err
+}
+
+// Topic_name holds the state for a server call to Topic.name.
+// See server.Call for documentation.
+type Topic_name struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c Topic_name) Args() Topic_name_Params {
+	return Topic_name_Params{Struct: c.Call.Args()}
+}
+
+// AllocResults allocates the results struct.
+func (c Topic_name) AllocResults() (Topic_name_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Topic_name_Results{Struct: r}, err
 }
 
 type Topic_Handler struct{ Client *capnp.Client }
@@ -272,25 +319,12 @@ func (s Topic_Handler_handle_Params) SetMsg(v []byte) error {
 }
 
 // Topic_Handler_handle_Params_List is a list of Topic_Handler_handle_Params.
-type Topic_Handler_handle_Params_List struct{ capnp.List }
+type Topic_Handler_handle_Params_List = capnp.StructList[Topic_Handler_handle_Params]
 
 // NewTopic_Handler_handle_Params creates a new list of Topic_Handler_handle_Params.
 func NewTopic_Handler_handle_Params_List(s *capnp.Segment, sz int32) (Topic_Handler_handle_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return Topic_Handler_handle_Params_List{l}, err
-}
-
-func (s Topic_Handler_handle_Params_List) At(i int) Topic_Handler_handle_Params {
-	return Topic_Handler_handle_Params{s.List.Struct(i)}
-}
-
-func (s Topic_Handler_handle_Params_List) Set(i int, v Topic_Handler_handle_Params) error {
-	return s.List.SetStruct(i, v.Struct)
-}
-
-func (s Topic_Handler_handle_Params_List) String() string {
-	str, _ := text.MarshalList(0x89d849f1a30adbf2, s.List)
-	return str
+	return capnp.StructList[Topic_Handler_handle_Params]{l}, err
 }
 
 // Topic_Handler_handle_Params_Future is a wrapper for a Topic_Handler_handle_Params promised by a client call.
@@ -327,25 +361,12 @@ func (s Topic_Handler_handle_Results) String() string {
 }
 
 // Topic_Handler_handle_Results_List is a list of Topic_Handler_handle_Results.
-type Topic_Handler_handle_Results_List struct{ capnp.List }
+type Topic_Handler_handle_Results_List = capnp.StructList[Topic_Handler_handle_Results]
 
 // NewTopic_Handler_handle_Results creates a new list of Topic_Handler_handle_Results.
 func NewTopic_Handler_handle_Results_List(s *capnp.Segment, sz int32) (Topic_Handler_handle_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return Topic_Handler_handle_Results_List{l}, err
-}
-
-func (s Topic_Handler_handle_Results_List) At(i int) Topic_Handler_handle_Results {
-	return Topic_Handler_handle_Results{s.List.Struct(i)}
-}
-
-func (s Topic_Handler_handle_Results_List) Set(i int, v Topic_Handler_handle_Results) error {
-	return s.List.SetStruct(i, v.Struct)
-}
-
-func (s Topic_Handler_handle_Results_List) String() string {
-	str, _ := text.MarshalList(0xf8d41329eb57bd62, s.List)
-	return str
+	return capnp.StructList[Topic_Handler_handle_Results]{l}, err
 }
 
 // Topic_Handler_handle_Results_Future is a wrapper for a Topic_Handler_handle_Results promised by a client call.
@@ -395,25 +416,12 @@ func (s Topic_publish_Params) SetMsg(v []byte) error {
 }
 
 // Topic_publish_Params_List is a list of Topic_publish_Params.
-type Topic_publish_Params_List struct{ capnp.List }
+type Topic_publish_Params_List = capnp.StructList[Topic_publish_Params]
 
 // NewTopic_publish_Params creates a new list of Topic_publish_Params.
 func NewTopic_publish_Params_List(s *capnp.Segment, sz int32) (Topic_publish_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return Topic_publish_Params_List{l}, err
-}
-
-func (s Topic_publish_Params_List) At(i int) Topic_publish_Params {
-	return Topic_publish_Params{s.List.Struct(i)}
-}
-
-func (s Topic_publish_Params_List) Set(i int, v Topic_publish_Params) error {
-	return s.List.SetStruct(i, v.Struct)
-}
-
-func (s Topic_publish_Params_List) String() string {
-	str, _ := text.MarshalList(0x8810938879cb8443, s.List)
-	return str
+	return capnp.StructList[Topic_publish_Params]{l}, err
 }
 
 // Topic_publish_Params_Future is a wrapper for a Topic_publish_Params promised by a client call.
@@ -450,25 +458,12 @@ func (s Topic_publish_Results) String() string {
 }
 
 // Topic_publish_Results_List is a list of Topic_publish_Results.
-type Topic_publish_Results_List struct{ capnp.List }
+type Topic_publish_Results_List = capnp.StructList[Topic_publish_Results]
 
 // NewTopic_publish_Results creates a new list of Topic_publish_Results.
 func NewTopic_publish_Results_List(s *capnp.Segment, sz int32) (Topic_publish_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return Topic_publish_Results_List{l}, err
-}
-
-func (s Topic_publish_Results_List) At(i int) Topic_publish_Results {
-	return Topic_publish_Results{s.List.Struct(i)}
-}
-
-func (s Topic_publish_Results_List) Set(i int, v Topic_publish_Results) error {
-	return s.List.SetStruct(i, v.Struct)
-}
-
-func (s Topic_publish_Results_List) String() string {
-	str, _ := text.MarshalList(0x9d3775c65b79b54c, s.List)
-	return str
+	return capnp.StructList[Topic_publish_Results]{l}, err
 }
 
 // Topic_publish_Results_Future is a wrapper for a Topic_publish_Results promised by a client call.
@@ -523,25 +518,12 @@ func (s Topic_subscribe_Params) SetHandler(v Topic_Handler) error {
 }
 
 // Topic_subscribe_Params_List is a list of Topic_subscribe_Params.
-type Topic_subscribe_Params_List struct{ capnp.List }
+type Topic_subscribe_Params_List = capnp.StructList[Topic_subscribe_Params]
 
 // NewTopic_subscribe_Params creates a new list of Topic_subscribe_Params.
 func NewTopic_subscribe_Params_List(s *capnp.Segment, sz int32) (Topic_subscribe_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return Topic_subscribe_Params_List{l}, err
-}
-
-func (s Topic_subscribe_Params_List) At(i int) Topic_subscribe_Params {
-	return Topic_subscribe_Params{s.List.Struct(i)}
-}
-
-func (s Topic_subscribe_Params_List) Set(i int, v Topic_subscribe_Params) error {
-	return s.List.SetStruct(i, v.Struct)
-}
-
-func (s Topic_subscribe_Params_List) String() string {
-	str, _ := text.MarshalList(0xc772c6756fef5ba8, s.List)
-	return str
+	return capnp.StructList[Topic_subscribe_Params]{l}, err
 }
 
 // Topic_subscribe_Params_Future is a wrapper for a Topic_subscribe_Params promised by a client call.
@@ -582,25 +564,12 @@ func (s Topic_subscribe_Results) String() string {
 }
 
 // Topic_subscribe_Results_List is a list of Topic_subscribe_Results.
-type Topic_subscribe_Results_List struct{ capnp.List }
+type Topic_subscribe_Results_List = capnp.StructList[Topic_subscribe_Results]
 
 // NewTopic_subscribe_Results creates a new list of Topic_subscribe_Results.
 func NewTopic_subscribe_Results_List(s *capnp.Segment, sz int32) (Topic_subscribe_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return Topic_subscribe_Results_List{l}, err
-}
-
-func (s Topic_subscribe_Results_List) At(i int) Topic_subscribe_Results {
-	return Topic_subscribe_Results{s.List.Struct(i)}
-}
-
-func (s Topic_subscribe_Results_List) Set(i int, v Topic_subscribe_Results) error {
-	return s.List.SetStruct(i, v.Struct)
-}
-
-func (s Topic_subscribe_Results_List) String() string {
-	str, _ := text.MarshalList(0x8470369ac91fcc32, s.List)
-	return str
+	return capnp.StructList[Topic_subscribe_Results]{l}, err
 }
 
 // Topic_subscribe_Results_Future is a wrapper for a Topic_subscribe_Results promised by a client call.
@@ -609,6 +578,108 @@ type Topic_subscribe_Results_Future struct{ *capnp.Future }
 func (p Topic_subscribe_Results_Future) Struct() (Topic_subscribe_Results, error) {
 	s, err := p.Future.Struct()
 	return Topic_subscribe_Results{s}, err
+}
+
+type Topic_name_Params struct{ capnp.Struct }
+
+// Topic_name_Params_TypeID is the unique identifier for the type Topic_name_Params.
+const Topic_name_Params_TypeID = 0xf1fc6ff9f4d43e07
+
+func NewTopic_name_Params(s *capnp.Segment) (Topic_name_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Topic_name_Params{st}, err
+}
+
+func NewRootTopic_name_Params(s *capnp.Segment) (Topic_name_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Topic_name_Params{st}, err
+}
+
+func ReadRootTopic_name_Params(msg *capnp.Message) (Topic_name_Params, error) {
+	root, err := msg.Root()
+	return Topic_name_Params{root.Struct()}, err
+}
+
+func (s Topic_name_Params) String() string {
+	str, _ := text.Marshal(0xf1fc6ff9f4d43e07, s.Struct)
+	return str
+}
+
+// Topic_name_Params_List is a list of Topic_name_Params.
+type Topic_name_Params_List = capnp.StructList[Topic_name_Params]
+
+// NewTopic_name_Params creates a new list of Topic_name_Params.
+func NewTopic_name_Params_List(s *capnp.Segment, sz int32) (Topic_name_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	return capnp.StructList[Topic_name_Params]{l}, err
+}
+
+// Topic_name_Params_Future is a wrapper for a Topic_name_Params promised by a client call.
+type Topic_name_Params_Future struct{ *capnp.Future }
+
+func (p Topic_name_Params_Future) Struct() (Topic_name_Params, error) {
+	s, err := p.Future.Struct()
+	return Topic_name_Params{s}, err
+}
+
+type Topic_name_Results struct{ capnp.Struct }
+
+// Topic_name_Results_TypeID is the unique identifier for the type Topic_name_Results.
+const Topic_name_Results_TypeID = 0xd5765aab1c56263f
+
+func NewTopic_name_Results(s *capnp.Segment) (Topic_name_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Topic_name_Results{st}, err
+}
+
+func NewRootTopic_name_Results(s *capnp.Segment) (Topic_name_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Topic_name_Results{st}, err
+}
+
+func ReadRootTopic_name_Results(msg *capnp.Message) (Topic_name_Results, error) {
+	root, err := msg.Root()
+	return Topic_name_Results{root.Struct()}, err
+}
+
+func (s Topic_name_Results) String() string {
+	str, _ := text.Marshal(0xd5765aab1c56263f, s.Struct)
+	return str
+}
+
+func (s Topic_name_Results) Name() (string, error) {
+	p, err := s.Struct.Ptr(0)
+	return p.Text(), err
+}
+
+func (s Topic_name_Results) HasName() bool {
+	return s.Struct.HasPtr(0)
+}
+
+func (s Topic_name_Results) NameBytes() ([]byte, error) {
+	p, err := s.Struct.Ptr(0)
+	return p.TextBytes(), err
+}
+
+func (s Topic_name_Results) SetName(v string) error {
+	return s.Struct.SetText(0, v)
+}
+
+// Topic_name_Results_List is a list of Topic_name_Results.
+type Topic_name_Results_List = capnp.StructList[Topic_name_Results]
+
+// NewTopic_name_Results creates a new list of Topic_name_Results.
+func NewTopic_name_Results_List(s *capnp.Segment, sz int32) (Topic_name_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[Topic_name_Results]{l}, err
+}
+
+// Topic_name_Results_Future is a wrapper for a Topic_name_Results promised by a client call.
+type Topic_name_Results_Future struct{ *capnp.Future }
+
+func (p Topic_name_Results_Future) Struct() (Topic_name_Results, error) {
+	s, err := p.Future.Struct()
+	return Topic_name_Results{s}, err
 }
 
 type PubSub struct{ Client *capnp.Client }
@@ -743,25 +814,12 @@ func (s PubSub_join_Params) SetName(v string) error {
 }
 
 // PubSub_join_Params_List is a list of PubSub_join_Params.
-type PubSub_join_Params_List struct{ capnp.List }
+type PubSub_join_Params_List = capnp.StructList[PubSub_join_Params]
 
 // NewPubSub_join_Params creates a new list of PubSub_join_Params.
 func NewPubSub_join_Params_List(s *capnp.Segment, sz int32) (PubSub_join_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return PubSub_join_Params_List{l}, err
-}
-
-func (s PubSub_join_Params_List) At(i int) PubSub_join_Params {
-	return PubSub_join_Params{s.List.Struct(i)}
-}
-
-func (s PubSub_join_Params_List) Set(i int, v PubSub_join_Params) error {
-	return s.List.SetStruct(i, v.Struct)
-}
-
-func (s PubSub_join_Params_List) String() string {
-	str, _ := text.MarshalList(0xfb4016d002794da7, s.List)
-	return str
+	return capnp.StructList[PubSub_join_Params]{l}, err
 }
 
 // PubSub_join_Params_Future is a wrapper for a PubSub_join_Params promised by a client call.
@@ -816,25 +874,12 @@ func (s PubSub_join_Results) SetTopic(v Topic) error {
 }
 
 // PubSub_join_Results_List is a list of PubSub_join_Results.
-type PubSub_join_Results_List struct{ capnp.List }
+type PubSub_join_Results_List = capnp.StructList[PubSub_join_Results]
 
 // NewPubSub_join_Results creates a new list of PubSub_join_Results.
 func NewPubSub_join_Results_List(s *capnp.Segment, sz int32) (PubSub_join_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return PubSub_join_Results_List{l}, err
-}
-
-func (s PubSub_join_Results_List) At(i int) PubSub_join_Results {
-	return PubSub_join_Results{s.List.Struct(i)}
-}
-
-func (s PubSub_join_Results_List) Set(i int, v PubSub_join_Results) error {
-	return s.List.SetStruct(i, v.Struct)
-}
-
-func (s PubSub_join_Results_List) String() string {
-	str, _ := text.MarshalList(0x9f6c50fbc67b1d88, s.List)
-	return str
+	return capnp.StructList[PubSub_join_Results]{l}, err
 }
 
 // PubSub_join_Results_Future is a wrapper for a PubSub_join_Results promised by a client call.
@@ -849,45 +894,50 @@ func (p PubSub_join_Results_Future) Topic() Topic {
 	return Topic{Client: p.Future.Field(0, nil).Client()}
 }
 
-const schema_f9d8a0180405d9ed = "x\xda\x94\x93Oh\xd4\\\x14\xc5\xef}/iJ\xe9" +
-	"|\xed\xfb^\xad\x7fK\xa1T\xd1\x82S[A\xa1(" +
-	"\x1d*R+\x0a\xc9\xd4\"\xa5\xb8H\xc6`\xa3\x93i" +
-	"H\x9a\xc5 2\x08\x05\xc7\x85+7Z\x94\x8a.\xd4" +
-	"\x9d\x1b\x17.\\\xb8\x19)v\xa1\xe0\xa2\xea\xda\x95\x14" +
-	"iAPf\x11I2\x99d\xa62\xe2*\x8b\x1c\xce" +
-	"=\xf7w\xcf;\xa2b\x86\x8c\x88\xc3\"\x80rBl" +
-	"\xf3F\xd7\xfaW\x97\x8fYK\xc08\x02\x08\x12\xc0\xd1" +
-	"\x1bd\x08A\xf0N-\xbd+\x96\xefv\x97\xc3?\"" +
-	"\xfa\xbft\xf2?\x02r\x93\x8c\x03z[_:\x9el" +
-	"N\xad\xdf\x06\xb6\xb7.\xb8C\xce\xfa\x82\xfb\x81\xe0\xc5" +
-	"\xb5\xee\xe1\x83\xcf\x0b\xf7\x80\xa5\xa8\xb7\xf1I\x14v=" +
-	"Z\xff\x05\x80\xfc\x15Y\xe6o\xc8N\x00\xbeJn\xf1" +
-	">*\x01x\xe7^\x16\xe7*\xee\xf1\x87\x89 \"\xdd" +
-	"\xe3\x07)\xf7]\xafT\xe5\xfc\x0a\xb0\x9e\xfa\x9c\x0d\xd2" +
-	"\xe1\xcf\xf9\x11\xccy6\xf7}\xc1\xad\xd8o\x93Iw" +
-	"\xd0\x01_\xd0G}A\xb5\xb2\xd5{`\xf2\xc1\x07`" +
-	"\x9c\xc6\xa9\x00\xf9I\xfa\x99O\xf9\xe3\xf9i:\xc9\xcd" +
-	" \xc8\x7f_\xdb\xf6\xad\xf4\xacmnK=C\x1f\xf3" +
-	"K\x81x\x96N\xf2\x9b\x81X{}\xf1\xdb!\xfe\xf1" +
-	"g\xc8 Hm\xd0\xac\x9f\xfa\xe9\xf9\"y\xdf\x9b\xa9" +
-	"&S\xcfP\xe2\x87\x9a\xa5\xe3p\xd8\xb3\\\xcdq\xb5" +
-	"t\x8e\xaaV\xc1\x1a\xbb\xb0`\x19\xb9\xb4\xe3jN\xce" +
-	"64}0\xab;]n~\xd1\xf9\xa3\xccr\xb5\xbc" +
-	"\xe1\xcc\x0f\xca\xaa\xad\x9a\xe8(\x02\x15\x00\x04\x04`\xa9" +
-	"\x01\x00\xa5\x9d\xa2\xd2CP2\x9d+\x98\x02\x82)\xc0" +
-	"\xba\x8d\x90\xb09\xa3\x16.\xe7u;=\x1f|C7" +
-	"\x07\xe0_\xec0\xb2\xa3FN\x110\x89\x1a'J\xb5" +
-	"\x01J;\x15\x01\xea\x85\xc2\xe8\xd4ld\x02\x08\xdb/" +
-	"a|B\x8c\xfa\xc8vg\x810&\x95j\xbbf\xd0" +
-	"\x8b\xe0\x00\xea\x19\x94\x11[\xa2\xc9\xea\x8e\x9b\xa7\xdb\xf8" +
-	"\xc9\xae6\xedj\xe9\xab\x0bF!\x94,6-<\x1a" +
-	"/\xdc\xbf\xe8;\"K6\x06\x19\xe0_.'\xab\xb6" +
-	"\xa4\x9a\x0dG\x99\x88MK!l\x1bY\x8c\xaa\xc9\x96" +
-	"4\x9f\x88\xea\xb6\x8c\xa8\x08\x01\xc5\xe8\xd5aT=\xc6" +
-	"\xc6\x800Q\x1a\x0f\x9d\x1b\xd1`\xb4\xb54\xedj\xb1" +
-	"ITN\x8c\xde\x16cC\x81I\x97O\xa6\xd1\xa2E" +
-	"cB\x82\xd8\x0ar\xadTI\x1aC1\x8d\xae\x82j" +
-	"\xea\xd8\x09\x04;\x01\x7f\x07\x00\x00\xff\xff\xfa\x01K\xa1"
+const schema_f9d8a0180405d9ed = "x\xda\x94\x93OH\x14m\x1c\xc7\x7f\xbf\xe7\x99u^" +
+	"\xc4}\xf5y\x1f\xf1}}3$Q\xa9\x85\xb64(" +
+	"\xf2\xd0.VXQ0\xb3FA\x9ef\xb6!\xb7\xf6" +
+	"\x1f3N \x1d\xbc\x18\xd89\x82\xb0\xc4\xa8CE\x97" +
+	".\x1d=\xba\"y(P\xd0\"\xa2\x83\xa7\x90X\xe9" +
+	"\x90YL<3\xce\xce\xb8\x96\xd9i\x17\xe6\xc7\xf7\xf7" +
+	"\xfd}\xbe\xdf\xe7\xe0=LJ]\xd1\xf7\x11 \xea\x89" +
+	"H\x8d\xd3=\xd7:;~\xb88\x0a\x8c#\x80$\x03" +
+	"\x1cZ 1\x04\xc99>\xfarx\xecv\xc3\x98\xf7" +
+	"%\x82\xe2\xd3\x14\xf9\x07\x01\xf94I\x00:\xabok" +
+	"\x1f\x95O/\xde\x02\xb6\xab2\xb0L\xce\x88\x81\xb2;" +
+	"\xf0\xfcZ\xc3\x81\xbdO\xf3w\x81E\xa9\xb3\xb2\x14\x91" +
+	"\xfe{\xb0\xb8\x06\x80\x9c\xd1q\xdeL\xff\x05\xe0{\xe8" +
+	"\x0c\x9f\xa02\x80s\xf6\xc5\xf0@\xc9>2\x112r" +
+	"\x93\xfe/\x8c\x8c\xed\xbeQZW\xb2\x93\xc0\x1a+{" +
+	"r\xb4V\xec\xb1\xa9\xd8\xf3d\xe0S\xc1.\x993a" +
+	"\xa7wh\x9b\x18\x98p\x07\xd6K\xabM\x9d}\xf7_" +
+	"\x03\xe34p\x05\xc8\xa7\xe8\x1b>+\xd6\xf3i\xda\xc7" +
+	"W\\#\x89\xce\x0b-\xcf.]_\x08\xab-P\"" +
+	"\xd4\x96\\\xb5\xbf\x97kZ&\x1b\xe7\xca[\xceZ\xa3" +
+	"\x0f9\x0a\xe7\xfc;\xed\xe3\x1d\xe2\x9f#\x1f\x9b\xff\xbc" +
+	"V\xf8V\x0e\xce\xe2Q\xe9+H\x8e>u\xf1\xe3>" +
+	">\xff\xc5\xa3\xe7\xde[\xa6)q\xef\xe3s\xc3\xe4U" +
+	"Sr=|\xef;\xcf\xc0\x07\x9a\x80\xfdN\xd1\xd6-" +
+	"[\x8f\xa7\xa9V\xcc\x17{\xce\x17\x8a\x99t\xdc\xb2u" +
+	"+mft\xa3=eX\xf5vv\xc8\xfa\xe9X\xd1" +
+	"\xd6\xb3\x19k\xb0]\xd1L-\x87\x96*Q\x09@B" +
+	"\x00\x16m\x03P\xff\xa2\xa86\x12\x94s\xd6\x15\x8c\x02" +
+	"\xc1(`EF\x0a\xc9\x9c\xd2\xf2\x97\xb3\x86\x19\x1ft" +
+	"\x7f=5\x0b\xe0O\xe4\xd0\x97\xa3\x99\xb4*a8$" +
+	"\xec\x1d\xd9X\xa0\xd6\xd1\x08@\xa5\x8a\xe8\x97\x84\xa9\xbd" +
+	"@\xd8I\x19\x83\xf0\xd1o2;\x9a\x02\xc2\xbad$" +
+	"\x15\xf8\xe8g\xca:b@X\xb3<\xb2\xc1!\x89\x8e" +
+	"\x0f\x0e\xd0Hb}^\xcb\x19IT\x10\xb7\xa5\x972" +
+	",;K\xb7 Vl\xbd\xdf\xd6\xe3W\x0b\x99\xbc7" +
+	"2T\xc5\xa4;`\xd2:$\x14\x91\x85\xeb\x88\x0c\xf0" +
+	"7\xe1*\x9a)k\xb9M\xb9\xf5\x06\xa2#^\x1e&" +
+	"\xb2\x80f\x95,\xa9N\x91\x1a\xa6\x82\xa8J.h\xff" +
+	"I\xa3\xdfN\xc6z\x80\xb0\x88\x9c\xf0\x94\x7f\x8dF\x80" +
+	"\xab\x1c\x1d\xb6\x17\x0b\xec\xb9t\xb1\x0e\x08\xd6m)\x82" +
+	"b\xebr\xbf\xad\x07V\xfcW\x80\xfe\xf3g,\xe6Z" +
+	"\xa9\x17|7\x1b!\xd5F\x12^#w\xd2]\xcf3" +
+	"n\x97\xe5F\xbdwr\xd5\x8f\x00\x00\x00\xff\xff\xbc\xdf" +
+	"\x89x"
 
 func init() {
 	schemas.Register(schema_f9d8a0180405d9ed,
@@ -899,7 +949,9 @@ func init() {
 		0x9f6c50fbc67b1d88,
 		0xc772c6756fef5ba8,
 		0xd19c472616f2c6fb,
+		0xd5765aab1c56263f,
 		0xf1cc149f1c06e50e,
+		0xf1fc6ff9f4d43e07,
 		0xf8d41329eb57bd62,
 		0xfb4016d002794da7)
 }

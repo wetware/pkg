@@ -186,6 +186,15 @@ func (t *refCountedTopic) Release() {
 // this reason, Shutdown MAY be called multiple times.
 func (t *refCountedTopic) Shutdown() { t.Release() }
 
+func (t *refCountedTopic) Name(ctx context.Context, call api.Topic_name) error {
+	res, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	return res.SetName(t.topic.String())
+}
+
 func (t *refCountedTopic) Publish(ctx context.Context, call api.Topic_publish) error {
 	if t.ctx.Err() != nil {
 		return ErrClosed
@@ -229,14 +238,14 @@ func (t *refCountedTopic) handle(sub *pubsub.Subscription, h api.Topic_Handler) 
 			return
 		}
 
-		if t.send(h, m) != nil {
+		if send(t.ctx, h, m) != nil {
 			return
 		}
 	}
 }
 
-func (t *refCountedTopic) send(h api.Topic_Handler, m *pubsub.Message) error {
-	f, release := h.Handle(t.ctx, message(m))
+func send(ctx context.Context, h api.Topic_Handler, m *pubsub.Message) error {
+	f, release := h.Handle(ctx, message(m))
 	defer release()
 
 	_, err := f.Struct()

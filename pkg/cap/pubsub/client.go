@@ -5,6 +5,7 @@ import (
 
 	capnp "capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/server"
+	"golang.org/x/sync/semaphore"
 
 	api "github.com/wetware/ww/internal/api/pubsub"
 )
@@ -42,6 +43,18 @@ func (ft FutureTopic) Struct() (Topic, error) {
 
 type Topic api.Topic
 
+func (t Topic) Name(ctx context.Context) (string, error) {
+	f, release := (api.Topic)(t).Name(ctx, nil)
+	defer release()
+
+	res, err := f.Struct()
+	if err != nil {
+		return "", err
+	}
+
+	return res.Name()
+}
+
 func (t Topic) Publish(ctx context.Context, b []byte) error {
 	f, release := (api.Topic)(t).Publish(ctx, func(ps api.Topic_publish_Params) error {
 		return ps.SetMsg(b)
@@ -52,28 +65,31 @@ func (t Topic) Publish(ctx context.Context, b []byte) error {
 	return err
 }
 
-func (t Topic) Subscribe(ctx context.Context, ch chan<- []byte) (cancel func(), err error) {
-	hc := api.Topic_Handler_ServerToClient(handler{
+func (t Topic) Subscribe(ctx context.Context, ch chan<- []byte) (release capnp.ReleaseFunc, err error) {
+	h := api.Topic_Handler_ServerToClient(handler{
 		ms:      ch,
 		release: t.AddRef().Release,
 	}, &server.Policy{
 		MaxConcurrentCalls: cap(ch),
 	})
-	defer hc.Release() // ensure topic ref is released if we return an error
+
+	// Limit the number of in-flight requests to half of the channel's capacity.
+	// This prevents the server from running out of memory due to the unbounded
+	// send-queue in capnp.
+	//
+	// TODO:  make this configurable.
+	h.Client.SetFlowLimiter(newFlowLimiter(cap(ch) / 2))
 
 	f, release := api.Topic(t).Subscribe(ctx, func(ps api.Topic_subscribe_Params) error {
-		return ps.SetHandler(hc.AddRef())
+		return ps.SetHandler(h)
 	})
 	defer release()
 
-	select {
-	case <-f.Done():
-		_, err = f.Struct()
-	case <-ctx.Done():
-		err = ctx.Err()
+	if _, err = f.Struct(); err == nil {
+		release = h.Release
 	}
 
-	return hc.AddRef().Release, err
+	return
 }
 
 func (t Topic) Release() { t.Client.Release() }
@@ -92,7 +108,7 @@ func (h handler) Shutdown() {
 	h.release()
 }
 
-func (h handler) Handle(_ context.Context, call api.Topic_Handler_handle) error {
+func (h handler) Handle(ctx context.Context, call api.Topic_Handler_handle) error {
 	b, err := call.Args().Msg()
 	if err != nil {
 		return err
@@ -100,8 +116,41 @@ func (h handler) Handle(_ context.Context, call api.Topic_Handler_handle) error 
 
 	select {
 	case h.ms <- b:
+		return nil // fast path
 	default:
 	}
 
-	return nil
+	// Slow path.  Spawn goroutine and block.  The FlowLimiter will limit the
+	// number of outstanding calls to Handle.
+	call.Ack()
+
+	select {
+	case h.ms <- b:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+type flowLimiter semaphore.Weighted
+
+func newFlowLimiter(limit int) *flowLimiter {
+	sem := semaphore.NewWeighted(int64(max(1, limit)))
+	return (*flowLimiter)(sem)
+}
+
+func (f *flowLimiter) StartMessage(ctx context.Context, size uint64) (gotResponse func(), err error) {
+	if err = (*semaphore.Weighted)(f).Acquire(ctx, 1); err == nil {
+		gotResponse = func() { (*semaphore.Weighted)(f).Release(1) }
+	}
+
+	return
+}
+
+func max(x, y int) int {
+	if x < y {
+		return y
+	}
+
+	return x
 }
