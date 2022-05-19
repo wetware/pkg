@@ -6,7 +6,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	chan_api "github.com/wetware/ww/internal/api/channel"
 	api "github.com/wetware/ww/internal/api/pubsub"
+	"github.com/wetware/ww/pkg/cap/channel"
 )
 
 func TestSubscription_refcount(t *testing.T) {
@@ -28,15 +30,13 @@ func TestSubscription_refcount(t *testing.T) {
 		topic := Topic(api.Topic_ServerToClient(mockTopic{}, nil))
 		defer topic.Release()
 
-		ctx = context.WithValue(ctx, keyHandlerCallback{},
-			handlerCallback(func(h api.Topic_Handler) error {
-				// Release the handler AFTER we have written a message to the
+		ctx = context.WithValue(ctx, keySenderCallback{},
+			senderCallback(func(ch chan_api.Sender) error {
+				// Release the channel AFTER we have written a message to the
 				// subscription channel.
-				defer h.Release()
+				defer ch.Release()
 
-				f, release := h.Handle(ctx, func(ps api.Topic_Handler_handle_Params) error {
-					return ps.SetMsg([]byte("hello, world"))
-				})
+				f, release := ch.Send(ctx, channel.Data([]byte("hello, world")))
 				defer release()
 
 				_, err := f.Struct()
@@ -50,7 +50,7 @@ func TestSubscription_refcount(t *testing.T) {
 		defer release()
 
 		// Ensure we have a message in the subscription channel. The
-		// handler should have already been closed, but we should be
+		// channel should have already been closed, but we should be
 		// able to read the buffered message.
 		require.Len(t, ch, 1,
 			"message should be buffered in subscription channel")
@@ -71,11 +71,9 @@ func TestSubscription_refcount(t *testing.T) {
 		topic := Topic(api.Topic_ServerToClient(mockTopic{}, nil))
 		defer topic.Release()
 
-		ctx = context.WithValue(ctx, keyHandlerCallback{},
-			handlerCallback(func(h api.Topic_Handler) error {
-				f, release := h.Handle(ctx, func(ps api.Topic_Handler_handle_Params) error {
-					return ps.SetMsg([]byte("hello, world"))
-				})
+		ctx = context.WithValue(ctx, keySenderCallback{},
+			senderCallback(func(ch chan_api.Sender) error {
+				f, release := ch.Send(ctx, channel.Data([]byte("hello, world")))
 				defer release()
 
 				_, err := f.Struct()
@@ -93,7 +91,7 @@ func TestSubscription_refcount(t *testing.T) {
 		topic.Release()
 
 		// Ensure we have a message in the subscription channel. The
-		// handler should have already been closed, but we should be
+		// channel should have already been closed, but we should be
 		// able to read the buffered message.
 		require.Len(t, ch, 1,
 			"message should be buffered in subscription channel")
@@ -114,8 +112,8 @@ func (mockTopic) Publish(ctx context.Context, call api.Topic_publish) error {
 }
 
 func (mockTopic) Subscribe(ctx context.Context, call api.Topic_subscribe) error {
-	handle := ctx.Value(keyHandlerCallback{}).(handlerCallback)
-	return handle(call.Args().Handler())
+	handle := ctx.Value(keySenderCallback{}).(senderCallback)
+	return handle(call.Args().Chan())
 }
 
 func (mockTopic) Name(ctx context.Context, call api.Topic_name) error {
@@ -130,7 +128,7 @@ func (mockTopic) Name(ctx context.Context, call api.Topic_name) error {
 type publishCallback func(args interface{ Msg() ([]byte, error) }) error
 type keyPublishCallback struct{}
 
-type handlerCallback func(h api.Topic_Handler) error
-type keyHandlerCallback struct{}
+type senderCallback func(chan_api.Sender) error
+type keySenderCallback struct{}
 
 type keyName struct{}

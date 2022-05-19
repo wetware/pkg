@@ -8,6 +8,7 @@ import (
 	schemas "capnproto.org/go/capnp/v3/schemas"
 	server "capnproto.org/go/capnp/v3/server"
 	context "context"
+	channel "github.com/wetware/ww/internal/api/channel"
 )
 
 type Topic struct{ Client *capnp.Client }
@@ -192,191 +193,6 @@ func (c Topic_name) AllocResults() (Topic_name_Results, error) {
 	return Topic_name_Results{Struct: r}, err
 }
 
-type Topic_Handler struct{ Client *capnp.Client }
-
-// Topic_Handler_TypeID is the unique identifier for the type Topic_Handler.
-const Topic_Handler_TypeID = 0xd19c472616f2c6fb
-
-func (c Topic_Handler) Handle(ctx context.Context, params func(Topic_Handler_handle_Params) error) (Topic_Handler_handle_Results_Future, capnp.ReleaseFunc) {
-	s := capnp.Send{
-		Method: capnp.Method{
-			InterfaceID:   0xd19c472616f2c6fb,
-			MethodID:      0,
-			InterfaceName: "pubsub.capnp:Topic.Handler",
-			MethodName:    "handle",
-		},
-	}
-	if params != nil {
-		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Topic_Handler_handle_Params{Struct: s}) }
-	}
-	ans, release := c.Client.SendCall(ctx, s)
-	return Topic_Handler_handle_Results_Future{Future: ans.Future()}, release
-}
-
-func (c Topic_Handler) AddRef() Topic_Handler {
-	return Topic_Handler{
-		Client: c.Client.AddRef(),
-	}
-}
-
-func (c Topic_Handler) Release() {
-	c.Client.Release()
-}
-
-// A Topic_Handler_Server is a Topic_Handler with a local implementation.
-type Topic_Handler_Server interface {
-	Handle(context.Context, Topic_Handler_handle) error
-}
-
-// Topic_Handler_NewServer creates a new Server from an implementation of Topic_Handler_Server.
-func Topic_Handler_NewServer(s Topic_Handler_Server, policy *server.Policy) *server.Server {
-	c, _ := s.(server.Shutdowner)
-	return server.New(Topic_Handler_Methods(nil, s), s, c, policy)
-}
-
-// Topic_Handler_ServerToClient creates a new Client from an implementation of Topic_Handler_Server.
-// The caller is responsible for calling Release on the returned Client.
-func Topic_Handler_ServerToClient(s Topic_Handler_Server, policy *server.Policy) Topic_Handler {
-	return Topic_Handler{Client: capnp.NewClient(Topic_Handler_NewServer(s, policy))}
-}
-
-// Topic_Handler_Methods appends Methods to a slice that invoke the methods on s.
-// This can be used to create a more complicated Server.
-func Topic_Handler_Methods(methods []server.Method, s Topic_Handler_Server) []server.Method {
-	if cap(methods) == 0 {
-		methods = make([]server.Method, 0, 1)
-	}
-
-	methods = append(methods, server.Method{
-		Method: capnp.Method{
-			InterfaceID:   0xd19c472616f2c6fb,
-			MethodID:      0,
-			InterfaceName: "pubsub.capnp:Topic.Handler",
-			MethodName:    "handle",
-		},
-		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.Handle(ctx, Topic_Handler_handle{call})
-		},
-	})
-
-	return methods
-}
-
-// Topic_Handler_handle holds the state for a server call to Topic_Handler.handle.
-// See server.Call for documentation.
-type Topic_Handler_handle struct {
-	*server.Call
-}
-
-// Args returns the call's arguments.
-func (c Topic_Handler_handle) Args() Topic_Handler_handle_Params {
-	return Topic_Handler_handle_Params{Struct: c.Call.Args()}
-}
-
-// AllocResults allocates the results struct.
-func (c Topic_Handler_handle) AllocResults() (Topic_Handler_handle_Results, error) {
-	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Topic_Handler_handle_Results{Struct: r}, err
-}
-
-type Topic_Handler_handle_Params struct{ capnp.Struct }
-
-// Topic_Handler_handle_Params_TypeID is the unique identifier for the type Topic_Handler_handle_Params.
-const Topic_Handler_handle_Params_TypeID = 0x89d849f1a30adbf2
-
-func NewTopic_Handler_handle_Params(s *capnp.Segment) (Topic_Handler_handle_Params, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Topic_Handler_handle_Params{st}, err
-}
-
-func NewRootTopic_Handler_handle_Params(s *capnp.Segment) (Topic_Handler_handle_Params, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Topic_Handler_handle_Params{st}, err
-}
-
-func ReadRootTopic_Handler_handle_Params(msg *capnp.Message) (Topic_Handler_handle_Params, error) {
-	root, err := msg.Root()
-	return Topic_Handler_handle_Params{root.Struct()}, err
-}
-
-func (s Topic_Handler_handle_Params) String() string {
-	str, _ := text.Marshal(0x89d849f1a30adbf2, s.Struct)
-	return str
-}
-
-func (s Topic_Handler_handle_Params) Msg() ([]byte, error) {
-	p, err := s.Struct.Ptr(0)
-	return []byte(p.Data()), err
-}
-
-func (s Topic_Handler_handle_Params) HasMsg() bool {
-	return s.Struct.HasPtr(0)
-}
-
-func (s Topic_Handler_handle_Params) SetMsg(v []byte) error {
-	return s.Struct.SetData(0, v)
-}
-
-// Topic_Handler_handle_Params_List is a list of Topic_Handler_handle_Params.
-type Topic_Handler_handle_Params_List = capnp.StructList[Topic_Handler_handle_Params]
-
-// NewTopic_Handler_handle_Params creates a new list of Topic_Handler_handle_Params.
-func NewTopic_Handler_handle_Params_List(s *capnp.Segment, sz int32) (Topic_Handler_handle_Params_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Topic_Handler_handle_Params]{l}, err
-}
-
-// Topic_Handler_handle_Params_Future is a wrapper for a Topic_Handler_handle_Params promised by a client call.
-type Topic_Handler_handle_Params_Future struct{ *capnp.Future }
-
-func (p Topic_Handler_handle_Params_Future) Struct() (Topic_Handler_handle_Params, error) {
-	s, err := p.Future.Struct()
-	return Topic_Handler_handle_Params{s}, err
-}
-
-type Topic_Handler_handle_Results struct{ capnp.Struct }
-
-// Topic_Handler_handle_Results_TypeID is the unique identifier for the type Topic_Handler_handle_Results.
-const Topic_Handler_handle_Results_TypeID = 0xf8d41329eb57bd62
-
-func NewTopic_Handler_handle_Results(s *capnp.Segment) (Topic_Handler_handle_Results, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Topic_Handler_handle_Results{st}, err
-}
-
-func NewRootTopic_Handler_handle_Results(s *capnp.Segment) (Topic_Handler_handle_Results, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Topic_Handler_handle_Results{st}, err
-}
-
-func ReadRootTopic_Handler_handle_Results(msg *capnp.Message) (Topic_Handler_handle_Results, error) {
-	root, err := msg.Root()
-	return Topic_Handler_handle_Results{root.Struct()}, err
-}
-
-func (s Topic_Handler_handle_Results) String() string {
-	str, _ := text.Marshal(0xf8d41329eb57bd62, s.Struct)
-	return str
-}
-
-// Topic_Handler_handle_Results_List is a list of Topic_Handler_handle_Results.
-type Topic_Handler_handle_Results_List = capnp.StructList[Topic_Handler_handle_Results]
-
-// NewTopic_Handler_handle_Results creates a new list of Topic_Handler_handle_Results.
-func NewTopic_Handler_handle_Results_List(s *capnp.Segment, sz int32) (Topic_Handler_handle_Results_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Topic_Handler_handle_Results]{l}, err
-}
-
-// Topic_Handler_handle_Results_Future is a wrapper for a Topic_Handler_handle_Results promised by a client call.
-type Topic_Handler_handle_Results_Future struct{ *capnp.Future }
-
-func (p Topic_Handler_handle_Results_Future) Struct() (Topic_Handler_handle_Results, error) {
-	s, err := p.Future.Struct()
-	return Topic_Handler_handle_Results{s}, err
-}
-
 type Topic_publish_Params struct{ capnp.Struct }
 
 // Topic_publish_Params_TypeID is the unique identifier for the type Topic_publish_Params.
@@ -499,16 +315,16 @@ func (s Topic_subscribe_Params) String() string {
 	return str
 }
 
-func (s Topic_subscribe_Params) Handler() Topic_Handler {
+func (s Topic_subscribe_Params) Chan() channel.Sender {
 	p, _ := s.Struct.Ptr(0)
-	return Topic_Handler{Client: p.Interface().Client()}
+	return channel.Sender{Client: p.Interface().Client()}
 }
 
-func (s Topic_subscribe_Params) HasHandler() bool {
+func (s Topic_subscribe_Params) HasChan() bool {
 	return s.Struct.HasPtr(0)
 }
 
-func (s Topic_subscribe_Params) SetHandler(v Topic_Handler) error {
+func (s Topic_subscribe_Params) SetChan(v channel.Sender) error {
 	if !v.Client.IsValid() {
 		return s.Struct.SetPtr(0, capnp.Ptr{})
 	}
@@ -534,8 +350,8 @@ func (p Topic_subscribe_Params_Future) Struct() (Topic_subscribe_Params, error) 
 	return Topic_subscribe_Params{s}, err
 }
 
-func (p Topic_subscribe_Params_Future) Handler() Topic_Handler {
-	return Topic_Handler{Client: p.Future.Field(0, nil).Client()}
+func (p Topic_subscribe_Params_Future) Chan() channel.Sender {
+	return channel.Sender{Client: p.Future.Field(0, nil).Client()}
 }
 
 type Topic_subscribe_Results struct{ capnp.Struct }
@@ -894,64 +710,53 @@ func (p PubSub_join_Results_Future) Topic() Topic {
 	return Topic{Client: p.Future.Field(0, nil).Client()}
 }
 
-const schema_f9d8a0180405d9ed = "x\xda\x94\x93OH\x14m\x1c\xc7\x7f\xbf\xe7\x99u^" +
-	"\xc4}\xf5y\x1f\xf1}}3$Q\xa9\x85\xb64(" +
-	"\xf2\xd0.VXQ0\xb3FA\x9ef\xb6!\xb7\xf6" +
-	"\x1f3N \x1d\xbc\x18\xd89\x82\xb0\xc4\xa8CE\x97" +
-	".\x1d=\xba\"y(P\xd0\"\xa2\x83\xa7\x90X\xe9" +
-	"\x90YL<3\xce\xce\xb8\x96\xd9i\x17\xe6\xc7\xf7\xf7" +
-	"\xfd}\xbe\xdf\xe7\xe0=LJ]\xd1\xf7\x11 \xea\x89" +
-	"H\x8d\xd3=\xd7:;~\xb88\x0a\x8c#\x80$\x03" +
-	"\x1cZ 1\x04\xc99>\xfarx\xecv\xc3\x98\xf7" +
-	"%\x82\xe2\xd3\x14\xf9\x07\x01\xf94I\x00:\xabok" +
-	"\x1f\x95O/\xde\x02\xb6\xab2\xb0L\xce\x88\x81\xb2;" +
-	"\xf0\xfcZ\xc3\x81\xbdO\xf3w\x81E\xa9\xb3\xb2\x14\x91" +
-	"\xfe{\xb0\xb8\x06\x80\x9c\xd1q\xdeL\xff\x05\xe0{\xe8" +
-	"\x0c\x9f\xa02\x80s\xf6\xc5\xf0@\xc9>2\x112r" +
-	"\x93\xfe/\x8c\x8c\xed\xbeQZW\xb2\x93\xc0\x1a+{" +
-	"r\xb4V\xec\xb1\xa9\xd8\xf3d\xe0S\xc1.\x993a" +
-	"\xa7wh\x9b\x18\x98p\x07\xd6K\xabM\x9d}\xf7_" +
-	"\x03\xe34p\x05\xc8\xa7\xe8\x1b>+\xd6\xf3i\xda\xc7" +
-	"W\\#\x89\xce\x0b-\xcf.]_\x08\xab-P\"" +
-	"\xd4\x96\\\xb5\xbf\x97kZ&\x1b\xe7\xca[\xceZ\xa3" +
-	"\x0f9\x0a\xe7\xfc;\xed\xe3\x1d\xe2\x9f#\x1f\x9b\xff\xbc" +
-	"V\xf8V\x0e\xce\xe2Q\xe9+H\x8e>u\xf1\xe3>" +
-	">\xff\xc5\xa3\xe7\xde[\xa6)q\xef\xe3s\xc3\xe4U" +
-	"Sr=|\xef;\xcf\xc0\x07\x9a\x80\xfdN\xd1\xd6-" +
-	"[\x8f\xa7\xa9V\xcc\x17{\xce\x17\x8a\x99t\xdc\xb2u" +
-	"+mft\xa3=eX\xf5vv\xc8\xfa\xe9X\xd1" +
-	"\xd6\xb3\x19k\xb0]\xd1L-\x87\x96*Q\x09@B" +
-	"\x00\x16m\x03P\xff\xa2\xa86\x12\x94s\xd6\x15\x8c\x02" +
-	"\xc1(`EF\x0a\xc9\x9c\xd2\xf2\x97\xb3\x86\x19\x1ft" +
-	"\x7f=5\x0b\xe0O\xe4\xd0\x97\xa3\x99\xb4*a8$" +
-	"\xec\x1d\xd9X\xa0\xd6\xd1\x08@\xa5\x8a\xe8\x97\x84\xa9\xbd" +
-	"@\xd8I\x19\x83\xf0\xd1o2;\x9a\x02\xc2\xbad$" +
-	"\x15\xf8\xe8g\xca:b@X\xb3<\xb2\xc1!\x89\x8e" +
-	"\x0f\x0e\xd0Hb}^\xcb\x19IT\x10\xb7\xa5\x972" +
-	",;K\xb7 Vl\xbd\xdf\xd6\xe3W\x0b\x99\xbc7" +
-	"2T\xc5\xa4;`\xd2:$\x14\x91\x85\xeb\x88\x0c\xf0" +
-	"7\xe1*\x9a)k\xb9M\xb9\xf5\x06\xa2#^\x1e&" +
-	"\xb2\x80f\x95,\xa9N\x91\x1a\xa6\x82\xa8J.h\xff" +
-	"I\xa3\xdfN\xc6z\x80\xb0\x88\x9c\xf0\x94\x7f\x8dF\x80" +
-	"\xab\x1c\x1d\xb6\x17\x0b\xec\xb9t\xb1\x0e\x08\xd6m)\x82" +
-	"b\xebr\xbf\xad\x07V\xfcW\x80\xfe\xf3g,\xe6Z" +
-	"\xa9\x17|7\x1b!\xd5F\x12^#w\xd2]\xcf3" +
-	"n\x97\xe5F\xbdwr\xd5\x8f\x00\x00\x00\xff\xff\xbc\xdf" +
-	"\x89x"
+const schema_f9d8a0180405d9ed = "x\xda\x8cS?h\x13Q\x18\xff\xbe\xf7]r\"\x89" +
+	"\xe9\xf3b\xb1R)\x94*\x92!\xda\x0aV\x1dLP" +
+	"D\x07\x85\xbbT\x04\xedt\x17\x82=\xcd\x9f#\x97W" +
+	"\x08\x0e.\x1d\xe2X\\\xa4 \x15\x17\x15\x17\x1d:\xb9" +
+	"\xa7\x88\x15\x14,\xd8\xc1Q\xb0B\x95\x80K\xad\xf0\xe4" +
+	"%^\x92\x1a\x8d\xdd\x0e\xde\x8f\xdf\xdf\xef\x8e\xcdbZ" +
+	"\x1b\x8fN\x86\x81Y\x17Ca9\xb12\xf2j\xe1\x84" +
+	"7\x07\xdc@\x00M\x078\x8e\x94@\xd0\xe4\xb9\xb9\xd7" +
+	"\xd5\xda\xbd\x81Z\xeb%\x84\xeai\x9d\xedE@\xa3\xc1" +
+	"R\x80\xf2\xf9\xad\x81\xa3G\x9e\x16\xef\x03\x8f\x92\xdcX" +
+	"\x0bi\xfb\x1f~\xd8\x04@\x83\xd3\x821D:\x80\xb1" +
+	"\x8f\x96\x8dy\xf5%/-U\xa7\xebb\xf2A\x97N" +
+	"\x95\x0e(\x9d\xda\xc1\xdb\xf5-3\xbf\x08<\xde\xd6\xb1" +
+	"i\xb7\xd2qI\xe9<\x99\xfeV\x12\xf5\xf2r\xb7\x91" +
+	"\xbb4\xaa\x00\xf3M@\xea\xf0\xd5\xe1g\xd7gW\xbb" +
+	"\x01/\x88)\xc0R\x13\xb0\xe7Sxx1\xbe\xd2\xe8" +
+	"q\xbaJ\x8f\x8c\x8fM\xa7kt\xc1@eK\xeag" +
+	"\xde\x7f\xdf,\xfdlt\x9c\x1a\xeb\xf4\x034\xf9\xf8r" +
+	"\x95\xbd\x1dLou\x1b}\xd3\x92yG)\xb8&=" +
+	"\xe1\xf8\xc2If\xc9\xf6\x8a\xde\xe9+%\xcf\xcd&}" +
+	"\xe1\xf8\xd9\xb2\xeb\xe4\xc629?&\xf2\x15\xff\xaf0" +
+	"O8y\xd7\x9f\x193\xed\xb2]@\xdf\xd2H\x03\xd0" +
+	"\x10\x80GG\x01\xac]\x84V\x9c\xa1^\xf0o`\x14" +
+	"\x18F\x01\xdb4\x18\xd0\x90\x9b5\x11\xad\x08\x85\x00\xda" +
+	"\xebaP<\xb7\xce\x02\xe3\xe7u\xec\x14\x8a\xc1\xf8\xfc" +
+	"T\x06\x18\x1f\xd7\x91\xb5\xd3cP*?\x94\x00\xc6\x87" +
+	"\xf4;\xbf-\xa6Q\x06\x99\x00si\x8c\x15\xedB." +
+	"\x8d&b\xdf`\x99\x9c/\xf2\xd4\x93\xde\x14\xce\x94p" +
+	"\x927Kn\xb1\x05\xa9\xf8\x00\xdd\xe9':\xe9G*" +
+	"\x8a\x11y\xe7\xf0\x00\x91\x03\xfe\xa7w\xd3.\xebva" +
+	"[\xa5\x89\x0ei,;c\x17\x91\xcb\xaf\x83_N\xc6" +
+	"7^~\xee\xc7\xa9\x92\xb6]\xfe\x8bO\x810\x02\x0c" +
+	"#=\x1b\x99\xc2\xd1\xa7\x84\xa3F\xd2\x9a#\x05\x17\x85" +
+	"\xc1?\xc0\xb9*;\xa4\xc7T!\xdbKe\x7f\x1aI" +
+	"5o\xa5_\xa1-\xc0\x8e\x9c\xfe\x0a\x00\x00\xff\xffb" +
+	"o!\xb9"
 
 func init() {
 	schemas.Register(schema_f9d8a0180405d9ed,
 		0x8470369ac91fcc32,
 		0x8810938879cb8443,
-		0x89d849f1a30adbf2,
 		0x986ea9282f106bb0,
 		0x9d3775c65b79b54c,
 		0x9f6c50fbc67b1d88,
 		0xc772c6756fef5ba8,
-		0xd19c472616f2c6fb,
 		0xd5765aab1c56263f,
 		0xf1cc149f1c06e50e,
 		0xf1fc6ff9f4d43e07,
-		0xf8d41329eb57bd62,
 		0xfb4016d002794da7)
 }
