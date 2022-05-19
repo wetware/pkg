@@ -11,7 +11,7 @@ type UnixProc struct {
 	Client unix.Client
 }
 
-func (p *UnixProc) UnixExec(ctx context.Context, name string, args ...string) *Process {
+func (p *UnixProc) Exec(ctx context.Context, name string, args ...string) *Process {
 	capProc, release := p.Client.Exec(ctx, name, args...)
 	proc := &Process{client: capProc}
 
