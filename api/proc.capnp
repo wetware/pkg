@@ -6,7 +6,7 @@ $Go.package("proc");
 $Go.import("github.com/wetware/ww/internal/api/proc");
 
 interface Executor(T) {
-    exec @0 (profile :T) -> (proc :Process);
+    exec @0 (command :T) -> (proc :Process);
 }
 
 struct UnixCommand {

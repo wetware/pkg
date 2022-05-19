@@ -15,7 +15,7 @@ func (s *Server) NewClient() *Client {
 }
 
 func (s *Server) Exec(ctx context.Context, call api.Executor_exec) error {
-	ptr, err := call.Args().Profile()
+	ptr, err := call.Args().Command()
 	if err != nil {
 		return err
 	}

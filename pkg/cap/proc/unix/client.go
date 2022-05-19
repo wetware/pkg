@@ -35,7 +35,7 @@ func unixCmd(name string, args ...string) func(p api.Executor_exec_Params) error
 			}
 		}
 
-		return p.SetProfile(cmd.ToPtr())
+		return p.SetCommand(cmd.ToPtr())
 	}
 }
 
