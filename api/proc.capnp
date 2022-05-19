@@ -5,11 +5,16 @@ using Go = import "/go.capnp";
 $Go.package("proc");
 $Go.import("github.com/wetware/ww/internal/api/proc");
 
-interface UnixExecutor {
-    command @0 (name :Text, arg :List(Text)) -> (cmd :Cmd);
+interface Executor(T) {
+    exec @0 (profile :T) -> (proc :Process);
 }
 
-interface Cmd {
+struct UnixCommand {
+    name @0 :Text;
+    arg @1 :List(Text);
+}
+
+interface Process {
     start @0 () -> ();
     wait @1 () -> ();
     stderrPipe @2 () -> (rc :ReadCloser);

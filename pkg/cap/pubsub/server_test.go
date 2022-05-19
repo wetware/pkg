@@ -83,7 +83,7 @@ func TestPubSub_refcount(t *testing.T) {
 
 			require.Eventually(t, func() bool {
 				return len(ch) == cap(ch)
-			}, time.Millisecond*10, time.Millisecond, "should receive message")
+			}, time.Second, time.Millisecond, "should receive message")
 
 			assert.Equal(t, "test", string(<-ch),
 				"should match previously-published message")

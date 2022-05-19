@@ -1,4 +1,4 @@
-package proc_test
+package unix_test
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/wetware/ww/pkg/cap/proc"
+	"github.com/wetware/ww/pkg/cap/proc/unix"
 )
 
 func TestStdout(t *testing.T) {
@@ -16,11 +16,11 @@ func TestStdout(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	server := proc.Server{}
+	server := unix.Server{}
 	client := server.NewClient()
 
 	expected := "hello world"
-	cmd, release := client.Command(ctx, "echo", expected)
+	cmd, release := client.Exec(ctx, "echo", expected)
 	defer release()
 
 	stdout, release := cmd.StdoutPipe(ctx)
@@ -43,11 +43,11 @@ func TestStderr(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	server := proc.Server{}
+	server := unix.Server{}
 	client := server.NewClient()
 
 	expected := "hello world"
-	cmd, release := client.Command(ctx, "sh", "-c", fmt.Sprintf("echo %s 1>&2", expected))
+	cmd, release := client.Exec(ctx, "sh", "-c", fmt.Sprintf("echo %s 1>&2", expected))
 	defer release()
 
 	stderr, release := cmd.StderrPipe(ctx)
@@ -70,11 +70,11 @@ func TestStdin(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	server := proc.Server{}
+	server := unix.Server{}
 	client := server.NewClient()
 
 	expected := []byte("hello world")
-	cmd, release := client.Command(ctx, "cat")
+	cmd, release := client.Exec(ctx, "cat")
 	defer release()
 
 	stdin, release := cmd.StdinPipe(ctx)

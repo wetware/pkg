@@ -1,4 +1,4 @@
-package client
+package proc
 
 import (
 	"context"
@@ -8,35 +8,22 @@ import (
 	"github.com/wetware/ww/pkg/cap/proc"
 )
 
-type Proc struct {
-	Client proc.Client
-}
-
-func (p *Proc) Command(ctx context.Context, name string, args ...string) *Cmd {
-	capCmd, release := p.Client.Command(ctx, name, args...)
-	cmd := &Cmd{client: capCmd}
-
-	runtime.SetFinalizer(cmd, release)
-
-	return cmd
-}
-
-type Cmd struct {
-	client  *proc.CmdClient
+type Process struct {
+	client  proc.Process
 	release capnp.ReleaseFunc
 }
 
-func (c *Cmd) Start(ctx context.Context) error {
+func (c *Process) Start(ctx context.Context) error {
 	return c.client.Start(ctx)
 }
 
-func (c *Cmd) Wait(ctx context.Context) error {
+func (c *Process) Wait(ctx context.Context) error {
 	err := c.client.Wait(ctx)
 	c.release() // TODO: is this a correct beehavior?
 	return err
 }
 
-func (c *Cmd) StderrPipe(ctx context.Context) *ReadCloser {
+func (c *Process) StderrPipe(ctx context.Context) *ReadCloser {
 	stderr, release := c.client.StderrPipe(ctx)
 	rc := &ReadCloser{client: stderr}
 
@@ -44,7 +31,7 @@ func (c *Cmd) StderrPipe(ctx context.Context) *ReadCloser {
 	return rc
 }
 
-func (c *Cmd) StdoutPipe(ctx context.Context) *ReadCloser {
+func (c *Process) StdoutPipe(ctx context.Context) *ReadCloser {
 	stdout, release := c.client.StdoutPipe(ctx)
 	rc := &ReadCloser{client: stdout, release: release}
 
@@ -52,7 +39,7 @@ func (c *Cmd) StdoutPipe(ctx context.Context) *ReadCloser {
 	return rc
 }
 
-func (c *Cmd) StdinPipe(ctx context.Context) *WriteCloser {
+func (c *Process) StdinPipe(ctx context.Context) *WriteCloser {
 	stdin, release := c.client.StdinPipe(ctx)
 	rc := &WriteCloser{client: stdin, release: release}
 
@@ -61,7 +48,7 @@ func (c *Cmd) StdinPipe(ctx context.Context) *WriteCloser {
 }
 
 type ReadCloser struct {
-	client  *proc.ReadCloserClient
+	client  proc.ReadCloser
 	release capnp.ReleaseFunc
 }
 
@@ -77,7 +64,7 @@ func (rc *ReadCloser) Close(ctx context.Context) (err error) {
 }
 
 type WriteCloser struct {
-	client  *proc.WriteCloserClient
+	client  proc.WriteCloser
 	release capnp.ReleaseFunc
 }
 

@@ -66,29 +66,9 @@ func (n Node) Close() error {
 // Join a pubsub topic.
 func (n Node) Join(ctx context.Context, topic string) Topic {
 	var f, release = n.ps.Join(ctx, topic)
+	defer release()
 
-	t := &futureTopic{
-		name: topic,
-		f:    f,
-		done: n.conn.Done(),
-	}
-
-	// Wrap the call to release in a function that ensures
-	// release is only called once.
-	t.release = func() {
-		release()
-		t.release = nil
-		runtime.SetFinalizer(t, nil)
-	}
-
-	// Ensure finalizer is called if users get sloppy.
-	runtime.SetFinalizer(t, func(t *futureTopic) {
-		if t.release != nil {
-			t.release()
-		}
-	})
-
-	return t
+	return NewTopic(f.Topic().AddRef().Client, topic)
 }
 
 func (n Node) Path() []string { return nil }

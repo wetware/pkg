@@ -6,6 +6,8 @@ import (
 	capnp "capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/server"
 
+	"github.com/wetware/ww/internal/api/channel"
+	chan_api "github.com/wetware/ww/internal/api/channel"
 	api "github.com/wetware/ww/internal/api/pubsub"
 )
 
@@ -42,6 +44,18 @@ func (ft FutureTopic) Struct() (Topic, error) {
 
 type Topic api.Topic
 
+func (t Topic) Name(ctx context.Context) (string, error) {
+	f, release := (api.Topic)(t).Name(ctx, nil)
+	defer release()
+
+	res, err := f.Struct()
+	if err != nil {
+		return "", err
+	}
+
+	return res.Name()
+}
+
 func (t Topic) Publish(ctx context.Context, b []byte) error {
 	f, release := (api.Topic)(t).Publish(ctx, func(ps api.Topic_publish_Params) error {
 		return ps.SetMsg(b)
@@ -52,34 +66,34 @@ func (t Topic) Publish(ctx context.Context, b []byte) error {
 	return err
 }
 
-func (t Topic) Subscribe(ctx context.Context, ch chan<- []byte) (cancel func(), err error) {
-	hc := api.Topic_Handler_ServerToClient(handler{
+func (t Topic) Subscribe(ctx context.Context, ch chan<- []byte) (release capnp.ReleaseFunc, err error) {
+	h := channel.Sender_ServerToClient(handler{
 		ms:      ch,
 		release: t.AddRef().Release,
 	}, &server.Policy{
 		MaxConcurrentCalls: cap(ch),
 	})
-	defer hc.Release() // ensure topic ref is released if we return an error
 
-	f, release := api.Topic(t).Subscribe(ctx, func(ps api.Topic_subscribe_Params) error {
-		return ps.SetHandler(hc.AddRef())
-	})
+	f, release := api.Topic(t).Subscribe(ctx, sender(h))
 	defer release()
 
-	select {
-	case <-f.Done():
-		_, err = f.Struct()
-	case <-ctx.Done():
-		err = ctx.Err()
+	if _, err = f.Struct(); err == nil {
+		release = h.Release
 	}
 
-	return hc.AddRef().Release, err
+	return
 }
 
 func (t Topic) Release() { t.Client.Release() }
 
 func (t Topic) AddRef() Topic {
 	return Topic(api.Topic(t).AddRef())
+}
+
+func sender(s chan_api.Sender) func(api.Topic_subscribe_Params) error {
+	return func(ps api.Topic_subscribe_Params) error {
+		return ps.SetChan(s)
+	}
 }
 
 type handler struct {
@@ -92,16 +106,26 @@ func (h handler) Shutdown() {
 	h.release()
 }
 
-func (h handler) Handle(_ context.Context, call api.Topic_Handler_handle) error {
-	b, err := call.Args().Msg()
+func (h handler) Send(ctx context.Context, call channel.Sender_send) error {
+	ptr, err := call.Args().Value()
 	if err != nil {
 		return err
 	}
 
 	select {
-	case h.ms <- b:
+	case h.ms <- ptr.Data():
+		return nil // fast path
 	default:
 	}
 
-	return nil
+	// Slow path.  Spawn goroutine and block.  The FlowLimiter will limit the
+	// number of outstanding calls to Handle.
+	call.Ack()
+
+	select {
+	case h.ms <- ptr.Data():
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }

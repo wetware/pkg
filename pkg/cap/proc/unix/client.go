@@ -1,23 +1,30 @@
-package proc
+package unix
 
 import (
 	"context"
 
 	"capnproto.org/go/capnp/v3"
 	api "github.com/wetware/ww/internal/api/proc"
+	"github.com/wetware/ww/pkg/cap/proc"
 )
 
-type Client struct {
-	client api.UnixExecutor
-}
-
-func (c *Client) Command(ctx context.Context, name string, args ...string) (*CmdClient, capnp.ReleaseFunc) {
-	fut, release := c.client.Command(ctx, func(p api.UnixExecutor_command_Params) error {
-		if err := p.SetName(name); err != nil {
+func unixCmd(name string, args ...string) func(p api.Executor_exec_Params) error {
+	return func(p api.Executor_exec_Params) error {
+		_, s, err := capnp.NewMessage(capnp.SingleSegment(nil))
+		if err != nil {
 			return err
 		}
 
-		arg, err := p.NewArg(int32(len(args)))
+		cmd, err := api.NewRootUnixCommand(s)
+		if err != nil {
+			return err
+		}
+
+		if err := cmd.SetName(name); err != nil {
+			return err
+		}
+
+		arg, err := cmd.NewArg(int32(len(args)))
 		if err != nil {
 			return err
 		}
@@ -27,18 +34,26 @@ func (c *Client) Command(ctx context.Context, name string, args ...string) (*Cmd
 				return err
 			}
 		}
-		return nil
-	})
 
-	return &CmdClient{client: fut.Cmd()}, release
+		return p.SetProfile(cmd.ToPtr())
+	}
 }
 
-type CmdClient struct {
-	client api.Cmd
+type Client struct {
+	client api.Executor
 }
 
-func (c *CmdClient) Start(ctx context.Context) error {
-	fut, release := c.client.Start(ctx, func(p api.Cmd_start_Params) error {
+func (c *Client) Exec(ctx context.Context, name string, args ...string) (proc.Process, capnp.ReleaseFunc) {
+	fut, release := c.client.Exec(ctx, unixCmd(name, args...))
+	return &ProcessClient{client: fut.Proc()}, release
+}
+
+type ProcessClient struct {
+	client api.Process
+}
+
+func (c *ProcessClient) Start(ctx context.Context) error {
+	fut, release := c.client.Start(ctx, func(p api.Process_start_Params) error {
 		return nil
 	})
 	defer release()
@@ -52,8 +67,8 @@ func (c *CmdClient) Start(ctx context.Context) error {
 	}
 }
 
-func (c *CmdClient) Wait(ctx context.Context) error {
-	fut, release := c.client.Wait(ctx, func(p api.Cmd_wait_Params) error {
+func (c *ProcessClient) Wait(ctx context.Context) error {
+	fut, release := c.client.Wait(ctx, func(p api.Process_wait_Params) error {
 		return nil
 	})
 	defer release()
@@ -67,24 +82,24 @@ func (c *CmdClient) Wait(ctx context.Context) error {
 	}
 }
 
-func (c *CmdClient) StderrPipe(ctx context.Context) (*ReadCloserClient, capnp.ReleaseFunc) {
-	fut, release := c.client.StderrPipe(ctx, func(c api.Cmd_stderrPipe_Params) error {
+func (c *ProcessClient) StderrPipe(ctx context.Context) (proc.ReadCloser, capnp.ReleaseFunc) {
+	fut, release := c.client.StderrPipe(ctx, func(c api.Process_stderrPipe_Params) error {
 		return nil
 	})
 
 	return &ReadCloserClient{client: fut.Rc()}, release
 }
 
-func (c *CmdClient) StdoutPipe(ctx context.Context) (*ReadCloserClient, capnp.ReleaseFunc) {
-	fut, release := c.client.StdoutPipe(ctx, func(p api.Cmd_stdoutPipe_Params) error {
+func (c *ProcessClient) StdoutPipe(ctx context.Context) (proc.ReadCloser, capnp.ReleaseFunc) {
+	fut, release := c.client.StdoutPipe(ctx, func(p api.Process_stdoutPipe_Params) error {
 		return nil
 	})
 
 	return &ReadCloserClient{client: fut.Rc()}, release
 }
 
-func (c *CmdClient) StdinPipe(ctx context.Context) (*WriteCloserClient, capnp.ReleaseFunc) {
-	fut, release := c.client.StdinPipe(ctx, func(p api.Cmd_stdinPipe_Params) error {
+func (c *ProcessClient) StdinPipe(ctx context.Context) (proc.WriteCloser, capnp.ReleaseFunc) {
+	fut, release := c.client.StdinPipe(ctx, func(p api.Process_stdinPipe_Params) error {
 		return nil
 	})
 
