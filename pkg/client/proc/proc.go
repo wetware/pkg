@@ -13,6 +13,12 @@ type Process struct {
 	release capnp.ReleaseFunc
 }
 
+func newProcess(p proc.Process, release capnp.ReleaseFunc) *Process {
+	proc := &Process{client: p, release: release}
+	runtime.SetFinalizer(proc, release)
+	return proc
+}
+
 func (c *Process) Start(ctx context.Context) error {
 	return c.client.Start(ctx)
 }
@@ -20,6 +26,7 @@ func (c *Process) Start(ctx context.Context) error {
 func (c *Process) Wait(ctx context.Context) error {
 	err := c.client.Wait(ctx)
 	c.release() // TODO: is this a correct beehavior?
+	runtime.SetFinalizer(c, nil)
 	return err
 }
 
