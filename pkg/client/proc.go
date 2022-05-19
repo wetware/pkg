@@ -1,4 +1,4 @@
-package proc
+package client
 
 import (
 	"context"
@@ -6,7 +6,16 @@ import (
 
 	"capnproto.org/go/capnp/v3"
 	"github.com/wetware/ww/pkg/cap/proc"
+	"github.com/wetware/ww/pkg/cap/proc/unix"
 )
+
+type UnixProc struct {
+	unix.Client
+}
+
+func (p UnixProc) Exec(ctx context.Context, name string, args ...string) *Process {
+	return newProcess(p.Client.Exec(ctx, name, args...))
+}
 
 type Process struct {
 	client  proc.Process
@@ -19,11 +28,11 @@ func newProcess(p proc.Process, release capnp.ReleaseFunc) *Process {
 	return proc
 }
 
-func (c *Process) Start(ctx context.Context) error {
+func (c Process) Start(ctx context.Context) error {
 	return c.client.Start(ctx)
 }
 
-func (c *Process) Wait(ctx context.Context) error {
+func (c Process) Wait(ctx context.Context) error {
 	err := c.client.Wait(ctx)
 	c.release() // TODO: is this a correct beehavior?
 	runtime.SetFinalizer(c, nil)
