@@ -98,15 +98,8 @@ func (f ViewServer) Lookup(_ context.Context, call api.View_lookup) error {
 type View api.View
 
 func (v View) Iter(ctx context.Context) (*RecordStream, capnp.ReleaseFunc) {
-	ctx, cancel := context.WithCancel(ctx)
-
-	ch := make(chan Record, batchSize)
-
-	rs, release := newRecordStream(ctx, api.View(v), ch)
-	return rs, func() {
-		cancel()
-		release()
-	}
+	rs, release := newRecordStream(ctx, api.View(v))
+	return rs, release
 }
 
 func peerID(id peer.ID) func(api.View_lookup_Params) error {
@@ -192,61 +185,28 @@ func (r Record) Seq() uint64 {
 // RecordStream is a routing.Iterator that receives iterates
 // over an asynchronous stream of records.
 type RecordStream struct {
-	h <-chan Record
-	f channel.Future
+	rs chan Record
+	f  channel.Future
 
 	rec Record
 	Err error
 }
 
-func newRecordStream(ctx context.Context, r api.View, ch chan Record) (*RecordStream, capnp.ReleaseFunc) {
-	f, release := r.Iter(ctx, handler(ch))
-	return &RecordStream{
-		h: ch,
-		f: channel.Future{Future: f.Future},
-	}, release
-}
-
-func (rs *RecordStream) Next(ctx context.Context) (more bool) {
-	for {
-		select {
-		case rs.rec, more = <-rs.h:
-			return
-
-		case <-rs.done():
-			rs.Err = rs.f.Err()
-			rs.f.Future = nil
-
-		case <-ctx.Done():
-			return false
-		}
-	}
-}
-
-func (rs *RecordStream) Record() routing.Record { return rs.rec }
-
-func (rs *RecordStream) done() <-chan struct{} {
-	if rs.f.Future != nil {
-		return rs.f.Done()
+func newRecordStream(ctx context.Context, r api.View) (*RecordStream, capnp.ReleaseFunc) {
+	rs := &RecordStream{
+		rs: make(chan Record, batchSize),
 	}
 
-	return nil
+	f, release := r.Iter(ctx, sender(rs))
+	rs.f = channel.Future{Future: f.Future}
+
+	return rs, release
 }
 
-type sender chan<- Record
+func (s *RecordStream) Shutdown() { close(s.rs) }
 
-func handler(s sender) func(ps api.View_iter_Params) error {
-	return func(ps api.View_iter_Params) error {
-		return ps.SetHandler(chan_api.Sender_ServerToClient(s, &server.Policy{
-			MaxConcurrentCalls: maxInFlight,
-		}))
-	}
-}
-
-func (s sender) Shutdown() { close(s) }
-
-func (s sender) Send(ctx context.Context, call chan_api.Sender_send) error {
-	rs, err := handlerSendParams(call.Args()).Records()
+func (s *RecordStream) Send(ctx context.Context, call chan_api.Sender_send) error {
+	rs, err := sendParams(call.Args()).Records()
 	if err != nil {
 		return err
 	}
@@ -259,7 +219,7 @@ func (s sender) Send(ctx context.Context, call chan_api.Sender_send) error {
 		}
 
 		select {
-		case s <- r:
+		case s.rs <- r:
 		case <-ctx.Done():
 			return ctx.Err()
 		}
@@ -268,14 +228,48 @@ func (s sender) Send(ctx context.Context, call chan_api.Sender_send) error {
 	return nil
 }
 
-type handlerSendParams chan_api.Sender_send_Params
+func (s *RecordStream) Next(ctx context.Context) (more bool) {
+	for {
+		select {
+		case s.rec, more = <-s.rs:
+			return
 
-func (ps handlerSendParams) Records() (api.View_Record_List, error) {
+		case <-s.done():
+			s.Err = s.f.Err()
+			s.f.Future = nil
+
+		case <-ctx.Done():
+			return false
+		}
+	}
+}
+
+func (s *RecordStream) Record() routing.Record { return s.rec }
+
+func (s *RecordStream) done() <-chan struct{} {
+	if s.f.Future != nil {
+		return s.f.Done()
+	}
+
+	return nil
+}
+
+type sendParams chan_api.Sender_send_Params
+
+func sender(s channel.SendServer) func(ps api.View_iter_Params) error {
+	return func(ps api.View_iter_Params) error {
+		return ps.SetHandler(chan_api.Sender_ServerToClient(s, &server.Policy{
+			MaxConcurrentCalls: maxInFlight,
+		}))
+	}
+}
+
+func (ps sendParams) Records() (api.View_Record_List, error) {
 	ptr, err := chan_api.Sender_send_Params(ps).Value()
 	return capnp.StructList[api.View_Record]{List: ptr.List()}, err
 }
 
-func (ps handlerSendParams) NewRecords(size int32) (api.View_Record_List, error) {
+func (ps sendParams) NewRecords(size int32) (api.View_Record_List, error) {
 	return api.NewView_Record_List(ps.Segment(), size)
 }
 
@@ -397,7 +391,7 @@ func (b *batch) Flush() func(chan_api.Sender_send_Params) error {
 			b.rs = b.rs[:0]
 		}()
 
-		rs, err := handlerSendParams(p).NewRecords(b.Len())
+		rs, err := sendParams(p).NewRecords(b.Len())
 		if err != nil {
 			return err
 		}
