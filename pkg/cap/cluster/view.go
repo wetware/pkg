@@ -97,7 +97,7 @@ type View api.View
 func (v View) Iter(ctx context.Context) (*RecordStream, capnp.ReleaseFunc) {
 	ctx, cancel := context.WithCancel(ctx)
 
-	ch := make(chan record, maxInFlight)
+	ch := make(chan Record, maxInFlight)
 
 	rs, release := newRecordStream(ctx, api.View(v), ch)
 	return rs, func() {
@@ -106,46 +106,87 @@ func (v View) Iter(ctx context.Context) (*RecordStream, capnp.ReleaseFunc) {
 	}
 }
 
-func (v View) Lookup(ctx context.Context, peerID peer.ID) (routing.Record, error) {
-	f, release := api.View(v).Lookup(ctx, func(r api.View_lookup_Params) error {
-		return r.SetPeerID(string(peerID))
-	})
-	defer release()
+func peerID(id peer.ID) func(api.View_lookup_Params) error {
+	return func(ps api.View_lookup_Params) error {
+		return ps.SetPeerID(string(id))
+	}
+}
 
-	res, err := f.Struct()
+func (v View) Lookup(ctx context.Context, id peer.ID) (FutureRecord, capnp.ReleaseFunc) {
+	f, release := api.View(v).Lookup(ctx, peerID(id))
+	return FutureRecord(f), release
+}
+
+type FutureRecord api.View_lookup_Results_Future
+
+func (f FutureRecord) Record() (Record, error) {
+	res, err := api.View_lookup_Results_Future(f).Struct()
 	if err != nil {
-		return nil, err
+		return Record{}, err
 	}
 
-	rec, err := res.Record()
+	r, err := res.Record()
 	if err != nil {
-		return nil, err
+		return Record{}, err
 	}
 
-	var r record
-	err = r.Bind(rec)
-	return r, err
+	return Record(r), Record(r).Validate()
+}
+
+func (f FutureRecord) Await(ctx context.Context) (Record, error) {
+	select {
+	case <-f.Done():
+		return f.Record()
+
+	case <-ctx.Done():
+		return Record{}, ctx.Err()
+	}
 }
 
 type Record api.View_Record
 
-func (rec Record) TTL() time.Duration {
-	return time.Duration(api.View_Record(rec).Ttl())
+func (r Record) Validate() error {
+	_, err := r.ID()
+	return err
 }
 
-func (rec Record) Seq() uint64 {
-	return api.View_Record(rec).Seq()
+func (r Record) ID() (peer.ID, error) {
+	s, err := api.View_Record(r).Peer()
+	if err != nil {
+		return "", err
+	}
+
+	return peer.IDFromString(s)
 }
 
+func (r Record) Peer() peer.ID {
+	id, err := r.ID()
+	if err != nil {
+		panic(err)
+	}
+
+	return id
+}
+
+func (r Record) TTL() time.Duration {
+	return time.Duration(api.View_Record(r).Ttl())
+}
+
+func (r Record) Seq() uint64 {
+	return api.View_Record(r).Seq()
+}
+
+// RecordStream is a routing.Iterator that receives iterates
+// over an asynchronous stream of records.
 type RecordStream struct {
-	h <-chan record
+	h <-chan Record
 	f channel.Future
 
-	rec record
+	rec Record
 	Err error
 }
 
-func newRecordStream(ctx context.Context, r api.View, ch chan record) (*RecordStream, capnp.ReleaseFunc) {
+func newRecordStream(ctx context.Context, r api.View, ch chan Record) (*RecordStream, capnp.ReleaseFunc) {
 	f, release := r.Iter(ctx, handler(ch))
 	return &RecordStream{
 		h: ch,
@@ -179,7 +220,7 @@ func (rs *RecordStream) done() <-chan struct{} {
 	return nil
 }
 
-type sender chan<- record
+type sender chan<- Record
 
 func handler(s sender) func(ps api.View_iter_Params) error {
 	return func(ps api.View_iter_Params) error {
@@ -197,9 +238,10 @@ func (s sender) Send(ctx context.Context, call chan_api.Sender_send) error {
 		return err
 	}
 
-	var r record
+	var r Record
 	for i := 0; i < rs.Len(); i++ {
-		if err = r.Bind(rs.At(i)); err != nil {
+		r = Record(rs.At(i))
+		if err = r.Validate(); err != nil {
 			return err
 		}
 
@@ -223,27 +265,6 @@ func (ps handlerSendParams) Records() (api.View_Record_List, error) {
 func (ps handlerSendParams) NewRecords(size int32) (api.View_Record_List, error) {
 	return api.NewView_Record_List(ps.Segment(), size)
 }
-
-type record struct {
-	id  peer.ID
-	ttl time.Duration
-	seq uint64
-}
-
-func (rec *record) Bind(r api.View_Record) (err error) {
-	var s string
-	if s, err = r.Peer(); err == nil {
-		rec.seq = r.Seq()
-		rec.ttl = time.Duration(r.Ttl())
-		rec.id, err = peer.IDFromString(s)
-	}
-
-	return
-}
-
-func (r record) Peer() peer.ID      { return r.id }
-func (r record) TTL() time.Duration { return r.ttl }
-func (r record) Seq() uint64        { return r.seq }
 
 type batcher struct {
 	handler chan_api.Sender

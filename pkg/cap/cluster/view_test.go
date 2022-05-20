@@ -15,6 +15,22 @@ import (
 	"github.com/wetware/ww/pkg/cap/cluster"
 )
 
+func TestRecord(t *testing.T) {
+	t.Parallel()
+
+	assert.Error(t, cluster.Record{}.Validate(),
+		"should not pass validation with empty ID field")
+
+	assert.Panics(t, func() { _ = cluster.Record{}.Peer() },
+		"should panic on empty Peer field")
+
+	id, err := cluster.Record{}.ID()
+	assert.Zero(t, id,
+		"zero-value Record should produce zero-value peer.ID")
+	assert.Error(t, err,
+		"should report validation error")
+}
+
 func TestMultipleClients(t *testing.T) {
 	t.Parallel()
 
@@ -143,8 +159,14 @@ func TestLookup(t *testing.T) {
 
 	want := view[42]
 
-	got, err := c.Lookup(ctx, want.id)
-	require.NoError(t, err)
+	f, release := c.Lookup(ctx, want.id)
+	require.NotZero(t, f, "should return FutureRecord")
+	require.NotNil(t, release, "should return ReleaseFunc")
+	defer release()
+
+	got, err := f.Await(ctx)
+	require.NoError(t, err, "should resolve successfully")
+	require.NotZero(t, got, "should return Record")
 
 	assert.Equal(t, want.Peer(), got.Peer())
 	assert.Equal(t, got.Seq(), want.seq)
