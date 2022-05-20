@@ -58,18 +58,16 @@ func (f ViewServer) Client() *capnp.Client {
 }
 
 func (f ViewServer) Iter(ctx context.Context, call api.View_iter) error {
-	call.Ack()
-
-	b := newBatcher(call.Args())
+	s := newBatchStreamer(call)
 
 	for it := f.View.Iter(); it.Record() != nil; it.Next() {
-		if err := b.Send(ctx, it.Record(), it.Deadline()); err != nil {
+		if err := s.Send(ctx, it.Record(), it.Deadline()); err != nil {
 			it.Finish()
 			return err
 		}
 	}
 
-	return b.Wait(ctx)
+	return s.Wait(ctx)
 }
 
 func (f ViewServer) Lookup(_ context.Context, call api.View_lookup) error {
@@ -281,24 +279,24 @@ func (ps handlerSendParams) NewRecords(size int32) (api.View_Record_List, error)
 	return api.NewView_Record_List(ps.Segment(), size)
 }
 
-type batcher struct {
-	handler channel.Sender
-	fs      map[channel.Future]capnp.ReleaseFunc // in-flight
-	batch   batch
+type batchStreamer struct {
+	call  api.View_iter
+	fs    map[channel.Future]capnp.ReleaseFunc // in-flight
+	batch batch
 }
 
-func newBatcher(p api.View_iter_Params) batcher {
-	h := p.Handler()
-	h.Client.SetFlowLimiter(newLimiter())
+func newBatchStreamer(call api.View_iter) batchStreamer {
+	call.Ack()
+	call.Args().Handler().Client.SetFlowLimiter(newLimiter())
 
-	return batcher{
-		handler: channel.Sender(h),
-		fs:      make(map[channel.Future]capnp.ReleaseFunc),
-		batch:   newBatch(),
+	return batchStreamer{
+		call:  call,
+		fs:    make(map[channel.Future]capnp.ReleaseFunc),
+		batch: newBatch(),
 	}
 }
 
-func (b *batcher) Send(ctx context.Context, r routing.Record, dl time.Time) error {
+func (b *batchStreamer) Send(ctx context.Context, r routing.Record, dl time.Time) error {
 	// batch is full?
 	if b.batch.Add(r, dl) && b.batch.FilterExpired() {
 		b.flush(ctx)
@@ -307,13 +305,17 @@ func (b *batcher) Send(ctx context.Context, r routing.Record, dl time.Time) erro
 	return b.releaseAsync(ctx)
 }
 
-func (b *batcher) flush(ctx context.Context) {
-	f, release := b.handler.Send(ctx, b.batch.Flush())
+func (b *batchStreamer) flush(ctx context.Context) {
+	f, release := b.sender().Send(ctx, b.batch.Flush())
 	b.fs[f] = release
 }
 
+func (b *batchStreamer) sender() channel.Sender {
+	return channel.Sender(b.call.Args().Handler())
+}
+
 // release any resolved futures and return the first error encountered, if any.
-func (b *batcher) releaseAsync(ctx context.Context) (err error) {
+func (b *batchStreamer) releaseAsync(ctx context.Context) (err error) {
 	for f, release := range b.fs {
 		select {
 		case <-f.Done():
@@ -333,7 +335,7 @@ func (b *batcher) releaseAsync(ctx context.Context) (err error) {
 	return
 }
 
-func (b *batcher) Wait(ctx context.Context) (err error) {
+func (b *batchStreamer) Wait(ctx context.Context) (err error) {
 	b.flush(ctx)
 
 	// NOTE:  we don't need to call delete(b.fs, f) here we
