@@ -141,9 +141,6 @@ func TestLookup(t *testing.T) {
 	t.Parallel()
 	t.Helper()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	dl := time.Now().Add(time.Second * 10)
 	var view = make(routingTable, 65)
 	for i := range view {
@@ -157,20 +154,41 @@ func TestLookup(t *testing.T) {
 
 	c := (&cluster.ViewServer{View: view}).NewClient(nil)
 
-	want := view[42]
+	t.Run("Exists", func(t *testing.T) {
+		t.Parallel()
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 
-	f, release := c.Lookup(ctx, want.id)
-	require.NotZero(t, f, "should return FutureRecord")
-	require.NotNil(t, release, "should return ReleaseFunc")
-	defer release()
+		want := view[42]
 
-	got, err := f.Await(ctx)
-	require.NoError(t, err, "should resolve successfully")
-	require.NotZero(t, got, "should return Record")
+		f, release := c.Lookup(ctx, want.id)
+		require.NotZero(t, f, "should return FutureRecord")
+		require.NotNil(t, release, "should return ReleaseFunc")
+		defer release()
 
-	assert.Equal(t, want.Peer(), got.Peer())
-	assert.Equal(t, got.Seq(), want.seq)
-	assert.Greater(t, got.TTL(), time.Duration(0))
+		got, err := f.Await(ctx)
+		require.NoError(t, err, "should resolve successfully")
+		require.NotZero(t, got, "should return Record")
+
+		assert.Equal(t, want.Peer(), got.Peer())
+		assert.Equal(t, got.Seq(), want.seq)
+		assert.Greater(t, got.TTL(), time.Duration(0))
+	})
+
+	t.Run("NotFound", func(t *testing.T) {
+		t.Parallel()
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		f, release := c.Lookup(ctx, newID())
+		require.NotZero(t, f, "should return FutureRecord")
+		require.NotNil(t, release, "should return ReleaseFunc")
+		defer release()
+
+		got, err := f.Await(ctx)
+		assert.Zero(t, got, "should return zero-value Record")
+		assert.ErrorIs(t, err, cluster.ErrNotFound, "should return ErrNotFound")
+	})
 }
 
 func newID() peer.ID {

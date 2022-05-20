@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"capnproto.org/go/capnp/v3"
@@ -19,6 +20,10 @@ var (
 	ViewCapability = vat.BasicCap{
 		"view/packed",
 		"view"}
+
+	// ErrNotFound is returned when a lookup item was not found
+	// in the routing table.
+	ErrNotFound = errors.New("not found")
 )
 
 const (
@@ -68,28 +73,28 @@ func (f ViewServer) Iter(ctx context.Context, call api.View_iter) error {
 }
 
 func (f ViewServer) Lookup(_ context.Context, call api.View_lookup) error {
-	peerID, err := call.Args().PeerID()
-	if err != nil {
-		return err
-	}
-	capRec, ok := f.View.Lookup(peer.ID(peerID))
-	results, err := call.AllocResults()
-	if err != nil {
-		return err
-	}
-	rec, err := results.NewRecord()
+	id, err := call.Args().PeerID()
 	if err != nil {
 		return err
 	}
 
-	results.SetOk(ok)
-
-	if ok {
-		rec.SetPeer(string(capRec.Peer()))
-		rec.SetTtl(int64(capRec.TTL()))
-		rec.SetSeq(capRec.Seq())
+	record, ok := f.View.Lookup(peer.ID(id))
+	if !ok {
+		return nil
 	}
-	return nil
+
+	res, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	r, err := res.NewRecord()
+	if err == nil {
+		res.SetOk(true)
+		err = Record(r).Bind(record)
+	}
+
+	return err
 }
 
 type View api.View
@@ -125,6 +130,10 @@ func (f FutureRecord) Record() (Record, error) {
 		return Record{}, err
 	}
 
+	if !res.Ok() {
+		return Record{}, ErrNotFound
+	}
+
 	r, err := res.Record()
 	if err != nil {
 		return Record{}, err
@@ -144,6 +153,12 @@ func (f FutureRecord) Await(ctx context.Context) (Record, error) {
 }
 
 type Record api.View_Record
+
+func (r Record) Bind(rec routing.Record) error {
+	api.View_Record(r).SetTtl(int64(rec.TTL()))
+	api.View_Record(r).SetSeq(rec.Seq())
+	return api.View_Record(r).SetPeer(string(rec.Peer()))
+}
 
 func (r Record) Validate() error {
 	_, err := r.ID()
