@@ -8,7 +8,9 @@ import (
 	"capnproto.org/go/capnp/v3/server"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/wetware/casm/pkg/cluster/routing"
+	chan_api "github.com/wetware/ww/internal/api/channel"
 	api "github.com/wetware/ww/internal/api/cluster"
+	"github.com/wetware/ww/pkg/cap/channel"
 	"github.com/wetware/ww/pkg/vat"
 	"golang.org/x/sync/semaphore"
 )
@@ -20,8 +22,8 @@ var (
 )
 
 const (
-	defaultBatchSize   = 64
-	defaultMaxInflight = 8
+	batchSize   = 64
+	maxInFlight = 8
 )
 
 var defaultPolicy = server.Policy{
@@ -95,10 +97,10 @@ type View api.View
 func (v View) Iter(ctx context.Context) (*RecordStream, capnp.ReleaseFunc) {
 	ctx, cancel := context.WithCancel(ctx)
 
-	h := make(handler, defaultMaxInflight)
+	ch := make(chan record, maxInFlight)
 
-	it, release := newIterator(ctx, api.View(v), h)
-	return it, func() {
+	rs, release := newRecordStream(ctx, api.View(v), ch)
+	return rs, func() {
 		cancel()
 		release()
 	}
@@ -115,12 +117,14 @@ func (v View) Lookup(ctx context.Context, peerID peer.ID) (routing.Record, error
 		return nil, err
 	}
 
-	r, err := res.Record()
+	rec, err := res.Record()
 	if err != nil {
 		return nil, err
 	}
 
-	return recordFromCapnp(r)
+	var r record
+	err = r.Bind(rec)
+	return r, err
 }
 
 type Record api.View_Record
@@ -134,90 +138,90 @@ func (rec Record) Seq() uint64 {
 }
 
 type RecordStream struct {
-	h <-chan []record
-	f *capnp.Future
+	h <-chan record
+	f channel.Future
 
+	rec record
 	Err error
-
-	head record
-	tail []record
 }
 
-func newIterator(ctx context.Context, r api.View, h handler) (*RecordStream, capnp.ReleaseFunc) {
-	c := api.View_Handler_ServerToClient(h, &server.Policy{
-		MaxConcurrentCalls: cap(h),
-	})
-
-	f, release := r.Iter(ctx, func(ps api.View_iter_Params) error {
-		return ps.SetHandler(c)
-	})
-
-	return &RecordStream{h: h, f: f.Future}, release
+func newRecordStream(ctx context.Context, r api.View, ch chan record) (*RecordStream, capnp.ReleaseFunc) {
+	f, release := r.Iter(ctx, handler(ch))
+	return &RecordStream{
+		h: ch,
+		f: channel.Future{Future: f.Future},
+	}, release
 }
 
-func (it *RecordStream) Next(ctx context.Context) (more bool) {
-	if len(it.tail) == 0 {
-		it.Err = it.nextBatch(ctx)
-	}
+func (rs *RecordStream) Next(ctx context.Context) (more bool) {
+	for {
+		select {
+		case rs.rec, more = <-rs.h:
+			return
 
-	if more = it.Err == nil && len(it.tail) > 0; more {
-		it.head, it.tail = it.tail[0], it.tail[1:]
-	}
+		case <-rs.done():
+			rs.Err = rs.f.Err()
+			rs.f.Future = nil
 
-	return
-}
-
-func (it *RecordStream) Record() routing.Record { return it.head }
-
-func (it *RecordStream) nextBatch(ctx context.Context) (err error) {
-	var ok bool
-	select {
-	case it.tail, ok = <-it.h:
-		if !ok {
-			_, err = it.f.Struct()
+		case <-ctx.Done():
+			return false
 		}
-
-	case <-ctx.Done():
-		err = ctx.Err()
 	}
-
-	return
 }
 
-type handler chan []record
+func (rs *RecordStream) Record() routing.Record { return rs.rec }
 
-func (h handler) Shutdown() { close(h) }
+func (rs *RecordStream) done() <-chan struct{} {
+	if rs.f.Future != nil {
+		return rs.f.Done()
+	}
 
-func (h handler) Handle(ctx context.Context, call api.View_Handler_handle) error {
-	recs, err := loadBatch(call.Args())
-	if err != nil || len(recs) == 0 { // defensive
+	return nil
+}
+
+type sender chan<- record
+
+func handler(s sender) func(ps api.View_iter_Params) error {
+	return func(ps api.View_iter_Params) error {
+		return ps.SetHandler(chan_api.Sender_ServerToClient(s, &server.Policy{
+			MaxConcurrentCalls: cap(s),
+		}))
+	}
+}
+
+func (s sender) Shutdown() { close(s) }
+
+func (s sender) Send(ctx context.Context, call chan_api.Sender_send) error {
+	rs, err := handlerSendParams(call.Args()).Records()
+	if err != nil {
 		return err
 	}
 
-	select {
-	case h <- recs:
-		return nil
+	var r record
+	for i := 0; i < rs.Len(); i++ {
+		if err = r.Bind(rs.At(i)); err != nil {
+			return err
+		}
 
-	case <-ctx.Done():
-		return ctx.Err()
-	}
-}
-
-func loadBatch(args api.View_Handler_handle_Params) ([]record, error) {
-	rs, err := args.Records()
-	if err != nil {
-		return nil, err
-	}
-
-	batch := make([]record, rs.Len())
-	for i := range batch {
-		batch[i], err = recordFromCapnp(rs.At(i))
-		if err != nil {
-			break
+		select {
+		case s <- r:
+		case <-ctx.Done():
+			return ctx.Err()
 		}
 	}
 
-	return batch, err
+	return nil
+}
+
+type handlerSendParams chan_api.Sender_send_Params
+
+func (ps handlerSendParams) Records() (api.View_Record_List, error) {
+	ptr, err := chan_api.Sender_send_Params(ps).Value()
+	return capnp.StructList[api.View_Record]{List: ptr.List()}, err
+}
+
+func (ps handlerSendParams) NewRecords(size int32) (api.View_Record_List, error) {
+	return api.NewView_Record_List(ps.Segment(), size)
 }
 
 type record struct {
@@ -226,7 +230,7 @@ type record struct {
 	seq uint64
 }
 
-func recordFromCapnp(r api.View_Record) (rec record, err error) {
+func (rec *record) Bind(r api.View_Record) (err error) {
 	var s string
 	if s, err = r.Peer(); err == nil {
 		rec.seq = r.Seq()
@@ -242,18 +246,19 @@ func (r record) TTL() time.Duration { return r.ttl }
 func (r record) Seq() uint64        { return r.seq }
 
 type batcher struct {
-	lim   *limiter
-	h     api.View_Handler
-	fs    map[*capnp.Future]capnp.ReleaseFunc // in-flight
-	batch batch
+	handler chan_api.Sender
+	fs      map[*capnp.Future]capnp.ReleaseFunc // in-flight
+	batch   batch
 }
 
 func newBatcher(p api.View_iter_Params) batcher {
+	h := p.Handler()
+	h.Client.SetFlowLimiter(newLimiter())
+
 	return batcher{
-		lim:   newLimiter(),
-		h:     p.Handler(),
-		fs:    make(map[*capnp.Future]capnp.ReleaseFunc),
-		batch: newBatch(),
+		handler: h,
+		fs:      make(map[*capnp.Future]capnp.ReleaseFunc),
+		batch:   newBatch(),
 	}
 }
 
@@ -268,15 +273,10 @@ func (b *batcher) Send(ctx context.Context, r routing.Record, dl time.Time) erro
 
 func (b *batcher) Flush(ctx context.Context, force bool) error {
 	if b.batch.FilterExpired() || force {
-		if err := b.lim.Acquire(ctx); err != nil {
-			return err
-		}
-
-		f, release := b.h.Handle(ctx, b.batch.Flush())
+		f, release := b.handler.Send(ctx, b.batch.Flush())
 		b.fs[f.Future] = func() {
 			delete(b.fs, f.Future)
 			release()
-			b.lim.Release()
 		}
 	}
 
@@ -342,7 +342,7 @@ type batch struct {
 
 func newBatch() batch {
 	return batch{
-		rs: make([]batchRecord, 0, defaultBatchSize),
+		rs: make([]batchRecord, 0, batchSize),
 	}
 }
 
@@ -359,13 +359,13 @@ func (b *batch) Add(r routing.Record, dl time.Time) bool {
 	return b.Full()
 }
 
-func (b *batch) Flush() func(api.View_Handler_handle_Params) error {
-	return func(p api.View_Handler_handle_Params) error {
+func (b *batch) Flush() func(chan_api.Sender_send_Params) error {
+	return func(p chan_api.Sender_send_Params) error {
 		defer func() {
 			b.rs = b.rs[:0]
 		}()
 
-		rs, err := p.NewRecords(b.Len())
+		rs, err := handlerSendParams(p).NewRecords(b.Len())
 		if err != nil {
 			return err
 		}
@@ -409,7 +409,15 @@ func (r batchRecord) SetParam(t time.Time, rec api.View_Record) error {
 type limiter semaphore.Weighted
 
 func newLimiter() *limiter {
-	return (*limiter)(semaphore.NewWeighted(defaultMaxInflight))
+	return (*limiter)(semaphore.NewWeighted(maxInFlight))
+}
+
+func (l *limiter) StartMessage(ctx context.Context, _ uint64) (gotResponse func(), err error) {
+	if err = l.Acquire(ctx); err == nil {
+		gotResponse = l.Release
+	}
+
+	return
 }
 
 func (l *limiter) Acquire(ctx context.Context) error {
