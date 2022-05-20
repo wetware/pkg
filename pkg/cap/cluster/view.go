@@ -282,8 +282,8 @@ func (ps handlerSendParams) NewRecords(size int32) (api.View_Record_List, error)
 }
 
 type batcher struct {
-	handler chan_api.Sender
-	fs      map[*capnp.Future]capnp.ReleaseFunc // in-flight
+	handler channel.Sender
+	fs      map[channel.Future]capnp.ReleaseFunc // in-flight
 	batch   batch
 }
 
@@ -292,52 +292,52 @@ func newBatcher(p api.View_iter_Params) batcher {
 	h.Client.SetFlowLimiter(newLimiter())
 
 	return batcher{
-		handler: h,
-		fs:      make(map[*capnp.Future]capnp.ReleaseFunc),
+		handler: channel.Sender(h),
+		fs:      make(map[channel.Future]capnp.ReleaseFunc),
 		batch:   newBatch(),
 	}
 }
 
 func (b *batcher) Send(ctx context.Context, r routing.Record, dl time.Time) error {
 	// batch is full?
-	if b.batch.Add(r, dl) {
-		return b.Flush(ctx, false)
+	if b.batch.Add(r, dl) && b.batch.FilterExpired() {
+		b.flush(ctx)
 	}
 
-	return nil
+	return b.releaseAsync(ctx)
 }
 
-func (b *batcher) Flush(ctx context.Context, force bool) error {
-	if b.batch.FilterExpired() || force {
-		f, release := b.handler.Send(ctx, b.batch.Flush())
-		b.fs[f.Future] = func() {
-			delete(b.fs, f.Future)
-			release()
-		}
-	}
+func (b *batcher) flush(ctx context.Context) {
+	f, release := b.handler.Send(ctx, b.batch.Flush())
+	b.fs[f] = release
+}
 
-	// release any resolved futures and return their errors, if any
+// release any resolved futures and return the first error encountered, if any.
+func (b *batcher) releaseAsync(ctx context.Context) (err error) {
 	for f, release := range b.fs {
 		select {
 		case <-f.Done():
-			defer release()
-			if _, err := f.Struct(); err != nil {
-				return err
+			// We MUST iterate over the the full range of fs in order
+			// to ensure all resources are eventually released.
+			if err == nil {
+				err = f.Err()
 			}
 
-		case <-ctx.Done():
-			return ctx.Err()
+			release()
+			delete(b.fs, f)
+
+		default:
 		}
 	}
 
-	return nil
+	return
 }
 
 func (b *batcher) Wait(ctx context.Context) (err error) {
-	if err = b.Flush(ctx, true); err != nil {
-		return
-	}
+	b.flush(ctx)
 
+	// NOTE:  we don't need to call delete(b.fs, f) here we
+	// discard the batcher when Wait() returns.
 	for f, release := range b.fs {
 		// This is a rare case in which the use of 'defer' in
 		// a loop is NOT a bug.
@@ -358,13 +358,7 @@ func (b *batcher) Wait(ctx context.Context) (err error) {
 		if err == nil {
 			// We're waiting until all futures resolve, so it's
 			// okay to block on any given 'f'.
-			select {
-			case <-f.Done():
-				_, err = f.Struct()
-
-			case <-ctx.Done():
-				err = ctx.Err()
-			}
+			err = f.Await(ctx)
 		}
 	}
 
