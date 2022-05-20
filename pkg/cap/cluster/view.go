@@ -42,7 +42,7 @@ type RoutingTable interface {
 }
 
 type ViewServer struct {
-	View RoutingTable
+	RoutingTable
 }
 
 func (f ViewServer) NewClient(policy *server.Policy) View {
@@ -60,7 +60,7 @@ func (f ViewServer) Client() *capnp.Client {
 func (f ViewServer) Iter(ctx context.Context, call api.View_iter) error {
 	s := newBatchStreamer(call)
 
-	for it := f.View.Iter(); it.Record() != nil; it.Next() {
+	for it := f.RoutingTable.Iter(); it.Record() != nil; it.Next() {
 		if err := s.Send(ctx, it.Record(), it.Deadline()); err != nil {
 			it.Finish()
 			return err
@@ -76,7 +76,7 @@ func (f ViewServer) Lookup(_ context.Context, call api.View_lookup) error {
 		return err
 	}
 
-	record, ok := f.View.Lookup(peer.ID(id))
+	record, ok := f.RoutingTable.Lookup(peer.ID(id))
 	if !ok {
 		return nil
 	}

@@ -36,7 +36,7 @@ func TestMultipleClients(t *testing.T) {
 
 	const N = 10
 
-	server := &cluster.ViewServer{View: make(routingTable, 65)}
+	server := &cluster.ViewServer{RoutingTable: make(routingTable, 65)}
 	for i := 0; i < N; i++ {
 		require.NotEmpty(t, server.Client())
 	}
@@ -61,7 +61,7 @@ func TestIter(t *testing.T) {
 			},
 		}
 
-		c := (&cluster.ViewServer{View: rt}).NewClient(nil)
+		c := (&cluster.ViewServer{RoutingTable: rt}).NewClient(nil)
 
 		it, release := c.Iter(ctx)
 		defer release()
@@ -94,7 +94,7 @@ func TestIter(t *testing.T) {
 			}
 		}
 
-		c := (&cluster.ViewServer{View: rt}).NewClient(nil)
+		c := (&cluster.ViewServer{RoutingTable: rt}).NewClient(nil)
 
 		it, release := c.Iter(ctx)
 		defer release()
@@ -121,7 +121,7 @@ func TestIter(t *testing.T) {
 
 		var (
 			rt = blockingRoutingTable{ctx}
-			c  = (&cluster.ViewServer{View: rt}).NewClient(nil)
+			c  = (&cluster.ViewServer{RoutingTable: rt}).NewClient(nil)
 		)
 
 		it, release := c.Iter(ctx)
@@ -152,7 +152,7 @@ func TestLookup(t *testing.T) {
 		}
 	}
 
-	c := (&cluster.ViewServer{View: view}).NewClient(nil)
+	c := (&cluster.ViewServer{RoutingTable: view}).NewClient(nil)
 
 	t.Run("Exists", func(t *testing.T) {
 		t.Parallel()
