@@ -102,7 +102,7 @@ type View api.View
 func (v View) Iter(ctx context.Context) (*RecordStream, capnp.ReleaseFunc) {
 	ctx, cancel := context.WithCancel(ctx)
 
-	ch := make(chan Record, maxInFlight)
+	ch := make(chan Record, batchSize)
 
 	rs, release := newRecordStream(ctx, api.View(v), ch)
 	return rs, func() {
@@ -240,7 +240,7 @@ type sender chan<- Record
 func handler(s sender) func(ps api.View_iter_Params) error {
 	return func(ps api.View_iter_Params) error {
 		return ps.SetHandler(chan_api.Sender_ServerToClient(s, &server.Policy{
-			MaxConcurrentCalls: cap(s),
+			MaxConcurrentCalls: maxInFlight,
 		}))
 	}
 }
