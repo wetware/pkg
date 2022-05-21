@@ -208,11 +208,11 @@ func newRecordStream(ctx context.Context, v api.View) *RecordStream {
 	return rs
 }
 
-func (s *RecordStream) Shutdown() { s.Finish() }
-
-func (s *RecordStream) Finish() {
+func (s *RecordStream) Shutdown() {
 	s.once.Do(func() { close(s.finished) })
 }
+
+func (s *RecordStream) Finish() { s.release() }
 
 func (s *RecordStream) Send(ctx context.Context, call chan_api.Sender_send) (err error) {
 	s.batch, err = sendParams(call.Args()).Records()
@@ -254,13 +254,13 @@ func (s *RecordStream) Next() {
 	// Await the next send call, or the end-of-stream signal.
 	select {
 	case <-s.finished:
-		if s.Err == nil {
+		if s.release(); s.Err == nil {
 			s.Err = channel.Future(s.f).Err()
 		}
 
 	case <-s.ready:
 		if s.validate(); !s.More {
-			s.Finish()
+			s.release()
 		}
 	}
 }
