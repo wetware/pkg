@@ -184,7 +184,7 @@ func (r Record) Seq() uint64 {
 }
 
 type RecordStream struct {
-	ready, next, finished chan struct{}
+	signal, finished chan struct{}
 
 	More bool
 	Err  error
@@ -198,11 +198,11 @@ type RecordStream struct {
 
 func newRecordStream(ctx context.Context, v api.View) *RecordStream {
 	rs := &RecordStream{
-		ready:    make(chan struct{}, 1),
-		next:     make(chan struct{}, 1),
+		signal:   make(chan struct{}),
 		finished: make(chan struct{}),
 	}
 	rs.f, rs.release = v.Iter(ctx, sender(rs))
+
 	return rs
 }
 
@@ -210,53 +210,46 @@ func (s *RecordStream) Shutdown() { close(s.finished) }
 func (s *RecordStream) Finish()   { s.release() }
 
 func (s *RecordStream) Send(ctx context.Context, call chan_api.Sender_send) (err error) {
-	s.batch, err = sendParams(call.Args()).Records()
-	if err == nil && s.batch.Len() > 0 {
-		s.ready <- struct{}{} // Signal that the batch is ready
+	// Wait for reader to request new batch.
+	select {
+	case <-s.signal:
+	case <-s.finished:
+		return
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 
-		// Block until the iterator consumes the current batch. This
-		// prevents the batch from being released when the Send call
-		// returns.
-		select {
-		case <-s.next:
-		case <-s.finished:
-		case <-ctx.Done():
-			err = ctx.Err()
-		}
+	// Set batch
+	s.batch, err = sendParams(call.Args()).Records()
+	if err != nil || s.batch.Len() == 0 {
+		return err
+	}
+
+	// Signal batch ready.
+	select {
+	case s.signal <- struct{}{}:
+	case <-s.finished:
+		return
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+
+	// Block until the iterator consumes the current batch. This
+	// prevents the batch from being released when the Send call
+	// returns.
+	select {
+	case <-s.signal:
+	case <-s.finished:
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 
 	return
 }
 
 func (s *RecordStream) Next() {
-	// Fast path; batch not fully consumed
-	if s.More = s.i+1 < s.batch.Len(); s.More {
-		s.i++
-		return
-	}
-
-	// Slow path; get next batch, or abort if stream exhausted.
-
-	// First, we signal to the current Send() call that we are
-	// done with it's batch.
-	//
-	// If this is the first call to next (IsValid() == false),
-	// then there is no Send() call waiting for this signal.
-	if s.batch.IsValid() {
-		s.next <- struct{}{}
-	}
-
-	// Await the next send call, or the end-of-stream signal.
-	select {
-	case <-s.finished:
-		if s.release(); s.Err == nil {
-			s.Err = channel.Future(s.f).Err()
-		}
-
-	case <-s.ready:
-		if s.validate(); !s.More {
-			s.release()
-		}
+	if s.nextRecord() {
+		s.nextBatch() // slow path
 	}
 }
 
@@ -275,6 +268,61 @@ func (s *RecordStream) Record() (r routing.Record) {
 	//        the routing.Iterator contract.
 	if s.More {
 		r = s.batch.At(s.i)
+	}
+
+	return
+}
+
+func (s *RecordStream) nextRecord() bool {
+	if s.More = s.i+1 < s.batch.Len(); s.More {
+		s.i++
+	}
+
+	return !s.More
+}
+
+func (s *RecordStream) nextBatch() {
+	if s.requestBatch() {
+		s.awaitBatch()
+	}
+}
+
+func (s *RecordStream) requestBatch() bool {
+	signals := s.signals()
+
+	for i := 0; i < signals; i++ {
+		select {
+		case s.signal <- struct{}{}:
+		case <-s.f.Done():
+			if s.release(); s.Err == nil {
+				s.Err = channel.Future(s.f).Err()
+			}
+
+			return false
+		}
+	}
+
+	return true
+}
+
+func (s *RecordStream) awaitBatch() {
+	// Await the new batch
+	select {
+	case <-s.signal:
+		if s.validate(); !s.More {
+			s.release()
+		}
+
+	case <-s.f.Done():
+		if s.release(); s.Err == nil {
+			s.Err = channel.Future(s.f).Err()
+		}
+	}
+}
+
+func (s *RecordStream) signals() (n int) {
+	if n = 1; s.batch.IsValid() {
+		n++
 	}
 
 	return
