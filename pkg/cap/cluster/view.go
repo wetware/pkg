@@ -3,7 +3,6 @@ package cluster
 import (
 	"context"
 	"errors"
-	"sync"
 	"time"
 
 	"capnproto.org/go/capnp/v3"
@@ -185,7 +184,6 @@ func (r Record) Seq() uint64 {
 }
 
 type RecordStream struct {
-	once                  sync.Once
 	ready, next, finished chan struct{}
 
 	More bool
@@ -208,11 +206,8 @@ func newRecordStream(ctx context.Context, v api.View) *RecordStream {
 	return rs
 }
 
-func (s *RecordStream) Shutdown() {
-	s.once.Do(func() { close(s.finished) })
-}
-
-func (s *RecordStream) Finish() { s.release() }
+func (s *RecordStream) Shutdown() { close(s.finished) }
+func (s *RecordStream) Finish()   { s.release() }
 
 func (s *RecordStream) Send(ctx context.Context, call chan_api.Sender_send) (err error) {
 	s.batch, err = sendParams(call.Args()).Records()
