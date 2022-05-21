@@ -233,8 +233,6 @@ func (s *RecordStream) Send(ctx context.Context, call chan_api.Sender_send) (err
 	return
 }
 
-// Next record.  Context cancellations will cause Next() to return
-// false, causing subsequent calls to Next() to panic.
 func (s *RecordStream) Next() {
 	// Fast path; batch not fully consumed
 	if s.More = s.i+1 < s.batch.Len(); s.More {
@@ -261,8 +259,7 @@ func (s *RecordStream) Next() {
 		}
 
 	case <-s.ready:
-		s.Err = s.validate()
-		if s.More = s.Err == nil; !s.More {
+		if s.validate(); !s.More {
 			s.Finish()
 		}
 	}
@@ -288,15 +285,13 @@ func (s *RecordStream) Record() (r routing.Record) {
 	return
 }
 
-func (s *RecordStream) validate() error {
-	for s.i = 0; s.i < s.batch.Len(); s.i++ {
-		if err := s.batch.At(s.i).Validate(); err != nil {
-			return err
+func (s *RecordStream) validate() {
+	for s.i = s.batch.Len(); s.i > 0; s.i-- {
+		s.Err = s.batch.At(s.i - 1).Validate()
+		if s.More = s.Err == nil; !s.More {
+			break
 		}
 	}
-
-	s.i = 0
-	return nil
 }
 
 type sendParams chan_api.Sender_send_Params
