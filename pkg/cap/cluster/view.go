@@ -3,6 +3,7 @@ package cluster
 import (
 	"context"
 	"errors"
+	"sync"
 	"time"
 
 	"capnproto.org/go/capnp/v3"
@@ -182,19 +183,22 @@ func (r Record) Seq() uint64 {
 	return api.View_Record(r).Seq()
 }
 
-// RecordStream is a routing.Iterator that receives iterates
-// over an asynchronous stream of records.
 type RecordStream struct {
-	rs chan Record
-	f  channel.Future
+	once                  sync.Once
+	ready, next, finished chan struct{}
 
-	rec Record
+	batch recordBatch
+	i     int
+
+	f   channel.Future
 	Err error
 }
 
 func newRecordStream(ctx context.Context, r api.View) (*RecordStream, capnp.ReleaseFunc) {
 	rs := &RecordStream{
-		rs: make(chan Record, batchSize),
+		ready:    make(chan struct{}),
+		next:     make(chan struct{}),
+		finished: make(chan struct{}),
 	}
 
 	f, release := r.Iter(ctx, sender(rs))
@@ -203,55 +207,99 @@ func newRecordStream(ctx context.Context, r api.View) (*RecordStream, capnp.Rele
 	return rs, release
 }
 
-func (s *RecordStream) Shutdown() { close(s.rs) }
+func (s *RecordStream) Shutdown() { s.Finish() }
 
-func (s *RecordStream) Send(ctx context.Context, call chan_api.Sender_send) error {
-	rs, err := sendParams(call.Args()).Records()
+func (s *RecordStream) Finish() {
+	s.once.Do(func() { close(s.finished) })
+}
+
+func (s *RecordStream) Send(ctx context.Context, call chan_api.Sender_send) (err error) {
+	s.batch, err = sendParams(call.Args()).Records()
 	if err != nil {
 		return err
 	}
 
-	var r Record
-	for i := 0; i < rs.Len(); i++ {
-		r = Record(rs.At(i))
-		if err = r.Validate(); err != nil {
-			return err
-		}
+	// Block until the iterator requests the next batch. This ensures
+	// batches are consumed in order, and applies backpressure to the
+	// client-side FlowLimiter.
+	select {
+	case s.ready <- struct{}{}:
+	case <-s.finished:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 
-		select {
-		case s.rs <- r:
-		case <-ctx.Done():
-			return ctx.Err()
-		}
+	// Block until the iterator consumes the current batch. This
+	// prevents the batch from being released when the Send call
+	// returns.
+	select {
+	case <-s.next:
+	case <-s.finished:
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 
 	return nil
 }
 
-func (s *RecordStream) Next(ctx context.Context) (more bool) {
-	for {
+// Next record.  Context cancellations will cause Next() to return
+// false, causing subsequent calls to Next() to panic.
+func (s *RecordStream) Next(ctx context.Context) bool {
+	// Fast path; batch not fully consumed
+	if s.i+1 < s.batch.Len() {
+		s.i++
+		return true
+	}
+
+	// Slow path; get next batch, or abort if stream exhausted.
+
+	// First, we signal to the current Send() call that we are
+	// done with it's batch.
+	//
+	// If this is the first call to next (IsValid() == false),
+	// then there is no Send() call waiting for this signal.
+	if s.batch.IsValid() {
 		select {
-		case s.rec, more = <-s.rs:
-			return
-
-		case <-s.done():
-			s.Err = s.f.Err()
-			s.f.Future = nil
-
-		case <-ctx.Done():
+		case s.next <- struct{}{}:
+		case <-s.finished:
 			return false
 		}
 	}
-}
 
-func (s *RecordStream) Record() routing.Record { return s.rec }
+	// Await the next send call, or the end-of-stream signal.
+	select {
+	case <-s.ready:
+		for s.i = 0; s.i < s.batch.Len(); s.i++ {
+			if s.Err = s.Record().Validate(); s.Err != nil {
+				s.Finish()
+				return false
+			}
+		}
 
-func (s *RecordStream) done() <-chan struct{} {
-	if s.f.Future != nil {
-		return s.f.Done()
+	case <-s.finished:
+		// End of stream.  Recover any error from Iter()'s future, so
+		// that it can be consumed by the caller.  This MUST happen
+		// after the call to close(s.finish) because Await() will block
+		// if there are outstanding calls to Send().
+		s.Err = s.f.Await(ctx)
+		return false
+
+	case <-ctx.Done():
+		s.Finish()
+		s.Err = ctx.Err()
+		return false
 	}
 
-	return nil
+	s.i = 0
+	return true
+}
+
+func (s *RecordStream) Record() Record {
+	// NOTE:  Record is valid until the corresponding Send call for
+	//        the present batch returns. This can only happen after
+	//        a subsequent call to Next(), which is consistent with
+	//        the routing.Iterator contract.
+	return s.batch.At(s.i)
 }
 
 type sendParams chan_api.Sender_send_Params
@@ -264,13 +312,25 @@ func sender(s channel.SendServer) func(ps api.View_iter_Params) error {
 	}
 }
 
-func (ps sendParams) Records() (api.View_Record_List, error) {
+func (ps sendParams) Records() (recordBatch, error) {
 	ptr, err := chan_api.Sender_send_Params(ps).Value()
-	return capnp.StructList[api.View_Record]{List: ptr.List()}, err
+	rs := capnp.StructList[api.View_Record]{List: ptr.List()}
+	return recordBatch(rs), err
 }
 
-func (ps sendParams) NewRecords(size int32) (api.View_Record_List, error) {
-	return api.NewView_Record_List(ps.Segment(), size)
+func (ps sendParams) NewRecords(size int32) (recordBatch, error) {
+	rs, err := api.NewView_Record_List(ps.Segment(), size)
+	if err == nil {
+		err = chan_api.Sender_send_Params(ps).SetValue(rs.ToPtr())
+	}
+
+	return recordBatch(rs), err
+}
+
+type recordBatch api.View_Record_List
+
+func (rs recordBatch) At(i int) Record {
+	return Record(api.View_Record_List(rs).At(i))
 }
 
 type batchStreamer struct {
@@ -426,10 +486,10 @@ type batchRecord struct {
 	Deadline time.Time
 }
 
-func (r batchRecord) SetParam(t time.Time, rec api.View_Record) error {
-	rec.SetSeq(r.Seq)
-	rec.SetTtl(r.Deadline.Sub(t).Microseconds())
-	return rec.SetPeer(string(r.ID))
+func (r batchRecord) SetParam(t time.Time, rec Record) error {
+	api.View_Record(rec).SetSeq(r.Seq)
+	api.View_Record(rec).SetTtl(r.Deadline.Sub(t).Microseconds())
+	return api.View_Record(rec).SetPeer(string(r.ID))
 }
 
 type limiter semaphore.Weighted

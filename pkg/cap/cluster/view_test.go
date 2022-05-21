@@ -3,7 +3,6 @@ package cluster_test
 import (
 	"context"
 	"crypto/rand"
-	"errors"
 	"testing"
 	"time"
 
@@ -70,7 +69,7 @@ func TestIter(t *testing.T) {
 		require.True(t, ok, "should advance iterator")
 		require.NoError(t, it.Err, "should succeed")
 
-		assert.NotZero(t, it.Record())
+		assert.NotNil(t, it.Record())
 
 		ok = it.Next(ctx)
 		require.False(t, ok, "should not advance iterator")
@@ -103,6 +102,8 @@ func TestIter(t *testing.T) {
 			require.NoError(t, it.Err)
 
 			r := it.Record()
+			require.NotPanics(t, func() { _ = r.Peer() }, "%d:  %v", i, r)
+
 			require.NotNil(t, r)
 			require.Equal(t, rt[i].Peer(), r.Peer())
 			require.Equal(t, uint64(i), r.Seq())
@@ -130,10 +131,10 @@ func TestIter(t *testing.T) {
 		ctx, cancel = context.WithCancel(ctx)
 		cancel()
 
-		assert.Eventually(t, func() bool {
-			return !it.Next(ctx) && errors.Is(it.Err, context.Canceled)
-		}, time.Second, time.Millisecond*10,
-			"should eventually report context.Canceled")
+		require.False(t, it.Next(ctx),
+			"should be exhausted after context cancellation")
+		assert.ErrorIs(t, it.Err, context.Canceled,
+			"should report context.Canceled")
 	})
 }
 
