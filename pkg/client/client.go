@@ -74,24 +74,15 @@ func (n Node) Join(ctx context.Context, topic string) Topic {
 func (n Node) Path() []string { return nil }
 
 func (n Node) Ls(ctx context.Context) Iterator {
-	s, release := n.view.Iter(ctx)
-
-	it := &hostSet{
-		ctx:          ctx,
-		dialer:       dialer(n.vat),
-		RecordStream: s,
-	}
-
-	it.release = func() {
-		runtime.SetFinalizer(it, nil)
-		release()
-	}
-
-	runtime.SetFinalizer(it, func(*hostSet) {
-		release()
+	it := n.view.Iter(ctx)
+	runtime.SetFinalizer(it, func(it *cluster.RecordStream) {
+		it.Finish()
 	})
 
-	return it
+	return hostSet{
+		dialer:       dialer(n.vat),
+		RecordStream: it,
+	}
 }
 
 func (n Node) Walk(ctx context.Context, path []string) Anchor {

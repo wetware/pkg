@@ -45,6 +45,21 @@ func TestIter(t *testing.T) {
 	t.Parallel()
 	t.Helper()
 
+	t.Run("Empty", func(t *testing.T) {
+		t.Parallel()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		c := cluster.ViewServer{RoutingTable: routingTable(nil)}.
+			NewClient(nil)
+
+		it := c.Iter(ctx)
+
+		require.Nil(t, it.Record(), "should be exhausted")
+		require.NoError(t, it.Err, "should not fail")
+	})
+
 	t.Run("Single", func(t *testing.T) {
 		t.Parallel()
 
@@ -60,20 +75,17 @@ func TestIter(t *testing.T) {
 			},
 		}
 
-		c := (&cluster.ViewServer{RoutingTable: rt}).NewClient(nil)
+		c := cluster.ViewServer{RoutingTable: rt}.NewClient(nil)
 
-		it, release := c.Iter(ctx)
-		defer release()
+		it := c.Iter(ctx)
 
-		ok := it.Next(ctx)
-		require.True(t, ok, "should advance iterator")
+		require.NotNil(t, it.Record(), "should not be exhausted")
 		require.NoError(t, it.Err, "should succeed")
 
-		assert.NotNil(t, it.Record())
+		it.Next()
 
-		ok = it.Next(ctx)
-		require.False(t, ok, "should not advance iterator")
-		assert.NoError(t, it.Err, "should be exhausted")
+		require.Nil(t, it.Record(), "should be exhausted")
+		assert.NoError(t, it.Err, "should not fail")
 	})
 
 	t.Run("Batch", func(t *testing.T) {
@@ -93,28 +105,32 @@ func TestIter(t *testing.T) {
 			}
 		}
 
-		c := (&cluster.ViewServer{RoutingTable: rt}).NewClient(nil)
+		var (
+			i  int
+			it *cluster.RecordStream
+			c  = cluster.ViewServer{RoutingTable: rt}.NewClient(nil)
+		)
 
-		it, release := c.Iter(ctx)
-		defer release()
-
-		for i := 0; it.Next(ctx); i++ {
+		for it = c.Iter(ctx); it.Record() != nil; it.Next() {
 			require.NoError(t, it.Err)
 
-			r := it.Record()
-			require.NotPanics(t, func() { _ = r.Peer() }, "%d:  %v", i, r)
+			require.NotNil(t, it.Record(),
+				"should not be exhausted")
+			require.False(t, it.Deadline().IsZero(),
+				"should have nonzero deadline")
 
-			require.NotNil(t, r)
-			require.Equal(t, rt[i].Peer(), r.Peer())
-			require.Equal(t, uint64(i), r.Seq())
-			require.Greater(t, r.TTL(), time.Duration(0),
-				"should have positive, nonzero TTL")
+			require.Equal(t, rt[i].Peer(), it.Record().Peer(),
+				"should match peer.ID at index %d", i)
+			require.Equal(t, uint64(i), it.Record().Seq(),
+				"should have match sequence at index %d", i)
+
+			i++
 		}
 
-		assert.NoError(t, it.Err, "should be exhausted")
+		assert.NoError(t, it.Err, "should not fail")
 	})
 
-	t.Run("Cancel", func(t *testing.T) {
+	t.Run("Finish", func(t *testing.T) {
 		t.Parallel()
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -122,19 +138,14 @@ func TestIter(t *testing.T) {
 
 		var (
 			rt = blockingRoutingTable{ctx}
-			c  = (&cluster.ViewServer{RoutingTable: rt}).NewClient(nil)
+			c  = cluster.ViewServer{RoutingTable: rt}.NewClient(nil)
 		)
 
-		it, release := c.Iter(ctx)
-		defer release()
+		it := c.Iter(ctx)
+		it.Finish()
 
-		ctx, cancel = context.WithCancel(ctx)
-		cancel()
-
-		require.False(t, it.Next(ctx),
+		require.Nil(t, it.Record(),
 			"should be exhausted after context cancellation")
-		assert.ErrorIs(t, it.Err, context.Canceled,
-			"should report context.Canceled")
 	})
 }
 
@@ -143,9 +154,9 @@ func TestLookup(t *testing.T) {
 	t.Helper()
 
 	dl := time.Now().Add(time.Second * 10)
-	var view = make(routingTable, 65)
-	for i := range view {
-		view[i] = record{
+	var rt = make(routingTable, 65)
+	for i := range rt {
+		rt[i] = record{
 			id:  newID(),
 			ttl: time.Second * 10,
 			seq: uint64(i),
@@ -153,14 +164,14 @@ func TestLookup(t *testing.T) {
 		}
 	}
 
-	c := (&cluster.ViewServer{RoutingTable: view}).NewClient(nil)
+	c := cluster.ViewServer{RoutingTable: rt}.NewClient(nil)
 
 	t.Run("Exists", func(t *testing.T) {
 		t.Parallel()
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		want := view[42]
+		want := rt[42]
 
 		f, release := c.Lookup(ctx, want.id)
 		require.NotZero(t, f, "should return FutureRecord")

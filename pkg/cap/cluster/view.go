@@ -98,9 +98,10 @@ func (f ViewServer) Lookup(_ context.Context, call api.View_lookup) error {
 
 type View api.View
 
-func (v View) Iter(ctx context.Context) (*RecordStream, capnp.ReleaseFunc) {
-	rs, release := newRecordStream(ctx, api.View(v))
-	return rs, release
+func (v View) Iter(ctx context.Context) *RecordStream {
+	rs := newRecordStream(ctx, api.View(v))
+	rs.Next()
+	return rs
 }
 
 func peerID(id peer.ID) func(api.View_lookup_Params) error {
@@ -187,24 +188,24 @@ type RecordStream struct {
 	once                  sync.Once
 	ready, next, finished chan struct{}
 
+	More bool
+	Err  error
+
 	batch recordBatch
 	i     int
 
-	f   channel.Future
-	Err error
+	f       api.View_iter_Results_Future
+	release capnp.ReleaseFunc
 }
 
-func newRecordStream(ctx context.Context, r api.View) (*RecordStream, capnp.ReleaseFunc) {
+func newRecordStream(ctx context.Context, v api.View) *RecordStream {
 	rs := &RecordStream{
-		ready:    make(chan struct{}),
-		next:     make(chan struct{}),
+		ready:    make(chan struct{}, 1),
+		next:     make(chan struct{}, 1),
 		finished: make(chan struct{}),
 	}
-
-	f, release := r.Iter(ctx, sender(rs))
-	rs.f = channel.Future{Future: f.Future}
-
-	return rs, release
+	rs.f, rs.release = v.Iter(ctx, sender(rs))
+	return rs
 }
 
 func (s *RecordStream) Shutdown() { s.Finish() }
@@ -215,40 +216,30 @@ func (s *RecordStream) Finish() {
 
 func (s *RecordStream) Send(ctx context.Context, call chan_api.Sender_send) (err error) {
 	s.batch, err = sendParams(call.Args()).Records()
-	if err != nil {
-		return err
+	if err == nil && s.batch.Len() > 0 {
+		s.ready <- struct{}{} // Signal that the batch is ready
+
+		// Block until the iterator consumes the current batch. This
+		// prevents the batch from being released when the Send call
+		// returns.
+		select {
+		case <-s.next:
+		case <-s.finished:
+		case <-ctx.Done():
+			err = ctx.Err()
+		}
 	}
 
-	// Block until the iterator requests the next batch. This ensures
-	// batches are consumed in order, and applies backpressure to the
-	// client-side FlowLimiter.
-	select {
-	case s.ready <- struct{}{}:
-	case <-s.finished:
-	case <-ctx.Done():
-		return ctx.Err()
-	}
-
-	// Block until the iterator consumes the current batch. This
-	// prevents the batch from being released when the Send call
-	// returns.
-	select {
-	case <-s.next:
-	case <-s.finished:
-	case <-ctx.Done():
-		return ctx.Err()
-	}
-
-	return nil
+	return
 }
 
 // Next record.  Context cancellations will cause Next() to return
 // false, causing subsequent calls to Next() to panic.
-func (s *RecordStream) Next(ctx context.Context) bool {
+func (s *RecordStream) Next() {
 	// Fast path; batch not fully consumed
-	if s.i+1 < s.batch.Len() {
+	if s.More = s.i+1 < s.batch.Len(); s.More {
 		s.i++
-		return true
+		return
 	}
 
 	// Slow path; get next batch, or abort if stream exhausted.
@@ -259,47 +250,53 @@ func (s *RecordStream) Next(ctx context.Context) bool {
 	// If this is the first call to next (IsValid() == false),
 	// then there is no Send() call waiting for this signal.
 	if s.batch.IsValid() {
-		select {
-		case s.next <- struct{}{}:
-		case <-s.finished:
-			return false
-		}
+		s.next <- struct{}{}
 	}
 
 	// Await the next send call, or the end-of-stream signal.
 	select {
-	case <-s.ready:
-		for s.i = 0; s.i < s.batch.Len(); s.i++ {
-			if s.Err = s.Record().Validate(); s.Err != nil {
-				s.Finish()
-				return false
-			}
+	case <-s.finished:
+		if s.Err == nil {
+			s.Err = channel.Future(s.f).Err()
 		}
 
-	case <-s.finished:
-		// End of stream.  Recover any error from Iter()'s future, so
-		// that it can be consumed by the caller.  This MUST happen
-		// after the call to close(s.finish) because Await() will block
-		// if there are outstanding calls to Send().
-		s.Err = s.f.Await(ctx)
-		return false
-
-	case <-ctx.Done():
-		s.Finish()
-		s.Err = ctx.Err()
-		return false
+	case <-s.ready:
+		s.Err = s.validate()
+		if s.More = s.Err == nil; !s.More {
+			s.Finish()
+		}
 	}
-
-	s.i = 0
-	return true
 }
 
-func (s *RecordStream) Record() Record {
+func (s *RecordStream) Deadline() (t time.Time) {
+	if s.More {
+		t = time.Now().Add(s.Record().TTL())
+	}
+
+	return
+}
+
+func (s *RecordStream) Record() (r routing.Record) {
 	// NOTE:  Record is valid until the corresponding Send call for
 	//        the present batch returns. This can only happen after
 	//        a subsequent call to Next(), which is consistent with
 	//        the routing.Iterator contract.
-	return s.batch.At(s.i)
+	if s.More {
+		r = s.batch.At(s.i)
+	}
+
+	return
+}
+
+func (s *RecordStream) validate() error {
+	for s.i = 0; s.i < s.batch.Len(); s.i++ {
+		if err := s.batch.At(s.i).Validate(); err != nil {
+			return err
+		}
+	}
+
+	s.i = 0
+	return nil
 }
 
 type sendParams chan_api.Sender_send_Params
@@ -352,16 +349,18 @@ func newBatchStreamer(call api.View_iter) batchStreamer {
 
 func (b *batchStreamer) Send(ctx context.Context, r routing.Record, dl time.Time) error {
 	// batch is full?
-	if b.batch.Add(r, dl) && b.batch.FilterExpired() {
-		b.flush(ctx)
+	if b.batch.Add(r, dl) {
+		b.flush(ctx, false)
 	}
 
 	return b.releaseAsync(ctx)
 }
 
-func (b *batchStreamer) flush(ctx context.Context) {
-	f, release := b.sender().Send(ctx, b.batch.Flush())
-	b.fs[f] = release
+func (b *batchStreamer) flush(ctx context.Context, force bool) {
+	if b.batch.FilterExpired() || (force && b.batch.Len() > 0) {
+		f, release := b.sender().Send(ctx, b.batch.Flush())
+		b.fs[f] = release
+	}
 }
 
 func (b *batchStreamer) sender() channel.Sender {
@@ -390,7 +389,7 @@ func (b *batchStreamer) releaseAsync(ctx context.Context) (err error) {
 }
 
 func (b *batchStreamer) Wait(ctx context.Context) (err error) {
-	b.flush(ctx)
+	b.flush(ctx, true)
 
 	// NOTE:  we don't need to call delete(b.fs, f) here we
 	// discard the batcher when Wait() returns.
