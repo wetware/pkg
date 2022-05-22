@@ -212,7 +212,7 @@ type Anchor_Child_List = capnp.StructList[Anchor_Child]
 // NewAnchor_Child creates a new list of Anchor_Child.
 func NewAnchor_Child_List(s *capnp.Segment, sz int32) (Anchor_Child_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2}, sz)
-	return capnp.StructList[Anchor_Child]{l}, err
+	return capnp.StructList[Anchor_Child]{List: l}, err
 }
 
 // Anchor_Child_Future is a wrapper for a Anchor_Child promised by a client call.
@@ -282,7 +282,7 @@ type Anchor_ls_Params_List = capnp.StructList[Anchor_ls_Params]
 // NewAnchor_ls_Params creates a new list of Anchor_ls_Params.
 func NewAnchor_ls_Params_List(s *capnp.Segment, sz int32) (Anchor_ls_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Anchor_ls_Params]{l}, err
+	return capnp.StructList[Anchor_ls_Params]{List: l}, err
 }
 
 // Anchor_ls_Params_Future is a wrapper for a Anchor_ls_Params promised by a client call.
@@ -348,7 +348,7 @@ type Anchor_ls_Results_List = capnp.StructList[Anchor_ls_Results]
 // NewAnchor_ls_Results creates a new list of Anchor_ls_Results.
 func NewAnchor_ls_Results_List(s *capnp.Segment, sz int32) (Anchor_ls_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Anchor_ls_Results]{l}, err
+	return capnp.StructList[Anchor_ls_Results]{List: l}, err
 }
 
 // Anchor_ls_Results_Future is a wrapper for a Anchor_ls_Results promised by a client call.
@@ -414,7 +414,7 @@ type Anchor_walk_Params_List = capnp.StructList[Anchor_walk_Params]
 // NewAnchor_walk_Params creates a new list of Anchor_walk_Params.
 func NewAnchor_walk_Params_List(s *capnp.Segment, sz int32) (Anchor_walk_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Anchor_walk_Params]{l}, err
+	return capnp.StructList[Anchor_walk_Params]{List: l}, err
 }
 
 // Anchor_walk_Params_Future is a wrapper for a Anchor_walk_Params promised by a client call.
@@ -474,7 +474,7 @@ type Anchor_walk_Results_List = capnp.StructList[Anchor_walk_Results]
 // NewAnchor_walk_Results creates a new list of Anchor_walk_Results.
 func NewAnchor_walk_Results_List(s *capnp.Segment, sz int32) (Anchor_walk_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Anchor_walk_Results]{l}, err
+	return capnp.StructList[Anchor_walk_Results]{List: l}, err
 }
 
 // Anchor_walk_Results_Future is a wrapper for a Anchor_walk_Results promised by a client call.
@@ -710,7 +710,7 @@ type Host_AddrInfo_List = capnp.StructList[Host_AddrInfo]
 // NewHost_AddrInfo creates a new list of Host_AddrInfo.
 func NewHost_AddrInfo_List(s *capnp.Segment, sz int32) (Host_AddrInfo_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2}, sz)
-	return capnp.StructList[Host_AddrInfo]{l}, err
+	return capnp.StructList[Host_AddrInfo]{List: l}, err
 }
 
 // Host_AddrInfo_Future is a wrapper for a Host_AddrInfo promised by a client call.
@@ -776,7 +776,7 @@ type Host_join_Params_List = capnp.StructList[Host_join_Params]
 // NewHost_join_Params creates a new list of Host_join_Params.
 func NewHost_join_Params_List(s *capnp.Segment, sz int32) (Host_join_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Host_join_Params]{l}, err
+	return capnp.StructList[Host_join_Params]{List: l}, err
 }
 
 // Host_join_Params_Future is a wrapper for a Host_join_Params promised by a client call.
@@ -818,7 +818,7 @@ type Host_join_Results_List = capnp.StructList[Host_join_Results]
 // NewHost_join_Results creates a new list of Host_join_Results.
 func NewHost_join_Results_List(s *capnp.Segment, sz int32) (Host_join_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Host_join_Results]{l}, err
+	return capnp.StructList[Host_join_Results]{List: l}, err
 }
 
 // Host_join_Results_Future is a wrapper for a Host_join_Results promised by a client call.
@@ -1055,7 +1055,7 @@ type Container_get_Params_List = capnp.StructList[Container_get_Params]
 // NewContainer_get_Params creates a new list of Container_get_Params.
 func NewContainer_get_Params_List(s *capnp.Segment, sz int32) (Container_get_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Container_get_Params]{l}, err
+	return capnp.StructList[Container_get_Params]{List: l}, err
 }
 
 // Container_get_Params_Future is a wrapper for a Container_get_Params promised by a client call.
@@ -1110,7 +1110,7 @@ type Container_get_Results_List = capnp.StructList[Container_get_Results]
 // NewContainer_get_Results creates a new list of Container_get_Results.
 func NewContainer_get_Results_List(s *capnp.Segment, sz int32) (Container_get_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Container_get_Results]{l}, err
+	return capnp.StructList[Container_get_Results]{List: l}, err
 }
 
 // Container_get_Results_Future is a wrapper for a Container_get_Results promised by a client call.
@@ -1165,7 +1165,7 @@ type Container_set_Params_List = capnp.StructList[Container_set_Params]
 // NewContainer_set_Params creates a new list of Container_set_Params.
 func NewContainer_set_Params_List(s *capnp.Segment, sz int32) (Container_set_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Container_set_Params]{l}, err
+	return capnp.StructList[Container_set_Params]{List: l}, err
 }
 
 // Container_set_Params_Future is a wrapper for a Container_set_Params promised by a client call.
@@ -1207,7 +1207,7 @@ type Container_set_Results_List = capnp.StructList[Container_set_Results]
 // NewContainer_set_Results creates a new list of Container_set_Results.
 func NewContainer_set_Results_List(s *capnp.Segment, sz int32) (Container_set_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Container_set_Results]{l}, err
+	return capnp.StructList[Container_set_Results]{List: l}, err
 }
 
 // Container_set_Results_Future is a wrapper for a Container_set_Results promised by a client call.
@@ -1496,7 +1496,7 @@ type View_Handler_handle_Params_List = capnp.StructList[View_Handler_handle_Para
 // NewView_Handler_handle_Params creates a new list of View_Handler_handle_Params.
 func NewView_Handler_handle_Params_List(s *capnp.Segment, sz int32) (View_Handler_handle_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[View_Handler_handle_Params]{l}, err
+	return capnp.StructList[View_Handler_handle_Params]{List: l}, err
 }
 
 // View_Handler_handle_Params_Future is a wrapper for a View_Handler_handle_Params promised by a client call.
@@ -1538,7 +1538,7 @@ type View_Handler_handle_Results_List = capnp.StructList[View_Handler_handle_Res
 // NewView_Handler_handle_Results creates a new list of View_Handler_handle_Results.
 func NewView_Handler_handle_Results_List(s *capnp.Segment, sz int32) (View_Handler_handle_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[View_Handler_handle_Results]{l}, err
+	return capnp.StructList[View_Handler_handle_Results]{List: l}, err
 }
 
 // View_Handler_handle_Results_Future is a wrapper for a View_Handler_handle_Results promised by a client call.
@@ -1614,7 +1614,7 @@ type View_Record_List = capnp.StructList[View_Record]
 // NewView_Record creates a new list of View_Record.
 func NewView_Record_List(s *capnp.Segment, sz int32) (View_Record_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 16, PointerCount: 1}, sz)
-	return capnp.StructList[View_Record]{l}, err
+	return capnp.StructList[View_Record]{List: l}, err
 }
 
 // View_Record_Future is a wrapper for a View_Record promised by a client call.
@@ -1674,7 +1674,7 @@ type View_iter_Params_List = capnp.StructList[View_iter_Params]
 // NewView_iter_Params creates a new list of View_iter_Params.
 func NewView_iter_Params_List(s *capnp.Segment, sz int32) (View_iter_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[View_iter_Params]{l}, err
+	return capnp.StructList[View_iter_Params]{List: l}, err
 }
 
 // View_iter_Params_Future is a wrapper for a View_iter_Params promised by a client call.
@@ -1720,7 +1720,7 @@ type View_iter_Results_List = capnp.StructList[View_iter_Results]
 // NewView_iter_Results creates a new list of View_iter_Results.
 func NewView_iter_Results_List(s *capnp.Segment, sz int32) (View_iter_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[View_iter_Results]{l}, err
+	return capnp.StructList[View_iter_Results]{List: l}, err
 }
 
 // View_iter_Results_Future is a wrapper for a View_iter_Results promised by a client call.
@@ -1780,7 +1780,7 @@ type View_lookup_Params_List = capnp.StructList[View_lookup_Params]
 // NewView_lookup_Params creates a new list of View_lookup_Params.
 func NewView_lookup_Params_List(s *capnp.Segment, sz int32) (View_lookup_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[View_lookup_Params]{l}, err
+	return capnp.StructList[View_lookup_Params]{List: l}, err
 }
 
 // View_lookup_Params_Future is a wrapper for a View_lookup_Params promised by a client call.
@@ -1854,7 +1854,7 @@ type View_lookup_Results_List = capnp.StructList[View_lookup_Results]
 // NewView_lookup_Results creates a new list of View_lookup_Results.
 func NewView_lookup_Results_List(s *capnp.Segment, sz int32) (View_lookup_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1}, sz)
-	return capnp.StructList[View_lookup_Results]{l}, err
+	return capnp.StructList[View_lookup_Results]{List: l}, err
 }
 
 // View_lookup_Results_Future is a wrapper for a View_lookup_Results promised by a client call.

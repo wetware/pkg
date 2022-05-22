@@ -129,7 +129,7 @@ type Closer_close_Params_List = capnp.StructList[Closer_close_Params]
 // NewCloser_close_Params creates a new list of Closer_close_Params.
 func NewCloser_close_Params_List(s *capnp.Segment, sz int32) (Closer_close_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Closer_close_Params]{l}, err
+	return capnp.StructList[Closer_close_Params]{List: l}, err
 }
 
 // Closer_close_Params_Future is a wrapper for a Closer_close_Params promised by a client call.
@@ -171,7 +171,7 @@ type Closer_close_Results_List = capnp.StructList[Closer_close_Results]
 // NewCloser_close_Results creates a new list of Closer_close_Results.
 func NewCloser_close_Results_List(s *capnp.Segment, sz int32) (Closer_close_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Closer_close_Results]{l}, err
+	return capnp.StructList[Closer_close_Results]{List: l}, err
 }
 
 // Closer_close_Results_Future is a wrapper for a Closer_close_Results promised by a client call.
@@ -313,7 +313,7 @@ type Sender_send_Params_List = capnp.StructList[Sender_send_Params]
 // NewSender_send_Params creates a new list of Sender_send_Params.
 func NewSender_send_Params_List(s *capnp.Segment, sz int32) (Sender_send_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Sender_send_Params]{l}, err
+	return capnp.StructList[Sender_send_Params]{List: l}, err
 }
 
 // Sender_send_Params_Future is a wrapper for a Sender_send_Params promised by a client call.
@@ -359,7 +359,7 @@ type Sender_send_Results_List = capnp.StructList[Sender_send_Results]
 // NewSender_send_Results creates a new list of Sender_send_Results.
 func NewSender_send_Results_List(s *capnp.Segment, sz int32) (Sender_send_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Sender_send_Results]{l}, err
+	return capnp.StructList[Sender_send_Results]{List: l}, err
 }
 
 // Sender_send_Results_Future is a wrapper for a Sender_send_Results promised by a client call.
@@ -489,7 +489,7 @@ type Peeker_peek_Params_List = capnp.StructList[Peeker_peek_Params]
 // NewPeeker_peek_Params creates a new list of Peeker_peek_Params.
 func NewPeeker_peek_Params_List(s *capnp.Segment, sz int32) (Peeker_peek_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Peeker_peek_Params]{l}, err
+	return capnp.StructList[Peeker_peek_Params]{List: l}, err
 }
 
 // Peeker_peek_Params_Future is a wrapper for a Peeker_peek_Params promised by a client call.
@@ -543,7 +543,7 @@ type Peeker_peek_Results_List = capnp.StructList[Peeker_peek_Results]
 // NewPeeker_peek_Results creates a new list of Peeker_peek_Results.
 func NewPeeker_peek_Results_List(s *capnp.Segment, sz int32) (Peeker_peek_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Peeker_peek_Results]{l}, err
+	return capnp.StructList[Peeker_peek_Results]{List: l}, err
 }
 
 // Peeker_peek_Results_Future is a wrapper for a Peeker_peek_Results promised by a client call.
@@ -677,7 +677,7 @@ type Recver_recv_Params_List = capnp.StructList[Recver_recv_Params]
 // NewRecver_recv_Params creates a new list of Recver_recv_Params.
 func NewRecver_recv_Params_List(s *capnp.Segment, sz int32) (Recver_recv_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Recver_recv_Params]{l}, err
+	return capnp.StructList[Recver_recv_Params]{List: l}, err
 }
 
 // Recver_recv_Params_Future is a wrapper for a Recver_recv_Params promised by a client call.
@@ -731,7 +731,7 @@ type Recver_recv_Results_List = capnp.StructList[Recver_recv_Results]
 // NewRecver_recv_Results creates a new list of Recver_recv_Results.
 func NewRecver_recv_Results_List(s *capnp.Segment, sz int32) (Recver_recv_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Recver_recv_Results]{l}, err
+	return capnp.StructList[Recver_recv_Results]{List: l}, err
 }
 
 // Recver_recv_Results_Future is a wrapper for a Recver_recv_Results promised by a client call.
