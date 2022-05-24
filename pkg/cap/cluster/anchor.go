@@ -6,8 +6,10 @@ import (
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
+	"capnproto.org/go/capnp/v3/server"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/wetware/ww/internal/api/cluster"
+	"github.com/wetware/ww/pkg/cap/cluster/internal/stm"
 	"github.com/wetware/ww/pkg/vat"
 )
 
@@ -178,11 +180,11 @@ func walkParam(path []string) func(cluster.Anchor_walk_Params) error {
 	}
 }
 
-/*----------------------------*
-|                             |
-|    Server Implementations   |
-|                             |
-*-----------------------------*/
+/*---------------------------*
+|                            |
+|    Server Implementation   |
+|                            |
+*----------------------------*/
 
 // MergeStrategy is responsible for merging two disjoing clusters
 // in the same namespace.
@@ -202,26 +204,25 @@ type MergeStrategy interface {
 }
 
 type HostServer struct {
-	node    node
-	cluster MergeStrategy
+	MergeStrategy
+	*server.Policy
+
+	root stm.RootAnchor
 }
 
-func NewHost(m MergeStrategy) HostServer {
-	s := HostServer{
-		cluster: m,
-		node: node{
-			cs: make(map[string]node),
-			mu: new(sync.RWMutex),
-		},
+func New(m MergeStrategy) *HostServer {
+	return &HostServer{
+		MergeStrategy: m,
+		root:          stm.NewRootAnchor(),
 	}
-
-	s.node.Anchor.Client = cluster.Host_ServerToClient(s, &defaultPolicy).Client
-	return s
 }
 
-func (s HostServer) Client() *capnp.Client { return s.node.Anchor.Client }
+func (h *HostServer) Client() *capnp.Client {
+	host := cluster.Host_ServerToClient(h, h.Policy)
+	return host.Client
+}
 
-func (s HostServer) Join(ctx context.Context, call cluster.Host_join) error {
+func (h *HostServer) Join(ctx context.Context, call cluster.Host_join) error {
 	ps, err := call.Args().Peers()
 	if err != nil {
 		return err
@@ -234,129 +235,43 @@ func (s HostServer) Join(ctx context.Context, call cluster.Host_join) error {
 		}
 	}
 
-	return s.cluster.Merge(ctx, peers)
+	return h.Merge(ctx, peers)
 }
 
-func (s HostServer) Ls(ctx context.Context, call cluster.Anchor_ls) error {
-	return s.node.Ls(ctx, call)
-}
-
-func (s HostServer) Walk(ctx context.Context, call cluster.Anchor_walk) error {
-	return s.node.Walk(ctx, call)
-}
-
-// node is theserver implemenation for host-local Anchors.
-type node struct {
-	Name   string
-	Anchor cluster.Anchor // client capability for node
-
-	mu     *sync.RWMutex
-	parent *node
-	cs     map[string]node
-	// value  interface{}
-}
-
-func (n node) Shutdown() {
-	defer n.parent.Release()
-
-	n.parent.mu.Lock()
-	defer n.parent.mu.Unlock()
-
-	delete(n.parent.cs, n.Name)
-}
-
-func (n node) Release() { n.Anchor.Release() }
-
-func (n node) AddRef() *node {
-	return &node{
-		Name:   n.Name,
-		Anchor: n.Anchor.AddRef(),
-		parent: n.parent,
-		cs:     n.cs,
-		mu:     n.mu,
-	}
-}
-
-func (n node) Ls(_ context.Context, call cluster.Anchor_ls) error {
+func (h *HostServer) Ls(ctx context.Context, call cluster.Anchor_ls) error {
 	res, err := call.AllocResults()
-	if err != nil {
-		return err
+	if err == nil {
+		tx := h.root.Txn(false)
+		err = tx.BindChildren(res)
 	}
 
-	n.mu.RLock()
-	defer n.mu.RUnlock()
-
-	cs, err := res.NewChildren(int32(len(n.cs)))
-	if err != nil {
-		return err
-	}
-
-	var i int
-	for name, n := range n.cs {
-		if err = cs.At(i).SetName(name); err != nil {
-			return err
-		}
-
-		if err = cs.At(i).SetAnchor(n.Anchor); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return err
 }
 
-func (n node) Walk(ctx context.Context, call cluster.Anchor_walk) error {
-	res, err := call.AllocResults()
-	if err != nil {
-		return err
-	}
-
+func (h *HostServer) Walk(ctx context.Context, call cluster.Anchor_walk) error {
 	path, err := call.Args().Path()
 	if err != nil {
 		return err
 	}
 
-	c, err := n.walk(path)
+	res, err := call.AllocResults()
 	if err != nil {
 		return err
 	}
 
-	return res.SetAnchor(c.Anchor)
-}
+	// Visit each node along the path; it will be transparently created,
+	// if needed.
+	tx := h.root.Txn(true)
+	defer tx.Finish()
 
-func (n node) walk(path capnp.TextList) (*node, error) {
-	for i := 0; i < path.Len(); i++ {
-		name, err := path.At(i)
-		if err != nil {
-			return nil, err
-		}
-
-		n = n.child(name)
+	anchor, err := tx.Walk(path)
+	if err != nil {
+		return err
 	}
 
-	// BUG:  n's reference may have hit zero in the meantime,
-	//       which will cause a panic.  (Lock is held in n.child)
-	return n.AddRef(), nil
-}
-
-func (n node) child(name string) node {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-
-	if c, ok := n.cs[name]; ok {
-		return c
+	if err = res.SetAnchor(anchor); err == nil {
+		tx.Commit()
 	}
 
-	// slow path - create new node
-	c := node{
-		Name:   name,
-		parent: n.AddRef(),
-		cs:     make(map[string]node),
-		mu:     new(sync.RWMutex),
-	}
-
-	c.Anchor = cluster.Anchor_ServerToClient(c, &defaultPolicy)
-	n.cs[name] = c
-
-	return c // ref = 1
+	return err
 }

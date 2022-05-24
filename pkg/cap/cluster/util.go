@@ -56,3 +56,35 @@ func bindAddrInfo(info *peer.AddrInfo, host cluster.Host_AddrInfo) error {
 
 	return nil
 }
+
+// func newTypeError(want, got interface{}) error {
+// 	return fmt.Errorf("expected %s (got %s)",
+// 		reflect.TypeOf(want),
+// 		reflect.TypeOf(got))
+// }
+
+// func newArgLenError(want, got int) error {
+// 	noun := "argument"
+// 	if want != 1 {
+// 		noun += "s"
+// 	}
+
+// 	return fmt.Errorf("expected %d %s (got %d)", want, noun, got)
+// }
+
+// func anyToString(v any) (string, error) {
+// 	if s, ok := v.(string); ok {
+// 		return s, nil
+// 	}
+
+// 	return "", newTypeError("", v)
+// }
+
+// func anyStringToBytes(v any) (b []byte, err error) {
+// 	var s string
+// 	if s, err = anyToString(v); s != "" {
+// 		b = []byte(s) // TODO(performance):  unsafe cast to avoid alloc
+// 	}
+
+// 	return
+// }
