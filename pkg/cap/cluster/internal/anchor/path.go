@@ -5,6 +5,7 @@ import (
 	"path"
 	"strings"
 	"unicode"
+	"unsafe"
 
 	"github.com/wetware/ww/pkg/internal/bounded"
 )
@@ -59,6 +60,14 @@ func (p Path) String() string {
 	return s
 }
 
+func (p Path) index() (index []byte) {
+	if path := p.String(); path != "/" {
+		index = *(*[]byte)(unsafe.Pointer(&path))
+	}
+
+	return
+}
+
 func (p Path) Next() (Path, string) {
 	raw := p.String()
 
@@ -75,6 +84,16 @@ func (p Path) Bind(f func(string) bounded.Type[string]) Path {
 	value := bounded.Type[string](p)
 	value = value.Bind(f)
 	return Path(value)
+}
+
+func Child(name string) func(string) bounded.Type[string] {
+	return func(parent string) bounded.Type[string] {
+		if err := validateName(name); err != nil {
+			return bounded.Failure[string](err)
+		}
+
+		return bounded.Value(parent + "/" + name)
+	}
 }
 
 func Param(p PathSetter) func(string) bounded.Type[string] {
@@ -112,10 +131,18 @@ func valid(r rune) bool {
 func validateParts(path []string) error {
 	// ensure there are no path separators in the components.
 	for i, p := range path {
-		for j, r := range p {
-			if r == '/' {
-				return fmt.Errorf("invalid rune '%c' (part=%d index=%d)", i, j, r)
-			}
+		if err := validateName(p); err != nil {
+			return fmt.Errorf("path segment %d: %w", i, err)
+		}
+	}
+
+	return nil
+}
+
+func validateName(name string) error {
+	for i, r := range name {
+		if r == '/' {
+			return fmt.Errorf("invalid rune '%c' (index=%d)", r, i)
 		}
 	}
 

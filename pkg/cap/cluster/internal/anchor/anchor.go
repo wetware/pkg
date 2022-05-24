@@ -1,6 +1,9 @@
 package anchor
 
 import (
+	"fmt"
+	"reflect"
+
 	"capnproto.org/go/capnp/v3"
 	"github.com/hashicorp/go-memdb"
 	"github.com/wetware/ww/internal/api/cluster"
@@ -8,22 +11,13 @@ import (
 )
 
 var anchorSchema = memdb.TableSchema{
-	Name:    "anchor",
+	Name: "anchor",
 	Indexes: map[string]*memdb.IndexSchema{
-		// "id": {
-		// 	Name:    "id",
-		// 	Unique:  true,
-		// 	Indexer: anchorIndexer{},
-		// },
-		// "name": {
-		// 	Name:    "name",
-		// 	Indexer: nameIndexer{},
-		// },
-		// "path": {
-		// 	Name:    "path",
-		// 	Unique:  true,
-		// 	Indexer: pathIndexer{},
-		// },
+		"id": {
+			Name:    "id",
+			Unique:  true,
+			Indexer: index{},
+		},
 	},
 }
 
@@ -89,4 +83,47 @@ func (t Txn) Walk(path Path) (cluster.Anchor, error) {
 func (t Txn) BindChildren(a ChildAllocator) error {
 	// XXX: remember to call AddRef() for each
 	panic("NOT IMPLEMENTED")
+}
+
+type index struct{}
+
+func (index) FromObject(obj interface{}) (bool, []byte, error) {
+	path, err := argsToPath(obj)
+	if err != nil {
+		return false, nil, errType(obj)
+	}
+
+	return true, path.index(), nil
+}
+
+func (index) FromArgs(args ...interface{}) ([]byte, error) {
+	path, err := argsToPath(args...)
+	return path.index(), err
+
+}
+
+func (index) PrefixFromArgs(args ...interface{}) ([]byte, error) {
+	path, err := argsToPath(args...)
+	return path.index(), err
+
+}
+
+func argsToPath(args ...any) (Path, error) {
+	if len(args) != 1 {
+		return Path{}, errNArgs(args)
+	}
+
+	if path, ok := args[0].(Path); ok {
+		return path, nil
+	}
+
+	return Path{}, errNArgs(args)
+}
+
+func errType(v any) error {
+	return fmt.Errorf("invalid type: %s", reflect.TypeOf(v))
+}
+
+func errNArgs(args []any) error {
+	return fmt.Errorf("expected one argument (got %d)", len(args))
 }
