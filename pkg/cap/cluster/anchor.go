@@ -9,13 +9,17 @@ import (
 	"capnproto.org/go/capnp/v3/server"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/wetware/ww/internal/api/cluster"
-	"github.com/wetware/ww/pkg/cap/cluster/internal/stm"
+	"github.com/wetware/ww/pkg/cap/cluster/internal/anchor"
 	"github.com/wetware/ww/pkg/vat"
 )
 
 var AnchorCapability = vat.BasicCap{
 	"anchor/packed",
 	"anchor"}
+
+// Path is a bounded type that contains a valid anchor path,
+// or an error.
+type Path = anchor.Path
 
 /*----------------------------*
 |                             |
@@ -65,7 +69,8 @@ func (h *Host) Ls(ctx context.Context, d Dialer) (*RegisterMap, capnp.ReleaseFun
 
 // Walk to the register located at path.  Panics if len(path) == 0.
 func (h *Host) Walk(ctx context.Context, d Dialer, path []string) (Register, capnp.ReleaseFunc) {
-	return walkPath(ctx, cluster.Anchor(h.resolve(ctx, d)), path)
+	child := cluster.Anchor(h.resolve(ctx, d))
+	return walkPath(ctx, child, anchor.PathFromParts(path))
 }
 
 func (h *Host) resolve(ctx context.Context, d Dialer) cluster.Host {
@@ -122,7 +127,7 @@ func (r Register) Ls(ctx context.Context) (*RegisterMap, capnp.ReleaseFunc) {
 
 // Walk to the register located at path.  Panics if len(path) == 0.
 func (r Register) Walk(ctx context.Context, path []string) (Register, capnp.ReleaseFunc) {
-	return walkPath(ctx, cluster.Anchor(r), path)
+	return walkPath(ctx, cluster.Anchor(r), anchor.PathFromParts(path))
 }
 
 func (r Register) AddRef() Register {
@@ -153,30 +158,21 @@ func listChildren(ctx context.Context, a cluster.Anchor) (*RegisterMap, capnp.Re
 	return regmap(cs), release
 }
 
-func walkPath(ctx context.Context, a cluster.Anchor, path []string) (Register, capnp.ReleaseFunc) {
-	if len(path) == 0 {
+func walkPath(ctx context.Context, a cluster.Anchor, path Path) (Register, capnp.ReleaseFunc) {
+	if path.String() == "" {
 		// While not strictly necessary, requiring non-empty paths
 		// simplifies the ref-counting logic considerably.  Nop walks
 		// are implemented by client.register, which wraps this type.
-		panic("zero-length path")
+		panic("empty path")
 	}
 
 	f, release := a.Walk(ctx, walkParam(path))
 	return Register(f.Anchor()), release
 }
 
-func walkParam(path []string) func(cluster.Anchor_walk_Params) error {
+func walkParam(path Path) func(cluster.Anchor_walk_Params) error {
 	return func(ps cluster.Anchor_walk_Params) error {
-		p, err := ps.NewPath(int32(len(path)))
-		if err == nil {
-			for i, e := range path {
-				if err = p.Set(i, e); err != nil {
-					break
-				}
-			}
-		}
-
-		return err
+		return path.Bind(anchor.Param(ps)).Err()
 	}
 }
 
@@ -207,13 +203,13 @@ type HostServer struct {
 	MergeStrategy
 	*server.Policy
 
-	root stm.RootAnchor
+	root anchor.RootAnchor
 }
 
 func New(m MergeStrategy) *HostServer {
 	return &HostServer{
 		MergeStrategy: m,
-		root:          stm.NewRootAnchor(),
+		root:          anchor.NewRootAnchor(),
 	}
 }
 
@@ -249,7 +245,7 @@ func (h *HostServer) Ls(ctx context.Context, call cluster.Anchor_ls) error {
 }
 
 func (h *HostServer) Walk(ctx context.Context, call cluster.Anchor_walk) error {
-	path, err := call.Args().Path()
+	path, err := anchor.PathFromProvider(call.Args())
 	if err != nil {
 		return err
 	}
@@ -264,12 +260,12 @@ func (h *HostServer) Walk(ctx context.Context, call cluster.Anchor_walk) error {
 	tx := h.root.Txn(true)
 	defer tx.Finish()
 
-	anchor, err := tx.Walk(path)
+	child, err := tx.Walk(path)
 	if err != nil {
 		return err
 	}
 
-	if err = res.SetAnchor(anchor); err == nil {
+	if err = res.SetAnchor(child); err == nil {
 		tx.Commit()
 	}
 

@@ -1,4 +1,4 @@
-package stm_test
+package anchor_test
 
 // import (
 // 	"testing"

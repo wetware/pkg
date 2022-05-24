@@ -15,7 +15,7 @@ interface Anchor {
         anchor @1 :Anchor;
     }
 
-    walk @1 (path :List(Text)) -> (anchor :Anchor);
+    walk @1 (path :Text) -> (anchor :Anchor);
 }
 
 interface Host extends(Anchor) {

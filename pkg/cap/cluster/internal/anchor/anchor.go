@@ -1,4 +1,4 @@
-package stm
+package anchor
 
 import (
 	"capnproto.org/go/capnp/v3"
@@ -49,17 +49,17 @@ func NewRootAnchor() RootAnchor {
 	}
 }
 
-func (sched RootAnchor) Txn(write bool) Txn {
+func (root RootAnchor) Txn(write bool) Txn {
 	return Txn{
-		Txn:     sched.Scheduler.Txn(write),
-		anchors: sched.anchors,
+		Txn:     root.Scheduler.Txn(write),
+		anchors: root.anchors,
 	}
 }
 
-func (sched RootAnchor) Snapshot() RootAnchor {
+func (root RootAnchor) Snapshot() RootAnchor {
 	return RootAnchor{
-		Scheduler: sched.Scheduler.Snapshot(),
-		anchors:   sched.anchors,
+		Scheduler: root.Scheduler.Snapshot(),
+		anchors:   root.anchors,
 	}
 }
 
@@ -79,8 +79,9 @@ func (t Txn) Finish() {
 }
 
 // Walk the path to the specified anchor, creating new anchors
-// along the way, as needed.
-func (t Txn) Walk(path PathIterator) (cluster.Anchor, error) {
+// along the way, as needed.  The path argument MUST be valid,
+// and in canonical form.
+func (t Txn) Walk(path Path) (cluster.Anchor, error) {
 	// XXX: remember to call AddRef()
 	panic("NOT IMPLEMENTED")
 }
