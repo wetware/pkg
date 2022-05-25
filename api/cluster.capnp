@@ -32,12 +32,10 @@ interface Container extends(Anchor){
 }
 
 interface View {
-    iter @0 (handler :Handler) -> ();
+    iter @0 (handler :Sender) -> ();
     lookup @1 (peerID :PeerID) -> (record :Record, ok :Bool);
  
-    interface Handler {
-        handle @0 (records :List(Record)) -> ();
-    }
+    using Sender = import "channel.capnp".Sender;
  
     struct Record {
         peer @0 :PeerID;

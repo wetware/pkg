@@ -34,6 +34,7 @@ require (
 
 require (
 	github.com/golang/mock v1.6.0
+	github.com/hashicorp/go-memdb v1.3.3
 	github.com/ipfs/go-datastore v0.5.1
 	github.com/ipfs/go-ds-badger2 v0.1.3
 	github.com/libp2p/go-libp2p-quic-transport v0.17.0
@@ -45,6 +46,8 @@ require (
 	golang.org/x/sync v0.0.0-20220513210516-0976fa681c29
 	gopkg.in/alexcesaro/statsd.v2 v2.0.0
 )
+
+require github.com/hashicorp/go-immutable-radix v1.3.0 // indirect
 
 require (
 	github.com/benbjohnson/clock v1.3.0 // indirect
