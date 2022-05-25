@@ -12,6 +12,16 @@ import (
 	"github.com/wetware/ww/pkg/internal/bounded"
 )
 
+func TestPathFromParts(t *testing.T) {
+	t.Parallel()
+
+	path := anchor.PathFromParts([]string{"foo", "bar"})
+	assert.NoError(t, path.Err(), "should bind path from parts")
+
+	failed := anchor.PathFromParts([]string{"foo", "/fail"})
+	assert.Error(t, failed.Err(), "should not bind invalid path segment")
+}
+
 func TestPathFromProvider(t *testing.T) {
 	t.Parallel()
 	t.Helper()
@@ -71,6 +81,18 @@ func TestPathIteration(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestBindChildren(t *testing.T) {
+	t.Parallel()
+
+	parent := anchor.NewPath("/foo")
+
+	child := parent.Bind(anchor.Child("baz"))
+	assert.NoError(t, child.Err(), "should bind child")
+
+	fail := parent.Bind(anchor.Child("/baz"))
+	assert.Error(t, fail.Err(), "should not bind invalid child")
 }
 
 func TestPathValidation(t *testing.T) {
