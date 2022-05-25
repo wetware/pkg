@@ -21,12 +21,12 @@ var anchorSchema = memdb.TableSchema{
 	},
 }
 
-type RootAnchor struct {
+type Scheduler struct {
 	stm.Scheduler
 	anchors stm.TableRef
 }
 
-func NewRootAnchor() RootAnchor {
+func New() Scheduler {
 	var (
 		f       stm.Factory
 		anchors = f.Register("anchor", &anchorSchema)
@@ -37,23 +37,23 @@ func NewRootAnchor() RootAnchor {
 		panic(err)
 	}
 
-	return RootAnchor{
+	return Scheduler{
 		Scheduler: sched,
 		anchors:   anchors,
 	}
 }
 
-func (root RootAnchor) Txn(write bool) Txn {
+func (sched Scheduler) Txn(write bool) Txn {
 	return Txn{
-		Txn:     root.Scheduler.Txn(write),
-		anchors: root.anchors,
+		Txn:     sched.Scheduler.Txn(write),
+		anchors: sched.anchors,
 	}
 }
 
-func (root RootAnchor) Snapshot() RootAnchor {
-	return RootAnchor{
-		Scheduler: root.Scheduler.Snapshot(),
-		anchors:   root.anchors,
+func (sched Scheduler) Snapshot() Scheduler {
+	return Scheduler{
+		Scheduler: sched.Scheduler.Snapshot(),
+		anchors:   sched.anchors,
 	}
 }
 

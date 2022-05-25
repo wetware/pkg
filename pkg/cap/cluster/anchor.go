@@ -203,13 +203,13 @@ type HostServer struct {
 	MergeStrategy
 	*server.Policy
 
-	root anchor.RootAnchor
+	sched anchor.Scheduler
 }
 
 func New(m MergeStrategy) *HostServer {
 	return &HostServer{
 		MergeStrategy: m,
-		root:          anchor.NewRootAnchor(),
+		sched:         anchor.New(),
 	}
 }
 
@@ -237,7 +237,7 @@ func (h *HostServer) Join(ctx context.Context, call cluster.Host_join) error {
 func (h *HostServer) Ls(ctx context.Context, call cluster.Anchor_ls) error {
 	res, err := call.AllocResults()
 	if err == nil {
-		tx := h.root.Txn(false)
+		tx := h.sched.Txn(false)
 		err = tx.BindChildren(res)
 	}
 
@@ -257,7 +257,7 @@ func (h *HostServer) Walk(ctx context.Context, call cluster.Anchor_walk) error {
 
 	// Visit each node along the path; it will be transparently created,
 	// if needed.
-	tx := h.root.Txn(true)
+	tx := h.sched.Txn(true)
 	defer tx.Finish()
 
 	child, err := tx.Walk(path)
