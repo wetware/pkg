@@ -3,8 +3,6 @@ package client
 import (
 	"encoding/json"
 	"fmt"
-	"path"
-	"strings"
 
 	"github.com/urfave/cli/v2"
 	"github.com/wetware/ww/pkg/client"
@@ -28,29 +26,30 @@ func Ls() *cli.Command {
 
 func ls() cli.ActionFunc {
 	return func(c *cli.Context) error {
-		paths := make([]string, 0)
-		it := node.Ls(c.Context)
-		for it.Next() {
-			paths = append(paths, pathString(it.Anchor()))
-		}
+		var it = node.Ls(c.Context)
 
 		if c.Bool("json") {
-			jsonOutput, err := json.Marshal(paths)
-			if err != nil {
-				return nil
-			}
-			fmt.Println(string(jsonOutput))
-		} else {
-			for _, path := range paths {
-				fmt.Println(path)
-			}
+			return lsJSON(c, it)
 		}
 
-		return it.Err()
+		lsText(c, it)
+
+		return nil
 	}
 }
 
-func pathString(a client.Anchor) string {
+func lsJSON(c *cli.Context, it client.Iterator) error {
+	var paths []string
 
-	return path.Clean(fmt.Sprintf("/%s", strings.Join(a.Path(), "/")))
+	for it.Next() {
+		paths = append(paths, it.Anchor().Path())
+	}
+
+	return json.NewEncoder(c.App.Writer).Encode(paths)
+}
+
+func lsText(c *cli.Context, it client.Iterator) {
+	for it.Next() {
+		fmt.Println(it.Anchor().Path())
+	}
 }

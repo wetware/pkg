@@ -3,7 +3,7 @@ package server
 import (
 	"github.com/lthibault/log"
 	"github.com/wetware/casm/pkg/cluster"
-	clcap "github.com/wetware/ww/pkg/cap/cluster"
+	clcap "github.com/wetware/ww/pkg/cap/anchor"
 )
 
 type Option func(*Joiner)
