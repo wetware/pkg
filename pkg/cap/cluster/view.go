@@ -349,7 +349,7 @@ func sender(s channel.SendServer) func(ps api.View_iter_Params) error {
 
 func (ps sendParams) Records() (recordBatch, error) {
 	ptr, err := chan_api.Sender_send_Params(ps).Value()
-	rs := capnp.StructList[api.View_Record]{List: ptr.List()}
+	rs := api.View_Record_List{List: ptr.List()}
 	return recordBatch(rs), err
 }
 
