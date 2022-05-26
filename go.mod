@@ -172,5 +172,3 @@ require (
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	lukechampine.com/blake3 v1.1.7 // indirect
 )
-
-replace github.com/wetware/casm => /home/aratz/github.com/wetware/casm
