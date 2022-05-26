@@ -5,7 +5,6 @@ import (
 
 	"capnproto.org/go/capnp/v3"
 	api "github.com/wetware/ww/internal/api/proc"
-	"github.com/wetware/ww/pkg/cap/proc"
 )
 
 func unixCmd(name string, args ...string) func(p api.Executor_exec_Params) error {
@@ -43,7 +42,7 @@ type Client struct {
 	client api.Executor
 }
 
-func (c Client) Exec(ctx context.Context, name string, args ...string) (proc.Process, capnp.ReleaseFunc) {
+func (c Client) Exec(ctx context.Context, name string, args ...string) (Process, capnp.ReleaseFunc) {
 	fut, release := c.client.Exec(ctx, unixCmd(name, args...))
 	return &ProcessClient{client: fut.Proc()}, release
 }
@@ -68,19 +67,19 @@ func (c ProcessClient) Wait(ctx context.Context) error {
 	return err
 }
 
-func (c ProcessClient) StderrPipe(ctx context.Context) (proc.ReadCloser, capnp.ReleaseFunc) {
+func (c ProcessClient) StderrPipe(ctx context.Context) (ReadCloser, capnp.ReleaseFunc) {
 	fut, release := c.client.StderrPipe(ctx, nil)
 
 	return &ReadCloserClient{client: fut.Rc()}, release
 }
 
-func (c *ProcessClient) StdoutPipe(ctx context.Context) (proc.ReadCloser, capnp.ReleaseFunc) {
+func (c *ProcessClient) StdoutPipe(ctx context.Context) (ReadCloser, capnp.ReleaseFunc) {
 	fut, release := c.client.StdoutPipe(ctx, nil)
 
 	return &ReadCloserClient{client: fut.Rc()}, release
 }
 
-func (c ProcessClient) StdinPipe(ctx context.Context) (proc.WriteCloser, capnp.ReleaseFunc) {
+func (c ProcessClient) StdinPipe(ctx context.Context) (WriteCloser, capnp.ReleaseFunc) {
 	fut, release := c.client.StdinPipe(ctx, nil)
 
 	return &WriteCloserClient{client: fut.Wc()}, release

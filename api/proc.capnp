@@ -9,17 +9,9 @@ interface Executor(T) {
     exec @0 (command :T) -> (proc :Process);
 }
 
-struct UnixCommand {
-    name @0 :Text;
-    arg @1 :List(Text);
-}
-
 interface Process {
     start @0 () -> ();
     wait @1 () -> ();
-    stderrPipe @2 () -> (rc :ReadCloser);
-    stdinPipe @3 () -> (wc :WriteCloser);
-    stdoutPipe @4 () -> (rc :ReadCloser);
 }
 
 interface ReadCloser extends(Reader, Closer){}
@@ -36,4 +28,15 @@ interface Writer {
 
 interface Closer {
     close @0 () -> ();
+}
+
+interface UnixProcess extends(Process) {
+    stderrPipe @0 () -> (rc :ReadCloser);
+    stdinPipe @1 () -> (wc :WriteCloser);
+    stdoutPipe @2 () -> (rc :ReadCloser);
+}
+
+struct UnixCommand {
+    name @0 :Text;
+    arg @1 :List(Text);
 }
