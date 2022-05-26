@@ -8,6 +8,7 @@ import (
 	schemas "capnproto.org/go/capnp/v3/schemas"
 	server "capnproto.org/go/capnp/v3/server"
 	context "context"
+	channel "github.com/wetware/ww/internal/api/channel"
 )
 
 type Anchor struct{ Client *capnp.Client }
@@ -212,7 +213,7 @@ type Anchor_Child_List = capnp.StructList[Anchor_Child]
 // NewAnchor_Child creates a new list of Anchor_Child.
 func NewAnchor_Child_List(s *capnp.Segment, sz int32) (Anchor_Child_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2}, sz)
-	return capnp.StructList[Anchor_Child]{l}, err
+	return capnp.StructList[Anchor_Child]{List: l}, err
 }
 
 // Anchor_Child_Future is a wrapper for a Anchor_Child promised by a client call.
@@ -282,7 +283,7 @@ type Anchor_ls_Params_List = capnp.StructList[Anchor_ls_Params]
 // NewAnchor_ls_Params creates a new list of Anchor_ls_Params.
 func NewAnchor_ls_Params_List(s *capnp.Segment, sz int32) (Anchor_ls_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Anchor_ls_Params]{l}, err
+	return capnp.StructList[Anchor_ls_Params]{List: l}, err
 }
 
 // Anchor_ls_Params_Future is a wrapper for a Anchor_ls_Params promised by a client call.
@@ -348,7 +349,7 @@ type Anchor_ls_Results_List = capnp.StructList[Anchor_ls_Results]
 // NewAnchor_ls_Results creates a new list of Anchor_ls_Results.
 func NewAnchor_ls_Results_List(s *capnp.Segment, sz int32) (Anchor_ls_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Anchor_ls_Results]{l}, err
+	return capnp.StructList[Anchor_ls_Results]{List: l}, err
 }
 
 // Anchor_ls_Results_Future is a wrapper for a Anchor_ls_Results promised by a client call.
@@ -414,7 +415,7 @@ type Anchor_walk_Params_List = capnp.StructList[Anchor_walk_Params]
 // NewAnchor_walk_Params creates a new list of Anchor_walk_Params.
 func NewAnchor_walk_Params_List(s *capnp.Segment, sz int32) (Anchor_walk_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Anchor_walk_Params]{l}, err
+	return capnp.StructList[Anchor_walk_Params]{List: l}, err
 }
 
 // Anchor_walk_Params_Future is a wrapper for a Anchor_walk_Params promised by a client call.
@@ -474,7 +475,7 @@ type Anchor_walk_Results_List = capnp.StructList[Anchor_walk_Results]
 // NewAnchor_walk_Results creates a new list of Anchor_walk_Results.
 func NewAnchor_walk_Results_List(s *capnp.Segment, sz int32) (Anchor_walk_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Anchor_walk_Results]{l}, err
+	return capnp.StructList[Anchor_walk_Results]{List: l}, err
 }
 
 // Anchor_walk_Results_Future is a wrapper for a Anchor_walk_Results promised by a client call.
@@ -710,7 +711,7 @@ type Host_AddrInfo_List = capnp.StructList[Host_AddrInfo]
 // NewHost_AddrInfo creates a new list of Host_AddrInfo.
 func NewHost_AddrInfo_List(s *capnp.Segment, sz int32) (Host_AddrInfo_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2}, sz)
-	return capnp.StructList[Host_AddrInfo]{l}, err
+	return capnp.StructList[Host_AddrInfo]{List: l}, err
 }
 
 // Host_AddrInfo_Future is a wrapper for a Host_AddrInfo promised by a client call.
@@ -776,7 +777,7 @@ type Host_join_Params_List = capnp.StructList[Host_join_Params]
 // NewHost_join_Params creates a new list of Host_join_Params.
 func NewHost_join_Params_List(s *capnp.Segment, sz int32) (Host_join_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Host_join_Params]{l}, err
+	return capnp.StructList[Host_join_Params]{List: l}, err
 }
 
 // Host_join_Params_Future is a wrapper for a Host_join_Params promised by a client call.
@@ -818,7 +819,7 @@ type Host_join_Results_List = capnp.StructList[Host_join_Results]
 // NewHost_join_Results creates a new list of Host_join_Results.
 func NewHost_join_Results_List(s *capnp.Segment, sz int32) (Host_join_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Host_join_Results]{l}, err
+	return capnp.StructList[Host_join_Results]{List: l}, err
 }
 
 // Host_join_Results_Future is a wrapper for a Host_join_Results promised by a client call.
@@ -1055,7 +1056,7 @@ type Container_get_Params_List = capnp.StructList[Container_get_Params]
 // NewContainer_get_Params creates a new list of Container_get_Params.
 func NewContainer_get_Params_List(s *capnp.Segment, sz int32) (Container_get_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Container_get_Params]{l}, err
+	return capnp.StructList[Container_get_Params]{List: l}, err
 }
 
 // Container_get_Params_Future is a wrapper for a Container_get_Params promised by a client call.
@@ -1110,7 +1111,7 @@ type Container_get_Results_List = capnp.StructList[Container_get_Results]
 // NewContainer_get_Results creates a new list of Container_get_Results.
 func NewContainer_get_Results_List(s *capnp.Segment, sz int32) (Container_get_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Container_get_Results]{l}, err
+	return capnp.StructList[Container_get_Results]{List: l}, err
 }
 
 // Container_get_Results_Future is a wrapper for a Container_get_Results promised by a client call.
@@ -1165,7 +1166,7 @@ type Container_set_Params_List = capnp.StructList[Container_set_Params]
 // NewContainer_set_Params creates a new list of Container_set_Params.
 func NewContainer_set_Params_List(s *capnp.Segment, sz int32) (Container_set_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Container_set_Params]{l}, err
+	return capnp.StructList[Container_set_Params]{List: l}, err
 }
 
 // Container_set_Params_Future is a wrapper for a Container_set_Params promised by a client call.
@@ -1207,7 +1208,7 @@ type Container_set_Results_List = capnp.StructList[Container_set_Results]
 // NewContainer_set_Results creates a new list of Container_set_Results.
 func NewContainer_set_Results_List(s *capnp.Segment, sz int32) (Container_set_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Container_set_Results]{l}, err
+	return capnp.StructList[Container_set_Results]{List: l}, err
 }
 
 // Container_set_Results_Future is a wrapper for a Container_set_Results promised by a client call.
@@ -1353,202 +1354,6 @@ func (c View_lookup) AllocResults() (View_lookup_Results, error) {
 	return View_lookup_Results{Struct: r}, err
 }
 
-type View_Handler struct{ Client *capnp.Client }
-
-// View_Handler_TypeID is the unique identifier for the type View_Handler.
-const View_Handler_TypeID = 0xee93a663b2a23c03
-
-func (c View_Handler) Handle(ctx context.Context, params func(View_Handler_handle_Params) error) (View_Handler_handle_Results_Future, capnp.ReleaseFunc) {
-	s := capnp.Send{
-		Method: capnp.Method{
-			InterfaceID:   0xee93a663b2a23c03,
-			MethodID:      0,
-			InterfaceName: "cluster.capnp:View.Handler",
-			MethodName:    "handle",
-		},
-	}
-	if params != nil {
-		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(View_Handler_handle_Params{Struct: s}) }
-	}
-	ans, release := c.Client.SendCall(ctx, s)
-	return View_Handler_handle_Results_Future{Future: ans.Future()}, release
-}
-
-func (c View_Handler) AddRef() View_Handler {
-	return View_Handler{
-		Client: c.Client.AddRef(),
-	}
-}
-
-func (c View_Handler) Release() {
-	c.Client.Release()
-}
-
-// A View_Handler_Server is a View_Handler with a local implementation.
-type View_Handler_Server interface {
-	Handle(context.Context, View_Handler_handle) error
-}
-
-// View_Handler_NewServer creates a new Server from an implementation of View_Handler_Server.
-func View_Handler_NewServer(s View_Handler_Server, policy *server.Policy) *server.Server {
-	c, _ := s.(server.Shutdowner)
-	return server.New(View_Handler_Methods(nil, s), s, c, policy)
-}
-
-// View_Handler_ServerToClient creates a new Client from an implementation of View_Handler_Server.
-// The caller is responsible for calling Release on the returned Client.
-func View_Handler_ServerToClient(s View_Handler_Server, policy *server.Policy) View_Handler {
-	return View_Handler{Client: capnp.NewClient(View_Handler_NewServer(s, policy))}
-}
-
-// View_Handler_Methods appends Methods to a slice that invoke the methods on s.
-// This can be used to create a more complicated Server.
-func View_Handler_Methods(methods []server.Method, s View_Handler_Server) []server.Method {
-	if cap(methods) == 0 {
-		methods = make([]server.Method, 0, 1)
-	}
-
-	methods = append(methods, server.Method{
-		Method: capnp.Method{
-			InterfaceID:   0xee93a663b2a23c03,
-			MethodID:      0,
-			InterfaceName: "cluster.capnp:View.Handler",
-			MethodName:    "handle",
-		},
-		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.Handle(ctx, View_Handler_handle{call})
-		},
-	})
-
-	return methods
-}
-
-// View_Handler_handle holds the state for a server call to View_Handler.handle.
-// See server.Call for documentation.
-type View_Handler_handle struct {
-	*server.Call
-}
-
-// Args returns the call's arguments.
-func (c View_Handler_handle) Args() View_Handler_handle_Params {
-	return View_Handler_handle_Params{Struct: c.Call.Args()}
-}
-
-// AllocResults allocates the results struct.
-func (c View_Handler_handle) AllocResults() (View_Handler_handle_Results, error) {
-	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return View_Handler_handle_Results{Struct: r}, err
-}
-
-type View_Handler_handle_Params struct{ capnp.Struct }
-
-// View_Handler_handle_Params_TypeID is the unique identifier for the type View_Handler_handle_Params.
-const View_Handler_handle_Params_TypeID = 0x8eb96dceb6a99ebd
-
-func NewView_Handler_handle_Params(s *capnp.Segment) (View_Handler_handle_Params, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return View_Handler_handle_Params{st}, err
-}
-
-func NewRootView_Handler_handle_Params(s *capnp.Segment) (View_Handler_handle_Params, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return View_Handler_handle_Params{st}, err
-}
-
-func ReadRootView_Handler_handle_Params(msg *capnp.Message) (View_Handler_handle_Params, error) {
-	root, err := msg.Root()
-	return View_Handler_handle_Params{root.Struct()}, err
-}
-
-func (s View_Handler_handle_Params) String() string {
-	str, _ := text.Marshal(0x8eb96dceb6a99ebd, s.Struct)
-	return str
-}
-
-func (s View_Handler_handle_Params) Records() (View_Record_List, error) {
-	p, err := s.Struct.Ptr(0)
-	return View_Record_List{List: p.List()}, err
-}
-
-func (s View_Handler_handle_Params) HasRecords() bool {
-	return s.Struct.HasPtr(0)
-}
-
-func (s View_Handler_handle_Params) SetRecords(v View_Record_List) error {
-	return s.Struct.SetPtr(0, v.List.ToPtr())
-}
-
-// NewRecords sets the records field to a newly
-// allocated View_Record_List, preferring placement in s's segment.
-func (s View_Handler_handle_Params) NewRecords(n int32) (View_Record_List, error) {
-	l, err := NewView_Record_List(s.Struct.Segment(), n)
-	if err != nil {
-		return View_Record_List{}, err
-	}
-	err = s.Struct.SetPtr(0, l.List.ToPtr())
-	return l, err
-}
-
-// View_Handler_handle_Params_List is a list of View_Handler_handle_Params.
-type View_Handler_handle_Params_List = capnp.StructList[View_Handler_handle_Params]
-
-// NewView_Handler_handle_Params creates a new list of View_Handler_handle_Params.
-func NewView_Handler_handle_Params_List(s *capnp.Segment, sz int32) (View_Handler_handle_Params_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[View_Handler_handle_Params]{l}, err
-}
-
-// View_Handler_handle_Params_Future is a wrapper for a View_Handler_handle_Params promised by a client call.
-type View_Handler_handle_Params_Future struct{ *capnp.Future }
-
-func (p View_Handler_handle_Params_Future) Struct() (View_Handler_handle_Params, error) {
-	s, err := p.Future.Struct()
-	return View_Handler_handle_Params{s}, err
-}
-
-type View_Handler_handle_Results struct{ capnp.Struct }
-
-// View_Handler_handle_Results_TypeID is the unique identifier for the type View_Handler_handle_Results.
-const View_Handler_handle_Results_TypeID = 0x8390b923d29e3b12
-
-func NewView_Handler_handle_Results(s *capnp.Segment) (View_Handler_handle_Results, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return View_Handler_handle_Results{st}, err
-}
-
-func NewRootView_Handler_handle_Results(s *capnp.Segment) (View_Handler_handle_Results, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return View_Handler_handle_Results{st}, err
-}
-
-func ReadRootView_Handler_handle_Results(msg *capnp.Message) (View_Handler_handle_Results, error) {
-	root, err := msg.Root()
-	return View_Handler_handle_Results{root.Struct()}, err
-}
-
-func (s View_Handler_handle_Results) String() string {
-	str, _ := text.Marshal(0x8390b923d29e3b12, s.Struct)
-	return str
-}
-
-// View_Handler_handle_Results_List is a list of View_Handler_handle_Results.
-type View_Handler_handle_Results_List = capnp.StructList[View_Handler_handle_Results]
-
-// NewView_Handler_handle_Results creates a new list of View_Handler_handle_Results.
-func NewView_Handler_handle_Results_List(s *capnp.Segment, sz int32) (View_Handler_handle_Results_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[View_Handler_handle_Results]{l}, err
-}
-
-// View_Handler_handle_Results_Future is a wrapper for a View_Handler_handle_Results promised by a client call.
-type View_Handler_handle_Results_Future struct{ *capnp.Future }
-
-func (p View_Handler_handle_Results_Future) Struct() (View_Handler_handle_Results, error) {
-	s, err := p.Future.Struct()
-	return View_Handler_handle_Results{s}, err
-}
-
 type View_Record struct{ capnp.Struct }
 
 // View_Record_TypeID is the unique identifier for the type View_Record.
@@ -1614,7 +1419,7 @@ type View_Record_List = capnp.StructList[View_Record]
 // NewView_Record creates a new list of View_Record.
 func NewView_Record_List(s *capnp.Segment, sz int32) (View_Record_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 16, PointerCount: 1}, sz)
-	return capnp.StructList[View_Record]{l}, err
+	return capnp.StructList[View_Record]{List: l}, err
 }
 
 // View_Record_Future is a wrapper for a View_Record promised by a client call.
@@ -1650,16 +1455,16 @@ func (s View_iter_Params) String() string {
 	return str
 }
 
-func (s View_iter_Params) Handler() View_Handler {
+func (s View_iter_Params) Handler() channel.Sender {
 	p, _ := s.Struct.Ptr(0)
-	return View_Handler{Client: p.Interface().Client()}
+	return channel.Sender{Client: p.Interface().Client()}
 }
 
 func (s View_iter_Params) HasHandler() bool {
 	return s.Struct.HasPtr(0)
 }
 
-func (s View_iter_Params) SetHandler(v View_Handler) error {
+func (s View_iter_Params) SetHandler(v channel.Sender) error {
 	if !v.Client.IsValid() {
 		return s.Struct.SetPtr(0, capnp.Ptr{})
 	}
@@ -1674,7 +1479,7 @@ type View_iter_Params_List = capnp.StructList[View_iter_Params]
 // NewView_iter_Params creates a new list of View_iter_Params.
 func NewView_iter_Params_List(s *capnp.Segment, sz int32) (View_iter_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[View_iter_Params]{l}, err
+	return capnp.StructList[View_iter_Params]{List: l}, err
 }
 
 // View_iter_Params_Future is a wrapper for a View_iter_Params promised by a client call.
@@ -1685,8 +1490,8 @@ func (p View_iter_Params_Future) Struct() (View_iter_Params, error) {
 	return View_iter_Params{s}, err
 }
 
-func (p View_iter_Params_Future) Handler() View_Handler {
-	return View_Handler{Client: p.Future.Field(0, nil).Client()}
+func (p View_iter_Params_Future) Handler() channel.Sender {
+	return channel.Sender{Client: p.Future.Field(0, nil).Client()}
 }
 
 type View_iter_Results struct{ capnp.Struct }
@@ -1720,7 +1525,7 @@ type View_iter_Results_List = capnp.StructList[View_iter_Results]
 // NewView_iter_Results creates a new list of View_iter_Results.
 func NewView_iter_Results_List(s *capnp.Segment, sz int32) (View_iter_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[View_iter_Results]{l}, err
+	return capnp.StructList[View_iter_Results]{List: l}, err
 }
 
 // View_iter_Results_Future is a wrapper for a View_iter_Results promised by a client call.
@@ -1780,7 +1585,7 @@ type View_lookup_Params_List = capnp.StructList[View_lookup_Params]
 // NewView_lookup_Params creates a new list of View_lookup_Params.
 func NewView_lookup_Params_List(s *capnp.Segment, sz int32) (View_lookup_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[View_lookup_Params]{l}, err
+	return capnp.StructList[View_lookup_Params]{List: l}, err
 }
 
 // View_lookup_Params_Future is a wrapper for a View_lookup_Params promised by a client call.
@@ -1854,7 +1659,7 @@ type View_lookup_Results_List = capnp.StructList[View_lookup_Results]
 // NewView_lookup_Results creates a new list of View_lookup_Results.
 func NewView_lookup_Results_List(s *capnp.Segment, sz int32) (View_lookup_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1}, sz)
-	return capnp.StructList[View_lookup_Results]{l}, err
+	return capnp.StructList[View_lookup_Results]{List: l}, err
 }
 
 // View_lookup_Results_Future is a wrapper for a View_lookup_Results promised by a client call.
@@ -1869,97 +1674,88 @@ func (p View_lookup_Results_Future) Record() View_Record_Future {
 	return View_Record_Future{Future: p.Future.Field(0, nil)}
 }
 
-const schema_fcf6ac08e448a6ac = "x\xda\x94V[l\x14e\x14>g.;S\xd3\xd2" +
-	"\xfe\xfc(\xb6^*\xb5\xc4RmC[\xd0d1\xee" +
-	"RJh+$\x1d.*\xbe\x98\xc9\xee@W\xb6\xbb" +
-	"evjc\x82\xc1h\x04\xf4\x01\x09\xda\xc4\xf0\xc0\x83" +
-	"\x11\xb0\x86F!@R\x13\x9a@l\x14\xbcE\x90\x00" +
-	"5\x04\x91K\xe2\x03*\xa8\x04Hq\xcc\xff\xcf\xfe3" +
-	"\xd3\xedb\xeaS7\xbb\xa7\xdf\xf9\xcew\xbe\xf3\xcd\xcc" +
-	"]-\xc7\x95\xa6\xb2=% \x19\xbdj\xc4\x9d\xbe`" +
-	"\xe7\x89G\x87\xb7\xbd\x09\xe4\x01\x04P4\x80\x96ae" +
-	"9\x82\xe2\xee\xa8\x1d\x7f\xb1\xe5\x8f\x87\xde\x012Mv" +
-	"\xf7\xeen\xbf\xa4\xef\xbd1\x0e\x80t\x97\xb2\x83\x0e)" +
-	"\x8f\x01\xd0#\xcafJT\x0d\xc0=\xbcs\xf0\xd0w" +
-	"=\xc3[=\x18\x15\x19\xce-\xa5\x13\x01\xa9\xaa\xc6\x00" +
-	"\xdd\xbf\x7f\\\xfa\xd6\xd6\xed/\xbc\x0b\x84\x8a>\xf3U" +
-	"\x89\xf5\xd1N\xbe\x94\x1c\x1f\xd900\xa9O\xa5\xba\x83" +
-	"\xceRg\x02\xd0\x06u\x09]\xc5>\xb9\xa3\xb5\xd7[" +
-	"\xea*\xce\x0d\x00\xb9\x17\xdd\xd1\xb3\x1d\x0f6l\x7f{" +
-	"\x04TI\x03\xa0\x8b\xd51j06t\x99\xda\x0f\xe8" +
-	"^\x1a\xee[\xf1\xecQ\xe5#\xaf%\xe7D\x07\xd5\xdb" +
-	"\x80t\x88Sz\xea\xaav\xf1\x8d\x9aW\xf60,\xc1" +
-	"\xf9\x9c:\x9dq\xbe\xcc\x0b\xc6.|>\xf7\xf0\xaf3" +
-	"\x87\x80\xdc\xef\x17\xa8\x91\x1aVP\x16a\x05\x7f>s" +
-	"\xed\xcbM\xf6\x9d\xcf\xc2\x08\x0d\x11\x89\x154\xf1\x02\x9f" +
-	"a\xe1lV\xe4\x13\xda\x13a\xb3\xf5E6\xd3\xd1\x08" +
-	"\xd3\xf0\xca\xf9m\xc6\x07c\xc7G\xc2hC\x91{\x18" +
-	"\xdaA\x8e\xf6\xd3\xac\xf7\x9bo\xaeO|\xc1\x06\x0ad" +
-	"\xf3\x86\xbf\x1c\xf9\x85^c0\xf4j\x84\x0d\xff\xc8k" +
-	"+\xf6\x8f\xb4~\xff-\x18\x14\xa5`\x97\x9e\x0a\xab\xb5" +
-	"\x13\xd4\xd2\xd8'S\xfb\x14\xd0=50\xb4\xe9\xc0\xb1" +
-	"\xfe\x93\xa1\xce\xf4\x96\xc6\x94\xba\xa3\xb1\xc6\xb7\x0f\x9f\xb9" +
-	"\xbeeC\xc5\x99\xb0\x10\x0dz\x15c6_g\x05\xe9" +
-	"\xba\xc7o\xae\xfcy\xce\xd9\xb0\xd4\xabt\x06\xb0\x9a\xff" +
-	"~\xfa\xc9\xfb\x8e\x7f\xed,\xb8\xe0\x01\xf0\xed\xbf\xca\xfe" +
-	"_q\x7f?]}\xa8\xed\x9b\xce\xcb\x8c\xa7\x8fm\xea" +
-	"|\x0b)\x9dMB\xc7?^2\xdd<\x7f%\xe4\x9c" +
-	"Q\x9d;G~\xfa\xc3\xfd\x89\xdd\xef\xfd\x06\x84\xca\xc1" +
-	"\x88\x80tP\x1f\xa3\x07uFb\x9f\xbe\x84\x9ee\x9f" +
-	"\xdc3m\xaf\x7f\xf5\xf0\xc2\xf9\xd7B\x14\x8e\xe85\x08" +
-	"\xca?\xf1y\xc7V\xed\x1a\xf8+\xa0\xde2\xa8s\xd5" +
-	"\xf7q\xee\x17\x0f(#[\x9e\xc7\x1b\x93v\xf8\x83~" +
-	"\xd4\xc3\xa6\xa7\xf4\xcdtv\xc9Lx\xc2M\xa4\xfbr" +
-	"\x8ee7*\x09\xb37\xd3\x1b}.e\xf57\xb6\x9b" +
-	"\x99d\xda\xb2\x1b\xbb\xf9\xdf\xda\xe5V\xae/\xed`\xce" +
-	"\xafEQ+[\xfd\x86\x8e\x18\x9a\xab\xa45X$Q" +
-	"\xa3\x1b\xf3P\xb1\xe5V\"k'\x0d]V\x01|\xf1" +
-	"Q(E\x9a\xeaA\"\xb35D1[ 3\xa9\x8c" +
-	"\x82D\xca\xb4\xf2\x94c\xd9q\x8c\xa5\xb3\xd9u}\xbd" +
-	"q\xecB\x9c\x0a\xf9.\xd36{r\x00\x86\"+\x00" +
-	"\x0a\x02\x90\xb2V\x00C\x97\xd1\xa8\x95p\xa3\xcd\x89\xe5" +
-	"p\x1a`\x97\x8cX\x11\xd0\x07d_\xfa=T\xafG" +
-	"{6\xe74\xbe\x9cMe\xf2\xb2\xe4@\x14\x88\xdf\xe5" +
-	"\x9cc(\x186?v\xba\x0b\x93I\xbb#\xb3&\x0b" +
-	"\x9c\x09\x13A\x1c;\x8a\xa0!\x84\x89\xa0j\xe5\x0c=" +
-	"\x8e\x1c\xc3?G\x00\x9f\x88\xe45Z\x98Itg\xed" +
-	"\xc6E\xdd)9\x9d\xecB4t\x7f\xc09\xf5\x00F" +
-	"\xad\x8c\xc6\\\x09\x09\xe2\x0c\xe6S\xd2\x10\x050\xead" +
-	"4\xe6IX\x9e1{,,\x05\x09K\x01c&G" +
-	"B\x12\xea\x86HB\xa3K\x85\xa3\xc7<U\xc3\x9a6" +
-	"\x07\x9aV\xf7Z\x96\x1dR\xd4\x17\xa2@Qy\xc2 " +
-	"\xfdfz\x9do\xb50r4\x8f<C\x9a\x02\xd5<" +
-	"\xe6\xa2l\xc61S\x19\xcbn\\k9\x1cUK;" +
-	"\x13P\xeb\x03\xd4\xf2\xa4\xe9\x98X\x06\x12\x96\xdd\x95]" +
-	":\xe7\xef;\x8c\xd2\x09`\x94\xcah\xd4I\xe8&\xba" +
-	"S\xe9\xa4me\x00 \x98\xdd\x8f\xff\x82\xd9Q\xa0\x97" +
-	"3xo\xd7\xfe\x93\x02\x9b\xab\x171\xb0\xfc\xb9\x88\xb0" +
-	"C\x91\xde\xa4\xa9*\x7f.~\x04\xa3x6\x90\xcaz" +
-	"~.r:\x17\xc7r&\xea\xc4S)\"z\xb1\x13" +
-	"\xa9\x0f\xd6Y\xdek:\xddb\"\xe6\x99iw\xb1\x06" +
-	"\xf7\xb8\x96Y\x93-pcU176\xe7\xdd\xd8&" +
-	"\xa1\x9cJ\x0a/V\x9b\xc9d`\x9d\xb2\xe2\xcd\xf8\x99" +
-	"\xf3@An\xfcR\xbf\xd5bF;.\xa3\xb1TB" +
-	"\xd1\xa9\xa3\x06\xc0h\x93\xd1\xe8\x92\x90H8\x03%\x00" +
-	"\xb2\x8c}\xd9.\xa3\xb1\x92\xcdgY\xb6 \xa09N" +
-	"\x1aU\x90P\x05\xd4r\xd6z,\x01\x09K&s\x08" +
-	"lQ\xe4\x16\xa6*\xde$\xb3\xe6,\x87oC\xee\xf9" +
-	"\x7f^\x0d\x0b\xc3b\xb2\x18\xa9\xd6\x00d\xa3\x97\x8d\xec" +
-	"\x8e\xfc\xe4\x9e\xca\x1d\xe5\xa9\x15\x16\xf1\xb6^,\x07\x07" +
-	"\x1c\xda\x7f4\xd8\xbf\xbf\xfe\xaa \x8cb^\x04\x17D" +
-	"o\x05\xa0\x9c]\x87\x08\x12b\x88W\xa4p\xd2\xe2)" +
-	"\x1c<\x09d\xcbf\x1e\xf12W\xbc\xf4\xa1x\x89$" +
-	"$\xca37\xe6)R\xf4T&\xaeGd\xc9\x7f\x89" +
-	"P\xec\xa0\xc2)\xc6\x0c\xd7\xd1&,W\xb8E\xbf\x1f" +
-	"xw\xc4\x88\x8b\xd7\x11\x14ox\xa4\xa9FD\x80x" +
-	"\xd7A\xf1\xc2@*kx\x04hk-'\xce\\\xec" +
-	"L~\x9a\xfc\x1b\x00\x00\xff\xffJ\xb8!v"
+const schema_fcf6ac08e448a6ac = "x\xda\x94V[L\x1c\xf5\x17>\xe773;\xc3?" +
+	"l\x97_\x87\x7f\x11\xa2\xa2\x9b%\x01\x0c\x84K\xbdd" +
+	"\x8d\xeeR \x05,\x09\xd3\xd6\xda\x9a4f\xb2;-" +
+	"+\xc3.\xcc\x0e\xf2R\xa31\xb1\xb4>xi$1" +
+	"\xbc5\x115\xa6\xc4K\xaaI5\xf0\xd0\xd8h\xab\xc6" +
+	"\xc4\xda\x94bH\xad-\x8d5A\xa5J\xd34\xd41" +
+	"\xbf\xd9\x9d\x0b\xcb\xd6\xe0\xdbf\xe6\xf0}\xdf\xf9\xcew" +
+	"\xce\xd0\xd4\xc4\xc5\xf9\xe6\xa0U\x02D1\x85\x805\x11" +
+	"Yy\xba\xf5\x8f{^\x01\xba\x81\xb3\x8e\xbd\xd3uE" +
+	":vc\x05\x00\xe5\x05~B^\xe4+\x00\xe4e~" +
+	"L\xee\x14D\x00k\xf9\x87m/\xbfzd\xf7k@" +
+	"e\x04\xe0E\x80\xd6\x06\x81 \xf0\x96x\xf6\x99\xe4\xca" +
+	"\xcc\x81\xf150T\x98\x90+\x05\x06S#l\x95{" +
+	"\xd9/\xebT\xe4zkm\xd9\xfc8\xd0\xff\xa3u\xea" +
+	"B\xf7\xdd\x0dG\x0e\xcf\x80@D\x00\xf91aN\xee" +
+	"fdr\xa70\x0ah]91\xb2\xe3\x89\x93\xfc\xdb" +
+	"9J\x01\xd9\x9b\xa3\xc2-@yR\x88\x01Z\x0f/" +
+	"\x8a\x97_\x0a?\xf7.\xc3\xca\xbfo='lD@" +
+	"y\xde.\x98\xbb\xf4Y\xd3\xf4\xb5\x8a)\xa0w\xb9\x05" +
+	"\xb7\x850+\x10\x02\xac\xe0\xcf\xc7\x97\xbe<h\xdc\xfe" +
+	"\xd0\x8fP\x13 \xac\xa0\xce.p\x15\x16\xf6\xb67\xf0" +
+	"\xbe\xac\x05Xo\x83\x811y:\xc0,\xbaz\xf1u" +
+	"\xe5\xad\xb933~\xb4\xc9\xc0\xff\x18\xda\x94\x8d\xf6\xe3" +
+	"\xfdo\xb6\xdc\x1cN|\xc1\x1a\xf2l\xcb5?\x1f\xf8" +
+	"Y\xbe\xc6`\xe4\x85\x00k\xfe\xbe\xe7w|<\xb3\xe5" +
+	"\xbboA\x91\x91x\xa3\xca\xb9\xa0\x88\xdf\xcb{E\xf6" +
+	"k\x8f\xf8\x01\xa0un|\xea\xe0\xf1\xd3\xa3g}\xcc" +
+	"\xf2\x92\xc8\x9cZ\x16\x19\xf1\xad\xe9\xd9\xeb\x87\x0e\x94\xcd" +
+	"\xfa\x8d\xa8\x91\xaa\x98\xb2\x06\x89\x15\xe8\xb5\x0f\xdc\xdc\xf9" +
+	"S\xdd\x05\xbf\xd5\xbd\x12\x03P\xec\xf7\xe7\x1f\xdat\xe6" +
+	"k\xf3\xd1K9\x00{\xfa\xc3\xec\xefy\xeb\xf7\xf3\xd5" +
+	"\x9fv|\xd3\xb3\xc0t\xba\xd8{${\x0a\xaa\xc4:" +
+	"\x91W\xde\xdb\xbaQ\xbdx\xd5\x97\x9ci\xc9N\xcel" +
+	"\xc7\x8b_\xdd\xdb\xf6\xe0\x92\x0f\xf5\xa8\x14F\xe0\xff\x8e" +
+	"o>\xfd\xe4\xe4\xf8_\x9e\x9a\xd6\xc3\x92m\xe4\x1b\xb6" +
+	"\x9c\xcb\xc7\xf9\x99CO\xe1\x8d5c\xf9H:)\x9f" +
+	"\x90\x98\xfaO\xa41Y(\xa9\x80\xddVB\x1f\xc9\x9a" +
+	"\x9a\xd1\x88\x09u(=\x14\xdd\x95\xe2\xb4Q\x85G\x9f" +
+	"\xc5\x14\xa3\xb1\xedZ\"c$\x15\x89\x13\x00\\;\xd0" +
+	"\xd1N\x9b\xeb\x81\xd0\x1a\x11\xd1\x91\xe65N+\xa3@" +
+	"hP\x0c\xa5L\xcd\x88cL\xcfd\x06F\x86\xe2\xd8" +
+	"\x87\xe8r\x0b9\xee\xaeL\xd6l|6\x93JG\xb6" +
+	"k\xd9\x11\xdd\xcc\x82S\xe0\xbc\xe7\xb2\xa6\xad\xcd\x8b\x0a" +
+	"\xf6Xm\xc9\xa4\xd1\x9d\xde\x97\x01\x00\x85\xb7\x05:\xab" +
+	"\x81\xceZR\xca\x04\x0ab\x88\xa1\xc7\xd1\xc6p\xc3\x0b" +
+	"\xe0\x0a!9\xa2\xb6t\xa2?c4\xb6\xf7\xa78=" +
+	"\xd9\x87\xa8H\x1c\x0f\xc0#\x00\xad\xab\x07P\"\x1c*" +
+	"M\x04)b9\x9b*m\x88\x02(\xb5\x1c*\x9b\x09" +
+	"\x86\xd2\xea\xa0\x86\xa5@\xb0\x140\xa6\xdaHH}l" +
+	"\x88\x14\xb0\x90\xd1k=\xd6\xa7\x1a\xea`V\xe1]\xca" +
+	"`\x0b\x80\"q\xa8D\x08V\x0fi\x9a\x91\xc5\x0d\x80" +
+	"}\x1cb\x99g\x04 {\xe8\xc2r\xab\x1a\x19U\xf5" +
+	"\x81\xbc\xa7\xb8\x0a9\x9aG.'\xeb\x90\x9a\xc7l\xcf" +
+	"\xa4M5\x95\xd6\x8c\xc6\xfd\x9ai\xa3\x8a\xba\xb9\x0a\xb5" +
+	"\xdeC\x0d%US\xc5 \x10\x0c\xdeQ\x9d\x9eu\xe7" +
+	"\xedG\xe9\x01PJ9Tj\x09Z\x89\xfe\x94\x9e4" +
+	"\xb44\x00x\xbd\xbb\xc7\xb2\xa0wt\xd0C\x0c>7" +
+	"k\xf7\xaebKu;\x03\xcbG\xd99\x0d\xe8\xdc:" +
+	"\xda\\\x95\x8f\xb2{\xb0\xd0\xb9\xa4\xb4\xb2\xde\x8e2\xa7" +
+	"g\xe3\x18b\xa6\xae\x8eq\x11\xd3s\xc3\x04(fO" +
+	"\x84`hH5\xfb\x9d\x8eXf6\xdc!\x1av\xc6" +
+	"\xc5\xf4\xbeLA\x1a\xab\x8a\xa5\xb1%\x9f\xc6\x0e\x82\\" +
+	"*\xe9d\xb1ZM&\xbd\xe8\x04\x8b\x93\xedJi\xa3" +
+	"\x8d\xf6\xb2\xa3\x1d\xfcR\x97\xaa\x93\xc9\x8es\xa8l#" +
+	"\xe80u\x87\x01\x94\x0e\x0e\x95>\x82\x94`9\x12\x00" +
+	"\xda\xcb\x1evq\xa8\xecd\xfdi\x9a\xe1\x08\x10MS" +
+	"G\x01\x08\x0a\x80bV\x1b\xc6\x12 X\xb2V\x83\x17" +
+	"\x8b\"\xbb\xb0^\xf3\xd6\x845\xab\x99\xf64\xb8\xc1\xff" +
+	"\x96U\xbf1\xec\x84\x15\x13\xb5\xc5\x03y\xa1_M'" +
+	"u\x8d\xed\xd1o\x9b~}\xa4|\xf1\xf3_\xd6\xb5G" +
+	"yi\x85E6m\xeedz\x0b\xec\x9b\x7f\xd4\x9b\xbf" +
+	";\xfe*\xef\x18\xc5\x0c\xfbnc\x99w\xcd\x01\xb1\x0c" +
+	"\x90\xcb\x0c \x02A\xf4\xe9\x12\x0b;-~\x85W[" +
+	"\xea\xec\xff\xbf\x09/\xb6\x04\xfe\xcb\xc3B\xd2\xdd\xe1\xc4" +
+	"\xa4\xd0y\x97\x0fr\xd9gk\xeb|p\xd1\xf9\x1f\x86" +
+	"6\x87\x9d\xb5u\xbe\xe6\xe8|?ie\xd8^[q" +
+	"\xbff\xc6Y\xf2\xcc\xb5_\x80\x7f\x02\x00\x00\xff\xff\xa3" +
+	"\x02\xb7a"
 
 func init() {
 	schemas.Register(schema_fcf6ac08e448a6ac,
-		0x8390b923d29e3b12,
 		0x8a1df0335afc249a,
-		0x8eb96dceb6a99ebd,
 		0x8f58928e854cd4f5,
 		0x957cbefc645fd307,
 		0x95dd102833f224c5,
@@ -1977,7 +1773,6 @@ func init() {
 		0xe13b74cbca1636d7,
 		0xe54acc44b61fd7ef,
 		0xe6df611247a8fc13,
-		0xee93a663b2a23c03,
 		0xf135411ec88044d8,
 		0xf495a555c9344000,
 		0xf6015788be04b4e3)

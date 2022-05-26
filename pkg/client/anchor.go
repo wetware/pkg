@@ -96,22 +96,17 @@ func (h Host) Walk(ctx context.Context, path []string) Anchor {
 
 type hostSet struct {
 	dialer dialer
-	ctx    context.Context
 	*cluster.RecordStream
-	release capnp.ReleaseFunc
 }
 
-func (hs *hostSet) Err() error { return hs.RecordStream.Err }
+func (hs hostSet) Err() error { return hs.RecordStream.Err }
 
-func (hs *hostSet) Next() (more bool) {
-	if more = hs.RecordStream.Next(hs.ctx); !more {
-		hs.release()
-	}
-
-	return
+func (hs hostSet) Next() bool {
+	hs.RecordStream.Next()
+	return hs.More
 }
 
-func (hs *hostSet) Anchor() Anchor {
+func (hs hostSet) Anchor() Anchor {
 	return Host{
 		dialer: hs.dialer,
 		host: &cluster.Host{

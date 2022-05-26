@@ -237,7 +237,7 @@ type Topic_publish_Params_List = capnp.StructList[Topic_publish_Params]
 // NewTopic_publish_Params creates a new list of Topic_publish_Params.
 func NewTopic_publish_Params_List(s *capnp.Segment, sz int32) (Topic_publish_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Topic_publish_Params]{l}, err
+	return capnp.StructList[Topic_publish_Params]{List: l}, err
 }
 
 // Topic_publish_Params_Future is a wrapper for a Topic_publish_Params promised by a client call.
@@ -279,7 +279,7 @@ type Topic_publish_Results_List = capnp.StructList[Topic_publish_Results]
 // NewTopic_publish_Results creates a new list of Topic_publish_Results.
 func NewTopic_publish_Results_List(s *capnp.Segment, sz int32) (Topic_publish_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Topic_publish_Results]{l}, err
+	return capnp.StructList[Topic_publish_Results]{List: l}, err
 }
 
 // Topic_publish_Results_Future is a wrapper for a Topic_publish_Results promised by a client call.
@@ -339,7 +339,7 @@ type Topic_subscribe_Params_List = capnp.StructList[Topic_subscribe_Params]
 // NewTopic_subscribe_Params creates a new list of Topic_subscribe_Params.
 func NewTopic_subscribe_Params_List(s *capnp.Segment, sz int32) (Topic_subscribe_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Topic_subscribe_Params]{l}, err
+	return capnp.StructList[Topic_subscribe_Params]{List: l}, err
 }
 
 // Topic_subscribe_Params_Future is a wrapper for a Topic_subscribe_Params promised by a client call.
@@ -385,7 +385,7 @@ type Topic_subscribe_Results_List = capnp.StructList[Topic_subscribe_Results]
 // NewTopic_subscribe_Results creates a new list of Topic_subscribe_Results.
 func NewTopic_subscribe_Results_List(s *capnp.Segment, sz int32) (Topic_subscribe_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Topic_subscribe_Results]{l}, err
+	return capnp.StructList[Topic_subscribe_Results]{List: l}, err
 }
 
 // Topic_subscribe_Results_Future is a wrapper for a Topic_subscribe_Results promised by a client call.
@@ -427,7 +427,7 @@ type Topic_name_Params_List = capnp.StructList[Topic_name_Params]
 // NewTopic_name_Params creates a new list of Topic_name_Params.
 func NewTopic_name_Params_List(s *capnp.Segment, sz int32) (Topic_name_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Topic_name_Params]{l}, err
+	return capnp.StructList[Topic_name_Params]{List: l}, err
 }
 
 // Topic_name_Params_Future is a wrapper for a Topic_name_Params promised by a client call.
@@ -487,7 +487,7 @@ type Topic_name_Results_List = capnp.StructList[Topic_name_Results]
 // NewTopic_name_Results creates a new list of Topic_name_Results.
 func NewTopic_name_Results_List(s *capnp.Segment, sz int32) (Topic_name_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Topic_name_Results]{l}, err
+	return capnp.StructList[Topic_name_Results]{List: l}, err
 }
 
 // Topic_name_Results_Future is a wrapper for a Topic_name_Results promised by a client call.
@@ -635,7 +635,7 @@ type PubSub_join_Params_List = capnp.StructList[PubSub_join_Params]
 // NewPubSub_join_Params creates a new list of PubSub_join_Params.
 func NewPubSub_join_Params_List(s *capnp.Segment, sz int32) (PubSub_join_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[PubSub_join_Params]{l}, err
+	return capnp.StructList[PubSub_join_Params]{List: l}, err
 }
 
 // PubSub_join_Params_Future is a wrapper for a PubSub_join_Params promised by a client call.
@@ -695,7 +695,7 @@ type PubSub_join_Results_List = capnp.StructList[PubSub_join_Results]
 // NewPubSub_join_Results creates a new list of PubSub_join_Results.
 func NewPubSub_join_Results_List(s *capnp.Segment, sz int32) (PubSub_join_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[PubSub_join_Results]{l}, err
+	return capnp.StructList[PubSub_join_Results]{List: l}, err
 }
 
 // PubSub_join_Results_Future is a wrapper for a PubSub_join_Results promised by a client call.
