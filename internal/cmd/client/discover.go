@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -45,6 +46,12 @@ func Discover() *cli.Command {
 				Value:   1,
 				EnvVars: []string{"AMOUNT"},
 			},
+			&cli.BoolFlag{
+				Name:    "json",
+				Usage:   "print results as json",
+				Value:   false,
+				EnvVars: []string{"OUTPUT_JSON"},
+			},
 		},
 		Action: discover,
 	}
@@ -72,28 +79,42 @@ func discover(c *cli.Context) error {
 		return err
 	}
 
+	discovered := make([]peer.AddrInfo, 0, c.Int("amount"))
 	for i := 0; i < c.Int("amount"); i++ {
 		select {
 		case info := <-infos:
-			infoStr, err := format(info)
+			err := setP2pAddress(info)
 			if err != nil {
 				return err
 			}
-			fmt.Println(infoStr)
+			discovered = append(discovered, info)
 		case <-ctx.Done():
-			return ctx.Err()
 		}
 	}
-	return nil
+
+	// print results
+	if c.Bool("json") {
+		jsonOutput, err := json.Marshal(discovered)
+		if err != nil {
+			return nil
+		}
+		fmt.Println(string(jsonOutput))
+	} else {
+		for _, info := range discovered {
+			fmt.Println(info.String())
+		}
+	}
+
+	return ctx.Err()
 }
 
-func format(info peer.AddrInfo) (string, error) {
+func setP2pAddress(info peer.AddrInfo) error {
 	for i := range info.Addrs {
 		maddr, err := multiaddr.NewMultiaddr(fmt.Sprintf("/p2p/%s", info.ID.String()))
 		if err != nil {
-			return "", err
+			return err
 		}
 		info.Addrs[i] = info.Addrs[i].Encapsulate(maddr)
 	}
-	return info.String(), nil
+	return nil
 }
