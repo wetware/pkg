@@ -11,6 +11,7 @@ var subcommands = []*cli.Command{
 	Join(),
 	Publish(),
 	Subscribe(),
+	Discover(),
 }
 
 func Command() *cli.Command {

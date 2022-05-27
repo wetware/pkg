@@ -1,216 +1,120 @@
 package client
 
-// import (
-// 	"bytes"
-// 	"crypto/rand"
-// 	"encoding/json"
-// 	"errors"
-// 	"fmt"
-// 	"io"
-// 	"net"
-// 	"time"
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"time"
 
-// 	"github.com/libp2p/go-libp2p-core/crypto"
-// 	"github.com/libp2p/go-libp2p-core/peer"
-// 	"github.com/libp2p/go-libp2p-core/record"
-// 	"github.com/lthibault/log"
-// 	"github.com/multiformats/go-multiaddr"
-// 	"github.com/urfave/cli/v2"
-// 	"github.com/wetware/casm/pkg/boot/crawl"
-// )
+	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p-core/peer"
+	libp2pquic "github.com/libp2p/go-libp2p-quic-transport"
+	"github.com/multiformats/go-multiaddr"
+	"github.com/urfave/cli/v2"
+	bootutil "github.com/wetware/casm/pkg/boot/util"
+)
 
-// // ww client discover scan -s tcp://127.0.0.0:8822/24
-// func Crawl() *cli.Command {
-// 	var b crawl.Crawler
+func Discover() *cli.Command {
+	return &cli.Command{
+		Name:  "discover",
+		Usage: "discover a wetware node and print its multiaddress",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:    "discover",
+				Aliases: []string{"d"},
+				Usage:   "bootstrap discovery `ADDR`",
+				Value:   "/ip4/228.8.8.8/udp/8822/multicast/lo0",
+				EnvVars: []string{"WW_DISCOVER"},
+			},
+			&cli.StringFlag{
+				Name:    "ns",
+				Usage:   "cluster namespace",
+				Value:   "ww",
+				EnvVars: []string{"WW_NS"},
+			},
+			&cli.DurationFlag{
+				Name:    "timeout",
+				Aliases: []string{"t"},
+				Usage:   "timeout for discovering peers",
+				Value:   5 * time.Second,
+				EnvVars: []string{"TIMEOUT"},
+			},
+			&cli.IntFlag{
+				Name:    "num",
+				Aliases: []string{"n"},
+				Usage:   "amount of maximum peers desired to discover",
+				Value:   1,
+				EnvVars: []string{"PEERS_NUM"},
+			},
+			&cli.BoolFlag{
+				Name:    "json",
+				Usage:   "print results as json",
+				Value:   false,
+				EnvVars: []string{"OUTPUT_JSON"},
+			},
+		},
+		Action: discover,
+	}
+}
 
-// 	return &cli.Command{
-// 		Name:   "crawl",
-// 		Usage:  "scan an IP range for cluster hosts",
-// 		Flags:  scanFlags,
-// 		Before: beforeScan(&b),
-// 		Action: scan(&b),
-// 	}
-// }
+func discover(c *cli.Context) error {
+	h, err := libp2p.New(
+		libp2p.NoTransports,
+		libp2p.NoListenAddrs,
+		libp2p.Transport(libp2pquic.NewTransport))
+	if err != nil {
+		return err
+	}
 
-// var scanFlags = []cli.Flag{
-// 	&cli.StringFlag{
-// 		Name:    "subnet",
-// 		Usage:   "CIDR range to scan",
-// 		Value:   "127.0.0.0/24",
-// 		EnvVars: []string{"WW_DISCOVER"},
-// 	},
-// 	&cli.StringFlag{
-// 		Name:  "net",
-// 		Value: "tcp4",
-// 	},
-// 	&cli.IntFlag{
-// 		Name:  "port",
-// 		Usage: "port to scan",
-// 		Value: 8822,
-// 	},
-// 	&cli.DurationFlag{
-// 		Name:  "timeout",
-// 		Usage: "per-connection timeout",
-// 		Value: time.Millisecond * 10,
-// 	},
-// }
+	discoverer, err := bootutil.DialString(h, c.String("discover"))
+	if err != nil {
+		return err
+	}
 
-// // ww client discover publish --auto
-// func Publish() *cli.Command {
-// 	return &cli.Command{
-// 		Name:   "publish",
-// 		Usage:  "publish a peer record",
-// 		Flags:  publishFlags,
-// 		Action: publish,
-// 	}
-// }
+	ctx, cancel := context.WithTimeout(c.Context, time.Duration(c.Duration("timeout")))
+	defer cancel()
 
-// var publishFlags = []cli.Flag{
-// 	&cli.StringFlag{
-// 		Name:  "net",
-// 		Value: "tcp4",
-// 	},
-// 	&cli.StringFlag{
-// 		Name:  "host",
-// 		Value: "0.0.0.0",
-// 	},
-// 	&cli.IntFlag{
-// 		Name:  "port",
-// 		Value: 8822,
-// 	},
-// 	&cli.BoolFlag{
-// 		Name:  "auto",
-// 		Usage: "autogenerate a peer record for testing",
-// 	},
-// }
+	infos, err := discoverer.FindPeers(ctx, c.String("ns"))
+	if err != nil {
+		return err
+	}
 
-// /*
-// 	SCAN
-// */
+	discovered := make([]peer.AddrInfo, 0, c.Int("num"))
+	for i := 0; i < c.Int("num"); i++ {
+		select {
+		case info := <-infos:
+			err := setP2pAddress(info)
+			if err != nil {
+				return err
+			}
+			discovered = append(discovered, info)
+		case <-ctx.Done():
+		}
+	}
 
-// func beforeScan(s *crawl.Crawler) cli.BeforeFunc {
-// 	return func(c *cli.Context) (err error) {
-// 		s.Logger = logger
-// 		s.Strategy = &crawl.Subnet{
-// 			Logger: logger,
-// 			Net:    c.String("net"),
-// 			Port:   c.Int("port"),
-// 			CIDR:   c.String("subnet"),
-// 		}
+	// print results
+	if c.Bool("json") {
+		jsonOutput, err := json.Marshal(discovered)
+		if err != nil {
+			return nil
+		}
+		fmt.Println(string(jsonOutput))
+	} else {
+		for _, info := range discovered {
+			fmt.Println(info.String())
+		}
+	}
 
-// 		return
-// 	}
-// }
+	return ctx.Err()
+}
 
-// func scan(b *crawl.Crawler) cli.ActionFunc {
-// 	return func(c *cli.Context) error {
-// 		peers, err := b.FindPeers(c.Context, "")
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		enc := json.NewEncoder(c.App.Writer)
-// 		for info := range peers {
-// 			if err := enc.Encode(info); err != nil {
-// 				return err
-// 			}
-// 		}
-
-// 		return nil
-// 	}
-// }
-
-// /*
-// 	PUBLISH
-// */
-
-// type recordPublisher struct {
-// 	payload []byte
-// }
-
-// func publish(c *cli.Context) error {
-// 	var p recordPublisher
-// 	if c.Bool("auto") {
-// 		if err := p.autoGenerate(); err != nil {
-// 			return err
-// 		}
-// 	} else {
-// 		return errors.New("TODO: add support for reading signed envelopes from stdin")
-// 	}
-
-// 	netloc := fmt.Sprintf("%s:%d",
-// 		c.String("host"),
-// 		c.Int("port"))
-
-// 	l, err := new(net.ListenConfig).Listen(c.Context, c.String("net"), netloc)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	go func() {
-// 		defer l.Close()
-// 		<-c.Done()
-// 	}()
-
-// 	logger.WithField("addr", l.Addr()).Info("serving")
-
-// 	for {
-// 		conn, err := l.Accept()
-// 		if err != nil {
-// 			if c.Context.Err() != nil {
-// 				break
-// 			}
-
-// 			return err
-// 		}
-
-// 		go p.handle(conn)
-// 	}
-
-// 	return nil
-// }
-
-// func (p *recordPublisher) handle(conn net.Conn) {
-// 	defer conn.Close()
-
-// 	if err := conn.SetWriteDeadline(time.Now().Add(time.Millisecond * 10)); err != nil {
-// 		logger.WithError(err).Debug("error serving conn")
-// 	}
-
-// 	if _, err := io.Copy(conn, bytes.NewReader(p.payload)); err != nil {
-// 		logger.WithError(err).Debug("error writing payload")
-// 	}
-// }
-
-// func (p *recordPublisher) autoGenerate() error {
-// 	pk, _, err := crypto.GenerateEd25519Key(rand.Reader)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	id, err := peer.IDFromPrivateKey(pk)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	var rec = peer.PeerRecord{
-// 		PeerID: id,
-// 		Seq:    uint64(time.Now().UnixNano()),
-// 		Addrs: []multiaddr.Multiaddr{
-// 			multiaddr.StringCast(fmt.Sprintf("/ip4/127.0.0.1/udp/2020/p2p/%s", id)),
-// 		},
-// 	}
-
-// 	logger.With(log.F{
-// 		"seq": rec.Seq,
-// 		"id":  id,
-// 	}).Info("generated record")
-
-// 	e, err := record.Seal(&rec, pk)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	p.payload, err = e.Marshal()
-// 	return err
-// }
+func setP2pAddress(info peer.AddrInfo) error {
+	for i := range info.Addrs {
+		maddr, err := multiaddr.NewMultiaddr(fmt.Sprintf("/p2p/%s", info.ID.String()))
+		if err != nil {
+			return err
+		}
+		info.Addrs[i] = info.Addrs[i].Encapsulate(maddr)
+	}
+	return nil
+}
