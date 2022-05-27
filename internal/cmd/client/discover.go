@@ -79,8 +79,8 @@ func discover(c *cli.Context) error {
 		return err
 	}
 
-	discovered := make([]peer.AddrInfo, 0, c.Int("amount"))
-	for i := 0; i < c.Int("amount"); i++ {
+	discovered := make([]peer.AddrInfo, 0, c.Int("num"))
+	for i := 0; i < c.Int("num"); i++ {
 		select {
 		case info := <-infos:
 			err := setP2pAddress(info)
