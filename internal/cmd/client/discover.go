@@ -71,7 +71,7 @@ func discover(c *cli.Context) error {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(c.Context, time.Duration(c.Int("timeout")))
+	ctx, cancel := context.WithTimeout(c.Context, time.Duration(c.Duration("timeout")))
 	defer cancel()
 
 	infos, err := discoverer.FindPeers(ctx, c.String("ns"))
