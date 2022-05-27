@@ -32,19 +32,19 @@ func Discover() *cli.Command {
 				Value:   "ww",
 				EnvVars: []string{"WW_NS"},
 			},
-			&cli.IntFlag{
+			&cli.DurationFlag{
 				Name:    "timeout",
 				Aliases: []string{"t"},
-				Usage:   "timeout in miliseconds for discovering peers",
-				Value:   5000,
+				Usage:   "timeout for discovering peers",
+				Value:   5 * time.Second,
 				EnvVars: []string{"TIMEOUT"},
 			},
 			&cli.IntFlag{
-				Name:    "amount",
-				Aliases: []string{"a"},
+				Name:    "num",
+				Aliases: []string{"n"},
 				Usage:   "amount of maximum peers desired to discover",
 				Value:   1,
-				EnvVars: []string{"AMOUNT"},
+				EnvVars: []string{"PEERS_NUM"},
 			},
 			&cli.BoolFlag{
 				Name:    "json",
@@ -71,7 +71,7 @@ func discover(c *cli.Context) error {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(c.Context, time.Duration(c.Int("timeout"))*time.Millisecond)
+	ctx, cancel := context.WithTimeout(c.Context, time.Duration(c.Int("timeout")))
 	defer cancel()
 
 	infos, err := discoverer.FindPeers(ctx, c.String("ns"))
