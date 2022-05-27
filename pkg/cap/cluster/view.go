@@ -99,7 +99,6 @@ type View api.View
 
 func (v View) Iter(ctx context.Context) *RecordStream {
 	rs := newRecordStream(ctx, api.View(v))
-	rs.Next()
 	return rs
 }
 

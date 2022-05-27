@@ -78,6 +78,7 @@ func TestIter(t *testing.T) {
 		c := cluster.ViewServer{RoutingTable: rt}.NewClient(nil)
 
 		it := c.Iter(ctx)
+		it.Next()
 
 		require.NotNil(t, it.Record(), "should not be exhausted")
 		require.NoError(t, it.Err, "should succeed")
