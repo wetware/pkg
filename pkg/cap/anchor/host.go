@@ -1,4 +1,4 @@
-package cluster
+package anchor
 
 import (
 	"context"
@@ -6,14 +6,19 @@ import (
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
+	"capnproto.org/go/capnp/v3/server"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/wetware/ww/internal/api/cluster"
+	"github.com/wetware/ww/internal/api/anchor"
 	"github.com/wetware/ww/pkg/vat"
 )
 
 var AnchorCapability = vat.BasicCap{
 	"anchor/packed",
 	"anchor"}
+
+var defaultPolicy = server.Policy{
+	MaxConcurrentCalls: 64,
+}
 
 /*----------------------------*
 |                             |
@@ -35,7 +40,7 @@ func (h *Host) Join(ctx context.Context, d Dialer, peers []peer.AddrInfo) error 
 		return nil // nop
 	}
 
-	params := func(ps cluster.Host_join_Params) error {
+	params := func(ps anchor.Host_join_Params) error {
 		plist, err := ps.NewPeers(int32(len(peers)))
 		if err != nil {
 			return err
@@ -58,15 +63,15 @@ func (h *Host) Join(ctx context.Context, d Dialer, peers []peer.AddrInfo) error 
 }
 
 func (h *Host) Ls(ctx context.Context, d Dialer) (*RegisterMap, capnp.ReleaseFunc) {
-	return listChildren(ctx, cluster.Anchor(h.resolve(ctx, d)))
+	return listChildren(ctx, anchor.Anchor(h.resolve(ctx, d)))
 }
 
 // Walk to the register located at path.  Panics if len(path) == 0.
 func (h *Host) Walk(ctx context.Context, d Dialer, path []string) (Register, capnp.ReleaseFunc) {
-	return walkPath(ctx, cluster.Anchor(h.resolve(ctx, d)), path)
+	return walkPath(ctx, anchor.Anchor(h.resolve(ctx, d)), path)
 }
 
-func (h *Host) resolve(ctx context.Context, d Dialer) cluster.Host {
+func (h *Host) resolve(ctx context.Context, d Dialer) anchor.Host {
 	h.once.Do(func() {
 		if h.Client == nil {
 			if conn, err := d.Dial(ctx, h.Info); err != nil {
@@ -77,17 +82,17 @@ func (h *Host) resolve(ctx context.Context, d Dialer) cluster.Host {
 		}
 	})
 
-	return cluster.Host{Client: h.Client}
+	return anchor.Host{Client: h.Client}
 }
 
 type RegisterMap struct {
 	Err  error
 	Name string
 	pos  int
-	cs   cluster.Anchor_Child_List
+	cs   anchor.Anchor_Child_List
 }
 
-func regmap(cs cluster.Anchor_Child_List) *RegisterMap {
+func regmap(cs anchor.Anchor_Child_List) *RegisterMap {
 	return &RegisterMap{cs: cs}
 }
 
@@ -112,19 +117,19 @@ func (rs *RegisterMap) Register() Register {
 	return Register(rs.cs.At(rs.pos).Anchor())
 }
 
-type Register cluster.Anchor
+type Register anchor.Anchor
 
 func (r Register) Ls(ctx context.Context) (*RegisterMap, capnp.ReleaseFunc) {
-	return listChildren(ctx, cluster.Anchor(r))
+	return listChildren(ctx, anchor.Anchor(r))
 }
 
 // Walk to the register located at path.  Panics if len(path) == 0.
 func (r Register) Walk(ctx context.Context, path []string) (Register, capnp.ReleaseFunc) {
-	return walkPath(ctx, cluster.Anchor(r), path)
+	return walkPath(ctx, anchor.Anchor(r), path)
 }
 
 func (r Register) AddRef() Register {
-	return Register(cluster.Anchor(r) /*.AddRef()*/)
+	return Register(anchor.Anchor(r) /*.AddRef()*/)
 }
 
 /*
@@ -133,7 +138,7 @@ func (r Register) AddRef() Register {
 
 */
 
-func listChildren(ctx context.Context, a cluster.Anchor) (*RegisterMap, capnp.ReleaseFunc) {
+func listChildren(ctx context.Context, a anchor.Anchor) (*RegisterMap, capnp.ReleaseFunc) {
 	f, release := a.Ls(ctx, nil)
 
 	res, err := f.Struct()
@@ -151,7 +156,7 @@ func listChildren(ctx context.Context, a cluster.Anchor) (*RegisterMap, capnp.Re
 	return regmap(cs), release
 }
 
-func walkPath(ctx context.Context, a cluster.Anchor, path []string) (Register, capnp.ReleaseFunc) {
+func walkPath(ctx context.Context, a anchor.Anchor, path []string) (Register, capnp.ReleaseFunc) {
 	if len(path) == 0 {
 		// While not strictly necessary, requiring non-empty paths
 		// simplifies the ref-counting logic considerably.  Nop walks
@@ -163,8 +168,8 @@ func walkPath(ctx context.Context, a cluster.Anchor, path []string) (Register, c
 	return Register(f.Anchor()), release
 }
 
-func walkParam(path []string) func(cluster.Anchor_walk_Params) error {
-	return func(ps cluster.Anchor_walk_Params) error {
+func walkParam(path []string) func(anchor.Anchor_walk_Params) error {
+	return func(ps anchor.Anchor_walk_Params) error {
 		p, err := ps.NewPath(int32(len(path)))
 		if err == nil {
 			for i, e := range path {
@@ -215,13 +220,13 @@ func NewHost(m MergeStrategy) HostServer {
 		},
 	}
 
-	s.node.Anchor.Client = cluster.Host_ServerToClient(s, &defaultPolicy).Client
+	s.node.Anchor.Client = anchor.Host_ServerToClient(s, &defaultPolicy).Client
 	return s
 }
 
 func (s HostServer) Client() *capnp.Client { return s.node.Anchor.Client }
 
-func (s HostServer) Join(ctx context.Context, call cluster.Host_join) error {
+func (s HostServer) Join(ctx context.Context, call anchor.Host_join) error {
 	ps, err := call.Args().Peers()
 	if err != nil {
 		return err
@@ -237,18 +242,18 @@ func (s HostServer) Join(ctx context.Context, call cluster.Host_join) error {
 	return s.cluster.Merge(ctx, peers)
 }
 
-func (s HostServer) Ls(ctx context.Context, call cluster.Anchor_ls) error {
+func (s HostServer) Ls(ctx context.Context, call anchor.Anchor_ls) error {
 	return s.node.Ls(ctx, call)
 }
 
-func (s HostServer) Walk(ctx context.Context, call cluster.Anchor_walk) error {
+func (s HostServer) Walk(ctx context.Context, call anchor.Anchor_walk) error {
 	return s.node.Walk(ctx, call)
 }
 
 // node is theserver implemenation for host-local Anchors.
 type node struct {
 	Name   string
-	Anchor cluster.Anchor // client capability for node
+	Anchor anchor.Anchor // client capability for node
 
 	mu     *sync.RWMutex
 	parent *node
@@ -277,7 +282,7 @@ func (n node) AddRef() *node {
 	}
 }
 
-func (n node) Ls(_ context.Context, call cluster.Anchor_ls) error {
+func (n node) Ls(_ context.Context, call anchor.Anchor_ls) error {
 	res, err := call.AllocResults()
 	if err != nil {
 		return err
@@ -305,7 +310,7 @@ func (n node) Ls(_ context.Context, call cluster.Anchor_ls) error {
 	return nil
 }
 
-func (n node) Walk(ctx context.Context, call cluster.Anchor_walk) error {
+func (n node) Walk(ctx context.Context, call anchor.Anchor_walk) error {
 	res, err := call.AllocResults()
 	if err != nil {
 		return err
@@ -355,7 +360,7 @@ func (n node) child(name string) node {
 		mu:     new(sync.RWMutex),
 	}
 
-	c.Anchor = cluster.Anchor_ServerToClient(c, &defaultPolicy)
+	c.Anchor = anchor.Anchor_ServerToClient(c, &defaultPolicy)
 	n.cs[name] = c
 
 	return c // ref = 1

@@ -3,7 +3,7 @@ package server
 import (
 	"github.com/lthibault/log"
 	"github.com/wetware/casm/pkg/cluster"
-	clcap "github.com/wetware/ww/pkg/cap/cluster"
+	"github.com/wetware/ww/pkg/cap/anchor"
 )
 
 type Option func(*Joiner)
@@ -23,7 +23,7 @@ func WithLogger(l log.Logger) Option {
 // WithMerge specifies how the host node should merge clusters
 // during Join calls. If m == nil, a default strategy is used,
 // which simply connects to the remote vat.
-func WithMerge(m clcap.MergeStrategy) Option {
+func WithMerge(m anchor.MergeStrategy) Option {
 	f := newMergeFactory(m)
 	return func(j *Joiner) {
 		j.newMerge = f

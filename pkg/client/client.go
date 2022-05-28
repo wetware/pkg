@@ -10,6 +10,7 @@ import (
 	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/wetware/ww/pkg/cap/anchor"
 	"github.com/wetware/ww/pkg/cap/cluster"
 	pscap "github.com/wetware/ww/pkg/cap/pubsub"
 	"github.com/wetware/ww/pkg/vat"
@@ -97,6 +98,6 @@ func (n Node) Walk(ctx context.Context, path []string) Anchor {
 
 	return Host{
 		dialer: dialer(n.vat),
-		host:   &cluster.Host{Info: peer.AddrInfo{ID: id}},
+		host:   &anchor.Host{Info: peer.AddrInfo{ID: id}},
 	}.Walk(ctx, path[1:])
 }

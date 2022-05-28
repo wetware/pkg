@@ -1,4 +1,4 @@
-package cluster_test
+package anchor_test
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/wetware/ww/pkg/cap/cluster"
+	"github.com/wetware/ww/pkg/cap/anchor"
 )
 
 func TestAnchor(t *testing.T) {
@@ -19,9 +19,9 @@ func TestAnchor(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := cluster.NewHost(nil)
+	s := anchor.NewHost(nil)
 
-	h := cluster.Host{
+	h := anchor.Host{
 		Client: s.Client(), // pre-resolved; can pass nil Dialer/MergeStrategy to methods.
 	}
 
@@ -117,7 +117,7 @@ func TestAnchor(t *testing.T) {
 	})
 }
 
-func toSlice(rs *cluster.RegisterMap) ([]string, error) {
+func toSlice(rs *anchor.RegisterMap) ([]string, error) {
 	var ss []string
 	for rs.Next() {
 		ss = append(ss, rs.Name)

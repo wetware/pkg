@@ -8,6 +8,7 @@ import (
 	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
+	"github.com/wetware/ww/pkg/cap/anchor"
 	"github.com/wetware/ww/pkg/cap/cluster"
 	"github.com/wetware/ww/pkg/vat"
 )
@@ -32,17 +33,17 @@ type Container interface {
 type dialer vat.Network
 
 func (d dialer) Dial(ctx context.Context, info peer.AddrInfo) (*rpc.Conn, error) {
-	return vat.Network(d).Connect(ctx, info, cluster.AnchorCapability)
+	return vat.Network(d).Connect(ctx, info, anchor.AnchorCapability)
 }
 
 // Host anchor represents a machine instance.
 type Host struct {
 	dialer dialer
-	host   *cluster.Host
+	host   *anchor.Host
 }
 
 func newErrorHost(err error) Host {
-	return Host{host: &cluster.Host{
+	return Host{host: &anchor.Host{
 		Client: capnp.ErrorClient(err),
 	}}
 }
@@ -84,7 +85,7 @@ func (h Host) Walk(ctx context.Context, path []string) Anchor {
 	}
 
 	r, release := h.host.Walk(ctx, h.dialer, path)
-	runtime.SetFinalizer(&r, func(*cluster.Register) {
+	runtime.SetFinalizer(&r, func(*anchor.Register) {
 		release()
 	})
 
@@ -109,7 +110,7 @@ func (hs hostSet) Next() bool {
 func (hs hostSet) Anchor() Anchor {
 	return Host{
 		dialer: hs.dialer,
-		host: &cluster.Host{
+		host: &anchor.Host{
 			Info: peer.AddrInfo{
 				ID: hs.RecordStream.Record().Peer(),
 			},
@@ -118,7 +119,7 @@ func (hs hostSet) Anchor() Anchor {
 }
 
 type registerMap struct {
-	*cluster.RegisterMap
+	*anchor.RegisterMap
 	release capnp.ReleaseFunc
 	path    []string
 }
@@ -134,7 +135,7 @@ func (it *registerMap) Anchor() Anchor {
 
 type register struct {
 	path []string
-	cluster.Register
+	anchor.Register
 }
 
 func (r register) Path() []string { return r.path }

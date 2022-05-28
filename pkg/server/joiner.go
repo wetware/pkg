@@ -12,9 +12,12 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/wetware/casm/pkg/cluster"
-	clcap "github.com/wetware/ww/pkg/cap/cluster"
-	pscap "github.com/wetware/ww/pkg/cap/pubsub"
 	"github.com/wetware/ww/pkg/vat"
+
+	// exported capabilities
+	anchor_cap "github.com/wetware/ww/pkg/cap/anchor"
+	cluster_cap "github.com/wetware/ww/pkg/cap/cluster"
+	pubsub_cap "github.com/wetware/ww/pkg/cap/pubsub"
 )
 
 type PubSub interface {
@@ -25,7 +28,7 @@ type PubSub interface {
 
 type Joiner struct {
 	log      log.Logger
-	newMerge func(vat.Network) clcap.MergeStrategy
+	newMerge func(vat.Network) anchor_cap.MergeStrategy
 	opts     []cluster.Option
 }
 
@@ -55,16 +58,16 @@ func (j Joiner) Join(ctx context.Context, vat vat.Network, ps PubSub) (*Node, er
 
 	// export default capabilities
 	vat.Export(
-		pscap.Capability,
-		pscap.New(vat.NS, ps, pscap.WithLogger(j.log.With(vat))))
+		pubsub_cap.Capability,
+		pubsub_cap.New(vat.NS, ps, pubsub_cap.WithLogger(j.log.With(vat))))
 
 	vat.Export(
-		clcap.ViewCapability,
-		clcap.ViewServer{RoutingTable: c.View()})
+		cluster_cap.ViewCapability,
+		cluster_cap.ViewServer{RoutingTable: c.View()})
 
 	vat.Export(
-		clcap.AnchorCapability,
-		clcap.NewHost(j.newMerge(vat)))
+		anchor_cap.AnchorCapability,
+		anchor_cap.NewHost(j.newMerge(vat)))
 
 	// etc ...
 
@@ -90,12 +93,12 @@ func (j Joiner) options(vat vat.Network, u uuid.UUID) []cluster.Option {
 
 type basicMerge struct{ host.Host }
 
-func newMergeFactory(m clcap.MergeStrategy) func(vat.Network) clcap.MergeStrategy {
+func newMergeFactory(m anchor_cap.MergeStrategy) func(vat.Network) anchor_cap.MergeStrategy {
 	if m != nil {
-		return func(vat.Network) clcap.MergeStrategy { return m }
+		return func(vat.Network) anchor_cap.MergeStrategy { return m }
 	}
 
-	return func(vat vat.Network) clcap.MergeStrategy {
+	return func(vat vat.Network) anchor_cap.MergeStrategy {
 		return basicMerge{vat.Host}
 	}
 }
