@@ -19,10 +19,9 @@ func TestLs(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := anchor.NewHost(nil)
-
 	h := anchor.Host{
-		Client: s.Client(), // pre-resolved; can pass nil Dialer/MergeStrategy to methods.
+		// pre-resolved; can pass nil Dialer/MergeStrategy to methods.
+		Client: new(anchor.HostServer).Client(),
 	}
 
 	cs, release := h.Ls(ctx, nil)
@@ -43,10 +42,9 @@ func TestHost_Walk(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := anchor.NewHost(nil)
-
 	h := anchor.Host{
-		Client: s.Client(), // pre-resolved; can pass nil Dialer/MergeStrategy to methods.
+		// pre-resolved; can pass nil Dialer/MergeStrategy to methods.
+		Client: new(anchor.HostServer).Client(),
 	}
 
 	// Walk to /foo/bar

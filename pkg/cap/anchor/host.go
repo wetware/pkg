@@ -2,12 +2,15 @@ package anchor
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
+	"capnproto.org/go/capnp/v3/server"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/wetware/ww/internal/api/anchor"
+	"github.com/wetware/ww/internal/api/cluster"
 	"github.com/wetware/ww/pkg/vat"
 )
 
@@ -35,7 +38,7 @@ func (h *Host) Join(ctx context.Context, d Dialer, peers []peer.AddrInfo) error 
 		return nil // nop
 	}
 
-	params := func(ps anchor.Host_join_Params) error {
+	params := func(ps cluster.Joiner_join_Params) error {
 		plist, err := ps.NewPeers(int32(len(peers)))
 		if err != nil {
 			return err
@@ -67,7 +70,7 @@ func (h *Host) Walk(ctx context.Context, d Dialer, path Path) (Register, capnp.R
 	return walkPath(ctx, child, path)
 }
 
-func (h *Host) resolve(ctx context.Context, d Dialer) anchor.Host {
+func (h *Host) resolve(ctx context.Context, d Dialer) cluster.Joiner {
 	h.once.Do(func() {
 		if h.Client == nil {
 			if conn, err := d.Dial(ctx, h.Info); err != nil {
@@ -78,7 +81,7 @@ func (h *Host) resolve(ctx context.Context, d Dialer) anchor.Host {
 		}
 	})
 
-	return anchor.Host{Client: h.Client}
+	return cluster.Joiner{Client: h.Client}
 }
 
 type RegisterMap struct {
@@ -193,18 +196,60 @@ type MergeStrategy interface {
 	Merge(ctx context.Context, peers []peer.AddrInfo) error
 }
 
+// HostServer represents a host instance on the network. It provides
+// the Anchor and Joiner capabilities.
+//
+// The zero-value HostServer is ready to use.
 type HostServer struct {
+	// protects Anchor, MergeStrategy and cached fields.
+	once sync.Once
+
+	// The merge strategy for the host instance. Users SHOULD
+	// populate this field with a non-nil instance before the
+	// first call to Client(). If MergeStrategy == nil, calls
+	// to Join() will produce a "no merge strategy" error.
 	MergeStrategy
+
+	// The server policy for client instances created by Client().
+	// If nil, reasonable defaults are used. Callers MUST set this
+	// value before the first call to Client().
+	*server.Policy
+
+	// The root anchor for the HostServer.  Users SHOULD NOT
+	// set this field; it will be populated automatically on
+	// the first call to Client().
 	Anchor
+
+	// cached fields
+	methods []server.Method
 }
 
-func NewHost(m MergeStrategy) *HostServer {
-	h := &HostServer{MergeStrategy: m}
-	h.Anchor = Root(h)
-	return h
+func (h *HostServer) Client() *capnp.Client {
+	h.once.Do(func() {
+		// Anchor not set?
+		if h.Anchor.sched.root.IsZero() {
+			h.Anchor = Root(h)
+		}
+
+		if h.MergeStrategy == nil {
+			h.MergeStrategy = noMergeStrategy{}
+		}
+
+		// Host implements two separate capabilities, so we need to manually
+		// construct the server instance.  We cache the methods across calls.
+		h.methods = cluster.Joiner_Methods(nil, h)
+		h.methods = anchor.Anchor_Methods(h.methods, h) // append
+	})
+
+	// Create a new server each time Client() is called, so that each instance
+	// has its own concurrency and flow-control state.
+	s := server.New(h.methods, h, nil, h.Policy)
+	return capnp.NewClient(s)
 }
 
-func (h *HostServer) Join(ctx context.Context, call anchor.Host_join) error {
+// Join two clusters to form their union.  If h.MergeStrategy == nil, calls to
+// this method have no effect and return errors.
+func (h *HostServer) Join(ctx context.Context, call cluster.Joiner_join) error {
 	ps, err := call.Args().Peers()
 	if err != nil {
 		return err
@@ -220,4 +265,11 @@ func (h *HostServer) Join(ctx context.Context, call anchor.Host_join) error {
 	}
 
 	return h.Merge(ctx, peers)
+}
+
+// nop MergeStrategy that returns an error.
+type noMergeStrategy struct{}
+
+func (noMergeStrategy) Merge(context.Context, []peer.AddrInfo) error {
+	return errors.New("no merge strategy")
 }

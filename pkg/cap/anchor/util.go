@@ -3,10 +3,10 @@ package anchor
 import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
-	"github.com/wetware/ww/internal/api/anchor"
+	"github.com/wetware/ww/internal/api/cluster"
 )
 
-func bindHostInfo(host anchor.Host_AddrInfo, info peer.AddrInfo) error {
+func bindHostInfo(host cluster.AddrInfo, info peer.AddrInfo) error {
 	if err := host.SetId(string(info.ID)); err != nil {
 		return err
 	}
@@ -25,7 +25,7 @@ func bindHostInfo(host anchor.Host_AddrInfo, info peer.AddrInfo) error {
 	return err
 }
 
-func bindAddrInfo(info *peer.AddrInfo, host anchor.Host_AddrInfo) error {
+func bindAddrInfo(info *peer.AddrInfo, host cluster.AddrInfo) error {
 	s, err := host.Id()
 	if err != nil {
 		return err

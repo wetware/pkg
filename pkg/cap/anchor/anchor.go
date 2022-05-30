@@ -50,9 +50,9 @@ func (a Anchor) Client() *capnp.Client {
 		c := anchor.Anchor_ServerToClient(s, a.Policy)
 		return c.Client
 
-	case anchor.Host_Server:
-		h := anchor.Host_ServerToClient(s, a.Policy)
-		return h.Client
+	// case anchor.Host_Server:
+	// 	h := anchor.Host_ServerToClient(s, a.Policy)
+	// 	return h.Client
 
 	case vat.ClientProvider:
 		return s.Client()
