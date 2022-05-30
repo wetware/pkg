@@ -224,6 +224,11 @@ func last(path string) bounded.Type[string] {
 	return bounded.Value(path)
 }
 
+func parent(path string) bounded.Type[string] {
+	path, _ = popright(path)
+	return bounded.Value(path)
+}
+
 func suffix(s string) func(string) bounded.Type[string] {
 	return func(prefix string) bounded.Type[string] {
 		return bounded.Value(path.Join(prefix, s))

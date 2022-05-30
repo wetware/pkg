@@ -50,16 +50,28 @@ func (a Anchor) Client() *capnp.Client {
 		c := anchor.Anchor_ServerToClient(s, a.Policy)
 		return c.Client
 
-	// case anchor.Host_Server:
-	// 	h := anchor.Host_ServerToClient(s, a.Policy)
-	// 	return h.Client
-
 	case vat.ClientProvider:
 		return s.Client()
 
 	default:
 		c := anchor.Anchor_ServerToClient(s, a.Policy)
 		return c.Client
+	}
+}
+
+func (a Anchor) Shutdown() {
+	// Optimistic strategy:  first check if a should be scrubbed using a
+	//                       read-only transaction. Acquire the lock iff
+	//                       a scrub takes place.
+	if rx := a.sched.Txn(false); rx.IsOrphan() {
+		wx := a.sched.Txn(true)
+		defer wx.Finish()
+
+		// may have changed since we last checked
+		if wx.IsOrphan() {
+			_ = wx.Scrub()
+			wx.Commit()
+		}
 	}
 }
 

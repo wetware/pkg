@@ -10,7 +10,7 @@ $Go.import("github.com/wetware/ww/internal/api/anchor");
 #        warning.  Do not use in production settings.
 struct Value {
     union {
-        empty              @0 :Void;
+        nil                @0 :Void;
         capability         @1 :Capability;
         chan                  :union {
             sender         @2 :import "channel.capnp".Sender;

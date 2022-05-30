@@ -41,6 +41,16 @@ func NewScheduler(root Path) Scheduler {
 	}
 }
 
+// Parent returns the scheduler scoped to the parent path.
+func (s Scheduler) Parent() Scheduler {
+	return Scheduler{
+		sched:   s.sched,
+		anchors: s.anchors,
+		root:    s.root.bind(parent),
+	}
+}
+
+// WithSubpath returns the scheduler scoped to the supplied subpath.
 func (s Scheduler) WithSubpath(path Path) Scheduler {
 	return Scheduler{
 		sched:   s.sched,
@@ -68,6 +78,62 @@ func (t Txn) Finish() {
 	// caller is expected to call Commit(), at which point
 	// Abort() becomes a nop.
 	t.Abort()
+}
+
+// Parent returns the current transaction scoped to the parent path.
+func (t Txn) Parent() Txn {
+	return Txn{
+		sched: t.sched.Parent(),
+		txn:   t.txn,
+	}
+}
+
+// IsOrphan returns true if the anchor at the transaction's root path
+// (1) has no children and (2) has no value. Callers MUST NOT rely on
+// IsOrphan() to determine if a path has any lingering references.
+//
+// This is a read-only transaction.
+func (t Txn) IsOrphan() bool {
+	// root node?
+	if t.sched.root.IsRoot() {
+		return false
+	}
+
+	// has children?
+	if it, _ := t.Children(); it.Next() != nil {
+		return false
+	}
+
+	// has value?
+	_, ok := t.LoadValue() // TODO:  implement
+	return !ok
+}
+
+// LoadValue returns the register located at the current path, if any.
+func (t Txn) LoadValue() (any, bool) {
+	return nil, false // XXX
+}
+
+// Scrub removes the anchor at the transaction's root path from the
+// tree.   Any value associated with this path is unreachable after
+// Scrub returns, but is not deallocated.
+//
+// This is a write operation.
+func (t Txn) Scrub() error {
+	v, err := t.txn.First(t.sched.anchors, "id", t.sched.root)
+	if v == nil {
+		return err
+	}
+
+	if err = t.txn.Delete(t.sched.anchors, v); err != nil {
+		return err
+	}
+
+	if px := t.Parent(); px.IsOrphan() {
+		err = px.Scrub()
+	}
+
+	return err
 }
 
 // Children returns an iterator over the children of the anchor identified

@@ -22,11 +22,9 @@ interface View {
     using Sender = import "channel.capnp".Sender;
 }
 
-
 interface Joiner {
     join @0 (peers :List(AddrInfo)) -> ();
 }
-
 
 struct AddrInfo {
     id    @0 :PeerID;
