@@ -77,6 +77,7 @@ func (n Node) Join(ctx context.Context, topic string) Topic {
 func (n Node) Path() string { return "/" }
 
 func (n Node) Ls(ctx context.Context) Iterator {
+	// TODO(performance):  cache an instance of the View capability
 	f, release := n.host.View(ctx, nil)
 	defer release()
 
