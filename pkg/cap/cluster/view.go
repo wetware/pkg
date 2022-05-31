@@ -31,30 +31,21 @@ const (
 	maxInFlight = 8
 )
 
-var defaultPolicy = server.Policy{
-	MaxConcurrentCalls: 64,
-}
-
 // RoutingTable provides a global view of namespace peers.
 type RoutingTable interface {
 	Iter() routing.Iterator
 	Lookup(peer.ID) (routing.Record, bool)
 }
 
+// ViewServer provides query and iteration over a host's routing table.
 type ViewServer struct {
+	// RoutingTable provides a local cluster view for the host.
 	RoutingTable
-}
-
-func (f ViewServer) NewClient(policy *server.Policy) View {
-	if policy == nil {
-		policy = &defaultPolicy
-	}
-
-	return View(api.View_ServerToClient(f, policy))
+	*server.Policy
 }
 
 func (f ViewServer) Client() *capnp.Client {
-	return api.View_ServerToClient(f, &defaultPolicy).Client
+	return api.View_ServerToClient(f, f.Policy).Client
 }
 
 func (f ViewServer) Iter(ctx context.Context, call api.View_iter) error {

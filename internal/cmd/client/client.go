@@ -8,7 +8,6 @@ import (
 
 var subcommands = []*cli.Command{
 	Ls(),
-	Join(),
 	Publish(),
 	Subscribe(),
 	Discover(),

@@ -53,12 +53,12 @@ func (d Dialer) Dial(ctx context.Context) (*Node, error) {
 	}
 	n.ps = pubsub.PubSub{Client: conn.Bootstrap(context.Background())}
 
-	conn, err = d.join(ctx, cluster.ViewCapability)
+	conn, err = d.join(ctx, cluster.HostCapability)
 	if err != nil {
 		n.ps.Release()
 		return nil, err
 	}
-	n.view = cluster.View{Client: conn.Bootstrap(context.Background())}
+	n.host = cluster.Host{Client: conn.Bootstrap(context.Background())}
 
 	n.conn = conn
 	return n, nil
