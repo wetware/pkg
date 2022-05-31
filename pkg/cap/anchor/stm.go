@@ -111,7 +111,7 @@ func (t Txn) IsOrphan() bool {
 
 // LoadValue returns the register located at the current path, if any.
 func (t Txn) LoadValue() (any, bool) {
-	return nil, false // XXX
+	return nil, false // TODO(soon)
 }
 
 // Scrub removes the anchor at the transaction's root path from the
