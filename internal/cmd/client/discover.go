@@ -19,19 +19,6 @@ func Discover() *cli.Command {
 		Name:  "discover",
 		Usage: "discover a wetware node and print its multiaddress",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:    "discover",
-				Aliases: []string{"d"},
-				Usage:   "bootstrap discovery `ADDR`",
-				Value:   "/ip4/228.8.8.8/udp/8822/multicast/lo0",
-				EnvVars: []string{"WW_DISCOVER"},
-			},
-			&cli.StringFlag{
-				Name:    "ns",
-				Usage:   "cluster namespace",
-				Value:   "ww",
-				EnvVars: []string{"WW_NS"},
-			},
 			&cli.DurationFlag{
 				Name:    "timeout",
 				Aliases: []string{"t"},
