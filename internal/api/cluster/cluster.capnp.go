@@ -8,6 +8,7 @@ import (
 	schemas "capnproto.org/go/capnp/v3/schemas"
 	server "capnproto.org/go/capnp/v3/server"
 	context "context"
+	anchor "github.com/wetware/ww/internal/api/anchor"
 	channel "github.com/wetware/ww/internal/api/channel"
 )
 
@@ -466,343 +467,311 @@ func (p View_lookup_Results_Future) Record() View_Record_Future {
 	return View_Record_Future{Future: p.Future.Field(0, nil)}
 }
 
-type Joiner struct{ Client *capnp.Client }
+type Host struct{ Client *capnp.Client }
 
-// Joiner_TypeID is the unique identifier for the type Joiner.
-const Joiner_TypeID = 0x827cea1632b4d5b2
+// Host_TypeID is the unique identifier for the type Host.
+const Host_TypeID = 0x957cbefc645fd307
 
-func (c Joiner) Join(ctx context.Context, params func(Joiner_join_Params) error) (Joiner_join_Results_Future, capnp.ReleaseFunc) {
+func (c Host) View(ctx context.Context, params func(Host_view_Params) error) (Host_view_Results_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
 		Method: capnp.Method{
-			InterfaceID:   0x827cea1632b4d5b2,
+			InterfaceID:   0x957cbefc645fd307,
 			MethodID:      0,
-			InterfaceName: "cluster.capnp:Joiner",
-			MethodName:    "join",
+			InterfaceName: "cluster.capnp:Host",
+			MethodName:    "view",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Host_view_Params{Struct: s}) }
+	}
+	ans, release := c.Client.SendCall(ctx, s)
+	return Host_view_Results_Future{Future: ans.Future()}, release
+}
+func (c Host) Ls(ctx context.Context, params func(anchor.Anchor_ls_Params) error) (anchor.Anchor_ls_Results_Future, capnp.ReleaseFunc) {
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0xe41237e4098ed922,
+			MethodID:      0,
+			InterfaceName: "anchor.capnp:Anchor",
+			MethodName:    "ls",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(anchor.Anchor_ls_Params{Struct: s}) }
+	}
+	ans, release := c.Client.SendCall(ctx, s)
+	return anchor.Anchor_ls_Results_Future{Future: ans.Future()}, release
+}
+func (c Host) Walk(ctx context.Context, params func(anchor.Anchor_walk_Params) error) (anchor.Anchor_walk_Results_Future, capnp.ReleaseFunc) {
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0xe41237e4098ed922,
+			MethodID:      1,
+			InterfaceName: "anchor.capnp:Anchor",
+			MethodName:    "walk",
 		},
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Joiner_join_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(anchor.Anchor_walk_Params{Struct: s}) }
 	}
 	ans, release := c.Client.SendCall(ctx, s)
-	return Joiner_join_Results_Future{Future: ans.Future()}, release
+	return anchor.Anchor_walk_Results_Future{Future: ans.Future()}, release
 }
 
-func (c Joiner) AddRef() Joiner {
-	return Joiner{
+func (c Host) AddRef() Host {
+	return Host{
 		Client: c.Client.AddRef(),
 	}
 }
 
-func (c Joiner) Release() {
+func (c Host) Release() {
 	c.Client.Release()
 }
 
-// A Joiner_Server is a Joiner with a local implementation.
-type Joiner_Server interface {
-	Join(context.Context, Joiner_join) error
+// A Host_Server is a Host with a local implementation.
+type Host_Server interface {
+	View(context.Context, Host_view) error
+
+	Ls(context.Context, anchor.Anchor_ls) error
+
+	Walk(context.Context, anchor.Anchor_walk) error
 }
 
-// Joiner_NewServer creates a new Server from an implementation of Joiner_Server.
-func Joiner_NewServer(s Joiner_Server, policy *server.Policy) *server.Server {
+// Host_NewServer creates a new Server from an implementation of Host_Server.
+func Host_NewServer(s Host_Server, policy *server.Policy) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(Joiner_Methods(nil, s), s, c, policy)
+	return server.New(Host_Methods(nil, s), s, c, policy)
 }
 
-// Joiner_ServerToClient creates a new Client from an implementation of Joiner_Server.
+// Host_ServerToClient creates a new Client from an implementation of Host_Server.
 // The caller is responsible for calling Release on the returned Client.
-func Joiner_ServerToClient(s Joiner_Server, policy *server.Policy) Joiner {
-	return Joiner{Client: capnp.NewClient(Joiner_NewServer(s, policy))}
+func Host_ServerToClient(s Host_Server, policy *server.Policy) Host {
+	return Host{Client: capnp.NewClient(Host_NewServer(s, policy))}
 }
 
-// Joiner_Methods appends Methods to a slice that invoke the methods on s.
+// Host_Methods appends Methods to a slice that invoke the methods on s.
 // This can be used to create a more complicated Server.
-func Joiner_Methods(methods []server.Method, s Joiner_Server) []server.Method {
+func Host_Methods(methods []server.Method, s Host_Server) []server.Method {
 	if cap(methods) == 0 {
-		methods = make([]server.Method, 0, 1)
+		methods = make([]server.Method, 0, 3)
 	}
 
 	methods = append(methods, server.Method{
 		Method: capnp.Method{
-			InterfaceID:   0x827cea1632b4d5b2,
+			InterfaceID:   0x957cbefc645fd307,
 			MethodID:      0,
-			InterfaceName: "cluster.capnp:Joiner",
-			MethodName:    "join",
+			InterfaceName: "cluster.capnp:Host",
+			MethodName:    "view",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.Join(ctx, Joiner_join{call})
+			return s.View(ctx, Host_view{call})
+		},
+	})
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xe41237e4098ed922,
+			MethodID:      0,
+			InterfaceName: "anchor.capnp:Anchor",
+			MethodName:    "ls",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Ls(ctx, anchor.Anchor_ls{call})
+		},
+	})
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xe41237e4098ed922,
+			MethodID:      1,
+			InterfaceName: "anchor.capnp:Anchor",
+			MethodName:    "walk",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Walk(ctx, anchor.Anchor_walk{call})
 		},
 	})
 
 	return methods
 }
 
-// Joiner_join holds the state for a server call to Joiner.join.
+// Host_view holds the state for a server call to Host.view.
 // See server.Call for documentation.
-type Joiner_join struct {
+type Host_view struct {
 	*server.Call
 }
 
 // Args returns the call's arguments.
-func (c Joiner_join) Args() Joiner_join_Params {
-	return Joiner_join_Params{Struct: c.Call.Args()}
+func (c Host_view) Args() Host_view_Params {
+	return Host_view_Params{Struct: c.Call.Args()}
 }
 
 // AllocResults allocates the results struct.
-func (c Joiner_join) AllocResults() (Joiner_join_Results, error) {
-	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Joiner_join_Results{Struct: r}, err
+func (c Host_view) AllocResults() (Host_view_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Host_view_Results{Struct: r}, err
 }
 
-type Joiner_join_Params struct{ capnp.Struct }
+type Host_view_Params struct{ capnp.Struct }
 
-// Joiner_join_Params_TypeID is the unique identifier for the type Joiner_join_Params.
-const Joiner_join_Params_TypeID = 0xe821e7b2cfcf4e20
+// Host_view_Params_TypeID is the unique identifier for the type Host_view_Params.
+const Host_view_Params_TypeID = 0xa404c24b5375b9e4
 
-func NewJoiner_join_Params(s *capnp.Segment) (Joiner_join_Params, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Joiner_join_Params{st}, err
-}
-
-func NewRootJoiner_join_Params(s *capnp.Segment) (Joiner_join_Params, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Joiner_join_Params{st}, err
-}
-
-func ReadRootJoiner_join_Params(msg *capnp.Message) (Joiner_join_Params, error) {
-	root, err := msg.Root()
-	return Joiner_join_Params{root.Struct()}, err
-}
-
-func (s Joiner_join_Params) String() string {
-	str, _ := text.Marshal(0xe821e7b2cfcf4e20, s.Struct)
-	return str
-}
-
-func (s Joiner_join_Params) Peers() (AddrInfo_List, error) {
-	p, err := s.Struct.Ptr(0)
-	return AddrInfo_List{List: p.List()}, err
-}
-
-func (s Joiner_join_Params) HasPeers() bool {
-	return s.Struct.HasPtr(0)
-}
-
-func (s Joiner_join_Params) SetPeers(v AddrInfo_List) error {
-	return s.Struct.SetPtr(0, v.List.ToPtr())
-}
-
-// NewPeers sets the peers field to a newly
-// allocated AddrInfo_List, preferring placement in s's segment.
-func (s Joiner_join_Params) NewPeers(n int32) (AddrInfo_List, error) {
-	l, err := NewAddrInfo_List(s.Struct.Segment(), n)
-	if err != nil {
-		return AddrInfo_List{}, err
-	}
-	err = s.Struct.SetPtr(0, l.List.ToPtr())
-	return l, err
-}
-
-// Joiner_join_Params_List is a list of Joiner_join_Params.
-type Joiner_join_Params_List = capnp.StructList[Joiner_join_Params]
-
-// NewJoiner_join_Params creates a new list of Joiner_join_Params.
-func NewJoiner_join_Params_List(s *capnp.Segment, sz int32) (Joiner_join_Params_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Joiner_join_Params]{List: l}, err
-}
-
-// Joiner_join_Params_Future is a wrapper for a Joiner_join_Params promised by a client call.
-type Joiner_join_Params_Future struct{ *capnp.Future }
-
-func (p Joiner_join_Params_Future) Struct() (Joiner_join_Params, error) {
-	s, err := p.Future.Struct()
-	return Joiner_join_Params{s}, err
-}
-
-type Joiner_join_Results struct{ capnp.Struct }
-
-// Joiner_join_Results_TypeID is the unique identifier for the type Joiner_join_Results.
-const Joiner_join_Results_TypeID = 0xe75e468c2155a973
-
-func NewJoiner_join_Results(s *capnp.Segment) (Joiner_join_Results, error) {
+func NewHost_view_Params(s *capnp.Segment) (Host_view_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Joiner_join_Results{st}, err
+	return Host_view_Params{st}, err
 }
 
-func NewRootJoiner_join_Results(s *capnp.Segment) (Joiner_join_Results, error) {
+func NewRootHost_view_Params(s *capnp.Segment) (Host_view_Params, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Joiner_join_Results{st}, err
+	return Host_view_Params{st}, err
 }
 
-func ReadRootJoiner_join_Results(msg *capnp.Message) (Joiner_join_Results, error) {
+func ReadRootHost_view_Params(msg *capnp.Message) (Host_view_Params, error) {
 	root, err := msg.Root()
-	return Joiner_join_Results{root.Struct()}, err
+	return Host_view_Params{root.Struct()}, err
 }
 
-func (s Joiner_join_Results) String() string {
-	str, _ := text.Marshal(0xe75e468c2155a973, s.Struct)
+func (s Host_view_Params) String() string {
+	str, _ := text.Marshal(0xa404c24b5375b9e4, s.Struct)
 	return str
 }
 
-// Joiner_join_Results_List is a list of Joiner_join_Results.
-type Joiner_join_Results_List = capnp.StructList[Joiner_join_Results]
+// Host_view_Params_List is a list of Host_view_Params.
+type Host_view_Params_List = capnp.StructList[Host_view_Params]
 
-// NewJoiner_join_Results creates a new list of Joiner_join_Results.
-func NewJoiner_join_Results_List(s *capnp.Segment, sz int32) (Joiner_join_Results_List, error) {
+// NewHost_view_Params creates a new list of Host_view_Params.
+func NewHost_view_Params_List(s *capnp.Segment, sz int32) (Host_view_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Joiner_join_Results]{List: l}, err
+	return capnp.StructList[Host_view_Params]{List: l}, err
 }
 
-// Joiner_join_Results_Future is a wrapper for a Joiner_join_Results promised by a client call.
-type Joiner_join_Results_Future struct{ *capnp.Future }
+// Host_view_Params_Future is a wrapper for a Host_view_Params promised by a client call.
+type Host_view_Params_Future struct{ *capnp.Future }
 
-func (p Joiner_join_Results_Future) Struct() (Joiner_join_Results, error) {
+func (p Host_view_Params_Future) Struct() (Host_view_Params, error) {
 	s, err := p.Future.Struct()
-	return Joiner_join_Results{s}, err
+	return Host_view_Params{s}, err
 }
 
-type AddrInfo struct{ capnp.Struct }
+type Host_view_Results struct{ capnp.Struct }
 
-// AddrInfo_TypeID is the unique identifier for the type AddrInfo.
-const AddrInfo_TypeID = 0xa19185ea4a523225
+// Host_view_Results_TypeID is the unique identifier for the type Host_view_Results.
+const Host_view_Results_TypeID = 0x8f58928e854cd4f5
 
-func NewAddrInfo(s *capnp.Segment) (AddrInfo, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
-	return AddrInfo{st}, err
+func NewHost_view_Results(s *capnp.Segment) (Host_view_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Host_view_Results{st}, err
 }
 
-func NewRootAddrInfo(s *capnp.Segment) (AddrInfo, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
-	return AddrInfo{st}, err
+func NewRootHost_view_Results(s *capnp.Segment) (Host_view_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Host_view_Results{st}, err
 }
 
-func ReadRootAddrInfo(msg *capnp.Message) (AddrInfo, error) {
+func ReadRootHost_view_Results(msg *capnp.Message) (Host_view_Results, error) {
 	root, err := msg.Root()
-	return AddrInfo{root.Struct()}, err
+	return Host_view_Results{root.Struct()}, err
 }
 
-func (s AddrInfo) String() string {
-	str, _ := text.Marshal(0xa19185ea4a523225, s.Struct)
+func (s Host_view_Results) String() string {
+	str, _ := text.Marshal(0x8f58928e854cd4f5, s.Struct)
 	return str
 }
 
-func (s AddrInfo) Id() (string, error) {
-	p, err := s.Struct.Ptr(0)
-	return p.Text(), err
+func (s Host_view_Results) View() View {
+	p, _ := s.Struct.Ptr(0)
+	return View{Client: p.Interface().Client()}
 }
 
-func (s AddrInfo) HasId() bool {
+func (s Host_view_Results) HasView() bool {
 	return s.Struct.HasPtr(0)
 }
 
-func (s AddrInfo) IdBytes() ([]byte, error) {
-	p, err := s.Struct.Ptr(0)
-	return p.TextBytes(), err
-}
-
-func (s AddrInfo) SetId(v string) error {
-	return s.Struct.SetText(0, v)
-}
-
-func (s AddrInfo) Addrs() (capnp.DataList, error) {
-	p, err := s.Struct.Ptr(1)
-	return capnp.DataList{List: p.List()}, err
-}
-
-func (s AddrInfo) HasAddrs() bool {
-	return s.Struct.HasPtr(1)
-}
-
-func (s AddrInfo) SetAddrs(v capnp.DataList) error {
-	return s.Struct.SetPtr(1, v.List.ToPtr())
-}
-
-// NewAddrs sets the addrs field to a newly
-// allocated capnp.DataList, preferring placement in s's segment.
-func (s AddrInfo) NewAddrs(n int32) (capnp.DataList, error) {
-	l, err := capnp.NewDataList(s.Struct.Segment(), n)
-	if err != nil {
-		return capnp.DataList{}, err
+func (s Host_view_Results) SetView(v View) error {
+	if !v.Client.IsValid() {
+		return s.Struct.SetPtr(0, capnp.Ptr{})
 	}
-	err = s.Struct.SetPtr(1, l.List.ToPtr())
-	return l, err
+	seg := s.Segment()
+	in := capnp.NewInterface(seg, seg.Message().AddCap(v.Client))
+	return s.Struct.SetPtr(0, in.ToPtr())
 }
 
-// AddrInfo_List is a list of AddrInfo.
-type AddrInfo_List = capnp.StructList[AddrInfo]
+// Host_view_Results_List is a list of Host_view_Results.
+type Host_view_Results_List = capnp.StructList[Host_view_Results]
 
-// NewAddrInfo creates a new list of AddrInfo.
-func NewAddrInfo_List(s *capnp.Segment, sz int32) (AddrInfo_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2}, sz)
-	return capnp.StructList[AddrInfo]{List: l}, err
+// NewHost_view_Results creates a new list of Host_view_Results.
+func NewHost_view_Results_List(s *capnp.Segment, sz int32) (Host_view_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[Host_view_Results]{List: l}, err
 }
 
-// AddrInfo_Future is a wrapper for a AddrInfo promised by a client call.
-type AddrInfo_Future struct{ *capnp.Future }
+// Host_view_Results_Future is a wrapper for a Host_view_Results promised by a client call.
+type Host_view_Results_Future struct{ *capnp.Future }
 
-func (p AddrInfo_Future) Struct() (AddrInfo, error) {
+func (p Host_view_Results_Future) Struct() (Host_view_Results, error) {
 	s, err := p.Future.Struct()
-	return AddrInfo{s}, err
+	return Host_view_Results{s}, err
 }
 
-const schema_fcf6ac08e448a6ac = "x\xdat\x94OH\x1cW\x1c\xc7\x7f\xdf\xf7f\xdc\xb5" +
-	"\xb8\xae\xcfY-\x15D-+\xa8E\xd1Uh\xd9\xcb" +
-	"le[\xff\xd0\x96}V\x0b-\xb4\xb08S\xbau" +
-	"\xdd]gv\xf1\xd2R(\x94B\xe9\xc5C\x0f\xf5\xd6" +
-	"CK[\x84\x82\x94\x1e\x1a\x08$7!\"\x04$x" +
-	"J\x0eI\x14!\x7f\x0eIH\x82d\xc2\xdbuf6" +
-	"\xc6\xdc\x1e\xfb\xbe\xfb\xfd~\x7f\x9f\xdfc\xc6/#\xa3" +
-	"M\xc4\xden!&g\xf5\x16o{\xff\xdfT\xf7\xf1" +
-	"7\xdf\x93h\xe7\xde\xd6\x1f\xb37\xa3[\x8fN\x88`" +
-	"\x80\xffm\xb4\xf2\x08\x91\xa1\xf3\x19cT\x9d\xbc\xcd\xe4" +
-	"\xc9g\x93\xf7{\x7fzI\xdc\xc57\x8d^\xfe:\x91" +
-	"1\xc8\x7f4ju\xf1`ja\xfe\xf8\x87\x8d\xdfH" +
-	"\xb4#\x14\xebLY~\xce\xff7\xec\xbay\x9e\xaf\x13" +
-	"\xbc\xfeo?\xde\xbe8\xbd\xb7K\xd2\x00\x0bct(" +
-	"\xc9.\xbfj\x1c\xd4\xc5\xfb\xfc\x1f\x82W\x1cz\xeb\xf1" +
-	"\xe2\x8d\xe1\x03\x12\x06\xe8T\xb3\xaa=%\x18k\x9aI" +
-	"\xf0\xee]\xeb\xfb/{e\xfe\x962\xf3\x05\x93\x1bZ" +
-	"'\x08\xc6\xaf\x9a\x8a3N\xfe\x9c\xe9\xcc_\xbf\xddp" +
-	"\xd0\xd4\xfdC\x8d\x814\xcf\xfdki\xe0\xe7\xf7\xbf8" +
-	"$\xd1\xe5\xdf\x1c\xa8\x7fj^\xffG{{\xdb\x87\x03" +
-	"G\x8d\x9b\x86\xe9%\xed5e\xba\xa3b\x9fe\xa6v" +
-	"\x96~\xff\xe5AXj\xf2I\xe3\x1a\xbaI\x9fz\xcb" +
-	"\xc5\x9a[\xb5\x9d1,\xe7+\xa5Jz\xbe\x1c/\x94" +
-	"l'\x07H\x8d\xebD\x81?\xfc\x0aB\x8c\x10\x13z" +
-	"$\xfeu\xb9P\xca \x07\x9c\xf5\xf8\xa4\xc0\xedu\xa9" +
-	"\xa1\x89\x9f@\xda\\\xb0\x97\xcb\x8e%\xa3u[\x1f\x16" +
-	"\xfc\x99\xc5\x84\xb2\x1d\x8c h\x1c\x02\x13o\xa4\x89\x89" +
-	"X$^\xa8\xdaN\x06f\xb1\\^\xa9U\xce\xcd~" +
-	"\xd72-g\xae\xf4eYM\x10\xe5\x1a\x91\x06\"1" +
-	"\xdcC$\x93\x1cr\x9cA\x00\x09\xb5\x001\x9a\"\x92" +
-	"C\x1c2\xcb\xc0\x0b\x16\xda\x88\xa1\x8d\xd0\x97\xb7,\xc7" +
-	"E;!\xc7\x81\x181u\x0cr\x98?\xa3\xbd>V" +
-	"\x9f\x08\x96\x8aj\x0b\xa2\xde\x1b!\x92\x19\x0e\xf9\x01\x83" +
-	"\x9f4\xf7&\x91\xccr\xc8\x1c\x83`H\x80\x11\x89\x0f" +
-	"\xd5\x8f\xb3\x1cr\x91!^\xb1m\xc7/\x10\xa9V\x8b" +
-	"\xd0\x89A'D\\{\x0d\xad\xc4\xd0\xfa\x8a\x0e\x0aI" +
-	"\xd2\xcc\xe5\x9d\xfc\xaa+\xb5\xa0El\x9aHF9d" +
-	"\x82\xe1\xbb\xaf\xf2%\xabh;\x10\xde\xdd\xee\xe3w\x12" +
-	"w.\x1c\x11\x01\xa2\xc9\x91796\xe8&\x17l\xb7" +
-	"V\xac\xc2m\xa6\x98\x0e)\x06\x10{N!N1\x98" +
-	"N}\xc5\xe8\x08\x17O@\x07\x81\x97W\x00b@S" +
-	"d\xe4\xec\x10\x8d@\x97|\x81\xff \xd5{\x1cS\x8f" +
-	"-\xa8t\xb6v\xb3\xa6A\x82\xa8\x99E\xea\x94E\x92" +
-	"\xa1O\x81\x0e\x96\xdb\x11~\x0d\x08/\xac\xf9\x1c \xe7" +
-	"9\xa7C\xca\xa6r\x9e\xcb\xfaK|\x1e\x00\x00\xff\xff" +
-	"\xe7\x9c?\xc7"
+func (p Host_view_Results_Future) View() View {
+	return View{Client: p.Future.Field(0, nil).Client()}
+}
+
+const schema_fcf6ac08e448a6ac = "x\xdad\x92Mh\x13Q\x14\x85\xefy\xf3\xc6I\xa4" +
+	"\xb5}}Q\xa9 J\xa9\xd0V,--\xa8\xd9$" +
+	"\x96JS\xad\x90\xd7?\xc4\x8d\x86f\xc0\xd0\xd8\xc4L" +
+	"b\x10,\xd2\x85\x88.*\x0a\xdd\x14\\\x08Z\\\x14" +
+	"\x04\x17\x82\x08]\xb8\x13\x14A\x05\xe9J\x17QD\xf0" +
+	"g\xa1\"%82\x13'3\xa6\xdb\x99\xfb\xce\xf9\xce" +
+	"\xb9\xb7o\x1dq\xde\xdf<\x12\"\xa6\xce\xe8[\xec\xe5" +
+	"\xce\xea\xa9\x81\xef\xbb\xaf\x93\xd8\xa6\xd9\xab+\x89Jh" +
+	"\xf5W\x95\x082\xcc\x97\xa5\xe0;\x89d;\xbf*3" +
+	"\xdc \xb2\x7f\xbe\x19\xbb\xb2x\xeb\xe4\x0d\x12\x12D:" +
+	"\x0c\xa2\x01\xc5\x19\x08r\x8a\xc7\x08\xb6\xf1\xfat\xba\xba" +
+	"vii\x93Z\x89/\xcbyGC^\xe4#\xf2\x8e" +
+	"\xa3kW\x1e\x97&\x8e?\xe5wkj\xee\xcf\x9b|" +
+	"\x83\xb8\xbdw~\xe2\xe1\xda\xd0\xcb\x17\xa4$\x98O\xe8" +
+	"\xfa\xc9\x12\x7f%\x17\xdc\xe1y\xfe\x80`g\xbb\xf6\xff" +
+	"\x9e|\xdf\xbd\x1e`\x92\xdb\xf5\x0d\x82l\xd7\x1d\xa4o" +
+	"o\xf7<\x1a~~\xec\x83#V\x87>\xac\xb79\xd0" +
+	"G\xf42\xc1\x96\xd5\xfb#m\xa9w\x1f}\x8e\x81\xdb" +
+	":\x03\xf1?\xf1\xc1gS\xf7\x96~\x04\xd2.\xe8[" +
+	"\x9d\x87\xd7\xf4\x18\xad\xd83\xd9\x92U4\x0b\xbd\x98I" +
+	"\xe5\xe7\xf2\xd1\xe9\x8cf\x96\x15\x07\xfc\x00\x02\xd1\xd8\xb8" +
+	"9\x93+\xa4UH\xd3\x89\xea\xb4\xf0LE\x7f\x0f1" +
+	"\xb1\xcf\x00<7\x9fX\xb4G\x89\x89f\xa3%S4" +
+	"\x0bq\xc4\xb2\xb9\xdcl)\x1fG\x12\xa8{k5\xef" +
+	"D\xce*\xf6^\xc8\x98\xe5\xceq\xd3*e\x8b\x16)" +
+	"\xaeq\"\x0e\"\xd1\xdcC\xa4B\x1aT\x84\xa1\xc5\x19" +
+	"\x82\xf0[%@\x10\x1a\xb3$r\x9aUL\x02\x8a\xbb" +
+	"\xd8\xde\xaa\xe0]\x80\x10\x0e\xb6n\xb8rq\xb8\xa9;" +
+	"\xd6\x17\xc3\x95\x83m\x15\"\xaa\xcb\xb1F\xbcX2U" +
+	"H\x9d\xb3\x1a\x07\xa63f\xb9\xd7m\x0ai\xc7\xb6\xa9" +
+	"\x0e\x7f\xd4\x81\x8fkPc\x0c@\xc4\xd9\xa1\x18\xed " +
+	"R\xc3\x1aT\x92A0D\xc0\x88\xc4\x09\xe7cB\x83" +
+	"\x9adh\xc9\x9bf\x01M\xc4\xd0D0\x8a\xc5,t" +
+	"b\xd0\x09\x86e\x9eG\x98\x18\xc2\x81\xccA\x06\xa7j" +
+	"\x0f2X\xe1\x90_\xe1\xe5\xb3\xa9\xb9t\xd6,@\xd8" +
+	"_w|>\x14\xf9\xf2\xe4Sc\x8bZ@\xb1\xb6\xb5" +
+	"\x7f{\x81\xa5Bu\xd1\xee(\x91\xea\xd4\xa0\xfa\xfch" +
+	"\x07v\x11\xa9.\x0dj\x90!VpO\x07\xad\xfeA" +
+	"\x11\xd0J\xd0r\xb3\x001 `i4\x86\xf0\x0e\xc1" +
+	"\x1b\xd8\x8cTKI\xff\x9dJ\xd4\xcf\x19sJ\x1c\x1d" +
+	"\xf6j\xfc\x1b\x00\x00\xff\xff\xb3\xf1#\x0e"
 
 func init() {
 	schemas.Register(schema_fcf6ac08e448a6ac,
-		0x827cea1632b4d5b2,
 		0x8a1df0335afc249a,
-		0xa19185ea4a523225,
+		0x8f58928e854cd4f5,
+		0x957cbefc645fd307,
+		0xa404c24b5375b9e4,
 		0xcdcf42beb2537d20,
 		0xd929e054f82b286c,
 		0xe54acc44b61fd7ef,
 		0xe6df611247a8fc13,
-		0xe75e468c2155a973,
-		0xe821e7b2cfcf4e20,
 		0xf495a555c9344000)
 }

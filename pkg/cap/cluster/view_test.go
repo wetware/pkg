@@ -51,8 +51,12 @@ func TestIter(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		c := cluster.ViewServer{RoutingTable: routingTable(nil)}.
-			NewClient(nil)
+		var (
+			rt = routingTable(nil)
+			c  = cluster.View{
+				Client: cluster.ViewServer{RoutingTable: rt}.Client(),
+			}
+		)
 
 		it := c.Iter(ctx)
 
@@ -75,7 +79,9 @@ func TestIter(t *testing.T) {
 			},
 		}
 
-		c := cluster.ViewServer{RoutingTable: rt}.NewClient(nil)
+		c := cluster.View{
+			Client: cluster.ViewServer{RoutingTable: rt}.Client(),
+		}
 
 		it := c.Iter(ctx)
 		it.Next()
@@ -109,7 +115,9 @@ func TestIter(t *testing.T) {
 		var (
 			i  int
 			it *cluster.RecordStream
-			c  = cluster.ViewServer{RoutingTable: rt}.NewClient(nil)
+			c  = cluster.View{
+				Client: cluster.ViewServer{RoutingTable: rt}.Client(),
+			}
 		)
 
 		for it = c.Iter(ctx); it.Record() != nil; it.Next() {
@@ -139,7 +147,9 @@ func TestIter(t *testing.T) {
 
 		var (
 			rt = blockingRoutingTable{ctx}
-			c  = cluster.ViewServer{RoutingTable: rt}.NewClient(nil)
+			c  = cluster.View{
+				Client: cluster.ViewServer{RoutingTable: rt}.Client(),
+			}
 		)
 
 		it := c.Iter(ctx)
@@ -165,7 +175,9 @@ func TestLookup(t *testing.T) {
 		}
 	}
 
-	c := cluster.ViewServer{RoutingTable: rt}.NewClient(nil)
+	c := cluster.View{
+		Client: cluster.ViewServer{RoutingTable: rt}.Client(),
+	}
 
 	t.Run("Exists", func(t *testing.T) {
 		t.Parallel()

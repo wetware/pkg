@@ -12,15 +12,9 @@ struct Value {
     union {
         nil                @0 :Void;
         capability         @1 :Capability;
-        chan                  :union {
-            sender         @2 :import "channel.capnp".Sender;
-            recver         @3 :import "channel.capnp".PeekRecver;
-            closer         @4 :import "channel.capnp".Closer;
-            sendCloser     @5 :import "channel.capnp".SendCloser;
-            sendRecvCloser @6 :import "channel.capnp".PeekableChan;
-        }
+        chan               @2 :import "channel.capnp".PeekableChan;
 
-        # TODO(soon):  process, string, []byte, numerical, AnyPointer, etc.
+        # TODO(soon):  process, string, []byte, ...
     }
 }
 

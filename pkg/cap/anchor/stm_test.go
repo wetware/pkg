@@ -76,7 +76,7 @@ func TestChildren(t *testing.T) {
 	require.NotNil(t, cs)
 
 	for v := cs.Next(); v != nil; v = cs.Next() {
-		children = append(children, v.(anchor.Anchor).Path())
+		children = append(children, v.(anchor.AnchorServer).Path())
 	}
 
 	assert.Len(t, children, 1)

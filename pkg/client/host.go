@@ -34,17 +34,17 @@ type Container interface {
 type dialer vat.Network
 
 func (d dialer) Dial(ctx context.Context, info peer.AddrInfo) (*rpc.Conn, error) {
-	return vat.Network(d).Connect(ctx, info, anchor.AnchorCapability)
+	return vat.Network(d).Connect(ctx, info, cluster.HostCapability)
 }
 
 // Host anchor represents a machine instance.
 type Host struct {
 	dialer dialer
-	host   *anchor.Host
+	host   *cluster.Host
 }
 
 func newErrorHost(err error) Host {
-	return Host{host: &anchor.Host{
+	return Host{host: &cluster.Host{
 		Client: capnp.ErrorClient(err),
 	}}
 }
@@ -56,16 +56,12 @@ func (h Host) Path() string {
 	return fmt.Sprintf("/%s", h.host.Info.ID)
 }
 
-func (h Host) Join(ctx context.Context, peers ...peer.AddrInfo) error {
-	return h.host.Join(ctx, h.dialer, peers)
-}
-
 func (h Host) Ls(ctx context.Context) Iterator {
 	rs, release := h.host.Ls(ctx, h.dialer)
 
-	it := &registerMap{
-		RegisterMap: rs,
-		path:        anchor.NewPath(h.Path()),
+	it := &iterator{
+		Iterator: rs,
+		path:     anchor.NewPath(h.Path()),
 	}
 
 	it.release = func() {
@@ -73,7 +69,7 @@ func (h Host) Ls(ctx context.Context) Iterator {
 		release()
 	}
 
-	runtime.SetFinalizer(it, func(*registerMap) {
+	runtime.SetFinalizer(it, func(*iterator) {
 		release()
 	})
 
@@ -91,13 +87,13 @@ func (h Host) Walk(ctx context.Context, path string) Anchor {
 	}
 
 	r, release := h.host.Walk(ctx, h.dialer, p)
-	runtime.SetFinalizer(&r, func(*anchor.Register) {
+	runtime.SetFinalizer(&r, func(*anchor.Anchor) {
 		release()
 	})
 
-	return register{
-		path:     p,
-		Register: r,
+	return anchorClient{
+		path:   p,
+		Anchor: r,
 	}
 }
 
@@ -116,7 +112,7 @@ func (hs hostSet) Next() bool {
 func (hs hostSet) Anchor() Anchor {
 	return Host{
 		dialer: hs.dialer,
-		host: &anchor.Host{
+		host: &cluster.Host{
 			Info: peer.AddrInfo{
 				ID: hs.RecordStream.Record().Peer(),
 			},
@@ -124,34 +120,34 @@ func (hs hostSet) Anchor() Anchor {
 	}
 }
 
-type registerMap struct {
-	*anchor.RegisterMap
+type iterator struct {
+	*anchor.Iterator
 	release capnp.ReleaseFunc
 	path    anchor.Path
 }
 
-func (it *registerMap) Err() error { return it.RegisterMap.Err }
+func (it *iterator) Err() error { return it.Iterator.Err }
 
-func (it *registerMap) Anchor() Anchor {
-	return register{
-		path:     it.path.WithChild(it.Name),
-		Register: it.Register().AddRef(),
+func (it *iterator) Anchor() Anchor {
+	return anchorClient{
+		path:   it.path.WithChild(it.Name),
+		Anchor: it.Iterator.Anchor().AddRef(),
 	}
 }
 
-type register struct {
+type anchorClient struct {
 	path anchor.Path
-	anchor.Register
+	anchor.Anchor
 }
 
-func (r register) Path() string { return r.path.String() }
+func (r anchorClient) Path() string { return r.path.String() }
 
-func (r register) Ls(ctx context.Context) Iterator {
-	rs, release := r.Register.Ls(ctx)
+func (r anchorClient) Ls(ctx context.Context) Iterator {
+	rs, release := r.Anchor.Ls(ctx)
 
-	it := &registerMap{
-		path:        r.path,
-		RegisterMap: rs,
+	it := &iterator{
+		path:     r.path,
+		Iterator: rs,
 	}
 
 	it.release = func() {
@@ -159,21 +155,21 @@ func (r register) Ls(ctx context.Context) Iterator {
 		release()
 	}
 
-	runtime.SetFinalizer(it, func(*registerMap) {
+	runtime.SetFinalizer(it, func(*iterator) {
 		release()
 	})
 
 	return it
 }
 
-func (r register) Walk(ctx context.Context, path string) Anchor {
+func (r anchorClient) Walk(ctx context.Context, path string) Anchor {
 	if len(path) == 0 {
 		return r
 	}
 
 	var release capnp.ReleaseFunc
-	r.Register, release = r.Register.Walk(ctx, path)
-	runtime.SetFinalizer(&r, func(*register) {
+	r.Anchor, release = r.Anchor.Walk(ctx, anchor.NewPath(path))
+	runtime.SetFinalizer(&r, func(*anchorClient) {
 		release()
 	})
 

@@ -148,12 +148,12 @@ func (t Txn) Children() (memdb.ResultIterator, error) {
 // does not match any existing prefix, a zero-value anchor is returned.
 //
 // This is a read-only operation.
-func (t Txn) WalkLongestSubpath(p Path) (a Anchor, _ error) {
+func (t Txn) WalkLongestSubpath(p Path) (a AnchorServer, _ error) {
 	path := t.sched.root.bind(subpath(p))
 
 	v, err := t.txn.LongestPrefix(t.sched.anchors, "id_prefix", path)
 	if v != nil {
-		a = v.(Anchor)
+		a = v.(AnchorServer)
 	}
 
 	return a, err
@@ -163,22 +163,22 @@ func (t Txn) WalkLongestSubpath(p Path) (a Anchor, _ error) {
 // does not exist. It does not attempt to create any missing anchors along p.
 //
 // This is potentially a write operation.
-func (t Txn) GetOrCreate(p Path) (Anchor, error) {
+func (t Txn) GetOrCreate(p Path) (AnchorServer, error) {
 	path := t.sched.root.bind(subpath(p))
 	v, err := t.txn.First(t.sched.anchors, "id", path)
 	if err != nil {
-		return Anchor{}, err
+		return AnchorServer{}, err
 	}
 
 	if v != nil {
-		return v.(Anchor), nil
+		return v.(AnchorServer), nil
 	}
 
 	return t.createAnchor(path)
 }
 
-func (t Txn) createAnchor(path Path) (a Anchor, err error) {
-	a = Anchor{
+func (t Txn) createAnchor(path Path) (a AnchorServer, err error) {
+	a = AnchorServer{
 		sched:  t.sched.WithSubpath(path),
 		anchor: &a,
 	}
@@ -191,14 +191,14 @@ func children(it memdb.ResultIterator, parent Path) *memdb.FilterIterator {
 	return memdb.NewFilterIterator(it, func(v interface{}) bool {
 		// NOTE:  filter is unusual in that it removes elements
 		//        for which the function returns *true*.
-		return !parent.IsChild(v.(Anchor).Path())
+		return !parent.IsChild(v.(AnchorServer).Path())
 	})
 }
 
 type index struct{}
 
 func (index) FromObject(obj interface{}) (bool, []byte, error) {
-	if a, ok := obj.(Anchor); ok {
+	if a, ok := obj.(AnchorServer); ok {
 		return true, a.sched.root.index(), nil
 	}
 

@@ -22,31 +22,31 @@ type NameSetter interface {
 	SetName(string) error
 }
 
-// Anchor is a shared-memory capablity. Anchors form a tree
-// where each node may have zero-or-one value, and may have
-// zero-or-more children.   See Path for additional details
-// about the tree semantics of Anchor.
-type Anchor struct {
+// AnchorServer is a shared-memory capablity.  Anchors form
+// a tree where each node may have zero-or-one value, and
+// zero-or-more children.  See Path for additional details
+// about the tree semantics of AnchorServer.
+type AnchorServer struct {
 	sched  Scheduler
 	anchor anchor.Anchor_Server
 	*server.Policy
 }
 
 // Root returns a root server anchor
-func Root(a anchor.Anchor_Server) Anchor {
+func Root(a anchor.Anchor_Server) AnchorServer {
 	return NewAnchor(NewScheduler(root), a)
 }
 
-func NewAnchor(sched Scheduler, a anchor.Anchor_Server) Anchor {
-	return Anchor{
+func NewAnchor(sched Scheduler, a anchor.Anchor_Server) AnchorServer {
+	return AnchorServer{
 		sched:  sched,
 		anchor: a,
 	}
 }
 
-func (a Anchor) Client() *capnp.Client {
+func (a AnchorServer) Client() *capnp.Client {
 	switch s := a.anchor.(type) {
-	case *Anchor, Anchor:
+	case *AnchorServer, AnchorServer:
 		c := anchor.Anchor_ServerToClient(s, a.Policy)
 		return c.Client
 
@@ -59,7 +59,7 @@ func (a Anchor) Client() *capnp.Client {
 	}
 }
 
-func (a Anchor) Shutdown() {
+func (a AnchorServer) Shutdown() {
 	// Optimistic strategy:  first check if a should be scrubbed using a
 	//                       read-only transaction. Acquire the lock iff
 	//                       a scrub takes place.
@@ -75,16 +75,16 @@ func (a Anchor) Shutdown() {
 	}
 }
 
-func (a Anchor) Name() string {
+func (a AnchorServer) Name() string {
 	name := a.Path().bind(last)
 	return trimmed(name.String())
 }
 
-func (a Anchor) Path() Path {
+func (a AnchorServer) Path() Path {
 	return a.sched.root
 }
 
-func (a Anchor) Ls(ctx context.Context, call anchor.Anchor_ls) error {
+func (a AnchorServer) Ls(ctx context.Context, call anchor.Anchor_ls) error {
 	res, err := call.AllocResults()
 	if err != nil {
 		return err
@@ -97,9 +97,9 @@ func (a Anchor) Ls(ctx context.Context, call anchor.Anchor_ls) error {
 		return err
 	}
 
-	var children []Anchor
+	var children []AnchorServer
 	for v := it.Next(); v != nil; v = it.Next() {
-		children = append(children, v.(Anchor))
+		children = append(children, v.(AnchorServer))
 	}
 
 	// skip allocation if there are no children
@@ -121,7 +121,7 @@ func (a Anchor) Ls(ctx context.Context, call anchor.Anchor_ls) error {
 	return nil
 }
 
-func (a Anchor) Walk(ctx context.Context, call anchor.Anchor_walk) error {
+func (a AnchorServer) Walk(ctx context.Context, call anchor.Anchor_walk) error {
 	res, err := call.AllocResults()
 	if err != nil {
 		return err
@@ -174,7 +174,7 @@ func (a Anchor) Walk(ctx context.Context, call anchor.Anchor_walk) error {
 // ensurePath traverses the path and construts any missing anchors along
 // the way.  The argument 'tx' MUST be a write transaction.  Callers are
 // are responsible for calling Commit(), Abort() or Finish().
-func (a Anchor) ensurePath(tx Txn, path Path) (_ Anchor, err error) {
+func (a AnchorServer) ensurePath(tx Txn, path Path) (_ AnchorServer, err error) {
 	for p, name := path.Next(); name != ""; p, name = p.Next() {
 		child := a.Path().WithChild(name)
 		if a, err = tx.GetOrCreate(child); err != nil {
@@ -185,7 +185,7 @@ func (a Anchor) ensurePath(tx Txn, path Path) (_ Anchor, err error) {
 	return a, err
 }
 
-func (a Anchor) Bind(target AnchorSetter) (err error) {
+func (a AnchorServer) Bind(target AnchorSetter) (err error) {
 	anchor := anchor.Anchor{Client: a.Client()}
 	if err = target.SetAnchor(anchor); err != nil {
 		return

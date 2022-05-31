@@ -1,4 +1,4 @@
-package anchor_test
+package cluster_test
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/wetware/ww/pkg/cap/anchor"
+	"github.com/wetware/ww/pkg/cap/cluster"
 )
 
 func TestLs(t *testing.T) {
@@ -19,9 +20,9 @@ func TestLs(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	h := anchor.Host{
+	h := cluster.Host{
 		// pre-resolved; can pass nil Dialer/MergeStrategy to methods.
-		Client: new(anchor.HostServer).Client(),
+		Client: new(cluster.HostServer).Client(),
 	}
 
 	cs, release := h.Ls(ctx, nil)
@@ -35,16 +36,16 @@ func TestHost_Walk(t *testing.T) {
 
 	/*
 		This is a simple test that asserts a new host can walk to an
-		arbitrary path, that the resulting anchor has no children,
+		arbitrary path, that the resulting cluster has no children,
 		and that the host has the expected number of children.
 	*/
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	h := anchor.Host{
+	h := cluster.Host{
 		// pre-resolved; can pass nil Dialer/MergeStrategy to methods.
-		Client: new(anchor.HostServer).Client(),
+		Client: new(cluster.HostServer).Client(),
 	}
 
 	// Walk to /foo/bar

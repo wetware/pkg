@@ -13,7 +13,6 @@ import (
 )
 
 type Value struct{ capnp.Struct }
-type Value_chan Value
 type Value_Which uint16
 
 const (
@@ -34,34 +33,6 @@ func (w Value_Which) String() string {
 
 	}
 	return "Value_Which(" + strconv.FormatUint(uint64(w), 10) + ")"
-}
-
-type Value_chan_Which uint16
-
-const (
-	Value_chan_Which_sender         Value_chan_Which = 0
-	Value_chan_Which_recver         Value_chan_Which = 1
-	Value_chan_Which_closer         Value_chan_Which = 2
-	Value_chan_Which_sendCloser     Value_chan_Which = 3
-	Value_chan_Which_sendRecvCloser Value_chan_Which = 4
-)
-
-func (w Value_chan_Which) String() string {
-	const s = "senderrecverclosersendClosersendRecvCloser"
-	switch w {
-	case Value_chan_Which_sender:
-		return s[0:6]
-	case Value_chan_Which_recver:
-		return s[6:12]
-	case Value_chan_Which_closer:
-		return s[12:18]
-	case Value_chan_Which_sendCloser:
-		return s[18:28]
-	case Value_chan_Which_sendRecvCloser:
-		return s[28:42]
-
-	}
-	return "Value_chan_Which(" + strconv.FormatUint(uint64(w), 10) + ")"
 }
 
 // Value_TypeID is the unique identifier for the type Value.
@@ -119,132 +90,23 @@ func (s Value) SetCapability(c *capnp.Client) error {
 	in := capnp.NewInterface(seg, seg.Message().AddCap(c))
 	return s.Struct.SetPtr(0, in.ToPtr())
 }
-func (s Value) Chan() Value_chan { return Value_chan(s) }
-
-func (s Value) SetChan() {
-	s.Struct.SetUint16(0, 2)
-}
-
-func (s Value_chan) Which() Value_chan_Which {
-	return Value_chan_Which(s.Struct.Uint16(2))
-}
-func (s Value_chan) Sender() channel.Sender {
-	if s.Struct.Uint16(2) != 0 {
-		panic("Which() != sender")
-	}
-	p, _ := s.Struct.Ptr(0)
-	return channel.Sender{Client: p.Interface().Client()}
-}
-
-func (s Value_chan) HasSender() bool {
-	if s.Struct.Uint16(2) != 0 {
-		return false
-	}
-	return s.Struct.HasPtr(0)
-}
-
-func (s Value_chan) SetSender(v channel.Sender) error {
-	s.Struct.SetUint16(2, 0)
-	if !v.Client.IsValid() {
-		return s.Struct.SetPtr(0, capnp.Ptr{})
-	}
-	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(v.Client))
-	return s.Struct.SetPtr(0, in.ToPtr())
-}
-
-func (s Value_chan) Recver() channel.PeekRecver {
-	if s.Struct.Uint16(2) != 1 {
-		panic("Which() != recver")
-	}
-	p, _ := s.Struct.Ptr(0)
-	return channel.PeekRecver{Client: p.Interface().Client()}
-}
-
-func (s Value_chan) HasRecver() bool {
-	if s.Struct.Uint16(2) != 1 {
-		return false
-	}
-	return s.Struct.HasPtr(0)
-}
-
-func (s Value_chan) SetRecver(v channel.PeekRecver) error {
-	s.Struct.SetUint16(2, 1)
-	if !v.Client.IsValid() {
-		return s.Struct.SetPtr(0, capnp.Ptr{})
-	}
-	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(v.Client))
-	return s.Struct.SetPtr(0, in.ToPtr())
-}
-
-func (s Value_chan) Closer() channel.Closer {
-	if s.Struct.Uint16(2) != 2 {
-		panic("Which() != closer")
-	}
-	p, _ := s.Struct.Ptr(0)
-	return channel.Closer{Client: p.Interface().Client()}
-}
-
-func (s Value_chan) HasCloser() bool {
-	if s.Struct.Uint16(2) != 2 {
-		return false
-	}
-	return s.Struct.HasPtr(0)
-}
-
-func (s Value_chan) SetCloser(v channel.Closer) error {
-	s.Struct.SetUint16(2, 2)
-	if !v.Client.IsValid() {
-		return s.Struct.SetPtr(0, capnp.Ptr{})
-	}
-	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(v.Client))
-	return s.Struct.SetPtr(0, in.ToPtr())
-}
-
-func (s Value_chan) SendCloser() channel.SendCloser {
-	if s.Struct.Uint16(2) != 3 {
-		panic("Which() != sendCloser")
-	}
-	p, _ := s.Struct.Ptr(0)
-	return channel.SendCloser{Client: p.Interface().Client()}
-}
-
-func (s Value_chan) HasSendCloser() bool {
-	if s.Struct.Uint16(2) != 3 {
-		return false
-	}
-	return s.Struct.HasPtr(0)
-}
-
-func (s Value_chan) SetSendCloser(v channel.SendCloser) error {
-	s.Struct.SetUint16(2, 3)
-	if !v.Client.IsValid() {
-		return s.Struct.SetPtr(0, capnp.Ptr{})
-	}
-	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(v.Client))
-	return s.Struct.SetPtr(0, in.ToPtr())
-}
-
-func (s Value_chan) SendRecvCloser() channel.PeekableChan {
-	if s.Struct.Uint16(2) != 4 {
-		panic("Which() != sendRecvCloser")
+func (s Value) Chan() channel.PeekableChan {
+	if s.Struct.Uint16(0) != 2 {
+		panic("Which() != chan")
 	}
 	p, _ := s.Struct.Ptr(0)
 	return channel.PeekableChan{Client: p.Interface().Client()}
 }
 
-func (s Value_chan) HasSendRecvCloser() bool {
-	if s.Struct.Uint16(2) != 4 {
+func (s Value) HasChan() bool {
+	if s.Struct.Uint16(0) != 2 {
 		return false
 	}
 	return s.Struct.HasPtr(0)
 }
 
-func (s Value_chan) SetSendRecvCloser(v channel.PeekableChan) error {
-	s.Struct.SetUint16(2, 4)
+func (s Value) SetChan(v channel.PeekableChan) error {
+	s.Struct.SetUint16(0, 2)
 	if !v.Client.IsValid() {
 		return s.Struct.SetPtr(0, capnp.Ptr{})
 	}
@@ -274,33 +136,7 @@ func (p Value_Future) Capability() *capnp.Future {
 	return p.Future.Field(0, nil)
 }
 
-func (p Value_Future) Chan() Value_chan_Future { return Value_chan_Future{p.Future} }
-
-// Value_chan_Future is a wrapper for a Value_chan promised by a client call.
-type Value_chan_Future struct{ *capnp.Future }
-
-func (p Value_chan_Future) Struct() (Value_chan, error) {
-	s, err := p.Future.Struct()
-	return Value_chan{s}, err
-}
-
-func (p Value_chan_Future) Sender() channel.Sender {
-	return channel.Sender{Client: p.Future.Field(0, nil).Client()}
-}
-
-func (p Value_chan_Future) Recver() channel.PeekRecver {
-	return channel.PeekRecver{Client: p.Future.Field(0, nil).Client()}
-}
-
-func (p Value_chan_Future) Closer() channel.Closer {
-	return channel.Closer{Client: p.Future.Field(0, nil).Client()}
-}
-
-func (p Value_chan_Future) SendCloser() channel.SendCloser {
-	return channel.SendCloser{Client: p.Future.Field(0, nil).Client()}
-}
-
-func (p Value_chan_Future) SendRecvCloser() channel.PeekableChan {
+func (p Value_Future) Chan() channel.PeekableChan {
 	return channel.PeekableChan{Client: p.Future.Field(0, nil).Client()}
 }
 
@@ -1254,72 +1090,61 @@ func (p Anchor_walk_Results_Future) Anchor() Anchor {
 	return Anchor{Client: p.Future.Field(0, nil).Client()}
 }
 
-const schema_efb5a91f96d44de3 = "x\xda\xa4U]h\x1cU\x18\xfd\xce\xdc\xd9\x99\xa9\xec" +
-	"\xba\xb9\x99\xb5\xfe\xd4\xb2\xa5MM\x0d\x18\x9aD\xa8\xc4" +
-	"\xca&\x86P[\xaa\xecMM\x8d}\x90\x8e\xbb\x83\xbb" +
-	"8\xd9Mw7\x7f\xe2\xa2\x11\xa3-T[\xa1\x06\x8c" +
-	"\xf1%/\xe2\x83\xad\x06\x03\x16i\xa5\xf5\xc1\xa2\x85\xc4" +
-	"\x9f>h_\x94Fh\xc4\xb4 \x08\x1a\xad#w6" +
-	"\xd3\x1d\xb7Q\x1f|\xca\xe4~g\xcfw\xce\xf7s\xef" +
-	"\xd6\xcbJ\x87\xda\x12\x89\x86I\x11\x87C\x9akY\xa7" +
-	"\xaf\xb6m\x98\x18'\x1e\x03Q\x08:Q\xdbR\xe8&" +
-	"\x10\xcc_B\x09\x82;uq\xdf\\\xd7\x86\x81#A" +
-	"\xc0-\x9a\x07X\xafI\xc0\xe4\xce'\xb6G^\x1a?" +
-	"B<\xc2\xdcK\x0f\x7f=\x11\x7fg\xf6*\x11\xcc\x07" +
-	"\xb4i\xb3[\xd3\x89\xccNm\x87\x99\x95_\xaesn" +
-	"j\xb8o\xfd\xd9\xe3A6Qa{\xdcc; \xfa" +
-	"\xac\xc6\xe5\xe8\xc9 `TS$\xa0\xec\x01\xbe\xe7\x8f" +
-	"\x15\xc7\xe7Cg*\x00U\xd2\xbf\xa5\xfdL\xaa\xfbF" +
-	"K\xef\xcc\x9d#\xb7}*\x03\xee\xc6o^]\xb3\xb0" +
-	"\xad~\x81B\x8aD\x8ci_\x9a\xafxR\x0ei\xc3" +
-	"\x04W/\xa7\xe3C\xa7\x8f\xcf\x91\x88\x00U\xd1\xdd\xd0" +
-	"\x19\x91\xf9\x836i.y\xe8E\xed\x04\xc1\xbd\xdf\x1e" +
-	"}\xf7\x83\xba\xf6\xf9\x1b\x1cf\xf5i\xf3\x80.\x81\xfd" +
-	"\xfa\x0e\xf3u\xf9\xe5\xee\x7f\xe1\xe8\xb73\xce\x83_U" +
-	"\xf5\xb5\x95\xf5z\x90\xea\xee\xbfkmo\"w\xfe\x02" +
-	"\x09\x13\x01\x09\xbd\xd0\x11\x02L[?Kh\xb3\xf58" +
-	"dQ\xd7mZw\xed\xbdS\x17oHY6f\xcc" +
-	"q\xc3\xf3d\xe8\xe6\x98\xd1H\xe4\xf6\x0d\xd7?w\xec" +
-	"\xc4\xe6K\x81\x9a\x99\xa3\xc6\xb2\x87\x96%\xbb^\x8cZ" +
-	"\xb2\xf7\x8di\xf3\xa4q+\x91y\xc6x\xd9\xe4k\xa4" +
-	"\xfes?\xe9\x13s\x9b.\\\x09\xe8\xff\xcdP@\xdf" +
-	"\xb9V.\x95\xc9\x17\x9aS\xcc\x1a\xc8\x0d\xb4\xef\xce[" +
-	"i\xbb\xd0\xec\xe4\xadtC\x8f]\x1ctJE\"\xa1" +
-	"2\x95H\x05\x11\x8f\xb4\x12\x09\x83A\xc4\x14\xc4\x87," +
-	"g\xd0F]\xd54\x01u\x84\x1a\xca=\xa5|\xc1." +
-	"4\x17\xe5\x9f\x86\xa4U\xb0\xfa\xff\x07%|\x95z\xda" +
-	".$\x01\xa1\xb2P\xc0\x1e\xfc\xc1\xe7\xbc\x89\x14\x1e\xd2" +
-	"\xa3\xd2I\x07\x92\xa8U\xd5Y\xf9o\xd8r\x9e^\xdd" +
-	"h{UU\xa2\xf2S\xf0j\xcd\x09\xe0\xf4o\x9c+" +
-	"F\x83\x8cMU\xc6\xe8\x80U\xca L\x0a\xc2\x01\x16" +
-	"%\xc8\xe2\x14\x1b\x92q\x8fd\xf5xW&\xeb -" +
-	"K`\\Oq\xb7L\xd1\xc0 \xb6*\xe0@\x0c\xf2" +
-	"\xf0\x1e\xe9d\x0b\x83\xb8WA4g\xf5\xdb~\xde\xff" +
-	"\xb6U\xa9\xf6^\xcba\x83\xb6\xcc\x14fj\xd8u\xbd" +
-	"T\xdd\x1b\x89D\x07\x83\xd8\xad \x82?\xddJ\xae\x9d" +
-	"\xfb\x88\xc4C\x0c\xe2Q\x05\x11\xe5\x9a\x0bT\xf7\x83\x8b" +
-	"&R\xf4\\\xd6!\xcdMY\x03\xd6\x93Y'K\xac" +
-	"4\x8az\x95\x11PO\x88\xa62V\xae&\xf9\x9eR" +
-	"^/\x04[\xed\xdf\\\xf0W\x92\xf3V\xaf\xd5qo" +
-	"\xc2V\xeb\xf5\xdf&\xb0\xd2l\xd4Vu\xaf\x1c\xbcf" +
-	")\x80D\xcc\xb3\x19\x83B\xc4\xcb\xb2z#\x0c\xe2E" +
-	"\xdf'#\xe2c\xf2\xf4Y\x06q\xb0\xe23\x06\x95\x88" +
-	"\x8f\xcb\xd3\xe7\x19\xc4a\x05\x11\xf6\x87\x1bC\x88\x88\x1f" +
-	"\x9259\xc8 \x8e)\x88\xa8\xbf\xbb1hD\xfc\xb5" +
-	"g\x88\xc4Q\x061\xa5 Q\xb4si[6\xe2\xca" +
-	"\xda\x1f\xef\x8b-}ty\xa5\x11\x89\x82\x9d\x1a\xf2\x02" +
-	"\xdb\xd7\xcc\x9e\xff\xf5\xe3]\x93~ \xe5\xe4\x8b^\xe0" +
-	"\x93\xd1m\x91\x0f\x17\xe6\x97\xfd\xd6I\xaa.'_$" +
-	"\xe6\x85\x1fY\x8c\x95'\xbfx{1\x18\xee\xb1SC" +
-	"\x94\xe8\xf2\x19F\xc6N\xbd\xf9\xd9\xe7\x8d\xb3\xab7\xbf" +
-	"\xc7~*\x9e-\x96\xbc\x0e$YH\x18\x08\xbc\x0dD" +
-	"\xd5[\x94\xe8\x1f\xe7\xb8'QY\xb0\xe02\xec\"\x12" +
-	"a\x06\xb1E\x81\x9b\xcad\x9dt\xc1\xce\x11\x11n&" +
-	"$\x19PW\xbd\xf8\x09\xf2\xb0FVg.\xa5g\xf2" +
-	"\x05\xa1\x02\x81'\x02\xadq\xb9\x16iax\xa3\xe2?" +
-	"*\xf0\xafR\xder\x07)|\xb3\x8e\xea\x8b\x04\xff\xed" +
-	"\xe2\xb7\xcb\x1b#\xa23\xa7\xd8\x81\xa8\xdc\xe1\xd5F)" +
-	"x?\xae\xac\xf8_\x01\x00\x00\xff\xff\x9f\x85\x182"
+const schema_efb5a91f96d44de3 = "x\xda\xa4TMh\\U\x18\xfd\xce\xbdo\xde\x8d:" +
+	"\xe3\xe4\xce\x8bh\xad2\xa5MH-44\x89 D" +
+	"%\xa9\xa5\xd4J\x0asS\xa3I\xa1\xe2u\xe6\xe1\x0c" +
+	"\xbe\xccL\xdfL\x9av!\xa2\x10\x7f6VQ\x02\x8d" +
+	"]e\xe7\xc2V\x82E\xbaH!n\xac\xbaH\xfd[" +
+	"h7J\xbb)\x88E\x97\x85z\xe5\xbe\xe9\xf4=\xa7" +
+	"\xa3.\xba\x9a7\xef\x9ew\xbe\xf3}\xdf\xb9g\xd7\x07" +
+	"l\xc2\x19\xce|~\x0f1\xf5v\xca5Z\x9f\xbf6" +
+	"\xbaei\x91d\x1f\x88R\x10D\xa3\xeb\xa9\xbbA\xf0" +
+	"\xbeJ\x8d\x13\xcc\xa9K\x876\xf6l\xa9\x9fH\x02\xae" +
+	"\xb6\x00\x7fD\x80\xe5\xfd/<\x91ys\xf1\x04\xc9\x0c" +
+	"7\x97\x0f\xfc\xb0\x94\xff\xf8\xec5\"x\xd2]\xf16" +
+	"\xb9\x82\xc8\xbb\xcf\xdd\xe7=i\x9fLp\xe1\xd4\xc2\xcc" +
+	"\xc3_\x9cN\xb2\x0d\xb8\x11\xdbN\xd7\xb2\x1dQ3z" +
+	"\xf0z\xf6\\\x12p\xc0e\x16\xa0\"\xc0\xaf\xf2\xf9\xc6" +
+	"\xe2\xc5\xd4z\x0b\xe0X\xfa#\xee\x9f\xe4\x98\x93\xc3\xd3" +
+	"\xab\x0f\x1d{\xe0K{`\xb6\xfe\xf4\xee]W\x1e\xcb" +
+	"]\xa1\x14\xb3\x88i\xf7;OGR\x0e\xbb\x0b\x04#" +
+	"^-\xe5\x8f\x9e?\xbdA*\x03\xc4\xa2\xf7Bp\"" +
+	"\xef\x9c\xbb\xec\xadG\xe85\xf7\x0c\xc1<\xee\x1f\xff\xe4" +
+	"\xb3\xde\xb1\x8b\xb7u8+V<-\"Z\xb1\xcf[" +
+	"\xb4O\xe6\xc57\xde\xfby5x\xea\xfbX\xdf\xe8\x9c" +
+	"\xc8\x81\x1c\xb3\xbcy\xdb\xe6\x1b\x9f\xae]\xba\x8dfZ" +
+	"\xacz\x87#\x9aY!\xbcY1Hdf\x16r\xaf" +
+	"}xf\xe0rb\x0e\x9e\x12\xd7#\xb4\x1d\xc3\xad\x06" +
+	";\xc9\xde\x11+\xde\xfb\xe2~\"\xef\xa4x\xcb\xbb\x1a" +
+	"i\xba\xf0\x9bX\xda\xd8\xf6\xe3\xef\x09M\xdf\x0a\x06\xfa" +
+	"\xc5\xe8j\xb1\\\x0b\x87\x8a\\\xd7\xab\xf5\xb1\xc9\x9a." +
+	"\xf9\xe1PP\xd3\xa5\xfe)\xbf1\x1f4\x1bD\xca\xe1" +
+	"\x0e\x91\x03\"\x99\x19!R=\x1c\xaa\x8f!\x7fT\x07" +
+	"\xf3>z\xe3Y\x12\xd0K\xe8\xa0<\xd8\xac\x85~8" +
+	"\xd4\xb0?\xfd\x05\x1d\xea\xb9;\xa0D[\xa5(\xf9a" +
+	"\x01P\x0eO%\xdaC\xdb\xccR\xee &S\"k" +
+	";\x99@\x01\x9d\xaav\xb7\xfe-\xe8\xe0\x95\xee\x8d\x8e" +
+	"\xc5\xaa\xc6[\x9fB\xc63'@\xd2\x7fq\xdel4" +
+	"\xc9\xb8#f\xcc\xd6u\xb3\x8c41\xa4\x13,,\xc9" +
+	"\x124\xfa\x0b\xf9\x88\xa4\xfb\xf9\x9er%@\xc9\x8e\xa0" +
+	"\xe7V\x89Gl\x89~\x0e\xb5\x8bA\x02}\xb0/w" +
+	"\xdaN\xb6s\xa8G\x19\xb2U=\xe7\xb7\xeb\xfe\x7f[" +
+	"\xadi?\xa7\x03>\xef\xdbJi\xee\xa4\x8d\x89J\xed" +
+	"\xddJ\xa4&8\xd4$C\x06\x7f\x99V\xad\xfd\x87\x88" +
+	"\xd4\xd3\x1c\xeaY\x86\x0c\xbba\xfa\xc0\x88\xa4\xb2\xb2&" +
+	"9\xd4\x0c\x83\xa8V\x02rMQ\xd7\xf5K\x95\xa0B" +
+	"\xbcy\x1c9\x87\x13\x90#d\x8be]\x854\xc7^" +
+	"_\xfb\xe8\xebo\x06\xcfv\xd7s\xb0Y\x13ar\xfb" +
+	"\xed\x80B\xfb\xe6I9\x12m?\x1f\x99\xae\xdb\xfa\xff" +
+	"a\xca\xd6\xfe\xd1\xe8\xa83\xe5\xbf\x9c\xaf4\x9aQ\xa5" +
+	"\x02O\xa9\x1e$\xa2\x8e(\x0e\x05\xa2\x7f]\xe1\xd4x" +
+	"\xcb[I\x1f<C\xa4\xd2\x1cj;\x83)\x96+A" +
+	")\xf4\xabD\x84{\x09\x05\x0e\xf4\xc69F\xb0/;" +
+	"d\xed\xae\x16E\xb9\x16*\x07H$\x1eF\xf2\xd6\x11" +
+	"%\xd5\x13\x8d\xa4\x9d\x91h\xa7\x88\x1c~\x90\x98\x1c\x10" +
+	"\x88\x03\x16\xed(\x96\x9b\xece\xc9\x08\x1e4&\x90\xb5" +
+	"\xf6\xed6\xb2d4\xdct\xf7\xdf\x01\x00\x00\xff\xffI" +
+	"(\xb9\xdf"
 
 func init() {
 	schemas.Register(schema_efb5a91f96d44de3,
@@ -1333,7 +1158,6 @@ func init() {
 		0xcfaebe761f647d07,
 		0xd03a10b4ad79653b,
 		0xd3426cb2da908260,
-		0xd5cc6e3f55162660,
 		0xdbbdb0fd1b231b9a,
 		0xe325af947f127758,
 		0xe41237e4098ed922,

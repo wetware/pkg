@@ -12,7 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/wetware/ww/pkg/cap/anchor"
 	"github.com/wetware/ww/pkg/cap/cluster"
-	pscap "github.com/wetware/ww/pkg/cap/pubsub"
+	"github.com/wetware/ww/pkg/cap/pubsub"
 	"github.com/wetware/ww/pkg/vat"
 )
 
@@ -23,8 +23,10 @@ var ErrDisconnected = errors.New("disconnected")
 type Node struct {
 	vat  vat.Network
 	conn *rpc.Conn
-	ps   pscap.PubSub // conn's bootstrap capability
-	view cluster.View
+
+	// capabilities
+	ps   pubsub.PubSub
+	host cluster.Host
 }
 
 // String returns the cluster namespace
@@ -47,7 +49,7 @@ func (n Node) Bootstrap(ctx context.Context) error {
 		return err
 	}
 
-	return n.view.Client.Resolve(ctx)
+	return n.host.Client.Resolve(ctx)
 }
 
 // Done returns a read-only channel that is closed when
@@ -75,7 +77,10 @@ func (n Node) Join(ctx context.Context, topic string) Topic {
 func (n Node) Path() string { return "/" }
 
 func (n Node) Ls(ctx context.Context) Iterator {
-	it := n.view.Iter(ctx)
+	f, release := n.host.View(ctx, nil)
+	defer release()
+
+	it := f.View().Iter(ctx)
 	runtime.SetFinalizer(it, func(it *cluster.RecordStream) {
 		it.Finish()
 	})
@@ -105,6 +110,6 @@ func (n Node) Walk(ctx context.Context, path string) Anchor {
 
 	return Host{
 		dialer: dialer(n.vat),
-		host:   &anchor.Host{Info: peer.AddrInfo{ID: id}},
+		host:   &cluster.Host{Info: peer.AddrInfo{ID: id}},
 	}.Walk(ctx, p.String())
 }

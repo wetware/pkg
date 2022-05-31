@@ -6,9 +6,6 @@ $Go.package("cluster");
 $Go.import("github.com/wetware/ww/internal/api/cluster");
 
 
-using PeerID = Text;
-
-
 interface View {
     iter   @0 (handler :Sender) -> ();
     lookup @1 (peerID :PeerID) -> (record :Record, ok :Bool);
@@ -19,16 +16,11 @@ interface View {
         seq  @2 :UInt64;
     }
  
+    using PeerID = Text;
     using Sender = import "channel.capnp".Sender;
 }
 
-interface Joiner {
-    join @0 (peers :List(AddrInfo)) -> ();
+
+interface Host extends(import "anchor.capnp".Anchor) {
+    view @0 () -> (view :View);
 }
-
-struct AddrInfo {
-    id    @0 :PeerID;
-    addrs @1 :List(Data);
-}
-
-
