@@ -1,9 +1,8 @@
 package client
 
 import (
+	"encoding/json"
 	"fmt"
-	"path"
-	"strings"
 
 	"github.com/urfave/cli/v2"
 	"github.com/wetware/ww/pkg/client"
@@ -11,23 +10,46 @@ import (
 
 func Ls() *cli.Command {
 	return &cli.Command{
-		Name:   "ls",
-		Usage:  "list anchor elements",
+		Name:  "ls",
+		Usage: "list anchor elements",
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:    "json",
+				Usage:   "print results as json",
+				Value:   false,
+				EnvVars: []string{"OUTPUT_JSON"},
+			},
+		},
 		Action: ls(),
 	}
 }
 
 func ls() cli.ActionFunc {
 	return func(c *cli.Context) error {
-		it := node.Ls(c.Context)
-		for it.Next() {
-			fmt.Println(pathString(it.Anchor()))
+		var it = node.Ls(c.Context)
+
+		if c.Bool("json") {
+			return lsJSON(c, it)
 		}
 
-		return it.Err()
+		lsText(c, it)
+
+		return nil
 	}
 }
 
-func pathString(a client.Anchor) string {
-	return path.Clean(fmt.Sprintf("/%s", strings.Join(a.Path(), "/")))
+func lsJSON(c *cli.Context, it client.Iterator) error {
+	var paths []string
+
+	for it.Next() {
+		paths = append(paths, it.Anchor().Path())
+	}
+
+	return json.NewEncoder(c.App.Writer).Encode(paths)
+}
+
+func lsText(c *cli.Context, it client.Iterator) {
+	for it.Next() {
+		fmt.Println(it.Anchor().Path())
+	}
 }

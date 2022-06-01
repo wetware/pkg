@@ -162,14 +162,6 @@ func (config serverConfig) Logger() log.Logger {
 	return config.Log.With(config.Vat)
 }
 
-func (config serverConfig) MergeStrategy() mergeFromPeX {
-	return mergeFromPeX{
-		ns:  config.Vat.NS,
-		pex: config.PeX,
-		dht: config.DHT,
-	}
-}
-
 func (config serverConfig) ClusterOpts() []cluster.Option {
 	return []cluster.Option{
 		cluster.WithMeta(nil)}
@@ -182,7 +174,6 @@ func (config serverConfig) SetCloser(c io.Closer) {
 func node(c *cli.Context, config serverConfig) (*server.Node, error) {
 	n, err := server.New(c.Context, config.Vat, config.PubSub,
 		server.WithLogger(config.Logger()),
-		server.WithMerge(config.MergeStrategy()),
 		server.WithClusterConfig(config.ClusterOpts()...))
 
 	if err == nil {

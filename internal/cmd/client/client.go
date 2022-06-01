@@ -8,9 +8,9 @@ import (
 
 var subcommands = []*cli.Command{
 	Ls(),
-	Join(),
 	Publish(),
 	Subscribe(),
+	Discover(),
 }
 
 func Command() *cli.Command {

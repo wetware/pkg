@@ -137,7 +137,7 @@ func TestDialer(t *testing.T) {
 			Host: h,
 		}
 		svr.Export(pubsub.Capability, mockPubSub{})
-		svr.Export(cluster.ViewCapability, mockView{})
+		svr.Export(cluster.HostCapability, mockView{})
 
 		n, err := client.Dialer{
 			Vat:  clt,
@@ -167,7 +167,7 @@ func TestDialer(t *testing.T) {
 			Host: h,
 		}
 		svr.Export(pubsub.Capability, mockPubSub{})
-		svr.Export(cluster.ViewCapability, mockView{})
+		svr.Export(cluster.HostCapability, mockView{})
 
 		clt := newVat()
 		defer clt.Host.Close()
@@ -177,8 +177,8 @@ func TestDialer(t *testing.T) {
 			Boot: boot.StaticAddrs{*host.InfoFromHost(h)},
 		}.Dial(ctx)
 
-		assert.NoError(t, err, "should return without error")
-		assert.NotNil(t, n, "should return non-nil node")
+		require.NoError(t, err, "should return without error")
+		require.NotNil(t, n, "should return non-nil node")
 
 		err = n.Bootstrap(ctx)
 		assert.NoError(t, err, "should bootstrap successfully")
