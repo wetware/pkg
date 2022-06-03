@@ -10,8 +10,8 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/wetware/casm/pkg/boot"
-	"github.com/wetware/ww/pkg/cap/cluster"
-	"github.com/wetware/ww/pkg/cap/pubsub"
+	"github.com/wetware/ww/pkg/ocap/cluster"
+	"github.com/wetware/ww/pkg/ocap/pubsub"
 	"github.com/wetware/ww/pkg/vat"
 )
 

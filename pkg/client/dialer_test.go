@@ -20,9 +20,9 @@ import (
 	"github.com/wetware/casm/pkg/boot"
 	clapi "github.com/wetware/ww/internal/api/cluster"
 	psapi "github.com/wetware/ww/internal/api/pubsub"
-	"github.com/wetware/ww/pkg/cap/cluster"
-	"github.com/wetware/ww/pkg/cap/pubsub"
 	"github.com/wetware/ww/pkg/client"
+	"github.com/wetware/ww/pkg/ocap/cluster"
+	"github.com/wetware/ww/pkg/ocap/pubsub"
 	"github.com/wetware/ww/pkg/vat"
 )
 

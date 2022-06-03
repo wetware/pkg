@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"capnproto.org/go/capnp/v3"
-	"github.com/wetware/ww/pkg/cap/pubsub"
+	"github.com/wetware/ww/pkg/ocap/pubsub"
 )
 
 type Topic struct {

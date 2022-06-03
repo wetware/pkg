@@ -11,7 +11,7 @@ import (
 	"github.com/wetware/casm/pkg/cluster/routing"
 	chan_api "github.com/wetware/ww/internal/api/channel"
 	api "github.com/wetware/ww/internal/api/cluster"
-	"github.com/wetware/ww/pkg/cap/channel"
+	"github.com/wetware/ww/pkg/ocap/channel"
 	"github.com/wetware/ww/pkg/vat"
 	"golang.org/x/sync/semaphore"
 )
