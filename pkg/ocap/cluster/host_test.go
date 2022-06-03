@@ -6,8 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/wetware/ww/pkg/cap/anchor"
-	"github.com/wetware/ww/pkg/cap/cluster"
+	"github.com/wetware/ww/pkg/ocap/anchor"
+	"github.com/wetware/ww/pkg/ocap/cluster"
 )
 
 func TestLs(t *testing.T) {

@@ -11,8 +11,8 @@ import (
 	"github.com/wetware/casm/pkg/cluster"
 	"github.com/wetware/ww/pkg/vat"
 
-	cluster_cap "github.com/wetware/ww/pkg/cap/cluster"
-	pubsub_cap "github.com/wetware/ww/pkg/cap/pubsub"
+	cluster_cap "github.com/wetware/ww/pkg/ocap/cluster"
+	pubsub_cap "github.com/wetware/ww/pkg/ocap/pubsub"
 )
 
 type PubSub interface {

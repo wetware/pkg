@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	pscap "github.com/wetware/ww/pkg/cap/pubsub"
+	pscap "github.com/wetware/ww/pkg/ocap/pubsub"
 )
 
 func TestPubSub_refcount(t *testing.T) {

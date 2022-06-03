@@ -12,7 +12,7 @@ import (
 	"github.com/lthibault/log"
 	ctxutil "github.com/lthibault/util/ctx"
 	api "github.com/wetware/ww/internal/api/pubsub"
-	"github.com/wetware/ww/pkg/cap/channel"
+	"github.com/wetware/ww/pkg/ocap/channel"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/semaphore"
 )
