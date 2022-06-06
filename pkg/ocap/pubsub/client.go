@@ -6,7 +6,6 @@ import (
 	capnp "capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/server"
 
-	"github.com/wetware/ww/internal/api/channel"
 	chan_api "github.com/wetware/ww/internal/api/channel"
 	api "github.com/wetware/ww/internal/api/pubsub"
 )
@@ -66,22 +65,23 @@ func (t Topic) Publish(ctx context.Context, b []byte) error {
 	return err
 }
 
-func (t Topic) Subscribe(ctx context.Context, ch chan<- []byte) (release capnp.ReleaseFunc, err error) {
-	h := channel.Sender_ServerToClient(handler{
+func (t Topic) Subscribe(ctx context.Context, ch chan<- []byte) (capnp.ReleaseFunc, error) {
+	h := chan_api.Sender_ServerToClient(handler{
 		ms:      ch,
 		release: t.AddRef().Release,
 	}, &server.Policy{
 		MaxConcurrentCalls: cap(ch),
 	})
 
-	f, release := api.Topic(t).Subscribe(ctx, sender(h))
+	f, release := api.Topic(t).Subscribe(ctx, sender(h.AddRef()))
 	defer release()
 
-	if _, err = f.Struct(); err == nil {
-		release = h.Release
+	_, err := f.Struct()
+	if err != nil {
+		h.Release()
 	}
 
-	return
+	return h.Release, err
 }
 
 func (t Topic) Release() { t.Client.Release() }
@@ -106,7 +106,7 @@ func (h handler) Shutdown() {
 	h.release()
 }
 
-func (h handler) Send(ctx context.Context, call channel.Sender_send) error {
+func (h handler) Send(ctx context.Context, call chan_api.Sender_send) error {
 	ptr, err := call.Args().Value()
 	if err != nil {
 		return err
