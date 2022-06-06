@@ -21,6 +21,8 @@ func Publish() *cli.Command {
 				Required: true,
 			},
 		},
+		Before: setup(),
+		After:  teardown(),
 		Action: publish(),
 	}
 }
@@ -42,6 +44,8 @@ func Subscribe() *cli.Command {
 				Usage: "format output as hex",
 			},
 		},
+		Before: setup(),
+		After:  teardown(),
 		Action: subscribe(),
 	}
 }

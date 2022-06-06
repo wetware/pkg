@@ -20,6 +20,8 @@ func Ls() *cli.Command {
 				EnvVars: []string{"OUTPUT_JSON"},
 			},
 		},
+		Before: setup(),
+		After:  teardown(),
 		Action: ls(),
 	}
 }

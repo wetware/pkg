@@ -1156,8 +1156,6 @@ github.com/wangjia184/sortedset v0.0.0-20160527075905-f5d03557ba30/go.mod h1:Yko
 github.com/warpfork/go-testmark v0.3.0/go.mod h1:jhEf8FVxd+F17juRubpmut64NEG6I2rgkUhlcqqXwE0=
 github.com/warpfork/go-wish v0.0.0-20200122115046-b9ea61034e4a h1:G++j5e0OC488te356JvdhaM8YS6nMsjLAYF7JxCv07w=
 github.com/warpfork/go-wish v0.0.0-20200122115046-b9ea61034e4a/go.mod h1:x6AKhvSSexNrVSrViXSHUEbICjmGXhtgABaHIySUSGw=
-github.com/wetware/casm v0.0.0-20220512172652-17b91add6bac h1:rJWzpDzccchJUCnRRP3RQGHrHGHD71Ty77zMldY64Ww=
-github.com/wetware/casm v0.0.0-20220512172652-17b91add6bac/go.mod h1:/hPIOdeX+Pnfn6PwHXvT3DTxMovLBY/4+diXleCY9/s=
 github.com/wetware/casm v0.0.0-20220526201835-0f6ca66923d5 h1:yRT6iHjOedGAtIEFwSdR/kcrGIfGMf+rzEMwMKg1cqo=
 github.com/wetware/casm v0.0.0-20220526201835-0f6ca66923d5/go.mod h1:/hPIOdeX+Pnfn6PwHXvT3DTxMovLBY/4+diXleCY9/s=
 github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 h1:EKhdznlJHPMoKr0XTrX+IlJs1LH3lyx2nfr1dOlZ79k=

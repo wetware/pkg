@@ -45,8 +45,5 @@ func Command() *cli.Command {
 			},
 		},
 		Subcommands: subcommands,
-
-		Before: setup(),
-		After:  teardown(),
 	}
 }
