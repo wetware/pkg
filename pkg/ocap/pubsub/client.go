@@ -65,7 +65,7 @@ func (t Topic) Publish(ctx context.Context, b []byte) error {
 	return err
 }
 
-func (t Topic) Subscribe(ctx context.Context, ch chan<- []byte) (capnp.ReleaseFunc, error) {
+func (t Topic) Subscribe(ctx context.Context, ch chan<- []byte) (release capnp.ReleaseFunc, err error) {
 	h := chan_api.Sender_ServerToClient(handler{
 		ms:      ch,
 		release: t.AddRef().Release,
@@ -73,17 +73,15 @@ func (t Topic) Subscribe(ctx context.Context, ch chan<- []byte) (capnp.ReleaseFu
 		MaxConcurrentCalls: cap(ch),
 	})
 
-	f, release := api.Topic(t).Subscribe(ctx, sender(h.AddRef()))
+	f, release := api.Topic(t).Subscribe(ctx, sender(h))
 	defer release()
 
-	_, err := f.Struct()
-	if err != nil {
-		h.Release()
+	if _, err = f.Struct(); err == nil {
+		release = h.Release
 	}
 
-	return h.Release, err
+	return
 }
-
 func (t Topic) Release() { t.Client.Release() }
 
 func (t Topic) AddRef() Topic {
