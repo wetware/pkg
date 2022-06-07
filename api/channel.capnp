@@ -7,7 +7,7 @@ $Go.import("github.com/wetware/ww/internal/api/channel");
 
 
 interface Closer {
-    close @0 () -> ();
+    close @0 ();
 }
 
 
