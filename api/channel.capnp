@@ -12,7 +12,7 @@ interface Closer {
 
 
 interface Sender(T) {
-    send  @0 (value :T) -> ();
+    send  @0 (value :T) -> stream;
 }
 
 
