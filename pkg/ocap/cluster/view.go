@@ -11,6 +11,7 @@ import (
 	"github.com/wetware/casm/pkg/cluster/routing"
 	chan_api "github.com/wetware/ww/internal/api/channel"
 	api "github.com/wetware/ww/internal/api/cluster"
+	"github.com/wetware/ww/pkg/ocap"
 	"github.com/wetware/ww/pkg/ocap/channel"
 	"github.com/wetware/ww/pkg/vat"
 	"golang.org/x/sync/semaphore"
@@ -285,7 +286,7 @@ func (s *RecordStream) requestBatch() bool {
 		case s.signal <- struct{}{}:
 		case <-s.f.Done():
 			if s.release(); s.Err == nil {
-				s.Err = channel.Future(s.f).Err()
+				s.Err = ocap.Future(s.f).Err()
 			}
 
 			return false
@@ -305,7 +306,7 @@ func (s *RecordStream) awaitBatch() {
 
 	case <-s.f.Done():
 		if s.release(); s.Err == nil {
-			s.Err = channel.Future(s.f).Err()
+			s.Err = ocap.Future(s.f).Err()
 		}
 	}
 }
@@ -360,7 +361,7 @@ func (rs recordBatch) At(i int) Record {
 
 type batchStreamer struct {
 	call  api.View_iter
-	fs    map[channel.Future]capnp.ReleaseFunc // in-flight
+	fs    map[ocap.Future]capnp.ReleaseFunc // in-flight
 	batch batch
 }
 
@@ -370,7 +371,7 @@ func newBatchStreamer(call api.View_iter) batchStreamer {
 
 	return batchStreamer{
 		call:  call,
-		fs:    make(map[channel.Future]capnp.ReleaseFunc),
+		fs:    make(map[ocap.Future]capnp.ReleaseFunc),
 		batch: newBatch(),
 	}
 }
