@@ -21,9 +21,14 @@ func (ex Executor) Release() {
 }
 
 // Exec constructs a command and executes it in a native OS process.
-func (ex Executor) Exec(ctx context.Context, c CommandFunc) (Proc, capnp.ReleaseFunc) {
+func (ex Executor) Exec(ctx context.Context, c CommandFunc) Proc {
 	f, release := api.Unix(ex).Exec(ctx, c)
-	return Proc(f.Proc()), release
+	go func() {
+		defer release()
+		<-f.Done()
+	}()
+
+	return Proc(f.Proc())
 }
 
 type FutureProc api.Executor_exec_Results_Future

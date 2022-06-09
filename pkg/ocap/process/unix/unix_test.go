@@ -26,8 +26,7 @@ func TestStdout(t *testing.T) {
 	cmd := unix.Command(nil, "echo", "-n", expected).
 		Bind(unix.Stdout(buf))
 
-	p, release := exec.Exec(ctx, cmd)
-	defer release()
+	p := exec.Exec(ctx, cmd)
 
 	err := p.Wait(ctx)
 	require.NoError(t, err)
@@ -49,8 +48,7 @@ func TestStderr(t *testing.T) {
 	cmd := unix.Command(nil, "sh", "-c", subcmd).
 		Bind(unix.Stderr(buf))
 
-	p, release := exec.Exec(ctx, cmd)
-	defer release()
+	p := exec.Exec(ctx, cmd)
 
 	err := p.Wait(ctx)
 	require.NoError(t, err)
@@ -72,8 +70,7 @@ func TestStderr(t *testing.T) {
 // 	cmd := unix.Command(nil, "cat").
 // 		Bind(unix.Stdout(buf))
 
-// 	p, release := exec.Exec(ctx, cmd)
-// 	defer release()
+// 	p := exec.Exec(ctx, cmd)
 
 // 	stdin, release := p.Stdin(ctx)
 // 	defer release()
