@@ -95,7 +95,7 @@ func (s Stream) Release() {
 // StreamWriter.Close() resolves, or after the last client reference
 // is released, whichever comes first.
 func New(w io.Writer, p *server.Policy) Stream {
-	s := &sriter{Writer: w}
+	s := &swriter{Writer: w}
 	return Stream(iostream.Stream_ServerToClient(s, p))
 }
 
@@ -163,17 +163,17 @@ func (p *sreader) Provide(ctx context.Context, call iostream.Provider_provide) (
 	return err
 }
 
-// sriter is the server type for StreamWriter.  It wraps an io.Closer and
+// swriter is the server type for StreamWriter.  It wraps an io.Closer and
 // exports a Send method, thereby satisfying the channel.Sender capability
 // interface.
-type sriter struct {
+type swriter struct {
 	closed bool
 	io.Writer
 }
 
-func (s *sriter) Shutdown() { _ = s.close() }
+func (s *swriter) Shutdown() { _ = s.close() }
 
-func (s *sriter) Send(_ context.Context, call chan_api.Sender_send) error {
+func (s *swriter) Send(_ context.Context, call chan_api.Sender_send) error {
 	if s.closed {
 		return ErrClosed
 	}
@@ -188,12 +188,12 @@ func (s *sriter) Send(_ context.Context, call chan_api.Sender_send) error {
 	return err
 }
 
-func (s *sriter) Close(context.Context, chan_api.Closer_close) error {
+func (s *swriter) Close(context.Context, chan_api.Closer_close) error {
 	s.closed = true
 	return s.close()
 }
 
-func (s *sriter) close() (err error) {
+func (s *swriter) close() (err error) {
 	if c, ok := s.Writer.(io.Closer); ok {
 		err = c.Close()
 		s.Writer = nil // DEFENSIVE: prevent writer from being closed twice
