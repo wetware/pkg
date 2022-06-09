@@ -141,15 +141,15 @@ func (sr *sreader) Shutdown() {
 	}
 }
 
-func (sr *sreader) SetDst(ctx context.Context, call api.Unix_StreamReader_setDst) error {
+func (sr *sreader) SetDst(ctx context.Context, call api.Unix_StreamReader_setDst) (err error) {
 	callback := StreamWriter(call.Args().Dst())
 
-	if _, err := io.Copy(callback.Writer(ctx), sr); err != nil {
-		return err
+	// stream terminated gracefully?
+	if err = stream(callback.Writer(ctx), sr); err == nil {
+		err = callback.Close(ctx)
 	}
 
-	// Stream terminated gracefully.  Signal close.
-	return callback.Close(ctx)
+	return err
 }
 
 // swriter is the server type for StreamWriter.  It wraps an io.Closer and
@@ -163,13 +163,12 @@ func (sw *swriter) Shutdown() { _ = sw.close() }
 
 func (sw *swriter) Send(_ context.Context, call chan_api.Sender_send) error {
 	ptr, err := call.Args().Value()
-	if err != nil {
-		return err
+	if err == nil {
+		// Don't close the underlying writer here.  Certain writer implementations,
+		// such as net.Conn, may produce temporary errors.
+		err = stream(sw, bytes.NewReader(ptr.Data()))
 	}
 
-	// Don't close the underlying writer here.  Certain writer implementations,
-	// such as net.Conn, may produce temporary errors.
-	_, err = io.Copy(sw, bytes.NewReader(ptr.Data()))
 	return err
 }
 
@@ -184,6 +183,11 @@ func (sw *swriter) close() (err error) {
 	}
 
 	return
+}
+
+func stream(w io.Writer, r io.Reader) error {
+	_, err := io.Copy(w, r)
+	return err
 }
 
 // writerFunc is a function type that implements io.Writer.

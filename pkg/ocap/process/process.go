@@ -20,7 +20,13 @@ type Executor struct {
 // exception type).
 //
 // f MUST return promptly when ctx expires.
-func (exec Executor) Exec(ctx context.Context, f func(context.Context) error) *Handle {
+func (exec Executor) Exec(ctx context.Context, f func(context.Context) error) Proc {
+	handle := Executor{}.Go(context.Background(), f)
+	return Proc(api.Waiter_ServerToClient(handle, exec.Policy))
+}
+
+// Go runs f in a separate goroutine and returns its Handle.
+func (exec Executor) Go(ctx context.Context, f func(context.Context) error) *Handle {
 	ctx, cancel := context.WithCancel(ctx)
 
 	done := make(chan struct{})
@@ -36,13 +42,6 @@ func (exec Executor) Exec(ctx context.Context, f func(context.Context) error) *H
 	}()
 
 	return handle
-}
-
-// Spawn a process.  This calls Exec and wraps the handler in a
-// Proc.
-func (exec Executor) Spawn(ctx context.Context, f func(context.Context) error) Proc {
-	handle := Executor{}.Exec(context.Background(), f)
-	return Proc(api.Waiter_ServerToClient(handle, exec.Policy))
 }
 
 // Proc is the basic process capability, from which all others are
@@ -65,7 +64,7 @@ func (p Proc) Release() {
 //
 //    Executor{}.Spawn(context.Background(), f)
 func New(f func(context.Context) error) Proc {
-	return Executor{}.Spawn(context.Background(), f)
+	return Executor{}.Exec(context.Background(), f)
 }
 
 // Wait blocks until the process terminates or the context expires,

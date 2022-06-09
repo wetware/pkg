@@ -52,12 +52,6 @@ func (s *Server) Executor() Executor {
 
 // Exec constructs a command and executes it in a native OS process.
 func (s *Server) Exec(_ context.Context, call api.Executor_exec) error {
-
-	cmd, err := s.bind(call.Args())
-	if err != nil {
-		return err
-	}
-
 	// Abort early if we're unable to allocate results. We don't want to
 	// end up with a process we can't control.
 	res, err := call.AllocResults()
@@ -65,20 +59,21 @@ func (s *Server) Exec(_ context.Context, call api.Executor_exec) error {
 		return err
 	}
 
-	if err = cmd.Start(); err != nil {
-		return err
+	var h handle
+	if err = s.bind(&h, call.Args()); err == nil {
+		proc := api.Unix_Proc_ServerToClient(&h, s.Policy)
+		err = res.SetProc(api.Waiter(proc))
 	}
 
-	proc := api.Unix_Proc_ServerToClient(cmd, s.Policy)
-	return res.SetProc(api.Waiter(proc))
+	return err
 }
 
-func (s *Server) bind(ps api.Executor_exec_Params) (*cmdServer, error) {
+func (s *Server) bind(h *handle, ps api.Executor_exec_Params) error {
 	ptr, err := ps.Param()
-	if err != nil {
-		return nil, err
+	if err == nil {
+		cmd := api.Unix_Command{Struct: ptr.Struct()}
+		return h.bind(context.Background(), cmd)
 	}
 
-	cmd := api.Unix_Command{Struct: ptr.Struct()}
-	return newCommandServer(context.Background(), cmd)
+	return err
 }

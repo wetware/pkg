@@ -52,89 +52,78 @@ func (p Proc) Signal(ctx context.Context, s syscall.Signal) (ocap.Future, capnp.
 	return ocap.Future(f), release
 }
 
-// cmdServer is the server implementation of UnixProc
-type cmdServer struct {
-	*exec.Cmd
-	cancel context.CancelFunc
-	done   chan struct{}
-	err    error
+// handle is a reference to a running the server implementation of UnixProc
+type handle struct {
+	Cmd *exec.Cmd
+	*process.Handle
 }
 
-func (c *cmdServer) Shutdown() {
+func (h *handle) Shutdown() {
 	defer func() {
-		c.cancel() // SIGKILL
-		<-c.done   // wait for process to terminate
+		h.Handle.Shutdown()
+		<-h.Done() // wait for process to terminate
 	}()
 
 	// Attempt to gracefully shut down the process, but kill it if the
 	// timeout is exceeded.
-	if err := c.Process.Signal(syscall.SIGTERM); err == nil {
+	if err := h.Cmd.Process.Signal(syscall.SIGTERM); err == nil {
 		select {
-		case <-c.done:
+		case <-h.Done():
 		case <-time.After(time.Second * 5):
 		}
 	}
 }
 
-func newCommandServer(ctx context.Context, param api.Unix_Command) (*cmdServer, error) {
-	path, err := param.Path()
+func (h *handle) bind(ctx context.Context, cmd api.Unix_Command) error {
+	path, err := cmd.Path()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	args, err := stringSlice(param.Args)
+	args, err := stringSlice(cmd.Args)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	ctx, cancel := context.WithCancel(ctx)
-	cmd := exec.CommandContext(ctx, path, args...)
-
-	if cmd.Env, err = stringSlice(param.Env); err == nil {
-		cmd.Stdin = input(ctx, param.Stdin().AddRef())
-		cmd.Stdout = output(ctx, param.Stdout().AddRef())
-		cmd.Stderr = output(ctx, param.Stderr().AddRef())
+	environment, err := stringSlice(cmd.Env)
+	if err != nil {
+		return err
 	}
 
-	return &cmdServer{
-		Cmd:    cmd,
-		cancel: cancel,
-		done:   make(chan struct{}),
-	}, err
+	/*
+		The exec.Cmd instance must be created, and its fields populated, with
+		a context that is expired by the Handdler.  Therefore, we perform the
+		configuration of h.Cmd *inside* of the executor process.   To avoid a
+		rance condition, we use a synchronization channel.
+	*/
+	var cherr = make(chan error, 1)
+
+	h.Handle = process.Executor{}.Go(ctx, func(ctx context.Context) error {
+		defer close(cherr)
+
+		h.Cmd = exec.CommandContext(ctx, path, args...)
+		h.Cmd.Env = environment
+		h.Cmd.Stdin = input(ctx, cmd.Stdin().AddRef())
+		h.Cmd.Stdout = output(ctx, cmd.Stdout().AddRef())
+		h.Cmd.Stderr = output(ctx, cmd.Stderr().AddRef())
+
+		cherr <- h.Cmd.Start()
+		return h.Cmd.Wait()
+	})
+
+	return <-cherr
 }
 
-func (c *cmdServer) Start() (err error) {
-	if err = c.Cmd.Start(); err == nil {
-		go func() {
-			defer close(c.done)
-			c.err = c.Cmd.Wait()
-		}()
-	}
-
-	return err
-
-}
-
-func (c *cmdServer) Wait(ctx context.Context, _ api.Waiter_wait) error {
-	select {
-	case <-c.done:
-		return c.err
-
-	case <-ctx.Done():
-		return ctx.Err()
-	}
-}
-
-func (c *cmdServer) Signal(_ context.Context, call api.Unix_Proc_signal) error {
+func (h *handle) Signal(_ context.Context, call api.Unix_Proc_signal) (err error) {
 	switch call.Args().Signal() {
 	case api.Unix_Proc_Signal_sigINT:
-		return c.Process.Signal(syscall.SIGINT)
+		return h.Cmd.Process.Signal(syscall.SIGINT)
 
 	case api.Unix_Proc_Signal_sigTERM:
-		return c.Process.Signal(syscall.SIGTERM)
+		return h.Cmd.Process.Signal(syscall.SIGTERM)
 
 	case api.Unix_Proc_Signal_sigKILL:
-		return c.Process.Signal(syscall.SIGKILL)
+		return h.Cmd.Process.Signal(syscall.SIGKILL)
 
 	default:
 		return fmt.Errorf("unknown signal: %#x", int(call.Args().Signal()))
