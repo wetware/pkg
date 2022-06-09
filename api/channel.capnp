@@ -7,12 +7,12 @@ $Go.import("github.com/wetware/ww/internal/api/channel");
 
 
 interface Closer {
-    close @0 () -> ();
+    close @0 ();
 }
 
 
 interface Sender(T) {
-    send  @0 (value :T) -> ();
+    send  @0 (value :T) -> stream;
 }
 
 

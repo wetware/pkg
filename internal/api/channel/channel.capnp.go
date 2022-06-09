@@ -7,6 +7,7 @@ import (
 	text "capnproto.org/go/capnp/v3/encoding/text"
 	schemas "capnproto.org/go/capnp/v3/schemas"
 	server "capnproto.org/go/capnp/v3/server"
+	stream "capnproto.org/go/capnp/v3/std/capnp/stream"
 	context "context"
 )
 
@@ -187,7 +188,7 @@ type Sender struct{ Client *capnp.Client }
 // Sender_TypeID is the unique identifier for the type Sender.
 const Sender_TypeID = 0xe8bbed1438ea16ee
 
-func (c Sender) Send(ctx context.Context, params func(Sender_send_Params) error) (Sender_send_Results_Future, capnp.ReleaseFunc) {
+func (c Sender) Send(ctx context.Context, params func(Sender_send_Params) error) (stream.StreamResult_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xe8bbed1438ea16ee,
@@ -201,7 +202,7 @@ func (c Sender) Send(ctx context.Context, params func(Sender_send_Params) error)
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Sender_send_Params{Struct: s}) }
 	}
 	ans, release := c.Client.SendCall(ctx, s)
-	return Sender_send_Results_Future{Future: ans.Future()}, release
+	return stream.StreamResult_Future{Future: ans.Future()}, release
 }
 
 func (c Sender) AddRef() Sender {
@@ -265,9 +266,9 @@ func (c Sender_send) Args() Sender_send_Params {
 }
 
 // AllocResults allocates the results struct.
-func (c Sender_send) AllocResults() (Sender_send_Results, error) {
+func (c Sender_send) AllocResults() (stream.StreamResult, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Sender_send_Results{Struct: r}, err
+	return stream.StreamResult{Struct: r}, err
 }
 
 type Sender_send_Params struct{ capnp.Struct }
@@ -326,48 +327,6 @@ func (p Sender_send_Params_Future) Struct() (Sender_send_Params, error) {
 
 func (p Sender_send_Params_Future) Value() *capnp.Future {
 	return p.Future.Field(0, nil)
-}
-
-type Sender_send_Results struct{ capnp.Struct }
-
-// Sender_send_Results_TypeID is the unique identifier for the type Sender_send_Results.
-const Sender_send_Results_TypeID = 0xbb3101eccc20b4eb
-
-func NewSender_send_Results(s *capnp.Segment) (Sender_send_Results, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Sender_send_Results{st}, err
-}
-
-func NewRootSender_send_Results(s *capnp.Segment) (Sender_send_Results, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Sender_send_Results{st}, err
-}
-
-func ReadRootSender_send_Results(msg *capnp.Message) (Sender_send_Results, error) {
-	root, err := msg.Root()
-	return Sender_send_Results{root.Struct()}, err
-}
-
-func (s Sender_send_Results) String() string {
-	str, _ := text.Marshal(0xbb3101eccc20b4eb, s.Struct)
-	return str
-}
-
-// Sender_send_Results_List is a list of Sender_send_Results.
-type Sender_send_Results_List = capnp.StructList[Sender_send_Results]
-
-// NewSender_send_Results creates a new list of Sender_send_Results.
-func NewSender_send_Results_List(s *capnp.Segment, sz int32) (Sender_send_Results_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Sender_send_Results]{List: l}, err
-}
-
-// Sender_send_Results_Future is a wrapper for a Sender_send_Results promised by a client call.
-type Sender_send_Results_Future struct{ *capnp.Future }
-
-func (p Sender_send_Results_Future) Struct() (Sender_send_Results, error) {
-	s, err := p.Future.Struct()
-	return Sender_send_Results{s}, err
 }
 
 type Peeker struct{ Client *capnp.Client }
@@ -751,7 +710,7 @@ type SendCloser struct{ Client *capnp.Client }
 // SendCloser_TypeID is the unique identifier for the type SendCloser.
 const SendCloser_TypeID = 0xe9a7d19a7d14e94e
 
-func (c SendCloser) Send(ctx context.Context, params func(Sender_send_Params) error) (Sender_send_Results_Future, capnp.ReleaseFunc) {
+func (c SendCloser) Send(ctx context.Context, params func(Sender_send_Params) error) (stream.StreamResult_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xe8bbed1438ea16ee,
@@ -765,7 +724,7 @@ func (c SendCloser) Send(ctx context.Context, params func(Sender_send_Params) er
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Sender_send_Params{Struct: s}) }
 	}
 	ans, release := c.Client.SendCall(ctx, s)
-	return Sender_send_Results_Future{Future: ans.Future()}, release
+	return stream.StreamResult_Future{Future: ans.Future()}, release
 }
 func (c SendCloser) Close(ctx context.Context, params func(Closer_close_Params) error) (Closer_close_Results_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
@@ -953,7 +912,7 @@ type Chan struct{ Client *capnp.Client }
 // Chan_TypeID is the unique identifier for the type Chan.
 const Chan_TypeID = 0x95c89fe7d966f751
 
-func (c Chan) Send(ctx context.Context, params func(Sender_send_Params) error) (Sender_send_Results_Future, capnp.ReleaseFunc) {
+func (c Chan) Send(ctx context.Context, params func(Sender_send_Params) error) (stream.StreamResult_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xe8bbed1438ea16ee,
@@ -967,7 +926,7 @@ func (c Chan) Send(ctx context.Context, params func(Sender_send_Params) error) (
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Sender_send_Params{Struct: s}) }
 	}
 	ans, release := c.Client.SendCall(ctx, s)
-	return Sender_send_Results_Future{Future: ans.Future()}, release
+	return stream.StreamResult_Future{Future: ans.Future()}, release
 }
 func (c Chan) Close(ctx context.Context, params func(Closer_close_Params) error) (Closer_close_Results_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
@@ -1084,7 +1043,7 @@ type PeekableChan struct{ Client *capnp.Client }
 // PeekableChan_TypeID is the unique identifier for the type PeekableChan.
 const PeekableChan_TypeID = 0xb527cbca9bbd8178
 
-func (c PeekableChan) Send(ctx context.Context, params func(Sender_send_Params) error) (Sender_send_Results_Future, capnp.ReleaseFunc) {
+func (c PeekableChan) Send(ctx context.Context, params func(Sender_send_Params) error) (stream.StreamResult_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xe8bbed1438ea16ee,
@@ -1098,7 +1057,7 @@ func (c PeekableChan) Send(ctx context.Context, params func(Sender_send_Params) 
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Sender_send_Params{Struct: s}) }
 	}
 	ans, release := c.Client.SendCall(ctx, s)
-	return Sender_send_Results_Future{Future: ans.Future()}, release
+	return stream.StreamResult_Future{Future: ans.Future()}, release
 }
 func (c PeekableChan) Close(ctx context.Context, params func(Closer_close_Params) error) (Closer_close_Results_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
@@ -1240,61 +1199,60 @@ func PeekableChan_Methods(methods []server.Method, s PeekableChan_Server) []serv
 	return methods
 }
 
-const schema_872a451f9aa74ebf = "x\xda\x8cU]h#U\x14>'\xf7\xde\x9d\x1a6" +
-	"N'\xb7\xae \x8b\x11)\x1bX4t\xbb\xe0\xca\xb2" +
-	"\x8b\x1bJ\x09\x0a]f\xaa\x82\xc2\xbe\x8c\xe9\xad\x85\xa6" +
-	"\xb1$m\xa9\x85\"}(Z\x8aH\xc1<\x18\x85\xea" +
-	"S1/UhA\xa9\xda\x07\x11lZ\xc1\xbeYQ" +
-	"D\x10\xfa\xa3-\x14,\xdaB\x19\xb93\xccO\x92I" +
-	"\xecS\xc2\xdc\xef\x9c\xef;\xe7|\xf7\xdc\xae\xa7\"\xf7" +
-	"\xe8\x8d\xd8\xee%\x88\x18:\xbbdU'\x0f\xef~\xf4" +
-	"\xd5\xe0\x0ch\x8f \x00C\xa5\x1do\xbeJ\xa2\x08\xc8" +
-	"M\xf2\x1c\xa0e\xfc3\xb8\xb3\xbb\xf8}\x09\xb4\x87\x89" +
-	"\xb5~\x7f\xa9\x9c\xe8\xbd\xfe6\x00\xb4#\x9f!e>" +
-	"G\x14\x00>K\x14>K\x92\xfc\x84\xa8\xd6\x9d\x87V" +
-	"\xb7\xfe]\x7f\xa1\x1c\x12\xb0O\xaa\xfc\xc4\x0e8&\x0a" +
-	"?&InR\xd5z\xe7\xc9\xf6\xa9\xb3\xc7\xaf-;" +
-	"\x12\xa8T\xf02\x8d\"P\xeb\xfd+\xb7\xa3}\xef\xed" +
-	"}\x16\x14w\x97\xc6\xa5\xb8^*\xc5}\xfcM\xf7\xe1" +
-	"\xfcQj%\x08\x10\x0e`\xc4\x06L\xce|\xfdau" +
-	"3\xb9\x1a\"\xe6]\xfa3\xff\x80J1%\xaa\xf0\x12" +
-	"Mr\xc6T\xeb\xcf\x95'\xb6\xfe\xc2\x1bk\x011\xa7" +
-	"2!\xb5\x0e\xfe\x9e\x9a_~p\xb4\xe9\x9e\x00\xdc\xfc" +
-	"\x9d>f\x9f\\\xeb\x8c\xfd2}\xeb\xd7@\xcc\x86S" +
-	"\x80r\xf9\xea\xeb\xb1O\xd9o!\xf4\x9f\xd3\x0a\xff\xd2" +
-	"\xa6_\xa5\x19\xce\x98b\xd3\x1f]9x\xb6\xe3pm" +
-	"/$\xe0\x94V82\x19pN3\xbc\x8f)\xbc\x8f" +
-	"\xa9V\xb4\x7f=\xbd\xf8\xd6\x83\xfd\x90\x804\xab\xf0\xe7" +
-	"\xed\x80^\x96\xe1%\xa6\xf0\x12S\xad\xfb\xfb\x1d\xd3\xe5" +
-	"\xed\xa5\xb0\x809V\x950\x00\xbe\xc0\x14\xbe\xc0\x92|" +
-	"\x9b\xa9\xd6\xb7o\xde\x8a}\xf1\xc7\x8fgu\x01\xc8\xbf" +
-	"c\x15\xfe\x83\x0d\xdf`\x19~,\xffYw^yf" +
-	"\xeb\x93\x9f\x94\xf3@\x93vX\x1c\xa1\xcb\xca\x0e\x99\xf9" +
-	"\xbc\xc8\xa5H\xd6\x1c\xcd\x8f\xde~Q\xe4\x07D!U" +
-	"\x14\xf9\x81N\xdd,\x98#E\x00\x83\x12\x0a@\x11@" +
-	"\x8bu\x03\x18m\x04\x8d\x8e\x08&&\xcc\xdc\xb8\xc08" +
-	"\xa2\xdf\x1e\x00\x8c\x03zI\xd1I\xda3D\xcc\xbc\x8e" +
-	"\xa8\x13f\xb4!\xfa\xb5\xa6\xdb\xd0\x9fE\xba\x0b5L" +
-	"\x184\x12\x00\x00h\xf8\xa8A\x11e0\xda\\\x9e\xf1" +
-	"\xe5\x99\x03\xf7R\xb4\x86\xa7)j\x18\xc7\x97<y\x11" +
-	"G\x9e.\xc4p\xbf\xc8N\x88\x02@@\xa57\xc2f" +
-	"*=@\x08\xadw\xdb.\xa62\x00oPI|\x95" +
-	"\xa2\x90\x1a\x15b\xd8\x9bL=\xc6\xa9\"U\x10\xd9\x89" +
-	"\xce~Q\x1c\xcf\x8da\xf1\xff\xa7\x17\x10V3\xbd\x10" +
-	"\xe2\x8b'\x0d4\xa7&i\xa0\xe7\xe6k9\xd1\xd2\x1a" +
-	"^W.h\x0do\xab\xf8M\xaf\x99Csx\xb3\xa6" +
-	"\x07\xaf\x83[{=\xa6'\xf7FQ\x14RY\xf9\xe3" +
-	"\x80\xc8X\xb1\xd5d\x1a\xa6\x87.F\x95 \x1d\xd1\xa0" +
-	"\x84\x01x\x0b\x0c\xdd\x85\xabi\xd7\x01\xd2\x971}\x15" +
-	"\xb5\xa7\x15Ufkp\x17b\x88\xe5\xe4\xc7{\xa8#" +
-	"6\x14\x8an\xa1\xaa\xac\xd4\xe7v\x1f t7o\x1d" +
-	"\xb7l\x89K\xe3]\xff w\xcd\xc7\x96\xdc\xbaP\xa5" +
-	"\xc3|n\xf7\xe5A\xf7\x1d\xa9\xe3\x96Vl\xb8\x84A" +
-	"\xee\x9a\x8f\xe1\xdc\x11\x7f\xc0\xce\x00k\xee\xbe'^\xda" +
-	"\xd0\xdb\xb4!\xc5\x85\xd8*\xe0\xd0f\x15\xf7\xe4TI" +
-	"\xe9W\xec\xeegt_3M\xeb\x86\x88\xc6\x94\x84m" +
-	"+\xbb\x84\x96\xbe\xb3=\x85\xc5\xff\x02\x00\x00\xff\xff\xb9" +
-	"YVl"
+const schema_872a451f9aa74ebf = "x\xda\x8cU]h#U\x14>'s\xefL\x1b6" +
+	"N'\xb7\xaeD\xb6\x06\xa4l`\xc1\xb0\xb6\xe0\xca\xb2" +
+	"\xe2\x86 \x01\xa1K\xa6ZP\x08\xc8\x98\xdeZh\x1a" +
+	"K\xd2\xd4\xa6P\xa4O*}\xf0\xc5>4*\xb5O" +
+	"\xc5\xbcT\xc1\x82\xe0O\x15_lZ\xc1>\x14\xacX" +
+	"|\xb1\xd8\x16Z\x11\x04\xa5 \xb3\xdc\x19\xe6'\xcd$" +
+	"\xedS\xcb\xe4;\xe7\xfb\xce9\xdf9\xf7v:t\x9f" +
+	"<\x1d\xf9K\x81\x90\x9e\xa3\xb2\xd9\x98=}\xee\xa3\xaf" +
+	"\xc7\x16@{\x14\x01(*=8x \x85\x11\x90\x1d" +
+	"J\xcf\x03\x9a\xfa\xbfc\xfb\x7f\xae\xfc\xb8\x04\xda#\x92" +
+	"\xb9\xf9`\xad\x16\x7f\xe1\xd6;\x00\xd0\x83\x8c\x92\x1a\x8b" +
+	"\x10\x05\x80u\x13\x85u\x93\x04\xab\x12\xd5\xbc\xd7\xbd\xb1" +
+	"\xf3\xdf\xe6\x8b\xb5\x80\x80I\xd2`U+\xa0B\x14V" +
+	"!\x09vHT\xf3\xdd'{\xe6\xce\x9f\xb8\xb9nK" +
+	" B\xc1>\x09#\x10\xf3\x83\xebw\xc3C\xef\x1f}" +
+	"\xe6\x17\xf7=\x89\x0aq[D\x88\xfb\xe4\xdb\x81\xd3\xc5" +
+	"\xb3\xe4\x17~\xc0\xb1\x0d\xf8\xdb\x02\xcc.|\xf3ac" +
+	";\xb1\x11 F\xa3\xbf\xb2>*\xc4\xc4\xa8\xc2b4" +
+	"\xc1\xde\xa3\xaay\xf2\xcf\xdc\xe2z\xeel\xdb\x11\x030" +
+	"8O\x1f\x17bNn\xf6G~\x9b\xbfs\xe0\x93\xc9" +
+	"\xa9%S\xb9v\xe3\x8d\xc8\xa7\xf4\xf7\x00\x92!Zg" +
+	"#\x16\x89N3l\x95*l\x95\xaa\xe6\xd9\xf5\x93g" +
+	"{O\xbf:\x0a\x08X\xa2u\xf6\xb1\x15\xb0L3l" +
+	"\x8f*l\x8f\xaafxx3\xb5\xf2v\xee8 `" +
+	"\x8b\xd6\xd9\xae\x15\xf0\x13\xcd\xb0>Ya}\xb2j>" +
+	"8\xee\x9d\xaf\xed\xae\x05\x05hrC\xc0D\xdd\xb2\xc2" +
+	"br\x82\xbd*\xab\xe6\x0f\xd5;\x91/\xff\xf8\xf9\xfc" +
+	"B\x00\xb2!\xb9\xceF,\xb8.gXU\xfcg\xde" +
+	"{\xe5\x99\x9d\xd5_\x94\xff}M2\xe4(B\xce\xcc" +
+	"\x8f\x1b\xc5\"/$\xa5\xbc1U\x9c\xba\xfb\x12/\x8e" +
+	"\xf2R\xb2\xcc\x8b\xa3\xfdY\xa3dL\x96\x01t\"\x11" +
+	"\x00\x82\x00Zd\x00@\xef\x92P\xef\x0da|\xc6(" +
+	"T8F\x11\xbd\xf6\x00`\x14\xd0M\x8av\xd2\xf4\xb8" +
+	"d\x14\xb3\x88Y\x89\xea]\x88^\xad\xa9.\xf4f\x91" +
+	"\xba\x8d\x1a\xc6u\x12\xf2\x01\x004|L'\x88\"\x18" +
+	"-.\xd7\xde\xe27\x1b\xee\xa6\xe8\x0cO\x11\xd40\x8a" +
+	"/\xbb\xf2B\xb6\xbc,\xe7\x13\xc3<?\xc3K\x00>" +
+	"\x95\xee\x08\xdb\xa9t\x01\x01\xb4\xeeN]M\xa5\x0f\xde" +
+	"\xa2R\xf2T\xf2Rr\x8a\xf3\x09w2\x171v\x15" +
+	"\xc9\x12\xcf\xcf\xf4\x0f\xf3r\xa50\x8d\xe5\xcb\xa7\xe7\x13" +
+	"\xd64\xbd\x00\xe2\xab'\xf55\xa7)\xa9\xaf\xe7\xc6\xeb" +
+	"\x05\xde\xd1\x1anW\xaeh\x0d\xf7vxMo\x9aC" +
+	"{x\xbb\xa6\xa7\x0bo\x96y)\x99\x17\x7f\xec\xe2\xa5" +
+	"\xe9r\xa7\xae\xb7L\x06\x1d\x8c*@YD\x9dH\x14" +
+	"\xc0=N\xe8\x9cLM\xbb\x05\x90\xba\x86\xa9\x1b\xa8=" +
+	"\xa5\xa8\"[\x8bs\x10\x03\xec$>\xde\xc7,bK" +
+	"\x11\xe8\xec\xb4*\x96\xda\xe3v\x9e\x10,~\xfe\xdd[" +
+	"\x83\xb5\xd7\x96\x1dn\x00-\xa6\xa8b\xf9\x1d\x16w\xb3" +
+	"/e\xc9rU\xf8\xc4cq^\x09tn\xfe\x85\x0a" +
+	"\x85\xa1ZV\xc9_a\xd3\xc7`\xee\x90w\xb5\xecQ" +
+	"5m\xb0+^\x98\xc9\xbd\x97\x1e\x81\xefl\xb5\x98\xc3" +
+	"\xe7\xb3v\x15\xa7\x0b\xaa\xa0\xf4*v\xae,:o\x92" +
+	"\xa6\x0d@H\xa3J\xdc2\x90UBG\x87Y\xee\xc1" +
+	"\xf2\xc3\x00\x00\x00\xff\xffJJ5\xbb"
 
 func init() {
 	schemas.Register(schema_872a451f9aa74ebf,
@@ -1305,7 +1263,6 @@ func init() {
 		0xb0e88f4d0a3a1694,
 		0xb42eee8bed32bea0,
 		0xb527cbca9bbd8178,
-		0xbb3101eccc20b4eb,
 		0xcbee5caf8b7af4ea,
 		0xdd377ddc0d2426ea,
 		0xdf05a90d671c0c07,
