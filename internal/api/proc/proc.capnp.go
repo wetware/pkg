@@ -574,16 +574,16 @@ func (s Unix_Command) NewEnv(n int32) (capnp.TextList, error) {
 	return l, err
 }
 
-func (s Unix_Command) Stdin() Unix_InputStream {
+func (s Unix_Command) Stdin() Unix_StreamReader {
 	p, _ := s.Struct.Ptr(4)
-	return Unix_InputStream{Client: p.Interface().Client()}
+	return Unix_StreamReader{Client: p.Interface().Client()}
 }
 
 func (s Unix_Command) HasStdin() bool {
 	return s.Struct.HasPtr(4)
 }
 
-func (s Unix_Command) SetStdin(v Unix_InputStream) error {
+func (s Unix_Command) SetStdin(v Unix_StreamReader) error {
 	if !v.Client.IsValid() {
 		return s.Struct.SetPtr(4, capnp.Ptr{})
 	}
@@ -592,16 +592,16 @@ func (s Unix_Command) SetStdin(v Unix_InputStream) error {
 	return s.Struct.SetPtr(4, in.ToPtr())
 }
 
-func (s Unix_Command) Stdout() Unix_OutputStream {
+func (s Unix_Command) Stdout() Unix_StreamWriter {
 	p, _ := s.Struct.Ptr(5)
-	return Unix_OutputStream{Client: p.Interface().Client()}
+	return Unix_StreamWriter{Client: p.Interface().Client()}
 }
 
 func (s Unix_Command) HasStdout() bool {
 	return s.Struct.HasPtr(5)
 }
 
-func (s Unix_Command) SetStdout(v Unix_OutputStream) error {
+func (s Unix_Command) SetStdout(v Unix_StreamWriter) error {
 	if !v.Client.IsValid() {
 		return s.Struct.SetPtr(5, capnp.Ptr{})
 	}
@@ -610,16 +610,16 @@ func (s Unix_Command) SetStdout(v Unix_OutputStream) error {
 	return s.Struct.SetPtr(5, in.ToPtr())
 }
 
-func (s Unix_Command) Stderr() Unix_OutputStream {
+func (s Unix_Command) Stderr() Unix_StreamWriter {
 	p, _ := s.Struct.Ptr(6)
-	return Unix_OutputStream{Client: p.Interface().Client()}
+	return Unix_StreamWriter{Client: p.Interface().Client()}
 }
 
 func (s Unix_Command) HasStderr() bool {
 	return s.Struct.HasPtr(6)
 }
 
-func (s Unix_Command) SetStderr(v Unix_OutputStream) error {
+func (s Unix_Command) SetStderr(v Unix_StreamWriter) error {
 	if !v.Client.IsValid() {
 		return s.Struct.SetPtr(6, capnp.Ptr{})
 	}
@@ -645,95 +645,477 @@ func (p Unix_Command_Future) Struct() (Unix_Command, error) {
 	return Unix_Command{s}, err
 }
 
-func (p Unix_Command_Future) Stdin() Unix_InputStream {
-	return Unix_InputStream{Client: p.Future.Field(4, nil).Client()}
+func (p Unix_Command_Future) Stdin() Unix_StreamReader {
+	return Unix_StreamReader{Client: p.Future.Field(4, nil).Client()}
 }
 
-func (p Unix_Command_Future) Stdout() Unix_OutputStream {
-	return Unix_OutputStream{Client: p.Future.Field(5, nil).Client()}
+func (p Unix_Command_Future) Stdout() Unix_StreamWriter {
+	return Unix_StreamWriter{Client: p.Future.Field(5, nil).Client()}
 }
 
-func (p Unix_Command_Future) Stderr() Unix_OutputStream {
-	return Unix_OutputStream{Client: p.Future.Field(6, nil).Client()}
+func (p Unix_Command_Future) Stderr() Unix_StreamWriter {
+	return Unix_StreamWriter{Client: p.Future.Field(6, nil).Client()}
 }
 
-type Unix_InputStream struct{ Client *capnp.Client }
+type Unix_Proc struct{ Client *capnp.Client }
 
-// Unix_InputStream_TypeID is the unique identifier for the type Unix_InputStream.
-const Unix_InputStream_TypeID = 0xd134f1942f6607f0
+// Unix_Proc_TypeID is the unique identifier for the type Unix_Proc.
+const Unix_Proc_TypeID = 0xa56f29d54a3673af
 
-func (c Unix_InputStream) Recv(ctx context.Context, params func(channel.Recver_recv_Params) error) (channel.Recver_recv_Results_Future, capnp.ReleaseFunc) {
+func (c Unix_Proc) Signal(ctx context.Context, params func(Unix_Proc_signal_Params) error) (Unix_Proc_signal_Results_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
 		Method: capnp.Method{
-			InterfaceID:   0xdf05a90d671c0c07,
+			InterfaceID:   0xa56f29d54a3673af,
 			MethodID:      0,
-			InterfaceName: "channel.capnp:Recver",
-			MethodName:    "recv",
+			InterfaceName: "proc.capnp:Unix.Proc",
+			MethodName:    "signal",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 8, PointerCount: 0}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Unix_Proc_signal_Params{Struct: s}) }
+	}
+	ans, release := c.Client.SendCall(ctx, s)
+	return Unix_Proc_signal_Results_Future{Future: ans.Future()}, release
+}
+func (c Unix_Proc) Wait(ctx context.Context, params func(P_wait_Params) error) (P_wait_Results_Future, capnp.ReleaseFunc) {
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0xe19c553506f6045b,
+			MethodID:      0,
+			InterfaceName: "proc.capnp:P",
+			MethodName:    "wait",
 		},
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(channel.Recver_recv_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(P_wait_Params{Struct: s}) }
 	}
 	ans, release := c.Client.SendCall(ctx, s)
-	return channel.Recver_recv_Results_Future{Future: ans.Future()}, release
+	return P_wait_Results_Future{Future: ans.Future()}, release
 }
 
-func (c Unix_InputStream) AddRef() Unix_InputStream {
-	return Unix_InputStream{
+func (c Unix_Proc) AddRef() Unix_Proc {
+	return Unix_Proc{
 		Client: c.Client.AddRef(),
 	}
 }
 
-func (c Unix_InputStream) Release() {
+func (c Unix_Proc) Release() {
 	c.Client.Release()
 }
 
-// A Unix_InputStream_Server is a Unix_InputStream with a local implementation.
-type Unix_InputStream_Server interface {
-	Recv(context.Context, channel.Recver_recv) error
+// A Unix_Proc_Server is a Unix_Proc with a local implementation.
+type Unix_Proc_Server interface {
+	Signal(context.Context, Unix_Proc_signal) error
+
+	Wait(context.Context, P_wait) error
 }
 
-// Unix_InputStream_NewServer creates a new Server from an implementation of Unix_InputStream_Server.
-func Unix_InputStream_NewServer(s Unix_InputStream_Server, policy *server.Policy) *server.Server {
+// Unix_Proc_NewServer creates a new Server from an implementation of Unix_Proc_Server.
+func Unix_Proc_NewServer(s Unix_Proc_Server, policy *server.Policy) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(Unix_InputStream_Methods(nil, s), s, c, policy)
+	return server.New(Unix_Proc_Methods(nil, s), s, c, policy)
 }
 
-// Unix_InputStream_ServerToClient creates a new Client from an implementation of Unix_InputStream_Server.
+// Unix_Proc_ServerToClient creates a new Client from an implementation of Unix_Proc_Server.
 // The caller is responsible for calling Release on the returned Client.
-func Unix_InputStream_ServerToClient(s Unix_InputStream_Server, policy *server.Policy) Unix_InputStream {
-	return Unix_InputStream{Client: capnp.NewClient(Unix_InputStream_NewServer(s, policy))}
+func Unix_Proc_ServerToClient(s Unix_Proc_Server, policy *server.Policy) Unix_Proc {
+	return Unix_Proc{Client: capnp.NewClient(Unix_Proc_NewServer(s, policy))}
 }
 
-// Unix_InputStream_Methods appends Methods to a slice that invoke the methods on s.
+// Unix_Proc_Methods appends Methods to a slice that invoke the methods on s.
 // This can be used to create a more complicated Server.
-func Unix_InputStream_Methods(methods []server.Method, s Unix_InputStream_Server) []server.Method {
+func Unix_Proc_Methods(methods []server.Method, s Unix_Proc_Server) []server.Method {
 	if cap(methods) == 0 {
-		methods = make([]server.Method, 0, 1)
+		methods = make([]server.Method, 0, 2)
 	}
 
 	methods = append(methods, server.Method{
 		Method: capnp.Method{
-			InterfaceID:   0xdf05a90d671c0c07,
+			InterfaceID:   0xa56f29d54a3673af,
 			MethodID:      0,
-			InterfaceName: "channel.capnp:Recver",
-			MethodName:    "recv",
+			InterfaceName: "proc.capnp:Unix.Proc",
+			MethodName:    "signal",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.Recv(ctx, channel.Recver_recv{call})
+			return s.Signal(ctx, Unix_Proc_signal{call})
+		},
+	})
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xe19c553506f6045b,
+			MethodID:      0,
+			InterfaceName: "proc.capnp:P",
+			MethodName:    "wait",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Wait(ctx, P_wait{call})
 		},
 	})
 
 	return methods
 }
 
-type Unix_OutputStream struct{ Client *capnp.Client }
+// Unix_Proc_signal holds the state for a server call to Unix_Proc.signal.
+// See server.Call for documentation.
+type Unix_Proc_signal struct {
+	*server.Call
+}
 
-// Unix_OutputStream_TypeID is the unique identifier for the type Unix_OutputStream.
-const Unix_OutputStream_TypeID = 0x82ce9b5bf259d963
+// Args returns the call's arguments.
+func (c Unix_Proc_signal) Args() Unix_Proc_signal_Params {
+	return Unix_Proc_signal_Params{Struct: c.Call.Args()}
+}
 
-func (c Unix_OutputStream) Send(ctx context.Context, params func(channel.Sender_send_Params) error) (stream.StreamResult_Future, capnp.ReleaseFunc) {
+// AllocResults allocates the results struct.
+func (c Unix_Proc_signal) AllocResults() (Unix_Proc_signal_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Unix_Proc_signal_Results{Struct: r}, err
+}
+
+type Unix_Proc_Signal uint16
+
+// Unix_Proc_Signal_TypeID is the unique identifier for the type Unix_Proc_Signal.
+const Unix_Proc_Signal_TypeID = 0x8441e8c774575aac
+
+// Values of Unix_Proc_Signal.
+const (
+	Unix_Proc_Signal_sigINT  Unix_Proc_Signal = 0
+	Unix_Proc_Signal_sigTERM Unix_Proc_Signal = 1
+	Unix_Proc_Signal_sigKILL Unix_Proc_Signal = 2
+)
+
+// String returns the enum's constant name.
+func (c Unix_Proc_Signal) String() string {
+	switch c {
+	case Unix_Proc_Signal_sigINT:
+		return "sigINT"
+	case Unix_Proc_Signal_sigTERM:
+		return "sigTERM"
+	case Unix_Proc_Signal_sigKILL:
+		return "sigKILL"
+
+	default:
+		return ""
+	}
+}
+
+// Unix_Proc_SignalFromString returns the enum value with a name,
+// or the zero value if there's no such value.
+func Unix_Proc_SignalFromString(c string) Unix_Proc_Signal {
+	switch c {
+	case "sigINT":
+		return Unix_Proc_Signal_sigINT
+	case "sigTERM":
+		return Unix_Proc_Signal_sigTERM
+	case "sigKILL":
+		return Unix_Proc_Signal_sigKILL
+
+	default:
+		return 0
+	}
+}
+
+type Unix_Proc_Signal_List = capnp.EnumList[Unix_Proc_Signal]
+
+func NewUnix_Proc_Signal_List(s *capnp.Segment, sz int32) (Unix_Proc_Signal_List, error) {
+	return capnp.NewEnumList[Unix_Proc_Signal](s, sz)
+}
+
+type Unix_Proc_signal_Params struct{ capnp.Struct }
+
+// Unix_Proc_signal_Params_TypeID is the unique identifier for the type Unix_Proc_signal_Params.
+const Unix_Proc_signal_Params_TypeID = 0x9080163041c90a87
+
+func NewUnix_Proc_signal_Params(s *capnp.Segment) (Unix_Proc_signal_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 0})
+	return Unix_Proc_signal_Params{st}, err
+}
+
+func NewRootUnix_Proc_signal_Params(s *capnp.Segment) (Unix_Proc_signal_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 0})
+	return Unix_Proc_signal_Params{st}, err
+}
+
+func ReadRootUnix_Proc_signal_Params(msg *capnp.Message) (Unix_Proc_signal_Params, error) {
+	root, err := msg.Root()
+	return Unix_Proc_signal_Params{root.Struct()}, err
+}
+
+func (s Unix_Proc_signal_Params) String() string {
+	str, _ := text.Marshal(0x9080163041c90a87, s.Struct)
+	return str
+}
+
+func (s Unix_Proc_signal_Params) Signal() Unix_Proc_Signal {
+	return Unix_Proc_Signal(s.Struct.Uint16(0))
+}
+
+func (s Unix_Proc_signal_Params) SetSignal(v Unix_Proc_Signal) {
+	s.Struct.SetUint16(0, uint16(v))
+}
+
+// Unix_Proc_signal_Params_List is a list of Unix_Proc_signal_Params.
+type Unix_Proc_signal_Params_List = capnp.StructList[Unix_Proc_signal_Params]
+
+// NewUnix_Proc_signal_Params creates a new list of Unix_Proc_signal_Params.
+func NewUnix_Proc_signal_Params_List(s *capnp.Segment, sz int32) (Unix_Proc_signal_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 0}, sz)
+	return capnp.StructList[Unix_Proc_signal_Params]{List: l}, err
+}
+
+// Unix_Proc_signal_Params_Future is a wrapper for a Unix_Proc_signal_Params promised by a client call.
+type Unix_Proc_signal_Params_Future struct{ *capnp.Future }
+
+func (p Unix_Proc_signal_Params_Future) Struct() (Unix_Proc_signal_Params, error) {
+	s, err := p.Future.Struct()
+	return Unix_Proc_signal_Params{s}, err
+}
+
+type Unix_Proc_signal_Results struct{ capnp.Struct }
+
+// Unix_Proc_signal_Results_TypeID is the unique identifier for the type Unix_Proc_signal_Results.
+const Unix_Proc_signal_Results_TypeID = 0xfeda57ee26ad6825
+
+func NewUnix_Proc_signal_Results(s *capnp.Segment) (Unix_Proc_signal_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Unix_Proc_signal_Results{st}, err
+}
+
+func NewRootUnix_Proc_signal_Results(s *capnp.Segment) (Unix_Proc_signal_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Unix_Proc_signal_Results{st}, err
+}
+
+func ReadRootUnix_Proc_signal_Results(msg *capnp.Message) (Unix_Proc_signal_Results, error) {
+	root, err := msg.Root()
+	return Unix_Proc_signal_Results{root.Struct()}, err
+}
+
+func (s Unix_Proc_signal_Results) String() string {
+	str, _ := text.Marshal(0xfeda57ee26ad6825, s.Struct)
+	return str
+}
+
+// Unix_Proc_signal_Results_List is a list of Unix_Proc_signal_Results.
+type Unix_Proc_signal_Results_List = capnp.StructList[Unix_Proc_signal_Results]
+
+// NewUnix_Proc_signal_Results creates a new list of Unix_Proc_signal_Results.
+func NewUnix_Proc_signal_Results_List(s *capnp.Segment, sz int32) (Unix_Proc_signal_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	return capnp.StructList[Unix_Proc_signal_Results]{List: l}, err
+}
+
+// Unix_Proc_signal_Results_Future is a wrapper for a Unix_Proc_signal_Results promised by a client call.
+type Unix_Proc_signal_Results_Future struct{ *capnp.Future }
+
+func (p Unix_Proc_signal_Results_Future) Struct() (Unix_Proc_signal_Results, error) {
+	s, err := p.Future.Struct()
+	return Unix_Proc_signal_Results{s}, err
+}
+
+type Unix_StreamReader struct{ Client *capnp.Client }
+
+// Unix_StreamReader_TypeID is the unique identifier for the type Unix_StreamReader.
+const Unix_StreamReader_TypeID = 0xe13c59eb426d655c
+
+func (c Unix_StreamReader) SetDst(ctx context.Context, params func(Unix_StreamReader_setDst_Params) error) (Unix_StreamReader_setDst_Results_Future, capnp.ReleaseFunc) {
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0xe13c59eb426d655c,
+			MethodID:      0,
+			InterfaceName: "proc.capnp:Unix.StreamReader",
+			MethodName:    "setDst",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Unix_StreamReader_setDst_Params{Struct: s}) }
+	}
+	ans, release := c.Client.SendCall(ctx, s)
+	return Unix_StreamReader_setDst_Results_Future{Future: ans.Future()}, release
+}
+
+func (c Unix_StreamReader) AddRef() Unix_StreamReader {
+	return Unix_StreamReader{
+		Client: c.Client.AddRef(),
+	}
+}
+
+func (c Unix_StreamReader) Release() {
+	c.Client.Release()
+}
+
+// A Unix_StreamReader_Server is a Unix_StreamReader with a local implementation.
+type Unix_StreamReader_Server interface {
+	SetDst(context.Context, Unix_StreamReader_setDst) error
+}
+
+// Unix_StreamReader_NewServer creates a new Server from an implementation of Unix_StreamReader_Server.
+func Unix_StreamReader_NewServer(s Unix_StreamReader_Server, policy *server.Policy) *server.Server {
+	c, _ := s.(server.Shutdowner)
+	return server.New(Unix_StreamReader_Methods(nil, s), s, c, policy)
+}
+
+// Unix_StreamReader_ServerToClient creates a new Client from an implementation of Unix_StreamReader_Server.
+// The caller is responsible for calling Release on the returned Client.
+func Unix_StreamReader_ServerToClient(s Unix_StreamReader_Server, policy *server.Policy) Unix_StreamReader {
+	return Unix_StreamReader{Client: capnp.NewClient(Unix_StreamReader_NewServer(s, policy))}
+}
+
+// Unix_StreamReader_Methods appends Methods to a slice that invoke the methods on s.
+// This can be used to create a more complicated Server.
+func Unix_StreamReader_Methods(methods []server.Method, s Unix_StreamReader_Server) []server.Method {
+	if cap(methods) == 0 {
+		methods = make([]server.Method, 0, 1)
+	}
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xe13c59eb426d655c,
+			MethodID:      0,
+			InterfaceName: "proc.capnp:Unix.StreamReader",
+			MethodName:    "setDst",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.SetDst(ctx, Unix_StreamReader_setDst{call})
+		},
+	})
+
+	return methods
+}
+
+// Unix_StreamReader_setDst holds the state for a server call to Unix_StreamReader.setDst.
+// See server.Call for documentation.
+type Unix_StreamReader_setDst struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c Unix_StreamReader_setDst) Args() Unix_StreamReader_setDst_Params {
+	return Unix_StreamReader_setDst_Params{Struct: c.Call.Args()}
+}
+
+// AllocResults allocates the results struct.
+func (c Unix_StreamReader_setDst) AllocResults() (Unix_StreamReader_setDst_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Unix_StreamReader_setDst_Results{Struct: r}, err
+}
+
+type Unix_StreamReader_setDst_Params struct{ capnp.Struct }
+
+// Unix_StreamReader_setDst_Params_TypeID is the unique identifier for the type Unix_StreamReader_setDst_Params.
+const Unix_StreamReader_setDst_Params_TypeID = 0xf7d1c8107546dad7
+
+func NewUnix_StreamReader_setDst_Params(s *capnp.Segment) (Unix_StreamReader_setDst_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Unix_StreamReader_setDst_Params{st}, err
+}
+
+func NewRootUnix_StreamReader_setDst_Params(s *capnp.Segment) (Unix_StreamReader_setDst_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Unix_StreamReader_setDst_Params{st}, err
+}
+
+func ReadRootUnix_StreamReader_setDst_Params(msg *capnp.Message) (Unix_StreamReader_setDst_Params, error) {
+	root, err := msg.Root()
+	return Unix_StreamReader_setDst_Params{root.Struct()}, err
+}
+
+func (s Unix_StreamReader_setDst_Params) String() string {
+	str, _ := text.Marshal(0xf7d1c8107546dad7, s.Struct)
+	return str
+}
+
+func (s Unix_StreamReader_setDst_Params) Dst() Unix_StreamWriter {
+	p, _ := s.Struct.Ptr(0)
+	return Unix_StreamWriter{Client: p.Interface().Client()}
+}
+
+func (s Unix_StreamReader_setDst_Params) HasDst() bool {
+	return s.Struct.HasPtr(0)
+}
+
+func (s Unix_StreamReader_setDst_Params) SetDst(v Unix_StreamWriter) error {
+	if !v.Client.IsValid() {
+		return s.Struct.SetPtr(0, capnp.Ptr{})
+	}
+	seg := s.Segment()
+	in := capnp.NewInterface(seg, seg.Message().AddCap(v.Client))
+	return s.Struct.SetPtr(0, in.ToPtr())
+}
+
+// Unix_StreamReader_setDst_Params_List is a list of Unix_StreamReader_setDst_Params.
+type Unix_StreamReader_setDst_Params_List = capnp.StructList[Unix_StreamReader_setDst_Params]
+
+// NewUnix_StreamReader_setDst_Params creates a new list of Unix_StreamReader_setDst_Params.
+func NewUnix_StreamReader_setDst_Params_List(s *capnp.Segment, sz int32) (Unix_StreamReader_setDst_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[Unix_StreamReader_setDst_Params]{List: l}, err
+}
+
+// Unix_StreamReader_setDst_Params_Future is a wrapper for a Unix_StreamReader_setDst_Params promised by a client call.
+type Unix_StreamReader_setDst_Params_Future struct{ *capnp.Future }
+
+func (p Unix_StreamReader_setDst_Params_Future) Struct() (Unix_StreamReader_setDst_Params, error) {
+	s, err := p.Future.Struct()
+	return Unix_StreamReader_setDst_Params{s}, err
+}
+
+func (p Unix_StreamReader_setDst_Params_Future) Dst() Unix_StreamWriter {
+	return Unix_StreamWriter{Client: p.Future.Field(0, nil).Client()}
+}
+
+type Unix_StreamReader_setDst_Results struct{ capnp.Struct }
+
+// Unix_StreamReader_setDst_Results_TypeID is the unique identifier for the type Unix_StreamReader_setDst_Results.
+const Unix_StreamReader_setDst_Results_TypeID = 0x8278dbf22bb1ab9d
+
+func NewUnix_StreamReader_setDst_Results(s *capnp.Segment) (Unix_StreamReader_setDst_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Unix_StreamReader_setDst_Results{st}, err
+}
+
+func NewRootUnix_StreamReader_setDst_Results(s *capnp.Segment) (Unix_StreamReader_setDst_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Unix_StreamReader_setDst_Results{st}, err
+}
+
+func ReadRootUnix_StreamReader_setDst_Results(msg *capnp.Message) (Unix_StreamReader_setDst_Results, error) {
+	root, err := msg.Root()
+	return Unix_StreamReader_setDst_Results{root.Struct()}, err
+}
+
+func (s Unix_StreamReader_setDst_Results) String() string {
+	str, _ := text.Marshal(0x8278dbf22bb1ab9d, s.Struct)
+	return str
+}
+
+// Unix_StreamReader_setDst_Results_List is a list of Unix_StreamReader_setDst_Results.
+type Unix_StreamReader_setDst_Results_List = capnp.StructList[Unix_StreamReader_setDst_Results]
+
+// NewUnix_StreamReader_setDst_Results creates a new list of Unix_StreamReader_setDst_Results.
+func NewUnix_StreamReader_setDst_Results_List(s *capnp.Segment, sz int32) (Unix_StreamReader_setDst_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	return capnp.StructList[Unix_StreamReader_setDst_Results]{List: l}, err
+}
+
+// Unix_StreamReader_setDst_Results_Future is a wrapper for a Unix_StreamReader_setDst_Results promised by a client call.
+type Unix_StreamReader_setDst_Results_Future struct{ *capnp.Future }
+
+func (p Unix_StreamReader_setDst_Results_Future) Struct() (Unix_StreamReader_setDst_Results, error) {
+	s, err := p.Future.Struct()
+	return Unix_StreamReader_setDst_Results{s}, err
+}
+
+type Unix_StreamWriter struct{ Client *capnp.Client }
+
+// Unix_StreamWriter_TypeID is the unique identifier for the type Unix_StreamWriter.
+const Unix_StreamWriter_TypeID = 0x9dc9fc28fe07475d
+
+func (c Unix_StreamWriter) Send(ctx context.Context, params func(channel.Sender_send_Params) error) (stream.StreamResult_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xe8bbed1438ea16ee,
@@ -749,7 +1131,7 @@ func (c Unix_OutputStream) Send(ctx context.Context, params func(channel.Sender_
 	ans, release := c.Client.SendCall(ctx, s)
 	return stream.StreamResult_Future{Future: ans.Future()}, release
 }
-func (c Unix_OutputStream) Close(ctx context.Context, params func(channel.Closer_close_Params) error) (channel.Closer_close_Results_Future, capnp.ReleaseFunc) {
+func (c Unix_StreamWriter) Close(ctx context.Context, params func(channel.Closer_close_Params) error) (channel.Closer_close_Results_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xfad0e4b80d3779c3,
@@ -766,38 +1148,38 @@ func (c Unix_OutputStream) Close(ctx context.Context, params func(channel.Closer
 	return channel.Closer_close_Results_Future{Future: ans.Future()}, release
 }
 
-func (c Unix_OutputStream) AddRef() Unix_OutputStream {
-	return Unix_OutputStream{
+func (c Unix_StreamWriter) AddRef() Unix_StreamWriter {
+	return Unix_StreamWriter{
 		Client: c.Client.AddRef(),
 	}
 }
 
-func (c Unix_OutputStream) Release() {
+func (c Unix_StreamWriter) Release() {
 	c.Client.Release()
 }
 
-// A Unix_OutputStream_Server is a Unix_OutputStream with a local implementation.
-type Unix_OutputStream_Server interface {
+// A Unix_StreamWriter_Server is a Unix_StreamWriter with a local implementation.
+type Unix_StreamWriter_Server interface {
 	Send(context.Context, channel.Sender_send) error
 
 	Close(context.Context, channel.Closer_close) error
 }
 
-// Unix_OutputStream_NewServer creates a new Server from an implementation of Unix_OutputStream_Server.
-func Unix_OutputStream_NewServer(s Unix_OutputStream_Server, policy *server.Policy) *server.Server {
+// Unix_StreamWriter_NewServer creates a new Server from an implementation of Unix_StreamWriter_Server.
+func Unix_StreamWriter_NewServer(s Unix_StreamWriter_Server, policy *server.Policy) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(Unix_OutputStream_Methods(nil, s), s, c, policy)
+	return server.New(Unix_StreamWriter_Methods(nil, s), s, c, policy)
 }
 
-// Unix_OutputStream_ServerToClient creates a new Client from an implementation of Unix_OutputStream_Server.
+// Unix_StreamWriter_ServerToClient creates a new Client from an implementation of Unix_StreamWriter_Server.
 // The caller is responsible for calling Release on the returned Client.
-func Unix_OutputStream_ServerToClient(s Unix_OutputStream_Server, policy *server.Policy) Unix_OutputStream {
-	return Unix_OutputStream{Client: capnp.NewClient(Unix_OutputStream_NewServer(s, policy))}
+func Unix_StreamWriter_ServerToClient(s Unix_StreamWriter_Server, policy *server.Policy) Unix_StreamWriter {
+	return Unix_StreamWriter{Client: capnp.NewClient(Unix_StreamWriter_NewServer(s, policy))}
 }
 
-// Unix_OutputStream_Methods appends Methods to a slice that invoke the methods on s.
+// Unix_StreamWriter_Methods appends Methods to a slice that invoke the methods on s.
 // This can be used to create a more complicated Server.
-func Unix_OutputStream_Methods(methods []server.Method, s Unix_OutputStream_Server) []server.Method {
+func Unix_StreamWriter_Methods(methods []server.Method, s Unix_StreamWriter_Server) []server.Method {
 	if cap(methods) == 0 {
 		methods = make([]server.Method, 0, 2)
 	}
@@ -829,69 +1211,94 @@ func Unix_OutputStream_Methods(methods []server.Method, s Unix_OutputStream_Serv
 	return methods
 }
 
-const schema_d78885a0de56b292 = "x\xda|T]h\x1cU\x18=\xe7\xce\x9d\xb9\xd6\xee" +
-	"t\xf7f\xa6\x14!\x10\x10\x15\xac$\xd6\xd6P\x08H" +
-	"\x13E\x8a/\xba\xd74B\xa8>\x8c\x9b5&t\x7f" +
-	"\x98\x9d\xd5\xf4A\x0a\x85\x82>TE\xfaT}\x90\"" +
-	"\x94\xe2\x83E\x14\x1aT\xb4B_\xa4\x08QA|\xa9" +
-	"V\x1aH\xaa\xc1*\xad\"\"S\xeevwg7[" +
-	"\xfa6|\xf7\xcc\xf9\xcew\xcew\xef\xae\x191)\x1f" +
-	"\xf1Oo\x810u\xd7KK?\xcd\xfeu\xf0\xddo" +
-	"\x8fB\x17\x9c\xf4\x8fC\xb3\xd3'\x0f\xfcs\x0c`\xb0" +
-	",\xaf\x06\x17\xa4\x02\x82\xf3R\x05\xe7\xe5\x0e ;\xd7" +
-	"[\x9d\xf4\x9d\x8f\x9f\xbb\xf4\xfe\xb1\xd7\x7f\xb4\xe0\xcb\xf2" +
-	"h\xb0*\xf7\x02\x81\xef\xaa\xc0w-x\xaf<\xf1\xff" +
-	"\xf8\xe4\xd0q\xe8\x90\x80KU\xe0\x9eQ\xf7n\x82\xc1" +
-	"\xb8\xbb\x0fL\xaf\\z~y\xe3\xf8\x1boB\x17\x98" +
-	"Q\xbb\xca\xf6\x9cq\xbf\x0e^p\x15\xb0g\xd6}\x8b" +
-	"`\x9a~\x7f\xee\xe2F\xe5\xb73\xd0>\x81\x96.\xaa" +
-	"\xef \xd3\xab\x0f\x0do\xfd\xe0\xec\xfcG\xbdmV=" +
-	"a\xdb\xac{\xb6\xcd\xdb\xd1bq\xfa\xc3\x07\xbe\xec\xf9" +
-	"s\x8b\xfa\x062\xbd\xa6^z\xf8\xc4\x9f\x8f\xae\x0c\x8c" +
-	"\xbe\xe1\xfd\x1a\xfc\xebY\xe0\x0dO\x057<;\xcdA" +
-	"\xf9\xb77>\xf3\xde\xe5\x81\xd1\xb7\xab\xc5\xe0\x9e\x96\xe6" +
-	"\xedj\x7f\xf0\x98\xfdJ\xff\xf3\xae\x9f:\xb2\xeb\xb3\xb5" +
-	"M`\x14\x18\xdc\xafN\x05\xa3-\xf8\x83j\x7fpX" +
-	"\xa9\xe0\xb0\xca\xe3BZ\x8fk\xa5\xb1RT\x17\xd5\xfa" +
-	"\xc4Luai\xec\x99fRo&\xd3I>.G" +
-	"\x95\"Yt\\#\xc9\xf4\xe9\xf5\xf0\xb5\x93+\xa7\xd7" +
-	"1I\xcd\x11#EO\x09\xd0\xdcaQ\x16N\xfa\x10" +
-	"]^\xb6yar\xec\xb5^?\xde\xe3\x83\xffb\xcf" +
-	">\xf8\x8bG\x9e\xa8U*Qu.}\xaa\xda\x92\x12" +
-	"C\x95\xa3J\xdaQ\x86[\xd2\xda\xba\xba3g\xba\xba" +
-	"\xa5M\xba\x0aY\x7f\xb0\xab\xd0\xa9\xd6'\x9e\\*\x97" +
-	"\x9aI-\x1e+/\x95K\xf7=[n4\x0f%\x0d" +
-	"\xc0HG\x02\x92\x80\xf6w\x02\xe6.\x87&\x14\xcc\xdb" +
-	"_\xa9\xb3l@\xea\x1e\xc6\xae\x97\xed9P$\xcdp" +
-	"\x97\xeaSKu\xd6\xa1\xf9\\P\x93!mq\xf9^" +
-	"\xc0|\xe2\xd0|%\xa8\x85\x08)\x00\xfd\x85E\x9es" +
-	"h~\x10\xd4\x8e\x13\xd2\x01\xf4\x8aE^th\xd6\x04" +
-	"\xb5\x94!%\xa0Ww\x03\xe6\x17\x87\xe6wA\xed\xba" +
-	"!]@\xafO\x00\xe6\x8aCsMP{^H\x0f" +
-	"\xd0\x1b\xb6\xb8\xe6\xd0\\\xb7\x83D\xc9\xcb\xccA0\x07" +
-	"\xaa\xb9\x85\xb8\xf3\x9d\x8f\xe2\xf9\x06\xb7\xa1e\x9b\xadm" +
-	"\x03U\xb9\xfa\xca\xa6\xd2H#\x99[\xa8RgQ\xde" +
-	"rb_#\x99\xab5\x13\xea,\xd6\xec\xa0\x1c\xc7\x83" +
-	"\x07}\xde\x15\xc7^\x8d\x16\x92v\x0cl\xdc!\xa9b" +
-	"\x14G\x95F_N\xbb\xb3\x9cF\xea\xf6\x98C\xec[" +
-	"\x09\x0e\xdd\xbe]\x9b\x0b\x831v\xd6P\xf5\xdf\x08\x95" +
-	"\x1b\x9e\xf7\xcf\xb8?\xf7l^\xb7t\x87\x1b\x81\xbc\xed" +
-	"iWB:.\xd0}'\xd8yj\xb4\xde\x09\xa1]" +
-	"\x95\xb7\xb2&Y$\xfbnS\xcb\x01\x95\xd4\xe2\x8c\xa2" +
-	"\xf3\x16\xb1\xf3\xf6Y\x0aL\xe585L=\xaa\xf2\xd6" +
-	"\xab\x81\xcb\xd1Z\xbb\xdb\x15[-\xa7$5\x87x\xe0" +
-	"f\x00\x00\x00\xff\xff$\xfa\x9b\xbf"
+const schema_d78885a0de56b292 = "x\xda\x94U_h\x1c\xd5\x17>gf\xee\xde%M" +
+	":{sw\x7f\xe5')\x81P\x8bMqI\x1b\xa2" +
+	"\xb0(\xf9\xa3q\x89\xd6\xba7I\x0d\xad\xf5a\xcc\x0e" +
+	"\xdb\x0d\xd9\xdd83\xd1\x08\x86H\xb1\xa8\x0f\xd5\"\xbe" +
+	"X\x0c\xd8b\x90Z%U\x14ZT\xfc\x03\xa2\x91\xf6" +
+	"!\xd5R\xa8X\x8cTHR\xa3V\x8aE\xb4\x1d\xb9" +
+	"\xb3;;\x93?\x8a>%{\xe6\xdc\xef|\xe7;\xdf" +
+	"=\xb7\xe5\xac\xd2\xa1m\xab\x9b\xae\x01E<I\"\xee" +
+	"\xe4\xf1\xb7\xb7\xfe\xfa\xcd\xd8~`\x1b\x11@\xa3\x00\xad" +
+	"w\x92G\x104\xf7\xcd=\x03\xce\xe7\xf3\x9dO\x03K" +
+	"(\xee\xb4}\xdb\xbd\xe7\xb6\x94\xa6\x00\x90o!\xdf\xf3" +
+	"6B\x01\xf86\xf2\x00\xa0\xfb\xf3\xf0\xee\xbe\xc3\xfd\xd7" +
+	"\x0e\x00[\xa7\xba/\xbe\xf3\xe0\xc5W\x0f<{^&" +
+	"v\x93\xfd\xbc\x87\xa4\x01\xf88\xa1|\x9cl\x00po" +
+	"\xd7^\xba\xde\xd6Q\x7f\x10X\x1c\x01\x08\xd2\x18\xb6N" +
+	"\x92\x1a\x04\xe4S\xa4\x1d\xd0\xbdtq\xef\xa9\xa5\x83\xcf" +
+	"=\x0f,\x16\x82&T\xd6\xfb\x8c|\xca\xcf\xc8\xca\xad" +
+	"3\xe4\x05\x04t\x9f\xa9\x99\xe9l\xf9\xdfS\x87@$" +
+	"\xd0\xa7\xff(\xbdI\xa2=A%\xda\xc3iz\xe3\x96" +
+	"?g&\x81\xc5\xd4\x00\x0d\x90\xbfL\x17\xf9\x94\x07z" +
+	"\x84R~\x84Jn\xd5&W&\x7fB\xdf\xe032" +
+	"\x85\xcf\xd24\xff\xddKv\xbf:yz\xa9p\xf9\x18" +
+	"\xb0\xbaJe\xbe@\xcf\x82\xe6.nmX\xf7\xda\x89" +
+	"\xdct\xb8\xc33T\x91\x9cf=N\x87\x8c\xa1L\xdf" +
+	"\xf1\xcd\x1f\x85N^\xa1_\x82\xe6\xee5\x0b]\x97w" +
+	"\xdf1\xb7\xaa\xfe9\xba\xc8\xe7<\xb2\xdf\xd24'Q" +
+	"\x0a\xe0>\xa4\xfd\x16i\xdb\xf5\xca\xdc*\xd5\x97\xe8\x10" +
+	"\xbf\xe2%/\xd14Ox\xc9\x7fD\xae\x1e\x9dhy" +
+	"\x7f~E2\xc4\x90_\xa7G\xcb\x88\x1c\xa3i.\xa2" +
+	"\x94\x8b\xa8\xee\x9e\xbfp\xcfh\xec\x8b\xd9ke[\x10" +
+	"\x94\xc2vG\xf7\xc8&DT6q\xf3\xbe\xb76\xff" +
+	"4p\xe1\x06\xb0DU\xf8h\x13\xc21w\xc4*\x0d" +
+	"&\x07\x8d\x11\xad8\x92\xdaU\xcc\x8f%\xfb\x1c\xcb4" +
+	"\x0a\xbd\xa6\x915\xad\xa4m:w\xdb\xce\xa6^\xd3\x1e" +
+	"\xa5\xc3\x8e]\xcdV\xfc\xec\x8c\x0c\xf4\xe5s\xb4h\x0c" +
+	"g\x10E-*\x00lc\x0a\x00\x91%\xba\x00Pa" +
+	"u]\x00\xedv>\xd7\xb3\xb3\x7f\xc2\xce\xe7\xfa\xbb{" +
+	"\xef\x97\x7f\xef\xeb\xd9\xb1\xa3\x0a\x88\x15@\x101\x0c\xbb" +
+	"\xea\xff]\xa19'\x9aC\xa2\xb3\xa1\x90]\xd8\xd0\xc4" +
+	"]\xa5B\xc1(fu\xc9\xc8\xf5\x9b\x00]\xb6Q\xf9" +
+	"9`\x81\x9ewL+\xa3\x12\xa1!\x062w \xc3" +
+	"F\xa1)\xa1\x10\x00\xc3\x0d2\x0b1\xa3\"\xc6\x02J" +
+	"\x80U\xd2jq$\xd5=f\x0e\x8e:%+i\x8e" +
+	"\x99\x83\x9eP\xc3\x8e\x0d 4U\x03\xd0\x10\x80\xd55" +
+	"\x03\x88\xa8\x8a\"\xae\xa0.\x8f\"\x0b\xec e\x0a!" +
+	"Vu\xadt\x03R\xd3\x86*\xd4{\x12\xea\x84\x8a\xe2" +
+	"\x03\x05\x19b\\\xde\"v\xaa\x09@\xbc\xab\xa2\xf8X" +
+	"A\xa6(qo\x02\x1f\xca\xcc\x93*\x8a\xaf\x15d\xaa" +
+	"\x1aG\x15\x80\xcd\xca\xcc\xd3*\x8ay\x05\x99\xa6\xc5Q" +
+	"\x03`?l\x07\x10\xdf\xa9(~T\x90\x11\x12G\x02" +
+	"\xc0\x16R\x00\xe2\x92\x8a\xe2\x17\x05Y$\x12\xc7\x08\x00" +
+	"[\x92\xc1y\x15\xc5U\xd9\x88\xe1\xec\xc3ZP\xb0\x16" +
+	"\x90f\xf3\x96\xff\xbfnX9\x1b\xd7\x83'\x9b\x8c\xad" +
+	"\x07\xa4f\xf1\xb1\x15\xa1F\xdb\xc9\xe6\x8b\xc8\x82\x81\x96" +
+	"\x95h\xb7\x9dli\xd4A\x16\x0c7\xf8`Z\xd6\xea" +
+	"\x0f\xcb\xa6\x11x\xd2\xce\xe7\x8a\xc6\xf0\xa6\x8ca\x19j" +
+	"\xc1\x0e\x8f#\x15\x8c\xa3\xbd\x9c\x85z\xb0>\x01Q_" +
+	"k \xbe\x85\xca\x0e\x92\xae(\x9bh\xe7B|\xfc\xf0" +
+	"\xec\xeb\x0b!\x13UC+LT\x07\xca*\xbf'=" +
+	"\xbfzH\xc1\x06\xc7T{\x9fGLh*\x01\xa8\xee" +
+	"M\xf4\xaf1c)P\x18\xa1\x15\xfe\x1d\xe8\x01\x04\xa6" +
+	"\x82e\xfc3\xc9\xc7\x8d\xbcS\xf1&\xda\xff`_\xa9" +
+	"V\xc1^f\xde\xed\x81Z\x8d#\xf23\xd6\xe3\xb2{" +
+	"\x82\xf5+\xe4\xaa\x94\xab`\xc1\xdfI\xd9kzwS" +
+	"\x1a\xbc\xdc\xa5\xbf\xc4\xd0\x7f\xe4\x82.\xbd-\xd4\x81\x19" +
+	"\x0c*\x81.K\x05\xa7\xfd5\x8d\xfe\xa6g\xac\xd9;" +
+	"\xadK6\xcb\xcf\xa2\xdf8uJ!\x02\xfeS\x80\xfe" +
+	"\xab'!\xa0\xb3\x16;\x1b\x90\xddJu)\xd1\xaaE" +
+	"\xe1]\xc1\xb5\x82^\xc9N\x0d\x19\xd6c\xff\xbf[\xb3" +
+	"k\x98\xb5)\x90\x9ffm\xe7\xbf\xda\xdf_\xdc\x7f\x05" +
+	"\x00\x00\xff\xff\x16\xb9i\xc8"
 
 func init() {
 	schemas.Register(schema_d78885a0de56b292,
-		0x82ce9b5bf259d963,
+		0x8278dbf22bb1ab9d,
+		0x8441e8c774575aac,
 		0x85f7549a53596cef,
 		0x8d124035fd940437,
 		0x8e898dedb95cdee4,
+		0x9080163041c90a87,
+		0x9dc9fc28fe07475d,
+		0xa56f29d54a3673af,
 		0xa9eb6dedccb8d3ff,
 		0xaf67b0a40b1c2bea,
 		0xbf26ab53506a6190,
-		0xd134f1942f6607f0,
+		0xe13c59eb426d655c,
 		0xe19c553506f6045b,
-		0xe8bb307fa2f406fb)
+		0xe8bb307fa2f406fb,
+		0xf7d1c8107546dad7,
+		0xfeda57ee26ad6825)
 }

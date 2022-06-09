@@ -25,11 +25,23 @@ interface Unix extends(Executor(Command)) {
         args @2 :List(Text);
         env  @3 :List(Text);
 
-        stdin  @4 :InputStream;
-        stdout @5 :OutputStream;
-        stderr @6 :OutputStream;
+        stdin  @4 :StreamReader;
+        stdout @5 :StreamWriter;
+        stderr @6 :StreamWriter;
     }
 
-    interface InputStream  extends(Chan.Recver(Data)) {}
-    interface OutputStream extends(Chan.SendCloser(Data)) {}
+    interface Proc extends(P) {
+        signal @0 (signal :Signal);
+        enum Signal {
+            sigINT  @0;
+            sigTERM @1;
+            sigKILL @2;
+        }
+    }
+
+    interface StreamReader {
+        setDst @0 (dst :StreamWriter);
+    }
+
+    interface StreamWriter extends(Chan.SendCloser(Data)) {}
 }
