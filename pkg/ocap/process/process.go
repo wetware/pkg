@@ -13,18 +13,18 @@ import (
 // Func specifies a process that runs in a native goroutine.
 type Func func() error
 
-// P is the basic process capability, from which all others are
-// derived.  Processes are asynchronous and concurrent, and can
-// be waited upon to complete.
-type P api.P
+// Proc is the basic process capability, from which all others are
+// derived.  Processes are asynchronous and concurrent, and can be
+// waited upon to complete.
+type Proc api.Waiter
 
-func (p P) AddRef() P {
-	return P{
+func (p Proc) AddRef() Proc {
+	return Proc{
 		Client: p.Client.AddRef(),
 	}
 }
 
-func (p P) Release() {
+func (p Proc) Release() {
 	p.Client.Release()
 }
 
@@ -32,11 +32,11 @@ func (p P) Release() {
 // whose Wait() method returns the error returned by 'f'.
 //
 // It is f's responsibility to terminate promptly when ctx expires.
-func New(f Func) P {
+func New(f Func) Proc {
 	return NewWithPolicy(f, nil)
 }
 
-func NewWithPolicy(f Func, p *server.Policy) P {
+func NewWithPolicy(f Func, p *server.Policy) Proc {
 	done := make(chan struct{})
 	proc := process{done: done}
 
@@ -45,7 +45,7 @@ func NewWithPolicy(f Func, p *server.Policy) P {
 		proc.err = f()
 	}()
 
-	return P(api.P_ServerToClient(&proc, p))
+	return Proc(api.Waiter_ServerToClient(&proc, p))
 }
 
 // Wait blocks until the process terminates or the context expires,
@@ -54,8 +54,8 @@ func NewWithPolicy(f Func, p *server.Policy) P {
 // Context errors are returned as expected.
 //
 // Wait is safe to call from multiple goroutines.
-func (p P) Wait(ctx context.Context) error {
-	f, release := api.P(p).Wait(ctx, nil)
+func (p Proc) Wait(ctx context.Context) error {
+	f, release := api.Waiter(p).Wait(ctx, nil)
 	defer release()
 
 	select {
@@ -78,7 +78,7 @@ type process struct {
 	err  error
 }
 
-func (p *process) Wait(ctx context.Context, call api.P_wait) error {
+func (p *process) Wait(ctx context.Context, call api.Waiter_wait) error {
 	select {
 	case <-p.done:
 		return p.err

@@ -119,7 +119,7 @@ func TestSignal(t *testing.T) {
 				require.NoError(t, err)
 
 				assert.EqualError(t, <-cherr,
-					fmt.Sprintf("proc.capnp:P.wait: signal: %s", sig),
+					fmt.Sprintf("proc.capnp:Waiter.wait: signal: %s", sig),
 					"should report '%s' signal", sig)
 			})
 		}(sig)

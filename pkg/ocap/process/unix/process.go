@@ -27,7 +27,7 @@ func (p Proc) Release() {
 }
 
 func (p Proc) Wait(ctx context.Context) error {
-	return process.P(p).Wait(ctx)
+	return process.Proc(p).Wait(ctx)
 }
 
 func (p Proc) Signal(ctx context.Context, s syscall.Signal) (ocap.Future, capnp.ReleaseFunc) {
@@ -115,7 +115,7 @@ func (c *cmdServer) Start() (err error) {
 
 }
 
-func (c *cmdServer) Wait(ctx context.Context, _ api.P_wait) error {
+func (c *cmdServer) Wait(ctx context.Context, _ api.Waiter_wait) error {
 	select {
 	case <-c.done:
 		return c.err

@@ -23,12 +23,13 @@ func (ex Executor) Release() {
 // Exec constructs a command and executes it in a native OS process.
 func (ex Executor) Exec(ctx context.Context, c CommandFunc) Proc {
 	f, release := api.Unix(ex).Exec(ctx, c)
+	proc := Proc(f.Proc()) // must happen before 'go' to avoid race
 	go func() {
 		defer release()
 		<-f.Done()
 	}()
 
-	return Proc(f.Proc())
+	return proc
 }
 
 type FutureProc api.Executor_exec_Results_Future
@@ -69,7 +70,7 @@ func (s *Server) Exec(_ context.Context, call api.Executor_exec) error {
 	}
 
 	proc := api.Unix_Proc_ServerToClient(cmd, s.Policy)
-	return res.SetProc(api.P(proc))
+	return res.SetProc(api.Waiter(proc))
 }
 
 func (s *Server) bind(ps api.Executor_exec_Params) (*cmdServer, error) {

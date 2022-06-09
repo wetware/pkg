@@ -183,16 +183,16 @@ func (s Executor_exec_Results) String() string {
 	return str
 }
 
-func (s Executor_exec_Results) Proc() P {
+func (s Executor_exec_Results) Proc() Waiter {
 	p, _ := s.Struct.Ptr(0)
-	return P{Client: p.Interface().Client()}
+	return Waiter{Client: p.Interface().Client()}
 }
 
 func (s Executor_exec_Results) HasProc() bool {
 	return s.Struct.HasPtr(0)
 }
 
-func (s Executor_exec_Results) SetProc(v P) error {
+func (s Executor_exec_Results) SetProc(v Waiter) error {
 	if !v.Client.IsValid() {
 		return s.Struct.SetPtr(0, capnp.Ptr{})
 	}
@@ -218,180 +218,180 @@ func (p Executor_exec_Results_Future) Struct() (Executor_exec_Results, error) {
 	return Executor_exec_Results{s}, err
 }
 
-func (p Executor_exec_Results_Future) Proc() P {
-	return P{Client: p.Future.Field(0, nil).Client()}
+func (p Executor_exec_Results_Future) Proc() Waiter {
+	return Waiter{Client: p.Future.Field(0, nil).Client()}
 }
 
-type P struct{ Client *capnp.Client }
+type Waiter struct{ Client *capnp.Client }
 
-// P_TypeID is the unique identifier for the type P.
-const P_TypeID = 0xe19c553506f6045b
+// Waiter_TypeID is the unique identifier for the type Waiter.
+const Waiter_TypeID = 0xc66c9bda04b0f29e
 
-func (c P) Wait(ctx context.Context, params func(P_wait_Params) error) (P_wait_Results_Future, capnp.ReleaseFunc) {
+func (c Waiter) Wait(ctx context.Context, params func(Waiter_wait_Params) error) (Waiter_wait_Results_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
 		Method: capnp.Method{
-			InterfaceID:   0xe19c553506f6045b,
+			InterfaceID:   0xc66c9bda04b0f29e,
 			MethodID:      0,
-			InterfaceName: "proc.capnp:P",
+			InterfaceName: "proc.capnp:Waiter",
 			MethodName:    "wait",
 		},
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(P_wait_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Waiter_wait_Params{Struct: s}) }
 	}
 	ans, release := c.Client.SendCall(ctx, s)
-	return P_wait_Results_Future{Future: ans.Future()}, release
+	return Waiter_wait_Results_Future{Future: ans.Future()}, release
 }
 
-func (c P) AddRef() P {
-	return P{
+func (c Waiter) AddRef() Waiter {
+	return Waiter{
 		Client: c.Client.AddRef(),
 	}
 }
 
-func (c P) Release() {
+func (c Waiter) Release() {
 	c.Client.Release()
 }
 
-// A P_Server is a P with a local implementation.
-type P_Server interface {
-	Wait(context.Context, P_wait) error
+// A Waiter_Server is a Waiter with a local implementation.
+type Waiter_Server interface {
+	Wait(context.Context, Waiter_wait) error
 }
 
-// P_NewServer creates a new Server from an implementation of P_Server.
-func P_NewServer(s P_Server, policy *server.Policy) *server.Server {
+// Waiter_NewServer creates a new Server from an implementation of Waiter_Server.
+func Waiter_NewServer(s Waiter_Server, policy *server.Policy) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(P_Methods(nil, s), s, c, policy)
+	return server.New(Waiter_Methods(nil, s), s, c, policy)
 }
 
-// P_ServerToClient creates a new Client from an implementation of P_Server.
+// Waiter_ServerToClient creates a new Client from an implementation of Waiter_Server.
 // The caller is responsible for calling Release on the returned Client.
-func P_ServerToClient(s P_Server, policy *server.Policy) P {
-	return P{Client: capnp.NewClient(P_NewServer(s, policy))}
+func Waiter_ServerToClient(s Waiter_Server, policy *server.Policy) Waiter {
+	return Waiter{Client: capnp.NewClient(Waiter_NewServer(s, policy))}
 }
 
-// P_Methods appends Methods to a slice that invoke the methods on s.
+// Waiter_Methods appends Methods to a slice that invoke the methods on s.
 // This can be used to create a more complicated Server.
-func P_Methods(methods []server.Method, s P_Server) []server.Method {
+func Waiter_Methods(methods []server.Method, s Waiter_Server) []server.Method {
 	if cap(methods) == 0 {
 		methods = make([]server.Method, 0, 1)
 	}
 
 	methods = append(methods, server.Method{
 		Method: capnp.Method{
-			InterfaceID:   0xe19c553506f6045b,
+			InterfaceID:   0xc66c9bda04b0f29e,
 			MethodID:      0,
-			InterfaceName: "proc.capnp:P",
+			InterfaceName: "proc.capnp:Waiter",
 			MethodName:    "wait",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.Wait(ctx, P_wait{call})
+			return s.Wait(ctx, Waiter_wait{call})
 		},
 	})
 
 	return methods
 }
 
-// P_wait holds the state for a server call to P.wait.
+// Waiter_wait holds the state for a server call to Waiter.wait.
 // See server.Call for documentation.
-type P_wait struct {
+type Waiter_wait struct {
 	*server.Call
 }
 
 // Args returns the call's arguments.
-func (c P_wait) Args() P_wait_Params {
-	return P_wait_Params{Struct: c.Call.Args()}
+func (c Waiter_wait) Args() Waiter_wait_Params {
+	return Waiter_wait_Params{Struct: c.Call.Args()}
 }
 
 // AllocResults allocates the results struct.
-func (c P_wait) AllocResults() (P_wait_Results, error) {
+func (c Waiter_wait) AllocResults() (Waiter_wait_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return P_wait_Results{Struct: r}, err
+	return Waiter_wait_Results{Struct: r}, err
 }
 
-type P_wait_Params struct{ capnp.Struct }
+type Waiter_wait_Params struct{ capnp.Struct }
 
-// P_wait_Params_TypeID is the unique identifier for the type P_wait_Params.
-const P_wait_Params_TypeID = 0xbf26ab53506a6190
+// Waiter_wait_Params_TypeID is the unique identifier for the type Waiter_wait_Params.
+const Waiter_wait_Params_TypeID = 0x99761c4abe038bf3
 
-func NewP_wait_Params(s *capnp.Segment) (P_wait_Params, error) {
+func NewWaiter_wait_Params(s *capnp.Segment) (Waiter_wait_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return P_wait_Params{st}, err
+	return Waiter_wait_Params{st}, err
 }
 
-func NewRootP_wait_Params(s *capnp.Segment) (P_wait_Params, error) {
+func NewRootWaiter_wait_Params(s *capnp.Segment) (Waiter_wait_Params, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return P_wait_Params{st}, err
+	return Waiter_wait_Params{st}, err
 }
 
-func ReadRootP_wait_Params(msg *capnp.Message) (P_wait_Params, error) {
+func ReadRootWaiter_wait_Params(msg *capnp.Message) (Waiter_wait_Params, error) {
 	root, err := msg.Root()
-	return P_wait_Params{root.Struct()}, err
+	return Waiter_wait_Params{root.Struct()}, err
 }
 
-func (s P_wait_Params) String() string {
-	str, _ := text.Marshal(0xbf26ab53506a6190, s.Struct)
+func (s Waiter_wait_Params) String() string {
+	str, _ := text.Marshal(0x99761c4abe038bf3, s.Struct)
 	return str
 }
 
-// P_wait_Params_List is a list of P_wait_Params.
-type P_wait_Params_List = capnp.StructList[P_wait_Params]
+// Waiter_wait_Params_List is a list of Waiter_wait_Params.
+type Waiter_wait_Params_List = capnp.StructList[Waiter_wait_Params]
 
-// NewP_wait_Params creates a new list of P_wait_Params.
-func NewP_wait_Params_List(s *capnp.Segment, sz int32) (P_wait_Params_List, error) {
+// NewWaiter_wait_Params creates a new list of Waiter_wait_Params.
+func NewWaiter_wait_Params_List(s *capnp.Segment, sz int32) (Waiter_wait_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[P_wait_Params]{List: l}, err
+	return capnp.StructList[Waiter_wait_Params]{List: l}, err
 }
 
-// P_wait_Params_Future is a wrapper for a P_wait_Params promised by a client call.
-type P_wait_Params_Future struct{ *capnp.Future }
+// Waiter_wait_Params_Future is a wrapper for a Waiter_wait_Params promised by a client call.
+type Waiter_wait_Params_Future struct{ *capnp.Future }
 
-func (p P_wait_Params_Future) Struct() (P_wait_Params, error) {
+func (p Waiter_wait_Params_Future) Struct() (Waiter_wait_Params, error) {
 	s, err := p.Future.Struct()
-	return P_wait_Params{s}, err
+	return Waiter_wait_Params{s}, err
 }
 
-type P_wait_Results struct{ capnp.Struct }
+type Waiter_wait_Results struct{ capnp.Struct }
 
-// P_wait_Results_TypeID is the unique identifier for the type P_wait_Results.
-const P_wait_Results_TypeID = 0xa9eb6dedccb8d3ff
+// Waiter_wait_Results_TypeID is the unique identifier for the type Waiter_wait_Results.
+const Waiter_wait_Results_TypeID = 0x957555c94e5b1064
 
-func NewP_wait_Results(s *capnp.Segment) (P_wait_Results, error) {
+func NewWaiter_wait_Results(s *capnp.Segment) (Waiter_wait_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return P_wait_Results{st}, err
+	return Waiter_wait_Results{st}, err
 }
 
-func NewRootP_wait_Results(s *capnp.Segment) (P_wait_Results, error) {
+func NewRootWaiter_wait_Results(s *capnp.Segment) (Waiter_wait_Results, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return P_wait_Results{st}, err
+	return Waiter_wait_Results{st}, err
 }
 
-func ReadRootP_wait_Results(msg *capnp.Message) (P_wait_Results, error) {
+func ReadRootWaiter_wait_Results(msg *capnp.Message) (Waiter_wait_Results, error) {
 	root, err := msg.Root()
-	return P_wait_Results{root.Struct()}, err
+	return Waiter_wait_Results{root.Struct()}, err
 }
 
-func (s P_wait_Results) String() string {
-	str, _ := text.Marshal(0xa9eb6dedccb8d3ff, s.Struct)
+func (s Waiter_wait_Results) String() string {
+	str, _ := text.Marshal(0x957555c94e5b1064, s.Struct)
 	return str
 }
 
-// P_wait_Results_List is a list of P_wait_Results.
-type P_wait_Results_List = capnp.StructList[P_wait_Results]
+// Waiter_wait_Results_List is a list of Waiter_wait_Results.
+type Waiter_wait_Results_List = capnp.StructList[Waiter_wait_Results]
 
-// NewP_wait_Results creates a new list of P_wait_Results.
-func NewP_wait_Results_List(s *capnp.Segment, sz int32) (P_wait_Results_List, error) {
+// NewWaiter_wait_Results creates a new list of Waiter_wait_Results.
+func NewWaiter_wait_Results_List(s *capnp.Segment, sz int32) (Waiter_wait_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[P_wait_Results]{List: l}, err
+	return capnp.StructList[Waiter_wait_Results]{List: l}, err
 }
 
-// P_wait_Results_Future is a wrapper for a P_wait_Results promised by a client call.
-type P_wait_Results_Future struct{ *capnp.Future }
+// Waiter_wait_Results_Future is a wrapper for a Waiter_wait_Results promised by a client call.
+type Waiter_wait_Results_Future struct{ *capnp.Future }
 
-func (p P_wait_Results_Future) Struct() (P_wait_Results, error) {
+func (p Waiter_wait_Results_Future) Struct() (Waiter_wait_Results, error) {
 	s, err := p.Future.Struct()
-	return P_wait_Results{s}, err
+	return Waiter_wait_Results{s}, err
 }
 
 type Unix struct{ Client *capnp.Client }
@@ -678,21 +678,21 @@ func (c Unix_Proc) Signal(ctx context.Context, params func(Unix_Proc_signal_Para
 	ans, release := c.Client.SendCall(ctx, s)
 	return Unix_Proc_signal_Results_Future{Future: ans.Future()}, release
 }
-func (c Unix_Proc) Wait(ctx context.Context, params func(P_wait_Params) error) (P_wait_Results_Future, capnp.ReleaseFunc) {
+func (c Unix_Proc) Wait(ctx context.Context, params func(Waiter_wait_Params) error) (Waiter_wait_Results_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
 		Method: capnp.Method{
-			InterfaceID:   0xe19c553506f6045b,
+			InterfaceID:   0xc66c9bda04b0f29e,
 			MethodID:      0,
-			InterfaceName: "proc.capnp:P",
+			InterfaceName: "proc.capnp:Waiter",
 			MethodName:    "wait",
 		},
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(P_wait_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Waiter_wait_Params{Struct: s}) }
 	}
 	ans, release := c.Client.SendCall(ctx, s)
-	return P_wait_Results_Future{Future: ans.Future()}, release
+	return Waiter_wait_Results_Future{Future: ans.Future()}, release
 }
 
 func (c Unix_Proc) AddRef() Unix_Proc {
@@ -709,7 +709,7 @@ func (c Unix_Proc) Release() {
 type Unix_Proc_Server interface {
 	Signal(context.Context, Unix_Proc_signal) error
 
-	Wait(context.Context, P_wait) error
+	Wait(context.Context, Waiter_wait) error
 }
 
 // Unix_Proc_NewServer creates a new Server from an implementation of Unix_Proc_Server.
@@ -745,13 +745,13 @@ func Unix_Proc_Methods(methods []server.Method, s Unix_Proc_Server) []server.Met
 
 	methods = append(methods, server.Method{
 		Method: capnp.Method{
-			InterfaceID:   0xe19c553506f6045b,
+			InterfaceID:   0xc66c9bda04b0f29e,
 			MethodID:      0,
-			InterfaceName: "proc.capnp:P",
+			InterfaceName: "proc.capnp:Waiter",
 			MethodName:    "wait",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.Wait(ctx, P_wait{call})
+			return s.Wait(ctx, Waiter_wait{call})
 		},
 	})
 
@@ -1211,77 +1211,77 @@ func Unix_StreamWriter_Methods(methods []server.Method, s Unix_StreamWriter_Serv
 	return methods
 }
 
-const schema_d78885a0de56b292 = "x\xda\x94U_h\x1c\xd5\x17>gf\xee\xde%M" +
-	":{sw\x7f\xe5')\x81P\x8bMqI\x1b\xa2" +
-	"\xb0(\xf9\xa3q\x89\xd6\xba7I\x0d\xad\xf5a\xcc\x0e" +
-	"\xdb\x0d\xd9\xdd83\xd1\x08\x86H\xb1\xa8\x0f\xd5\"\xbe" +
-	"X\x0c\xd8b\x90Z%U\x14ZT\xfc\x03\xa2\x91\xf6" +
-	"!\xd5R\xa8X\x8cTHR\xa3V\x8aE\xb4\x1d\xb9" +
-	"\xb3;;\x93?\x8a>%{\xe6\xdc\xef|\xe7;\xdf" +
-	"=\xb7\xe5\xac\xd2\xa1m\xab\x9b\xae\x01E<I\"\xee" +
-	"\xe4\xf1\xb7\xb7\xfe\xfa\xcd\xd8~`\x1b\x11@\xa3\x00\xad" +
-	"w\x92G\x104\xf7\xcd=\x03\xce\xe7\xf3\x9dO\x03K" +
-	"(\xee\xb4}\xdb\xbd\xe7\xb6\x94\xa6\x00\x90o!\xdf\xf3" +
-	"6B\x01\xf86\xf2\x00\xa0\xfb\xf3\xf0\xee\xbe\xc3\xfd\xd7" +
-	"\x0e\x00[\xa7\xba/\xbe\xf3\xe0\xc5W\x0f<{^&" +
-	"v\x93\xfd\xbc\x87\xa4\x01\xf88\xa1|\x9cl\x00po" +
-	"\xd7^\xba\xde\xd6Q\x7f\x10X\x1c\x01\x08\xd2\x18\xb6N" +
-	"\x92\x1a\x04\xe4S\xa4\x1d\xd0\xbdtq\xef\xa9\xa5\x83\xcf" +
-	"=\x0f,\x16\x82&T\xd6\xfb\x8c|\xca\xcf\xc8\xca\xad" +
-	"3\xe4\x05\x04t\x9f\xa9\x99\xe9l\xf9\xdfS\x87@$" +
-	"\xd0\xa7\xff(\xbdI\xa2=A%\xda\xc3iz\xe3\x96" +
-	"?g&\x81\xc5\xd4\x00\x0d\x90\xbfL\x17\xf9\x94\x07z" +
-	"\x84R~\x84Jn\xd5&W&\x7fB\xdf\xe032" +
-	"\x85\xcf\xd24\xff\xddKv\xbf:yz\xa9p\xf9\x18" +
-	"\xb0\xbaJe\xbe@\xcf\x82\xe6.nmX\xf7\xda\x89" +
-	"\xdct\xb8\xc33T\x91\x9cf=N\x87\x8c\xa1L\xdf" +
-	"\xf1\xcd\x1f\x85N^\xa1_\x82\xe6\xee5\x0b]\x97w" +
-	"\xdf1\xb7\xaa\xfe9\xba\xc8\xe7<\xb2\xdf\xd24'Q" +
-	"\x0a\xe0>\xa4\xfd\x16i\xdb\xf5\xca\xdc*\xd5\x97\xe8\x10" +
-	"\xbf\xe2%/\xd14Ox\xc9\x7fD\xae\x1e\x9dhy" +
-	"\x7f~E2\xc4\x90_\xa7G\xcb\x88\x1c\xa3i.\xa2" +
-	"\x94\x8b\xa8\xee\x9e\xbfp\xcfh\xec\x8b\xd9ke[\x10" +
-	"\x94\xc2vG\xf7\xc8&DT6q\xf3\xbe\xb76\xff" +
-	"4p\xe1\x06\xb0DU\xf8h\x13\xc21w\xc4*\x0d" +
-	"&\x07\x8d\x11\xad8\x92\xdaU\xcc\x8f%\xfb\x1c\xcb4" +
-	"\x0a\xbd\xa6\x915\xad\xa4m:w\xdb\xce\xa6^\xd3\x1e" +
-	"\xa5\xc3\x8e]\xcdV\xfc\xec\x8c\x0c\xf4\xe5s\xb4h\x0c" +
-	"g\x10E-*\x00lc\x0a\x00\x91%\xba\x00Pa" +
-	"u]\x00\xedv>\xd7\xb3\xb3\x7f\xc2\xce\xe7\xfa\xbb{" +
-	"\xef\x97\x7f\xef\xeb\xd9\xb1\xa3\x0a\x88\x15@\x101\x0c\xbb" +
-	"\xea\xff]\xa19'\x9aC\xa2\xb3\xa1\x90]\xd8\xd0\xc4" +
-	"]\xa5B\xc1(fu\xc9\xc8\xf5\x9b\x00]\xb6Q\xf9" +
-	"9`\x81\x9ewL+\xa3\x12\xa1!\x062w \xc3" +
-	"F\xa1)\xa1\x10\x00\xc3\x0d2\x0b1\xa3\"\xc6\x02J" +
-	"\x80U\xd2jq$\xd5=f\x0e\x8e:%+i\x8e" +
-	"\x99\x83\x9eP\xc3\x8e\x0d 4U\x03\xd0\x10\x80\xd55" +
-	"\x03\x88\xa8\x8a\"\xae\xa0.\x8f\"\x0b\xec e\x0a!" +
-	"Vu\xadt\x03R\xd3\x86*\xd4{\x12\xea\x84\x8a\xe2" +
-	"\x03\x05\x19b\\\xde\"v\xaa\x09@\xbc\xab\xa2\xf8X" +
-	"A\xa6(qo\x02\x1f\xca\xcc\x93*\x8a\xaf\x15d\xaa" +
-	"\x1aG\x15\x80\xcd\xca\xcc\xd3*\x8ay\x05\x99\xa6\xc5Q" +
-	"\x03`?l\x07\x10\xdf\xa9(~T\x90\x11\x12G\x02" +
-	"\xc0\x16R\x00\xe2\x92\x8a\xe2\x17\x05Y$\x12\xc7\x08\x00" +
-	"[\x92\xc1y\x15\xc5U\xd9\x88\xe1\xec\xc3ZP\xb0\x16" +
-	"\x90f\xf3\x96\xff\xbfnX9\x1b\xd7\x83'\x9b\x8c\xad" +
-	"\x07\xa4f\xf1\xb1\x15\xa1F\xdb\xc9\xe6\x8b\xc8\x82\x81\x96" +
-	"\x95h\xb7\x9dli\xd4A\x16\x0c7\xf8`Z\xd6\xea" +
-	"\x0f\xcb\xa6\x11x\xd2\xce\xe7\x8a\xc6\xf0\xa6\x8ca\x19j" +
-	"\xc1\x0e\x8f#\x15\x8c\xa3\xbd\x9c\x85z\xb0>\x01Q_" +
-	"k \xbe\x85\xca\x0e\x92\xae(\x9bh\xe7B|\xfc\xf0" +
-	"\xec\xeb\x0b!\x13UC+LT\x07\xca*\xbf'=" +
-	"\xbfzH\xc1\x06\xc7T{\x9fGLh*\x01\xa8\xee" +
-	"M\xf4\xaf1c)P\x18\xa1\x15\xfe\x1d\xe8\x01\x04\xa6" +
-	"\x82e\xfc3\xc9\xc7\x8d\xbcS\xf1&\xda\xff`_\xa9" +
-	"V\xc1^f\xde\xed\x81Z\x8d#\xf23\xd6\xe3\xb2{" +
-	"\x82\xf5+\xe4\xaa\x94\xab`\xc1\xdfI\xd9kzwS" +
-	"\x1a\xbc\xdc\xa5\xbf\xc4\xd0\x7f\xe4\x82.\xbd-\xd4\x81\x19" +
-	"\x0c*\x81.K\x05\xa7\xfd5\x8d\xfe\xa6g\xac\xd9;" +
-	"\xadK6\xcb\xcf\xa2\xdf8uJ!\x02\xfeS\x80\xfe" +
-	"\xab'!\xa0\xb3\x16;\x1b\x90\xddJu)\xd1\xaaE" +
-	"\xe1]\xc1\xb5\x82^\xc9N\x0d\x19\xd6c\xff\xbf[\xb3" +
-	"k\x98\xb5)\x90\x9ffm\xe7\xbf\xda\xdf_\xdc\x7f\x05" +
-	"\x00\x00\xff\xff\x16\xb9i\xc8"
+const schema_d78885a0de56b292 = "x\xda\x94Ukh\x1cU\x14>gfn\xee\x9a&" +
+	"\xdd\xbd\xb9\x1bK%%\x10\xa2\xd8\x14\x97\xb4\xa1\x0a\x8b" +
+	"\xb2I4.\xa95\xee\xe4ah\xad?\xc6\xec\xb0\x9d" +
+	"\xb2\x8f83[#\x18\"\xc5\xa2E\xea\xa3\xe8\x8fT" +
+	"\"R,\xe2\x8b\xa4b\xc1\xe2\x03\x15|\x04\xf4G\xd0" +
+	"R\x8cXT*$\xd1\xfa\x88\x95\x82\x8f\x8e\xdc\xd9\x9d" +
+	"\x9dI6\x15\xfbkw\xcf\xfd\xf6\xbb\xe7|\xe7;\xe7" +
+	"\xb6\x7f!u*[\xeb\xa7kAR\x1f\"5\xce\xd4" +
+	"\xab'\xb6,\x7f=v\x00\xd8&\x04P(@\xc7-" +
+	"\xe4>\x04\xc5ym\xf7\xb0\xfd\xc9B\xd7#\xc0\x1a%" +
+	"g\xda\xbaq\xc7\xe9\xcd\x85\xe3\x00\xc87\x93\xef\xf9v" +
+	"B\x01\xf8Vr\x17\xa0\xf3Kv\xd7\xc0\xd1\xc1\x8b\x07" +
+	"\x81\xad\x93\x9d#o\xdc}\xf6\x85\x83\x8f\x9d\x11\xc0\x1e" +
+	"r\x80\xf7\x92$\x00\x1f'\x94\x8f\x93\x0d\x00\xceM\xca" +
+	"3\xffl\xefl8\x0c,\x8a\x00\x04i\x04;\xa6H" +
+	"-\x02\xf2\xe3$\x01\xe8\x9c;\xbb\xe7\xd4\xf9\xc3\x87\x9e" +
+	"\x00\x16\x09P\x13*\xee\xfb\x88|\xc8?\x177w\xcc" +
+	"\x92'\x11\xd0y\xb4v\xb6\xab\xfd\xea\x87\x9f\x02\xb5\x11" +
+	"\xbd\xf4\xef\xa7\xd7\x08\xb6\x07\xa9`KG\xee\xe9\x9b\x1d" +
+	"*>\x0b\xac\xa1|\xce'\xe9\x9f\xa08\xbf?.\xbf" +
+	"\xb7\xa3i\xffd\xe0`\x9c.\x83\xe2\xdc\x9b\xa4\x97\xae" +
+	"\xff{v\x0aXD\xf6\xef\x07\xe4\x1a]\xe297\x0d" +
+	"\x83RnPQME\x96\xd5\xe0C\xf4\x15\xfe\xb4\x80" +
+	"\xf0I\x9a\xe4\x1f\xb8\xe0\xa5-M\xeb^\x9c\xc9L\x07" +
+	"K?A%\x91\xecI7\xd9\xe7\x97g\x94\xf9\xe7\xb2" +
+	"\x1fW\x09y\x9a\x1e\xe1\xdf\xb8W\x7fE\x93\x1cC\x14" +
+	"\xc0\xd9\xa3\xe7\xba\x7f\xdcu\xf3wUW/\xd2%\xfe" +
+	"\x87\x0b\xfe\x8d&\xf9F\x17\xfcW\xcd\x85c\x13\xedo" +
+	"/\xacb\x86\x08r\x0c\x1d\xe3W\x09\x10'\xa1$\x1f" +
+	"\x0aQ>\x14\x0a;g\xe6o/F>\x9d\xbbX\xb2" +
+	"\x05A!loh\xb7\xc8u($r\xbdv\xef\xeb" +
+	"\xd7\xfd<<\x7f\x09X\xa3'|1\xd4\x82\xf0\xb23" +
+	"j\x16Fb#\xda\xa8\x92\x1f\x8d\x0f\xe5\x8d\xb1\xd8\x80" +
+	"m\xeaZ\xae_\xd7\xd2\xba\x19\xb3t\xfb6\xcbn\xed" +
+	"\xd7\xad\"\xcd\xdaV\x05-y\xe8\x94\x08\x0c\x18\x19\x9a" +
+	"\xd7\xb2)D\xb5\x0e%\x00\xb6)\x0e\x80\xc8\x1a\xbb\x01" +
+	"Pb\xf5\xdd\x00\x09\xcb\xc8\xf4\xf6\x0dNXFf\xb0" +
+	"\xa7\xffN\xf1yG\xef\xce\x9d\x15B,\x13\x82\x1a\xc1" +
+	"\xa0\xab6v\x07\xba\xd6\xd8\x16\xd0\x91\xed\x0b4\x9f\xed" +
+	"\x9b\xb8\xb5\x90\xcbi\xf9tXd\xe4xE@X\x94" +
+	"Q\xfe9lB\xd8\xb0u3%\x13UA\xf4e\xee" +
+	"D\x86\xcd\xaa\"\x05B\x00\x0c7\x08\x14bJF\x8c" +
+	"\xf8)\x01V\x92\x96\xf3\xa3\xf1\x9e1}\xa4h\x17\xcc" +
+	"\x98>\xa6\x8f\xb8Bem\x0b@Ud\x05@A\x00" +
+	"V\xdf\x06\xa0\x86dT\xa3\x12\x86\xc5_\x91\xf9\xde\x11" +
+	"2\x05\x18+\xba\x96\xab\x01\xa1iS\x85\xea\xa4\xa0\x9a" +
+	"\x91Q}GB\x86\x18\x15S\xc4N\xb5\x00\xa8o\xca" +
+	"\xa8\xbe/!\x93\xa4\xa8\xdb\x81w\x05\xf2-\x19\xd5/" +
+	"%d\xb2\x1cE\x19\x80\xcd\x09\xe4g2\xaa\x0b\x122" +
+	"E\x89\xa2\x02\xc0~\xd8\x06\xa0~+\xa3\xfa\x93\x84\x8c" +
+	"\x90(\x12\x00\xb6\x18\x07P\xcf\xc9\xa8\xfe*!\xab\xa9" +
+	"\x89b\x0d\x00;/\x82\x0b2\xaa\x17D!\x9a\xbd\x17" +
+	"\xeb@\xc2:@\x9a6L\xef{X33\x16\xae\x07" +
+	"W6\x11[\x0fH\xf5\xfc\xfeU\xa1f\xcbN\x1by" +
+	"d~CKJ$,;](\xda\xc8\xfc\xe6\xfa\x07" +
+	"\xbaiV\x1f\xac\xe8\x86\xefI\xcb\xc8\xe4\xb5lkJ" +
+	"359g\x05\xdb\x11\xf7\xdb\x91(\xa10\xec\xafO" +
+	"@\x0c\xafj\xc8\xb0&\\\x13{@3\xec\xd6\xfeD" +
+	"\xa9\xc3\x97\x05\xa4\x9a5S\xcb\xad1)\x9e\x07K\x16" +
+	"\x14\xb6*\xb9\xb0o1:~t\xee\xa5\xc5\x80\x0b+" +
+	"\xa1U.\xac\x07\xa9j`b\xae\xe1]&\xff\x09\xc0" +
+	"xb\xc0\xadLUd\x02PY\xbc\xe8\xed\x01\xc6\xe2" +
+	" 1B\xcb\x02t\xa2K\xe0\xbb\x12\xfe\xc3\xe3)\xb7" +
+	"\xc0\x15\x0e\xdf\xe6K\xda<*\x8e\xb1\x01W\x0c\x136" +
+	"\x044EO2\x14:\x94S\xf46<zo\x00c" +
+	"mn\x8aa!k'\xa6\x10/\xa7i\xbf\xeeN\xb9" +
+	"\xcf\xe5\xadC\xf4\x9eK\xbf\\w\x9f\xaddC\xafB" +
+	"j\x17\x02$\xde\xfeG\xef\x0d\x14\x09AW\x1dv5" +
+	"!\xbb\x81\x86\x85\x16Uk\xc3\x1d\xc8\xb5\x82\xee\x95]" +
+	"\x0a2l\xc0\xc1\xff\xb7t\xd7\xb0n\x8b\xaf3M[" +
+	"\xf6\x95\x0e\x83\xb7\xc6\xff\x0d\x00\x00\xff\xff\xe6\x0fl9"
 
 func init() {
 	schemas.Register(schema_d78885a0de56b292,
@@ -1291,13 +1291,13 @@ func init() {
 		0x8d124035fd940437,
 		0x8e898dedb95cdee4,
 		0x9080163041c90a87,
+		0x957555c94e5b1064,
+		0x99761c4abe038bf3,
 		0x9dc9fc28fe07475d,
 		0xa56f29d54a3673af,
-		0xa9eb6dedccb8d3ff,
 		0xaf67b0a40b1c2bea,
-		0xbf26ab53506a6190,
+		0xc66c9bda04b0f29e,
 		0xe13c59eb426d655c,
-		0xe19c553506f6045b,
 		0xe8bb307fa2f406fb,
 		0xf7d1c8107546dad7,
 		0xfeda57ee26ad6825)

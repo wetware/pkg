@@ -9,11 +9,12 @@ using Chan = import "channel.capnp";
 
 
 interface Executor(T) {
-    exec @0 (param :T) -> (proc :P);
+    exec @0 (param :T) -> (proc :Waiter);
 }
 
-# P is a basic asynchronous process capability.  
-interface P {
+# Waiter is the basic interface to an asynchronous process.
+# It allows callers to block until the process has terminated.
+interface Waiter {
     wait @0 () -> ();
 }
 
@@ -30,7 +31,7 @@ interface Unix extends(Executor(Command)) {
         stderr @6 :StreamWriter;
     }
 
-    interface Proc extends(P) {
+    interface Proc extends(Waiter) {
         signal @0 (signal :Signal);
         enum Signal {
             sigINT  @0;
