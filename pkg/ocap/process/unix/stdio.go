@@ -3,9 +3,7 @@ package unix
 import (
 	"bytes"
 	"context"
-	"errors"
 	"io"
-	"sync"
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/server"
@@ -135,7 +133,6 @@ func (sw StreamWriter) Writer(ctx context.Context) io.Writer {
 // sreader is the server type for StreamReader.
 type sreader struct {
 	io.Reader
-	once sync.Once
 }
 
 func (sr *sreader) Shutdown() {
@@ -145,26 +142,14 @@ func (sr *sreader) Shutdown() {
 }
 
 func (sr *sreader) SetDst(ctx context.Context, call api.Unix_StreamReader_setDst) error {
-	var err = errors.New("already set")
+	callback := StreamWriter(call.Args().Dst())
 
-	sr.once.Do(func() {
-		err = nil
-		dst := call.Args().Dst().AddRef()
-		go sr.bind(ctx, StreamWriter(dst))
-	})
-
-	return err
-}
-
-func (sr *sreader) bind(ctx context.Context, callback StreamWriter) {
-	defer callback.Release()
-
-	// If copy completes without error, signal graceful stream termination
-	// by calling Close. Else, the server will observe a release without a
-	// prior call to close, which it SHALL interpret as ErrUnexpectedEOF.
-	if _, err := io.Copy(callback.Writer(ctx), sr); err == nil {
-		_ = callback.Close(ctx)
+	if _, err := io.Copy(callback.Writer(ctx), sr); err != nil {
+		return err
 	}
+
+	// Stream terminated gracefully.  Signal close.
+	return callback.Close(ctx)
 }
 
 // swriter is the server type for StreamWriter.  It wraps an io.Closer and
