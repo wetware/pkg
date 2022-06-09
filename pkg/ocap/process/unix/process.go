@@ -43,7 +43,7 @@ func (p Proc) Signal(ctx context.Context, s syscall.Signal) (ocap.Future, capnp.
 			ps.SetSignal(api.Unix_Proc_Signal_sigKILL)
 
 		default:
-			err = fmt.Errorf("unknown signal '%#x'", s)
+			err = fmt.Errorf("unknown signal: %#x", int(s))
 		}
 
 		return
@@ -137,7 +137,7 @@ func (c *cmdServer) Signal(_ context.Context, call api.Unix_Proc_signal) error {
 		return c.Process.Signal(syscall.SIGKILL)
 
 	default:
-		return fmt.Errorf("unknown signal '%#x'", call.Args().Signal())
+		return fmt.Errorf("unknown signal: %#x", int(call.Args().Signal()))
 	}
 }
 

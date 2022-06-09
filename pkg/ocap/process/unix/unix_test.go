@@ -5,21 +5,25 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"syscall"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"github.com/wetware/ww/pkg/ocap/process/unix"
 )
 
-var server unix.Server
+var (
+	server unix.Server
+	ctx    = context.Background()
+)
 
 func TestStdin(t *testing.T) {
 	t.Parallel()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	exec := server.Executor()
+	defer exec.Release()
 
 	expected := "hello world"
 	stdin := strings.NewReader(expected)
@@ -41,10 +45,8 @@ func TestStdin(t *testing.T) {
 func TestStdout(t *testing.T) {
 	t.Parallel()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	exec := server.Executor()
+	defer exec.Release()
 
 	expected := "hello world"
 	stdout := new(bytes.Buffer)
@@ -63,10 +65,8 @@ func TestStdout(t *testing.T) {
 func TestStderr(t *testing.T) {
 	t.Parallel()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	exec := server.Executor()
+	defer exec.Release()
 
 	expected := "hello world"
 	stderr := new(bytes.Buffer)
@@ -82,4 +82,73 @@ func TestStderr(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, expected+"\n", stderr.String())
+}
+
+func TestSignal(t *testing.T) {
+	t.Parallel()
+	t.Helper()
+
+	/*
+		Test supported signals.  These should all terminate the process.
+	*/
+	for _, sig := range []syscall.Signal{
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGKILL,
+	} {
+		// Use function closure to avoid shadowing 'sig'.
+		func(sig syscall.Signal) {
+			t.Run(sig.String(), func(t *testing.T) {
+				t.Parallel()
+
+				exec := server.Executor()
+				defer exec.Release()
+
+				p := exec.Exec(ctx, unix.Command(nil, "sleep", "5"))
+				defer p.Release()
+
+				cherr := make(chan error, 1)
+				go func() {
+					cherr <- p.Wait(ctx)
+				}()
+
+				f, release := p.Signal(ctx, sig)
+				defer release()
+
+				err := f.Await(ctx)
+				require.NoError(t, err)
+
+				assert.EqualError(t, <-cherr,
+					fmt.Sprintf("proc.capnp:P.wait: signal: %s", sig),
+					"should report '%s' signal", sig)
+			})
+		}(sig)
+	}
+
+	/*
+		Test that we handle unrecognized signals correctly.
+	*/
+	t.Run("Unknown", func(t *testing.T) {
+		t.Parallel()
+
+		// ensure the process is killed upon exiting the test func.
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		exec := server.Executor()
+		defer exec.Release()
+
+		p := exec.Exec(ctx, unix.Command(nil, "sleep", "5"))
+		defer p.Release()
+
+		sig := syscall.SIGABRT // NOT supported
+
+		f, release := p.Signal(ctx, sig)
+		defer release()
+
+		err := f.Await(ctx)
+		require.EqualError(t, err,
+			fmt.Sprintf("proc.capnp:Unix.Proc.signal: unknown signal: %#x", int(sig)),
+			"should reject invalid signal")
+	})
 }
