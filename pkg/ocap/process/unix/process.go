@@ -138,7 +138,7 @@ func input(ctx context.Context, p iostream.Provider) io.Reader {
 
 	pr, pw := io.Pipe()
 	go func() {
-		f, release := p.SetDst(ctx, iostream.NewWriter(pw, nil))
+		f, release := p.Provide(ctx, iostream.New(pw, nil))
 		defer release()
 
 		if err := f.Await(ctx); err != nil {

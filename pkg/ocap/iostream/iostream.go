@@ -18,50 +18,50 @@ import (
 // new data becomes available.
 type Provider iostream.Provider
 
-func (sr Provider) AddRef() Provider {
+func (p Provider) AddRef() Provider {
 	return Provider{
-		Client: sr.Client.AddRef(),
+		Client: p.Client.AddRef(),
 	}
 }
 
-func (sr Provider) Release() {
-	sr.Client.Release()
+func (p Provider) Release() {
+	p.Client.Release()
 }
 
-// NewReader wraps r in a StreamReader and sets the supplied policy.
+// NewProvider wraps r in a StreamReader and sets the supplied policy.
 // If r implements io.Closer, it will be called automatically when
 // the returned StreamReader shuts down.
-func NewReader(r io.Reader, p *server.Policy) Provider {
+func NewProvider(r io.Reader, p *server.Policy) Provider {
 	sr := &sreader{Reader: r}
 	return Provider(iostream.Provider_ServerToClient(sr, p))
 }
 
-// SetDst assigns the supplied StreamWriter as the destination for
+// Provide assigns the supplied StreamWriter as the destination for
 // incoming bytes in the stream.  The dst parameter is effectively
-// a callback.  Only the first call to SetDst will be honored, and
+// a callback.  Only the first call to Provide will be honored, and
 // any subsequent calls will return an error.  This includes calls
 // made by remote vats.
 //
-// Calling SetWriter transfers ownership of w to sr, and w will be
-// closed when sr is closed, or the underlying stream fails.  Thus,
+// Calling SetWriter transfers ownership of w to p, and w will be
+// closed when p is closed, or the underlying stream fails.  Thus,
 // one SHOULD NOT call any of w's methods after SetWriter returns.
 //
 // Callers SHOULD enforce the following invariant on dst:  after a
-// call to SetDst returns, all references to dst are owned by sr.
+// call to Provide returns, all references to dst are owned by p.
 // In practice, callers MAY relax this invariant when either:
 //
-//   (a)  References not owned by sr are released before the future
-//        returned by SetDst() is resolved.
+//   (a)  References not owned by p are released before the future
+//        returned by Provide() is resolved.
 //
 //	 (b)  The consumer behind 'dst' does not distinguish between
 //        normal and erroneous stream termination.
 //
-func (sr Provider) SetDst(ctx context.Context, sw Stream) (ocap.Future, capnp.ReleaseFunc) {
+func (p Provider) Provide(ctx context.Context, s Stream) (ocap.Future, capnp.ReleaseFunc) {
 	stream := func(ps iostream.Provider_provide_Params) error {
-		return ps.SetStream(iostream.Stream(sw))
+		return ps.SetStream(iostream.Stream(s))
 	}
 
-	f, release := iostream.Provider(sr).Provide(ctx, stream)
+	f, release := iostream.Provider(p).Provide(ctx, stream)
 	return ocap.Future(f), release
 }
 
@@ -71,17 +71,17 @@ func (sr Provider) SetDst(ctx context.Context, sw Stream) (ocap.Future, capnp.Re
 // bytes.  Applications MAY implement their own framing.
 type Stream iostream.Provider
 
-func (sw Stream) AddRef() Stream {
+func (s Stream) AddRef() Stream {
 	return Stream{
-		Client: sw.Client.AddRef(),
+		Client: s.Client.AddRef(),
 	}
 }
 
-func (sw Stream) Release() {
-	sw.Client.Release()
+func (s Stream) Release() {
+	s.Client.Release()
 }
 
-// NewWriter wraps the supplied WriteCloser in a StreamWriter.
+// New wraps the supplied WriteCloser in a StreamWriter.
 // Callers MUST call the returned StreamWriter's Close() method
 // before releasing the client, to signal graceful termination.
 // If the StreamWriter is released before a call to Close returns,
@@ -90,24 +90,24 @@ func (sw Stream) Release() {
 // If w implements io.Closer, it will be closed before the call to
 // StreamWriter.Close() resolves, or after the last client reference
 // is released, whichever comes first.
-func NewWriter(w io.Writer, p *server.Policy) Stream {
-	sw := &swriter{Writer: w}
-	return Stream(iostream.Stream_ServerToClient(sw, p))
+func New(w io.Writer, p *server.Policy) Stream {
+	s := &sriter{Writer: w}
+	return Stream(iostream.Stream_ServerToClient(s, p))
 }
 
 // Write the bytes to the underlying stream.  Contrary to Go's io.Write,
-// sw.Write will return after all bytes have been written to the stream,
+// s.Write will return after all bytes have been written to the stream,
 // or an error occurs (whichever happens first).
-func (sw Stream) Write(ctx context.Context, b []byte) (ocap.Future, capnp.ReleaseFunc) {
-	f, release := iostream.Stream(sw).Send(ctx, channel.Data(b))
+func (s Stream) Write(ctx context.Context, b []byte) (ocap.Future, capnp.ReleaseFunc) {
+	f, release := iostream.Stream(s).Send(ctx, channel.Data(b))
 	return ocap.Future(f), release
 }
 
 // Close the underlying stream, signalling successful termination to any
 // downstream consumers.  Close MUST be called when terminating, even if
 // a previous write has failed.  We may relax this rule in the future.
-func (sw Stream) Close(ctx context.Context) error {
-	f, release := iostream.Stream(sw).Close(ctx, nil)
+func (s Stream) Close(ctx context.Context) error {
+	f, release := iostream.Stream(s).Close(ctx, nil)
 	defer release()
 
 	_, err := f.Struct()
@@ -115,12 +115,12 @@ func (sw Stream) Close(ctx context.Context) error {
 }
 
 // Writer returns an io.Writer translates calls to its Write() method
-// into calls to sw.Write().  The supplied context is implicitly passed
-// to all sw.Write() calls.  Callers MAY implement per-write timeouts by
-// repeatedly calling sw.Writer() with a fresh context.
-func (sw Stream) Writer(ctx context.Context) io.Writer {
+// into calls to s.Write().  The supplied context is implicitly passed
+// to all s.Write() calls.  Callers MAY implement per-write timeouts by
+// repeatedly calling s.Writer() with a fresh context.
+func (s Stream) Writer(ctx context.Context) io.Writer {
 	return writerFunc(func(b []byte) (int, error) {
-		f, release := sw.Write(ctx, b)
+		f, release := s.Write(ctx, b)
 		defer release()
 
 		return len(b), f.Await(ctx)
@@ -136,51 +136,51 @@ type sreader struct {
 	io.Reader
 }
 
-func (sr *sreader) Shutdown() {
-	if c, ok := sr.Reader.(io.Closer); ok {
+func (p *sreader) Shutdown() {
+	if c, ok := p.Reader.(io.Closer); ok {
 		_ = c.Close()
 	}
 }
 
-func (sr *sreader) Provide(ctx context.Context, call iostream.Provider_provide) (err error) {
+func (p *sreader) Provide(ctx context.Context, call iostream.Provider_provide) (err error) {
 	callback := Stream(call.Args().Stream())
 
 	// stream terminated gracefully?
-	if err = stream(callback.Writer(ctx), sr); err == nil {
+	if err = stream(callback.Writer(ctx), p); err == nil {
 		err = callback.Close(ctx)
 	}
 
 	return err
 }
 
-// swriter is the server type for StreamWriter.  It wraps an io.Closer and
+// sriter is the server type for StreamWriter.  It wraps an io.Closer and
 // exports a Send method, thereby satisfying the channel.Sender capability
 // interface.
-type swriter struct {
+type sriter struct {
 	io.Writer
 }
 
-func (sw *swriter) Shutdown() { _ = sw.close() }
+func (s *sriter) Shutdown() { _ = s.close() }
 
-func (sw *swriter) Send(_ context.Context, call chan_api.Sender_send) error {
+func (s *sriter) Send(_ context.Context, call chan_api.Sender_send) error {
 	ptr, err := call.Args().Value()
 	if err == nil {
 		// Don't close the underlying writer here.  Certain writer implementations,
 		// such as net.Conn, may produce temporary errors.
-		err = stream(sw, bytes.NewReader(ptr.Data()))
+		err = stream(s, bytes.NewReader(ptr.Data()))
 	}
 
 	return err
 }
 
-func (sw *swriter) Close(context.Context, chan_api.Closer_close) error {
-	return sw.close()
+func (s *sriter) Close(context.Context, chan_api.Closer_close) error {
+	return s.close()
 }
 
-func (sw *swriter) close() (err error) {
-	if c, ok := sw.Writer.(io.Closer); ok {
+func (s *sriter) close() (err error) {
+	if c, ok := s.Writer.(io.Closer); ok {
 		err = c.Close()
-		sw.Writer = nil // DEFENSIVE: prevent writer from being closed twice
+		s.Writer = nil // DEFENSIVE: prevent writer from being closed twice
 	}
 
 	return
