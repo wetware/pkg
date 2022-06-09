@@ -3,7 +3,9 @@ package iostream
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
+	"unsafe"
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/server"
@@ -12,6 +14,8 @@ import (
 	"github.com/wetware/ww/pkg/ocap"
 	"github.com/wetware/ww/pkg/ocap/channel"
 )
+
+var ErrClosed = errors.New("closed")
 
 // Provider is the read end of a Unix byte-stream. It works by
 // setting a StreamWriter as a callback, which is invoked whenever
@@ -103,6 +107,12 @@ func (s Stream) Write(ctx context.Context, b []byte) (ocap.Future, capnp.Release
 	return ocap.Future(f), release
 }
 
+// WriteString is a convenience method that casts data to bytes before
+// calling Write.
+func (s Stream) WriteString(ctx context.Context, data string) (ocap.Future, capnp.ReleaseFunc) {
+	return s.Write(ctx, *(*[]byte)(unsafe.Pointer(&data)))
+}
+
 // Close the underlying stream, signalling successful termination to any
 // downstream consumers.  Close MUST be called when terminating, even if
 // a previous write has failed.  We may relax this rule in the future.
@@ -157,12 +167,17 @@ func (p *sreader) Provide(ctx context.Context, call iostream.Provider_provide) (
 // exports a Send method, thereby satisfying the channel.Sender capability
 // interface.
 type sriter struct {
+	closed bool
 	io.Writer
 }
 
 func (s *sriter) Shutdown() { _ = s.close() }
 
 func (s *sriter) Send(_ context.Context, call chan_api.Sender_send) error {
+	if s.closed {
+		return ErrClosed
+	}
+
 	ptr, err := call.Args().Value()
 	if err == nil {
 		// Don't close the underlying writer here.  Certain writer implementations,
@@ -174,6 +189,7 @@ func (s *sriter) Send(_ context.Context, call chan_api.Sender_send) error {
 }
 
 func (s *sriter) Close(context.Context, chan_api.Closer_close) error {
+	s.closed = true
 	return s.close()
 }
 
