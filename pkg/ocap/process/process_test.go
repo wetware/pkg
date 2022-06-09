@@ -19,7 +19,7 @@ func TestProcess_wait(t *testing.T) {
 	t.Run("NilError", func(t *testing.T) {
 		t.Parallel()
 
-		p := process.New(func() error {
+		p := process.New(func(context.Context) error {
 			return nil
 		})
 
@@ -30,7 +30,7 @@ func TestProcess_wait(t *testing.T) {
 	t.Run("NonError", func(t *testing.T) {
 		t.Parallel()
 
-		p := process.New(func() error {
+		p := process.New(func(context.Context) error {
 			return errTest
 		})
 
@@ -51,7 +51,7 @@ func TestProcess_wait(t *testing.T) {
 		cherr := make(chan error)
 		defer close(cherr)
 
-		p := process.New(func() error {
+		p := process.New(func(context.Context) error {
 			return <-cherr
 		})
 
@@ -59,4 +59,30 @@ func TestProcess_wait(t *testing.T) {
 		assert.ErrorIs(t, err, context.DeadlineExceeded, "should report context error")
 	})
 
+	t.Run("ShutdownAfterRelease", func(t *testing.T) {
+		t.Parallel()
+
+		/*
+			Check that releasing a process causes the context to expire.
+		*/
+
+		var (
+			callCtx context.Context
+			sync    = make(chan struct{})
+		)
+		p := process.New(func(ctx context.Context) error {
+			callCtx = ctx
+			close(sync)
+			<-ctx.Done()
+			return nil
+		})
+
+		<-sync
+
+		p.AddRef().Release()
+		assert.NoError(t, callCtx.Err(), "context should not expire")
+
+		p.Release() // drop the only reference to p
+		assert.Error(t, callCtx.Err(), "context should have expired")
+	})
 }

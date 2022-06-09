@@ -7,11 +7,43 @@ import (
 	api "github.com/wetware/ww/internal/api/proc"
 )
 
-// TODO(someday):  JITCompiler executor that accepts Go source code
-//                 or ASM, and executes it in a Func.
+// Executor spawns native Go processes with the supplied server
+// policy.  Note that unlike most executors, it is not itself a
+// wire-compatible capability.  This is because there is no way
+// to serialize a native Go function object.
+type Executor struct {
+	*server.Policy
+}
 
-// Func specifies a process that runs in a native goroutine.
-type Func func() error
+// Exec calls f(ctx) in a separate goroutine, and returns a process
+// whose Wait() method returns f's error (possibly wrapped in a capnp
+// exception type).
+//
+// f MUST return promptly when ctx expires.
+func (exec Executor) Exec(ctx context.Context, f func(context.Context) error) *Handle {
+	ctx, cancel := context.WithCancel(ctx)
+
+	done := make(chan struct{})
+	handle := &Handle{
+		cancel:  cancel,
+		closing: ctx.Done(),
+		closed:  done,
+	}
+
+	go func() {
+		defer close(done)
+		handle.err = f(ctx)
+	}()
+
+	return handle
+}
+
+// Spawn a process.  This calls Exec and wraps the handler in a
+// Proc.
+func (exec Executor) Spawn(ctx context.Context, f func(context.Context) error) Proc {
+	handle := Executor{}.Exec(context.Background(), f)
+	return Proc(api.Waiter_ServerToClient(handle, exec.Policy))
+}
 
 // Proc is the basic process capability, from which all others are
 // derived.  Processes are asynchronous and concurrent, and can be
@@ -28,24 +60,12 @@ func (p Proc) Release() {
 	p.Client.Release()
 }
 
-// New calls 'f' in a separate goroutine, and returns a process
-// whose Wait() method returns the error returned by 'f'.
+// New is a convenience method for a process with the root context
+// and the default policy.  It is equivalent to:
 //
-// It is f's responsibility to terminate promptly when ctx expires.
-func New(f Func) Proc {
-	return NewWithPolicy(f, nil)
-}
-
-func NewWithPolicy(f Func, p *server.Policy) Proc {
-	done := make(chan struct{})
-	proc := process{done: done}
-
-	go func() {
-		defer close(done)
-		proc.err = f()
-	}()
-
-	return Proc(api.Waiter_ServerToClient(&proc, p))
+//    Executor{}.Spawn(context.Background(), f)
+func New(f func(context.Context) error) Proc {
+	return Executor{}.Spawn(context.Background(), f)
 }
 
 // Wait blocks until the process terminates or the context expires,
@@ -73,15 +93,55 @@ func (p Proc) Wait(ctx context.Context) error {
 	return err
 }
 
-type process struct {
-	done <-chan struct{}
-	err  error
+// Handle is a reference to a running process.  It implements the
+// Waiter capability interface.
+//
+// To avoid resource leaks, the underlying process' releasing all
+// references to the Handle causes its context to be canceled, in
+// turn signalling to the process that it should return.
+type Handle struct {
+	cancel          context.CancelFunc
+	closing, closed <-chan struct{}
+	err             error
 }
 
-func (p *process) Wait(ctx context.Context, call api.Waiter_wait) error {
+// Shutdown sends a signal to the goroutine to terminate ongoing work
+// and return.
+//
+// Ordering:  <-h.Closing() happens before h.Shutdown() returns.
+func (h *Handle) Shutdown() {
+	h.cancel()
+}
+
+// Closing returns a channel that is closed after the process has
+// received the shutdown signal.
+//
+// Ordering:  <-h.Closing() happens before <-h.Done().
+func (h *Handle) Closing() <-chan struct{} {
+	return h.closing
+}
+
+// Done returns a channel that is closed after the process terminates.
+func (h *Handle) Done() <-chan struct{} {
+	return h.closed
+}
+
+// Err returns the process error.  The error is guaranteed to be nil
+// if p.Err() returns before <-h.Done().
+func (p *Handle) Err() error {
 	select {
-	case <-p.done:
+	case <-p.closed:
 		return p.err
+	default:
+		return nil
+	}
+}
+
+// Wait is the RPC handler for the process.Waiter.wait() method.
+func (h *Handle) Wait(ctx context.Context, call api.Waiter_wait) error {
+	select {
+	case <-h.closed:
+		return h.err
 
 	case <-ctx.Done():
 		return ctx.Err()
