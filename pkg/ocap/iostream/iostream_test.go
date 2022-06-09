@@ -15,6 +15,7 @@ func TestStream(t *testing.T) {
 
 	buf := new(bytes.Buffer)
 	stream := iostream.New(buf, nil)
+	defer stream.Release()
 
 	f, release := stream.WriteString(context.TODO(), "hello, world!")
 	defer release()
