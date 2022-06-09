@@ -19,6 +19,7 @@ interface Waiter {
 }
 
 
+# Unix executor that spawns OS processes through a POSIX-like API.
 interface Unix extends(Executor(Command)) {
     struct Command {
         path @0 :Text;
