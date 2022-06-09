@@ -27,9 +27,11 @@ interface Unix extends(Executor(Command)) {
         args @2 :List(Text);
         env  @3 :List(Text);
 
-        stdin  @4 :StreamReader;
-        stdout @5 :StreamWriter;
-        stderr @6 :StreamWriter;
+        stdin  @4 :IOStream.Provider;
+        stdout @5 :IOStream.Stream;
+        stderr @6 :IOStream.Stream;
+
+        using IOStream = import "iostream.capnp";
     }
 
     interface Proc extends(Waiter) {
@@ -40,10 +42,4 @@ interface Unix extends(Executor(Command)) {
             sigKILL @2;
         }
     }
-
-    interface StreamReader {
-        setDst @0 (dst :StreamWriter);
-    }
-
-    interface StreamWriter extends(Chan.SendCloser(Data)) {}
 }

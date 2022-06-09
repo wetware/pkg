@@ -11,6 +11,7 @@ import (
 	"capnproto.org/go/capnp/v3"
 	api "github.com/wetware/ww/internal/api/proc"
 	"github.com/wetware/ww/pkg/ocap"
+	"github.com/wetware/ww/pkg/ocap/iostream"
 	"github.com/wetware/ww/pkg/ocap/process"
 )
 
@@ -103,9 +104,9 @@ func (h *handle) bind(ctx context.Context, cmd api.Unix_Command) error {
 
 		h.Cmd = exec.CommandContext(ctx, path, args...)
 		h.Cmd.Env = environment
-		h.Cmd.Stdin = input(ctx, cmd.Stdin().AddRef())
-		h.Cmd.Stdout = output(ctx, cmd.Stdout().AddRef())
-		h.Cmd.Stderr = output(ctx, cmd.Stderr().AddRef())
+		h.Cmd.Stdin = input(ctx, iostream.Provider(cmd.Stdin()).AddRef())
+		h.Cmd.Stdout = output(ctx, iostream.Stream(cmd.Stdout()).AddRef())
+		h.Cmd.Stderr = output(ctx, iostream.Stream(cmd.Stderr()).AddRef())
 
 		cherr <- h.Cmd.Start()
 		return h.Cmd.Wait()
@@ -130,14 +131,14 @@ func (h *handle) Signal(_ context.Context, call api.Unix_Proc_signal) (err error
 	}
 }
 
-func input(ctx context.Context, reader api.Unix_StreamReader) io.Reader {
-	if reader.Client == nil {
+func input(ctx context.Context, p iostream.Provider) io.Reader {
+	if p.Client == nil {
 		return nil
 	}
 
 	pr, pw := io.Pipe()
 	go func() {
-		f, release := StreamReader(reader).SetDst(ctx, NewWriter(pw, nil))
+		f, release := p.SetDst(ctx, iostream.NewWriter(pw, nil))
 		defer release()
 
 		if err := f.Await(ctx); err != nil {
@@ -148,12 +149,12 @@ func input(ctx context.Context, reader api.Unix_StreamReader) io.Reader {
 	return pr
 }
 
-func output(ctx context.Context, writer api.Unix_StreamWriter) io.Writer {
-	if writer.Client == nil {
+func output(ctx context.Context, s iostream.Stream) io.Writer {
+	if s.Client == nil {
 		return nil
 	}
 
-	return StreamWriter(writer).Writer(ctx)
+	return s.Writer(ctx)
 }
 
 func stringSlice(load func() (capnp.TextList, error)) ([]string, error) {

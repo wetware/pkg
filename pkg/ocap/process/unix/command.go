@@ -6,7 +6,10 @@ import (
 	"path/filepath"
 
 	"capnproto.org/go/capnp/v3"
+
+	iostream_api "github.com/wetware/ww/internal/api/iostream"
 	"github.com/wetware/ww/internal/api/proc"
+	"github.com/wetware/ww/pkg/ocap/iostream"
 )
 
 type CommandFunc func(proc.Executor_exec_Params) error
@@ -144,7 +147,7 @@ func Env(env ...string) func(proc.Unix_Command) error {
 // stops copying, either because it has reached the end of Stdin
 // (EOF or a read error) or because writing to the pipe returned an error.
 func Stdin(r io.Reader) func(proc.Unix_Command) error {
-	return StdinCap(NewReader(r, nil))
+	return StdinCap(iostream.NewReader(r, nil))
 }
 
 // Stdout and Stderr specify the process's standard output and error.
@@ -163,35 +166,35 @@ func Stdin(r io.Reader) func(proc.Unix_Command) error {
 // If Stdout and Stderr are the same writer, and have a type that can
 // be compared with ==, at most one goroutine at a time will call Write.
 func Stdout(w io.Writer) func(proc.Unix_Command) error {
-	return StdoutCap(NewWriter(w, nil))
+	return StdoutCap(iostream.NewWriter(w, nil))
 }
 
 // Stderr behaves analogously to Stdout.
 func Stderr(w io.Writer) func(proc.Unix_Command) error {
-	return StderrCap(NewWriter(w, nil))
+	return StderrCap(iostream.NewWriter(w, nil))
 }
 
 // StdinCap behaves analogously to Stdin, except that it takes
-// a StreamReader.
-func StdinCap(sr StreamReader) func(proc.Unix_Command) error {
+// an iostream.Provider.
+func StdinCap(p iostream.Provider) func(proc.Unix_Command) error {
 	return func(c proc.Unix_Command) error {
-		return c.SetStdin(proc.Unix_StreamReader(sr))
+		return c.SetStdin(iostream_api.Provider(p))
 	}
 }
 
 // StdoutCap behaves analogously to Stdout, except that it takes
-// a StreamWRiter.
-func StdoutCap(sw StreamWriter) func(proc.Unix_Command) error {
+// an iostream.Stream.
+func StdoutCap(s iostream.Stream) func(proc.Unix_Command) error {
 	return func(c proc.Unix_Command) error {
-		return c.SetStdout(proc.Unix_StreamWriter(sw))
+		return c.SetStdout(iostream_api.Stream(s))
 	}
 }
 
 // StderrCap behaves analogously to Stderr, except that it takes
-// a StreamWRiter.
-func StderrCap(sw StreamWriter) func(proc.Unix_Command) error {
+// an iostream.Stream.
+func StderrCap(s iostream.Stream) func(proc.Unix_Command) error {
 	return func(c proc.Unix_Command) error {
-		return c.SetStderr(proc.Unix_StreamWriter(sw))
+		return c.SetStderr(iostream_api.Stream(s))
 	}
 }
 

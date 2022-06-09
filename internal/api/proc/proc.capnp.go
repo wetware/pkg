@@ -7,9 +7,8 @@ import (
 	text "capnproto.org/go/capnp/v3/encoding/text"
 	schemas "capnproto.org/go/capnp/v3/schemas"
 	server "capnproto.org/go/capnp/v3/server"
-	stream "capnproto.org/go/capnp/v3/std/capnp/stream"
 	context "context"
-	channel "github.com/wetware/ww/internal/api/channel"
+	iostream "github.com/wetware/ww/internal/api/iostream"
 )
 
 type Executor struct{ Client *capnp.Client }
@@ -574,16 +573,16 @@ func (s Unix_Command) NewEnv(n int32) (capnp.TextList, error) {
 	return l, err
 }
 
-func (s Unix_Command) Stdin() Unix_StreamReader {
+func (s Unix_Command) Stdin() iostream.Provider {
 	p, _ := s.Struct.Ptr(4)
-	return Unix_StreamReader{Client: p.Interface().Client()}
+	return iostream.Provider{Client: p.Interface().Client()}
 }
 
 func (s Unix_Command) HasStdin() bool {
 	return s.Struct.HasPtr(4)
 }
 
-func (s Unix_Command) SetStdin(v Unix_StreamReader) error {
+func (s Unix_Command) SetStdin(v iostream.Provider) error {
 	if !v.Client.IsValid() {
 		return s.Struct.SetPtr(4, capnp.Ptr{})
 	}
@@ -592,16 +591,16 @@ func (s Unix_Command) SetStdin(v Unix_StreamReader) error {
 	return s.Struct.SetPtr(4, in.ToPtr())
 }
 
-func (s Unix_Command) Stdout() Unix_StreamWriter {
+func (s Unix_Command) Stdout() iostream.Stream {
 	p, _ := s.Struct.Ptr(5)
-	return Unix_StreamWriter{Client: p.Interface().Client()}
+	return iostream.Stream{Client: p.Interface().Client()}
 }
 
 func (s Unix_Command) HasStdout() bool {
 	return s.Struct.HasPtr(5)
 }
 
-func (s Unix_Command) SetStdout(v Unix_StreamWriter) error {
+func (s Unix_Command) SetStdout(v iostream.Stream) error {
 	if !v.Client.IsValid() {
 		return s.Struct.SetPtr(5, capnp.Ptr{})
 	}
@@ -610,16 +609,16 @@ func (s Unix_Command) SetStdout(v Unix_StreamWriter) error {
 	return s.Struct.SetPtr(5, in.ToPtr())
 }
 
-func (s Unix_Command) Stderr() Unix_StreamWriter {
+func (s Unix_Command) Stderr() iostream.Stream {
 	p, _ := s.Struct.Ptr(6)
-	return Unix_StreamWriter{Client: p.Interface().Client()}
+	return iostream.Stream{Client: p.Interface().Client()}
 }
 
 func (s Unix_Command) HasStderr() bool {
 	return s.Struct.HasPtr(6)
 }
 
-func (s Unix_Command) SetStderr(v Unix_StreamWriter) error {
+func (s Unix_Command) SetStderr(v iostream.Stream) error {
 	if !v.Client.IsValid() {
 		return s.Struct.SetPtr(6, capnp.Ptr{})
 	}
@@ -645,16 +644,16 @@ func (p Unix_Command_Future) Struct() (Unix_Command, error) {
 	return Unix_Command{s}, err
 }
 
-func (p Unix_Command_Future) Stdin() Unix_StreamReader {
-	return Unix_StreamReader{Client: p.Future.Field(4, nil).Client()}
+func (p Unix_Command_Future) Stdin() iostream.Provider {
+	return iostream.Provider{Client: p.Future.Field(4, nil).Client()}
 }
 
-func (p Unix_Command_Future) Stdout() Unix_StreamWriter {
-	return Unix_StreamWriter{Client: p.Future.Field(5, nil).Client()}
+func (p Unix_Command_Future) Stdout() iostream.Stream {
+	return iostream.Stream{Client: p.Future.Field(5, nil).Client()}
 }
 
-func (p Unix_Command_Future) Stderr() Unix_StreamWriter {
-	return Unix_StreamWriter{Client: p.Future.Field(6, nil).Client()}
+func (p Unix_Command_Future) Stderr() iostream.Stream {
+	return iostream.Stream{Client: p.Future.Field(6, nil).Client()}
 }
 
 type Unix_Proc struct{ Client *capnp.Client }
@@ -916,376 +915,69 @@ func (p Unix_Proc_signal_Results_Future) Struct() (Unix_Proc_signal_Results, err
 	return Unix_Proc_signal_Results{s}, err
 }
 
-type Unix_StreamReader struct{ Client *capnp.Client }
-
-// Unix_StreamReader_TypeID is the unique identifier for the type Unix_StreamReader.
-const Unix_StreamReader_TypeID = 0xe13c59eb426d655c
-
-func (c Unix_StreamReader) SetDst(ctx context.Context, params func(Unix_StreamReader_setDst_Params) error) (Unix_StreamReader_setDst_Results_Future, capnp.ReleaseFunc) {
-	s := capnp.Send{
-		Method: capnp.Method{
-			InterfaceID:   0xe13c59eb426d655c,
-			MethodID:      0,
-			InterfaceName: "proc.capnp:Unix.StreamReader",
-			MethodName:    "setDst",
-		},
-	}
-	if params != nil {
-		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Unix_StreamReader_setDst_Params{Struct: s}) }
-	}
-	ans, release := c.Client.SendCall(ctx, s)
-	return Unix_StreamReader_setDst_Results_Future{Future: ans.Future()}, release
-}
-
-func (c Unix_StreamReader) AddRef() Unix_StreamReader {
-	return Unix_StreamReader{
-		Client: c.Client.AddRef(),
-	}
-}
-
-func (c Unix_StreamReader) Release() {
-	c.Client.Release()
-}
-
-// A Unix_StreamReader_Server is a Unix_StreamReader with a local implementation.
-type Unix_StreamReader_Server interface {
-	SetDst(context.Context, Unix_StreamReader_setDst) error
-}
-
-// Unix_StreamReader_NewServer creates a new Server from an implementation of Unix_StreamReader_Server.
-func Unix_StreamReader_NewServer(s Unix_StreamReader_Server, policy *server.Policy) *server.Server {
-	c, _ := s.(server.Shutdowner)
-	return server.New(Unix_StreamReader_Methods(nil, s), s, c, policy)
-}
-
-// Unix_StreamReader_ServerToClient creates a new Client from an implementation of Unix_StreamReader_Server.
-// The caller is responsible for calling Release on the returned Client.
-func Unix_StreamReader_ServerToClient(s Unix_StreamReader_Server, policy *server.Policy) Unix_StreamReader {
-	return Unix_StreamReader{Client: capnp.NewClient(Unix_StreamReader_NewServer(s, policy))}
-}
-
-// Unix_StreamReader_Methods appends Methods to a slice that invoke the methods on s.
-// This can be used to create a more complicated Server.
-func Unix_StreamReader_Methods(methods []server.Method, s Unix_StreamReader_Server) []server.Method {
-	if cap(methods) == 0 {
-		methods = make([]server.Method, 0, 1)
-	}
-
-	methods = append(methods, server.Method{
-		Method: capnp.Method{
-			InterfaceID:   0xe13c59eb426d655c,
-			MethodID:      0,
-			InterfaceName: "proc.capnp:Unix.StreamReader",
-			MethodName:    "setDst",
-		},
-		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.SetDst(ctx, Unix_StreamReader_setDst{call})
-		},
-	})
-
-	return methods
-}
-
-// Unix_StreamReader_setDst holds the state for a server call to Unix_StreamReader.setDst.
-// See server.Call for documentation.
-type Unix_StreamReader_setDst struct {
-	*server.Call
-}
-
-// Args returns the call's arguments.
-func (c Unix_StreamReader_setDst) Args() Unix_StreamReader_setDst_Params {
-	return Unix_StreamReader_setDst_Params{Struct: c.Call.Args()}
-}
-
-// AllocResults allocates the results struct.
-func (c Unix_StreamReader_setDst) AllocResults() (Unix_StreamReader_setDst_Results, error) {
-	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Unix_StreamReader_setDst_Results{Struct: r}, err
-}
-
-type Unix_StreamReader_setDst_Params struct{ capnp.Struct }
-
-// Unix_StreamReader_setDst_Params_TypeID is the unique identifier for the type Unix_StreamReader_setDst_Params.
-const Unix_StreamReader_setDst_Params_TypeID = 0xf7d1c8107546dad7
-
-func NewUnix_StreamReader_setDst_Params(s *capnp.Segment) (Unix_StreamReader_setDst_Params, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Unix_StreamReader_setDst_Params{st}, err
-}
-
-func NewRootUnix_StreamReader_setDst_Params(s *capnp.Segment) (Unix_StreamReader_setDst_Params, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Unix_StreamReader_setDst_Params{st}, err
-}
-
-func ReadRootUnix_StreamReader_setDst_Params(msg *capnp.Message) (Unix_StreamReader_setDst_Params, error) {
-	root, err := msg.Root()
-	return Unix_StreamReader_setDst_Params{root.Struct()}, err
-}
-
-func (s Unix_StreamReader_setDst_Params) String() string {
-	str, _ := text.Marshal(0xf7d1c8107546dad7, s.Struct)
-	return str
-}
-
-func (s Unix_StreamReader_setDst_Params) Dst() Unix_StreamWriter {
-	p, _ := s.Struct.Ptr(0)
-	return Unix_StreamWriter{Client: p.Interface().Client()}
-}
-
-func (s Unix_StreamReader_setDst_Params) HasDst() bool {
-	return s.Struct.HasPtr(0)
-}
-
-func (s Unix_StreamReader_setDst_Params) SetDst(v Unix_StreamWriter) error {
-	if !v.Client.IsValid() {
-		return s.Struct.SetPtr(0, capnp.Ptr{})
-	}
-	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(v.Client))
-	return s.Struct.SetPtr(0, in.ToPtr())
-}
-
-// Unix_StreamReader_setDst_Params_List is a list of Unix_StreamReader_setDst_Params.
-type Unix_StreamReader_setDst_Params_List = capnp.StructList[Unix_StreamReader_setDst_Params]
-
-// NewUnix_StreamReader_setDst_Params creates a new list of Unix_StreamReader_setDst_Params.
-func NewUnix_StreamReader_setDst_Params_List(s *capnp.Segment, sz int32) (Unix_StreamReader_setDst_Params_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Unix_StreamReader_setDst_Params]{List: l}, err
-}
-
-// Unix_StreamReader_setDst_Params_Future is a wrapper for a Unix_StreamReader_setDst_Params promised by a client call.
-type Unix_StreamReader_setDst_Params_Future struct{ *capnp.Future }
-
-func (p Unix_StreamReader_setDst_Params_Future) Struct() (Unix_StreamReader_setDst_Params, error) {
-	s, err := p.Future.Struct()
-	return Unix_StreamReader_setDst_Params{s}, err
-}
-
-func (p Unix_StreamReader_setDst_Params_Future) Dst() Unix_StreamWriter {
-	return Unix_StreamWriter{Client: p.Future.Field(0, nil).Client()}
-}
-
-type Unix_StreamReader_setDst_Results struct{ capnp.Struct }
-
-// Unix_StreamReader_setDst_Results_TypeID is the unique identifier for the type Unix_StreamReader_setDst_Results.
-const Unix_StreamReader_setDst_Results_TypeID = 0x8278dbf22bb1ab9d
-
-func NewUnix_StreamReader_setDst_Results(s *capnp.Segment) (Unix_StreamReader_setDst_Results, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Unix_StreamReader_setDst_Results{st}, err
-}
-
-func NewRootUnix_StreamReader_setDst_Results(s *capnp.Segment) (Unix_StreamReader_setDst_Results, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Unix_StreamReader_setDst_Results{st}, err
-}
-
-func ReadRootUnix_StreamReader_setDst_Results(msg *capnp.Message) (Unix_StreamReader_setDst_Results, error) {
-	root, err := msg.Root()
-	return Unix_StreamReader_setDst_Results{root.Struct()}, err
-}
-
-func (s Unix_StreamReader_setDst_Results) String() string {
-	str, _ := text.Marshal(0x8278dbf22bb1ab9d, s.Struct)
-	return str
-}
-
-// Unix_StreamReader_setDst_Results_List is a list of Unix_StreamReader_setDst_Results.
-type Unix_StreamReader_setDst_Results_List = capnp.StructList[Unix_StreamReader_setDst_Results]
-
-// NewUnix_StreamReader_setDst_Results creates a new list of Unix_StreamReader_setDst_Results.
-func NewUnix_StreamReader_setDst_Results_List(s *capnp.Segment, sz int32) (Unix_StreamReader_setDst_Results_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Unix_StreamReader_setDst_Results]{List: l}, err
-}
-
-// Unix_StreamReader_setDst_Results_Future is a wrapper for a Unix_StreamReader_setDst_Results promised by a client call.
-type Unix_StreamReader_setDst_Results_Future struct{ *capnp.Future }
-
-func (p Unix_StreamReader_setDst_Results_Future) Struct() (Unix_StreamReader_setDst_Results, error) {
-	s, err := p.Future.Struct()
-	return Unix_StreamReader_setDst_Results{s}, err
-}
-
-type Unix_StreamWriter struct{ Client *capnp.Client }
-
-// Unix_StreamWriter_TypeID is the unique identifier for the type Unix_StreamWriter.
-const Unix_StreamWriter_TypeID = 0x9dc9fc28fe07475d
-
-func (c Unix_StreamWriter) Send(ctx context.Context, params func(channel.Sender_send_Params) error) (stream.StreamResult_Future, capnp.ReleaseFunc) {
-	s := capnp.Send{
-		Method: capnp.Method{
-			InterfaceID:   0xe8bbed1438ea16ee,
-			MethodID:      0,
-			InterfaceName: "channel.capnp:Sender",
-			MethodName:    "send",
-		},
-	}
-	if params != nil {
-		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(channel.Sender_send_Params{Struct: s}) }
-	}
-	ans, release := c.Client.SendCall(ctx, s)
-	return stream.StreamResult_Future{Future: ans.Future()}, release
-}
-func (c Unix_StreamWriter) Close(ctx context.Context, params func(channel.Closer_close_Params) error) (channel.Closer_close_Results_Future, capnp.ReleaseFunc) {
-	s := capnp.Send{
-		Method: capnp.Method{
-			InterfaceID:   0xfad0e4b80d3779c3,
-			MethodID:      0,
-			InterfaceName: "channel.capnp:Closer",
-			MethodName:    "close",
-		},
-	}
-	if params != nil {
-		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(channel.Closer_close_Params{Struct: s}) }
-	}
-	ans, release := c.Client.SendCall(ctx, s)
-	return channel.Closer_close_Results_Future{Future: ans.Future()}, release
-}
-
-func (c Unix_StreamWriter) AddRef() Unix_StreamWriter {
-	return Unix_StreamWriter{
-		Client: c.Client.AddRef(),
-	}
-}
-
-func (c Unix_StreamWriter) Release() {
-	c.Client.Release()
-}
-
-// A Unix_StreamWriter_Server is a Unix_StreamWriter with a local implementation.
-type Unix_StreamWriter_Server interface {
-	Send(context.Context, channel.Sender_send) error
-
-	Close(context.Context, channel.Closer_close) error
-}
-
-// Unix_StreamWriter_NewServer creates a new Server from an implementation of Unix_StreamWriter_Server.
-func Unix_StreamWriter_NewServer(s Unix_StreamWriter_Server, policy *server.Policy) *server.Server {
-	c, _ := s.(server.Shutdowner)
-	return server.New(Unix_StreamWriter_Methods(nil, s), s, c, policy)
-}
-
-// Unix_StreamWriter_ServerToClient creates a new Client from an implementation of Unix_StreamWriter_Server.
-// The caller is responsible for calling Release on the returned Client.
-func Unix_StreamWriter_ServerToClient(s Unix_StreamWriter_Server, policy *server.Policy) Unix_StreamWriter {
-	return Unix_StreamWriter{Client: capnp.NewClient(Unix_StreamWriter_NewServer(s, policy))}
-}
-
-// Unix_StreamWriter_Methods appends Methods to a slice that invoke the methods on s.
-// This can be used to create a more complicated Server.
-func Unix_StreamWriter_Methods(methods []server.Method, s Unix_StreamWriter_Server) []server.Method {
-	if cap(methods) == 0 {
-		methods = make([]server.Method, 0, 2)
-	}
-
-	methods = append(methods, server.Method{
-		Method: capnp.Method{
-			InterfaceID:   0xe8bbed1438ea16ee,
-			MethodID:      0,
-			InterfaceName: "channel.capnp:Sender",
-			MethodName:    "send",
-		},
-		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.Send(ctx, channel.Sender_send{call})
-		},
-	})
-
-	methods = append(methods, server.Method{
-		Method: capnp.Method{
-			InterfaceID:   0xfad0e4b80d3779c3,
-			MethodID:      0,
-			InterfaceName: "channel.capnp:Closer",
-			MethodName:    "close",
-		},
-		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.Close(ctx, channel.Closer_close{call})
-		},
-	})
-
-	return methods
-}
-
-const schema_d78885a0de56b292 = "x\xda\x94Ukh\x1cU\x14>gfn\xee\x9a&" +
-	"\xdd\xbd\xb9\x1bK%%\x10\xa2\xd8\x14\x97\xb4\xa1\x0a\x8b" +
-	"\xb2I4.\xa95\xee\xe4ah\xad?\xc6\xec\xb0\x9d" +
-	"\xb2\x8f83[#\x18\"\xc5\xa2E\xea\xa3\xe8\x8fT" +
-	"\"R,\xe2\x8b\xa4b\xc1\xe2\x03\x15|\x04\xf4G\xd0" +
-	"R\x8cXT*$\xd1\xfa\x88\x95\x82\x8f\x8e\xdc\xd9\x9d" +
-	"\x9dI6\x15\xfbkw\xcf\xfd\xf6\xbb\xe7|\xe7;\xe7" +
-	"\xb6\x7f!u*[\xeb\xa7kAR\x1f\"5\xce\xd4" +
-	"\xab'\xb6,\x7f=v\x00\xd8&\x04P(@\xc7-" +
-	"\xe4>\x04\xc5ym\xf7\xb0\xfd\xc9B\xd7#\xc0\x1a%" +
-	"g\xda\xbaq\xc7\xe9\xcd\x85\xe3\x00\xc87\x93\xef\xf9v" +
-	"B\x01\xf8Vr\x17\xa0\xf3Kv\xd7\xc0\xd1\xc1\x8b\x07" +
-	"\x81\xad\x93\x9d#o\xdc}\xf6\x85\x83\x8f\x9d\x11\xc0\x1e" +
-	"r\x80\xf7\x92$\x00\x1f'\x94\x8f\x93\x0d\x00\xceM\xca" +
-	"3\xffl\xefl8\x0c,\x8a\x00\x04i\x04;\xa6H" +
-	"-\x02\xf2\xe3$\x01\xe8\x9c;\xbb\xe7\xd4\xf9\xc3\x87\x9e" +
-	"\x00\x16\x09P\x13*\xee\xfb\x88|\xc8?\x177w\xcc" +
-	"\x92'\x11\xd0y\xb4v\xb6\xab\xfd\xea\x87\x9f\x02\xb5\x11" +
-	"\xbd\xf4\xef\xa7\xd7\x08\xb6\x07\xa9`KG\xee\xe9\x9b\x1d" +
-	"*>\x0b\xac\xa1|\xce'\xe9\x9f\xa08\xbf?.\xbf" +
-	"\xb7\xa3i\xffd\xe0`\x9c.\x83\xe2\xdc\x9b\xa4\x97\xae" +
-	"\xff{v\x0aXD\xf6\xef\x07\xe4\x1a]\xe297\x0d" +
-	"\x83RnPQME\x96\xd5\xe0C\xf4\x15\xfe\xb4\x80" +
-	"\xf0I\x9a\xe4\x1f\xb8\xe0\xa5-M\xeb^\x9c\xc9L\x07" +
-	"K?A%\x91\xecI7\xd9\xe7\x97g\x94\xf9\xe7\xb2" +
-	"\x1fW\x09y\x9a\x1e\xe1\xdf\xb8W\x7fE\x93\x1cC\x14" +
-	"\xc0\xd9\xa3\xe7\xba\x7f\xdcu\xf3wUW/\xd2%\xfe" +
-	"\x87\x0b\xfe\x8d&\xf9F\x17\xfcW\xcd\x85c\x13\xedo" +
-	"/\xacb\x86\x08r\x0c\x1d\xe3W\x09\x10'\xa1$\x1f" +
-	"\x0aQ>\x14\x0a;g\xe6o/F>\x9d\xbbX\xb2" +
-	"\x05A!loh\xb7\xc8u($r\xbdv\xef\xeb" +
-	"\xd7\xfd<<\x7f\x09X\xa3'|1\xd4\x82\xf0\xb23" +
-	"j\x16Fb#\xda\xa8\x92\x1f\x8d\x0f\xe5\x8d\xb1\xd8\x80" +
-	"m\xeaZ\xae_\xd7\xd2\xba\x19\xb3t\xfb6\xcbn\xed" +
-	"\xd7\xad\"\xcd\xdaV\x05-y\xe8\x94\x08\x0c\x18\x19\x9a" +
-	"\xd7\xb2)D\xb5\x0e%\x00\xb6)\x0e\x80\xc8\x1a\xbb\x01" +
-	"Pb\xf5\xdd\x00\x09\xcb\xc8\xf4\xf6\x0dNXFf\xb0" +
-	"\xa7\xffN\xf1yG\xef\xce\x9d\x15B,\x13\x82\x1a\xc1" +
-	"\xa0\xab6v\x07\xba\xd6\xd8\x16\xd0\x91\xed\x0b4\x9f\xed" +
-	"\x9b\xb8\xb5\x90\xcbi\xf9tXd\xe4xE@X\x94" +
-	"Q\xfe9lB\xd8\xb0u3%\x13UA\xf4e\xee" +
-	"D\x86\xcd\xaa\"\x05B\x00\x0c7\x08\x14bJF\x8c" +
-	"\xf8)\x01V\x92\x96\xf3\xa3\xf1\x9e1}\xa4h\x17\xcc" +
-	"\x98>\xa6\x8f\xb8Bem\x0b@Ud\x05@A\x00" +
-	"V\xdf\x06\xa0\x86dT\xa3\x12\x86\xc5_\x91\xf9\xde\x11" +
-	"2\x05\x18+\xba\x96\xab\x01\xa1iS\x85\xea\xa4\xa0\x9a" +
-	"\x91Q}GB\x86\x18\x15S\xc4N\xb5\x00\xa8o\xca" +
-	"\xa8\xbe/!\x93\xa4\xa8\xdb\x81w\x05\xf2-\x19\xd5/" +
-	"%d\xb2\x1cE\x19\x80\xcd\x09\xe4g2\xaa\x0b\x122" +
-	"E\x89\xa2\x02\xc0~\xd8\x06\xa0~+\xa3\xfa\x93\x84\x8c" +
-	"\x90(\x12\x00\xb6\x18\x07P\xcf\xc9\xa8\xfe*!\xab\xa9" +
-	"\x89b\x0d\x00;/\x82\x0b2\xaa\x17D!\x9a\xbd\x17" +
-	"\xeb@\xc2:@\x9a6L\xef{X33\x16\xae\x07" +
-	"W6\x11[\x0fH\xf5\xfc\xfeU\xa1f\xcbN\x1by" +
-	"d~CKJ$,;](\xda\xc8\xfc\xe6\xfa\x07" +
-	"\xbaiV\x1f\xac\xe8\x86\xefI\xcb\xc8\xe4\xb5lkJ" +
-	"359g\x05\xdb\x11\xf7\xdb\x91(\xa10\xec\xafO" +
-	"@\x0c\xafj\xc8\xb0&\\\x13{@3\xec\xd6\xfeD" +
-	"\xa9\xc3\x97\x05\xa4\x9a5S\xcb\xad1)\x9e\x07K\x16" +
-	"\x14\xb6*\xb9\xb0o1:~t\xee\xa5\xc5\x80\x0b+" +
-	"\xa1U.\xac\x07\xa9j`b\xae\xe1]&\xff\x09\xc0" +
-	"xb\xc0\xadLUd\x02PY\xbc\xe8\xed\x01\xc6\xe2" +
-	" 1B\xcb\x02t\xa2K\xe0\xbb\x12\xfe\xc3\xe3)\xb7" +
-	"\xc0\x15\x0e\xdf\xe6K\xda<*\x8e\xb1\x01W\x0c\x136" +
-	"\x044EO2\x14:\x94S\xf46<zo\x00c" +
-	"mn\x8aa!k'\xa6\x10/\xa7i\xbf\xeeN\xb9" +
-	"\xcf\xe5\xadC\xf4\x9eK\xbf\\w\x9f\xaddC\xafB" +
-	"j\x17\x02$\xde\xfeG\xef\x0d\x14\x09AW\x1dv5" +
-	"!\xbb\x81\x86\x85\x16Uk\xc3\x1d\xc8\xb5\x82\xee\x95]" +
-	"\x0a2l\xc0\xc1\xff\xb7t\xd7\xb0n\x8b\xaf3M[" +
-	"\xf6\x95\x0e\x83\xb7\xc6\xff\x0d\x00\x00\xff\xff\xe6\x0fl9"
+const schema_d78885a0de56b292 = "x\xda|T_h\x1c\xd5\x17>\xdf\xdc\xb9\xb9\xf95" +
+	"Iwof\xf3\x0bH4\x10\xa2\xd2\x88!\xb6Da" +
+	"}\xd8l\xa4\x84\xd6Z\xf7\xe6\x8f\xc1?\x08C\xb2l" +
+	"\x076\xbbqf\xb6\xe6-Q\x0c\x1a\xa4jK}\xa8" +
+	"\x12\x91\xa2\x0f\x8a\xa5A*\x18\xb4\"\x82JA\x1f\x0a" +
+	"V\xa1\x0f\xa5\x96\x16\x12iZ\xa9\x85\xa2\xa2#w6" +
+	"\xbb3I\xb4O;\x9cs\xf6;\xe7\xfb\xcewO\xdf" +
+	"Qc\xc0|\xa0E4\x91\xa1\xe6xC\xf0\xd1S\xe3" +
+	"\xfe\xb7+\xd9\x97H\xb6\x19\xc1I\xef\xc1\xbd\xe7v\x94" +
+	"\xdf'\x82\xe5\xf0KV\x85\x0b\"\xeb9\xfe8!\xb8" +
+	"^|r\xe4\xad\xd1[\xf3$\x9bXp\xe4\xe3'." +
+	"\xbc;\xff\xcaO\xbap\x9e\xbfh-\xf0{\x89\xacE" +
+	".\xacE\xdeN\x14<d\x1e\xfd\xab\x7f\xa0\xf5\x10\xc9" +
+	"\x14\x888D\x12\xbbN\xf3m X_\xf3\x0c!\xb8" +
+	"|\xe1\x99\xe5\xb5C\x0b\xaf\x91L\xc6\xa0\xb9\xd0\xfd\xae" +
+	"\xf0\xaf\xac5\xddy\xd7*\x7f\x1d\x84\xe0\xe5mg\xb2" +
+	"}\xff\x9f{\x83T\x1b@d\xea\xd4aq\x87F;" +
+	"&4\xdad\xf2\xe9\xfdg\xc6*o\x92l]\xcf[" +
+	"\xcb\xe2\x0f2\x83\xdf^e_\xec\xed8x,\x96X" +
+	"\x147\xc8\x8c\x98\xca$\x8b\xfa\x13\xac\x17\xc4\x87\xd6\x82" +
+	"h'\xb2\x0e\x8b!kY\x7f\x05\xbf\xdc\xd7\xd1\xf4\xde" +
+	"R\xe1d\x9c\xcd\x07\xc2\xd0\xfdO\x84\xfd\xdf\xb9\xb1d" +
+	"\x9e\x7f\xbb\xf8\xcd\x16m\xbe\x17G\xacs!\xa9\xb3b" +
+	"\xc8\xfa]\x7f\x05\x7f6\xdc<>\xdb\xf7\xd9\xca\xa6b" +
+	"J\xc2\xfaY\x1c\xb7V\xab\x1a\x88!\xab\xbfQX\xfd" +
+	"\x8d\x89\xe0\xee\x03'\xee\xb96~\xfeo\x92m5\xf6" +
+	";\x1a\xbb@\x17\x83i\xb7<\xd1;aO\x1b\xa5\xe9" +
+	"\xf4X\xc9\x99\xe9\xcd\xe9\xc0\x88S\x10%\xbb\x98\x03T" +
+	"3\x0c\"yg\x9a\x08\x90m\x83D0d\xcb Q" +
+	"\xc6s\x0a{\xf6\x8f\xcezNat\xf7\xf0c\xfa\xf7" +
+	"\xd1=\xfb\xf6\xd5\x01\xb1\x0eH\xaa\x11\xf1e\xfdo0" +
+	"\xa6\x1c\xef\x99}\xa4<5e\x97&\x13\xbao\x8eq" +
+	"e\x02\x11\xbf\x01Ht*\xd3\x88\x85\x88$\xdau\x15" +
+	"\x90c@2\x82&\xd4\x9b\xb3\xd2tz\xf7L~\xa2" +
+	"\xe2\x97\xdd\xde\xfcL~\xa2{8\xefU\x8a\xbeG\xa4" +
+	"Lf\x12\x99 \x92-=D\xaa\x91A\xa5\x0c$\xf4" +
+	"_!\xa3=h\xba1\xc4\xba>\xeb\xf3\x92\xd6\xa6\xa3" +
+	"\x0e\xf5\x89\x86ZbP\x9f\x1b\x90@J\x9bL.w" +
+	"\x11\xa9S\x0c\xeaK\x03\xd20R\xa1\x92\xa7u\xe5\xa7" +
+	"\x0c\xea\x07\x03\x92\xb1\x14\x18\x91<\xab+\xbfcP+" +
+	"\x06\xa4i\xa6`\x12\xc9+;\x89\xd4E\x06u\xd5\x80" +
+	"\xe4<\x05N$W\xd3D\xea2\x83\xfa\xd5\x80lh" +
+	"H\xa1\x81H\xae\xe9\xe0\x0a\x83\xba\xa9\x89\xd8\xfe\x014" +
+	"\x93\x81f\x82\x98t\xdc\xdaw\xc2v\x0b\x1e\xb6S(" +
+	"\x9b\x8em'\x88|\xe9\xe0\xa6P\xa7\xe7O:%\xc8" +
+	"[c\x0f_\x9f}\xb6\xebjU\x87\x8c\xe7O\x96+" +
+	">dp){\xea\xc7\xbb\xae%\xe6(J\xe4]w" +
+	"kb\xc3.\"gyN\xa1d\x17\xbbs\xb6k\xb3" +
+	")/\xbe\x8ct\xb4\x8cL\xb5\x0a\x89\xe8\xb6\x10\x90\xd8" +
+	"\xb4\x8eq\xdb\xf1\xf3n\xef\xf3\xb6\xe3w\x0fg\xaa\xfb" +
+	"\xfd\xcf\x82\\\xa7\xed\xdaS\xde\x16{\xf6\x86\xc6\x0b]" +
+	"\x17\xdd1\xa43#\xe1\x04\xcad\x9c\xa8~=P{" +
+	"GR\xa6\xc9\x90\\\xac\x0f:\x80\x10 \xf2\x0e\xdd\xc6" +
+	"\x89\xb9p\x90\x0d>\xdc\x19Q\xef\x9c\xd6i\xb4b\x83" +
+	"\xe5\xd1\x1a\xe3\x8e\x1a5\xb8\xda\x84\xd5\x11kg\x0a\xb5" +
+	"C&eO8bB\xd3\x1f@\x0e\x1b\x01\xc2\x99\x84" +
+	"_\x8eA\xd4n\x14j\xa7WCP\xb6\x19\xd9\x0e\xc8" +
+	"\xfbEBO\xbf\xe59\x86F\xff\xb7`\xd82kB" +
+	"\xa2\x15\xa3\xb77\x83~\x9b\xa2\xe8{\xff\x04\x00\x00\xff" +
+	"\xff5\xe8\xcd\xdd"
 
 func init() {
 	schemas.Register(schema_d78885a0de56b292,
-		0x8278dbf22bb1ab9d,
 		0x8441e8c774575aac,
 		0x85f7549a53596cef,
 		0x8d124035fd940437,
@@ -1293,12 +985,9 @@ func init() {
 		0x9080163041c90a87,
 		0x957555c94e5b1064,
 		0x99761c4abe038bf3,
-		0x9dc9fc28fe07475d,
 		0xa56f29d54a3673af,
 		0xaf67b0a40b1c2bea,
 		0xc66c9bda04b0f29e,
-		0xe13c59eb426d655c,
 		0xe8bb307fa2f406fb,
-		0xf7d1c8107546dad7,
 		0xfeda57ee26ad6825)
 }

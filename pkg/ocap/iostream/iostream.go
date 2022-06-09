@@ -1,4 +1,4 @@
-package unix
+package iostream
 
 import (
 	"bytes"
@@ -8,32 +8,32 @@ import (
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/server"
 	chan_api "github.com/wetware/ww/internal/api/channel"
-	api "github.com/wetware/ww/internal/api/proc"
+	"github.com/wetware/ww/internal/api/iostream"
 	"github.com/wetware/ww/pkg/ocap"
 	"github.com/wetware/ww/pkg/ocap/channel"
 )
 
-// StreamReader is the read end of a Unix byte-stream. It works by
+// Provider is the read end of a Unix byte-stream. It works by
 // setting a StreamWriter as a callback, which is invoked whenever
 // new data becomes available.
-type StreamReader api.Unix_StreamReader
+type Provider iostream.Provider
 
-func (sr StreamReader) AddRef() StreamReader {
-	return StreamReader{
+func (sr Provider) AddRef() Provider {
+	return Provider{
 		Client: sr.Client.AddRef(),
 	}
 }
 
-func (sr StreamReader) Release() {
+func (sr Provider) Release() {
 	sr.Client.Release()
 }
 
 // NewReader wraps r in a StreamReader and sets the supplied policy.
 // If r implements io.Closer, it will be called automatically when
 // the returned StreamReader shuts down.
-func NewReader(r io.Reader, p *server.Policy) StreamReader {
+func NewReader(r io.Reader, p *server.Policy) Provider {
 	sr := &sreader{Reader: r}
-	return StreamReader(api.Unix_StreamReader_ServerToClient(sr, p))
+	return Provider(iostream.Provider_ServerToClient(sr, p))
 }
 
 // SetDst assigns the supplied StreamWriter as the destination for
@@ -56,27 +56,28 @@ func NewReader(r io.Reader, p *server.Policy) StreamReader {
 //	 (b)  The consumer behind 'dst' does not distinguish between
 //        normal and erroneous stream termination.
 //
-func (sr StreamReader) SetDst(ctx context.Context, dst StreamWriter) (ocap.Future, capnp.ReleaseFunc) {
-	f, release := api.Unix_StreamReader(sr).SetDst(ctx, func(ps api.Unix_StreamReader_setDst_Params) error {
-		return ps.SetDst(api.Unix_StreamWriter(dst))
-	})
+func (sr Provider) SetDst(ctx context.Context, sw Stream) (ocap.Future, capnp.ReleaseFunc) {
+	stream := func(ps iostream.Provider_provide_Params) error {
+		return ps.SetStream(iostream.Stream(sw))
+	}
 
+	f, release := iostream.Provider(sr).Provide(ctx, stream)
 	return ocap.Future(f), release
 }
 
-// StreamWriter is the write end of a Unix byte-stream.  It provides
-// push semantics for transmitting streams of abitrary bytes.  It is
-// important to note that StreamWriter MAY arbitrarily segment bytes.
-// Applications MAY implement their own framing.
-type StreamWriter api.Unix_StreamWriter
+// Stream is the write end of a Unix byte-stream.  It provides
+// push semantics for transmitting streams of abitrary bytes.
+// It is important to note that Stream MAY arbitrarily segment
+// bytes.  Applications MAY implement their own framing.
+type Stream iostream.Provider
 
-func (sw StreamWriter) AddRef() StreamWriter {
-	return StreamWriter{
+func (sw Stream) AddRef() Stream {
+	return Stream{
 		Client: sw.Client.AddRef(),
 	}
 }
 
-func (sw StreamWriter) Release() {
+func (sw Stream) Release() {
 	sw.Client.Release()
 }
 
@@ -89,24 +90,24 @@ func (sw StreamWriter) Release() {
 // If w implements io.Closer, it will be closed before the call to
 // StreamWriter.Close() resolves, or after the last client reference
 // is released, whichever comes first.
-func NewWriter(w io.Writer, p *server.Policy) StreamWriter {
+func NewWriter(w io.Writer, p *server.Policy) Stream {
 	sw := &swriter{Writer: w}
-	return StreamWriter(api.Unix_StreamWriter_ServerToClient(sw, p))
+	return Stream(iostream.Stream_ServerToClient(sw, p))
 }
 
 // Write the bytes to the underlying stream.  Contrary to Go's io.Write,
 // sw.Write will return after all bytes have been written to the stream,
 // or an error occurs (whichever happens first).
-func (sw StreamWriter) Write(ctx context.Context, b []byte) (ocap.Future, capnp.ReleaseFunc) {
-	f, release := api.Unix_StreamWriter(sw).Send(ctx, channel.Data(b))
+func (sw Stream) Write(ctx context.Context, b []byte) (ocap.Future, capnp.ReleaseFunc) {
+	f, release := iostream.Stream(sw).Send(ctx, channel.Data(b))
 	return ocap.Future(f), release
 }
 
 // Close the underlying stream, signalling successful termination to any
 // downstream consumers.  Close MUST be called when terminating, even if
 // a previous write has failed.  We may relax this rule in the future.
-func (sw StreamWriter) Close(ctx context.Context) error {
-	f, release := api.Unix_StreamWriter(sw).Close(ctx, nil)
+func (sw Stream) Close(ctx context.Context) error {
+	f, release := iostream.Stream(sw).Close(ctx, nil)
 	defer release()
 
 	_, err := f.Struct()
@@ -117,7 +118,7 @@ func (sw StreamWriter) Close(ctx context.Context) error {
 // into calls to sw.Write().  The supplied context is implicitly passed
 // to all sw.Write() calls.  Callers MAY implement per-write timeouts by
 // repeatedly calling sw.Writer() with a fresh context.
-func (sw StreamWriter) Writer(ctx context.Context) io.Writer {
+func (sw Stream) Writer(ctx context.Context) io.Writer {
 	return writerFunc(func(b []byte) (int, error) {
 		f, release := sw.Write(ctx, b)
 		defer release()
@@ -141,8 +142,8 @@ func (sr *sreader) Shutdown() {
 	}
 }
 
-func (sr *sreader) SetDst(ctx context.Context, call api.Unix_StreamReader_setDst) (err error) {
-	callback := StreamWriter(call.Args().Dst())
+func (sr *sreader) Provide(ctx context.Context, call iostream.Provider_provide) (err error) {
+	callback := Stream(call.Args().Stream())
 
 	// stream terminated gracefully?
 	if err = stream(callback.Writer(ctx), sr); err == nil {
