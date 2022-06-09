@@ -19,7 +19,7 @@ func TestProcess_wait(t *testing.T) {
 	t.Run("NilError", func(t *testing.T) {
 		t.Parallel()
 
-		p := process.New(context.TODO(), func(context.Context) error {
+		p := process.New(func() error {
 			return nil
 		})
 
@@ -30,7 +30,7 @@ func TestProcess_wait(t *testing.T) {
 	t.Run("NonError", func(t *testing.T) {
 		t.Parallel()
 
-		p := process.New(context.TODO(), func(context.Context) error {
+		p := process.New(func() error {
 			return errTest
 		})
 
@@ -51,7 +51,7 @@ func TestProcess_wait(t *testing.T) {
 		cherr := make(chan error)
 		defer close(cherr)
 
-		p := process.New(context.TODO(), func(context.Context) error {
+		p := process.New(func() error {
 			return <-cherr
 		})
 
@@ -59,25 +59,4 @@ func TestProcess_wait(t *testing.T) {
 		assert.ErrorIs(t, err, context.DeadlineExceeded, "should report context error")
 	})
 
-	t.Run("KillWhenReleased", func(t *testing.T) {
-		t.Parallel()
-
-		p := process.New(context.TODO(), func(ctx context.Context) error {
-			<-ctx.Done()
-			return ctx.Err()
-		})
-
-		// Not needed, but gets us 100% test coverage.  Forgive me...
-		p.AddRef().Release()
-
-		cherr := make(chan error, 1)
-		go func() {
-			cherr <- p.Wait(context.TODO())
-		}()
-
-		time.Sleep(time.Millisecond)
-		p.Release()
-
-		assert.ErrorIs(t, <-cherr, context.Canceled, "should report context error")
-	})
 }

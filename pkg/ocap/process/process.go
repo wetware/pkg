@@ -7,7 +7,11 @@ import (
 	api "github.com/wetware/ww/internal/api/proc"
 )
 
-type Func func(context.Context) error
+// TODO(someday):  JITCompiler executor that accepts Go source code
+//                 or ASM, and executes it in a Func.
+
+// Func specifies a process that runs in a native goroutine.
+type Func func() error
 
 // P is the basic process capability, from which all others are
 // derived.  Processes are asynchronous and concurrent, and can
@@ -28,22 +32,17 @@ func (p P) Release() {
 // whose Wait() method returns the error returned by 'f'.
 //
 // It is f's responsibility to terminate promptly when ctx expires.
-func New(ctx context.Context, f Func) P {
-	return NewWithPolicy(ctx, f, nil)
+func New(f Func) P {
+	return NewWithPolicy(f, nil)
 }
 
-func NewWithPolicy(ctx context.Context, f Func, p *server.Policy) P {
-	ctx, cancel := context.WithCancel(ctx)
+func NewWithPolicy(f Func, p *server.Policy) P {
 	done := make(chan struct{})
-
-	proc := process{
-		cancel: cancel,
-		done:   done,
-	}
+	proc := process{done: done}
 
 	go func() {
 		defer close(done)
-		proc.err = f(ctx)
+		proc.err = f()
 	}()
 
 	return P(api.P_ServerToClient(&proc, p))
@@ -75,16 +74,11 @@ func (p P) Wait(ctx context.Context) error {
 }
 
 type process struct {
-	cancel context.CancelFunc
-	done   <-chan struct{}
-	err    error
+	done <-chan struct{}
+	err  error
 }
 
-func (p *process) Shutdown() { p.cancel() }
-
 func (p *process) Wait(ctx context.Context, call api.P_wait) error {
-	call.Ack()
-
 	select {
 	case <-p.done:
 		return p.err
