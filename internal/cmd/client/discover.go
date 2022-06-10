@@ -10,7 +10,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/discovery"
 	"github.com/libp2p/go-libp2p-core/peer"
 	libp2pquic "github.com/libp2p/go-libp2p-quic-transport"
-	"github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
 	"github.com/wetware/casm/pkg/boot/socket"
 	bootutil "github.com/wetware/casm/pkg/boot/util"
@@ -60,7 +59,7 @@ func discover(c *cli.Context) error {
 	}
 
 	discoverer, err := bootutil.DialString(h, c.String("discover"),
-		socket.WithLogger(logger))
+		socket.WithLogger(logger), socket.WithRateLimiter(socket.NewPacketLimiter(500, 8)))
 	if err != nil {
 		return err
 	}
@@ -80,18 +79,18 @@ func discover(c *cli.Context) error {
 			return err
 		}
 
+		info.Addrs = as
+
 		print := printer(c)
-		for _, addr := range as {
-			if err = print(addr); err != nil {
-				return err
-			}
+		if err = print(info); err != nil {
+			return err
 		}
 	}
 
 	return ctx.Err()
 }
 
-func printer(c *cli.Context) func(multiaddr.Multiaddr) error {
+func printer(c *cli.Context) func(peer.AddrInfo) error {
 	if c.Bool("json") {
 		return jsonPrinter(c)
 	}
@@ -99,28 +98,17 @@ func printer(c *cli.Context) func(multiaddr.Multiaddr) error {
 	return textPrinter(c)
 }
 
-func jsonPrinter(c *cli.Context) func(multiaddr.Multiaddr) error {
+func jsonPrinter(c *cli.Context) func(peer.AddrInfo) error {
 	enc := json.NewEncoder(c.App.Writer)
 
-	return func(maddr multiaddr.Multiaddr) error {
-		return enc.Encode(maddr)
+	return func(info peer.AddrInfo) error {
+		return enc.Encode(info)
 	}
 }
 
-func textPrinter(c *cli.Context) func(multiaddr.Multiaddr) error {
-	return func(maddr multiaddr.Multiaddr) error {
-		_, err := fmt.Fprintln(c.App.Writer, maddr)
+func textPrinter(c *cli.Context) func(peer.AddrInfo) error {
+	return func(info peer.AddrInfo) error {
+		_, err := fmt.Fprintln(c.App.Writer, info)
 		return err
 	}
 }
-
-// func setP2pAddress(info peer.AddrInfo) error {
-// 	for i := range info.Addrs {
-// 		maddr, err := multiaddr.NewMultiaddr(fmt.Sprintf("/p2p/%s", info.ID.String()))
-// 		if err != nil {
-// 			return err
-// 		}
-// 		info.Addrs[i] = info.Addrs[i].Encapsulate(maddr)
-// 	}
-// 	return nil
-// }
