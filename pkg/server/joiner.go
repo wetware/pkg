@@ -9,6 +9,7 @@ import (
 	"github.com/lthibault/log"
 
 	"github.com/wetware/casm/pkg/cluster"
+	statsdutil "github.com/wetware/ww/internal/util/statsd"
 	"github.com/wetware/ww/pkg/vat"
 
 	cluster_cap "github.com/wetware/ww/pkg/ocap/cluster"
@@ -22,8 +23,9 @@ type PubSub interface {
 }
 
 type Joiner struct {
-	log  log.Logger
-	opts []cluster.Option
+	log     log.Logger
+	opts    []cluster.Option
+	metrics *statsdutil.WwMetricsRecorder
 }
 
 func NewJoiner(opt ...Option) Joiner {
@@ -49,6 +51,9 @@ func (j Joiner) Join(ctx context.Context, vat vat.Network, ps PubSub) (*Node, er
 	if err != nil {
 		return nil, fmt.Errorf("join cluster: %w", err)
 	}
+
+	// add metric provider
+	j.metrics.Add(ClusterMetrics{View: c.View()})
 
 	// export default capabilities
 	logger := j.log.With(vat)
@@ -83,4 +88,20 @@ func (j Joiner) options(vat vat.Network, u uuid.UUID) []cluster.Option {
 		cluster.WithLogger(log),
 		cluster.WithNamespace(vat.NS),
 	}, j.opts...)
+}
+
+type ClusterMetrics struct {
+	cluster.View
+}
+
+func (c ClusterMetrics) Metrics() map[string]interface{} {
+	metrics := make(map[string]interface{}, 0)
+
+	view_size := 0
+	for it := c.Iter(); it.Record() != nil; it.Next() {
+		view_size++
+	}
+
+	metrics["view.size"] = view_size
+	return metrics
 }

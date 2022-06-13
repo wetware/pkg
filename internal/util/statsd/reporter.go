@@ -1,6 +1,7 @@
 package statsdutil
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -30,4 +31,44 @@ func NewBandwidthCounter(s *statsd.Client) (b *metrics.BandwidthCounter, stop fu
 	}()
 
 	return b, ticker.Stop
+}
+
+type MetricsProvider interface {
+	Metrics() map[string]interface{}
+}
+
+type WwMetricsRecorder struct {
+	providers   []MetricsProvider
+	stats       *statsd.Client
+	newProvider chan MetricsProvider
+}
+
+func NewWwMetricsRecorder(stats *statsd.Client) *WwMetricsRecorder {
+	return &WwMetricsRecorder{providers: make([]MetricsProvider, 0), stats: stats, newProvider: make(chan MetricsProvider)}
+}
+
+func (m *WwMetricsRecorder) Run(ctx context.Context) error {
+	ticker := time.NewTicker(10 * time.Second)
+	for {
+		select {
+		case <-ticker.C:
+			m.record()
+		case p := <-m.newProvider:
+			m.providers = append(m.providers, p)
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+}
+
+func (m *WwMetricsRecorder) Add(p MetricsProvider) {
+	m.newProvider <- p
+}
+
+func (m *WwMetricsRecorder) record() {
+	for _, provider := range m.providers {
+		for name, value := range provider.Metrics() {
+			m.stats.Gauge(name, value)
+		}
+	}
 }

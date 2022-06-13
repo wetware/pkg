@@ -9,6 +9,7 @@ import (
 	"github.com/lthibault/log"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
+	"gopkg.in/alexcesaro/statsd.v2"
 
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/sync"
@@ -36,12 +37,19 @@ var observability = fx.Provide(
 	logging,
 	statsdutil.New,
 	statsdutil.NewBandwidthCounter,
-	statsdutil.NewPubSubTracer)
+	statsdutil.NewPubSubTracer,
+	NewWwMetricsReporter)
 
 func logging(c *cli.Context) log.Logger {
 	return logutil.New(c).With(log.F{
 		"ns": c.String("ns"),
 	})
+}
+
+func NewWwMetricsReporter(c *cli.Context, client *statsd.Client) *statsdutil.WwMetricsRecorder {
+	metrics := statsdutil.NewWwMetricsRecorder(client)
+	go metrics.Run(c.Context)
+	return metrics
 }
 
 // hook populates heartbeat messages with system information from the
