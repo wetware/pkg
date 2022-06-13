@@ -9,6 +9,10 @@ import (
 	"gopkg.in/alexcesaro/statsd.v2"
 )
 
+const (
+	sampleTick = time.Minute
+)
+
 func NewBandwidthCounter(s *statsd.Client) (b *metrics.BandwidthCounter, stop func()) {
 
 	b = metrics.NewBandwidthCounter()
@@ -16,7 +20,7 @@ func NewBandwidthCounter(s *statsd.Client) (b *metrics.BandwidthCounter, stop fu
 		statsd.SampleRate(.1), // send 10% of metrics
 		statsd.Prefix("libp2p.host.bandwidth."))
 
-	ticker := time.NewTicker(time.Minute) // 1440 samples/day base-rate
+	ticker := time.NewTicker(sampleTick) // 1440 samples/day base-rate
 	go func() {
 		stat := b.GetBandwidthTotals()
 		s.Gauge("rate.in", stat.RateIn)
@@ -48,7 +52,7 @@ func NewWwMetricsRecorder(stats *statsd.Client) *WwMetricsRecorder {
 }
 
 func (m *WwMetricsRecorder) Run(ctx context.Context) error {
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(sampleTick)
 	for {
 		select {
 		case <-ticker.C:
