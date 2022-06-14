@@ -120,7 +120,7 @@ type vatConfig struct {
 	CLI       *cli.Context
 	DHT       *dual.DHT
 	Lifecycle fx.Lifecycle
-	Metrics   *statsdutil.WwMetricsReporter
+	Metrics   *statsdutil.MetricsReporter
 }
 
 func vatnet(config vatConfig) vat.Network {

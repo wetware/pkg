@@ -42,17 +42,17 @@ type MetricsProvider interface {
 	Metrics() map[string]interface{}
 }
 
-type WwMetricsReporter struct {
+type MetricsReporter struct {
 	providers   []MetricsProvider
 	stats       *statsd.Client
 	newProvider chan MetricsProvider
 }
 
-func NewWwMetricsReporter(stats *statsd.Client) *WwMetricsReporter {
-	return &WwMetricsReporter{providers: make([]MetricsProvider, 0), stats: stats, newProvider: make(chan MetricsProvider)}
+func NewMetricsReporter(stats *statsd.Client) *MetricsReporter {
+	return &MetricsReporter{providers: make([]MetricsProvider, 0), stats: stats, newProvider: make(chan MetricsProvider)}
 }
 
-func (m *WwMetricsReporter) Run(ctx context.Context) error {
+func (m *MetricsReporter) Run(ctx context.Context) error {
 	ticker := time.NewTicker(sampleTick)
 	for {
 		select {
@@ -66,17 +66,17 @@ func (m *WwMetricsReporter) Run(ctx context.Context) error {
 	}
 }
 
-func (m *WwMetricsReporter) Add(p MetricsProvider) {
+func (m *MetricsReporter) Add(p MetricsProvider) {
 	m.newProvider <- p
 }
 
-func (m *WwMetricsReporter) NewStore() *MetricStore {
+func (m *MetricsReporter) NewStore() *MetricStore {
 	store := MetricStore{store: make(map[string]interface{})}
 	m.newProvider <- &store
 	return &store
 }
 
-func (m *WwMetricsReporter) report() {
+func (m *MetricsReporter) report() {
 	for _, provider := range m.providers {
 		for name, value := range provider.Metrics() {
 			m.stats.Gauge(name, value)

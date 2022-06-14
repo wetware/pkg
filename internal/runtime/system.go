@@ -46,8 +46,8 @@ func logging(c *cli.Context) log.Logger {
 	})
 }
 
-func NewWwMetricsReporter(c *cli.Context, client *statsd.Client) *statsdutil.WwMetricsReporter {
-	metrics := statsdutil.NewWwMetricsReporter(client)
+func NewWwMetricsReporter(c *cli.Context, client *statsd.Client) *statsdutil.MetricsReporter {
+	metrics := statsdutil.NewMetricsReporter(client)
 	go metrics.Run(c.Context)
 	return metrics
 }

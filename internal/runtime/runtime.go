@@ -155,7 +155,7 @@ type serverConfig struct {
 	PubSub  *pubsub.PubSub
 	PeX     *pex.PeerExchange
 	DHT     *dual.DHT
-	Metrics *statsdutil.WwMetricsReporter
+	Metrics *statsdutil.MetricsReporter
 
 	Lifecycle fx.Lifecycle
 }

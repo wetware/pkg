@@ -25,7 +25,7 @@ type PubSub interface {
 type Joiner struct {
 	log     log.Logger
 	opts    []cluster.Option
-	metrics *statsdutil.WwMetricsReporter
+	metrics *statsdutil.MetricsReporter
 }
 
 func NewJoiner(opt ...Option) Joiner {

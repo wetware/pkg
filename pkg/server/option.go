@@ -21,7 +21,7 @@ func WithLogger(l log.Logger) Option {
 }
 
 // WithStatsd sets the statsd client for recording statistics.
-func WithMetrics(m *statsdutil.WwMetricsReporter) Option {
+func WithMetrics(m *statsdutil.MetricsReporter) Option {
 	return func(j *Joiner) {
 		j.metrics = m
 	}
