@@ -120,12 +120,14 @@ type vatConfig struct {
 	CLI       *cli.Context
 	DHT       *dual.DHT
 	Lifecycle fx.Lifecycle
+	Metrics   *statsdutil.WwMetricsReporter
 }
 
 func vatnet(config vatConfig) vat.Network {
 	return vat.Network{
-		NS:   config.Namespace(),
-		Host: routedhost.Wrap(config.Host(), config.DHT),
+		NS:      config.Namespace(),
+		Host:    routedhost.Wrap(config.Host(), config.DHT),
+		Metrics: config.Metrics.NewStore(),
 	}
 }
 

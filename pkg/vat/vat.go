@@ -4,6 +4,7 @@ package vat
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/libp2p/go-libp2p-core/host"
@@ -11,6 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/multiformats/go-multistream"
+	statsdutil "github.com/wetware/ww/internal/util/statsd"
 	ww "github.com/wetware/ww/pkg"
 
 	"capnproto.org/go/capnp/v3"
@@ -52,8 +54,9 @@ type ClientProvider interface {
 // Network wraps a libp2p Host and provides a high-level interface to
 // a capability-oriented network.
 type Network struct {
-	NS   string
-	Host host.Host
+	NS      string
+	Host    host.Host
+	Metrics *statsdutil.MetricStore
 }
 
 func (n Network) Loggable() map[string]interface{} {
@@ -109,7 +112,10 @@ func (n Network) Export(c Capability, boot ClientProvider) {
 			conn := rpc.NewConn(c.Upgrade(s), &rpc.Options{
 				BootstrapClient: boot.Client(),
 			})
+			n.Metrics.Add(fmt.Sprintf("rpc.%s.open", id), 1)
+
 			defer conn.Close()
+			defer n.Metrics.Add(fmt.Sprintf("rpc.%s.open", id), -1)
 
 			<-conn.Done()
 		})
