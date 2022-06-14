@@ -3,6 +3,7 @@ package server
 import (
 	"github.com/lthibault/log"
 	"github.com/wetware/casm/pkg/cluster"
+	statsdutil "github.com/wetware/ww/internal/util/statsd"
 )
 
 type Option func(*Joiner)
@@ -16,6 +17,13 @@ func WithLogger(l log.Logger) Option {
 
 	return func(j *Joiner) {
 		j.log = l
+	}
+}
+
+// WithStatsd sets the statsd client for recording statistics.
+func WithMetrics(m *statsdutil.MetricsReporter) Option {
+	return func(j *Joiner) {
+		j.metrics = m
 	}
 }
 

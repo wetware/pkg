@@ -16,6 +16,7 @@ import (
 	"github.com/wetware/casm/pkg/cluster"
 	"github.com/wetware/casm/pkg/pex"
 	serviceutil "github.com/wetware/ww/internal/util/service"
+	statsdutil "github.com/wetware/ww/internal/util/statsd"
 	"github.com/wetware/ww/pkg/server"
 	"github.com/wetware/ww/pkg/vat"
 	"go.uber.org/fx"
@@ -149,11 +150,12 @@ func supervisor(c *cli.Context) *suture.Supervisor {
 type serverConfig struct {
 	fx.In
 
-	Log    log.Logger
-	Vat    vat.Network
-	PubSub *pubsub.PubSub
-	PeX    *pex.PeerExchange
-	DHT    *dual.DHT
+	Log     log.Logger
+	Vat     vat.Network
+	PubSub  *pubsub.PubSub
+	PeX     *pex.PeerExchange
+	DHT     *dual.DHT
+	Metrics *statsdutil.MetricsReporter
 
 	Lifecycle fx.Lifecycle
 }
@@ -174,7 +176,8 @@ func (config serverConfig) SetCloser(c io.Closer) {
 func node(c *cli.Context, config serverConfig) (*server.Node, error) {
 	n, err := server.New(c.Context, config.Vat, config.PubSub,
 		server.WithLogger(config.Logger()),
-		server.WithClusterConfig(config.ClusterOpts()...))
+		server.WithClusterConfig(config.ClusterOpts()...),
+		server.WithMetrics(config.Metrics))
 
 	if err == nil {
 		config.SetCloser(n)

@@ -120,12 +120,14 @@ type vatConfig struct {
 	CLI       *cli.Context
 	DHT       *dual.DHT
 	Lifecycle fx.Lifecycle
+	Metrics   *statsdutil.MetricsReporter
 }
 
 func vatnet(config vatConfig) vat.Network {
 	return vat.Network{
-		NS:   config.Namespace(),
-		Host: routedhost.Wrap(config.Host(), config.DHT),
+		NS:      config.Namespace(),
+		Host:    routedhost.Wrap(config.Host(), config.DHT),
+		Metrics: config.Metrics.NewStore(),
 	}
 }
 
@@ -156,7 +158,6 @@ func peercache(config pexConfig) (*pex.PeerExchange, error) {
 	if err == nil {
 		config.SetCloseHook(px)
 	}
-
 	return px, err
 }
 
@@ -205,7 +206,6 @@ func bootstrap(config bootConfig) (bootstrapper, error) {
 			config.SetCloseHook(c)
 		}
 	}
-
 	return bootstrapper{
 		Log:       config.Logger(),
 		Discovery: b,
