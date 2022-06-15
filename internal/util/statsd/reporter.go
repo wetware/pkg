@@ -89,7 +89,7 @@ type MetricStore struct {
 	store map[string]interface{}
 }
 
-func (m *MetricStore) Add(key string, value int) {
+func (m *MetricStore) Count(key string, value int) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

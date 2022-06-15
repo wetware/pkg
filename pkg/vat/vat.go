@@ -12,7 +12,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/multiformats/go-multistream"
-	statsdutil "github.com/wetware/ww/internal/util/statsd"
 	ww "github.com/wetware/ww/pkg"
 
 	"capnproto.org/go/capnp/v3"
@@ -51,12 +50,16 @@ type ClientProvider interface {
 	Client() *capnp.Client
 }
 
+type MetricCounter interface {
+	Count(key string, value int)
+}
+
 // Network wraps a libp2p Host and provides a high-level interface to
 // a capability-oriented network.
 type Network struct {
 	NS      string
 	Host    host.Host
-	Metrics *statsdutil.MetricStore
+	Metrics MetricCounter
 }
 
 func (n Network) Loggable() map[string]interface{} {
@@ -112,10 +115,10 @@ func (n Network) Export(c Capability, boot ClientProvider) {
 			conn := rpc.NewConn(c.Upgrade(s), &rpc.Options{
 				BootstrapClient: boot.Client(),
 			})
-			n.Metrics.Add(fmt.Sprintf("rpc.%s.open", id), 1)
+			n.reportMetrics(fmt.Sprintf("rpc.%s.open", id), 1)
 
 			defer conn.Close()
-			defer n.Metrics.Add(fmt.Sprintf("rpc.%s.open", id), -1)
+			defer n.reportMetrics(fmt.Sprintf("rpc.%s.open", id), -1)
 
 			<-conn.Done()
 		})
@@ -154,6 +157,12 @@ func (n Network) isInvalidNS(id peer.ID, c Capability) bool {
 	}
 
 	return false // not a ns issue; proto actually unsupported
+}
+
+func (n Network) reportMetrics(name string, value int) {
+	if n.Metrics != nil {
+		n.Metrics.Count(name, value)
+	}
 }
 
 // match the protocol, ignoring namespace
