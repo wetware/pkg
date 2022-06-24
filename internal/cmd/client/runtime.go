@@ -12,6 +12,7 @@ import (
 	"github.com/lthibault/log"
 	"github.com/urfave/cli/v2"
 	"github.com/wetware/casm/pkg/boot"
+	"github.com/wetware/casm/pkg/boot/socket"
 	bootutil "github.com/wetware/casm/pkg/boot/util"
 	logutil "github.com/wetware/ww/internal/util/log"
 	"github.com/wetware/ww/pkg/client"
@@ -84,7 +85,8 @@ func dialer(c *cli.Context, h host.Host, lx fx.Lifecycle) (d client.Dialer, err 
 		return
 	}
 
-	d.Boot, err = bootutil.DialString(h, c.String("discover"))
+	d.Boot, err = bootutil.DialString(h, c.String("discover"),
+		socket.WithRateLimiter(socket.NewPacketLimiter(1000, 8)))
 	if err == nil {
 		if b, ok := d.Boot.(io.Closer); ok {
 			lx.Append(closer(b))

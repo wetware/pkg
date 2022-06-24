@@ -26,6 +26,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/wetware/casm/pkg/boot"
+	"github.com/wetware/casm/pkg/boot/socket"
 	bootutil "github.com/wetware/casm/pkg/boot/util"
 	"github.com/wetware/casm/pkg/pex"
 	protoutil "github.com/wetware/casm/pkg/util/proto"
@@ -205,7 +206,8 @@ func bootstrap(config bootConfig) (b bootstrapper, err error) {
 	if config.CLI.IsSet("addr") {
 		b.Discovery, err = boot.NewStaticAddrStrings(config.CLI.StringSlice("addr")...)
 	} else {
-		b.Discovery, err = bootutil.ListenString(config.Host(), config.CLI.String("discover"))
+		b.Discovery, err = bootutil.ListenString(config.Host(), config.CLI.String("discover"),
+			socket.WithRateLimiter(socket.NewPacketLimiter(1000, 8)))
 	}
 
 	if err == nil {
