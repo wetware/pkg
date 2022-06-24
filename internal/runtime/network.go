@@ -199,17 +199,21 @@ type bootstrapper struct {
 	discovery.Discovery
 }
 
-func bootstrap(config bootConfig) (bootstrapper, error) {
-	b, err := bootutil.ListenString(config.Host(), config.CLI.String("discover"))
+func bootstrap(config bootConfig) (b bootstrapper, err error) {
+	b.Log = config.Logger()
+
+	if config.CLI.IsSet("addr") {
+		b.Discovery, err = boot.NewStaticAddrStrings(config.CLI.StringSlice("addr")...)
+	} else {
+		b.Discovery, err = bootutil.ListenString(config.Host(), config.CLI.String("discover"))
+	}
+
 	if err == nil {
-		if c, ok := b.(io.Closer); ok {
+		if c, ok := b.Discovery.(io.Closer); ok {
 			config.SetCloseHook(c)
 		}
 	}
-	return bootstrapper{
-		Log:       config.Logger(),
-		Discovery: b,
-	}, err
+	return
 }
 
 func (b bootstrapper) FindPeers(ctx context.Context, ns string, opt ...discovery.Option) (<-chan peer.AddrInfo, error) {

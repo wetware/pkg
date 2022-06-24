@@ -50,8 +50,11 @@ type ClientProvider interface {
 	Client() *capnp.Client
 }
 
-type MetricCounter interface {
-	Count(key string, value int)
+type MetricReporter interface {
+	CountAdd(key string, value int)
+	CountSet(key string, value int)
+	GaugeAdd(key string, value int)
+	GaugeSet(key string, value int)
 }
 
 // Network wraps a libp2p Host and provides a high-level interface to
@@ -59,7 +62,7 @@ type MetricCounter interface {
 type Network struct {
 	NS      string
 	Host    host.Host
-	Metrics MetricCounter
+	Metrics MetricReporter
 }
 
 func (n Network) Loggable() map[string]interface{} {
@@ -115,10 +118,12 @@ func (n Network) Export(c Capability, boot ClientProvider) {
 			conn := rpc.NewConn(c.Upgrade(s), &rpc.Options{
 				BootstrapClient: boot.Client(),
 			})
-			n.reportMetrics(fmt.Sprintf("rpc.%s.open", id), 1)
+			n.gaugeMetrics(fmt.Sprintf("rpc.%s.open", id), 1)
+			n.countMetrics("rpc.connect", 1)
 
 			defer conn.Close()
-			defer n.reportMetrics(fmt.Sprintf("rpc.%s.open", id), -1)
+			defer n.gaugeMetrics(fmt.Sprintf("rpc.%s.open", id), -1)
+			defer n.countMetrics("rpc.disconnect", 1)
 
 			<-conn.Done()
 		})
@@ -159,9 +164,15 @@ func (n Network) isInvalidNS(id peer.ID, c Capability) bool {
 	return false // not a ns issue; proto actually unsupported
 }
 
-func (n Network) reportMetrics(name string, value int) {
+func (n Network) gaugeMetrics(name string, value int) {
 	if n.Metrics != nil {
-		n.Metrics.Count(name, value)
+		n.Metrics.GaugeAdd(name, value)
+	}
+}
+
+func (n Network) countMetrics(name string, value int) {
+	if n.Metrics != nil {
+		n.Metrics.CountAdd(name, value)
 	}
 }
 

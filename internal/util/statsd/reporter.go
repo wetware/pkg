@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	sampleTick = time.Minute
+	reportTick = time.Minute
 )
 
 func NewBandwidthCounter(s *statsd.Client) (b *metrics.BandwidthCounter, stop func()) {
@@ -21,7 +21,7 @@ func NewBandwidthCounter(s *statsd.Client) (b *metrics.BandwidthCounter, stop fu
 		statsd.SampleRate(.1), // send 10% of metrics
 		statsd.Prefix("libp2p.host.bandwidth."))
 
-	ticker := time.NewTicker(sampleTick) // 1440 samples/day base-rate
+	ticker := time.NewTicker(reportTick) // 1440 samples/day base-rate
 	go func() {
 		stat := b.GetBandwidthTotals()
 		s.Gauge("rate.in", stat.RateIn)
@@ -39,7 +39,8 @@ func NewBandwidthCounter(s *statsd.Client) (b *metrics.BandwidthCounter, stop fu
 }
 
 type MetricsProvider interface {
-	Metrics() map[string]interface{}
+	GaugeMetrics() map[string]interface{}
+	CountMetrics() map[string]interface{}
 }
 
 type MetricsReporter struct {
@@ -53,7 +54,7 @@ func NewMetricsReporter(stats *statsd.Client) *MetricsReporter {
 }
 
 func (m *MetricsReporter) Run(ctx context.Context) error {
-	ticker := time.NewTicker(sampleTick)
+	ticker := time.NewTicker(reportTick)
 	for {
 		select {
 		case <-ticker.C:
@@ -71,43 +72,96 @@ func (m *MetricsReporter) Add(p MetricsProvider) {
 }
 
 func (m *MetricsReporter) NewStore() *MetricStore {
-	store := MetricStore{store: make(map[string]interface{})}
-	m.newProvider <- &store
-	return &store
+	store := NewMetricStore()
+	m.newProvider <- store
+	return store
 }
 
 func (m *MetricsReporter) report() {
 	for _, provider := range m.providers {
-		for name, value := range provider.Metrics() {
-			m.stats.Gauge(name, value)
+		if metrics := provider.GaugeMetrics(); metrics != nil {
+			for name, value := range metrics {
+				m.stats.Gauge(name, value)
+			}
+		}
+
+		if metrics := provider.CountMetrics(); metrics != nil {
+			for name, value := range metrics {
+				m.stats.Count(name, value)
+			}
 		}
 	}
 }
 
 type MetricStore struct {
-	mu    sync.Mutex
-	store map[string]interface{}
+	mu         sync.Mutex
+	gaugeStore map[string]interface{}
+	countStore map[string]interface{}
 }
 
-func (m *MetricStore) Count(key string, value int) {
+func NewMetricStore() *MetricStore {
+	return &MetricStore{gaugeStore: make(map[string]interface{}), countStore: make(map[string]interface{})}
+}
+
+func (m *MetricStore) GaugeAdd(key string, value int) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	num, ok := m.store[key].(int)
+	num, ok := m.gaugeStore[key].(int)
 	if ok {
-		m.store[key] = num + value
+		m.gaugeStore[key] = num + value
 	} else {
-		m.store[key] = value
+		m.gaugeStore[key] = value
 	}
 }
 
-func (m *MetricStore) Metrics() map[string]interface{} {
+func (m *MetricStore) GaugeSet(key string, value int) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.gaugeStore[key] = value
+}
+
+func (m *MetricStore) CountAdd(key string, value int) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	num, ok := m.countStore[key].(int)
+	if ok {
+		m.countStore[key] = num + value
+	} else {
+		m.countStore[key] = value
+	}
+}
+
+func (m *MetricStore) CountSet(key string, value int) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.countStore[key] = value
+}
+
+func (m *MetricStore) GaugeMetrics() map[string]interface{} {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	metrics := make(map[string]interface{})
-	for key, value := range m.store {
+	for key, value := range m.gaugeStore {
 		metrics[key] = value
 	}
+	return metrics
+}
+
+func (m *MetricStore) CountMetrics() map[string]interface{} {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	metrics := make(map[string]interface{})
+	for key, value := range m.countStore {
+		metrics[key] = value
+	}
+
+	m.countStore = make(map[string]interface{}) // reset values
+
 	return metrics
 }

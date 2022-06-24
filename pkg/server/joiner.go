@@ -94,7 +94,7 @@ type ClusterMetrics struct {
 	cluster.View
 }
 
-func (c ClusterMetrics) Metrics() map[string]interface{} {
+func (c ClusterMetrics) GaugeMetrics() map[string]interface{} {
 	metrics := make(map[string]interface{}, 0)
 
 	view_size := 0
@@ -104,4 +104,8 @@ func (c ClusterMetrics) Metrics() map[string]interface{} {
 
 	metrics["view.size"] = view_size
 	return metrics
+}
+
+func (c ClusterMetrics) CountMetrics() map[string]interface{} {
+	return nil
 }

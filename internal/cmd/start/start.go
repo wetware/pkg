@@ -14,7 +14,7 @@ var flags = []cli.Flag{
 	},
 	&cli.StringSliceFlag{
 		Name:    "listen",
-		Aliases: []string{"a"},
+		Aliases: []string{"l"},
 		Usage:   "host listen address",
 		Value: cli.NewStringSlice(
 			"/ip4/0.0.0.0/udp/0/quic",
@@ -22,9 +22,10 @@ var flags = []cli.Flag{
 		EnvVars: []string{"WW_LISTEN"},
 	},
 	&cli.StringSliceFlag{
-		Name:    "join",
-		Usage:   "join cluster through current member address",
-		EnvVars: []string{"WW_JOIN"},
+		Name:    "addr",
+		Aliases: []string{"a"},
+		Usage:   "static bootstrap `ADDR`",
+		EnvVars: []string{"WW_ADDR"},
 	},
 	&cli.StringFlag{
 		Name:    "discover",
