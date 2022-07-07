@@ -109,7 +109,8 @@ func (t Txn) IsOrphan() bool {
 	return !ok
 }
 
-// LoadValue returns the register located at the current path, if any.
+// LoadValue returns the contents of the anchor located at the current
+// path, if any.
 func (t Txn) LoadValue() (any, bool) {
 	return nil, false // TODO(soon)
 }

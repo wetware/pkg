@@ -58,11 +58,9 @@ func TestGetOrCreate(t *testing.T) {
 
 func TestChildren(t *testing.T) {
 	t.Parallel()
+	t.Helper()
 
-	var (
-		sched    = anchor.NewScheduler(anchor.NewPath(""))
-		children []anchor.Path
-	)
+	sched := anchor.NewScheduler(anchor.NewPath(""))
 
 	// /foo
 	// /foo/bar
@@ -70,17 +68,72 @@ func TestChildren(t *testing.T) {
 	// /foo/bar/qux
 	insertTestValues(t, sched)
 
-	tx := sched.Txn(false)
-	cs, err := tx.Children()
-	require.NoError(t, err)
-	require.NotNil(t, cs)
+	t.Run("Root", func(t *testing.T) {
+		t.Parallel()
 
-	for v := cs.Next(); v != nil; v = cs.Next() {
-		children = append(children, v.(anchor.AnchorServer).Path())
-	}
+		tx := sched.Txn(false)
 
-	assert.Len(t, children, 1)
-	assert.Contains(t, children, anchor.NewPath("foo"))
+		cs, err := tx.Children()
+		require.NoError(t, err)
+		require.NotNil(t, cs)
+
+		var children []anchor.Path
+		for v := cs.Next(); v != nil; v = cs.Next() {
+			children = append(children, v.(anchor.AnchorServer).Path())
+		}
+
+		// Should have single child:  /foo
+		assert.Len(t, children, 1, "should have exactly one child")
+		assert.Contains(t, children, anchor.NewPath("/foo"),
+			"child should be /foo")
+	})
+
+	t.Run("foo", func(t *testing.T) {
+		t.Parallel()
+
+		tx := sched.
+			WithSubpath(anchor.NewPath("foo")).
+			Txn(false)
+
+		cs, err := tx.Children()
+		require.NoError(t, err)
+		require.NotNil(t, cs)
+
+		var children []anchor.Path
+		for v := cs.Next(); v != nil; v = cs.Next() {
+			children = append(children, v.(anchor.AnchorServer).Path())
+		}
+
+		// Should have single child
+		assert.Len(t, children, 1, "should have exactly one child")
+		assert.Contains(t, children, anchor.NewPath("/foo/bar"),
+			"child should be /foo/bar")
+	})
+
+	t.Run("foo/bar", func(t *testing.T) {
+		t.Parallel()
+
+		tx := sched.
+			WithSubpath(anchor.NewPath("/foo/bar")).
+			Txn(false)
+
+		cs, err := tx.Children()
+		require.NoError(t, err)
+		require.NotNil(t, cs)
+
+		var children []anchor.Path
+		for v := cs.Next(); v != nil; v = cs.Next() {
+			children = append(children, v.(anchor.AnchorServer).Path())
+		}
+
+		// Should have two children
+		assert.Len(t, children, 2,
+			"should have exactly two children")
+		assert.Contains(t, children, anchor.NewPath("/foo/bar/baz"),
+			"should have child /foo/bar/baz")
+		assert.Contains(t, children, anchor.NewPath("/foo/bar/qux"),
+			"should have child /foo/bar/qux")
+	})
 }
 
 func TestWalkLongestSubpath(t *testing.T) {
