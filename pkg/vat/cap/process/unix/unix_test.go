@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/wetware/ww/pkg/ocap/process/unix"
+	"github.com/wetware/ww/pkg/vat/cap/process/unix"
 )
 
 var (

@@ -21,9 +21,9 @@ import (
 	clapi "github.com/wetware/ww/internal/api/cluster"
 	psapi "github.com/wetware/ww/internal/api/pubsub"
 	"github.com/wetware/ww/pkg/client"
-	"github.com/wetware/ww/pkg/ocap/cluster"
-	"github.com/wetware/ww/pkg/ocap/pubsub"
 	"github.com/wetware/ww/pkg/vat"
+	"github.com/wetware/ww/pkg/vat/cap/cluster"
+	"github.com/wetware/ww/pkg/vat/cap/pubsub"
 )
 
 func TestDialer(t *testing.T) {

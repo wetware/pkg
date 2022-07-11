@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/wetware/ww/pkg/ocap/anchor"
+	"github.com/wetware/ww/pkg/vat/cap/anchor"
 )
 
 func TestNewScheduler(t *testing.T) {

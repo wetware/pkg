@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	chan_api "github.com/wetware/ww/internal/api/channel"
 	api "github.com/wetware/ww/internal/api/pubsub"
-	"github.com/wetware/ww/pkg/ocap/channel"
+	"github.com/wetware/ww/pkg/vat/cap/channel"
 )
 
 func TestSubscription_refcount(t *testing.T) {

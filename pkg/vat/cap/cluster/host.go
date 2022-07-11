@@ -9,8 +9,8 @@ import (
 	"capnproto.org/go/capnp/v3/server"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/wetware/ww/internal/api/cluster"
-	"github.com/wetware/ww/pkg/ocap/anchor"
 	"github.com/wetware/ww/pkg/vat"
+	"github.com/wetware/ww/pkg/vat/cap/anchor"
 )
 
 var HostCapability = vat.BasicCap{

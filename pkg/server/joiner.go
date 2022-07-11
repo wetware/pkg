@@ -12,8 +12,8 @@ import (
 	statsdutil "github.com/wetware/ww/internal/util/statsd"
 	"github.com/wetware/ww/pkg/vat"
 
-	cluster_cap "github.com/wetware/ww/pkg/ocap/cluster"
-	pubsub_cap "github.com/wetware/ww/pkg/ocap/pubsub"
+	cluster_cap "github.com/wetware/ww/pkg/vat/cap/cluster"
+	pubsub_cap "github.com/wetware/ww/pkg/vat/cap/pubsub"
 )
 
 type PubSub interface {

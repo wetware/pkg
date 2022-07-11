@@ -10,9 +10,9 @@ import (
 	"github.com/lthibault/log"
 
 	"github.com/wetware/casm/pkg/boot"
-	"github.com/wetware/ww/pkg/ocap/cluster"
-	"github.com/wetware/ww/pkg/ocap/pubsub"
 	"github.com/wetware/ww/pkg/vat"
+	"github.com/wetware/ww/pkg/vat/cap/cluster"
+	"github.com/wetware/ww/pkg/vat/cap/pubsub"
 )
 
 type Addr string
