@@ -6,7 +6,7 @@ import (
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/server"
 	"github.com/wetware/ww/internal/api/channel"
-	"github.com/wetware/ww/pkg/ocap"
+	"github.com/wetware/ww/pkg/vat"
 )
 
 type Value func(channel.Sender_send_Params) error
@@ -39,11 +39,11 @@ func (c Chan) Close(ctx context.Context) error {
 	return Closer(c).Close(ctx)
 }
 
-func (c Chan) Send(ctx context.Context, v Value) (ocap.Future, capnp.ReleaseFunc) {
+func (c Chan) Send(ctx context.Context, v Value) (vat.Future, capnp.ReleaseFunc) {
 	return Sender(c).Send(ctx, v)
 }
 
-func (c Chan) Recv(ctx context.Context) (ocap.FuturePtr, capnp.ReleaseFunc) {
+func (c Chan) Recv(ctx context.Context) (vat.FuturePtr, capnp.ReleaseFunc) {
 	return Recver(c).Recv(ctx)
 }
 
@@ -65,11 +65,11 @@ func NewPeekableChan(s PeekableServer, p *server.Policy) PeekableChan {
 	return PeekableChan(channel.PeekableChan_ServerToClient(s, p))
 }
 
-func (c PeekableChan) Send(ctx context.Context, v Value) (ocap.Future, capnp.ReleaseFunc) {
+func (c PeekableChan) Send(ctx context.Context, v Value) (vat.Future, capnp.ReleaseFunc) {
 	return Sender(c).Send(ctx, v)
 }
 
-func (c PeekableChan) Recv(ctx context.Context) (ocap.FuturePtr, capnp.ReleaseFunc) {
+func (c PeekableChan) Recv(ctx context.Context) (vat.FuturePtr, capnp.ReleaseFunc) {
 	return Recver(c).Recv(ctx)
 }
 
@@ -91,7 +91,7 @@ func (sc SendCloser) Close(ctx context.Context) error {
 	return Closer(sc).Close(ctx)
 }
 
-func (sc SendCloser) Send(ctx context.Context, v Value) (ocap.Future, capnp.ReleaseFunc) {
+func (sc SendCloser) Send(ctx context.Context, v Value) (vat.Future, capnp.ReleaseFunc) {
 	return Sender(sc).Send(ctx, v)
 }
 
@@ -109,11 +109,11 @@ func NewPeekRecver(pr PeekRecvServer, p *server.Policy) PeekRecver {
 	return PeekRecver(channel.PeekRecver_ServerToClient(pr, p))
 }
 
-func (pr PeekRecver) Peek(ctx context.Context) (ocap.FuturePtr, capnp.ReleaseFunc) {
+func (pr PeekRecver) Peek(ctx context.Context) (vat.FuturePtr, capnp.ReleaseFunc) {
 	return Peeker(pr).Peek(ctx)
 }
 
-func (pr PeekRecver) Recv(ctx context.Context) (ocap.FuturePtr, capnp.ReleaseFunc) {
+func (pr PeekRecver) Recv(ctx context.Context) (vat.FuturePtr, capnp.ReleaseFunc) {
 	return Recver(pr).Recv(ctx)
 }
 
@@ -131,9 +131,9 @@ func NewSender(s SendServer, p *server.Policy) Sender {
 	return Sender(channel.Sender_ServerToClient(s, p))
 }
 
-func (s Sender) Send(ctx context.Context, v Value) (ocap.Future, capnp.ReleaseFunc) {
+func (s Sender) Send(ctx context.Context, v Value) (vat.Future, capnp.ReleaseFunc) {
 	f, release := channel.Sender(s).Send(ctx, v)
-	return ocap.Future(f), release
+	return vat.Future(f), release
 }
 
 func (s Sender) AddRef() Sender {
@@ -150,9 +150,9 @@ func NewPeeker(p PeekServer, q *server.Policy) Peeker {
 	return Peeker(channel.Peeker_ServerToClient(p, q))
 }
 
-func (p Peeker) Peek(ctx context.Context) (ocap.FuturePtr, capnp.ReleaseFunc) {
+func (p Peeker) Peek(ctx context.Context) (vat.FuturePtr, capnp.ReleaseFunc) {
 	f, release := channel.Peeker(p).Peek(ctx, nil)
-	return ocap.FuturePtr(f), release
+	return vat.FuturePtr(f), release
 }
 
 func (p Peeker) AddRef() Peeker {
@@ -169,9 +169,9 @@ func NewRecver(r RecvServer, p *server.Policy) Recver {
 	return Recver(channel.Recver_ServerToClient(r, p))
 }
 
-func (r Recver) Recv(ctx context.Context) (ocap.FuturePtr, capnp.ReleaseFunc) {
+func (r Recver) Recv(ctx context.Context) (vat.FuturePtr, capnp.ReleaseFunc) {
 	f, release := channel.Recver(r).Recv(ctx, nil)
-	return ocap.FuturePtr(f), release
+	return vat.FuturePtr(f), release
 }
 
 func (r Recver) AddRef() Recver {

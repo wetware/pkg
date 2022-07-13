@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/wetware/casm/pkg/cluster/routing"
-	"github.com/wetware/ww/pkg/ocap/cluster"
+	"github.com/wetware/ww/pkg/vat/cap/cluster"
 )
 
 func TestRecord(t *testing.T) {

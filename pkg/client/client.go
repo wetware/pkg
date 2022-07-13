@@ -10,10 +10,10 @@ import (
 	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/wetware/ww/pkg/ocap/anchor"
-	"github.com/wetware/ww/pkg/ocap/cluster"
-	"github.com/wetware/ww/pkg/ocap/pubsub"
 	"github.com/wetware/ww/pkg/vat"
+	"github.com/wetware/ww/pkg/vat/cap/anchor"
+	"github.com/wetware/ww/pkg/vat/cap/cluster"
+	"github.com/wetware/ww/pkg/vat/cap/pubsub"
 )
 
 // ErrDisconnected indicates that the client's connection to

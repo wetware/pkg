@@ -9,9 +9,9 @@ import (
 	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
-	"github.com/wetware/ww/pkg/ocap/anchor"
-	"github.com/wetware/ww/pkg/ocap/cluster"
 	"github.com/wetware/ww/pkg/vat"
+	"github.com/wetware/ww/pkg/vat/cap/anchor"
+	"github.com/wetware/ww/pkg/vat/cap/cluster"
 )
 
 type Iterator interface {

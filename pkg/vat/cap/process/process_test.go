@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/wetware/ww/pkg/ocap/process"
+	"github.com/wetware/ww/pkg/vat/cap/process"
 )
 
 var errTest = errors.New("test")
