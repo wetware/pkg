@@ -9,36 +9,17 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/lthibault/log"
 
-	"github.com/wetware/casm/pkg/boot"
 	"github.com/wetware/ww/pkg/vat"
 	"github.com/wetware/ww/pkg/vat/cap/cluster"
 	"github.com/wetware/ww/pkg/vat/cap/pubsub"
 )
 
-type Addr string
-
-func (addr Addr) FindPeers(ctx context.Context, ns string, opt ...discovery.Option) (<-chan peer.AddrInfo, error) {
-	info, err := peer.AddrInfoFromString(string(addr))
-	if err != nil {
-		return nil, err
-	}
-
-	return boot.StaticAddrs{*info}.FindPeers(ctx, ns, opt...)
-}
-
+// Dialer is a factory type for Node.  It uses Boot to join the
+// cluster identified by Vat.NS, and returns a Node.
 type Dialer struct {
 	Log  log.Logger
 	Vat  vat.Network
 	Boot discovery.Discoverer
-}
-
-// Dial is a convenience function that joins a cluster using the
-// supplied address string.
-//
-// See Dialer.Dial for an important notice about the lifetime of
-// ctx.
-func Dial(ctx context.Context, vat vat.Network, a Addr) (*Node, error) {
-	return Dialer{Vat: vat, Boot: a}.Dial(ctx)
 }
 
 // Dial creates a client and connects it to a cluster.

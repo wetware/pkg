@@ -7,24 +7,16 @@ import (
 	"log"
 	"time"
 
-	"github.com/libp2p/go-libp2p"
-	libp2pquic "github.com/libp2p/go-libp2p-quic-transport"
 	bootutil "github.com/wetware/casm/pkg/boot/util"
 	"github.com/wetware/ww/pkg/client"
 	"github.com/wetware/ww/pkg/vat"
 )
 
-func main() {
-	ctx := context.Background()
+var ctx = context.Background()
 
+func main() {
 	// Instantiate the libp2p host that the Wetware client will use.
-	host, err := libp2p.New(
-		// Don't listen for incoming network connections.  This is
-		// common practice for Wetware clients.
-		libp2p.NoListenAddrs,
-		// Wetware uses the QUIC transport, so let's enable it.
-		libp2p.Transport(libp2pquic.NewTransport),
-	)
+	host, err := vat.NewClientHost()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -91,6 +83,8 @@ func main() {
 	}
 	defer sub.Cancel()
 
+	// Print messages received on the subscription.  This will
+	// include messages we have sent ourselves.
 	for {
 		b, err := sub.Next(ctx)
 		if err != nil {
