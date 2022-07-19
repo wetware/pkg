@@ -5,7 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"runtime"
 	"time"
+
+	"net/http"
+	_ "net/http/pprof"
 
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
@@ -34,6 +38,12 @@ var localnode = fx.Provide(
 	node)
 
 func Serve(c *cli.Context) error {
+	go func() {
+		fmt.Println(http.ListenAndServe("0.0.0.0:6060", nil))
+	}()
+
+	runtime.SetBlockProfileRate(1)
+
 	var app = fx.New(fx.NopLogger,
 		fx.Supply(c),
 		system,
