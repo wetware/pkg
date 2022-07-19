@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/lthibault/log"
+	"gopkg.in/alexcesaro/statsd.v2"
 
 	"github.com/wetware/casm/pkg/cluster"
 	statsdutil "github.com/wetware/ww/internal/util/statsd"
@@ -26,6 +27,7 @@ type Joiner struct {
 	log     log.Logger
 	opts    []cluster.Option
 	metrics *statsdutil.MetricsReporter
+	statsd  *statsd.Client
 }
 
 func NewJoiner(opt ...Option) Joiner {
