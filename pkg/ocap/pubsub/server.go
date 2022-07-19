@@ -205,6 +205,7 @@ func (t *refCountedTopic) Publish(ctx context.Context, call api.Topic_publish) e
 
 	b, err := call.Args().Msg()
 	if err == nil {
+		call.Ack()
 		err = t.topic.Publish(ctx, b)
 	}
 
@@ -234,7 +235,7 @@ func (t *refCountedTopic) Subscribe(_ context.Context, call api.Topic_subscribe)
 func (t *refCountedTopic) subscribe(args api.Topic_subscribe_Params) (s subscription, err error) {
 	if s.sub, err = t.topic.Subscribe(); err == nil {
 		s.ch = channel.Sender(args.Chan().AddRef())
-		s.ch.Client.SetFlowLimiter(newFlowLimiter(1024))
+		s.ch.Client.SetFlowLimiter(newFlowLimiter(32))
 
 		t.ref++
 		s.t = t
