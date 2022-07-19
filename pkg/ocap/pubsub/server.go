@@ -234,7 +234,7 @@ func (t *refCountedTopic) Subscribe(_ context.Context, call api.Topic_subscribe)
 func (t *refCountedTopic) subscribe(args api.Topic_subscribe_Params) (s subscription, err error) {
 	if s.sub, err = t.topic.Subscribe(); err == nil {
 		s.ch = channel.Sender(args.Chan().AddRef())
-		s.ch.Client.SetFlowLimiter(newFlowLimiter(32))
+		s.ch.Client.SetFlowLimiter(newFlowLimiter(1024))
 
 		t.ref++
 		s.t = t
