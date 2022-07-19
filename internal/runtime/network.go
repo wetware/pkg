@@ -245,7 +245,8 @@ func overlay(config overlayConfig) (*pubsub.PubSub, error) {
 		pubsub.WithRawTracer(config.Tracer),
 		pubsub.WithDiscovery(config.Discovery()),
 		pubsub.WithProtocolMatchFn(config.ProtoMatchFunc()),
-		pubsub.WithGossipSubProtocols(config.Subprotocols()))
+		pubsub.WithGossipSubProtocols(config.Subprotocols()),
+		pubsub.WithMessageSignaturePolicy(pubsub.LaxNoSign))
 }
 
 func (config overlayConfig) Context() context.Context {
