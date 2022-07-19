@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/server"
@@ -206,7 +207,9 @@ func (t *refCountedTopic) Publish(ctx context.Context, call api.Topic_publish) e
 	b, err := call.Args().Msg()
 	if err == nil {
 		call.Ack()
+		t0 := time.Now()
 		err = t.topic.Publish(ctx, b)
+		t.log.WithField("duration", time.Since(t0)).Debug("published")
 	}
 
 	return err
