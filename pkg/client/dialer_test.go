@@ -191,13 +191,13 @@ func (mockPubSub) Join(ctx context.Context, call psapi.PubSub_join) error {
 	return fmt.Errorf("NOT IMPLEMENTED")
 }
 
-func (mockPubSub) Client() *capnp.Client {
+func (mockPubSub) Client() capnp.Client {
 	return psapi.PubSub_ServerToClient(mockPubSub{}, nil).Client
 }
 
 type mockView struct{}
 
-func (mockView) Client() *capnp.Client {
+func (mockView) Client() capnp.Client {
 	return clapi.View_ServerToClient(mockView{}, nil).Client
 }
 

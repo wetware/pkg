@@ -40,7 +40,7 @@ type Server struct {
 	*server.Policy
 }
 
-func (s *Server) Client() *capnp.Client {
+func (s *Server) Client() capnp.Client {
 	return api.Executor_ServerToClient(s, s.Policy).Client
 }
 

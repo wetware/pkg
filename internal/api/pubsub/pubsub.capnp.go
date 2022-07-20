@@ -11,7 +11,7 @@ import (
 	channel "github.com/wetware/ww/internal/api/channel"
 )
 
-type Topic struct{ Client *capnp.Client }
+type Topic struct{ Client capnp.Client }
 
 // Topic_TypeID is the unique identifier for the type Topic.
 const Topic_TypeID = 0x986ea9282f106bb0
@@ -191,6 +191,15 @@ func (c Topic_name) Args() Topic_name_Params {
 func (c Topic_name) AllocResults() (Topic_name_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
 	return Topic_name_Results{Struct: r}, err
+}
+
+// Topic_List is a list of Topic.
+type Topic_List = capnp.CapList[Topic]
+
+// NewTopic creates a new list of Topic.
+func NewTopic_List(s *capnp.Segment, sz int32) (Topic_List, error) {
+	l, err := capnp.NewPointerList(s, sz)
+	return capnp.CapList[Topic](l), err
 }
 
 type Topic_publish_Params struct{ capnp.Struct }
@@ -498,7 +507,7 @@ func (p Topic_name_Results_Future) Struct() (Topic_name_Results, error) {
 	return Topic_name_Results{s}, err
 }
 
-type PubSub struct{ Client *capnp.Client }
+type PubSub struct{ Client capnp.Client }
 
 // PubSub_TypeID is the unique identifier for the type PubSub.
 const PubSub_TypeID = 0xf1cc149f1c06e50e
@@ -584,6 +593,15 @@ func (c PubSub_join) Args() PubSub_join_Params {
 func (c PubSub_join) AllocResults() (PubSub_join_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
 	return PubSub_join_Results{Struct: r}, err
+}
+
+// PubSub_List is a list of PubSub.
+type PubSub_List = capnp.CapList[PubSub]
+
+// NewPubSub creates a new list of PubSub.
+func NewPubSub_List(s *capnp.Segment, sz int32) (PubSub_List, error) {
+	l, err := capnp.NewPointerList(s, sz)
+	return capnp.CapList[PubSub](l), err
 }
 
 type PubSub_join_Params struct{ capnp.Struct }

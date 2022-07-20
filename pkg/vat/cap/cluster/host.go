@@ -28,7 +28,7 @@ type Dialer interface {
 
 type Host struct {
 	once   sync.Once
-	Client *capnp.Client
+	Client capnp.Client
 	Info   peer.AddrInfo
 }
 
@@ -48,7 +48,7 @@ func (h *Host) Walk(ctx context.Context, d Dialer, path anchor.Path) (anchor.Anc
 
 func (h *Host) resolve(ctx context.Context, d Dialer) cluster.Host {
 	h.once.Do(func() {
-		if h.Client == nil {
+		if h.Client == (capnp.Client{}) {
 			if conn, err := d.Dial(ctx, h.Info); err != nil {
 				h.Client = capnp.ErrorClient(err)
 			} else {
@@ -108,7 +108,7 @@ type HostServer struct {
 	anchor.AnchorServer
 }
 
-func (h *HostServer) Client() *capnp.Client {
+func (h *HostServer) Client() capnp.Client {
 	h.once.Do(func() {
 		if h.AnchorServer.Path().IsZero() {
 			h.AnchorServer = anchor.Root(h)

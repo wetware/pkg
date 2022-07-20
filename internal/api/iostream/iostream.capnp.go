@@ -12,7 +12,7 @@ import (
 	channel "github.com/wetware/ww/internal/api/channel"
 )
 
-type Stream struct{ Client *capnp.Client }
+type Stream struct{ Client capnp.Client }
 
 // Stream_TypeID is the unique identifier for the type Stream.
 const Stream_TypeID = 0x800fee1ed6b441e2
@@ -113,7 +113,16 @@ func Stream_Methods(methods []server.Method, s Stream_Server) []server.Method {
 	return methods
 }
 
-type Provider struct{ Client *capnp.Client }
+// Stream_List is a list of Stream.
+type Stream_List = capnp.CapList[Stream]
+
+// NewStream creates a new list of Stream.
+func NewStream_List(s *capnp.Segment, sz int32) (Stream_List, error) {
+	l, err := capnp.NewPointerList(s, sz)
+	return capnp.CapList[Stream](l), err
+}
+
+type Provider struct{ Client capnp.Client }
 
 // Provider_TypeID is the unique identifier for the type Provider.
 const Provider_TypeID = 0xec225e7f00ef3b55
@@ -199,6 +208,15 @@ func (c Provider_provide) Args() Provider_provide_Params {
 func (c Provider_provide) AllocResults() (Provider_provide_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
 	return Provider_provide_Results{Struct: r}, err
+}
+
+// Provider_List is a list of Provider.
+type Provider_List = capnp.CapList[Provider]
+
+// NewProvider creates a new list of Provider.
+func NewProvider_List(s *capnp.Segment, sz int32) (Provider_List, error) {
+	l, err := capnp.NewPointerList(s, sz)
+	return capnp.CapList[Provider](l), err
 }
 
 type Provider_provide_Params struct{ capnp.Struct }

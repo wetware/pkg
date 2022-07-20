@@ -9,12 +9,12 @@ import (
 
 type Topic struct {
 	name   string
-	Client *capnp.Client
+	Client capnp.Client
 }
 
 // NewTopic populates a Topic with the supplied name and capability.
 // It does not validate the name.
-func NewTopic(c *capnp.Client, name string) Topic {
+func NewTopic(c capnp.Client, name string) Topic {
 	return Topic{
 		name:   name,
 		Client: c,
@@ -23,7 +23,7 @@ func NewTopic(c *capnp.Client, name string) Topic {
 
 // ResolveTopic populates a Topic from a raw capability client. It performs
 // an RPC call to determine the topic name and populates t with the result.
-func ResolveTopic(ctx context.Context, c *capnp.Client) (t Topic, err error) {
+func ResolveTopic(ctx context.Context, c capnp.Client) (t Topic, err error) {
 	t.Client = c
 	t.name, err = pubsub.Topic{Client: c}.Name(ctx)
 	return

@@ -132,7 +132,7 @@ func (h *handle) Signal(_ context.Context, call api.Unix_Proc_signal) (err error
 }
 
 func input(ctx context.Context, p iostream.Provider) io.Reader {
-	if p.Client == nil {
+	if p.Client == (capnp.Client{}) {
 		return nil
 	}
 
@@ -150,7 +150,7 @@ func input(ctx context.Context, p iostream.Provider) io.Reader {
 }
 
 func output(ctx context.Context, s iostream.Stream) io.Writer {
-	if s.Client == nil {
+	if s.Client == (capnp.Client{}) {
 		return nil
 	}
 

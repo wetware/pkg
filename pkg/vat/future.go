@@ -30,7 +30,7 @@ func (f Future) Await(ctx context.Context) error {
 
 type FuturePtr struct{ *capnp.Future }
 
-func (f FuturePtr) Client() *capnp.Client {
+func (f FuturePtr) Client() capnp.Client {
 	ptr, err := f.Ptr()
 	if err != nil {
 		return capnp.ErrorClient(err)

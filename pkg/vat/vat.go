@@ -33,7 +33,7 @@ type Capability interface {
 }
 
 type Bootstrapper interface {
-	Bootstrap() *capnp.Client
+	Bootstrap() capnp.Client
 }
 
 type Stream interface {
@@ -47,7 +47,7 @@ type ClientProvider interface {
 	// Client returns the client capability to be exported.  It is called
 	// once for each incoming Stream, so implementations may either share
 	// a single global object, or instantiate a new object for each call.
-	Client() *capnp.Client
+	Client() capnp.Client
 }
 
 type MetricReporter interface {
@@ -187,10 +187,10 @@ func match(c Capability, proto string) bool {
 	return false
 }
 
-func bootstrapper(c Capability) *capnp.Client {
+func bootstrapper(c Capability) capnp.Client {
 	if b, ok := c.(Bootstrapper); ok {
 		return b.Bootstrap()
 	}
 
-	return nil
+	return capnp.Client{}
 }

@@ -11,7 +11,7 @@ import (
 	context "context"
 )
 
-type Closer struct{ Client *capnp.Client }
+type Closer struct{ Client capnp.Client }
 
 // Closer_TypeID is the unique identifier for the type Closer.
 const Closer_TypeID = 0xfad0e4b80d3779c3
@@ -99,6 +99,15 @@ func (c Closer_close) AllocResults() (Closer_close_Results, error) {
 	return Closer_close_Results{Struct: r}, err
 }
 
+// Closer_List is a list of Closer.
+type Closer_List = capnp.CapList[Closer]
+
+// NewCloser creates a new list of Closer.
+func NewCloser_List(s *capnp.Segment, sz int32) (Closer_List, error) {
+	l, err := capnp.NewPointerList(s, sz)
+	return capnp.CapList[Closer](l), err
+}
+
 type Closer_close_Params struct{ capnp.Struct }
 
 // Closer_close_Params_TypeID is the unique identifier for the type Closer_close_Params.
@@ -183,7 +192,7 @@ func (p Closer_close_Results_Future) Struct() (Closer_close_Results, error) {
 	return Closer_close_Results{s}, err
 }
 
-type Sender struct{ Client *capnp.Client }
+type Sender struct{ Client capnp.Client }
 
 // Sender_TypeID is the unique identifier for the type Sender.
 const Sender_TypeID = 0xe8bbed1438ea16ee
@@ -271,6 +280,15 @@ func (c Sender_send) AllocResults() (stream.StreamResult, error) {
 	return stream.StreamResult{Struct: r}, err
 }
 
+// Sender_List is a list of Sender.
+type Sender_List = capnp.CapList[Sender]
+
+// NewSender creates a new list of Sender.
+func NewSender_List(s *capnp.Segment, sz int32) (Sender_List, error) {
+	l, err := capnp.NewPointerList(s, sz)
+	return capnp.CapList[Sender](l), err
+}
+
 type Sender_send_Params struct{ capnp.Struct }
 
 // Sender_send_Params_TypeID is the unique identifier for the type Sender_send_Params.
@@ -329,7 +347,7 @@ func (p Sender_send_Params_Future) Value() *capnp.Future {
 	return p.Future.Field(0, nil)
 }
 
-type Peeker struct{ Client *capnp.Client }
+type Peeker struct{ Client capnp.Client }
 
 // Peeker_TypeID is the unique identifier for the type Peeker.
 const Peeker_TypeID = 0xe95c7f9f41bf520a
@@ -415,6 +433,15 @@ func (c Peeker_peek) Args() Peeker_peek_Params {
 func (c Peeker_peek) AllocResults() (Peeker_peek_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
 	return Peeker_peek_Results{Struct: r}, err
+}
+
+// Peeker_List is a list of Peeker.
+type Peeker_List = capnp.CapList[Peeker]
+
+// NewPeeker creates a new list of Peeker.
+func NewPeeker_List(s *capnp.Segment, sz int32) (Peeker_List, error) {
+	l, err := capnp.NewPointerList(s, sz)
+	return capnp.CapList[Peeker](l), err
 }
 
 type Peeker_peek_Params struct{ capnp.Struct }
@@ -517,7 +544,7 @@ func (p Peeker_peek_Results_Future) Value() *capnp.Future {
 	return p.Future.Field(0, nil)
 }
 
-type Recver struct{ Client *capnp.Client }
+type Recver struct{ Client capnp.Client }
 
 // Recver_TypeID is the unique identifier for the type Recver.
 const Recver_TypeID = 0xdf05a90d671c0c07
@@ -603,6 +630,15 @@ func (c Recver_recv) Args() Recver_recv_Params {
 func (c Recver_recv) AllocResults() (Recver_recv_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
 	return Recver_recv_Results{Struct: r}, err
+}
+
+// Recver_List is a list of Recver.
+type Recver_List = capnp.CapList[Recver]
+
+// NewRecver creates a new list of Recver.
+func NewRecver_List(s *capnp.Segment, sz int32) (Recver_List, error) {
+	l, err := capnp.NewPointerList(s, sz)
+	return capnp.CapList[Recver](l), err
 }
 
 type Recver_recv_Params struct{ capnp.Struct }
@@ -705,7 +741,7 @@ func (p Recver_recv_Results_Future) Value() *capnp.Future {
 	return p.Future.Field(0, nil)
 }
 
-type SendCloser struct{ Client *capnp.Client }
+type SendCloser struct{ Client capnp.Client }
 
 // SendCloser_TypeID is the unique identifier for the type SendCloser.
 const SendCloser_TypeID = 0xe9a7d19a7d14e94e
@@ -806,7 +842,16 @@ func SendCloser_Methods(methods []server.Method, s SendCloser_Server) []server.M
 	return methods
 }
 
-type PeekRecver struct{ Client *capnp.Client }
+// SendCloser_List is a list of SendCloser.
+type SendCloser_List = capnp.CapList[SendCloser]
+
+// NewSendCloser creates a new list of SendCloser.
+func NewSendCloser_List(s *capnp.Segment, sz int32) (SendCloser_List, error) {
+	l, err := capnp.NewPointerList(s, sz)
+	return capnp.CapList[SendCloser](l), err
+}
+
+type PeekRecver struct{ Client capnp.Client }
 
 // PeekRecver_TypeID is the unique identifier for the type PeekRecver.
 const PeekRecver_TypeID = 0x9a4abff8ccb5093c
@@ -907,7 +952,16 @@ func PeekRecver_Methods(methods []server.Method, s PeekRecver_Server) []server.M
 	return methods
 }
 
-type Chan struct{ Client *capnp.Client }
+// PeekRecver_List is a list of PeekRecver.
+type PeekRecver_List = capnp.CapList[PeekRecver]
+
+// NewPeekRecver creates a new list of PeekRecver.
+func NewPeekRecver_List(s *capnp.Segment, sz int32) (PeekRecver_List, error) {
+	l, err := capnp.NewPointerList(s, sz)
+	return capnp.CapList[PeekRecver](l), err
+}
+
+type Chan struct{ Client capnp.Client }
 
 // Chan_TypeID is the unique identifier for the type Chan.
 const Chan_TypeID = 0x95c89fe7d966f751
@@ -1038,7 +1092,16 @@ func Chan_Methods(methods []server.Method, s Chan_Server) []server.Method {
 	return methods
 }
 
-type PeekableChan struct{ Client *capnp.Client }
+// Chan_List is a list of Chan.
+type Chan_List = capnp.CapList[Chan]
+
+// NewChan creates a new list of Chan.
+func NewChan_List(s *capnp.Segment, sz int32) (Chan_List, error) {
+	l, err := capnp.NewPointerList(s, sz)
+	return capnp.CapList[Chan](l), err
+}
+
+type PeekableChan struct{ Client capnp.Client }
 
 // PeekableChan_TypeID is the unique identifier for the type PeekableChan.
 const PeekableChan_TypeID = 0xb527cbca9bbd8178
@@ -1197,6 +1260,15 @@ func PeekableChan_Methods(methods []server.Method, s PeekableChan_Server) []serv
 	})
 
 	return methods
+}
+
+// PeekableChan_List is a list of PeekableChan.
+type PeekableChan_List = capnp.CapList[PeekableChan]
+
+// NewPeekableChan creates a new list of PeekableChan.
+func NewPeekableChan_List(s *capnp.Segment, sz int32) (PeekableChan_List, error) {
+	l, err := capnp.NewPointerList(s, sz)
+	return capnp.CapList[PeekableChan](l), err
 }
 
 const schema_872a451f9aa74ebf = "x\xda\x8cU]h#U\x14>'s\xefL\x1b6" +

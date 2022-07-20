@@ -11,7 +11,7 @@ import (
 	iostream "github.com/wetware/ww/internal/api/iostream"
 )
 
-type Executor struct{ Client *capnp.Client }
+type Executor struct{ Client capnp.Client }
 
 // Executor_TypeID is the unique identifier for the type Executor.
 const Executor_TypeID = 0xe8bb307fa2f406fb
@@ -97,6 +97,15 @@ func (c Executor_exec) Args() Executor_exec_Params {
 func (c Executor_exec) AllocResults() (Executor_exec_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
 	return Executor_exec_Results{Struct: r}, err
+}
+
+// Executor_List is a list of Executor.
+type Executor_List = capnp.CapList[Executor]
+
+// NewExecutor creates a new list of Executor.
+func NewExecutor_List(s *capnp.Segment, sz int32) (Executor_List, error) {
+	l, err := capnp.NewPointerList(s, sz)
+	return capnp.CapList[Executor](l), err
 }
 
 type Executor_exec_Params struct{ capnp.Struct }
@@ -221,7 +230,7 @@ func (p Executor_exec_Results_Future) Proc() Waiter {
 	return Waiter{Client: p.Future.Field(0, nil).Client()}
 }
 
-type Waiter struct{ Client *capnp.Client }
+type Waiter struct{ Client capnp.Client }
 
 // Waiter_TypeID is the unique identifier for the type Waiter.
 const Waiter_TypeID = 0xc66c9bda04b0f29e
@@ -309,6 +318,15 @@ func (c Waiter_wait) AllocResults() (Waiter_wait_Results, error) {
 	return Waiter_wait_Results{Struct: r}, err
 }
 
+// Waiter_List is a list of Waiter.
+type Waiter_List = capnp.CapList[Waiter]
+
+// NewWaiter creates a new list of Waiter.
+func NewWaiter_List(s *capnp.Segment, sz int32) (Waiter_List, error) {
+	l, err := capnp.NewPointerList(s, sz)
+	return capnp.CapList[Waiter](l), err
+}
+
 type Waiter_wait_Params struct{ capnp.Struct }
 
 // Waiter_wait_Params_TypeID is the unique identifier for the type Waiter_wait_Params.
@@ -393,7 +411,7 @@ func (p Waiter_wait_Results_Future) Struct() (Waiter_wait_Results, error) {
 	return Waiter_wait_Results{s}, err
 }
 
-type Unix struct{ Client *capnp.Client }
+type Unix struct{ Client capnp.Client }
 
 // Unix_TypeID is the unique identifier for the type Unix.
 const Unix_TypeID = 0x85f7549a53596cef
@@ -462,6 +480,15 @@ func Unix_Methods(methods []server.Method, s Unix_Server) []server.Method {
 	})
 
 	return methods
+}
+
+// Unix_List is a list of Unix.
+type Unix_List = capnp.CapList[Unix]
+
+// NewUnix creates a new list of Unix.
+func NewUnix_List(s *capnp.Segment, sz int32) (Unix_List, error) {
+	l, err := capnp.NewPointerList(s, sz)
+	return capnp.CapList[Unix](l), err
 }
 
 type Unix_Command struct{ capnp.Struct }
@@ -656,7 +683,7 @@ func (p Unix_Command_Future) Stderr() iostream.Stream {
 	return iostream.Stream{Client: p.Future.Field(6, nil).Client()}
 }
 
-type Unix_Proc struct{ Client *capnp.Client }
+type Unix_Proc struct{ Client capnp.Client }
 
 // Unix_Proc_TypeID is the unique identifier for the type Unix_Proc.
 const Unix_Proc_TypeID = 0xa56f29d54a3673af
@@ -772,6 +799,15 @@ func (c Unix_Proc_signal) Args() Unix_Proc_signal_Params {
 func (c Unix_Proc_signal) AllocResults() (Unix_Proc_signal_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
 	return Unix_Proc_signal_Results{Struct: r}, err
+}
+
+// Unix_Proc_List is a list of Unix_Proc.
+type Unix_Proc_List = capnp.CapList[Unix_Proc]
+
+// NewUnix_Proc creates a new list of Unix_Proc.
+func NewUnix_Proc_List(s *capnp.Segment, sz int32) (Unix_Proc_List, error) {
+	l, err := capnp.NewPointerList(s, sz)
+	return capnp.CapList[Unix_Proc](l), err
 }
 
 type Unix_Proc_Signal uint16

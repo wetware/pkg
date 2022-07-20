@@ -44,7 +44,7 @@ func NewAnchor(sched Scheduler, a anchor.Anchor_Server) AnchorServer {
 	}
 }
 
-func (a AnchorServer) Client() *capnp.Client {
+func (a AnchorServer) Client() capnp.Client {
 	switch s := a.anchor.(type) {
 	case *AnchorServer, AnchorServer:
 		c := anchor.Anchor_ServerToClient(s, a.Policy)
