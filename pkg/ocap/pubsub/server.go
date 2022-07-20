@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"capnproto.org/go/capnp/v3"
@@ -200,25 +199,16 @@ func (t *refCountedTopic) Name(ctx context.Context, call api.Topic_name) error {
 	return res.SetName(t.topic.String())
 }
 
-var ops int64
-
 func (t *refCountedTopic) Publish(ctx context.Context, call api.Topic_publish) error {
 	if t.ctx.Err() != nil {
 		return ErrClosed
 	}
 
-	if ops > 0 {
-		t.log.Info("Concurrent publish")
-	}
-
-	atomic.AddInt64(&ops, 1)
-	defer atomic.AddInt64(&ops, -1)
-
 	b, err := call.Args().Msg()
 	if err == nil {
 		call.Ack()
 		t0 := time.Now()
-		err = t.topic.Publish(ctx, b)
+		err = t.topic.Publish(ctx, b, pubsub.WithReadiness(nil))
 		t.log.WithField("duration", time.Since(t0)).Debug("published")
 	}
 
