@@ -9,7 +9,7 @@ import (
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
-	swarm "github.com/libp2p/go-libp2p-swarm"
+	"github.com/libp2p/go-libp2p/p2p/net/swarm"
 	inproc "github.com/lthibault/go-libp2p-inproc-transport"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-multistream"

@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/urfave/cli/v2"
+
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/discovery"
 	"github.com/libp2p/go-libp2p-core/peer"
-	libp2pquic "github.com/libp2p/go-libp2p-quic-transport"
-	"github.com/urfave/cli/v2"
+	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
 	"github.com/wetware/casm/pkg/boot/socket"
 	bootutil "github.com/wetware/casm/pkg/boot/util"
 	logutil "github.com/wetware/ww/internal/util/log"
@@ -53,7 +54,7 @@ func discover(c *cli.Context) error {
 	h, err := libp2p.New(
 		libp2p.NoTransports,
 		libp2p.NoListenAddrs,
-		libp2p.Transport(libp2pquic.NewTransport))
+		libp2p.Transport(quic.NewTransport))
 	if err != nil {
 		return err
 	}

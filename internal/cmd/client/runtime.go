@@ -8,7 +8,7 @@ import (
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/host"
-	libp2pquic "github.com/libp2p/go-libp2p-quic-transport"
+	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
 	"github.com/lthibault/log"
 	"github.com/urfave/cli/v2"
 	"github.com/wetware/casm/pkg/boot"
@@ -60,7 +60,7 @@ func localhost(c *cli.Context, lx fx.Lifecycle) (host.Host, error) {
 	h, err := libp2p.New(
 		libp2p.NoTransports,
 		libp2p.NoListenAddrs,
-		libp2p.Transport(libp2pquic.NewTransport))
+		libp2p.Transport(quic.NewTransport))
 	if err == nil {
 		lx.Append(closer(h))
 	}
