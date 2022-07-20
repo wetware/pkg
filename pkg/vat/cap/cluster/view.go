@@ -44,7 +44,7 @@ type ViewServer struct {
 	*server.Policy
 }
 
-func (f ViewServer) Client() *capnp.Client {
+func (f ViewServer) Client() capnp.Client {
 	return api.View_ServerToClient(f, f.Policy).Client
 }
 

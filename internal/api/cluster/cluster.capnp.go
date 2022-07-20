@@ -12,7 +12,7 @@ import (
 	channel "github.com/wetware/ww/internal/api/channel"
 )
 
-type View struct{ Client *capnp.Client }
+type View struct{ Client capnp.Client }
 
 // View_TypeID is the unique identifier for the type View.
 const View_TypeID = 0x8a1df0335afc249a
@@ -145,6 +145,15 @@ func (c View_lookup) Args() View_lookup_Params {
 func (c View_lookup) AllocResults() (View_lookup_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 8, PointerCount: 1})
 	return View_lookup_Results{Struct: r}, err
+}
+
+// View_List is a list of View.
+type View_List = capnp.CapList[View]
+
+// NewView creates a new list of View.
+func NewView_List(s *capnp.Segment, sz int32) (View_List, error) {
+	l, err := capnp.NewPointerList(s, sz)
+	return capnp.CapList[View](l), err
 }
 
 type View_Record struct{ capnp.Struct }
@@ -467,7 +476,7 @@ func (p View_lookup_Results_Future) Record() View_Record_Future {
 	return View_Record_Future{Future: p.Future.Field(0, nil)}
 }
 
-type Host struct{ Client *capnp.Client }
+type Host struct{ Client capnp.Client }
 
 // Host_TypeID is the unique identifier for the type Host.
 const Host_TypeID = 0x957cbefc645fd307
@@ -613,6 +622,15 @@ func (c Host_view) Args() Host_view_Params {
 func (c Host_view) AllocResults() (Host_view_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
 	return Host_view_Results{Struct: r}, err
+}
+
+// Host_List is a list of Host.
+type Host_List = capnp.CapList[Host]
+
+// NewHost creates a new list of Host.
+func NewHost_List(s *capnp.Segment, sz int32) (Host_List, error) {
+	l, err := capnp.NewPointerList(s, sz)
+	return capnp.CapList[Host](l), err
 }
 
 type Host_view_Params struct{ capnp.Struct }

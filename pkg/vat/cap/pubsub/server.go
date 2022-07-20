@@ -70,7 +70,7 @@ func (p *Provider) Close() (err error) {
 	return
 }
 
-func (p *Provider) Client() *capnp.Client {
+func (p *Provider) Client() capnp.Client {
 	return api.PubSub_ServerToClient(p, &defaultPolicy).Client
 }
 

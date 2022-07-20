@@ -66,7 +66,7 @@ func (s Value) SetNil() {
 
 }
 
-func (s Value) Capability() *capnp.Client {
+func (s Value) Capability() capnp.Client {
 	if s.Struct.Uint16(0) != 1 {
 		panic("Which() != capability")
 	}
@@ -81,7 +81,7 @@ func (s Value) HasCapability() bool {
 	return s.Struct.HasPtr(0)
 }
 
-func (s Value) SetCapability(c *capnp.Client) error {
+func (s Value) SetCapability(c capnp.Client) error {
 	s.Struct.SetUint16(0, 1)
 	if !c.IsValid() {
 		return s.Struct.SetPtr(0, capnp.Ptr{})
@@ -140,7 +140,7 @@ func (p Value_Future) Chan() channel.PeekableChan {
 	return channel.PeekableChan{Client: p.Future.Field(0, nil).Client()}
 }
 
-type Loader struct{ Client *capnp.Client }
+type Loader struct{ Client capnp.Client }
 
 // Loader_TypeID is the unique identifier for the type Loader.
 const Loader_TypeID = 0x8f85860d3c5e499a
@@ -226,6 +226,15 @@ func (c Loader_load) Args() Loader_load_Params {
 func (c Loader_load) AllocResults() (Loader_load_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
 	return Loader_load_Results{Struct: r}, err
+}
+
+// Loader_List is a list of Loader.
+type Loader_List = capnp.CapList[Loader]
+
+// NewLoader creates a new list of Loader.
+func NewLoader_List(s *capnp.Segment, sz int32) (Loader_List, error) {
+	l, err := capnp.NewPointerList(s, sz)
+	return capnp.CapList[Loader](l), err
 }
 
 type Loader_load_Params struct{ capnp.Struct }
@@ -340,7 +349,7 @@ func (p Loader_load_Results_Future) Value() Value_Future {
 	return Value_Future{Future: p.Future.Field(0, nil)}
 }
 
-type Storer struct{ Client *capnp.Client }
+type Storer struct{ Client capnp.Client }
 
 // Storer_TypeID is the unique identifier for the type Storer.
 const Storer_TypeID = 0xd03a10b4ad79653b
@@ -426,6 +435,15 @@ func (c Storer_store) Args() Storer_store_Params {
 func (c Storer_store) AllocResults() (Storer_store_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
 	return Storer_store_Results{Struct: r}, err
+}
+
+// Storer_List is a list of Storer.
+type Storer_List = capnp.CapList[Storer]
+
+// NewStorer creates a new list of Storer.
+func NewStorer_List(s *capnp.Segment, sz int32) (Storer_List, error) {
+	l, err := capnp.NewPointerList(s, sz)
+	return capnp.CapList[Storer](l), err
 }
 
 type Storer_store_Params struct{ capnp.Struct }
@@ -540,7 +558,7 @@ func (p Storer_store_Results_Future) Struct() (Storer_store_Results, error) {
 	return Storer_store_Results{s}, err
 }
 
-type Register struct{ Client *capnp.Client }
+type Register struct{ Client capnp.Client }
 
 // Register_TypeID is the unique identifier for the type Register.
 const Register_TypeID = 0xdbbdb0fd1b231b9a
@@ -641,7 +659,16 @@ func Register_Methods(methods []server.Method, s Register_Server) []server.Metho
 	return methods
 }
 
-type Anchor struct{ Client *capnp.Client }
+// Register_List is a list of Register.
+type Register_List = capnp.CapList[Register]
+
+// NewRegister creates a new list of Register.
+func NewRegister_List(s *capnp.Segment, sz int32) (Register_List, error) {
+	l, err := capnp.NewPointerList(s, sz)
+	return capnp.CapList[Register](l), err
+}
+
+type Anchor struct{ Client capnp.Client }
 
 // Anchor_TypeID is the unique identifier for the type Anchor.
 const Anchor_TypeID = 0xe41237e4098ed922
@@ -774,6 +801,15 @@ func (c Anchor_walk) Args() Anchor_walk_Params {
 func (c Anchor_walk) AllocResults() (Anchor_walk_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
 	return Anchor_walk_Results{Struct: r}, err
+}
+
+// Anchor_List is a list of Anchor.
+type Anchor_List = capnp.CapList[Anchor]
+
+// NewAnchor creates a new list of Anchor.
+func NewAnchor_List(s *capnp.Segment, sz int32) (Anchor_List, error) {
+	l, err := capnp.NewPointerList(s, sz)
+	return capnp.CapList[Anchor](l), err
 }
 
 type Anchor_Child struct{ capnp.Struct }
