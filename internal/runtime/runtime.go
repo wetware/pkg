@@ -2,12 +2,10 @@ package runtime
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/lthibault/log"
@@ -20,7 +18,6 @@ import (
 	"github.com/wetware/ww/pkg/server"
 	"github.com/wetware/ww/pkg/vat"
 	"go.uber.org/fx"
-	"golang.org/x/sync/errgroup"
 )
 
 /****************************************************************************
@@ -186,45 +183,45 @@ func node(c *cli.Context, config serverConfig) (*server.Node, error) {
 	return n, err
 }
 
-type mergeFromPeX struct {
-	ns  string
-	pex *pex.PeerExchange
-	dht *dual.DHT
-}
+// type mergeFromPeX struct {
+// 	ns  string
+// 	pex *pex.PeerExchange
+// 	dht *dual.DHT
+// }
 
-func (m mergeFromPeX) Merge(ctx context.Context, peers []peer.AddrInfo) error {
-	var g errgroup.Group
+// func (m mergeFromPeX) Merge(ctx context.Context, peers []peer.AddrInfo) error {
+// 	var g errgroup.Group
 
-	for _, info := range peers {
-		g.Go(m.merger(ctx, info))
-	}
+// 	for _, info := range peers {
+// 		g.Go(m.merger(ctx, info))
+// 	}
 
-	return g.Wait()
+// 	return g.Wait()
 
-}
+// }
 
-func (m mergeFromPeX) merger(ctx context.Context, info peer.AddrInfo) func() error {
-	return func() error {
-		if err := m.PerformGossipRound(ctx, info); err != nil {
-			return fmt.Errorf("%s: %w", info.ID.ShortString(), err)
-		}
+// func (m mergeFromPeX) merger(ctx context.Context, info peer.AddrInfo) func() error {
+// 	return func() error {
+// 		if err := m.PerformGossipRound(ctx, info); err != nil {
+// 			return fmt.Errorf("%s: %w", info.ID.ShortString(), err)
+// 		}
 
-		return m.RefreshDHT(ctx)
-	}
-}
+// 		return m.RefreshDHT(ctx)
+// 	}
+// }
 
-func (m mergeFromPeX) PerformGossipRound(ctx context.Context, info peer.AddrInfo) (err error) {
-	if err = m.pex.Bootstrap(ctx, m.ns, info); err != nil {
-		err = fmt.Errorf("pex: %w", err)
-	}
+// func (m mergeFromPeX) PerformGossipRound(ctx context.Context, info peer.AddrInfo) (err error) {
+// 	if err = m.pex.Bootstrap(ctx, m.ns, info); err != nil {
+// 		err = fmt.Errorf("pex: %w", err)
+// 	}
 
-	return
-}
+// 	return
+// }
 
-func (m mergeFromPeX) RefreshDHT(ctx context.Context) error {
-	// FIXME:  implement DHT refresh
-	return errors.New("NOT IMPLEMENTED")
-}
+// func (m mergeFromPeX) RefreshDHT(ctx context.Context) error {
+// 	// FIXME:  implement DHT refresh
+// 	return errors.New("NOT IMPLEMENTED")
+// }
 
 func closer(c io.Closer) fx.Hook {
 	return fx.Hook{

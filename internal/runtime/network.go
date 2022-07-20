@@ -14,12 +14,12 @@ import (
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
-	disc "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	libp2pquic "github.com/libp2p/go-libp2p-quic-transport"
+	"github.com/libp2p/go-libp2p/p2p/discovery/routing"
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
+	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
 
 	"github.com/lthibault/log"
 	"github.com/urfave/cli/v2"
@@ -36,10 +36,10 @@ import (
 
 var network = fx.Provide(
 	vatnet,
-	routing,
 	overlay,
 	bootstrap,
-	peercache)
+	peercache,
+	dhtRouting)
 
 type routingConfig struct {
 	fx.In
@@ -49,7 +49,7 @@ type routingConfig struct {
 	Lifecycle fx.Lifecycle
 }
 
-func routing(config routingConfig) (*dual.DHT, error) {
+func dhtRouting(config routingConfig) (*dual.DHT, error) {
 	h, err := config.NewHost()
 	if err != nil {
 		return nil, err
@@ -65,7 +65,7 @@ func (config routingConfig) ListenAddrs() []string {
 func (config routingConfig) NewHost() (h host.Host, err error) {
 	h, err = libp2p.New(
 		libp2p.NoTransports,
-		libp2p.Transport(libp2pquic.NewTransport),
+		libp2p.Transport(quic.NewTransport),
 		libp2p.ListenAddrStrings(config.ListenAddrs()...),
 		libp2p.BandwidthReporter(config.Metrics))
 	if err == nil {
@@ -267,7 +267,7 @@ func (config overlayConfig) Discovery() discovery.Discovery {
 		Match: config.bootMatcher(),
 		// Target:  config.PeX,  // TODO:  re-enable when PeX bugs are fixed
 		Target:  config.Boot, // TODO:  remove when PeX bugs are fixed
-		Default: disc.NewRoutingDiscovery(config.DHT),
+		Default: routing.NewRoutingDiscovery(config.DHT),
 	}
 }
 

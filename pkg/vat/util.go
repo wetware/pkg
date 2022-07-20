@@ -4,7 +4,7 @@ package vat
 import (
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/host"
-	libp2pquic "github.com/libp2p/go-libp2p-quic-transport"
+	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
 )
 
 // NewClientHost returns a libp2p.Host suitable for use in a Wetware
@@ -20,6 +20,6 @@ func withClientDefault(opt []libp2p.Option) []libp2p.Option {
 	return append([]libp2p.Option{
 		libp2p.NoTransports,
 		libp2p.NoListenAddrs,
-		libp2p.Transport(libp2pquic.NewTransport),
+		libp2p.Transport(quic.NewTransport),
 	}, opt...)
 }
