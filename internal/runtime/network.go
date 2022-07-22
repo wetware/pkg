@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"io"
 	"strings"
@@ -9,6 +10,7 @@ import (
 
 	ds "github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/discovery"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/metrics"
@@ -39,7 +41,9 @@ var network = fx.Provide(
 	overlay,
 	bootstrap,
 	peercache,
-	dhtRouting)
+	dhtRouting,
+	randomIdentityEd25519,
+)
 
 type routingConfig struct {
 	fx.In
@@ -47,6 +51,7 @@ type routingConfig struct {
 	CLI       *cli.Context
 	Metrics   *metrics.BandwidthCounter
 	Lifecycle fx.Lifecycle
+	Priv      crypto.PrivKey
 }
 
 func dhtRouting(config routingConfig) (*dual.DHT, error) {
@@ -67,7 +72,8 @@ func (config routingConfig) NewHost() (h host.Host, err error) {
 		libp2p.NoTransports,
 		libp2p.Transport(quic.NewTransport),
 		libp2p.ListenAddrStrings(config.ListenAddrs()...),
-		libp2p.BandwidthReporter(config.Metrics))
+		libp2p.BandwidthReporter(config.Metrics),
+		libp2p.Identity(config.Priv))
 	if err == nil {
 		config.Lifecycle.Append(closer(h))
 	}
@@ -334,4 +340,9 @@ func (config overlayConfig) Features() func(pubsub.GossipSubFeature, protocol.ID
 
 func (config overlayConfig) Subprotocols() ([]protocol.ID, func(pubsub.GossipSubFeature, protocol.ID) bool) {
 	return []protocol.ID{config.Proto()}, config.Features()
+}
+
+func randomIdentityEd25519() (crypto.PrivKey, error) {
+	priv, _, err := crypto.GenerateKeyPairWithReader(crypto.Ed25519, 2048, rand.Reader)
+	return priv, err
 }
