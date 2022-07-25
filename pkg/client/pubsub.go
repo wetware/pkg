@@ -56,8 +56,8 @@ func (t Topic) Subscribe(ctx context.Context, opts ...SubOpt) (Subscription, err
 		c:    make(chan []byte, 32),
 	}
 
-	for _, opt := range opts {
-		err := opt(&sub)
+	for _, option := range opts {
+		err := option(&sub)
 		if err != nil {
 			return sub, err
 		}
