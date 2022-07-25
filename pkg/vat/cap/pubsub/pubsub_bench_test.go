@@ -124,7 +124,7 @@ func BenchmarkPubSubCap(b *testing.B) {
 		pubsub.WithGossipSubProtocols(Subprotocols()))
 
 	require.NoError(b, err)
-	server := pscap.New(ns, ps)
+	server := pscap.New(ps)
 	defer server.Close()
 
 	client := pscap.PubSub{Client: server.Client()}
@@ -153,7 +153,7 @@ func BenchmarkPubSubCapNetwork(b *testing.B) {
 		pubsub.WithGossipSubProtocols(Subprotocols()))
 
 	require.NoError(b, err)
-	server := pscap.New(ns, ps)
+	server := pscap.New(ps)
 	defer server.Close()
 
 	left, right := transport.NewPipe(1)

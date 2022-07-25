@@ -52,7 +52,7 @@ func TestPubSub_refcount(t *testing.T) {
 	gs, err := pubsub.NewGossipSub(ctx, h)
 	require.NoError(t, err)
 
-	p := pscap.New("test", gs, pscap.WithLogger(log))
+	p := pscap.New(gs, pscap.WithLogger(log))
 	defer func() {
 		assert.NoError(t, p.Close(), "factory should close gracefully")
 		assert.ErrorIs(t, p.Close(), pscap.ErrClosed)

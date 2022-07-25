@@ -60,7 +60,7 @@ func (j Joiner) Join(ctx context.Context, vat vat.Network, ps PubSub) (*Node, er
 
 	vat.Export(
 		pubsub_cap.Capability,
-		pubsub_cap.New(vat.NS, ps, pubsub_cap.WithLogger(logger)))
+		pubsub_cap.New(ps, pubsub_cap.WithLogger(logger)))
 
 	vat.Export(
 		cluster_cap.HostCapability,

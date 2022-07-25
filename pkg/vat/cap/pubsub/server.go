@@ -42,7 +42,7 @@ type Provider struct {
 	ts map[string]*refCountedTopic
 }
 
-func New(ns string, ps TopicJoiner, opt ...Option) *Provider {
+func New(ps TopicJoiner, opt ...Option) *Provider {
 	var f = &Provider{
 		cq: make(chan struct{}),
 		ps: ps,
