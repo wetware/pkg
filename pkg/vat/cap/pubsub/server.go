@@ -205,6 +205,7 @@ func (t *refCountedTopic) Publish(ctx context.Context, call api.Topic_publish) e
 
 	b, err := call.Args().Msg()
 	if err == nil {
+		call.Ack()
 		err = t.topic.Publish(ctx, b)
 	}
 
@@ -232,9 +233,14 @@ func (t *refCountedTopic) Subscribe(_ context.Context, call api.Topic_subscribe)
 //
 // Increments t.ref.  Callers MUST hold t.mu.
 func (t *refCountedTopic) subscribe(args api.Topic_subscribe_Params) (s subscription, err error) {
-	if s.sub, err = t.topic.Subscribe(); err == nil {
+	subOpts, err := args.Opts()
+	if err != nil {
+		return s, err
+	}
+
+	if s.sub, err = t.topic.Subscribe(pubsub.WithBufferSize(int(subOpts.BufferSize()))); err == nil {
 		s.ch = channel.Sender(args.Chan().AddRef())
-		s.ch.Client.SetFlowLimiter(newFlowLimiter(32))
+		s.ch.Client.SetFlowLimiter(newFlowLimiter(subOpts.BufferSize()))
 
 		t.ref++
 		s.t = t

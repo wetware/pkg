@@ -42,7 +42,7 @@ func (c Topic) Subscribe(ctx context.Context, params func(Topic_subscribe_Params
 		},
 	}
 	if params != nil {
-		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 2}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Topic_subscribe_Params{Struct: s}) }
 	}
 	ans, release := c.Client.SendCall(ctx, s)
@@ -202,6 +202,56 @@ func NewTopic_List(s *capnp.Segment, sz int32) (Topic_List, error) {
 	return capnp.CapList[Topic](l), err
 }
 
+type Topic_SubOpts struct{ capnp.Struct }
+
+// Topic_SubOpts_TypeID is the unique identifier for the type Topic_SubOpts.
+const Topic_SubOpts_TypeID = 0xd367494d397cfef8
+
+func NewTopic_SubOpts(s *capnp.Segment) (Topic_SubOpts, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 0})
+	return Topic_SubOpts{st}, err
+}
+
+func NewRootTopic_SubOpts(s *capnp.Segment) (Topic_SubOpts, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 0})
+	return Topic_SubOpts{st}, err
+}
+
+func ReadRootTopic_SubOpts(msg *capnp.Message) (Topic_SubOpts, error) {
+	root, err := msg.Root()
+	return Topic_SubOpts{root.Struct()}, err
+}
+
+func (s Topic_SubOpts) String() string {
+	str, _ := text.Marshal(0xd367494d397cfef8, s.Struct)
+	return str
+}
+
+func (s Topic_SubOpts) BufferSize() int64 {
+	return int64(s.Struct.Uint64(0))
+}
+
+func (s Topic_SubOpts) SetBufferSize(v int64) {
+	s.Struct.SetUint64(0, uint64(v))
+}
+
+// Topic_SubOpts_List is a list of Topic_SubOpts.
+type Topic_SubOpts_List = capnp.StructList[Topic_SubOpts]
+
+// NewTopic_SubOpts creates a new list of Topic_SubOpts.
+func NewTopic_SubOpts_List(s *capnp.Segment, sz int32) (Topic_SubOpts_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 0}, sz)
+	return capnp.StructList[Topic_SubOpts]{List: l}, err
+}
+
+// Topic_SubOpts_Future is a wrapper for a Topic_SubOpts promised by a client call.
+type Topic_SubOpts_Future struct{ *capnp.Future }
+
+func (p Topic_SubOpts_Future) Struct() (Topic_SubOpts, error) {
+	s, err := p.Future.Struct()
+	return Topic_SubOpts{s}, err
+}
+
 type Topic_publish_Params struct{ capnp.Struct }
 
 // Topic_publish_Params_TypeID is the unique identifier for the type Topic_publish_Params.
@@ -305,12 +355,12 @@ type Topic_subscribe_Params struct{ capnp.Struct }
 const Topic_subscribe_Params_TypeID = 0xc772c6756fef5ba8
 
 func NewTopic_subscribe_Params(s *capnp.Segment) (Topic_subscribe_Params, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
 	return Topic_subscribe_Params{st}, err
 }
 
 func NewRootTopic_subscribe_Params(s *capnp.Segment) (Topic_subscribe_Params, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
 	return Topic_subscribe_Params{st}, err
 }
 
@@ -342,12 +392,36 @@ func (s Topic_subscribe_Params) SetChan(v channel.Sender) error {
 	return s.Struct.SetPtr(0, in.ToPtr())
 }
 
+func (s Topic_subscribe_Params) Opts() (Topic_SubOpts, error) {
+	p, err := s.Struct.Ptr(1)
+	return Topic_SubOpts{Struct: p.Struct()}, err
+}
+
+func (s Topic_subscribe_Params) HasOpts() bool {
+	return s.Struct.HasPtr(1)
+}
+
+func (s Topic_subscribe_Params) SetOpts(v Topic_SubOpts) error {
+	return s.Struct.SetPtr(1, v.Struct.ToPtr())
+}
+
+// NewOpts sets the opts field to a newly
+// allocated Topic_SubOpts struct, preferring placement in s's segment.
+func (s Topic_subscribe_Params) NewOpts() (Topic_SubOpts, error) {
+	ss, err := NewTopic_SubOpts(s.Struct.Segment())
+	if err != nil {
+		return Topic_SubOpts{}, err
+	}
+	err = s.Struct.SetPtr(1, ss.Struct.ToPtr())
+	return ss, err
+}
+
 // Topic_subscribe_Params_List is a list of Topic_subscribe_Params.
 type Topic_subscribe_Params_List = capnp.StructList[Topic_subscribe_Params]
 
 // NewTopic_subscribe_Params creates a new list of Topic_subscribe_Params.
 func NewTopic_subscribe_Params_List(s *capnp.Segment, sz int32) (Topic_subscribe_Params_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2}, sz)
 	return capnp.StructList[Topic_subscribe_Params]{List: l}, err
 }
 
@@ -361,6 +435,10 @@ func (p Topic_subscribe_Params_Future) Struct() (Topic_subscribe_Params, error) 
 
 func (p Topic_subscribe_Params_Future) Chan() channel.Sender {
 	return channel.Sender{Client: p.Future.Field(0, nil).Client()}
+}
+
+func (p Topic_subscribe_Params_Future) Opts() Topic_SubOpts_Future {
+	return Topic_SubOpts_Future{Future: p.Future.Field(1, nil)}
 }
 
 type Topic_subscribe_Results struct{ capnp.Struct }
@@ -728,42 +806,49 @@ func (p PubSub_join_Results_Future) Topic() Topic {
 	return Topic{Client: p.Future.Field(0, nil).Client()}
 }
 
-const schema_f9d8a0180405d9ed = "x\xda\x8cS\xcdk\x13A\x14\x7fof\xd2\x11\xc9\x9a" +
-	"\x8e\x9b\x16\x95J\xa1T\x91\x1c\xa2\xad\xf8Q\x0f&(" +
-	"\xe2Ea7\xad\x82\x16\x0f\xbb!\xd8h6Y2\x19" +
-	"!z\xf0\xd2B\xee\"j\xa1T\xbc\xa8x\xf1\xe2\xc9" +
-	"{\x8a\xd8\x83\x07\x05\xfd\x03\x0a\"D)x\xa9UV" +
-	"&q\x93\xd4h\xf4<?~\x9fo\x0e\xdd\xc34\x9b" +
-	"0R\x1c\x88=\x13\x19\x08&WG_-\x1e\xf5\xe7" +
-	"A\x98\x08\xc08\xc0\xe1\x05\x9a@`\xc1\xe9\xf9\xd7\xd5" +
-	"\xda\x9d\xc1Z\xeb%\x82\xfa\xc9\xa3;\x11\xd0T4\x05" +
-	"\x18<\xbf>x\xf0\xc0\xd3\xe2}\x10\x06\x0d\x1a\x1f\"" +
-	"l\xd7\xc3\xf7\x1b\x00h\xde\xa5\x8b\xe6\x12\xe5\x00\xe6\x03" +
-	"\xbab\x0ei\xd2\xe0\xdc\x8b\xeal]\x1d[\xea\xd2\xf9" +
-	"A\xf7h\x9d\xda\xde[\xf5M\xab\xb0\x0c\"\xde\xd6Y" +
-	"\xa3\xdb\xb5N\xa3\xa9\xf3d\xf6KI\xd5\xcb+\xddF" +
-	"\x0c6\xa6\x01CL\x03R\xfb/\x8e<\xbb|\xe3]" +
-	"7\xe0\x08#\x1a0\xd5\x04\xecX\x1b\x18Y\x8e\xaf\xae" +
-	"\xf78\xbd\xc4\x1e\x99\x8e6c^ag\xcd\x85\xa6S" +
-	"~\xf2\xed\xd7\x8d\xd2\xf7\xf5\x8eS\xd3c\xdf\x80\x05\x8f" +
-	"\xcfW\xc9\x9b\xe1\xf4f\xb7Q\xbb%s\x81\xa5\xe0f" +
-	"\xe0+W*7\x99\xa5\x8e_\xf4O\xcc\x94\xfc|6" +
-	")\x95+\xb3\xe5\xbc\x9b\x1b\xcf\xe4dL\x15*\xf2\x8f" +
-	"0_\xb9\x85\xbc\x9c\x1b\xb7\x9c\xb2\xe3\xa1\xb4\x19e\x00" +
-	"\x0c\x01\x841\x06`o\xa3h\xc7\x09rO^E\x03" +
-	"\x08\x1a\x80m\x1a\x0cih>k!\xdaQ\x1a\x01h" +
-	"\xaf\x87a\xf1\xc2>\x05D\x9c\xe1\xd8)\x14\xc3\xf1\xc5" +
-	"T\x06\x88\x98\xe0H\xda\xe91,U\xecK\x00\x11\xbb" +
-	"\xf9\xed_\x16\xd3\x18\x84\x99\x00si\x8c\x15\x1d/\x97" +
-	"F\x0b\xb1o\xb0LN\xaa\x02\xedIo)wZ\xb9" +
-	"\xc9k\xa5|\xb1\x05\xa9H\x80\xee\xf4\x93\x9d\xf4\xa3\x15" +
-	"\xcd\x88\xa2sx\x80(\x00\xff\xd1\xbb\xe5\x94\xb9\xe3m" +
-	"\xa94\xd1!\x8de\xe7\x9c\"\x8a\xe0\xf3\xf0\xa7\xe3\xf1" +
-	"\xc6\xcb\x8f\xfd8u\xd2\xb6\xcb\xbf\xf1i\x10F\x81`" +
-	"\xb4g#K\xb9|Z\xb9z$\xd6\x1c)\xbc(\x0c" +
-	"\xff\x80\x10\xba\xec\x08\x8f\xe9B\xb6\x96J~7\x92j" +
-	"\xdeJ\xbfB[\x80\xffr\xfa3\x00\x00\xff\xff/\x08" +
-	"\x1f\xf1"
+const schema_f9d8a0180405d9ed = "x\xda\x8cSOHT[\x18\xff\xbes\xce\xf5\xcac" +
+	"\xe6\xcd\x9cw\x07\x9f\xef\xa1\x08\xa2a\x03\x99\xda_[" +
+	"4\x83!\x1144\xd7\x89\x08]\xcd\x1dF\x9d\x9a?" +
+	"\x979s\x0a-p\xe3\xc2}\x8bJ\x08\xabMI\x9b" +
+	"\\\xb8j\xd5F\xb1\\\x14%d\xfb \x02\x0b\xa1 " +
+	"\xb3\xbaqf\xbc3\xb7,kw8\xe7\xe3\xf7\xfb~" +
+	"\x7fN\xd7#\x8c\xb2n\xffU\x1d\x88yV\xabsz" +
+	"\x96[\x96\xa6\x0f\xda\x93\xc0\x0d\x04`:\xc0\xbe9\x1a" +
+	"F`\xce\xb1\xc9\xc7cSW\x82S\x95\x17\x0d\xd5\xd3" +
+	"u\xfa\x0f\x02\x1a\xb7h\x04\xd0\xb9\x7f>\xb8\xb7c6" +
+	"\x7f\x0d\xb8\x9f:k\xab\x1ak\xbc\xf9b\x03\x00\x8d\x87" +
+	"t\xdaX\xa2\xff\x02\x18O\xe9\xa2\x11S\xa0\xce\xc9\xf9" +
+	"\xb1\xa1\x05y\xe8\x86\x87\xe7\x00\xfb_\xf1L5_Z" +
+	"\xd8\x8cgg\x80\x87\xaa<\xcd\xec/\xc5\xd3\xce\x14\xcf" +
+	"\xdd\xa1w\x05\xb9P\\\xdcZ\x84\xa8\x81~\xd6\xaa\x06" +
+	"b\xec\"\xa0\xf3\xf1\xeb\xe5\xde\xd8\x89\x91g`\x1a\xe8" +
+	"YK\x91\x18\xb3\xec\xa51_>\xcd\x95\xc1\"\xbb\xce" +
+	"4\xdd\x1b\xbc\xb0\xe2U\xb5\xc2\x88\x02[-\x0f\xfc\xfd" +
+	"\xaa\xaei&\xb4\xbc\xbeM\xd5\x06\xbbm\xa0\xa6\x90\xbe" +
+	"\xb0\xe3F\xbb:9\xfa\xd1\xe7\xef7\x0a\x9f\xd7k\xaa" +
+	"\x0c\xbf\xf6\x09\x98s'6F\x9e4D7\xbd\xa2\xd6" +
+	"+4\x1fX\x04\xc6\x1d[ZBZ\x9d)\x9a\xb4\xf3" +
+	"\xf6\x91\xd3\x05;\x93\xea\x14\xd2\x12\xa9b\xc6J\xb7\x0d" +
+	"\xa4E@fK\xe2\xa7c\xb6\xb4\xb2\x191\xda\x16O" +
+	"\x16\x939\x14&\xa3\x0c\x80!\x00\xf7\xb7\x02\x98\xf5\x14" +
+	"\xcd\x10A='F\xd0\x0f\x04\xfd\x80U\x18tah" +
+	"&e2\xf4X\xc7\xb1o\"!\xadSvI\x98>" +
+	"\xaa\x01T\xf3G7:n\xf6\x01\xe1\xfd:\xd6\"A" +
+	"\xb7>\xbcw\x00\x08\xef\xd6\x91T=A\xd7j\xde\x1e" +
+	"\x06\xc2\xff\xd3'\xb6\x16\x8f\xa2\xe3*\x05LG1\x90" +
+	"O\xe6\xd2Q\x8c#\xee(w -d\x96n\xf3$" +
+	".\xad\x84\xb4:\xcf\x152\xf9\xcaHI\x00x=\xe9" +
+	"\xa9y\xd2RR\x88\xc8k\x1d\x01D\x0e\xf8\x9b4\xe2" +
+	"\xc9\xa2\x9e\xcc\x09\xb3\xbe\x0a\xba;\x0c`\xb6Q4\xbb" +
+	"\x08r\xc4\x10\xaa\xcb=\xea\xb2\x83\xa2\xb9\x9f` 5" +
+	"\x9a\xcc#w\xde6\xbc9\x1cZ{\xf0z\x8b(P" +
+	"\xb0K\x02\x835\xdb\x011\xe8\xe1'\x1e\xfer\x1a\xb4" +
+	"$\xe2\x88^9\x83\x00\xa6\x8f\xa2\xd9H\xd0\xb1\xe4\xf0" +
+	"p\xba\x98\xc8\x00\x1dO\xa3\x06\x04\xb5_hQ\x0eW" +
+	"\xdd\xf1\xa2\x85k\xe6\x94c@\x1f\x10\xf4mkL\\" +
+	"ZzBZ\x95UT9\xdc~\xa3\xfb{9W!" +
+	"kz@\x05\xf1}\x98\xe4\xc7E\"\xe5\xe6\xee\x14d" +
+	"e\xe0\x8f6\xfd\x16\x00\x00\xff\xff\xc5\xc0U\x10"
 
 func init() {
 	schemas.Register(schema_f9d8a0180405d9ed,
@@ -773,6 +858,7 @@ func init() {
 		0x9d3775c65b79b54c,
 		0x9f6c50fbc67b1d88,
 		0xc772c6756fef5ba8,
+		0xd367494d397cfef8,
 		0xd5765aab1c56263f,
 		0xf1cc149f1c06e50e,
 		0xf1fc6ff9f4d43e07,

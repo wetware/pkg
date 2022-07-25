@@ -73,7 +73,7 @@ func (t Topic) Subscribe(ctx context.Context, ch chan<- []byte) (release capnp.R
 		MaxConcurrentCalls: cap(ch),
 	})
 
-	f, release := api.Topic(t).Subscribe(ctx, sender(h))
+	f, release := api.Topic(t).Subscribe(ctx, sender(h, cap(ch)))
 	defer release()
 
 	if _, err = f.Struct(); err == nil {
@@ -88,8 +88,13 @@ func (t Topic) AddRef() Topic {
 	return Topic(api.Topic(t).AddRef())
 }
 
-func sender(s chan_api.Sender) func(api.Topic_subscribe_Params) error {
+func sender(s chan_api.Sender, bufferSize int) func(api.Topic_subscribe_Params) error {
 	return func(ps api.Topic_subscribe_Params) error {
+		opts, err := ps.NewOpts()
+		if err != nil {
+			return err
+		}
+		opts.SetBufferSize(int64(bufferSize))
 		return ps.SetChan(s)
 	}
 }
