@@ -50,21 +50,40 @@ func (t Topic) Publish(ctx context.Context, msg []byte) error {
 	return pubsub.Topic{Client: t.Client}.Publish(ctx, msg)
 }
 
-func (t Topic) Subscribe(ctx context.Context) (Subscription, error) {
-	out := make(chan []byte, 32)
+func (t Topic) Subscribe(ctx context.Context, opts ...SubOpt) (Subscription, error) {
+	sub := Subscription{
+		name: t.name,
+		c:    make(chan []byte, 32),
+	}
 
-	release, err := pubsub.Topic{Client: t.Client}.Subscribe(ctx, out)
-	return Subscription{
-		name:   t.name,
-		cancel: release,
-		c:      out,
-	}, err
+	for _, opt := range opts {
+		err := opt(&sub)
+		if err != nil {
+			return sub, err
+		}
+	}
+
+	release, err := pubsub.Topic{Client: t.Client}.Subscribe(ctx, sub.c)
+	sub.cancel = release
+	return sub, err
+}
+
+type SubOpt func(sub *Subscription) error
+
+// WithBufferSize is a Subscribe option to customize the size of the subscribe output buffer.
+// The default length is 32 but it can be configured to avoid dropping messages if the consumer is not reading fast
+// enough.
+func WithBufferSize(size int) SubOpt {
+	return func(sub *Subscription) error {
+		sub.c = make(chan []byte, size)
+		return nil
+	}
 }
 
 type Subscription struct {
 	name   string
 	cancel func()
-	c      <-chan []byte
+	c      chan []byte
 }
 
 func (s Subscription) String() string { return s.name }
