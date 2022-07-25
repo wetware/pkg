@@ -60,7 +60,7 @@ func discover(c *cli.Context) error {
 	}
 
 	discoverer, err := bootutil.DialString(h, c.String("discover"),
-		socket.WithLogger(logger), socket.WithRateLimiter(socket.NewPacketLimiter(500, 8)))
+		socket.WithLogger(logger), socket.WithRateLimiter(socket.NewPacketLimiter(1000, 8)))
 	if err != nil {
 		return err
 	}
