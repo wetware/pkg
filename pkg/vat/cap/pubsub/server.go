@@ -240,7 +240,11 @@ func (t *refCountedTopic) subscribe(args api.Topic_subscribe_Params) (s subscrip
 
 	if s.sub, err = t.topic.Subscribe(pubsub.WithBufferSize(int(subOpts.BufferSize()))); err == nil {
 		s.ch = channel.Sender(args.Chan().AddRef())
-		s.ch.Client.SetFlowLimiter(newFlowLimiter(subOpts.BufferSize()))
+		if subOpts.BufferSize() < 1 {
+			s.ch.Client.SetFlowLimiter(newFlowLimiter(1)) // limiter must be at least 1
+		} else {
+			s.ch.Client.SetFlowLimiter(newFlowLimiter(subOpts.BufferSize()))
+		}
 
 		t.ref++
 		s.t = t
