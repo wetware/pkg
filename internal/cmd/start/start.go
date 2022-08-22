@@ -34,6 +34,12 @@ var flags = []cli.Flag{
 		Value:   "/ip4/228.8.8.8/udp/8822/multicast/lo0",
 		EnvVars: []string{"WW_DISCOVER"},
 	},
+	&cli.BoolFlag{
+		Name:    "nat",
+		Usage:   "enable nat",
+		Value:   false,
+		EnvVars: []string{"WW_NAT"},
+	},
 }
 
 // Command constructor

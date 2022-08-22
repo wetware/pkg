@@ -69,12 +69,19 @@ func (config routingConfig) ListenAddrs() []string {
 }
 
 func (config routingConfig) NewHost() (h host.Host, err error) {
-	h, err = libp2p.New(
+	opts := []libp2p.Option{
 		libp2p.NoTransports,
 		libp2p.Transport(quic.NewTransport),
 		libp2p.ListenAddrStrings(config.ListenAddrs()...),
 		libp2p.BandwidthReporter(config.Metrics),
-		libp2p.Identity(config.Priv))
+		libp2p.Identity(config.Priv),
+	}
+
+	if config.CLI.Bool("nat") {
+		opts = append(opts, libp2p.EnableNATService())
+	}
+
+	h, err = libp2p.New(opts...)
 	if err == nil {
 		config.Lifecycle.Append(closer(h))
 	}
