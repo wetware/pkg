@@ -11,12 +11,12 @@ import (
 	"github.com/lthibault/log"
 	"github.com/thejerf/suture/v4"
 	"github.com/urfave/cli/v2"
+	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/cluster"
 	"github.com/wetware/casm/pkg/pex"
 	serviceutil "github.com/wetware/ww/internal/util/service"
 	statsdutil "github.com/wetware/ww/internal/util/statsd"
 	"github.com/wetware/ww/pkg/server"
-	"github.com/wetware/ww/pkg/vat"
 	"go.uber.org/fx"
 )
 
@@ -148,7 +148,7 @@ type serverConfig struct {
 	fx.In
 
 	Log     log.Logger
-	Vat     vat.Network
+	Vat     casm.Vat
 	PubSub  *pubsub.PubSub
 	PeX     *pex.PeerExchange
 	DHT     *dual.DHT

@@ -27,6 +27,7 @@ import (
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
 
+	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/boot"
 	"github.com/wetware/casm/pkg/boot/socket"
 	bootutil "github.com/wetware/casm/pkg/boot/util"
@@ -34,7 +35,6 @@ import (
 	protoutil "github.com/wetware/casm/pkg/util/proto"
 	statsdutil "github.com/wetware/ww/internal/util/statsd"
 	ww "github.com/wetware/ww/pkg"
-	"github.com/wetware/ww/pkg/vat"
 )
 
 var network = fx.Provide(
@@ -130,8 +130,8 @@ type vatConfig struct {
 	Metrics   *statsdutil.MetricsReporter
 }
 
-func vatnet(config vatConfig) vat.Network {
-	return vat.Network{
+func vatnet(config vatConfig) casm.Vat {
+	return casm.Vat{
 		NS:      config.Namespace(),
 		Host:    routedhost.Wrap(config.Host(), config.DHT),
 		Metrics: config.Metrics.NewStore(),
@@ -150,7 +150,7 @@ type pexConfig struct {
 	fx.In
 
 	Log       log.Logger
-	Vat       vat.Network
+	Vat       casm.Vat
 	Datastore ds.Batching
 	Boot      bootstrapper
 	Lifecycle fx.Lifecycle
@@ -185,7 +185,7 @@ type bootConfig struct {
 
 	CLI       *cli.Context
 	Log       log.Logger
-	Vat       vat.Network
+	Vat       casm.Vat
 	Lifecycle fx.Lifecycle
 }
 
@@ -237,7 +237,7 @@ type overlayConfig struct {
 	fx.In
 
 	CLI *cli.Context
-	Vat vat.Network
+	Vat casm.Vat
 	// PeX    *pex.PeerExchange  // TODO:  re-enable when PeX bugs are fixed
 	Boot   bootstrapper // TODO:  remove when PeX bugs are fixed
 	DHT    *dual.DHT
