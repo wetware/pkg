@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"capnproto.org/go/capnp/v3"
-	"capnproto.org/go/capnp/v3/server"
 	"github.com/wetware/ww/internal/api/channel"
 	"github.com/wetware/ww/pkg/vat"
 )
@@ -19,20 +18,20 @@ func Ptr(ptr capnp.Ptr) Value {
 
 func Data(b []byte) Value {
 	return func(ps channel.Sender_send_Params) error {
-		return ps.SetData(0, b)
+		return capnp.Struct(ps).SetData(0, b)
 	}
 }
 
 func Text(s string) Value {
 	return func(ps channel.Sender_send_Params) error {
-		return ps.SetText(0, s)
+		return capnp.Struct(ps).SetText(0, s)
 	}
 }
 
 type Chan channel.Chan
 
-func New(s Server, p *server.Policy) Chan {
-	return Chan(channel.Chan_ServerToClient(s, p))
+func New(s Server) Chan {
+	return Chan(channel.Chan_ServerToClient(s))
 }
 
 func (c Chan) Close(ctx context.Context) error {
@@ -48,11 +47,11 @@ func (c Chan) Recv(ctx context.Context) (vat.FuturePtr, capnp.ReleaseFunc) {
 }
 
 func (c Chan) AddRef() Chan {
-	return Chan{Client: c.Client.AddRef()}
+	return Chan(capnp.Client(c).AddRef())
 }
 
 func (c Chan) Release() {
-	c.Client.Release()
+	capnp.Client(c).Release()
 }
 
 type PeekableChan channel.Chan
@@ -61,8 +60,8 @@ func (c PeekableChan) Close(ctx context.Context) error {
 	return Closer(c).Close(ctx)
 }
 
-func NewPeekableChan(s PeekableServer, p *server.Policy) PeekableChan {
-	return PeekableChan(channel.PeekableChan_ServerToClient(s, p))
+func NewPeekableChan(s PeekableServer) PeekableChan {
+	return PeekableChan(channel.PeekableChan_ServerToClient(s))
 }
 
 func (c PeekableChan) Send(ctx context.Context, v Value) (vat.Future, capnp.ReleaseFunc) {
@@ -74,17 +73,17 @@ func (c PeekableChan) Recv(ctx context.Context) (vat.FuturePtr, capnp.ReleaseFun
 }
 
 func (c PeekableChan) AddRef() PeekableChan {
-	return PeekableChan{Client: c.Client.AddRef()}
+	return PeekableChan(capnp.Client(c).AddRef())
 }
 
 func (c PeekableChan) Release() {
-	c.Client.Release()
+	capnp.Client(c).Release()
 }
 
 type SendCloser Chan
 
-func NewSendCloser(sc SendCloseServer, p *server.Policy) SendCloser {
-	return SendCloser(channel.SendCloser_ServerToClient(sc, p))
+func NewSendCloser(sc SendCloseServer) SendCloser {
+	return SendCloser(channel.SendCloser_ServerToClient(sc))
 }
 
 func (sc SendCloser) Close(ctx context.Context) error {
@@ -96,17 +95,17 @@ func (sc SendCloser) Send(ctx context.Context, v Value) (vat.Future, capnp.Relea
 }
 
 func (sc SendCloser) AddRef() SendCloser {
-	return SendCloser{Client: sc.Client.AddRef()}
+	return SendCloser(capnp.Client(sc).AddRef())
 }
 
 func (sc SendCloser) Release() {
-	sc.Client.Release()
+	capnp.Client(sc).Release()
 }
 
 type PeekRecver Chan
 
-func NewPeekRecver(pr PeekRecvServer, p *server.Policy) PeekRecver {
-	return PeekRecver(channel.PeekRecver_ServerToClient(pr, p))
+func NewPeekRecver(pr PeekRecvServer) PeekRecver {
+	return PeekRecver(channel.PeekRecver_ServerToClient(pr))
 }
 
 func (pr PeekRecver) Peek(ctx context.Context) (vat.FuturePtr, capnp.ReleaseFunc) {
@@ -118,17 +117,17 @@ func (pr PeekRecver) Recv(ctx context.Context) (vat.FuturePtr, capnp.ReleaseFunc
 }
 
 func (pr PeekRecver) AddRef() PeekRecver {
-	return PeekRecver{Client: pr.Client.AddRef()}
+	return PeekRecver(capnp.Client(pr).AddRef())
 }
 
 func (pr PeekRecver) Release() {
-	pr.Client.Release()
+	capnp.Client(pr).Release()
 }
 
 type Sender Chan
 
-func NewSender(s SendServer, p *server.Policy) Sender {
-	return Sender(channel.Sender_ServerToClient(s, p))
+func NewSender(s SendServer) Sender {
+	return Sender(channel.Sender_ServerToClient(s))
 }
 
 func (s Sender) Send(ctx context.Context, v Value) (vat.Future, capnp.ReleaseFunc) {
@@ -137,17 +136,17 @@ func (s Sender) Send(ctx context.Context, v Value) (vat.Future, capnp.ReleaseFun
 }
 
 func (s Sender) AddRef() Sender {
-	return Sender{Client: s.Client.AddRef()}
+	return Sender(capnp.Client(s).AddRef())
 }
 
 func (s Sender) Release() {
-	s.Client.Release()
+	capnp.Client(s).Release()
 }
 
 type Peeker Chan
 
-func NewPeeker(p PeekServer, q *server.Policy) Peeker {
-	return Peeker(channel.Peeker_ServerToClient(p, q))
+func NewPeeker(p PeekServer) Peeker {
+	return Peeker(channel.Peeker_ServerToClient(p))
 }
 
 func (p Peeker) Peek(ctx context.Context) (vat.FuturePtr, capnp.ReleaseFunc) {
@@ -156,17 +155,17 @@ func (p Peeker) Peek(ctx context.Context) (vat.FuturePtr, capnp.ReleaseFunc) {
 }
 
 func (p Peeker) AddRef() Peeker {
-	return Peeker{Client: p.Client.AddRef()}
+	return Peeker(capnp.Client(p).AddRef())
 }
 
 func (p Peeker) Release() {
-	p.Client.Release()
+	capnp.Client(p).Release()
 }
 
 type Recver Chan
 
-func NewRecver(r RecvServer, p *server.Policy) Recver {
-	return Recver(channel.Recver_ServerToClient(r, p))
+func NewRecver(r RecvServer) Recver {
+	return Recver(channel.Recver_ServerToClient(r))
 }
 
 func (r Recver) Recv(ctx context.Context) (vat.FuturePtr, capnp.ReleaseFunc) {
@@ -175,17 +174,17 @@ func (r Recver) Recv(ctx context.Context) (vat.FuturePtr, capnp.ReleaseFunc) {
 }
 
 func (r Recver) AddRef() Recver {
-	return Recver{Client: r.Client.AddRef()}
+	return Recver(capnp.Client(r).AddRef())
 }
 
 func (r Recver) Release() {
-	r.Client.Release()
+	capnp.Client(r).Release()
 }
 
 type Closer Chan
 
-func NewCloser(c CloseServer, p *server.Policy) Closer {
-	return Closer(channel.Closer_ServerToClient(c, p))
+func NewCloser(c CloseServer) Closer {
+	return Closer(channel.Closer_ServerToClient(c))
 }
 
 func (c Closer) Close(ctx context.Context) error {
@@ -197,9 +196,9 @@ func (c Closer) Close(ctx context.Context) error {
 }
 
 func (c Closer) AddRef() Closer {
-	return Closer{Client: c.Client.AddRef()}
+	return Closer(capnp.Client(c).AddRef())
 }
 
 func (c Closer) Release() {
-	c.Client.Release()
+	capnp.Client(c).Release()
 }

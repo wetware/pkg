@@ -5,13 +5,15 @@ package channel
 import (
 	capnp "capnproto.org/go/capnp/v3"
 	text "capnproto.org/go/capnp/v3/encoding/text"
+	fc "capnproto.org/go/capnp/v3/flowcontrol"
 	schemas "capnproto.org/go/capnp/v3/schemas"
 	server "capnproto.org/go/capnp/v3/server"
 	stream "capnproto.org/go/capnp/v3/std/capnp/stream"
 	context "context"
+	fmt "fmt"
 )
 
-type Closer struct{ Client capnp.Client }
+type Closer capnp.Client
 
 // Closer_TypeID is the unique identifier for the type Closer.
 const Closer_TypeID = 0xfad0e4b80d3779c3
@@ -27,37 +29,92 @@ func (c Closer) Close(ctx context.Context, params func(Closer_close_Params) erro
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Closer_close_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Closer_close_Params(s)) }
 	}
-	ans, release := c.Client.SendCall(ctx, s)
+	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Closer_close_Results_Future{Future: ans.Future()}, release
 }
 
+// String returns a string that identifies this capability for debugging
+// purposes.  Its format should not be depended on: in particular, it
+// should not be used to compare clients.  Use IsSame to compare clients
+// for equality.
+func (c Closer) String() string {
+	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+}
+
+// AddRef creates a new Client that refers to the same capability as c.
+// If c is nil or has resolved to null, then AddRef returns nil.
 func (c Closer) AddRef() Closer {
-	return Closer{
-		Client: c.Client.AddRef(),
-	}
+	return Closer(capnp.Client(c).AddRef())
 }
 
+// Release releases a capability reference.  If this is the last
+// reference to the capability, then the underlying resources associated
+// with the capability will be released.
+//
+// Release will panic if c has already been released, but not if c is
+// nil or resolved to null.
 func (c Closer) Release() {
-	c.Client.Release()
+	capnp.Client(c).Release()
 }
 
-// A Closer_Server is a Closer with a local implementation.
+// Resolve blocks until the capability is fully resolved or the Context
+// expires.
+func (c Closer) Resolve(ctx context.Context) error {
+	return capnp.Client(c).Resolve(ctx)
+}
+
+func (c Closer) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Client(c).EncodeAsPtr(seg)
+}
+
+func (Closer) DecodeFromPtr(p capnp.Ptr) Closer {
+	return Closer(capnp.Client{}.DecodeFromPtr(p))
+}
+
+// IsValid reports whether c is a valid reference to a capability.
+// A reference is invalid if it is nil, has resolved to null, or has
+// been released.
+func (c Closer) IsValid() bool {
+	return capnp.Client(c).IsValid()
+}
+
+// IsSame reports whether c and other refer to a capability created by the
+// same call to NewClient.  This can return false negatives if c or other
+// are not fully resolved: use Resolve if this is an issue.  If either
+// c or other are released, then IsSame panics.
+func (c Closer) IsSame(other Closer) bool {
+	return capnp.Client(c).IsSame(capnp.Client(other))
+}
+
+// Update the flowcontrol.FlowLimiter used to manage flow control for
+// this client. This affects all future calls, but not calls already
+// waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
+// which is also the default.
+func (c Closer) SetFlowLimiter(lim fc.FlowLimiter) {
+	capnp.Client(c).SetFlowLimiter(lim)
+}
+
+// Get the current flowcontrol.FlowLimiter used to manage flow control
+// for this client.
+func (c Closer) GetFlowLimiter() fc.FlowLimiter {
+	return capnp.Client(c).GetFlowLimiter()
+} // A Closer_Server is a Closer with a local implementation.
 type Closer_Server interface {
 	Close(context.Context, Closer_close) error
 }
 
 // Closer_NewServer creates a new Server from an implementation of Closer_Server.
-func Closer_NewServer(s Closer_Server, policy *server.Policy) *server.Server {
+func Closer_NewServer(s Closer_Server) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(Closer_Methods(nil, s), s, c, policy)
+	return server.New(Closer_Methods(nil, s), s, c)
 }
 
 // Closer_ServerToClient creates a new Client from an implementation of Closer_Server.
 // The caller is responsible for calling Release on the returned Client.
-func Closer_ServerToClient(s Closer_Server, policy *server.Policy) Closer {
-	return Closer{Client: capnp.NewClient(Closer_NewServer(s, policy))}
+func Closer_ServerToClient(s Closer_Server) Closer {
+	return Closer(capnp.NewClient(Closer_NewServer(s)))
 }
 
 // Closer_Methods appends Methods to a slice that invoke the methods on s.
@@ -90,13 +147,13 @@ type Closer_close struct {
 
 // Args returns the call's arguments.
 func (c Closer_close) Args() Closer_close_Params {
-	return Closer_close_Params{Struct: c.Call.Args()}
+	return Closer_close_Params(c.Call.Args())
 }
 
 // AllocResults allocates the results struct.
 func (c Closer_close) AllocResults() (Closer_close_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Closer_close_Results{Struct: r}, err
+	return Closer_close_Results(r), err
 }
 
 // Closer_List is a list of Closer.
@@ -108,29 +165,52 @@ func NewCloser_List(s *capnp.Segment, sz int32) (Closer_List, error) {
 	return capnp.CapList[Closer](l), err
 }
 
-type Closer_close_Params struct{ capnp.Struct }
+type Closer_close_Params capnp.Struct
 
 // Closer_close_Params_TypeID is the unique identifier for the type Closer_close_Params.
 const Closer_close_Params_TypeID = 0xfd07d8a1cc36583c
 
 func NewCloser_close_Params(s *capnp.Segment) (Closer_close_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Closer_close_Params{st}, err
+	return Closer_close_Params(st), err
 }
 
 func NewRootCloser_close_Params(s *capnp.Segment) (Closer_close_Params, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Closer_close_Params{st}, err
+	return Closer_close_Params(st), err
 }
 
 func ReadRootCloser_close_Params(msg *capnp.Message) (Closer_close_Params, error) {
 	root, err := msg.Root()
-	return Closer_close_Params{root.Struct()}, err
+	return Closer_close_Params(root.Struct()), err
 }
 
 func (s Closer_close_Params) String() string {
-	str, _ := text.Marshal(0xfd07d8a1cc36583c, s.Struct)
+	str, _ := text.Marshal(0xfd07d8a1cc36583c, capnp.Struct(s))
 	return str
+}
+
+func (s Closer_close_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Closer_close_Params) DecodeFromPtr(p capnp.Ptr) Closer_close_Params {
+	return Closer_close_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Closer_close_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Closer_close_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Closer_close_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Closer_close_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
 }
 
 // Closer_close_Params_List is a list of Closer_close_Params.
@@ -139,7 +219,7 @@ type Closer_close_Params_List = capnp.StructList[Closer_close_Params]
 // NewCloser_close_Params creates a new list of Closer_close_Params.
 func NewCloser_close_Params_List(s *capnp.Segment, sz int32) (Closer_close_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Closer_close_Params]{List: l}, err
+	return capnp.StructList[Closer_close_Params](l), err
 }
 
 // Closer_close_Params_Future is a wrapper for a Closer_close_Params promised by a client call.
@@ -147,32 +227,55 @@ type Closer_close_Params_Future struct{ *capnp.Future }
 
 func (p Closer_close_Params_Future) Struct() (Closer_close_Params, error) {
 	s, err := p.Future.Struct()
-	return Closer_close_Params{s}, err
+	return Closer_close_Params(s), err
 }
 
-type Closer_close_Results struct{ capnp.Struct }
+type Closer_close_Results capnp.Struct
 
 // Closer_close_Results_TypeID is the unique identifier for the type Closer_close_Results.
 const Closer_close_Results_TypeID = 0xcbee5caf8b7af4ea
 
 func NewCloser_close_Results(s *capnp.Segment) (Closer_close_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Closer_close_Results{st}, err
+	return Closer_close_Results(st), err
 }
 
 func NewRootCloser_close_Results(s *capnp.Segment) (Closer_close_Results, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Closer_close_Results{st}, err
+	return Closer_close_Results(st), err
 }
 
 func ReadRootCloser_close_Results(msg *capnp.Message) (Closer_close_Results, error) {
 	root, err := msg.Root()
-	return Closer_close_Results{root.Struct()}, err
+	return Closer_close_Results(root.Struct()), err
 }
 
 func (s Closer_close_Results) String() string {
-	str, _ := text.Marshal(0xcbee5caf8b7af4ea, s.Struct)
+	str, _ := text.Marshal(0xcbee5caf8b7af4ea, capnp.Struct(s))
 	return str
+}
+
+func (s Closer_close_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Closer_close_Results) DecodeFromPtr(p capnp.Ptr) Closer_close_Results {
+	return Closer_close_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Closer_close_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Closer_close_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Closer_close_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Closer_close_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
 }
 
 // Closer_close_Results_List is a list of Closer_close_Results.
@@ -181,7 +284,7 @@ type Closer_close_Results_List = capnp.StructList[Closer_close_Results]
 // NewCloser_close_Results creates a new list of Closer_close_Results.
 func NewCloser_close_Results_List(s *capnp.Segment, sz int32) (Closer_close_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Closer_close_Results]{List: l}, err
+	return capnp.StructList[Closer_close_Results](l), err
 }
 
 // Closer_close_Results_Future is a wrapper for a Closer_close_Results promised by a client call.
@@ -189,10 +292,10 @@ type Closer_close_Results_Future struct{ *capnp.Future }
 
 func (p Closer_close_Results_Future) Struct() (Closer_close_Results, error) {
 	s, err := p.Future.Struct()
-	return Closer_close_Results{s}, err
+	return Closer_close_Results(s), err
 }
 
-type Sender struct{ Client capnp.Client }
+type Sender capnp.Client
 
 // Sender_TypeID is the unique identifier for the type Sender.
 const Sender_TypeID = 0xe8bbed1438ea16ee
@@ -208,37 +311,92 @@ func (c Sender) Send(ctx context.Context, params func(Sender_send_Params) error)
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Sender_send_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Sender_send_Params(s)) }
 	}
-	ans, release := c.Client.SendCall(ctx, s)
+	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return stream.StreamResult_Future{Future: ans.Future()}, release
 }
 
+// String returns a string that identifies this capability for debugging
+// purposes.  Its format should not be depended on: in particular, it
+// should not be used to compare clients.  Use IsSame to compare clients
+// for equality.
+func (c Sender) String() string {
+	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+}
+
+// AddRef creates a new Client that refers to the same capability as c.
+// If c is nil or has resolved to null, then AddRef returns nil.
 func (c Sender) AddRef() Sender {
-	return Sender{
-		Client: c.Client.AddRef(),
-	}
+	return Sender(capnp.Client(c).AddRef())
 }
 
+// Release releases a capability reference.  If this is the last
+// reference to the capability, then the underlying resources associated
+// with the capability will be released.
+//
+// Release will panic if c has already been released, but not if c is
+// nil or resolved to null.
 func (c Sender) Release() {
-	c.Client.Release()
+	capnp.Client(c).Release()
 }
 
-// A Sender_Server is a Sender with a local implementation.
+// Resolve blocks until the capability is fully resolved or the Context
+// expires.
+func (c Sender) Resolve(ctx context.Context) error {
+	return capnp.Client(c).Resolve(ctx)
+}
+
+func (c Sender) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Client(c).EncodeAsPtr(seg)
+}
+
+func (Sender) DecodeFromPtr(p capnp.Ptr) Sender {
+	return Sender(capnp.Client{}.DecodeFromPtr(p))
+}
+
+// IsValid reports whether c is a valid reference to a capability.
+// A reference is invalid if it is nil, has resolved to null, or has
+// been released.
+func (c Sender) IsValid() bool {
+	return capnp.Client(c).IsValid()
+}
+
+// IsSame reports whether c and other refer to a capability created by the
+// same call to NewClient.  This can return false negatives if c or other
+// are not fully resolved: use Resolve if this is an issue.  If either
+// c or other are released, then IsSame panics.
+func (c Sender) IsSame(other Sender) bool {
+	return capnp.Client(c).IsSame(capnp.Client(other))
+}
+
+// Update the flowcontrol.FlowLimiter used to manage flow control for
+// this client. This affects all future calls, but not calls already
+// waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
+// which is also the default.
+func (c Sender) SetFlowLimiter(lim fc.FlowLimiter) {
+	capnp.Client(c).SetFlowLimiter(lim)
+}
+
+// Get the current flowcontrol.FlowLimiter used to manage flow control
+// for this client.
+func (c Sender) GetFlowLimiter() fc.FlowLimiter {
+	return capnp.Client(c).GetFlowLimiter()
+} // A Sender_Server is a Sender with a local implementation.
 type Sender_Server interface {
 	Send(context.Context, Sender_send) error
 }
 
 // Sender_NewServer creates a new Server from an implementation of Sender_Server.
-func Sender_NewServer(s Sender_Server, policy *server.Policy) *server.Server {
+func Sender_NewServer(s Sender_Server) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(Sender_Methods(nil, s), s, c, policy)
+	return server.New(Sender_Methods(nil, s), s, c)
 }
 
 // Sender_ServerToClient creates a new Client from an implementation of Sender_Server.
 // The caller is responsible for calling Release on the returned Client.
-func Sender_ServerToClient(s Sender_Server, policy *server.Policy) Sender {
-	return Sender{Client: capnp.NewClient(Sender_NewServer(s, policy))}
+func Sender_ServerToClient(s Sender_Server) Sender {
+	return Sender(capnp.NewClient(Sender_NewServer(s)))
 }
 
 // Sender_Methods appends Methods to a slice that invoke the methods on s.
@@ -271,13 +429,13 @@ type Sender_send struct {
 
 // Args returns the call's arguments.
 func (c Sender_send) Args() Sender_send_Params {
-	return Sender_send_Params{Struct: c.Call.Args()}
+	return Sender_send_Params(c.Call.Args())
 }
 
 // AllocResults allocates the results struct.
 func (c Sender_send) AllocResults() (stream.StreamResult, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return stream.StreamResult{Struct: r}, err
+	return stream.StreamResult(r), err
 }
 
 // Sender_List is a list of Sender.
@@ -289,41 +447,63 @@ func NewSender_List(s *capnp.Segment, sz int32) (Sender_List, error) {
 	return capnp.CapList[Sender](l), err
 }
 
-type Sender_send_Params struct{ capnp.Struct }
+type Sender_send_Params capnp.Struct
 
 // Sender_send_Params_TypeID is the unique identifier for the type Sender_send_Params.
 const Sender_send_Params_TypeID = 0x8166bc9c3ded78ca
 
 func NewSender_send_Params(s *capnp.Segment) (Sender_send_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Sender_send_Params{st}, err
+	return Sender_send_Params(st), err
 }
 
 func NewRootSender_send_Params(s *capnp.Segment) (Sender_send_Params, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Sender_send_Params{st}, err
+	return Sender_send_Params(st), err
 }
 
 func ReadRootSender_send_Params(msg *capnp.Message) (Sender_send_Params, error) {
 	root, err := msg.Root()
-	return Sender_send_Params{root.Struct()}, err
+	return Sender_send_Params(root.Struct()), err
 }
 
 func (s Sender_send_Params) String() string {
-	str, _ := text.Marshal(0x8166bc9c3ded78ca, s.Struct)
+	str, _ := text.Marshal(0x8166bc9c3ded78ca, capnp.Struct(s))
 	return str
 }
 
+func (s Sender_send_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Sender_send_Params) DecodeFromPtr(p capnp.Ptr) Sender_send_Params {
+	return Sender_send_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Sender_send_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Sender_send_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Sender_send_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Sender_send_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
 func (s Sender_send_Params) Value() (capnp.Ptr, error) {
-	return s.Struct.Ptr(0)
+	return capnp.Struct(s).Ptr(0)
 }
 
 func (s Sender_send_Params) HasValue() bool {
-	return s.Struct.HasPtr(0)
+	return capnp.Struct(s).HasPtr(0)
 }
 
 func (s Sender_send_Params) SetValue(v capnp.Ptr) error {
-	return s.Struct.SetPtr(0, v)
+	return capnp.Struct(s).SetPtr(0, v)
 }
 
 // Sender_send_Params_List is a list of Sender_send_Params.
@@ -332,7 +512,7 @@ type Sender_send_Params_List = capnp.StructList[Sender_send_Params]
 // NewSender_send_Params creates a new list of Sender_send_Params.
 func NewSender_send_Params_List(s *capnp.Segment, sz int32) (Sender_send_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Sender_send_Params]{List: l}, err
+	return capnp.StructList[Sender_send_Params](l), err
 }
 
 // Sender_send_Params_Future is a wrapper for a Sender_send_Params promised by a client call.
@@ -340,14 +520,14 @@ type Sender_send_Params_Future struct{ *capnp.Future }
 
 func (p Sender_send_Params_Future) Struct() (Sender_send_Params, error) {
 	s, err := p.Future.Struct()
-	return Sender_send_Params{s}, err
+	return Sender_send_Params(s), err
 }
 
 func (p Sender_send_Params_Future) Value() *capnp.Future {
 	return p.Future.Field(0, nil)
 }
 
-type Peeker struct{ Client capnp.Client }
+type Peeker capnp.Client
 
 // Peeker_TypeID is the unique identifier for the type Peeker.
 const Peeker_TypeID = 0xe95c7f9f41bf520a
@@ -363,37 +543,92 @@ func (c Peeker) Peek(ctx context.Context, params func(Peeker_peek_Params) error)
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Peeker_peek_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Peeker_peek_Params(s)) }
 	}
-	ans, release := c.Client.SendCall(ctx, s)
+	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Peeker_peek_Results_Future{Future: ans.Future()}, release
 }
 
+// String returns a string that identifies this capability for debugging
+// purposes.  Its format should not be depended on: in particular, it
+// should not be used to compare clients.  Use IsSame to compare clients
+// for equality.
+func (c Peeker) String() string {
+	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+}
+
+// AddRef creates a new Client that refers to the same capability as c.
+// If c is nil or has resolved to null, then AddRef returns nil.
 func (c Peeker) AddRef() Peeker {
-	return Peeker{
-		Client: c.Client.AddRef(),
-	}
+	return Peeker(capnp.Client(c).AddRef())
 }
 
+// Release releases a capability reference.  If this is the last
+// reference to the capability, then the underlying resources associated
+// with the capability will be released.
+//
+// Release will panic if c has already been released, but not if c is
+// nil or resolved to null.
 func (c Peeker) Release() {
-	c.Client.Release()
+	capnp.Client(c).Release()
 }
 
-// A Peeker_Server is a Peeker with a local implementation.
+// Resolve blocks until the capability is fully resolved or the Context
+// expires.
+func (c Peeker) Resolve(ctx context.Context) error {
+	return capnp.Client(c).Resolve(ctx)
+}
+
+func (c Peeker) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Client(c).EncodeAsPtr(seg)
+}
+
+func (Peeker) DecodeFromPtr(p capnp.Ptr) Peeker {
+	return Peeker(capnp.Client{}.DecodeFromPtr(p))
+}
+
+// IsValid reports whether c is a valid reference to a capability.
+// A reference is invalid if it is nil, has resolved to null, or has
+// been released.
+func (c Peeker) IsValid() bool {
+	return capnp.Client(c).IsValid()
+}
+
+// IsSame reports whether c and other refer to a capability created by the
+// same call to NewClient.  This can return false negatives if c or other
+// are not fully resolved: use Resolve if this is an issue.  If either
+// c or other are released, then IsSame panics.
+func (c Peeker) IsSame(other Peeker) bool {
+	return capnp.Client(c).IsSame(capnp.Client(other))
+}
+
+// Update the flowcontrol.FlowLimiter used to manage flow control for
+// this client. This affects all future calls, but not calls already
+// waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
+// which is also the default.
+func (c Peeker) SetFlowLimiter(lim fc.FlowLimiter) {
+	capnp.Client(c).SetFlowLimiter(lim)
+}
+
+// Get the current flowcontrol.FlowLimiter used to manage flow control
+// for this client.
+func (c Peeker) GetFlowLimiter() fc.FlowLimiter {
+	return capnp.Client(c).GetFlowLimiter()
+} // A Peeker_Server is a Peeker with a local implementation.
 type Peeker_Server interface {
 	Peek(context.Context, Peeker_peek) error
 }
 
 // Peeker_NewServer creates a new Server from an implementation of Peeker_Server.
-func Peeker_NewServer(s Peeker_Server, policy *server.Policy) *server.Server {
+func Peeker_NewServer(s Peeker_Server) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(Peeker_Methods(nil, s), s, c, policy)
+	return server.New(Peeker_Methods(nil, s), s, c)
 }
 
 // Peeker_ServerToClient creates a new Client from an implementation of Peeker_Server.
 // The caller is responsible for calling Release on the returned Client.
-func Peeker_ServerToClient(s Peeker_Server, policy *server.Policy) Peeker {
-	return Peeker{Client: capnp.NewClient(Peeker_NewServer(s, policy))}
+func Peeker_ServerToClient(s Peeker_Server) Peeker {
+	return Peeker(capnp.NewClient(Peeker_NewServer(s)))
 }
 
 // Peeker_Methods appends Methods to a slice that invoke the methods on s.
@@ -426,13 +661,13 @@ type Peeker_peek struct {
 
 // Args returns the call's arguments.
 func (c Peeker_peek) Args() Peeker_peek_Params {
-	return Peeker_peek_Params{Struct: c.Call.Args()}
+	return Peeker_peek_Params(c.Call.Args())
 }
 
 // AllocResults allocates the results struct.
 func (c Peeker_peek) AllocResults() (Peeker_peek_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Peeker_peek_Results{Struct: r}, err
+	return Peeker_peek_Results(r), err
 }
 
 // Peeker_List is a list of Peeker.
@@ -444,29 +679,52 @@ func NewPeeker_List(s *capnp.Segment, sz int32) (Peeker_List, error) {
 	return capnp.CapList[Peeker](l), err
 }
 
-type Peeker_peek_Params struct{ capnp.Struct }
+type Peeker_peek_Params capnp.Struct
 
 // Peeker_peek_Params_TypeID is the unique identifier for the type Peeker_peek_Params.
 const Peeker_peek_Params_TypeID = 0xaf261efa7a102288
 
 func NewPeeker_peek_Params(s *capnp.Segment) (Peeker_peek_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Peeker_peek_Params{st}, err
+	return Peeker_peek_Params(st), err
 }
 
 func NewRootPeeker_peek_Params(s *capnp.Segment) (Peeker_peek_Params, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Peeker_peek_Params{st}, err
+	return Peeker_peek_Params(st), err
 }
 
 func ReadRootPeeker_peek_Params(msg *capnp.Message) (Peeker_peek_Params, error) {
 	root, err := msg.Root()
-	return Peeker_peek_Params{root.Struct()}, err
+	return Peeker_peek_Params(root.Struct()), err
 }
 
 func (s Peeker_peek_Params) String() string {
-	str, _ := text.Marshal(0xaf261efa7a102288, s.Struct)
+	str, _ := text.Marshal(0xaf261efa7a102288, capnp.Struct(s))
 	return str
+}
+
+func (s Peeker_peek_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Peeker_peek_Params) DecodeFromPtr(p capnp.Ptr) Peeker_peek_Params {
+	return Peeker_peek_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Peeker_peek_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Peeker_peek_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Peeker_peek_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Peeker_peek_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
 }
 
 // Peeker_peek_Params_List is a list of Peeker_peek_Params.
@@ -475,7 +733,7 @@ type Peeker_peek_Params_List = capnp.StructList[Peeker_peek_Params]
 // NewPeeker_peek_Params creates a new list of Peeker_peek_Params.
 func NewPeeker_peek_Params_List(s *capnp.Segment, sz int32) (Peeker_peek_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Peeker_peek_Params]{List: l}, err
+	return capnp.StructList[Peeker_peek_Params](l), err
 }
 
 // Peeker_peek_Params_Future is a wrapper for a Peeker_peek_Params promised by a client call.
@@ -483,44 +741,66 @@ type Peeker_peek_Params_Future struct{ *capnp.Future }
 
 func (p Peeker_peek_Params_Future) Struct() (Peeker_peek_Params, error) {
 	s, err := p.Future.Struct()
-	return Peeker_peek_Params{s}, err
+	return Peeker_peek_Params(s), err
 }
 
-type Peeker_peek_Results struct{ capnp.Struct }
+type Peeker_peek_Results capnp.Struct
 
 // Peeker_peek_Results_TypeID is the unique identifier for the type Peeker_peek_Results.
 const Peeker_peek_Results_TypeID = 0xb42eee8bed32bea0
 
 func NewPeeker_peek_Results(s *capnp.Segment) (Peeker_peek_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Peeker_peek_Results{st}, err
+	return Peeker_peek_Results(st), err
 }
 
 func NewRootPeeker_peek_Results(s *capnp.Segment) (Peeker_peek_Results, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Peeker_peek_Results{st}, err
+	return Peeker_peek_Results(st), err
 }
 
 func ReadRootPeeker_peek_Results(msg *capnp.Message) (Peeker_peek_Results, error) {
 	root, err := msg.Root()
-	return Peeker_peek_Results{root.Struct()}, err
+	return Peeker_peek_Results(root.Struct()), err
 }
 
 func (s Peeker_peek_Results) String() string {
-	str, _ := text.Marshal(0xb42eee8bed32bea0, s.Struct)
+	str, _ := text.Marshal(0xb42eee8bed32bea0, capnp.Struct(s))
 	return str
 }
 
+func (s Peeker_peek_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Peeker_peek_Results) DecodeFromPtr(p capnp.Ptr) Peeker_peek_Results {
+	return Peeker_peek_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Peeker_peek_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Peeker_peek_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Peeker_peek_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Peeker_peek_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
 func (s Peeker_peek_Results) Value() (capnp.Ptr, error) {
-	return s.Struct.Ptr(0)
+	return capnp.Struct(s).Ptr(0)
 }
 
 func (s Peeker_peek_Results) HasValue() bool {
-	return s.Struct.HasPtr(0)
+	return capnp.Struct(s).HasPtr(0)
 }
 
 func (s Peeker_peek_Results) SetValue(v capnp.Ptr) error {
-	return s.Struct.SetPtr(0, v)
+	return capnp.Struct(s).SetPtr(0, v)
 }
 
 // Peeker_peek_Results_List is a list of Peeker_peek_Results.
@@ -529,7 +809,7 @@ type Peeker_peek_Results_List = capnp.StructList[Peeker_peek_Results]
 // NewPeeker_peek_Results creates a new list of Peeker_peek_Results.
 func NewPeeker_peek_Results_List(s *capnp.Segment, sz int32) (Peeker_peek_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Peeker_peek_Results]{List: l}, err
+	return capnp.StructList[Peeker_peek_Results](l), err
 }
 
 // Peeker_peek_Results_Future is a wrapper for a Peeker_peek_Results promised by a client call.
@@ -537,14 +817,14 @@ type Peeker_peek_Results_Future struct{ *capnp.Future }
 
 func (p Peeker_peek_Results_Future) Struct() (Peeker_peek_Results, error) {
 	s, err := p.Future.Struct()
-	return Peeker_peek_Results{s}, err
+	return Peeker_peek_Results(s), err
 }
 
 func (p Peeker_peek_Results_Future) Value() *capnp.Future {
 	return p.Future.Field(0, nil)
 }
 
-type Recver struct{ Client capnp.Client }
+type Recver capnp.Client
 
 // Recver_TypeID is the unique identifier for the type Recver.
 const Recver_TypeID = 0xdf05a90d671c0c07
@@ -560,37 +840,92 @@ func (c Recver) Recv(ctx context.Context, params func(Recver_recv_Params) error)
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Recver_recv_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Recver_recv_Params(s)) }
 	}
-	ans, release := c.Client.SendCall(ctx, s)
+	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Recver_recv_Results_Future{Future: ans.Future()}, release
 }
 
+// String returns a string that identifies this capability for debugging
+// purposes.  Its format should not be depended on: in particular, it
+// should not be used to compare clients.  Use IsSame to compare clients
+// for equality.
+func (c Recver) String() string {
+	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+}
+
+// AddRef creates a new Client that refers to the same capability as c.
+// If c is nil or has resolved to null, then AddRef returns nil.
 func (c Recver) AddRef() Recver {
-	return Recver{
-		Client: c.Client.AddRef(),
-	}
+	return Recver(capnp.Client(c).AddRef())
 }
 
+// Release releases a capability reference.  If this is the last
+// reference to the capability, then the underlying resources associated
+// with the capability will be released.
+//
+// Release will panic if c has already been released, but not if c is
+// nil or resolved to null.
 func (c Recver) Release() {
-	c.Client.Release()
+	capnp.Client(c).Release()
 }
 
-// A Recver_Server is a Recver with a local implementation.
+// Resolve blocks until the capability is fully resolved or the Context
+// expires.
+func (c Recver) Resolve(ctx context.Context) error {
+	return capnp.Client(c).Resolve(ctx)
+}
+
+func (c Recver) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Client(c).EncodeAsPtr(seg)
+}
+
+func (Recver) DecodeFromPtr(p capnp.Ptr) Recver {
+	return Recver(capnp.Client{}.DecodeFromPtr(p))
+}
+
+// IsValid reports whether c is a valid reference to a capability.
+// A reference is invalid if it is nil, has resolved to null, or has
+// been released.
+func (c Recver) IsValid() bool {
+	return capnp.Client(c).IsValid()
+}
+
+// IsSame reports whether c and other refer to a capability created by the
+// same call to NewClient.  This can return false negatives if c or other
+// are not fully resolved: use Resolve if this is an issue.  If either
+// c or other are released, then IsSame panics.
+func (c Recver) IsSame(other Recver) bool {
+	return capnp.Client(c).IsSame(capnp.Client(other))
+}
+
+// Update the flowcontrol.FlowLimiter used to manage flow control for
+// this client. This affects all future calls, but not calls already
+// waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
+// which is also the default.
+func (c Recver) SetFlowLimiter(lim fc.FlowLimiter) {
+	capnp.Client(c).SetFlowLimiter(lim)
+}
+
+// Get the current flowcontrol.FlowLimiter used to manage flow control
+// for this client.
+func (c Recver) GetFlowLimiter() fc.FlowLimiter {
+	return capnp.Client(c).GetFlowLimiter()
+} // A Recver_Server is a Recver with a local implementation.
 type Recver_Server interface {
 	Recv(context.Context, Recver_recv) error
 }
 
 // Recver_NewServer creates a new Server from an implementation of Recver_Server.
-func Recver_NewServer(s Recver_Server, policy *server.Policy) *server.Server {
+func Recver_NewServer(s Recver_Server) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(Recver_Methods(nil, s), s, c, policy)
+	return server.New(Recver_Methods(nil, s), s, c)
 }
 
 // Recver_ServerToClient creates a new Client from an implementation of Recver_Server.
 // The caller is responsible for calling Release on the returned Client.
-func Recver_ServerToClient(s Recver_Server, policy *server.Policy) Recver {
-	return Recver{Client: capnp.NewClient(Recver_NewServer(s, policy))}
+func Recver_ServerToClient(s Recver_Server) Recver {
+	return Recver(capnp.NewClient(Recver_NewServer(s)))
 }
 
 // Recver_Methods appends Methods to a slice that invoke the methods on s.
@@ -623,13 +958,13 @@ type Recver_recv struct {
 
 // Args returns the call's arguments.
 func (c Recver_recv) Args() Recver_recv_Params {
-	return Recver_recv_Params{Struct: c.Call.Args()}
+	return Recver_recv_Params(c.Call.Args())
 }
 
 // AllocResults allocates the results struct.
 func (c Recver_recv) AllocResults() (Recver_recv_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Recver_recv_Results{Struct: r}, err
+	return Recver_recv_Results(r), err
 }
 
 // Recver_List is a list of Recver.
@@ -641,29 +976,52 @@ func NewRecver_List(s *capnp.Segment, sz int32) (Recver_List, error) {
 	return capnp.CapList[Recver](l), err
 }
 
-type Recver_recv_Params struct{ capnp.Struct }
+type Recver_recv_Params capnp.Struct
 
 // Recver_recv_Params_TypeID is the unique identifier for the type Recver_recv_Params.
 const Recver_recv_Params_TypeID = 0xdd377ddc0d2426ea
 
 func NewRecver_recv_Params(s *capnp.Segment) (Recver_recv_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Recver_recv_Params{st}, err
+	return Recver_recv_Params(st), err
 }
 
 func NewRootRecver_recv_Params(s *capnp.Segment) (Recver_recv_Params, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Recver_recv_Params{st}, err
+	return Recver_recv_Params(st), err
 }
 
 func ReadRootRecver_recv_Params(msg *capnp.Message) (Recver_recv_Params, error) {
 	root, err := msg.Root()
-	return Recver_recv_Params{root.Struct()}, err
+	return Recver_recv_Params(root.Struct()), err
 }
 
 func (s Recver_recv_Params) String() string {
-	str, _ := text.Marshal(0xdd377ddc0d2426ea, s.Struct)
+	str, _ := text.Marshal(0xdd377ddc0d2426ea, capnp.Struct(s))
 	return str
+}
+
+func (s Recver_recv_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Recver_recv_Params) DecodeFromPtr(p capnp.Ptr) Recver_recv_Params {
+	return Recver_recv_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Recver_recv_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Recver_recv_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Recver_recv_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Recver_recv_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
 }
 
 // Recver_recv_Params_List is a list of Recver_recv_Params.
@@ -672,7 +1030,7 @@ type Recver_recv_Params_List = capnp.StructList[Recver_recv_Params]
 // NewRecver_recv_Params creates a new list of Recver_recv_Params.
 func NewRecver_recv_Params_List(s *capnp.Segment, sz int32) (Recver_recv_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Recver_recv_Params]{List: l}, err
+	return capnp.StructList[Recver_recv_Params](l), err
 }
 
 // Recver_recv_Params_Future is a wrapper for a Recver_recv_Params promised by a client call.
@@ -680,44 +1038,66 @@ type Recver_recv_Params_Future struct{ *capnp.Future }
 
 func (p Recver_recv_Params_Future) Struct() (Recver_recv_Params, error) {
 	s, err := p.Future.Struct()
-	return Recver_recv_Params{s}, err
+	return Recver_recv_Params(s), err
 }
 
-type Recver_recv_Results struct{ capnp.Struct }
+type Recver_recv_Results capnp.Struct
 
 // Recver_recv_Results_TypeID is the unique identifier for the type Recver_recv_Results.
 const Recver_recv_Results_TypeID = 0xb0e88f4d0a3a1694
 
 func NewRecver_recv_Results(s *capnp.Segment) (Recver_recv_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Recver_recv_Results{st}, err
+	return Recver_recv_Results(st), err
 }
 
 func NewRootRecver_recv_Results(s *capnp.Segment) (Recver_recv_Results, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Recver_recv_Results{st}, err
+	return Recver_recv_Results(st), err
 }
 
 func ReadRootRecver_recv_Results(msg *capnp.Message) (Recver_recv_Results, error) {
 	root, err := msg.Root()
-	return Recver_recv_Results{root.Struct()}, err
+	return Recver_recv_Results(root.Struct()), err
 }
 
 func (s Recver_recv_Results) String() string {
-	str, _ := text.Marshal(0xb0e88f4d0a3a1694, s.Struct)
+	str, _ := text.Marshal(0xb0e88f4d0a3a1694, capnp.Struct(s))
 	return str
 }
 
+func (s Recver_recv_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Recver_recv_Results) DecodeFromPtr(p capnp.Ptr) Recver_recv_Results {
+	return Recver_recv_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Recver_recv_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Recver_recv_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Recver_recv_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Recver_recv_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
 func (s Recver_recv_Results) Value() (capnp.Ptr, error) {
-	return s.Struct.Ptr(0)
+	return capnp.Struct(s).Ptr(0)
 }
 
 func (s Recver_recv_Results) HasValue() bool {
-	return s.Struct.HasPtr(0)
+	return capnp.Struct(s).HasPtr(0)
 }
 
 func (s Recver_recv_Results) SetValue(v capnp.Ptr) error {
-	return s.Struct.SetPtr(0, v)
+	return capnp.Struct(s).SetPtr(0, v)
 }
 
 // Recver_recv_Results_List is a list of Recver_recv_Results.
@@ -726,7 +1106,7 @@ type Recver_recv_Results_List = capnp.StructList[Recver_recv_Results]
 // NewRecver_recv_Results creates a new list of Recver_recv_Results.
 func NewRecver_recv_Results_List(s *capnp.Segment, sz int32) (Recver_recv_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Recver_recv_Results]{List: l}, err
+	return capnp.StructList[Recver_recv_Results](l), err
 }
 
 // Recver_recv_Results_Future is a wrapper for a Recver_recv_Results promised by a client call.
@@ -734,14 +1114,14 @@ type Recver_recv_Results_Future struct{ *capnp.Future }
 
 func (p Recver_recv_Results_Future) Struct() (Recver_recv_Results, error) {
 	s, err := p.Future.Struct()
-	return Recver_recv_Results{s}, err
+	return Recver_recv_Results(s), err
 }
 
 func (p Recver_recv_Results_Future) Value() *capnp.Future {
 	return p.Future.Field(0, nil)
 }
 
-type SendCloser struct{ Client capnp.Client }
+type SendCloser capnp.Client
 
 // SendCloser_TypeID is the unique identifier for the type SendCloser.
 const SendCloser_TypeID = 0xe9a7d19a7d14e94e
@@ -757,9 +1137,9 @@ func (c SendCloser) Send(ctx context.Context, params func(Sender_send_Params) er
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Sender_send_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Sender_send_Params(s)) }
 	}
-	ans, release := c.Client.SendCall(ctx, s)
+	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return stream.StreamResult_Future{Future: ans.Future()}, release
 }
 func (c SendCloser) Close(ctx context.Context, params func(Closer_close_Params) error) (Closer_close_Results_Future, capnp.ReleaseFunc) {
@@ -773,23 +1153,78 @@ func (c SendCloser) Close(ctx context.Context, params func(Closer_close_Params) 
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Closer_close_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Closer_close_Params(s)) }
 	}
-	ans, release := c.Client.SendCall(ctx, s)
+	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Closer_close_Results_Future{Future: ans.Future()}, release
 }
 
+// String returns a string that identifies this capability for debugging
+// purposes.  Its format should not be depended on: in particular, it
+// should not be used to compare clients.  Use IsSame to compare clients
+// for equality.
+func (c SendCloser) String() string {
+	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+}
+
+// AddRef creates a new Client that refers to the same capability as c.
+// If c is nil or has resolved to null, then AddRef returns nil.
 func (c SendCloser) AddRef() SendCloser {
-	return SendCloser{
-		Client: c.Client.AddRef(),
-	}
+	return SendCloser(capnp.Client(c).AddRef())
 }
 
+// Release releases a capability reference.  If this is the last
+// reference to the capability, then the underlying resources associated
+// with the capability will be released.
+//
+// Release will panic if c has already been released, but not if c is
+// nil or resolved to null.
 func (c SendCloser) Release() {
-	c.Client.Release()
+	capnp.Client(c).Release()
 }
 
-// A SendCloser_Server is a SendCloser with a local implementation.
+// Resolve blocks until the capability is fully resolved or the Context
+// expires.
+func (c SendCloser) Resolve(ctx context.Context) error {
+	return capnp.Client(c).Resolve(ctx)
+}
+
+func (c SendCloser) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Client(c).EncodeAsPtr(seg)
+}
+
+func (SendCloser) DecodeFromPtr(p capnp.Ptr) SendCloser {
+	return SendCloser(capnp.Client{}.DecodeFromPtr(p))
+}
+
+// IsValid reports whether c is a valid reference to a capability.
+// A reference is invalid if it is nil, has resolved to null, or has
+// been released.
+func (c SendCloser) IsValid() bool {
+	return capnp.Client(c).IsValid()
+}
+
+// IsSame reports whether c and other refer to a capability created by the
+// same call to NewClient.  This can return false negatives if c or other
+// are not fully resolved: use Resolve if this is an issue.  If either
+// c or other are released, then IsSame panics.
+func (c SendCloser) IsSame(other SendCloser) bool {
+	return capnp.Client(c).IsSame(capnp.Client(other))
+}
+
+// Update the flowcontrol.FlowLimiter used to manage flow control for
+// this client. This affects all future calls, but not calls already
+// waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
+// which is also the default.
+func (c SendCloser) SetFlowLimiter(lim fc.FlowLimiter) {
+	capnp.Client(c).SetFlowLimiter(lim)
+}
+
+// Get the current flowcontrol.FlowLimiter used to manage flow control
+// for this client.
+func (c SendCloser) GetFlowLimiter() fc.FlowLimiter {
+	return capnp.Client(c).GetFlowLimiter()
+} // A SendCloser_Server is a SendCloser with a local implementation.
 type SendCloser_Server interface {
 	Send(context.Context, Sender_send) error
 
@@ -797,15 +1232,15 @@ type SendCloser_Server interface {
 }
 
 // SendCloser_NewServer creates a new Server from an implementation of SendCloser_Server.
-func SendCloser_NewServer(s SendCloser_Server, policy *server.Policy) *server.Server {
+func SendCloser_NewServer(s SendCloser_Server) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(SendCloser_Methods(nil, s), s, c, policy)
+	return server.New(SendCloser_Methods(nil, s), s, c)
 }
 
 // SendCloser_ServerToClient creates a new Client from an implementation of SendCloser_Server.
 // The caller is responsible for calling Release on the returned Client.
-func SendCloser_ServerToClient(s SendCloser_Server, policy *server.Policy) SendCloser {
-	return SendCloser{Client: capnp.NewClient(SendCloser_NewServer(s, policy))}
+func SendCloser_ServerToClient(s SendCloser_Server) SendCloser {
+	return SendCloser(capnp.NewClient(SendCloser_NewServer(s)))
 }
 
 // SendCloser_Methods appends Methods to a slice that invoke the methods on s.
@@ -851,7 +1286,7 @@ func NewSendCloser_List(s *capnp.Segment, sz int32) (SendCloser_List, error) {
 	return capnp.CapList[SendCloser](l), err
 }
 
-type PeekRecver struct{ Client capnp.Client }
+type PeekRecver capnp.Client
 
 // PeekRecver_TypeID is the unique identifier for the type PeekRecver.
 const PeekRecver_TypeID = 0x9a4abff8ccb5093c
@@ -867,9 +1302,9 @@ func (c PeekRecver) Peek(ctx context.Context, params func(Peeker_peek_Params) er
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Peeker_peek_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Peeker_peek_Params(s)) }
 	}
-	ans, release := c.Client.SendCall(ctx, s)
+	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Peeker_peek_Results_Future{Future: ans.Future()}, release
 }
 func (c PeekRecver) Recv(ctx context.Context, params func(Recver_recv_Params) error) (Recver_recv_Results_Future, capnp.ReleaseFunc) {
@@ -883,23 +1318,78 @@ func (c PeekRecver) Recv(ctx context.Context, params func(Recver_recv_Params) er
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Recver_recv_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Recver_recv_Params(s)) }
 	}
-	ans, release := c.Client.SendCall(ctx, s)
+	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Recver_recv_Results_Future{Future: ans.Future()}, release
 }
 
+// String returns a string that identifies this capability for debugging
+// purposes.  Its format should not be depended on: in particular, it
+// should not be used to compare clients.  Use IsSame to compare clients
+// for equality.
+func (c PeekRecver) String() string {
+	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+}
+
+// AddRef creates a new Client that refers to the same capability as c.
+// If c is nil or has resolved to null, then AddRef returns nil.
 func (c PeekRecver) AddRef() PeekRecver {
-	return PeekRecver{
-		Client: c.Client.AddRef(),
-	}
+	return PeekRecver(capnp.Client(c).AddRef())
 }
 
+// Release releases a capability reference.  If this is the last
+// reference to the capability, then the underlying resources associated
+// with the capability will be released.
+//
+// Release will panic if c has already been released, but not if c is
+// nil or resolved to null.
 func (c PeekRecver) Release() {
-	c.Client.Release()
+	capnp.Client(c).Release()
 }
 
-// A PeekRecver_Server is a PeekRecver with a local implementation.
+// Resolve blocks until the capability is fully resolved or the Context
+// expires.
+func (c PeekRecver) Resolve(ctx context.Context) error {
+	return capnp.Client(c).Resolve(ctx)
+}
+
+func (c PeekRecver) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Client(c).EncodeAsPtr(seg)
+}
+
+func (PeekRecver) DecodeFromPtr(p capnp.Ptr) PeekRecver {
+	return PeekRecver(capnp.Client{}.DecodeFromPtr(p))
+}
+
+// IsValid reports whether c is a valid reference to a capability.
+// A reference is invalid if it is nil, has resolved to null, or has
+// been released.
+func (c PeekRecver) IsValid() bool {
+	return capnp.Client(c).IsValid()
+}
+
+// IsSame reports whether c and other refer to a capability created by the
+// same call to NewClient.  This can return false negatives if c or other
+// are not fully resolved: use Resolve if this is an issue.  If either
+// c or other are released, then IsSame panics.
+func (c PeekRecver) IsSame(other PeekRecver) bool {
+	return capnp.Client(c).IsSame(capnp.Client(other))
+}
+
+// Update the flowcontrol.FlowLimiter used to manage flow control for
+// this client. This affects all future calls, but not calls already
+// waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
+// which is also the default.
+func (c PeekRecver) SetFlowLimiter(lim fc.FlowLimiter) {
+	capnp.Client(c).SetFlowLimiter(lim)
+}
+
+// Get the current flowcontrol.FlowLimiter used to manage flow control
+// for this client.
+func (c PeekRecver) GetFlowLimiter() fc.FlowLimiter {
+	return capnp.Client(c).GetFlowLimiter()
+} // A PeekRecver_Server is a PeekRecver with a local implementation.
 type PeekRecver_Server interface {
 	Peek(context.Context, Peeker_peek) error
 
@@ -907,15 +1397,15 @@ type PeekRecver_Server interface {
 }
 
 // PeekRecver_NewServer creates a new Server from an implementation of PeekRecver_Server.
-func PeekRecver_NewServer(s PeekRecver_Server, policy *server.Policy) *server.Server {
+func PeekRecver_NewServer(s PeekRecver_Server) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(PeekRecver_Methods(nil, s), s, c, policy)
+	return server.New(PeekRecver_Methods(nil, s), s, c)
 }
 
 // PeekRecver_ServerToClient creates a new Client from an implementation of PeekRecver_Server.
 // The caller is responsible for calling Release on the returned Client.
-func PeekRecver_ServerToClient(s PeekRecver_Server, policy *server.Policy) PeekRecver {
-	return PeekRecver{Client: capnp.NewClient(PeekRecver_NewServer(s, policy))}
+func PeekRecver_ServerToClient(s PeekRecver_Server) PeekRecver {
+	return PeekRecver(capnp.NewClient(PeekRecver_NewServer(s)))
 }
 
 // PeekRecver_Methods appends Methods to a slice that invoke the methods on s.
@@ -961,7 +1451,7 @@ func NewPeekRecver_List(s *capnp.Segment, sz int32) (PeekRecver_List, error) {
 	return capnp.CapList[PeekRecver](l), err
 }
 
-type Chan struct{ Client capnp.Client }
+type Chan capnp.Client
 
 // Chan_TypeID is the unique identifier for the type Chan.
 const Chan_TypeID = 0x95c89fe7d966f751
@@ -977,9 +1467,9 @@ func (c Chan) Send(ctx context.Context, params func(Sender_send_Params) error) (
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Sender_send_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Sender_send_Params(s)) }
 	}
-	ans, release := c.Client.SendCall(ctx, s)
+	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return stream.StreamResult_Future{Future: ans.Future()}, release
 }
 func (c Chan) Close(ctx context.Context, params func(Closer_close_Params) error) (Closer_close_Results_Future, capnp.ReleaseFunc) {
@@ -993,9 +1483,9 @@ func (c Chan) Close(ctx context.Context, params func(Closer_close_Params) error)
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Closer_close_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Closer_close_Params(s)) }
 	}
-	ans, release := c.Client.SendCall(ctx, s)
+	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Closer_close_Results_Future{Future: ans.Future()}, release
 }
 func (c Chan) Recv(ctx context.Context, params func(Recver_recv_Params) error) (Recver_recv_Results_Future, capnp.ReleaseFunc) {
@@ -1009,23 +1499,78 @@ func (c Chan) Recv(ctx context.Context, params func(Recver_recv_Params) error) (
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Recver_recv_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Recver_recv_Params(s)) }
 	}
-	ans, release := c.Client.SendCall(ctx, s)
+	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Recver_recv_Results_Future{Future: ans.Future()}, release
 }
 
+// String returns a string that identifies this capability for debugging
+// purposes.  Its format should not be depended on: in particular, it
+// should not be used to compare clients.  Use IsSame to compare clients
+// for equality.
+func (c Chan) String() string {
+	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+}
+
+// AddRef creates a new Client that refers to the same capability as c.
+// If c is nil or has resolved to null, then AddRef returns nil.
 func (c Chan) AddRef() Chan {
-	return Chan{
-		Client: c.Client.AddRef(),
-	}
+	return Chan(capnp.Client(c).AddRef())
 }
 
+// Release releases a capability reference.  If this is the last
+// reference to the capability, then the underlying resources associated
+// with the capability will be released.
+//
+// Release will panic if c has already been released, but not if c is
+// nil or resolved to null.
 func (c Chan) Release() {
-	c.Client.Release()
+	capnp.Client(c).Release()
 }
 
-// A Chan_Server is a Chan with a local implementation.
+// Resolve blocks until the capability is fully resolved or the Context
+// expires.
+func (c Chan) Resolve(ctx context.Context) error {
+	return capnp.Client(c).Resolve(ctx)
+}
+
+func (c Chan) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Client(c).EncodeAsPtr(seg)
+}
+
+func (Chan) DecodeFromPtr(p capnp.Ptr) Chan {
+	return Chan(capnp.Client{}.DecodeFromPtr(p))
+}
+
+// IsValid reports whether c is a valid reference to a capability.
+// A reference is invalid if it is nil, has resolved to null, or has
+// been released.
+func (c Chan) IsValid() bool {
+	return capnp.Client(c).IsValid()
+}
+
+// IsSame reports whether c and other refer to a capability created by the
+// same call to NewClient.  This can return false negatives if c or other
+// are not fully resolved: use Resolve if this is an issue.  If either
+// c or other are released, then IsSame panics.
+func (c Chan) IsSame(other Chan) bool {
+	return capnp.Client(c).IsSame(capnp.Client(other))
+}
+
+// Update the flowcontrol.FlowLimiter used to manage flow control for
+// this client. This affects all future calls, but not calls already
+// waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
+// which is also the default.
+func (c Chan) SetFlowLimiter(lim fc.FlowLimiter) {
+	capnp.Client(c).SetFlowLimiter(lim)
+}
+
+// Get the current flowcontrol.FlowLimiter used to manage flow control
+// for this client.
+func (c Chan) GetFlowLimiter() fc.FlowLimiter {
+	return capnp.Client(c).GetFlowLimiter()
+} // A Chan_Server is a Chan with a local implementation.
 type Chan_Server interface {
 	Send(context.Context, Sender_send) error
 
@@ -1035,15 +1580,15 @@ type Chan_Server interface {
 }
 
 // Chan_NewServer creates a new Server from an implementation of Chan_Server.
-func Chan_NewServer(s Chan_Server, policy *server.Policy) *server.Server {
+func Chan_NewServer(s Chan_Server) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(Chan_Methods(nil, s), s, c, policy)
+	return server.New(Chan_Methods(nil, s), s, c)
 }
 
 // Chan_ServerToClient creates a new Client from an implementation of Chan_Server.
 // The caller is responsible for calling Release on the returned Client.
-func Chan_ServerToClient(s Chan_Server, policy *server.Policy) Chan {
-	return Chan{Client: capnp.NewClient(Chan_NewServer(s, policy))}
+func Chan_ServerToClient(s Chan_Server) Chan {
+	return Chan(capnp.NewClient(Chan_NewServer(s)))
 }
 
 // Chan_Methods appends Methods to a slice that invoke the methods on s.
@@ -1101,7 +1646,7 @@ func NewChan_List(s *capnp.Segment, sz int32) (Chan_List, error) {
 	return capnp.CapList[Chan](l), err
 }
 
-type PeekableChan struct{ Client capnp.Client }
+type PeekableChan capnp.Client
 
 // PeekableChan_TypeID is the unique identifier for the type PeekableChan.
 const PeekableChan_TypeID = 0xb527cbca9bbd8178
@@ -1117,9 +1662,9 @@ func (c PeekableChan) Send(ctx context.Context, params func(Sender_send_Params) 
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Sender_send_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Sender_send_Params(s)) }
 	}
-	ans, release := c.Client.SendCall(ctx, s)
+	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return stream.StreamResult_Future{Future: ans.Future()}, release
 }
 func (c PeekableChan) Close(ctx context.Context, params func(Closer_close_Params) error) (Closer_close_Results_Future, capnp.ReleaseFunc) {
@@ -1133,9 +1678,9 @@ func (c PeekableChan) Close(ctx context.Context, params func(Closer_close_Params
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Closer_close_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Closer_close_Params(s)) }
 	}
-	ans, release := c.Client.SendCall(ctx, s)
+	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Closer_close_Results_Future{Future: ans.Future()}, release
 }
 func (c PeekableChan) Peek(ctx context.Context, params func(Peeker_peek_Params) error) (Peeker_peek_Results_Future, capnp.ReleaseFunc) {
@@ -1149,9 +1694,9 @@ func (c PeekableChan) Peek(ctx context.Context, params func(Peeker_peek_Params) 
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Peeker_peek_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Peeker_peek_Params(s)) }
 	}
-	ans, release := c.Client.SendCall(ctx, s)
+	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Peeker_peek_Results_Future{Future: ans.Future()}, release
 }
 func (c PeekableChan) Recv(ctx context.Context, params func(Recver_recv_Params) error) (Recver_recv_Results_Future, capnp.ReleaseFunc) {
@@ -1165,23 +1710,78 @@ func (c PeekableChan) Recv(ctx context.Context, params func(Recver_recv_Params) 
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Recver_recv_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Recver_recv_Params(s)) }
 	}
-	ans, release := c.Client.SendCall(ctx, s)
+	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Recver_recv_Results_Future{Future: ans.Future()}, release
 }
 
+// String returns a string that identifies this capability for debugging
+// purposes.  Its format should not be depended on: in particular, it
+// should not be used to compare clients.  Use IsSame to compare clients
+// for equality.
+func (c PeekableChan) String() string {
+	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+}
+
+// AddRef creates a new Client that refers to the same capability as c.
+// If c is nil or has resolved to null, then AddRef returns nil.
 func (c PeekableChan) AddRef() PeekableChan {
-	return PeekableChan{
-		Client: c.Client.AddRef(),
-	}
+	return PeekableChan(capnp.Client(c).AddRef())
 }
 
+// Release releases a capability reference.  If this is the last
+// reference to the capability, then the underlying resources associated
+// with the capability will be released.
+//
+// Release will panic if c has already been released, but not if c is
+// nil or resolved to null.
 func (c PeekableChan) Release() {
-	c.Client.Release()
+	capnp.Client(c).Release()
 }
 
-// A PeekableChan_Server is a PeekableChan with a local implementation.
+// Resolve blocks until the capability is fully resolved or the Context
+// expires.
+func (c PeekableChan) Resolve(ctx context.Context) error {
+	return capnp.Client(c).Resolve(ctx)
+}
+
+func (c PeekableChan) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Client(c).EncodeAsPtr(seg)
+}
+
+func (PeekableChan) DecodeFromPtr(p capnp.Ptr) PeekableChan {
+	return PeekableChan(capnp.Client{}.DecodeFromPtr(p))
+}
+
+// IsValid reports whether c is a valid reference to a capability.
+// A reference is invalid if it is nil, has resolved to null, or has
+// been released.
+func (c PeekableChan) IsValid() bool {
+	return capnp.Client(c).IsValid()
+}
+
+// IsSame reports whether c and other refer to a capability created by the
+// same call to NewClient.  This can return false negatives if c or other
+// are not fully resolved: use Resolve if this is an issue.  If either
+// c or other are released, then IsSame panics.
+func (c PeekableChan) IsSame(other PeekableChan) bool {
+	return capnp.Client(c).IsSame(capnp.Client(other))
+}
+
+// Update the flowcontrol.FlowLimiter used to manage flow control for
+// this client. This affects all future calls, but not calls already
+// waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
+// which is also the default.
+func (c PeekableChan) SetFlowLimiter(lim fc.FlowLimiter) {
+	capnp.Client(c).SetFlowLimiter(lim)
+}
+
+// Get the current flowcontrol.FlowLimiter used to manage flow control
+// for this client.
+func (c PeekableChan) GetFlowLimiter() fc.FlowLimiter {
+	return capnp.Client(c).GetFlowLimiter()
+} // A PeekableChan_Server is a PeekableChan with a local implementation.
 type PeekableChan_Server interface {
 	Send(context.Context, Sender_send) error
 
@@ -1193,15 +1793,15 @@ type PeekableChan_Server interface {
 }
 
 // PeekableChan_NewServer creates a new Server from an implementation of PeekableChan_Server.
-func PeekableChan_NewServer(s PeekableChan_Server, policy *server.Policy) *server.Server {
+func PeekableChan_NewServer(s PeekableChan_Server) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(PeekableChan_Methods(nil, s), s, c, policy)
+	return server.New(PeekableChan_Methods(nil, s), s, c)
 }
 
 // PeekableChan_ServerToClient creates a new Client from an implementation of PeekableChan_Server.
 // The caller is responsible for calling Release on the returned Client.
-func PeekableChan_ServerToClient(s PeekableChan_Server, policy *server.Policy) PeekableChan {
-	return PeekableChan{Client: capnp.NewClient(PeekableChan_NewServer(s, policy))}
+func PeekableChan_ServerToClient(s PeekableChan_Server) PeekableChan {
+	return PeekableChan(capnp.NewClient(PeekableChan_NewServer(s)))
 }
 
 // PeekableChan_Methods appends Methods to a slice that invoke the methods on s.
