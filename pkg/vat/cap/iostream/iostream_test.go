@@ -14,7 +14,7 @@ func TestStream(t *testing.T) {
 	t.Parallel()
 
 	buf := &mockCloser{Buffer: new(bytes.Buffer)}
-	stream := iostream.New(buf, nil)
+	stream := iostream.New(buf)
 	defer stream.Release()
 
 	stream.AddRef().Release() // for test coverage
@@ -42,13 +42,13 @@ func TestStream(t *testing.T) {
 
 func TestProvider(t *testing.T) {
 	rbuf := &mockCloser{Buffer: bytes.NewBufferString("hello, world!")}
-	p := iostream.NewProvider(rbuf, nil)
+	p := iostream.NewProvider(rbuf)
 	defer p.Release()
 
 	p.AddRef().Release() // for test coverage
 
 	buf := &mockCloser{Buffer: new(bytes.Buffer)}
-	f, release := p.Provide(context.TODO(), iostream.New(buf, nil))
+	f, release := p.Provide(context.TODO(), iostream.New(buf))
 	defer release()
 
 	require.NoError(t, f.Err(), "should succeed")

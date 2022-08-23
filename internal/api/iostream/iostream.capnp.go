@@ -5,14 +5,16 @@ package iostream
 import (
 	capnp "capnproto.org/go/capnp/v3"
 	text "capnproto.org/go/capnp/v3/encoding/text"
+	fc "capnproto.org/go/capnp/v3/flowcontrol"
 	schemas "capnproto.org/go/capnp/v3/schemas"
 	server "capnproto.org/go/capnp/v3/server"
 	stream "capnproto.org/go/capnp/v3/std/capnp/stream"
 	context "context"
+	fmt "fmt"
 	channel "github.com/wetware/ww/internal/api/channel"
 )
 
-type Stream struct{ Client capnp.Client }
+type Stream capnp.Client
 
 // Stream_TypeID is the unique identifier for the type Stream.
 const Stream_TypeID = 0x800fee1ed6b441e2
@@ -28,9 +30,9 @@ func (c Stream) Send(ctx context.Context, params func(channel.Sender_send_Params
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(channel.Sender_send_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(channel.Sender_send_Params(s)) }
 	}
-	ans, release := c.Client.SendCall(ctx, s)
+	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return stream.StreamResult_Future{Future: ans.Future()}, release
 }
 func (c Stream) Close(ctx context.Context, params func(channel.Closer_close_Params) error) (channel.Closer_close_Results_Future, capnp.ReleaseFunc) {
@@ -44,23 +46,78 @@ func (c Stream) Close(ctx context.Context, params func(channel.Closer_close_Para
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(channel.Closer_close_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(channel.Closer_close_Params(s)) }
 	}
-	ans, release := c.Client.SendCall(ctx, s)
+	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return channel.Closer_close_Results_Future{Future: ans.Future()}, release
 }
 
+// String returns a string that identifies this capability for debugging
+// purposes.  Its format should not be depended on: in particular, it
+// should not be used to compare clients.  Use IsSame to compare clients
+// for equality.
+func (c Stream) String() string {
+	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+}
+
+// AddRef creates a new Client that refers to the same capability as c.
+// If c is nil or has resolved to null, then AddRef returns nil.
 func (c Stream) AddRef() Stream {
-	return Stream{
-		Client: c.Client.AddRef(),
-	}
+	return Stream(capnp.Client(c).AddRef())
 }
 
+// Release releases a capability reference.  If this is the last
+// reference to the capability, then the underlying resources associated
+// with the capability will be released.
+//
+// Release will panic if c has already been released, but not if c is
+// nil or resolved to null.
 func (c Stream) Release() {
-	c.Client.Release()
+	capnp.Client(c).Release()
 }
 
-// A Stream_Server is a Stream with a local implementation.
+// Resolve blocks until the capability is fully resolved or the Context
+// expires.
+func (c Stream) Resolve(ctx context.Context) error {
+	return capnp.Client(c).Resolve(ctx)
+}
+
+func (c Stream) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Client(c).EncodeAsPtr(seg)
+}
+
+func (Stream) DecodeFromPtr(p capnp.Ptr) Stream {
+	return Stream(capnp.Client{}.DecodeFromPtr(p))
+}
+
+// IsValid reports whether c is a valid reference to a capability.
+// A reference is invalid if it is nil, has resolved to null, or has
+// been released.
+func (c Stream) IsValid() bool {
+	return capnp.Client(c).IsValid()
+}
+
+// IsSame reports whether c and other refer to a capability created by the
+// same call to NewClient.  This can return false negatives if c or other
+// are not fully resolved: use Resolve if this is an issue.  If either
+// c or other are released, then IsSame panics.
+func (c Stream) IsSame(other Stream) bool {
+	return capnp.Client(c).IsSame(capnp.Client(other))
+}
+
+// Update the flowcontrol.FlowLimiter used to manage flow control for
+// this client. This affects all future calls, but not calls already
+// waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
+// which is also the default.
+func (c Stream) SetFlowLimiter(lim fc.FlowLimiter) {
+	capnp.Client(c).SetFlowLimiter(lim)
+}
+
+// Get the current flowcontrol.FlowLimiter used to manage flow control
+// for this client.
+func (c Stream) GetFlowLimiter() fc.FlowLimiter {
+	return capnp.Client(c).GetFlowLimiter()
+} // A Stream_Server is a Stream with a local implementation.
 type Stream_Server interface {
 	Send(context.Context, channel.Sender_send) error
 
@@ -68,15 +125,15 @@ type Stream_Server interface {
 }
 
 // Stream_NewServer creates a new Server from an implementation of Stream_Server.
-func Stream_NewServer(s Stream_Server, policy *server.Policy) *server.Server {
+func Stream_NewServer(s Stream_Server) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(Stream_Methods(nil, s), s, c, policy)
+	return server.New(Stream_Methods(nil, s), s, c)
 }
 
 // Stream_ServerToClient creates a new Client from an implementation of Stream_Server.
 // The caller is responsible for calling Release on the returned Client.
-func Stream_ServerToClient(s Stream_Server, policy *server.Policy) Stream {
-	return Stream{Client: capnp.NewClient(Stream_NewServer(s, policy))}
+func Stream_ServerToClient(s Stream_Server) Stream {
+	return Stream(capnp.NewClient(Stream_NewServer(s)))
 }
 
 // Stream_Methods appends Methods to a slice that invoke the methods on s.
@@ -122,7 +179,7 @@ func NewStream_List(s *capnp.Segment, sz int32) (Stream_List, error) {
 	return capnp.CapList[Stream](l), err
 }
 
-type Provider struct{ Client capnp.Client }
+type Provider capnp.Client
 
 // Provider_TypeID is the unique identifier for the type Provider.
 const Provider_TypeID = 0xec225e7f00ef3b55
@@ -138,37 +195,92 @@ func (c Provider) Provide(ctx context.Context, params func(Provider_provide_Para
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Provider_provide_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Provider_provide_Params(s)) }
 	}
-	ans, release := c.Client.SendCall(ctx, s)
+	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Provider_provide_Results_Future{Future: ans.Future()}, release
 }
 
+// String returns a string that identifies this capability for debugging
+// purposes.  Its format should not be depended on: in particular, it
+// should not be used to compare clients.  Use IsSame to compare clients
+// for equality.
+func (c Provider) String() string {
+	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+}
+
+// AddRef creates a new Client that refers to the same capability as c.
+// If c is nil or has resolved to null, then AddRef returns nil.
 func (c Provider) AddRef() Provider {
-	return Provider{
-		Client: c.Client.AddRef(),
-	}
+	return Provider(capnp.Client(c).AddRef())
 }
 
+// Release releases a capability reference.  If this is the last
+// reference to the capability, then the underlying resources associated
+// with the capability will be released.
+//
+// Release will panic if c has already been released, but not if c is
+// nil or resolved to null.
 func (c Provider) Release() {
-	c.Client.Release()
+	capnp.Client(c).Release()
 }
 
-// A Provider_Server is a Provider with a local implementation.
+// Resolve blocks until the capability is fully resolved or the Context
+// expires.
+func (c Provider) Resolve(ctx context.Context) error {
+	return capnp.Client(c).Resolve(ctx)
+}
+
+func (c Provider) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Client(c).EncodeAsPtr(seg)
+}
+
+func (Provider) DecodeFromPtr(p capnp.Ptr) Provider {
+	return Provider(capnp.Client{}.DecodeFromPtr(p))
+}
+
+// IsValid reports whether c is a valid reference to a capability.
+// A reference is invalid if it is nil, has resolved to null, or has
+// been released.
+func (c Provider) IsValid() bool {
+	return capnp.Client(c).IsValid()
+}
+
+// IsSame reports whether c and other refer to a capability created by the
+// same call to NewClient.  This can return false negatives if c or other
+// are not fully resolved: use Resolve if this is an issue.  If either
+// c or other are released, then IsSame panics.
+func (c Provider) IsSame(other Provider) bool {
+	return capnp.Client(c).IsSame(capnp.Client(other))
+}
+
+// Update the flowcontrol.FlowLimiter used to manage flow control for
+// this client. This affects all future calls, but not calls already
+// waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
+// which is also the default.
+func (c Provider) SetFlowLimiter(lim fc.FlowLimiter) {
+	capnp.Client(c).SetFlowLimiter(lim)
+}
+
+// Get the current flowcontrol.FlowLimiter used to manage flow control
+// for this client.
+func (c Provider) GetFlowLimiter() fc.FlowLimiter {
+	return capnp.Client(c).GetFlowLimiter()
+} // A Provider_Server is a Provider with a local implementation.
 type Provider_Server interface {
 	Provide(context.Context, Provider_provide) error
 }
 
 // Provider_NewServer creates a new Server from an implementation of Provider_Server.
-func Provider_NewServer(s Provider_Server, policy *server.Policy) *server.Server {
+func Provider_NewServer(s Provider_Server) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(Provider_Methods(nil, s), s, c, policy)
+	return server.New(Provider_Methods(nil, s), s, c)
 }
 
 // Provider_ServerToClient creates a new Client from an implementation of Provider_Server.
 // The caller is responsible for calling Release on the returned Client.
-func Provider_ServerToClient(s Provider_Server, policy *server.Policy) Provider {
-	return Provider{Client: capnp.NewClient(Provider_NewServer(s, policy))}
+func Provider_ServerToClient(s Provider_Server) Provider {
+	return Provider(capnp.NewClient(Provider_NewServer(s)))
 }
 
 // Provider_Methods appends Methods to a slice that invoke the methods on s.
@@ -201,13 +313,13 @@ type Provider_provide struct {
 
 // Args returns the call's arguments.
 func (c Provider_provide) Args() Provider_provide_Params {
-	return Provider_provide_Params{Struct: c.Call.Args()}
+	return Provider_provide_Params(c.Call.Args())
 }
 
 // AllocResults allocates the results struct.
 func (c Provider_provide) AllocResults() (Provider_provide_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Provider_provide_Results{Struct: r}, err
+	return Provider_provide_Results(r), err
 }
 
 // Provider_List is a list of Provider.
@@ -219,47 +331,69 @@ func NewProvider_List(s *capnp.Segment, sz int32) (Provider_List, error) {
 	return capnp.CapList[Provider](l), err
 }
 
-type Provider_provide_Params struct{ capnp.Struct }
+type Provider_provide_Params capnp.Struct
 
 // Provider_provide_Params_TypeID is the unique identifier for the type Provider_provide_Params.
 const Provider_provide_Params_TypeID = 0xbc8b7aa049d95800
 
 func NewProvider_provide_Params(s *capnp.Segment) (Provider_provide_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Provider_provide_Params{st}, err
+	return Provider_provide_Params(st), err
 }
 
 func NewRootProvider_provide_Params(s *capnp.Segment) (Provider_provide_Params, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Provider_provide_Params{st}, err
+	return Provider_provide_Params(st), err
 }
 
 func ReadRootProvider_provide_Params(msg *capnp.Message) (Provider_provide_Params, error) {
 	root, err := msg.Root()
-	return Provider_provide_Params{root.Struct()}, err
+	return Provider_provide_Params(root.Struct()), err
 }
 
 func (s Provider_provide_Params) String() string {
-	str, _ := text.Marshal(0xbc8b7aa049d95800, s.Struct)
+	str, _ := text.Marshal(0xbc8b7aa049d95800, capnp.Struct(s))
 	return str
 }
 
+func (s Provider_provide_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Provider_provide_Params) DecodeFromPtr(p capnp.Ptr) Provider_provide_Params {
+	return Provider_provide_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Provider_provide_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Provider_provide_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Provider_provide_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Provider_provide_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
 func (s Provider_provide_Params) Stream() Stream {
-	p, _ := s.Struct.Ptr(0)
-	return Stream{Client: p.Interface().Client()}
+	p, _ := capnp.Struct(s).Ptr(0)
+	return Stream(p.Interface().Client())
 }
 
 func (s Provider_provide_Params) HasStream() bool {
-	return s.Struct.HasPtr(0)
+	return capnp.Struct(s).HasPtr(0)
 }
 
 func (s Provider_provide_Params) SetStream(v Stream) error {
-	if !v.Client.IsValid() {
-		return s.Struct.SetPtr(0, capnp.Ptr{})
+	if !v.IsValid() {
+		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
 	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(v.Client))
-	return s.Struct.SetPtr(0, in.ToPtr())
+	in := capnp.NewInterface(seg, seg.Message().AddCap(capnp.Client(v)))
+	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
 // Provider_provide_Params_List is a list of Provider_provide_Params.
@@ -268,7 +402,7 @@ type Provider_provide_Params_List = capnp.StructList[Provider_provide_Params]
 // NewProvider_provide_Params creates a new list of Provider_provide_Params.
 func NewProvider_provide_Params_List(s *capnp.Segment, sz int32) (Provider_provide_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Provider_provide_Params]{List: l}, err
+	return capnp.StructList[Provider_provide_Params](l), err
 }
 
 // Provider_provide_Params_Future is a wrapper for a Provider_provide_Params promised by a client call.
@@ -276,36 +410,59 @@ type Provider_provide_Params_Future struct{ *capnp.Future }
 
 func (p Provider_provide_Params_Future) Struct() (Provider_provide_Params, error) {
 	s, err := p.Future.Struct()
-	return Provider_provide_Params{s}, err
+	return Provider_provide_Params(s), err
 }
 
 func (p Provider_provide_Params_Future) Stream() Stream {
-	return Stream{Client: p.Future.Field(0, nil).Client()}
+	return Stream(p.Future.Field(0, nil).Client())
 }
 
-type Provider_provide_Results struct{ capnp.Struct }
+type Provider_provide_Results capnp.Struct
 
 // Provider_provide_Results_TypeID is the unique identifier for the type Provider_provide_Results.
 const Provider_provide_Results_TypeID = 0xfcf105dc8b5ae862
 
 func NewProvider_provide_Results(s *capnp.Segment) (Provider_provide_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Provider_provide_Results{st}, err
+	return Provider_provide_Results(st), err
 }
 
 func NewRootProvider_provide_Results(s *capnp.Segment) (Provider_provide_Results, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Provider_provide_Results{st}, err
+	return Provider_provide_Results(st), err
 }
 
 func ReadRootProvider_provide_Results(msg *capnp.Message) (Provider_provide_Results, error) {
 	root, err := msg.Root()
-	return Provider_provide_Results{root.Struct()}, err
+	return Provider_provide_Results(root.Struct()), err
 }
 
 func (s Provider_provide_Results) String() string {
-	str, _ := text.Marshal(0xfcf105dc8b5ae862, s.Struct)
+	str, _ := text.Marshal(0xfcf105dc8b5ae862, capnp.Struct(s))
 	return str
+}
+
+func (s Provider_provide_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Provider_provide_Results) DecodeFromPtr(p capnp.Ptr) Provider_provide_Results {
+	return Provider_provide_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Provider_provide_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Provider_provide_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Provider_provide_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Provider_provide_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
 }
 
 // Provider_provide_Results_List is a list of Provider_provide_Results.
@@ -314,7 +471,7 @@ type Provider_provide_Results_List = capnp.StructList[Provider_provide_Results]
 // NewProvider_provide_Results creates a new list of Provider_provide_Results.
 func NewProvider_provide_Results_List(s *capnp.Segment, sz int32) (Provider_provide_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Provider_provide_Results]{List: l}, err
+	return capnp.StructList[Provider_provide_Results](l), err
 }
 
 // Provider_provide_Results_Future is a wrapper for a Provider_provide_Results promised by a client call.
@@ -322,7 +479,7 @@ type Provider_provide_Results_Future struct{ *capnp.Future }
 
 func (p Provider_provide_Results_Future) Struct() (Provider_provide_Results, error) {
 	s, err := p.Future.Struct()
-	return Provider_provide_Results{s}, err
+	return Provider_provide_Results(s), err
 }
 
 const schema_89c985e63e991441 = "x\xdat\xd0?HBQ\x14\x06\xf0\xef\xbcs\x9f\xaf" +

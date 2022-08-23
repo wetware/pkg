@@ -8,7 +8,6 @@ import (
 	"unsafe"
 
 	"capnproto.org/go/capnp/v3"
-	"capnproto.org/go/capnp/v3/server"
 	chan_api "github.com/wetware/ww/internal/api/channel"
 	"github.com/wetware/ww/internal/api/iostream"
 	"github.com/wetware/ww/pkg/vat"
@@ -23,21 +22,19 @@ var ErrClosed = errors.New("closed")
 type Provider iostream.Provider
 
 func (p Provider) AddRef() Provider {
-	return Provider{
-		Client: p.Client.AddRef(),
-	}
+	return Provider(capnp.Client(p).AddRef())
 }
 
 func (p Provider) Release() {
-	p.Client.Release()
+	capnp.Client(p).Release()
 }
 
 // NewProvider wraps r in a StreamReader and sets the supplied policy.
 // If r implements io.Closer, it will be called automatically when
 // the returned StreamReader shuts down.
-func NewProvider(r io.Reader, p *server.Policy) Provider {
+func NewProvider(r io.Reader) Provider {
 	sr := &sreader{Reader: r}
-	return Provider(iostream.Provider_ServerToClient(sr, p))
+	return Provider(iostream.Provider_ServerToClient(sr))
 }
 
 // Provide assigns the supplied StreamWriter as the destination for
@@ -76,13 +73,11 @@ func (p Provider) Provide(ctx context.Context, s Stream) (vat.Future, capnp.Rele
 type Stream iostream.Provider
 
 func (s Stream) AddRef() Stream {
-	return Stream{
-		Client: s.Client.AddRef(),
-	}
+	return Stream(capnp.Client(s).AddRef())
 }
 
 func (s Stream) Release() {
-	s.Client.Release()
+	capnp.Client(s).Release()
 }
 
 // New wraps the supplied WriteCloser in a StreamWriter.
@@ -94,9 +89,9 @@ func (s Stream) Release() {
 // If w implements io.Closer, it will be closed before the call to
 // StreamWriter.Close() resolves, or after the last client reference
 // is released, whichever comes first.
-func New(w io.Writer, p *server.Policy) Stream {
+func New(w io.Writer) Stream {
 	s := &swriter{Writer: w}
-	return Stream(iostream.Stream_ServerToClient(s, p))
+	return Stream(iostream.Stream_ServerToClient(s))
 }
 
 // Write the bytes to the underlying stream.  Contrary to Go's io.Write,
