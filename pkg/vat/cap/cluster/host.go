@@ -6,8 +6,8 @@ import (
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
-	"capnproto.org/go/capnp/v3/server"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/wetware/casm/pkg/cluster/routing"
 	"github.com/wetware/ww/internal/api/cluster"
 	"github.com/wetware/ww/pkg/vat"
 	"github.com/wetware/ww/pkg/vat/cap/anchor"
@@ -16,6 +16,12 @@ import (
 var HostCapability = vat.BasicCap{
 	"host/packed",
 	"host"}
+
+// RoutingTable provides a global view of namespace peers.
+type RoutingTable interface {
+	Iter() routing.Iterator
+	Lookup(peer.ID) (routing.Record, bool)
+}
 
 /*----------------------------*
 |                             |
@@ -32,18 +38,13 @@ type Host struct {
 	Info   peer.AddrInfo
 }
 
-func (h *Host) View(ctx context.Context, d Dialer) (FutureView, capnp.ReleaseFunc) {
-	f, release := h.resolve(ctx, d).View(ctx, nil)
-	return FutureView(f), release
-}
-
 func (h *Host) Ls(ctx context.Context, d Dialer) (*anchor.Iterator, capnp.ReleaseFunc) {
-	return anchor.Anchor{Client: h.resolve(ctx, d).Client}.Ls(ctx)
+	return anchor.Anchor(h.resolve(ctx, d)).Ls(ctx)
 }
 
 // Walk to the register located at path.  Panics if len(path) == 0.
 func (h *Host) Walk(ctx context.Context, d Dialer, path anchor.Path) (anchor.Anchor, capnp.ReleaseFunc) {
-	return anchor.Anchor{Client: h.resolve(ctx, d).Client}.Walk(ctx, path)
+	return anchor.Anchor(h.resolve(ctx, d)).Walk(ctx, path)
 }
 
 func (h *Host) resolve(ctx context.Context, d Dialer) cluster.Host {
@@ -57,27 +58,7 @@ func (h *Host) resolve(ctx context.Context, d Dialer) cluster.Host {
 		}
 	})
 
-	return cluster.Host{Client: h.Client}
-}
-
-type FutureView cluster.Host_view_Results_Future
-
-func (f FutureView) Err() error {
-	_, err := cluster.Host_view_Results_Future(f).Struct()
-	return err
-}
-
-func (f FutureView) View() View {
-	return View(cluster.Host_view_Results_Future(f).View())
-}
-
-func (f FutureView) Await(ctx context.Context) (View, error) {
-	select {
-	case <-f.Done():
-		return f.View(), f.Err()
-	case <-ctx.Done():
-		return View{}, ctx.Err()
-	}
+	return cluster.Host(h.Client)
 }
 
 /*---------------------------*
@@ -92,11 +73,6 @@ func (f FutureView) Await(ctx context.Context) (View, error) {
 // The zero-value HostServer is ready to use.
 type HostServer struct {
 	once sync.Once
-
-	// The server policy for client instances created by Client().
-	// If nil, reasonable defaults are used. Callers MUST set this
-	// value before the first call to Client().
-	*server.Policy
 
 	// RoutingTable provides a global view of namespace peers.
 	// Callers MUST set this value before the first call to Client()
@@ -115,18 +91,5 @@ func (h *HostServer) Client() capnp.Client {
 		}
 	})
 
-	return cluster.Host_ServerToClient(h, h.Policy).Client
-}
-
-func (h *HostServer) View(ctx context.Context, call cluster.Host_view) error {
-	res, err := call.AllocResults()
-	if err != nil {
-		return err
-	}
-
-	view := cluster.View_ServerToClient(ViewServer{
-		RoutingTable: h.RoutingTable,
-	}, h.Policy)
-
-	return res.SetView(view)
+	return capnp.Client(cluster.Host_ServerToClient(h))
 }

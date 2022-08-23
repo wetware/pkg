@@ -22,5 +22,5 @@ interface View {
 
 
 interface Host extends(import "anchor.capnp".Anchor) {
-    view @0 () -> (view :View);
+    # view @0 () -> (view :View);
 }
