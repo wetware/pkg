@@ -1,8 +1,22 @@
 package start
 
 import (
+	"context"
+
+	"github.com/lthibault/log"
+
 	"github.com/urfave/cli/v2"
+	"go.uber.org/fx"
+
 	"github.com/wetware/ww/internal/runtime"
+	runtimeutil "github.com/wetware/ww/internal/util/runtime"
+	"github.com/wetware/ww/pkg/server"
+)
+
+var (
+	app    *fx.App
+	logger log.Logger
+	node   *server.Node
 )
 
 var flags = []cli.Flag{
@@ -42,6 +56,50 @@ func Command() *cli.Command {
 		Name:   "start",
 		Usage:  "start a host process",
 		Flags:  flags,
-		Action: runtime.Serve,
+		Before: setup(),
+		Action: serve(),
+		After:  teardown(),
+	}
+}
+
+func setup() cli.BeforeFunc {
+	return func(c *cli.Context) error {
+		app = fx.New(
+			runtime.Prelude(runtimeutil.New(c)),
+			fx.Populate(&logger, &node),
+			runtime.Server())
+
+		return start(c.Context, app)
+	}
+}
+
+func serve() cli.ActionFunc {
+	return func(*cli.Context) error {
+		logger.Info("wetware started")
+
+		signal := <-app.Done()
+		logger.
+			WithField("signal", signal).
+			Warn("shutdown signal received")
+
+		return nil
+	}
+}
+
+func start(ctx context.Context, app *fx.App) error {
+	ctx, cancel := context.WithTimeout(ctx, app.StartTimeout())
+	defer cancel()
+
+	return app.Start(ctx)
+}
+
+func teardown() cli.AfterFunc {
+	return func(c *cli.Context) error {
+		ctx, cancel := context.WithTimeout(
+			context.Background(),
+			app.StopTimeout())
+		defer cancel()
+
+		return app.Stop(ctx)
 	}
 }

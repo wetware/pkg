@@ -1,111 +1,47 @@
 package server
 
 import (
-	"context"
 	"fmt"
 
-	"github.com/google/uuid"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/lthibault/log"
+	"go.uber.org/fx"
 
+	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/cluster"
-	statsdutil "github.com/wetware/ww/internal/util/statsd"
-	"github.com/wetware/ww/pkg/vat"
-
-	cluster_cap "github.com/wetware/ww/pkg/vat/cap/cluster"
-	pubsub_cap "github.com/wetware/ww/pkg/vat/cap/pubsub"
+	ww_cluster "github.com/wetware/ww/pkg/cluster"
 )
 
-type PubSub interface {
-	Join(string, ...pubsub.TopicOpt) (*pubsub.Topic, error)
-	RegisterTopicValidator(string, interface{}, ...pubsub.ValidatorOpt) error
-	UnregisterTopicValidator(string) error
-}
-
 type Joiner struct {
-	log     log.Logger
-	opts    []cluster.Option
-	metrics *statsdutil.MetricsReporter
+	fx.In
+
+	Log log.Logger
+	Vat casm.Vat
+	// Metrics casm.Metrics          `optional:"true"`  // XXX - implement before merging
+	Options []cluster.Option `group:"custer"`
 }
 
-func NewJoiner(opt ...Option) Joiner {
-	var j Joiner
-	for _, option := range withDefault(opt) {
-		option(&j)
-	}
-	return j
-}
-
-func (j Joiner) Join(ctx context.Context, vat vat.Network, ps PubSub) (*Node, error) {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	// generate instance ID
-	id, err := uuid.NewRandom()
-	if err != nil {
-		return nil, fmt.Errorf("uuid: %w", err)
-	}
-
+func (j Joiner) Join(ps cluster.PubSub) (*Node, error) {
 	// join the cluster topic
-	c, err := cluster.New(ctx, ps, j.options(vat, id)...)
+	c, err := cluster.New(ps, j.options()...)
 	if err != nil {
 		return nil, fmt.Errorf("join cluster: %w", err)
 	}
 
-	// add metric provider
-	j.metrics.Add(ClusterMetrics{View: c.View()})
+	// export the root Host capability
+	j.Vat.Export(
+		ww_cluster.HostCapability,
+		&ww_cluster.HostServer{Cluster: c})
 
-	// export default capabilities
-	logger := j.log.With(vat)
-
-	vat.Export(
-		pubsub_cap.Capability,
-		pubsub_cap.New(ps, pubsub_cap.WithLogger(logger)))
-
-	vat.Export(
-		cluster_cap.HostCapability,
-		&cluster_cap.HostServer{
-			RoutingTable: c.View()},
-	)
-
-	// etc ...
-
-	// Bootstrap the node
 	return &Node{
-		id:  id,
-		vat: vat,
-		c:   c,
-	}, c.Bootstrap(ctx)
+		Vat:  j.Vat,
+		Node: c,
+	}, nil
 }
 
-func (j Joiner) options(vat vat.Network, u uuid.UUID) []cluster.Option {
-	log := j.log.
-		WithField("id", vat.Host.ID()).
-		WithField("ns", vat.NS).
-		WithField("instance", u)
-
+func (j Joiner) options() []cluster.Option {
 	return append([]cluster.Option{
-		cluster.WithLogger(log),
-		cluster.WithNamespace(vat.NS),
-	}, j.opts...)
-}
-
-type ClusterMetrics struct {
-	cluster.View
-}
-
-func (c ClusterMetrics) GaugeMetrics() map[string]interface{} {
-	metrics := make(map[string]interface{}, 0)
-
-	view_size := 0
-	for it := c.Iter(); it.Record() != nil; it.Next() {
-		view_size++
-	}
-
-	metrics["view.size"] = view_size
-	return metrics
-}
-
-func (c ClusterMetrics) CountMetrics() map[string]interface{} {
-	return nil
+		cluster.WithLogger(j.Log),
+		cluster.WithNamespace(j.Vat.NS),
+		// cluster.WithMetrics(j.metrics()),  // TODO:  metrics should track view size
+	}, j.Options...)
 }

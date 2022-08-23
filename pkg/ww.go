@@ -1,8 +1,9 @@
 package ww
 
 import (
-	"github.com/libp2p/go-libp2p-core/protocol"
+	"time"
 
+	"github.com/libp2p/go-libp2p/core/protocol"
 	casm "github.com/wetware/casm/pkg"
 	protoutil "github.com/wetware/casm/pkg/util/proto"
 )
@@ -25,4 +26,29 @@ func Subprotocol(ns string, ss ...string) protocol.ID {
 // that matches the pattern:  /ww/<version>/<ns>
 func NewMatcher(ns string) protoutil.MatchFunc {
 	return match.Then(protoutil.Exactly(ns))
+}
+
+type Metrics interface {
+	// Incr is equivalent to Count(bucket, 1).
+	Incr(bucket string)
+
+	// Decr is equivalent to Count(bucket, -1).
+	Decr(bucket string)
+
+	// Count increments the bucket by number.
+	Count(bucket string, number any)
+
+	// Gauge sends the absolute value of number to the given bucket.
+	Gauge(bucket string, number any)
+
+	// Duration sends a time interval to the given bucket.
+	// Precision is implementation-dependent, but usually
+	// on the order of milliseconds.
+	Duration(bucket string, d time.Duration)
+
+	// Histogram sends an histogram value to a bucket.
+	Histogram(bucket string, value any)
+
+	// Flush writes all buffered metrics.
+	Flush()
 }

@@ -6,9 +6,10 @@ import (
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
+
 	casm "github.com/wetware/casm/pkg"
-	"github.com/wetware/casm/pkg/cluster/routing"
+	"github.com/wetware/casm/pkg/cluster/view"
 	"github.com/wetware/ww/internal/api/cluster"
 	"github.com/wetware/ww/pkg/anchor"
 )
@@ -17,10 +18,9 @@ var HostCapability = casm.BasicCap{
 	"host/packed",
 	"host"}
 
-// RoutingTable provides a global view of namespace peers.
-type RoutingTable interface {
-	Iter() routing.Iterator
-	Lookup(peer.ID) (routing.Record, bool)
+// Viewable provides a global view of namespace peers.
+type Viewable interface {
+	View() view.View
 }
 
 /*----------------------------*
@@ -74,9 +74,9 @@ func (h *Host) resolve(ctx context.Context, d Dialer) cluster.Host {
 type HostServer struct {
 	once sync.Once
 
-	// RoutingTable provides a global view of namespace peers.
+	// Viewable provides a global view of namespace peers.
 	// Callers MUST set this value before the first call to Client()
-	RoutingTable
+	Cluster Viewable
 
 	// The root anchor for the HostServer.  Users SHOULD NOT
 	// set this field; it will be populated automatically on

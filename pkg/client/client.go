@@ -4,16 +4,13 @@ package client
 import (
 	"context"
 	"errors"
-	"fmt"
-	"runtime"
 
 	"capnproto.org/go/capnp/v3/rpc"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/wetware/ww/pkg/vat"
-	"github.com/wetware/ww/pkg/vat/cap/anchor"
-	"github.com/wetware/ww/pkg/vat/cap/cluster"
-	"github.com/wetware/ww/pkg/vat/cap/pubsub"
+	"github.com/libp2p/go-libp2p/core/host"
+
+	casm "github.com/wetware/casm/pkg"
+	"github.com/wetware/ww/pkg/cluster"
+	"github.com/wetware/ww/pkg/pubsub"
 )
 
 // ErrDisconnected indicates that the client's connection to
@@ -21,7 +18,7 @@ import (
 var ErrDisconnected = errors.New("disconnected")
 
 type Node struct {
-	vat  vat.Network
+	vat  casm.Vat
 	conn *rpc.Conn
 
 	// capabilities
@@ -45,7 +42,7 @@ func (n Node) Host() host.Host { return n.vat.Host }
 func (n Node) Bootstrap(ctx context.Context) error {
 	// TODO:  update this when we replace 'ps' with a
 	//        capability set.
-	if err := n.ps.Client.Resolve(ctx); err != nil {
+	if err := n.ps.Client().Resolve(ctx); err != nil {
 		return err
 	}
 
@@ -66,51 +63,54 @@ func (n Node) Close() error {
 	return n.conn.Close()
 }
 
-// Join a pubsub topic.
-func (n Node) Join(ctx context.Context, topic string) Topic {
-	var f, release = n.ps.Join(ctx, topic)
-	defer release()
+// // Join a pubsub topic.
+// func (n Node) Join(ctx context.Context, topic string) Topic {
+// 	var f, release = n.ps.Join(ctx, topic)
+// 	defer release()
 
-	return NewTopic(f.Topic().AddRef().Client, topic)
-}
+// 	return Topic{
+// 		Name:  topic,  // TODO:  can we use the client brand/meta for this?
+// 		Topic: f.Topic().AddRef(),
+// 	}
+// }
 
-func (n Node) Path() string { return "/" }
+// func (n Node) Path() string { return "/" }
 
-func (n Node) Ls(ctx context.Context) Iterator {
-	// TODO(performance):  cache an instance of the View capability
-	f, release := n.host.View(ctx, nil)
-	defer release()
+// func (n Node) Ls(ctx context.Context) Iterator {
+// 	// TODO(performance):  cache an instance of the View capability
+// 	f, release := n.host.View(ctx, nil)
+// 	defer release()
 
-	it := f.View().Iter(ctx)
-	runtime.SetFinalizer(it, func(it *cluster.RecordStream) {
-		it.Finish()
-	})
+// 	it := f.View().Iter(ctx)
+// 	runtime.SetFinalizer(it, func(it *cluster.RecordStream) {
+// 		it.Finish()
+// 	})
 
-	return hostSet{
-		dialer:       dialer(n.vat),
-		RecordStream: it,
-	}
-}
+// 	return hostSet{
+// 		dialer:       dialer(n.vat),
+// 		RecordStream: it,
+// 	}
+// }
 
-func (n Node) Walk(ctx context.Context, path string) Anchor {
-	p := anchor.NewPath(path)
-	if p.Err() != nil {
-		return newErrorHost(p.Err())
-	}
+// func (n Node) Walk(ctx context.Context, path string) Anchor {
+// 	p := anchor.NewPath(path)
+// 	if p.Err() != nil {
+// 		return newErrorHost(p.Err())
+// 	}
 
-	if p.IsRoot() {
-		return n
-	}
+// 	if p.IsRoot() {
+// 		return n
+// 	}
 
-	p, name := p.Next()
+// 	p, name := p.Next()
 
-	id, err := peer.Decode(name)
-	if err != nil {
-		return newErrorHost(fmt.Errorf("invalid id: %w", err))
-	}
+// 	id, err := peer.Decode(name)
+// 	if err != nil {
+// 		return newErrorHost(fmt.Errorf("invalid id: %w", err))
+// 	}
 
-	return Host{
-		dialer: dialer(n.vat),
-		host:   &cluster.Host{Info: peer.AddrInfo{ID: id}},
-	}.Walk(ctx, p.String())
-}
+// 	return Host{
+// 		dialer: dialer(n.vat),
+// 		host:   &cluster.Host{Info: peer.AddrInfo{ID: id}},
+// 	}.Walk(ctx, p.String())
+// }

@@ -2,38 +2,42 @@
 package logutil
 
 import (
+	"os"
+
 	"github.com/lthibault/log"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
-	ww "github.com/wetware/ww/pkg"
 )
 
-// New logger from a cli context
-func New(c *cli.Context) log.Logger {
-	if logger := get(c); logger != nil {
-		return logger
-	}
+type Env interface {
+	Bool(string) bool
+	String(string) string
+}
 
-	return bind(c)
+// New logger from a cli context
+func New(env Env) log.Logger {
+	return log.New(
+		WithLevel(env),
+		WithFormat(env),
+		withErrWriter(env))
 }
 
 // WithLevel returns a log.Option that configures a logger's level.
-func WithLevel(c *cli.Context) (opt log.Option) {
+func WithLevel(env Env) (opt log.Option) {
 	var level = log.FatalLevel
 	defer func() {
 		opt = log.WithLevel(level)
 	}()
 
-	if c.Bool("trace") {
+	if env.Bool("trace") {
 		level = log.TraceLevel
 		return
 	}
 
-	if c.String("logfmt") == "none" {
+	if env.String("logfmt") == "none" {
 		return
 	}
 
-	switch c.String("loglvl") {
+	switch env.String("loglvl") {
 	case "trace", "t":
 		level = log.TraceLevel
 	case "debug", "d":
@@ -54,13 +58,13 @@ func WithLevel(c *cli.Context) (opt log.Option) {
 }
 
 // WithFormat returns an option that configures a logger's format.
-func WithFormat(c *cli.Context) log.Option {
+func WithFormat(env Env) log.Option {
 	var fmt logrus.Formatter
 
-	switch c.String("logfmt") {
+	switch env.String("logfmt") {
 	case "none":
 	case "json":
-		fmt = &logrus.JSONFormatter{PrettyPrint: c.Bool("prettyprint")}
+		fmt = &logrus.JSONFormatter{PrettyPrint: env.Bool("prettyprint")}
 	default:
 		fmt = new(logrus.TextFormatter)
 	}
@@ -68,33 +72,6 @@ func WithFormat(c *cli.Context) log.Option {
 	return log.WithFormatter(fmt)
 }
 
-func withErrWriter(c *cli.Context) log.Option {
-	return log.WithWriter(c.App.ErrWriter)
-}
-
-// key with random component to avoid collision
-const key = "ww.util.log:Fp+&(<[.~10}>\\>nI!bzeJZX"
-
-// Bind a global logger instance to the CLI context.
-// Future calls to New will return this cached logger.
-func bind(c *cli.Context) log.Logger {
-	logger := log.New(
-		WithLevel(c),
-		WithFormat(c),
-		withErrWriter(c)).
-		WithField("version", ww.Version)
-
-	c.App.Metadata[key] = func() log.Logger {
-		return logger
-	}
-
-	return logger
-}
-
-func get(c *cli.Context) log.Logger {
-	if logger, ok := c.App.Metadata[key].(func() log.Logger); ok {
-		return logger()
-	}
-
-	return nil
+func withErrWriter(env Env) log.Option {
+	return log.WithWriter(os.Stderr)
 }

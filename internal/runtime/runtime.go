@@ -4,224 +4,241 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
+	"reflect"
 	"time"
 
-	"github.com/libp2p/go-libp2p-kad-dht/dual"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/lthibault/log"
-	"github.com/thejerf/suture/v4"
-	"github.com/urfave/cli/v2"
-	casm "github.com/wetware/casm/pkg"
-	"github.com/wetware/casm/pkg/cluster"
-	"github.com/wetware/casm/pkg/pex"
-	serviceutil "github.com/wetware/ww/internal/util/service"
-	statsdutil "github.com/wetware/ww/internal/util/statsd"
-	"github.com/wetware/ww/pkg/server"
 	"go.uber.org/fx"
+	"go.uber.org/fx/fxevent"
+
+	casm "github.com/wetware/casm/pkg"
+	ww "github.com/wetware/ww/pkg"
 )
 
-/****************************************************************************
- *                                                                          *
- *  runtime.go is responsible for managing the lifetimes of services.       *
- *                                                                          *
- ****************************************************************************/
+/****************************************************************
+ *                                                              *
+ *  runtime.go defines core types for the application runtime.  *
+ *                                                              *
+ ****************************************************************/
 
-var localnode = fx.Provide(
-	supervisor,
-	node)
+// Env is a context object that exposes environmental data and
+// effectful operations to the runtime.
+type Env interface {
+	// Context returns the main runtime context.  The returned
+	// context MAY expire, in which case callers SHOULD finish
+	// any outstanding work and terminate promptly.
+	Context() context.Context
 
-func Serve(c *cli.Context) error {
-	var app = fx.New(fx.NopLogger,
-		fx.Supply(c),
-		system,
-		network,
-		localnode,
-		fx.Invoke(bind))
+	/*
+		Observability
+	*/
 
-	if err := start(c, app); err != nil {
-		return err
+	Log() log.Logger
+	Metrics() ww.Metrics
+
+	/*
+		Configuration
+	*/
+
+	Bool(string) bool
+	IsSet(string) bool
+	Path(string) string
+	String(string) string
+	StringSlice(string) []string
+	Duration(string) time.Duration
+	Float64(string) float64
+}
+
+// Prelude provides the core wetware runtime.  It MUST be passed
+// to the top-level call to fx.New.
+func Prelude(env Env) fx.Option {
+	return fx.Options(fx.WithLogger(newFxLogger),
+		fx.Supply(
+			fx.Annotate(env, fx.As(new(Env))),
+			fx.Annotate(env.Log(), fx.As(new(log.Logger))),
+			fx.Annotate(env.Metrics(), fx.As(new(ww.Metrics)))),
+		fx.Decorate(
+			decorateLogger,
+			decorateEnv))
+}
+
+type fxLogger struct{ log.Logger }
+
+func newFxLogger(env Env) fxevent.Logger {
+	return fxLogger{env.Log()}
+}
+
+func (lx fxLogger) LogEvent(ev fxevent.Event) {
+	switch event := ev.(type) {
+	case *fxevent.LoggerInitialized:
+		lx.MaybeError(event.Err).Trace("initialized logger")
+
+	case *fxevent.Supplied:
+		lx.MaybeError(event.Err).
+			MaybeModule(event.ModuleName).
+			WithField("type", event.TypeName).
+			Tracef("supplied value of type %s", event.TypeName)
+
+	case *fxevent.Provided:
+		lx.Logger = lx.
+			MaybeModule(event.ModuleName).
+			WithField("fn", event.ConstructorName)
+
+		for _, name := range event.OutputTypeNames {
+			lx.WithField("provides", name).
+				Tracef("provided constructor for %s", name)
+		}
+
+		if event.Err != nil {
+			lx.WithError(event.Err).
+				Error("error encountered while providing constructor")
+		}
+
+	case *fxevent.Replaced:
+		lx.Logger = lx.MaybeModule(event.ModuleName)
+
+		for _, name := range event.OutputTypeNames {
+			lx.WithField("replaces", name).
+				Tracef("replaced %s", name)
+		}
+
+		if event.Err != nil {
+			lx.WithError(event.Err).
+				Error("error encountered while replacing value")
+		}
+
+	case *fxevent.Decorated:
+		lx.Logger = lx.MaybeModule(event.ModuleName)
+
+		for _, name := range event.OutputTypeNames {
+			lx.WithField("decorates", name).
+				Tracef("decorated %s", name)
+		}
+
+		if event.Err != nil {
+			lx.WithError(event.Err).
+				Error("error encountered while decorating type")
+		}
+
+	case *fxevent.Invoking:
+		lx.MaybeModule(event.ModuleName).
+			WithField("fn", event.FunctionName).
+			Trace("invoking function")
+
+	case *fxevent.Invoked:
+		if event.Err != nil {
+			lx.MaybeModule(event.ModuleName).
+				WithError(event.Err).
+				WithField("fn", event.FunctionName).
+				Error("function invocation failed")
+			fmt.Fprintln(os.Stderr, event.Trace)
+		}
+
+	case *fxevent.RollingBack:
+		lx.WithError(event.StartErr).
+			Error("rolling back")
+
+	case *fxevent.RolledBack:
+		if event.Err == nil {
+			lx.Debug("rolled back successfully")
+			return
+		}
+
+		lx.WithError(event.Err).
+			Error("rollback failed")
+
+	case *fxevent.Started:
+		if event.Err == nil {
+			lx.Trace("application started")
+			return
+		}
+
+		lx.WithError(event.Err).
+			Error("application failed to start")
+
+	case *fxevent.Stopping:
+		lx.WithField("signal", event.Signal).
+			Trace("signal received")
+
+	case *fxevent.Stopped:
+		lx.MaybeError(event.Err).
+			Trace("runtime stopped")
+
+	case *fxevent.OnStartExecuting:
+		lx.WithField("fn", event.FunctionName).
+			WithField("caller", event.CallerName).
+			Trace("executing start hook")
+
+	case *fxevent.OnStartExecuted:
+		lx.Logger = lx.MaybeError(event.Err).
+			WithField("fn", event.FunctionName).
+			WithField("caller", event.CallerName).
+			WithField("dur", event.Runtime)
+
+		if event.Err == nil {
+			lx.Trace("exeuted start hook")
+		} else {
+			lx.Error("start hook failed")
+		}
+
+	case *fxevent.OnStopExecuting:
+		lx.WithField("fn", event.FunctionName).
+			WithField("caller", event.CallerName).
+			Trace("executing stop hook")
+
+	case *fxevent.OnStopExecuted:
+		lx.Logger = lx.MaybeError(event.Err).
+			WithField("fn", event.FunctionName).
+			WithField("caller", event.CallerName).
+			WithField("dur", event.Runtime)
+
+		if event.Err == nil {
+			lx.Trace("exeuted start hook")
+		} else {
+			lx.Error("start hook failed")
+		}
+
+	default:
+		panic(fmt.Sprintf("invalid Fx event: %s", reflect.TypeOf(ev)))
+	}
+}
+
+func (lx fxLogger) MaybeError(err error) fxLogger {
+	if err != nil {
+		lx.Logger = lx.WithError(err)
 	}
 
-	<-app.Done() // TODO:  process OS signals in a loop here.
-
-	return shutdown(app)
+	return lx
 }
 
-func start(c *cli.Context, app *fx.App) error {
-	ctx, cancel := context.WithTimeout(c.Context, time.Second*15)
-	defer cancel()
-
-	return app.Start(ctx)
-}
-
-func shutdown(app *fx.App) (err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
-	defer cancel()
-
-	if err = app.Stop(ctx); err == context.Canceled {
-		err = nil
+func (lx fxLogger) MaybeModule(name string) fxLogger {
+	if name != "" {
+		lx.Logger = lx.WithField("module", name)
 	}
 
-	return
+	return lx
 }
 
-// Config declares dependencies that are dynamically resolved at
-// runtime.
-type Config struct {
-	fx.In
-
-	Lifecycle fx.Lifecycle
-
-	Logger     log.Logger
-	Node       *server.Node
-	Supervisor *suture.Supervisor
-	Services   []suture.Service `group:"services"` // caller-supplied services
+type environment struct {
+	log log.Logger
+	Env
 }
 
-func (config Config) Log() log.Logger {
-	return config.Logger.With(config.Node)
-}
-
-func bind(c *cli.Context, config Config) {
-	ctx, cancel := context.WithCancel(c.Context) // cancelled by stop hook
-
-	// Bind user-defined services to the runtime.
-	for _, service := range config.Services {
-		config.Supervisor.Add(service)
+func decorateEnv(env Env, log log.Logger) Env {
+	return environment{
+		log: log,
+		Env: env,
 	}
-
-	// Set up some shared variables.  These will mutate throughout the application
-	// lifecycle.
-	var cherr <-chan error
-
-	// Hook main service (Supervisor) into application lifecycle.
-	config.Lifecycle.Append(fx.Hook{
-		// Bind global variables and start wetware.
-		OnStart: func(_ context.Context) error {
-			cherr = config.Supervisor.ServeBackground(ctx) // NOTE: application context
-
-			// The wetware environment is now loaded.  Bear in mind
-			// that this is a PA/EL system, so we hand over control
-			// to the user without synchronizing the cluster view.
-			//
-			// System events are likewise asynchronous, but reliable.
-			// Users can wait for the local node to have successfully
-			// bound to network interfaces by subscribing to the
-			// 'EvtLocalAddrsUpdated' event.
-
-			config.Log().Info("wetware loaded")
-
-			return nil
-		},
-		OnStop: func(ctx context.Context) (err error) {
-			// Cancel the application context.
-			//
-			// Beyond this point, the services in this local
-			// process are no longer guaranteed to be in sync.
-			cancel()
-
-			// Wait for the supervisor to shut down gracefully.
-			// If it does not terminate in a timely fashion,
-			// abort the application and return an error.
-			select {
-			case err = <-cherr:
-				return err
-
-			case <-ctx.Done():
-				return fmt.Errorf("shutdown: %w", ctx.Err())
-			}
-		},
-	})
 }
 
-//
-// Dependency declarations
-//
-
-func supervisor(c *cli.Context) *suture.Supervisor {
-	return suture.New("runtime", suture.Spec{
-		EventHook: serviceutil.NewEventHook(c),
-	})
+func (env environment) Log() log.Logger {
+	return env.log
 }
 
-type serverConfig struct {
-	fx.In
-
-	Log     log.Logger
-	Vat     casm.Vat
-	PubSub  *pubsub.PubSub
-	PeX     *pex.PeerExchange
-	DHT     *dual.DHT
-	Metrics *statsdutil.MetricsReporter
-
-	Lifecycle fx.Lifecycle
+func decorateLogger(log log.Logger, vat casm.Vat) log.Logger {
+	return log.With(vat)
 }
-
-func (config serverConfig) Logger() log.Logger {
-	return config.Log.With(config.Vat)
-}
-
-func (config serverConfig) ClusterOpts() []cluster.Option {
-	return []cluster.Option{
-		cluster.WithMeta(nil)}
-}
-
-func (config serverConfig) SetCloser(c io.Closer) {
-	config.Lifecycle.Append(closer(c))
-}
-
-func node(c *cli.Context, config serverConfig) (*server.Node, error) {
-	n, err := server.New(c.Context, config.Vat, config.PubSub,
-		server.WithLogger(config.Logger()),
-		server.WithClusterConfig(config.ClusterOpts()...),
-		server.WithMetrics(config.Metrics))
-
-	if err == nil {
-		config.SetCloser(n)
-	}
-
-	return n, err
-}
-
-// type mergeFromPeX struct {
-// 	ns  string
-// 	pex *pex.PeerExchange
-// 	dht *dual.DHT
-// }
-
-// func (m mergeFromPeX) Merge(ctx context.Context, peers []peer.AddrInfo) error {
-// 	var g errgroup.Group
-
-// 	for _, info := range peers {
-// 		g.Go(m.merger(ctx, info))
-// 	}
-
-// 	return g.Wait()
-
-// }
-
-// func (m mergeFromPeX) merger(ctx context.Context, info peer.AddrInfo) func() error {
-// 	return func() error {
-// 		if err := m.PerformGossipRound(ctx, info); err != nil {
-// 			return fmt.Errorf("%s: %w", info.ID.ShortString(), err)
-// 		}
-
-// 		return m.RefreshDHT(ctx)
-// 	}
-// }
-
-// func (m mergeFromPeX) PerformGossipRound(ctx context.Context, info peer.AddrInfo) (err error) {
-// 	if err = m.pex.Bootstrap(ctx, m.ns, info); err != nil {
-// 		err = fmt.Errorf("pex: %w", err)
-// 	}
-
-// 	return
-// }
-
-// func (m mergeFromPeX) RefreshDHT(ctx context.Context) error {
-// 	// FIXME:  implement DHT refresh
-// 	return errors.New("NOT IMPLEMENTED")
-// }
 
 func closer(c io.Closer) fx.Hook {
 	return fx.Hook{
@@ -232,5 +249,13 @@ func closer(c io.Closer) fx.Hook {
 func onclose(c io.Closer) func(context.Context) error {
 	return func(context.Context) error {
 		return c.Close()
+	}
+}
+
+func bootstrapper(b interface{ Bootstrap(context.Context) error }) fx.Hook {
+	return fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			return b.Bootstrap(ctx)
+		},
 	}
 }

@@ -1,99 +1,82 @@
 package statsdutil
 
 import (
-	"github.com/urfave/cli/v2"
-	logutil "github.com/wetware/ww/internal/util/log"
+	"time"
+
+	"github.com/lthibault/log"
+
 	ww "github.com/wetware/ww/pkg"
 	"gopkg.in/alexcesaro/statsd.v2"
 )
 
-var tags = []string{
-	"ww", ww.Version,
+type Env interface {
+	Bool(string) bool
+	IsSet(string) bool
+	String(string) string
+	Float64(string) float64
+	Duration(string) time.Duration
 }
 
-// Must returns a new statsd client and panics if an error
-// is encountered.
-func Must(c *cli.Context) *statsd.Client {
-	s, err := New(c)
-	if err != nil {
-		panic(err)
-	}
-	return s
-}
+// Metrics wraps a statsd client and satisfies the Wetware
+// metrics interface.
+type Metrics struct{ *statsd.Client }
 
 // New statsd client.
-func New(c *cli.Context) (*statsd.Client, error) {
-	if s := get(c); s != nil {
-		return s, nil
+func New(env Env, log log.Logger) ww.Metrics {
+	m, err := statsd.New(
+		addr(env),
+		muted(env),
+		logger(env, log),
+		statsd.Prefix("ww."),
+		statsd.SampleRate(.1),
+		statsd.FlushPeriod(time.Millisecond*250))
+	if err != nil {
+		log.WithError(err).
+			Warn("setup failed for statsd metrics")
+		return nopMetrics{}
 	}
 
-	return bind(c)
+	return Metrics{m}
 }
 
-func addr(c *cli.Context) statsd.Option {
-	if c.IsSet("statsd") {
-		return statsd.Address(c.String("statsd"))
+func (m Metrics) Incr(bucket string) {
+	m.Client.Count(bucket, 1)
+}
+
+func (m Metrics) Decr(bucket string) {
+	m.Client.Count(bucket, -1)
+}
+
+func (m Metrics) Duration(bucket string, d time.Duration) {
+	m.Client.Timing(bucket, d.Milliseconds())
+}
+
+func addr(env Env) statsd.Option {
+	if env.IsSet("statsd") {
+		return statsd.Address(env.String("statsd"))
 	}
 
 	return statsd.Address(":8125")
 }
 
-func logger(c *cli.Context) statsd.Option {
+func logger(env Env, log log.Logger) statsd.Option {
 	return statsd.ErrorHandler(func(err error) {
-		logutil.New(c).
-			WithField("statsd", c.String("statsd-addr")).
-			Error(err)
+		log.WithError(err).
+			WithField("statsd", env.String("statsd-addr")).
+			Warn("failed to send metrics")
 	})
 }
 
-func tagfmt(c *cli.Context) statsd.Option {
-	var fmt statsd.TagFormat
-
-	switch c.String("statsd-tagfmt") {
-	case "influx":
-		fmt = statsd.InfluxDB
-
-	case "datadog":
-		fmt = statsd.Datadog
-	}
-
-	return statsd.TagsFormat(fmt)
+func muted(env Env) statsd.Option {
+	return statsd.Mute(!env.IsSet("statsd"))
 }
 
-func sample(c *cli.Context) statsd.Option {
-	samp := c.Float64("statsd-sample-rate")
-	return statsd.SampleRate(float32(samp))
-}
+type nopMetrics struct{}
 
-// key with random component to avoid collision
-const key = "ww.util.statsd:0U7]3|~FAJOM#;jXWbA&Gxby"
-
-// Bind a global logger instance to the CLI context.
-// Future calls to New will return this cached logger.
-func bind(c *cli.Context) (*statsd.Client, error) {
-	s, err := statsd.New(
-		addr(c),
-		tagfmt(c),
-		sample(c),
-		logger(c),
-		statsd.Prefix("ww."),
-		statsd.Tags(tags...),
-		statsd.Mute(!c.IsSet("statsd")),
-		statsd.FlushPeriod(c.Duration("statsd-flush")))
-
-	if err == nil {
-		c.App.Metadata[key] = func() *statsd.Client {
-			return s
-		}
-	}
-
-	return s, err
-}
-
-func get(c *cli.Context) *statsd.Client {
-	if statsd, ok := c.App.Metadata[key].(func() *statsd.Client); ok {
-		return statsd()
-	}
-
-	return nil
-}
+func (nopMetrics) Incr(string)                    {}
+func (nopMetrics) Decr(string)                    {}
+func (nopMetrics) Count(string, any)              {}
+func (nopMetrics) Gauge(string, any)              {}
+func (nopMetrics) Duration(string, time.Duration) {}
+func (nopMetrics) Histogram(string, any)          {}
+func (nopMetrics) Flush()                         {}

@@ -1,14 +1,12 @@
 package client
 
 import (
-	"encoding/json"
-	"fmt"
+	"errors"
 
 	"github.com/urfave/cli/v2"
-	"github.com/wetware/ww/pkg/client"
 )
 
-func Ls() *cli.Command {
+func list() *cli.Command {
 	return &cli.Command{
 		Name:  "ls",
 		Usage: "list anchor elements",
@@ -21,37 +19,38 @@ func Ls() *cli.Command {
 			},
 		},
 		Before: setup(),
-		After:  teardown(),
 		Action: ls(),
+		After:  teardown(),
 	}
 }
 
 func ls() cli.ActionFunc {
-	return func(c *cli.Context) error {
-		var it = node.Ls(c.Context)
+	return func(*cli.Context) error {
+		return errors.New("NOT IMPLEMENTED")
+		// var it = node.Ls(c.Context)
 
-		if c.Bool("json") {
-			return lsJSON(c, it)
-		}
+		// if c.Bool("json") {
+		// 	return lsJSON(c, it)
+		// }
 
-		lsText(c, it)
+		// lsText(c, it)
 
-		return nil
+		// return nil
 	}
 }
 
-func lsJSON(c *cli.Context, it client.Iterator) error {
-	var paths []string
+// func lsJSON(c *cli.Context, it client.Iterator) error {
+// 	var paths []string
 
-	for it.Next() {
-		paths = append(paths, it.Anchor().Path())
-	}
+// 	for it.Next() {
+// 		paths = append(paths, it.Anchor().Path())
+// 	}
 
-	return json.NewEncoder(c.App.Writer).Encode(paths)
-}
+// 	return json.NewEncoder(c.App.Writer).Encode(paths)
+// }
 
-func lsText(c *cli.Context, it client.Iterator) {
-	for it.Next() {
-		fmt.Println(it.Anchor().Path())
-	}
-}
+// func lsText(c *cli.Context, it client.Iterator) {
+// 	for it.Next() {
+// 		fmt.Println(it.Anchor().Path())
+// 	}
+// }

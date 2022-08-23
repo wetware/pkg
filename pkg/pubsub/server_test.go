@@ -7,8 +7,8 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-core/host"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/host"
 	inproc "github.com/lthibault/go-libp2p-inproc-transport"
 	logtest "github.com/lthibault/log/test"
 	"github.com/stretchr/testify/assert"

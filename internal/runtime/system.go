@@ -5,136 +5,119 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 
 	"github.com/lthibault/log"
-	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
-	"gopkg.in/alexcesaro/statsd.v2"
 
 	ds "github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/sync"
+	ds_sync "github.com/ipfs/go-datastore/sync"
 	badgerds "github.com/ipfs/go-ds-badger2"
 
 	"github.com/wetware/casm/pkg/cluster/pulse"
-	logutil "github.com/wetware/ww/internal/util/log"
-	statsdutil "github.com/wetware/ww/internal/util/statsd"
 )
 
-/*******************************************************************************
- *                                                                             *
- *  system.go is responsible for interacting with the local operating system.  *
- *                                                                             *
- *******************************************************************************/
+/*************************************************************************
+ *                                                                       *
+ *  system.go is responsible for interacting with the operating system.  *
+ *                                                                       *
+ *************************************************************************/
 
-// system module:  interacts with local file storage.
-var system = fx.Options(
-	observability,
-	fx.Provide(
+func (c Config) System() fx.Option {
+	return fx.Module("system", fx.Provide(
 		storage,
 		heartbeat))
-
-var observability = fx.Provide(
-	logging,
-	statsdutil.New,
-	statsdutil.NewBandwidthCounter,
-	statsdutil.NewPubSubTracer,
-	NewWwMetricsReporter)
-
-func logging(c *cli.Context) log.Logger {
-	return logutil.New(c).With(log.F{
-		"ns": c.String("ns"),
-	})
-}
-
-func NewWwMetricsReporter(c *cli.Context, client *statsd.Client) *statsdutil.MetricsReporter {
-	metrics := statsdutil.NewMetricsReporter(client)
-	go metrics.Run(c.Context)
-	return metrics
 }
 
 // hook populates heartbeat messages with system information from the
 // operating system.
-type hook struct{}
-
-func heartbeat() hook { return hook{} }
-
-func (h hook) Prepare(pulse.Heartbeat) {
-	// TODO:  populate a capnp struct containing metadata for the
-	//        local host.  Consider including AWS AR information,
-	//        hostname, geolocalization, and a UUID instance id.
-
-	// WARNING:  DO NOT make a syscall each time 'Prepare' is invoked.
-	//           Cache results and periodically refresh them.
+type hook struct {
+	once sync.Once
+	Env
 }
 
-type storageConfig struct {
-	fx.In
-
-	CLI *cli.Context
-	Log log.Logger
-
-	Lifecycle fx.Lifecycle
+func heartbeat(env Env) pulse.Preparer {
+	return &hook{Env: env}
 }
 
-func (config storageConfig) IsVolatile() bool {
-	return !config.CLI.IsSet("data")
+func (h *hook) Prepare(heartbeat pulse.Setter) (err error) {
+	h.once.Do(func() {
+		fields := h.StringSlice("meta")
+		meta := make(map[string]string, len(fields))
+
+		for _, field := range fields {
+			kv := strings.SplitN(field, "=", 2)
+			if len(kv) == 2 {
+				meta[kv[0]] = kv[1]
+				continue
+			}
+
+			h.Log().
+				WithField("field", field).
+				Warn("skipped invalid metadata field")
+		}
+
+		err = heartbeat.SetMeta(meta)
+	})
+
+	return
 }
 
-func (config storageConfig) StoragePath() string {
-	return filepath.Join(config.CLI.Path("data"), "data")
-}
-
-func (config storageConfig) Logger() badgerLogger {
-	if config.IsVolatile() {
-		return badgerLogger{config.Log}
+func storage(env Env, lx fx.Lifecycle) (ds.Batching, error) {
+	if !env.IsSet("data") {
+		return memstore(), nil
 	}
 
-	return badgerLogger{
-		config.Log.WithField("data_dir", config.StoragePath()),
-	}
-}
-
-func (config storageConfig) VolatileStorage() ds.Batching {
-	return sync.MutexWrap(ds.NewMapDatastore())
-}
-
-func (config storageConfig) PersistentStorage() (ds.Batching, error) {
-	err := os.MkdirAll(config.StoragePath(), 0700)
+	err := os.MkdirAll(storagePath(env), 0700)
 	if err != nil {
 		return nil, fmt.Errorf("mkdir: %w", err)
 	}
 
-	badgerds.DefaultOptions.Logger = config.Logger()
+	return dbstore(env, lx)
+}
 
-	return badgerds.NewDatastore(
-		config.StoragePath(),
+func memstore() ds.Batching {
+	return ds_sync.MutexWrap(ds.NewMapDatastore())
+}
+
+func dbstore(env Env, lx fx.Lifecycle) (ds.Batching, error) {
+	log := newBadgerLogger(env)
+	badgerds.DefaultOptions.Logger = log
+
+	d, err := badgerds.NewDatastore(
+		storagePath(env),
 		&badgerds.DefaultOptions)
-}
-
-func (config storageConfig) SyncOnClose(d ds.Datastore) {
-	config.Lifecycle.Append(closer(d))
-	config.Lifecycle.Append(fx.Hook{
-		OnStop: func(ctx context.Context) error {
-			log.Trace("syncing datastore")
-			return d.Sync(ctx, ds.NewKey("/"))
-		},
-	})
-}
-
-func storage(config storageConfig) (ds.Batching, error) {
-	if config.IsVolatile() {
-		return config.VolatileStorage(), nil
-	}
-
-	d, err := config.PersistentStorage()
-	if err == nil {
-		config.SyncOnClose(d)
+	if d == nil {
+		lx.Append(closer(d))
+		lx.Append(syncer(log, d))
 	}
 
 	return d, err
 }
 
+func storagePath(env Env) string {
+	return filepath.Join(env.Path("data"), "data")
+}
+
+func syncer(log log.Logger, s interface {
+	Sync(context.Context, ds.Key) error
+}) fx.Hook {
+	return fx.Hook{
+		OnStop: func(ctx context.Context) error {
+			log.Trace("syncing datastore")
+			return s.Sync(ctx, ds.NewKey("/"))
+		},
+	}
+}
+
 type badgerLogger struct{ log.Logger }
+
+func newBadgerLogger(env Env) badgerLogger {
+	return badgerLogger{
+		Logger: env.Log().WithField("data_dir", storagePath(env)),
+	}
+}
 
 func (b badgerLogger) Warningf(fmt string, vs ...interface{}) {
 	b.Warnf(fmt, vs...)

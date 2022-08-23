@@ -1,16 +1,27 @@
 package client
 
 import (
+	"context"
 	"time"
 
 	"github.com/urfave/cli/v2"
+	"github.com/wetware/ww/internal/runtime"
+	runtimeutil "github.com/wetware/ww/internal/util/runtime"
+	"github.com/wetware/ww/pkg/client"
+	"go.uber.org/fx"
+)
+
+var (
+	app  *fx.App
+	env  runtime.Env
+	node *client.Node
 )
 
 var subcommands = []*cli.Command{
-	Ls(),
-	Publish(),
-	Subscribe(),
-	Discover(),
+	list(),
+	// Publish(),
+	// Subscribe(),
+	// Discover(),
 }
 
 func Command() *cli.Command {
@@ -45,5 +56,33 @@ func Command() *cli.Command {
 			},
 		},
 		Subcommands: subcommands,
+	}
+}
+
+func setup() cli.BeforeFunc {
+	return func(c *cli.Context) error {
+		app = fx.New(
+			runtime.Prelude(runtimeutil.New(c)),
+			fx.StartTimeout(c.Duration("timeout")),
+			fx.Populate(&env, &node),
+			runtime.Client())
+
+		ctx, cancel := context.WithTimeout(
+			c.Context,
+			app.StartTimeout())
+		defer cancel()
+
+		return app.Start(ctx)
+	}
+}
+
+func teardown() cli.AfterFunc {
+	return func(c *cli.Context) error {
+		ctx, cancel := context.WithTimeout(
+			context.Background(),
+			app.StopTimeout())
+		defer cancel()
+
+		return app.Stop(ctx)
 	}
 }

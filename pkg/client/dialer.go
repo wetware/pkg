@@ -5,33 +5,34 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/libp2p/go-libp2p-core/discovery"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/lthibault/log"
+	"go.uber.org/fx"
 
-	"github.com/wetware/ww/pkg/vat"
-	"github.com/wetware/ww/pkg/vat/cap/cluster"
-	"github.com/wetware/ww/pkg/vat/cap/pubsub"
+	"github.com/libp2p/go-libp2p/core/discovery"
+	"github.com/libp2p/go-libp2p/core/peer"
+
+	casm "github.com/wetware/casm/pkg"
+	"github.com/wetware/ww/pkg/cluster"
 )
 
 // Dialer is a factory type for Node.  It uses Boot to join the
 // cluster identified by Vat.NS, and returns a Node.
 type Dialer struct {
+	fx.In
+
 	Log  log.Logger
-	Vat  vat.Network
+	Vat  casm.Vat
 	Boot discovery.Discoverer
 }
 
 // Dial creates a client and connects it to a cluster.
 func (d Dialer) Dial(ctx context.Context) (*Node, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	if d.Log == nil {
 		d.Log = log.New()
 	}
-
-	d.Log = d.Log.With(d.Vat)
-
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
 
 	return d.join(ctx)
 }
@@ -43,7 +44,7 @@ func (d Dialer) join(ctx context.Context) (n *Node, err error) {
 	}
 
 	for info := range peers {
-		d.Log.WithField("peer_info", info).Debug("found peer")
+		d.Log.With(addrEntry(info)).Debug("found peer")
 
 		n, err = d.dialCaps(ctx, info)
 		if err == nil {
@@ -62,10 +63,10 @@ func (d Dialer) join(ctx context.Context) (n *Node, err error) {
 }
 
 func (d Dialer) dialCaps(ctx context.Context, info peer.AddrInfo) (*Node, error) {
-	psConn, err := d.Vat.Connect(ctx, info, pubsub.Capability)
-	if err != nil {
-		return nil, err
-	}
+	// psConn, err := d.Vat.Connect(ctx, info, pubsub.Capability)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	hostConn, err := d.Vat.Connect(ctx, info, cluster.HostCapability)
 	if err != nil {
@@ -75,7 +76,14 @@ func (d Dialer) dialCaps(ctx context.Context, info peer.AddrInfo) (*Node, error)
 	return &Node{
 		vat:  d.Vat,
 		conn: hostConn, // TODO:  do we still need an rpc.Conn?  Should we prefer one conn over the other?
-		ps:   pubsub.PubSub{Client: psConn.Bootstrap(context.Background())},
+		// ps:   pubsub.PubSub(psConn.Bootstrap(context.Background())),
 		host: cluster.Host{Client: hostConn.Bootstrap(context.Background())},
 	}, nil
+}
+
+func addrEntry(info peer.AddrInfo) log.F {
+	return log.F{
+		"peer":  info.ID,
+		"addrs": info.Addrs,
+	}
 }
