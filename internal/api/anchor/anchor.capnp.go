@@ -5,14 +5,16 @@ package anchor
 import (
 	capnp "capnproto.org/go/capnp/v3"
 	text "capnproto.org/go/capnp/v3/encoding/text"
+	fc "capnproto.org/go/capnp/v3/flowcontrol"
 	schemas "capnproto.org/go/capnp/v3/schemas"
 	server "capnproto.org/go/capnp/v3/server"
 	context "context"
+	fmt "fmt"
 	channel "github.com/wetware/ww/internal/api/channel"
 	strconv "strconv"
 )
 
-type Value struct{ capnp.Struct }
+type Value capnp.Struct
 type Value_Which uint16
 
 const (
@@ -40,79 +42,102 @@ const Value_TypeID = 0xcfaebe761f647d07
 
 func NewValue(s *capnp.Segment) (Value, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
-	return Value{st}, err
+	return Value(st), err
 }
 
 func NewRootValue(s *capnp.Segment) (Value, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
-	return Value{st}, err
+	return Value(st), err
 }
 
 func ReadRootValue(msg *capnp.Message) (Value, error) {
 	root, err := msg.Root()
-	return Value{root.Struct()}, err
+	return Value(root.Struct()), err
 }
 
 func (s Value) String() string {
-	str, _ := text.Marshal(0xcfaebe761f647d07, s.Struct)
+	str, _ := text.Marshal(0xcfaebe761f647d07, capnp.Struct(s))
 	return str
 }
 
+func (s Value) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Value) DecodeFromPtr(p capnp.Ptr) Value {
+	return Value(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Value) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+
 func (s Value) Which() Value_Which {
-	return Value_Which(s.Struct.Uint16(0))
+	return Value_Which(capnp.Struct(s).Uint16(0))
+}
+func (s Value) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Value) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Value) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
 }
 func (s Value) SetNil() {
-	s.Struct.SetUint16(0, 0)
+	capnp.Struct(s).SetUint16(0, 0)
 
 }
 
 func (s Value) Capability() capnp.Client {
-	if s.Struct.Uint16(0) != 1 {
+	if capnp.Struct(s).Uint16(0) != 1 {
 		panic("Which() != capability")
 	}
-	p, _ := s.Struct.Ptr(0)
+	p, _ := capnp.Struct(s).Ptr(0)
 	return p.Interface().Client()
 }
 
 func (s Value) HasCapability() bool {
-	if s.Struct.Uint16(0) != 1 {
+	if capnp.Struct(s).Uint16(0) != 1 {
 		return false
 	}
-	return s.Struct.HasPtr(0)
+	return capnp.Struct(s).HasPtr(0)
 }
 
 func (s Value) SetCapability(c capnp.Client) error {
-	s.Struct.SetUint16(0, 1)
+	capnp.Struct(s).SetUint16(0, 1)
 	if !c.IsValid() {
-		return s.Struct.SetPtr(0, capnp.Ptr{})
+		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
 	seg := s.Segment()
 	in := capnp.NewInterface(seg, seg.Message().AddCap(c))
-	return s.Struct.SetPtr(0, in.ToPtr())
+	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 func (s Value) Chan() channel.PeekableChan {
-	if s.Struct.Uint16(0) != 2 {
+	if capnp.Struct(s).Uint16(0) != 2 {
 		panic("Which() != chan")
 	}
-	p, _ := s.Struct.Ptr(0)
-	return channel.PeekableChan{Client: p.Interface().Client()}
+	p, _ := capnp.Struct(s).Ptr(0)
+	return channel.PeekableChan(p.Interface().Client())
 }
 
 func (s Value) HasChan() bool {
-	if s.Struct.Uint16(0) != 2 {
+	if capnp.Struct(s).Uint16(0) != 2 {
 		return false
 	}
-	return s.Struct.HasPtr(0)
+	return capnp.Struct(s).HasPtr(0)
 }
 
 func (s Value) SetChan(v channel.PeekableChan) error {
-	s.Struct.SetUint16(0, 2)
-	if !v.Client.IsValid() {
-		return s.Struct.SetPtr(0, capnp.Ptr{})
+	capnp.Struct(s).SetUint16(0, 2)
+	if !v.IsValid() {
+		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
 	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(v.Client))
-	return s.Struct.SetPtr(0, in.ToPtr())
+	in := capnp.NewInterface(seg, seg.Message().AddCap(capnp.Client(v)))
+	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
 // Value_List is a list of Value.
@@ -121,7 +146,7 @@ type Value_List = capnp.StructList[Value]
 // NewValue creates a new list of Value.
 func NewValue_List(s *capnp.Segment, sz int32) (Value_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1}, sz)
-	return capnp.StructList[Value]{List: l}, err
+	return capnp.StructList[Value](l), err
 }
 
 // Value_Future is a wrapper for a Value promised by a client call.
@@ -129,7 +154,7 @@ type Value_Future struct{ *capnp.Future }
 
 func (p Value_Future) Struct() (Value, error) {
 	s, err := p.Future.Struct()
-	return Value{s}, err
+	return Value(s), err
 }
 
 func (p Value_Future) Capability() *capnp.Future {
@@ -137,10 +162,10 @@ func (p Value_Future) Capability() *capnp.Future {
 }
 
 func (p Value_Future) Chan() channel.PeekableChan {
-	return channel.PeekableChan{Client: p.Future.Field(0, nil).Client()}
+	return channel.PeekableChan(p.Future.Field(0, nil).Client())
 }
 
-type Loader struct{ Client capnp.Client }
+type Loader capnp.Client
 
 // Loader_TypeID is the unique identifier for the type Loader.
 const Loader_TypeID = 0x8f85860d3c5e499a
@@ -156,37 +181,92 @@ func (c Loader) Load(ctx context.Context, params func(Loader_load_Params) error)
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Loader_load_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Loader_load_Params(s)) }
 	}
-	ans, release := c.Client.SendCall(ctx, s)
+	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Loader_load_Results_Future{Future: ans.Future()}, release
 }
 
+// String returns a string that identifies this capability for debugging
+// purposes.  Its format should not be depended on: in particular, it
+// should not be used to compare clients.  Use IsSame to compare clients
+// for equality.
+func (c Loader) String() string {
+	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+}
+
+// AddRef creates a new Client that refers to the same capability as c.
+// If c is nil or has resolved to null, then AddRef returns nil.
 func (c Loader) AddRef() Loader {
-	return Loader{
-		Client: c.Client.AddRef(),
-	}
+	return Loader(capnp.Client(c).AddRef())
 }
 
+// Release releases a capability reference.  If this is the last
+// reference to the capability, then the underlying resources associated
+// with the capability will be released.
+//
+// Release will panic if c has already been released, but not if c is
+// nil or resolved to null.
 func (c Loader) Release() {
-	c.Client.Release()
+	capnp.Client(c).Release()
 }
 
-// A Loader_Server is a Loader with a local implementation.
+// Resolve blocks until the capability is fully resolved or the Context
+// expires.
+func (c Loader) Resolve(ctx context.Context) error {
+	return capnp.Client(c).Resolve(ctx)
+}
+
+func (c Loader) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Client(c).EncodeAsPtr(seg)
+}
+
+func (Loader) DecodeFromPtr(p capnp.Ptr) Loader {
+	return Loader(capnp.Client{}.DecodeFromPtr(p))
+}
+
+// IsValid reports whether c is a valid reference to a capability.
+// A reference is invalid if it is nil, has resolved to null, or has
+// been released.
+func (c Loader) IsValid() bool {
+	return capnp.Client(c).IsValid()
+}
+
+// IsSame reports whether c and other refer to a capability created by the
+// same call to NewClient.  This can return false negatives if c or other
+// are not fully resolved: use Resolve if this is an issue.  If either
+// c or other are released, then IsSame panics.
+func (c Loader) IsSame(other Loader) bool {
+	return capnp.Client(c).IsSame(capnp.Client(other))
+}
+
+// Update the flowcontrol.FlowLimiter used to manage flow control for
+// this client. This affects all future calls, but not calls already
+// waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
+// which is also the default.
+func (c Loader) SetFlowLimiter(lim fc.FlowLimiter) {
+	capnp.Client(c).SetFlowLimiter(lim)
+}
+
+// Get the current flowcontrol.FlowLimiter used to manage flow control
+// for this client.
+func (c Loader) GetFlowLimiter() fc.FlowLimiter {
+	return capnp.Client(c).GetFlowLimiter()
+} // A Loader_Server is a Loader with a local implementation.
 type Loader_Server interface {
 	Load(context.Context, Loader_load) error
 }
 
 // Loader_NewServer creates a new Server from an implementation of Loader_Server.
-func Loader_NewServer(s Loader_Server, policy *server.Policy) *server.Server {
+func Loader_NewServer(s Loader_Server) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(Loader_Methods(nil, s), s, c, policy)
+	return server.New(Loader_Methods(nil, s), s, c)
 }
 
 // Loader_ServerToClient creates a new Client from an implementation of Loader_Server.
 // The caller is responsible for calling Release on the returned Client.
-func Loader_ServerToClient(s Loader_Server, policy *server.Policy) Loader {
-	return Loader{Client: capnp.NewClient(Loader_NewServer(s, policy))}
+func Loader_ServerToClient(s Loader_Server) Loader {
+	return Loader(capnp.NewClient(Loader_NewServer(s)))
 }
 
 // Loader_Methods appends Methods to a slice that invoke the methods on s.
@@ -219,13 +299,13 @@ type Loader_load struct {
 
 // Args returns the call's arguments.
 func (c Loader_load) Args() Loader_load_Params {
-	return Loader_load_Params{Struct: c.Call.Args()}
+	return Loader_load_Params(c.Call.Args())
 }
 
 // AllocResults allocates the results struct.
 func (c Loader_load) AllocResults() (Loader_load_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Loader_load_Results{Struct: r}, err
+	return Loader_load_Results(r), err
 }
 
 // Loader_List is a list of Loader.
@@ -237,29 +317,52 @@ func NewLoader_List(s *capnp.Segment, sz int32) (Loader_List, error) {
 	return capnp.CapList[Loader](l), err
 }
 
-type Loader_load_Params struct{ capnp.Struct }
+type Loader_load_Params capnp.Struct
 
 // Loader_load_Params_TypeID is the unique identifier for the type Loader_load_Params.
 const Loader_load_Params_TypeID = 0xeed523cf9607ecc8
 
 func NewLoader_load_Params(s *capnp.Segment) (Loader_load_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Loader_load_Params{st}, err
+	return Loader_load_Params(st), err
 }
 
 func NewRootLoader_load_Params(s *capnp.Segment) (Loader_load_Params, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Loader_load_Params{st}, err
+	return Loader_load_Params(st), err
 }
 
 func ReadRootLoader_load_Params(msg *capnp.Message) (Loader_load_Params, error) {
 	root, err := msg.Root()
-	return Loader_load_Params{root.Struct()}, err
+	return Loader_load_Params(root.Struct()), err
 }
 
 func (s Loader_load_Params) String() string {
-	str, _ := text.Marshal(0xeed523cf9607ecc8, s.Struct)
+	str, _ := text.Marshal(0xeed523cf9607ecc8, capnp.Struct(s))
 	return str
+}
+
+func (s Loader_load_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Loader_load_Params) DecodeFromPtr(p capnp.Ptr) Loader_load_Params {
+	return Loader_load_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Loader_load_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Loader_load_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Loader_load_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Loader_load_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
 }
 
 // Loader_load_Params_List is a list of Loader_load_Params.
@@ -268,7 +371,7 @@ type Loader_load_Params_List = capnp.StructList[Loader_load_Params]
 // NewLoader_load_Params creates a new list of Loader_load_Params.
 func NewLoader_load_Params_List(s *capnp.Segment, sz int32) (Loader_load_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Loader_load_Params]{List: l}, err
+	return capnp.StructList[Loader_load_Params](l), err
 }
 
 // Loader_load_Params_Future is a wrapper for a Loader_load_Params promised by a client call.
@@ -276,55 +379,77 @@ type Loader_load_Params_Future struct{ *capnp.Future }
 
 func (p Loader_load_Params_Future) Struct() (Loader_load_Params, error) {
 	s, err := p.Future.Struct()
-	return Loader_load_Params{s}, err
+	return Loader_load_Params(s), err
 }
 
-type Loader_load_Results struct{ capnp.Struct }
+type Loader_load_Results capnp.Struct
 
 // Loader_load_Results_TypeID is the unique identifier for the type Loader_load_Results.
 const Loader_load_Results_TypeID = 0x85962033efbe6161
 
 func NewLoader_load_Results(s *capnp.Segment) (Loader_load_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Loader_load_Results{st}, err
+	return Loader_load_Results(st), err
 }
 
 func NewRootLoader_load_Results(s *capnp.Segment) (Loader_load_Results, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Loader_load_Results{st}, err
+	return Loader_load_Results(st), err
 }
 
 func ReadRootLoader_load_Results(msg *capnp.Message) (Loader_load_Results, error) {
 	root, err := msg.Root()
-	return Loader_load_Results{root.Struct()}, err
+	return Loader_load_Results(root.Struct()), err
 }
 
 func (s Loader_load_Results) String() string {
-	str, _ := text.Marshal(0x85962033efbe6161, s.Struct)
+	str, _ := text.Marshal(0x85962033efbe6161, capnp.Struct(s))
 	return str
 }
 
+func (s Loader_load_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Loader_load_Results) DecodeFromPtr(p capnp.Ptr) Loader_load_Results {
+	return Loader_load_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Loader_load_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Loader_load_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Loader_load_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Loader_load_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
 func (s Loader_load_Results) Value() (Value, error) {
-	p, err := s.Struct.Ptr(0)
-	return Value{Struct: p.Struct()}, err
+	p, err := capnp.Struct(s).Ptr(0)
+	return Value(p.Struct()), err
 }
 
 func (s Loader_load_Results) HasValue() bool {
-	return s.Struct.HasPtr(0)
+	return capnp.Struct(s).HasPtr(0)
 }
 
 func (s Loader_load_Results) SetValue(v Value) error {
-	return s.Struct.SetPtr(0, v.Struct.ToPtr())
+	return capnp.Struct(s).SetPtr(0, capnp.Struct(v).ToPtr())
 }
 
 // NewValue sets the value field to a newly
 // allocated Value struct, preferring placement in s's segment.
 func (s Loader_load_Results) NewValue() (Value, error) {
-	ss, err := NewValue(s.Struct.Segment())
+	ss, err := NewValue(capnp.Struct(s).Segment())
 	if err != nil {
 		return Value{}, err
 	}
-	err = s.Struct.SetPtr(0, ss.Struct.ToPtr())
+	err = capnp.Struct(s).SetPtr(0, capnp.Struct(ss).ToPtr())
 	return ss, err
 }
 
@@ -334,7 +459,7 @@ type Loader_load_Results_List = capnp.StructList[Loader_load_Results]
 // NewLoader_load_Results creates a new list of Loader_load_Results.
 func NewLoader_load_Results_List(s *capnp.Segment, sz int32) (Loader_load_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Loader_load_Results]{List: l}, err
+	return capnp.StructList[Loader_load_Results](l), err
 }
 
 // Loader_load_Results_Future is a wrapper for a Loader_load_Results promised by a client call.
@@ -342,14 +467,14 @@ type Loader_load_Results_Future struct{ *capnp.Future }
 
 func (p Loader_load_Results_Future) Struct() (Loader_load_Results, error) {
 	s, err := p.Future.Struct()
-	return Loader_load_Results{s}, err
+	return Loader_load_Results(s), err
 }
 
 func (p Loader_load_Results_Future) Value() Value_Future {
 	return Value_Future{Future: p.Future.Field(0, nil)}
 }
 
-type Storer struct{ Client capnp.Client }
+type Storer capnp.Client
 
 // Storer_TypeID is the unique identifier for the type Storer.
 const Storer_TypeID = 0xd03a10b4ad79653b
@@ -365,37 +490,92 @@ func (c Storer) Store(ctx context.Context, params func(Storer_store_Params) erro
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Storer_store_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Storer_store_Params(s)) }
 	}
-	ans, release := c.Client.SendCall(ctx, s)
+	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Storer_store_Results_Future{Future: ans.Future()}, release
 }
 
+// String returns a string that identifies this capability for debugging
+// purposes.  Its format should not be depended on: in particular, it
+// should not be used to compare clients.  Use IsSame to compare clients
+// for equality.
+func (c Storer) String() string {
+	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+}
+
+// AddRef creates a new Client that refers to the same capability as c.
+// If c is nil or has resolved to null, then AddRef returns nil.
 func (c Storer) AddRef() Storer {
-	return Storer{
-		Client: c.Client.AddRef(),
-	}
+	return Storer(capnp.Client(c).AddRef())
 }
 
+// Release releases a capability reference.  If this is the last
+// reference to the capability, then the underlying resources associated
+// with the capability will be released.
+//
+// Release will panic if c has already been released, but not if c is
+// nil or resolved to null.
 func (c Storer) Release() {
-	c.Client.Release()
+	capnp.Client(c).Release()
 }
 
-// A Storer_Server is a Storer with a local implementation.
+// Resolve blocks until the capability is fully resolved or the Context
+// expires.
+func (c Storer) Resolve(ctx context.Context) error {
+	return capnp.Client(c).Resolve(ctx)
+}
+
+func (c Storer) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Client(c).EncodeAsPtr(seg)
+}
+
+func (Storer) DecodeFromPtr(p capnp.Ptr) Storer {
+	return Storer(capnp.Client{}.DecodeFromPtr(p))
+}
+
+// IsValid reports whether c is a valid reference to a capability.
+// A reference is invalid if it is nil, has resolved to null, or has
+// been released.
+func (c Storer) IsValid() bool {
+	return capnp.Client(c).IsValid()
+}
+
+// IsSame reports whether c and other refer to a capability created by the
+// same call to NewClient.  This can return false negatives if c or other
+// are not fully resolved: use Resolve if this is an issue.  If either
+// c or other are released, then IsSame panics.
+func (c Storer) IsSame(other Storer) bool {
+	return capnp.Client(c).IsSame(capnp.Client(other))
+}
+
+// Update the flowcontrol.FlowLimiter used to manage flow control for
+// this client. This affects all future calls, but not calls already
+// waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
+// which is also the default.
+func (c Storer) SetFlowLimiter(lim fc.FlowLimiter) {
+	capnp.Client(c).SetFlowLimiter(lim)
+}
+
+// Get the current flowcontrol.FlowLimiter used to manage flow control
+// for this client.
+func (c Storer) GetFlowLimiter() fc.FlowLimiter {
+	return capnp.Client(c).GetFlowLimiter()
+} // A Storer_Server is a Storer with a local implementation.
 type Storer_Server interface {
 	Store(context.Context, Storer_store) error
 }
 
 // Storer_NewServer creates a new Server from an implementation of Storer_Server.
-func Storer_NewServer(s Storer_Server, policy *server.Policy) *server.Server {
+func Storer_NewServer(s Storer_Server) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(Storer_Methods(nil, s), s, c, policy)
+	return server.New(Storer_Methods(nil, s), s, c)
 }
 
 // Storer_ServerToClient creates a new Client from an implementation of Storer_Server.
 // The caller is responsible for calling Release on the returned Client.
-func Storer_ServerToClient(s Storer_Server, policy *server.Policy) Storer {
-	return Storer{Client: capnp.NewClient(Storer_NewServer(s, policy))}
+func Storer_ServerToClient(s Storer_Server) Storer {
+	return Storer(capnp.NewClient(Storer_NewServer(s)))
 }
 
 // Storer_Methods appends Methods to a slice that invoke the methods on s.
@@ -428,13 +608,13 @@ type Storer_store struct {
 
 // Args returns the call's arguments.
 func (c Storer_store) Args() Storer_store_Params {
-	return Storer_store_Params{Struct: c.Call.Args()}
+	return Storer_store_Params(c.Call.Args())
 }
 
 // AllocResults allocates the results struct.
 func (c Storer_store) AllocResults() (Storer_store_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Storer_store_Results{Struct: r}, err
+	return Storer_store_Results(r), err
 }
 
 // Storer_List is a list of Storer.
@@ -446,52 +626,74 @@ func NewStorer_List(s *capnp.Segment, sz int32) (Storer_List, error) {
 	return capnp.CapList[Storer](l), err
 }
 
-type Storer_store_Params struct{ capnp.Struct }
+type Storer_store_Params capnp.Struct
 
 // Storer_store_Params_TypeID is the unique identifier for the type Storer_store_Params.
 const Storer_store_Params_TypeID = 0x8f702043cf5adb9c
 
 func NewStorer_store_Params(s *capnp.Segment) (Storer_store_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Storer_store_Params{st}, err
+	return Storer_store_Params(st), err
 }
 
 func NewRootStorer_store_Params(s *capnp.Segment) (Storer_store_Params, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Storer_store_Params{st}, err
+	return Storer_store_Params(st), err
 }
 
 func ReadRootStorer_store_Params(msg *capnp.Message) (Storer_store_Params, error) {
 	root, err := msg.Root()
-	return Storer_store_Params{root.Struct()}, err
+	return Storer_store_Params(root.Struct()), err
 }
 
 func (s Storer_store_Params) String() string {
-	str, _ := text.Marshal(0x8f702043cf5adb9c, s.Struct)
+	str, _ := text.Marshal(0x8f702043cf5adb9c, capnp.Struct(s))
 	return str
 }
 
+func (s Storer_store_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Storer_store_Params) DecodeFromPtr(p capnp.Ptr) Storer_store_Params {
+	return Storer_store_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Storer_store_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Storer_store_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Storer_store_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Storer_store_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
 func (s Storer_store_Params) Value() (Value, error) {
-	p, err := s.Struct.Ptr(0)
-	return Value{Struct: p.Struct()}, err
+	p, err := capnp.Struct(s).Ptr(0)
+	return Value(p.Struct()), err
 }
 
 func (s Storer_store_Params) HasValue() bool {
-	return s.Struct.HasPtr(0)
+	return capnp.Struct(s).HasPtr(0)
 }
 
 func (s Storer_store_Params) SetValue(v Value) error {
-	return s.Struct.SetPtr(0, v.Struct.ToPtr())
+	return capnp.Struct(s).SetPtr(0, capnp.Struct(v).ToPtr())
 }
 
 // NewValue sets the value field to a newly
 // allocated Value struct, preferring placement in s's segment.
 func (s Storer_store_Params) NewValue() (Value, error) {
-	ss, err := NewValue(s.Struct.Segment())
+	ss, err := NewValue(capnp.Struct(s).Segment())
 	if err != nil {
 		return Value{}, err
 	}
-	err = s.Struct.SetPtr(0, ss.Struct.ToPtr())
+	err = capnp.Struct(s).SetPtr(0, capnp.Struct(ss).ToPtr())
 	return ss, err
 }
 
@@ -501,7 +703,7 @@ type Storer_store_Params_List = capnp.StructList[Storer_store_Params]
 // NewStorer_store_Params creates a new list of Storer_store_Params.
 func NewStorer_store_Params_List(s *capnp.Segment, sz int32) (Storer_store_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Storer_store_Params]{List: l}, err
+	return capnp.StructList[Storer_store_Params](l), err
 }
 
 // Storer_store_Params_Future is a wrapper for a Storer_store_Params promised by a client call.
@@ -509,36 +711,59 @@ type Storer_store_Params_Future struct{ *capnp.Future }
 
 func (p Storer_store_Params_Future) Struct() (Storer_store_Params, error) {
 	s, err := p.Future.Struct()
-	return Storer_store_Params{s}, err
+	return Storer_store_Params(s), err
 }
 
 func (p Storer_store_Params_Future) Value() Value_Future {
 	return Value_Future{Future: p.Future.Field(0, nil)}
 }
 
-type Storer_store_Results struct{ capnp.Struct }
+type Storer_store_Results capnp.Struct
 
 // Storer_store_Results_TypeID is the unique identifier for the type Storer_store_Results.
 const Storer_store_Results_TypeID = 0xd3426cb2da908260
 
 func NewStorer_store_Results(s *capnp.Segment) (Storer_store_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Storer_store_Results{st}, err
+	return Storer_store_Results(st), err
 }
 
 func NewRootStorer_store_Results(s *capnp.Segment) (Storer_store_Results, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Storer_store_Results{st}, err
+	return Storer_store_Results(st), err
 }
 
 func ReadRootStorer_store_Results(msg *capnp.Message) (Storer_store_Results, error) {
 	root, err := msg.Root()
-	return Storer_store_Results{root.Struct()}, err
+	return Storer_store_Results(root.Struct()), err
 }
 
 func (s Storer_store_Results) String() string {
-	str, _ := text.Marshal(0xd3426cb2da908260, s.Struct)
+	str, _ := text.Marshal(0xd3426cb2da908260, capnp.Struct(s))
 	return str
+}
+
+func (s Storer_store_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Storer_store_Results) DecodeFromPtr(p capnp.Ptr) Storer_store_Results {
+	return Storer_store_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Storer_store_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Storer_store_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Storer_store_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Storer_store_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
 }
 
 // Storer_store_Results_List is a list of Storer_store_Results.
@@ -547,7 +772,7 @@ type Storer_store_Results_List = capnp.StructList[Storer_store_Results]
 // NewStorer_store_Results creates a new list of Storer_store_Results.
 func NewStorer_store_Results_List(s *capnp.Segment, sz int32) (Storer_store_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Storer_store_Results]{List: l}, err
+	return capnp.StructList[Storer_store_Results](l), err
 }
 
 // Storer_store_Results_Future is a wrapper for a Storer_store_Results promised by a client call.
@@ -555,10 +780,10 @@ type Storer_store_Results_Future struct{ *capnp.Future }
 
 func (p Storer_store_Results_Future) Struct() (Storer_store_Results, error) {
 	s, err := p.Future.Struct()
-	return Storer_store_Results{s}, err
+	return Storer_store_Results(s), err
 }
 
-type Register struct{ Client capnp.Client }
+type Register capnp.Client
 
 // Register_TypeID is the unique identifier for the type Register.
 const Register_TypeID = 0xdbbdb0fd1b231b9a
@@ -574,9 +799,9 @@ func (c Register) Load(ctx context.Context, params func(Loader_load_Params) erro
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Loader_load_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Loader_load_Params(s)) }
 	}
-	ans, release := c.Client.SendCall(ctx, s)
+	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Loader_load_Results_Future{Future: ans.Future()}, release
 }
 func (c Register) Store(ctx context.Context, params func(Storer_store_Params) error) (Storer_store_Results_Future, capnp.ReleaseFunc) {
@@ -590,23 +815,78 @@ func (c Register) Store(ctx context.Context, params func(Storer_store_Params) er
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Storer_store_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Storer_store_Params(s)) }
 	}
-	ans, release := c.Client.SendCall(ctx, s)
+	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Storer_store_Results_Future{Future: ans.Future()}, release
 }
 
+// String returns a string that identifies this capability for debugging
+// purposes.  Its format should not be depended on: in particular, it
+// should not be used to compare clients.  Use IsSame to compare clients
+// for equality.
+func (c Register) String() string {
+	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+}
+
+// AddRef creates a new Client that refers to the same capability as c.
+// If c is nil or has resolved to null, then AddRef returns nil.
 func (c Register) AddRef() Register {
-	return Register{
-		Client: c.Client.AddRef(),
-	}
+	return Register(capnp.Client(c).AddRef())
 }
 
+// Release releases a capability reference.  If this is the last
+// reference to the capability, then the underlying resources associated
+// with the capability will be released.
+//
+// Release will panic if c has already been released, but not if c is
+// nil or resolved to null.
 func (c Register) Release() {
-	c.Client.Release()
+	capnp.Client(c).Release()
 }
 
-// A Register_Server is a Register with a local implementation.
+// Resolve blocks until the capability is fully resolved or the Context
+// expires.
+func (c Register) Resolve(ctx context.Context) error {
+	return capnp.Client(c).Resolve(ctx)
+}
+
+func (c Register) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Client(c).EncodeAsPtr(seg)
+}
+
+func (Register) DecodeFromPtr(p capnp.Ptr) Register {
+	return Register(capnp.Client{}.DecodeFromPtr(p))
+}
+
+// IsValid reports whether c is a valid reference to a capability.
+// A reference is invalid if it is nil, has resolved to null, or has
+// been released.
+func (c Register) IsValid() bool {
+	return capnp.Client(c).IsValid()
+}
+
+// IsSame reports whether c and other refer to a capability created by the
+// same call to NewClient.  This can return false negatives if c or other
+// are not fully resolved: use Resolve if this is an issue.  If either
+// c or other are released, then IsSame panics.
+func (c Register) IsSame(other Register) bool {
+	return capnp.Client(c).IsSame(capnp.Client(other))
+}
+
+// Update the flowcontrol.FlowLimiter used to manage flow control for
+// this client. This affects all future calls, but not calls already
+// waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
+// which is also the default.
+func (c Register) SetFlowLimiter(lim fc.FlowLimiter) {
+	capnp.Client(c).SetFlowLimiter(lim)
+}
+
+// Get the current flowcontrol.FlowLimiter used to manage flow control
+// for this client.
+func (c Register) GetFlowLimiter() fc.FlowLimiter {
+	return capnp.Client(c).GetFlowLimiter()
+} // A Register_Server is a Register with a local implementation.
 type Register_Server interface {
 	Load(context.Context, Loader_load) error
 
@@ -614,15 +894,15 @@ type Register_Server interface {
 }
 
 // Register_NewServer creates a new Server from an implementation of Register_Server.
-func Register_NewServer(s Register_Server, policy *server.Policy) *server.Server {
+func Register_NewServer(s Register_Server) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(Register_Methods(nil, s), s, c, policy)
+	return server.New(Register_Methods(nil, s), s, c)
 }
 
 // Register_ServerToClient creates a new Client from an implementation of Register_Server.
 // The caller is responsible for calling Release on the returned Client.
-func Register_ServerToClient(s Register_Server, policy *server.Policy) Register {
-	return Register{Client: capnp.NewClient(Register_NewServer(s, policy))}
+func Register_ServerToClient(s Register_Server) Register {
+	return Register(capnp.NewClient(Register_NewServer(s)))
 }
 
 // Register_Methods appends Methods to a slice that invoke the methods on s.
@@ -668,7 +948,7 @@ func NewRegister_List(s *capnp.Segment, sz int32) (Register_List, error) {
 	return capnp.CapList[Register](l), err
 }
 
-type Anchor struct{ Client capnp.Client }
+type Anchor capnp.Client
 
 // Anchor_TypeID is the unique identifier for the type Anchor.
 const Anchor_TypeID = 0xe41237e4098ed922
@@ -684,9 +964,9 @@ func (c Anchor) Ls(ctx context.Context, params func(Anchor_ls_Params) error) (An
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Anchor_ls_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Anchor_ls_Params(s)) }
 	}
-	ans, release := c.Client.SendCall(ctx, s)
+	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Anchor_ls_Results_Future{Future: ans.Future()}, release
 }
 func (c Anchor) Walk(ctx context.Context, params func(Anchor_walk_Params) error) (Anchor_walk_Results_Future, capnp.ReleaseFunc) {
@@ -700,23 +980,78 @@ func (c Anchor) Walk(ctx context.Context, params func(Anchor_walk_Params) error)
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Anchor_walk_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Anchor_walk_Params(s)) }
 	}
-	ans, release := c.Client.SendCall(ctx, s)
+	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Anchor_walk_Results_Future{Future: ans.Future()}, release
 }
 
+// String returns a string that identifies this capability for debugging
+// purposes.  Its format should not be depended on: in particular, it
+// should not be used to compare clients.  Use IsSame to compare clients
+// for equality.
+func (c Anchor) String() string {
+	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+}
+
+// AddRef creates a new Client that refers to the same capability as c.
+// If c is nil or has resolved to null, then AddRef returns nil.
 func (c Anchor) AddRef() Anchor {
-	return Anchor{
-		Client: c.Client.AddRef(),
-	}
+	return Anchor(capnp.Client(c).AddRef())
 }
 
+// Release releases a capability reference.  If this is the last
+// reference to the capability, then the underlying resources associated
+// with the capability will be released.
+//
+// Release will panic if c has already been released, but not if c is
+// nil or resolved to null.
 func (c Anchor) Release() {
-	c.Client.Release()
+	capnp.Client(c).Release()
 }
 
-// A Anchor_Server is a Anchor with a local implementation.
+// Resolve blocks until the capability is fully resolved or the Context
+// expires.
+func (c Anchor) Resolve(ctx context.Context) error {
+	return capnp.Client(c).Resolve(ctx)
+}
+
+func (c Anchor) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Client(c).EncodeAsPtr(seg)
+}
+
+func (Anchor) DecodeFromPtr(p capnp.Ptr) Anchor {
+	return Anchor(capnp.Client{}.DecodeFromPtr(p))
+}
+
+// IsValid reports whether c is a valid reference to a capability.
+// A reference is invalid if it is nil, has resolved to null, or has
+// been released.
+func (c Anchor) IsValid() bool {
+	return capnp.Client(c).IsValid()
+}
+
+// IsSame reports whether c and other refer to a capability created by the
+// same call to NewClient.  This can return false negatives if c or other
+// are not fully resolved: use Resolve if this is an issue.  If either
+// c or other are released, then IsSame panics.
+func (c Anchor) IsSame(other Anchor) bool {
+	return capnp.Client(c).IsSame(capnp.Client(other))
+}
+
+// Update the flowcontrol.FlowLimiter used to manage flow control for
+// this client. This affects all future calls, but not calls already
+// waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
+// which is also the default.
+func (c Anchor) SetFlowLimiter(lim fc.FlowLimiter) {
+	capnp.Client(c).SetFlowLimiter(lim)
+}
+
+// Get the current flowcontrol.FlowLimiter used to manage flow control
+// for this client.
+func (c Anchor) GetFlowLimiter() fc.FlowLimiter {
+	return capnp.Client(c).GetFlowLimiter()
+} // A Anchor_Server is a Anchor with a local implementation.
 type Anchor_Server interface {
 	Ls(context.Context, Anchor_ls) error
 
@@ -724,15 +1059,15 @@ type Anchor_Server interface {
 }
 
 // Anchor_NewServer creates a new Server from an implementation of Anchor_Server.
-func Anchor_NewServer(s Anchor_Server, policy *server.Policy) *server.Server {
+func Anchor_NewServer(s Anchor_Server) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(Anchor_Methods(nil, s), s, c, policy)
+	return server.New(Anchor_Methods(nil, s), s, c)
 }
 
 // Anchor_ServerToClient creates a new Client from an implementation of Anchor_Server.
 // The caller is responsible for calling Release on the returned Client.
-func Anchor_ServerToClient(s Anchor_Server, policy *server.Policy) Anchor {
-	return Anchor{Client: capnp.NewClient(Anchor_NewServer(s, policy))}
+func Anchor_ServerToClient(s Anchor_Server) Anchor {
+	return Anchor(capnp.NewClient(Anchor_NewServer(s)))
 }
 
 // Anchor_Methods appends Methods to a slice that invoke the methods on s.
@@ -777,13 +1112,13 @@ type Anchor_ls struct {
 
 // Args returns the call's arguments.
 func (c Anchor_ls) Args() Anchor_ls_Params {
-	return Anchor_ls_Params{Struct: c.Call.Args()}
+	return Anchor_ls_Params(c.Call.Args())
 }
 
 // AllocResults allocates the results struct.
 func (c Anchor_ls) AllocResults() (Anchor_ls_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Anchor_ls_Results{Struct: r}, err
+	return Anchor_ls_Results(r), err
 }
 
 // Anchor_walk holds the state for a server call to Anchor.walk.
@@ -794,13 +1129,13 @@ type Anchor_walk struct {
 
 // Args returns the call's arguments.
 func (c Anchor_walk) Args() Anchor_walk_Params {
-	return Anchor_walk_Params{Struct: c.Call.Args()}
+	return Anchor_walk_Params(c.Call.Args())
 }
 
 // AllocResults allocates the results struct.
 func (c Anchor_walk) AllocResults() (Anchor_walk_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Anchor_walk_Results{Struct: r}, err
+	return Anchor_walk_Results(r), err
 }
 
 // Anchor_List is a list of Anchor.
@@ -812,65 +1147,87 @@ func NewAnchor_List(s *capnp.Segment, sz int32) (Anchor_List, error) {
 	return capnp.CapList[Anchor](l), err
 }
 
-type Anchor_Child struct{ capnp.Struct }
+type Anchor_Child capnp.Struct
 
 // Anchor_Child_TypeID is the unique identifier for the type Anchor_Child.
 const Anchor_Child_TypeID = 0xc718781cb2553199
 
 func NewAnchor_Child(s *capnp.Segment) (Anchor_Child, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
-	return Anchor_Child{st}, err
+	return Anchor_Child(st), err
 }
 
 func NewRootAnchor_Child(s *capnp.Segment) (Anchor_Child, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
-	return Anchor_Child{st}, err
+	return Anchor_Child(st), err
 }
 
 func ReadRootAnchor_Child(msg *capnp.Message) (Anchor_Child, error) {
 	root, err := msg.Root()
-	return Anchor_Child{root.Struct()}, err
+	return Anchor_Child(root.Struct()), err
 }
 
 func (s Anchor_Child) String() string {
-	str, _ := text.Marshal(0xc718781cb2553199, s.Struct)
+	str, _ := text.Marshal(0xc718781cb2553199, capnp.Struct(s))
 	return str
 }
 
+func (s Anchor_Child) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Anchor_Child) DecodeFromPtr(p capnp.Ptr) Anchor_Child {
+	return Anchor_Child(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Anchor_Child) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Anchor_Child) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Anchor_Child) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Anchor_Child) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
 func (s Anchor_Child) Name() (string, error) {
-	p, err := s.Struct.Ptr(0)
+	p, err := capnp.Struct(s).Ptr(0)
 	return p.Text(), err
 }
 
 func (s Anchor_Child) HasName() bool {
-	return s.Struct.HasPtr(0)
+	return capnp.Struct(s).HasPtr(0)
 }
 
 func (s Anchor_Child) NameBytes() ([]byte, error) {
-	p, err := s.Struct.Ptr(0)
+	p, err := capnp.Struct(s).Ptr(0)
 	return p.TextBytes(), err
 }
 
 func (s Anchor_Child) SetName(v string) error {
-	return s.Struct.SetText(0, v)
+	return capnp.Struct(s).SetText(0, v)
 }
 
 func (s Anchor_Child) Anchor() Anchor {
-	p, _ := s.Struct.Ptr(1)
-	return Anchor{Client: p.Interface().Client()}
+	p, _ := capnp.Struct(s).Ptr(1)
+	return Anchor(p.Interface().Client())
 }
 
 func (s Anchor_Child) HasAnchor() bool {
-	return s.Struct.HasPtr(1)
+	return capnp.Struct(s).HasPtr(1)
 }
 
 func (s Anchor_Child) SetAnchor(v Anchor) error {
-	if !v.Client.IsValid() {
-		return s.Struct.SetPtr(1, capnp.Ptr{})
+	if !v.IsValid() {
+		return capnp.Struct(s).SetPtr(1, capnp.Ptr{})
 	}
 	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(v.Client))
-	return s.Struct.SetPtr(1, in.ToPtr())
+	in := capnp.NewInterface(seg, seg.Message().AddCap(capnp.Client(v)))
+	return capnp.Struct(s).SetPtr(1, in.ToPtr())
 }
 
 // Anchor_Child_List is a list of Anchor_Child.
@@ -879,7 +1236,7 @@ type Anchor_Child_List = capnp.StructList[Anchor_Child]
 // NewAnchor_Child creates a new list of Anchor_Child.
 func NewAnchor_Child_List(s *capnp.Segment, sz int32) (Anchor_Child_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2}, sz)
-	return capnp.StructList[Anchor_Child]{List: l}, err
+	return capnp.StructList[Anchor_Child](l), err
 }
 
 // Anchor_Child_Future is a wrapper for a Anchor_Child promised by a client call.
@@ -887,36 +1244,59 @@ type Anchor_Child_Future struct{ *capnp.Future }
 
 func (p Anchor_Child_Future) Struct() (Anchor_Child, error) {
 	s, err := p.Future.Struct()
-	return Anchor_Child{s}, err
+	return Anchor_Child(s), err
 }
 
 func (p Anchor_Child_Future) Anchor() Anchor {
-	return Anchor{Client: p.Future.Field(1, nil).Client()}
+	return Anchor(p.Future.Field(1, nil).Client())
 }
 
-type Anchor_ls_Params struct{ capnp.Struct }
+type Anchor_ls_Params capnp.Struct
 
 // Anchor_ls_Params_TypeID is the unique identifier for the type Anchor_ls_Params.
 const Anchor_ls_Params_TypeID = 0xc105d085735711e1
 
 func NewAnchor_ls_Params(s *capnp.Segment) (Anchor_ls_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Anchor_ls_Params{st}, err
+	return Anchor_ls_Params(st), err
 }
 
 func NewRootAnchor_ls_Params(s *capnp.Segment) (Anchor_ls_Params, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Anchor_ls_Params{st}, err
+	return Anchor_ls_Params(st), err
 }
 
 func ReadRootAnchor_ls_Params(msg *capnp.Message) (Anchor_ls_Params, error) {
 	root, err := msg.Root()
-	return Anchor_ls_Params{root.Struct()}, err
+	return Anchor_ls_Params(root.Struct()), err
 }
 
 func (s Anchor_ls_Params) String() string {
-	str, _ := text.Marshal(0xc105d085735711e1, s.Struct)
+	str, _ := text.Marshal(0xc105d085735711e1, capnp.Struct(s))
 	return str
+}
+
+func (s Anchor_ls_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Anchor_ls_Params) DecodeFromPtr(p capnp.Ptr) Anchor_ls_Params {
+	return Anchor_ls_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Anchor_ls_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Anchor_ls_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Anchor_ls_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Anchor_ls_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
 }
 
 // Anchor_ls_Params_List is a list of Anchor_ls_Params.
@@ -925,7 +1305,7 @@ type Anchor_ls_Params_List = capnp.StructList[Anchor_ls_Params]
 // NewAnchor_ls_Params creates a new list of Anchor_ls_Params.
 func NewAnchor_ls_Params_List(s *capnp.Segment, sz int32) (Anchor_ls_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Anchor_ls_Params]{List: l}, err
+	return capnp.StructList[Anchor_ls_Params](l), err
 }
 
 // Anchor_ls_Params_Future is a wrapper for a Anchor_ls_Params promised by a client call.
@@ -933,55 +1313,77 @@ type Anchor_ls_Params_Future struct{ *capnp.Future }
 
 func (p Anchor_ls_Params_Future) Struct() (Anchor_ls_Params, error) {
 	s, err := p.Future.Struct()
-	return Anchor_ls_Params{s}, err
+	return Anchor_ls_Params(s), err
 }
 
-type Anchor_ls_Results struct{ capnp.Struct }
+type Anchor_ls_Results capnp.Struct
 
 // Anchor_ls_Results_TypeID is the unique identifier for the type Anchor_ls_Results.
 const Anchor_ls_Results_TypeID = 0xe325af947f127758
 
 func NewAnchor_ls_Results(s *capnp.Segment) (Anchor_ls_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Anchor_ls_Results{st}, err
+	return Anchor_ls_Results(st), err
 }
 
 func NewRootAnchor_ls_Results(s *capnp.Segment) (Anchor_ls_Results, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Anchor_ls_Results{st}, err
+	return Anchor_ls_Results(st), err
 }
 
 func ReadRootAnchor_ls_Results(msg *capnp.Message) (Anchor_ls_Results, error) {
 	root, err := msg.Root()
-	return Anchor_ls_Results{root.Struct()}, err
+	return Anchor_ls_Results(root.Struct()), err
 }
 
 func (s Anchor_ls_Results) String() string {
-	str, _ := text.Marshal(0xe325af947f127758, s.Struct)
+	str, _ := text.Marshal(0xe325af947f127758, capnp.Struct(s))
 	return str
 }
 
+func (s Anchor_ls_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Anchor_ls_Results) DecodeFromPtr(p capnp.Ptr) Anchor_ls_Results {
+	return Anchor_ls_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Anchor_ls_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Anchor_ls_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Anchor_ls_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Anchor_ls_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
 func (s Anchor_ls_Results) Children() (Anchor_Child_List, error) {
-	p, err := s.Struct.Ptr(0)
-	return Anchor_Child_List{List: p.List()}, err
+	p, err := capnp.Struct(s).Ptr(0)
+	return Anchor_Child_List(p.List()), err
 }
 
 func (s Anchor_ls_Results) HasChildren() bool {
-	return s.Struct.HasPtr(0)
+	return capnp.Struct(s).HasPtr(0)
 }
 
 func (s Anchor_ls_Results) SetChildren(v Anchor_Child_List) error {
-	return s.Struct.SetPtr(0, v.List.ToPtr())
+	return capnp.Struct(s).SetPtr(0, v.ToPtr())
 }
 
 // NewChildren sets the children field to a newly
 // allocated Anchor_Child_List, preferring placement in s's segment.
 func (s Anchor_ls_Results) NewChildren(n int32) (Anchor_Child_List, error) {
-	l, err := NewAnchor_Child_List(s.Struct.Segment(), n)
+	l, err := NewAnchor_Child_List(capnp.Struct(s).Segment(), n)
 	if err != nil {
 		return Anchor_Child_List{}, err
 	}
-	err = s.Struct.SetPtr(0, l.List.ToPtr())
+	err = capnp.Struct(s).SetPtr(0, l.ToPtr())
 	return l, err
 }
 
@@ -991,7 +1393,7 @@ type Anchor_ls_Results_List = capnp.StructList[Anchor_ls_Results]
 // NewAnchor_ls_Results creates a new list of Anchor_ls_Results.
 func NewAnchor_ls_Results_List(s *capnp.Segment, sz int32) (Anchor_ls_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Anchor_ls_Results]{List: l}, err
+	return capnp.StructList[Anchor_ls_Results](l), err
 }
 
 // Anchor_ls_Results_Future is a wrapper for a Anchor_ls_Results promised by a client call.
@@ -999,50 +1401,72 @@ type Anchor_ls_Results_Future struct{ *capnp.Future }
 
 func (p Anchor_ls_Results_Future) Struct() (Anchor_ls_Results, error) {
 	s, err := p.Future.Struct()
-	return Anchor_ls_Results{s}, err
+	return Anchor_ls_Results(s), err
 }
 
-type Anchor_walk_Params struct{ capnp.Struct }
+type Anchor_walk_Params capnp.Struct
 
 // Anchor_walk_Params_TypeID is the unique identifier for the type Anchor_walk_Params.
 const Anchor_walk_Params_TypeID = 0xb90ffa2761585171
 
 func NewAnchor_walk_Params(s *capnp.Segment) (Anchor_walk_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Anchor_walk_Params{st}, err
+	return Anchor_walk_Params(st), err
 }
 
 func NewRootAnchor_walk_Params(s *capnp.Segment) (Anchor_walk_Params, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Anchor_walk_Params{st}, err
+	return Anchor_walk_Params(st), err
 }
 
 func ReadRootAnchor_walk_Params(msg *capnp.Message) (Anchor_walk_Params, error) {
 	root, err := msg.Root()
-	return Anchor_walk_Params{root.Struct()}, err
+	return Anchor_walk_Params(root.Struct()), err
 }
 
 func (s Anchor_walk_Params) String() string {
-	str, _ := text.Marshal(0xb90ffa2761585171, s.Struct)
+	str, _ := text.Marshal(0xb90ffa2761585171, capnp.Struct(s))
 	return str
 }
 
+func (s Anchor_walk_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Anchor_walk_Params) DecodeFromPtr(p capnp.Ptr) Anchor_walk_Params {
+	return Anchor_walk_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Anchor_walk_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Anchor_walk_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Anchor_walk_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Anchor_walk_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
 func (s Anchor_walk_Params) Path() (string, error) {
-	p, err := s.Struct.Ptr(0)
+	p, err := capnp.Struct(s).Ptr(0)
 	return p.Text(), err
 }
 
 func (s Anchor_walk_Params) HasPath() bool {
-	return s.Struct.HasPtr(0)
+	return capnp.Struct(s).HasPtr(0)
 }
 
 func (s Anchor_walk_Params) PathBytes() ([]byte, error) {
-	p, err := s.Struct.Ptr(0)
+	p, err := capnp.Struct(s).Ptr(0)
 	return p.TextBytes(), err
 }
 
 func (s Anchor_walk_Params) SetPath(v string) error {
-	return s.Struct.SetText(0, v)
+	return capnp.Struct(s).SetText(0, v)
 }
 
 // Anchor_walk_Params_List is a list of Anchor_walk_Params.
@@ -1051,7 +1475,7 @@ type Anchor_walk_Params_List = capnp.StructList[Anchor_walk_Params]
 // NewAnchor_walk_Params creates a new list of Anchor_walk_Params.
 func NewAnchor_walk_Params_List(s *capnp.Segment, sz int32) (Anchor_walk_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Anchor_walk_Params]{List: l}, err
+	return capnp.StructList[Anchor_walk_Params](l), err
 }
 
 // Anchor_walk_Params_Future is a wrapper for a Anchor_walk_Params promised by a client call.
@@ -1059,50 +1483,72 @@ type Anchor_walk_Params_Future struct{ *capnp.Future }
 
 func (p Anchor_walk_Params_Future) Struct() (Anchor_walk_Params, error) {
 	s, err := p.Future.Struct()
-	return Anchor_walk_Params{s}, err
+	return Anchor_walk_Params(s), err
 }
 
-type Anchor_walk_Results struct{ capnp.Struct }
+type Anchor_walk_Results capnp.Struct
 
 // Anchor_walk_Results_TypeID is the unique identifier for the type Anchor_walk_Results.
 const Anchor_walk_Results_TypeID = 0xaec21d58779cc86c
 
 func NewAnchor_walk_Results(s *capnp.Segment) (Anchor_walk_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Anchor_walk_Results{st}, err
+	return Anchor_walk_Results(st), err
 }
 
 func NewRootAnchor_walk_Results(s *capnp.Segment) (Anchor_walk_Results, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Anchor_walk_Results{st}, err
+	return Anchor_walk_Results(st), err
 }
 
 func ReadRootAnchor_walk_Results(msg *capnp.Message) (Anchor_walk_Results, error) {
 	root, err := msg.Root()
-	return Anchor_walk_Results{root.Struct()}, err
+	return Anchor_walk_Results(root.Struct()), err
 }
 
 func (s Anchor_walk_Results) String() string {
-	str, _ := text.Marshal(0xaec21d58779cc86c, s.Struct)
+	str, _ := text.Marshal(0xaec21d58779cc86c, capnp.Struct(s))
 	return str
 }
 
+func (s Anchor_walk_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Anchor_walk_Results) DecodeFromPtr(p capnp.Ptr) Anchor_walk_Results {
+	return Anchor_walk_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Anchor_walk_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Anchor_walk_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Anchor_walk_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Anchor_walk_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
 func (s Anchor_walk_Results) Anchor() Anchor {
-	p, _ := s.Struct.Ptr(0)
-	return Anchor{Client: p.Interface().Client()}
+	p, _ := capnp.Struct(s).Ptr(0)
+	return Anchor(p.Interface().Client())
 }
 
 func (s Anchor_walk_Results) HasAnchor() bool {
-	return s.Struct.HasPtr(0)
+	return capnp.Struct(s).HasPtr(0)
 }
 
 func (s Anchor_walk_Results) SetAnchor(v Anchor) error {
-	if !v.Client.IsValid() {
-		return s.Struct.SetPtr(0, capnp.Ptr{})
+	if !v.IsValid() {
+		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
 	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(v.Client))
-	return s.Struct.SetPtr(0, in.ToPtr())
+	in := capnp.NewInterface(seg, seg.Message().AddCap(capnp.Client(v)))
+	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
 // Anchor_walk_Results_List is a list of Anchor_walk_Results.
@@ -1111,7 +1557,7 @@ type Anchor_walk_Results_List = capnp.StructList[Anchor_walk_Results]
 // NewAnchor_walk_Results creates a new list of Anchor_walk_Results.
 func NewAnchor_walk_Results_List(s *capnp.Segment, sz int32) (Anchor_walk_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Anchor_walk_Results]{List: l}, err
+	return capnp.StructList[Anchor_walk_Results](l), err
 }
 
 // Anchor_walk_Results_Future is a wrapper for a Anchor_walk_Results promised by a client call.
@@ -1119,11 +1565,11 @@ type Anchor_walk_Results_Future struct{ *capnp.Future }
 
 func (p Anchor_walk_Results_Future) Struct() (Anchor_walk_Results, error) {
 	s, err := p.Future.Struct()
-	return Anchor_walk_Results{s}, err
+	return Anchor_walk_Results(s), err
 }
 
 func (p Anchor_walk_Results_Future) Anchor() Anchor {
-	return Anchor{Client: p.Future.Field(0, nil).Client()}
+	return Anchor(p.Future.Field(0, nil).Client())
 }
 
 const schema_efb5a91f96d44de3 = "x\xda\xa4TMl\x1bE\x18\xfd\xde\xcczg\x8b\xbc" +

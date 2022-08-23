@@ -5,9 +5,7 @@ import (
 	"fmt"
 
 	"capnproto.org/go/capnp/v3"
-	"capnproto.org/go/capnp/v3/server"
 	"github.com/wetware/ww/internal/api/anchor"
-	"github.com/wetware/ww/pkg/vat"
 )
 
 // AnchorSetter represents any type that can that can
@@ -29,7 +27,6 @@ type NameSetter interface {
 type AnchorServer struct {
 	sched  Scheduler
 	anchor anchor.Anchor_Server
-	*server.Policy
 }
 
 // Root returns a root server anchor
@@ -44,19 +41,21 @@ func NewAnchor(sched Scheduler, a anchor.Anchor_Server) AnchorServer {
 	}
 }
 
-func (a AnchorServer) Client() capnp.Client {
+func (a AnchorServer) Anchor() Anchor {
 	switch s := a.anchor.(type) {
-	case *AnchorServer, AnchorServer:
-		c := anchor.Anchor_ServerToClient(s, a.Policy)
-		return c.Client
+	case *AnchorServer, AnchorServer: // avoid recursive call
+		return Anchor(anchor.Anchor_ServerToClient(s))
 
-	case vat.ClientProvider:
-		return s.Client()
+	case interface{ Anchor() Anchor }:
+		return s.Anchor()
 
 	default:
-		c := anchor.Anchor_ServerToClient(s, a.Policy)
-		return c.Client
+		return Anchor(anchor.Anchor_ServerToClient(s))
 	}
+}
+
+func (a AnchorServer) Client() capnp.Client {
+	return capnp.Client(a.Anchor())
 }
 
 func (a AnchorServer) Shutdown() {
@@ -186,7 +185,7 @@ func (a AnchorServer) ensurePath(tx Txn, path Path) (_ AnchorServer, err error) 
 }
 
 func (a AnchorServer) Bind(target AnchorSetter) (err error) {
-	anchor := anchor.Anchor{Client: a.Client()}
+	anchor := anchor.Anchor(a.Client())
 	if err = target.SetAnchor(anchor); err != nil {
 		return
 	}

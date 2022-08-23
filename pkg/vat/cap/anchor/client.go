@@ -14,7 +14,7 @@ func (a Anchor) AddRef() Anchor {
 }
 
 func (a Anchor) Release() {
-	a.Client.Release()
+	capnp.Client(a).Release()
 }
 
 func (a Anchor) Ls(ctx context.Context) (*Iterator, capnp.ReleaseFunc) {
