@@ -9,7 +9,7 @@ import (
 
 	iostream_api "github.com/wetware/ww/internal/api/iostream"
 	"github.com/wetware/ww/internal/api/proc"
-	"github.com/wetware/ww/pkg/vat/cap/iostream"
+	"github.com/wetware/ww/pkg/iostream"
 )
 
 type CommandFunc func(proc.Executor_exec_Params) error

@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 	protoutil "github.com/wetware/casm/pkg/util/proto"
 	ww "github.com/wetware/ww/pkg"
-	pscap "github.com/wetware/ww/pkg/vat/cap/pubsub"
+	pscap "github.com/wetware/ww/pkg/pubsub"
 	"golang.org/x/sync/errgroup"
 )
 

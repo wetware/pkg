@@ -11,7 +11,7 @@ import (
 	"github.com/lthibault/log"
 	ctxutil "github.com/lthibault/util/ctx"
 	api "github.com/wetware/ww/internal/api/pubsub"
-	"github.com/wetware/ww/pkg/vat/cap/channel"
+	"github.com/wetware/ww/pkg/channel"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -21,7 +21,7 @@ type TopicJoiner interface {
 	Join(string, ...pubsub.TopicOpt) (*pubsub.Topic, error)
 }
 
-// Provider wraps a PubSub and provides vat.ClientProvider.
+// Provider wraps a PubSub and provides casm.ClientProvider.
 //
 // In order to export a given topic through multiple capabilities,
 // Provider tracks existing topics internally.  See 'Join' for more details.

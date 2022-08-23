@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"capnproto.org/go/capnp/v3"
+	casm "github.com/wetware/casm/pkg"
 	api "github.com/wetware/ww/internal/api/proc"
-	"github.com/wetware/ww/pkg/vat"
-	"github.com/wetware/ww/pkg/vat/cap/iostream"
-	"github.com/wetware/ww/pkg/vat/cap/process"
+	"github.com/wetware/ww/pkg/iostream"
+	"github.com/wetware/ww/pkg/process"
 )
 
 type Proc api.Unix_Proc
@@ -29,7 +29,7 @@ func (p Proc) Wait(ctx context.Context) error {
 	return process.Proc(p).Wait(ctx)
 }
 
-func (p Proc) Signal(ctx context.Context, s syscall.Signal) (vat.Future, capnp.ReleaseFunc) {
+func (p Proc) Signal(ctx context.Context, s syscall.Signal) (casm.Future, capnp.ReleaseFunc) {
 	f, release := api.Unix_Proc(p).Signal(ctx, func(ps api.Unix_Proc_signal_Params) (err error) {
 		switch s {
 		case syscall.SIGINT:
@@ -48,7 +48,7 @@ func (p Proc) Signal(ctx context.Context, s syscall.Signal) (vat.Future, capnp.R
 		return
 	})
 
-	return vat.Future(f), release
+	return casm.Future(f), release
 }
 
 // handle is a reference to a running the server implementation of UnixProc

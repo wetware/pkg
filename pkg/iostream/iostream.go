@@ -8,10 +8,10 @@ import (
 	"unsafe"
 
 	"capnproto.org/go/capnp/v3"
+	casm "github.com/wetware/casm/pkg"
 	chan_api "github.com/wetware/ww/internal/api/channel"
 	"github.com/wetware/ww/internal/api/iostream"
-	"github.com/wetware/ww/pkg/vat"
-	"github.com/wetware/ww/pkg/vat/cap/channel"
+	"github.com/wetware/ww/pkg/channel"
 )
 
 var ErrClosed = errors.New("closed")
@@ -57,13 +57,13 @@ func NewProvider(r io.Reader) Provider {
 //	 (b)  The consumer behind 'dst' does not distinguish between
 //        normal and erroneous stream termination.
 //
-func (p Provider) Provide(ctx context.Context, s Stream) (vat.Future, capnp.ReleaseFunc) {
+func (p Provider) Provide(ctx context.Context, s Stream) (casm.Future, capnp.ReleaseFunc) {
 	stream := func(ps iostream.Provider_provide_Params) error {
 		return ps.SetStream(iostream.Stream(s))
 	}
 
 	f, release := iostream.Provider(p).Provide(ctx, stream)
-	return vat.Future(f), release
+	return casm.Future(f), release
 }
 
 // Stream is the write end of a Unix byte-stream.  It provides
@@ -97,14 +97,14 @@ func New(w io.Writer) Stream {
 // Write the bytes to the underlying stream.  Contrary to Go's io.Write,
 // s.Write will return after all bytes have been written to the stream,
 // or an error occurs (whichever happens first).
-func (s Stream) Write(ctx context.Context, b []byte) (vat.Future, capnp.ReleaseFunc) {
+func (s Stream) Write(ctx context.Context, b []byte) (casm.Future, capnp.ReleaseFunc) {
 	f, release := iostream.Stream(s).Send(ctx, channel.Data(b))
-	return vat.Future(f), release
+	return casm.Future(f), release
 }
 
 // WriteString is a convenience method that casts data to bytes before
 // calling Write.
-func (s Stream) WriteString(ctx context.Context, data string) (vat.Future, capnp.ReleaseFunc) {
+func (s Stream) WriteString(ctx context.Context, data string) (casm.Future, capnp.ReleaseFunc) {
 	return s.Write(ctx, *(*[]byte)(unsafe.Pointer(&data)))
 }
 

@@ -7,13 +7,13 @@ import (
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/libp2p/go-libp2p-core/peer"
+	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/cluster/routing"
 	"github.com/wetware/ww/internal/api/cluster"
-	"github.com/wetware/ww/pkg/vat"
-	"github.com/wetware/ww/pkg/vat/cap/anchor"
+	"github.com/wetware/ww/pkg/anchor"
 )
 
-var HostCapability = vat.BasicCap{
+var HostCapability = casm.BasicCap{
 	"host/packed",
 	"host"}
 

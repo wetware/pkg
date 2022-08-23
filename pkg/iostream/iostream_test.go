@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/wetware/ww/pkg/vat/cap/iostream"
+	"github.com/wetware/ww/pkg/iostream"
 )
 
 func TestStream(t *testing.T) {
