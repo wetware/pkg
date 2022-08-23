@@ -3,7 +3,7 @@ package process
 import (
 	"context"
 
-	"capnproto.org/go/capnp/v3/server"
+	"capnproto.org/go/capnp/v3"
 	api "github.com/wetware/ww/internal/api/proc"
 )
 
@@ -11,9 +11,7 @@ import (
 // policy.  Note that unlike most executors, it is not itself a
 // wire-compatible capability.  This is because there is no way
 // to serialize a native Go function object.
-type Executor struct {
-	*server.Policy
-}
+type Executor struct{}
 
 // Exec calls f(ctx) in a separate goroutine, and returns a process
 // whose Wait() method returns f's error (possibly wrapped in a capnp
@@ -22,7 +20,7 @@ type Executor struct {
 // f MUST return promptly when ctx expires.
 func (exec Executor) Exec(ctx context.Context, f func(context.Context) error) Proc {
 	handle := Executor{}.Go(context.Background(), f)
-	return Proc(api.Waiter_ServerToClient(handle, exec.Policy))
+	return Proc(api.Waiter_ServerToClient(handle))
 }
 
 // Go runs f in a separate goroutine and returns its Handle.
@@ -50,13 +48,11 @@ func (exec Executor) Go(ctx context.Context, f func(context.Context) error) *Han
 type Proc api.Waiter
 
 func (p Proc) AddRef() Proc {
-	return Proc{
-		Client: p.Client.AddRef(),
-	}
+	return Proc(capnp.Client(p).AddRef())
 }
 
 func (p Proc) Release() {
-	p.Client.Release()
+	capnp.Client(p).Release()
 }
 
 // New is a convenience method for a process with the root context

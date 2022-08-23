@@ -5,13 +5,15 @@ package proc
 import (
 	capnp "capnproto.org/go/capnp/v3"
 	text "capnproto.org/go/capnp/v3/encoding/text"
+	fc "capnproto.org/go/capnp/v3/flowcontrol"
 	schemas "capnproto.org/go/capnp/v3/schemas"
 	server "capnproto.org/go/capnp/v3/server"
 	context "context"
+	fmt "fmt"
 	iostream "github.com/wetware/ww/internal/api/iostream"
 )
 
-type Executor struct{ Client capnp.Client }
+type Executor capnp.Client
 
 // Executor_TypeID is the unique identifier for the type Executor.
 const Executor_TypeID = 0xe8bb307fa2f406fb
@@ -27,37 +29,92 @@ func (c Executor) Exec(ctx context.Context, params func(Executor_exec_Params) er
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Executor_exec_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Executor_exec_Params(s)) }
 	}
-	ans, release := c.Client.SendCall(ctx, s)
+	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Executor_exec_Results_Future{Future: ans.Future()}, release
 }
 
+// String returns a string that identifies this capability for debugging
+// purposes.  Its format should not be depended on: in particular, it
+// should not be used to compare clients.  Use IsSame to compare clients
+// for equality.
+func (c Executor) String() string {
+	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+}
+
+// AddRef creates a new Client that refers to the same capability as c.
+// If c is nil or has resolved to null, then AddRef returns nil.
 func (c Executor) AddRef() Executor {
-	return Executor{
-		Client: c.Client.AddRef(),
-	}
+	return Executor(capnp.Client(c).AddRef())
 }
 
+// Release releases a capability reference.  If this is the last
+// reference to the capability, then the underlying resources associated
+// with the capability will be released.
+//
+// Release will panic if c has already been released, but not if c is
+// nil or resolved to null.
 func (c Executor) Release() {
-	c.Client.Release()
+	capnp.Client(c).Release()
 }
 
-// A Executor_Server is a Executor with a local implementation.
+// Resolve blocks until the capability is fully resolved or the Context
+// expires.
+func (c Executor) Resolve(ctx context.Context) error {
+	return capnp.Client(c).Resolve(ctx)
+}
+
+func (c Executor) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Client(c).EncodeAsPtr(seg)
+}
+
+func (Executor) DecodeFromPtr(p capnp.Ptr) Executor {
+	return Executor(capnp.Client{}.DecodeFromPtr(p))
+}
+
+// IsValid reports whether c is a valid reference to a capability.
+// A reference is invalid if it is nil, has resolved to null, or has
+// been released.
+func (c Executor) IsValid() bool {
+	return capnp.Client(c).IsValid()
+}
+
+// IsSame reports whether c and other refer to a capability created by the
+// same call to NewClient.  This can return false negatives if c or other
+// are not fully resolved: use Resolve if this is an issue.  If either
+// c or other are released, then IsSame panics.
+func (c Executor) IsSame(other Executor) bool {
+	return capnp.Client(c).IsSame(capnp.Client(other))
+}
+
+// Update the flowcontrol.FlowLimiter used to manage flow control for
+// this client. This affects all future calls, but not calls already
+// waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
+// which is also the default.
+func (c Executor) SetFlowLimiter(lim fc.FlowLimiter) {
+	capnp.Client(c).SetFlowLimiter(lim)
+}
+
+// Get the current flowcontrol.FlowLimiter used to manage flow control
+// for this client.
+func (c Executor) GetFlowLimiter() fc.FlowLimiter {
+	return capnp.Client(c).GetFlowLimiter()
+} // A Executor_Server is a Executor with a local implementation.
 type Executor_Server interface {
 	Exec(context.Context, Executor_exec) error
 }
 
 // Executor_NewServer creates a new Server from an implementation of Executor_Server.
-func Executor_NewServer(s Executor_Server, policy *server.Policy) *server.Server {
+func Executor_NewServer(s Executor_Server) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(Executor_Methods(nil, s), s, c, policy)
+	return server.New(Executor_Methods(nil, s), s, c)
 }
 
 // Executor_ServerToClient creates a new Client from an implementation of Executor_Server.
 // The caller is responsible for calling Release on the returned Client.
-func Executor_ServerToClient(s Executor_Server, policy *server.Policy) Executor {
-	return Executor{Client: capnp.NewClient(Executor_NewServer(s, policy))}
+func Executor_ServerToClient(s Executor_Server) Executor {
+	return Executor(capnp.NewClient(Executor_NewServer(s)))
 }
 
 // Executor_Methods appends Methods to a slice that invoke the methods on s.
@@ -90,13 +147,13 @@ type Executor_exec struct {
 
 // Args returns the call's arguments.
 func (c Executor_exec) Args() Executor_exec_Params {
-	return Executor_exec_Params{Struct: c.Call.Args()}
+	return Executor_exec_Params(c.Call.Args())
 }
 
 // AllocResults allocates the results struct.
 func (c Executor_exec) AllocResults() (Executor_exec_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Executor_exec_Results{Struct: r}, err
+	return Executor_exec_Results(r), err
 }
 
 // Executor_List is a list of Executor.
@@ -108,41 +165,63 @@ func NewExecutor_List(s *capnp.Segment, sz int32) (Executor_List, error) {
 	return capnp.CapList[Executor](l), err
 }
 
-type Executor_exec_Params struct{ capnp.Struct }
+type Executor_exec_Params capnp.Struct
 
 // Executor_exec_Params_TypeID is the unique identifier for the type Executor_exec_Params.
 const Executor_exec_Params_TypeID = 0xaf67b0a40b1c2bea
 
 func NewExecutor_exec_Params(s *capnp.Segment) (Executor_exec_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Executor_exec_Params{st}, err
+	return Executor_exec_Params(st), err
 }
 
 func NewRootExecutor_exec_Params(s *capnp.Segment) (Executor_exec_Params, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Executor_exec_Params{st}, err
+	return Executor_exec_Params(st), err
 }
 
 func ReadRootExecutor_exec_Params(msg *capnp.Message) (Executor_exec_Params, error) {
 	root, err := msg.Root()
-	return Executor_exec_Params{root.Struct()}, err
+	return Executor_exec_Params(root.Struct()), err
 }
 
 func (s Executor_exec_Params) String() string {
-	str, _ := text.Marshal(0xaf67b0a40b1c2bea, s.Struct)
+	str, _ := text.Marshal(0xaf67b0a40b1c2bea, capnp.Struct(s))
 	return str
 }
 
+func (s Executor_exec_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Executor_exec_Params) DecodeFromPtr(p capnp.Ptr) Executor_exec_Params {
+	return Executor_exec_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Executor_exec_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Executor_exec_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Executor_exec_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Executor_exec_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
 func (s Executor_exec_Params) Param() (capnp.Ptr, error) {
-	return s.Struct.Ptr(0)
+	return capnp.Struct(s).Ptr(0)
 }
 
 func (s Executor_exec_Params) HasParam() bool {
-	return s.Struct.HasPtr(0)
+	return capnp.Struct(s).HasPtr(0)
 }
 
 func (s Executor_exec_Params) SetParam(v capnp.Ptr) error {
-	return s.Struct.SetPtr(0, v)
+	return capnp.Struct(s).SetPtr(0, v)
 }
 
 // Executor_exec_Params_List is a list of Executor_exec_Params.
@@ -151,7 +230,7 @@ type Executor_exec_Params_List = capnp.StructList[Executor_exec_Params]
 // NewExecutor_exec_Params creates a new list of Executor_exec_Params.
 func NewExecutor_exec_Params_List(s *capnp.Segment, sz int32) (Executor_exec_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Executor_exec_Params]{List: l}, err
+	return capnp.StructList[Executor_exec_Params](l), err
 }
 
 // Executor_exec_Params_Future is a wrapper for a Executor_exec_Params promised by a client call.
@@ -159,54 +238,76 @@ type Executor_exec_Params_Future struct{ *capnp.Future }
 
 func (p Executor_exec_Params_Future) Struct() (Executor_exec_Params, error) {
 	s, err := p.Future.Struct()
-	return Executor_exec_Params{s}, err
+	return Executor_exec_Params(s), err
 }
 
 func (p Executor_exec_Params_Future) Param() *capnp.Future {
 	return p.Future.Field(0, nil)
 }
 
-type Executor_exec_Results struct{ capnp.Struct }
+type Executor_exec_Results capnp.Struct
 
 // Executor_exec_Results_TypeID is the unique identifier for the type Executor_exec_Results.
 const Executor_exec_Results_TypeID = 0x8d124035fd940437
 
 func NewExecutor_exec_Results(s *capnp.Segment) (Executor_exec_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Executor_exec_Results{st}, err
+	return Executor_exec_Results(st), err
 }
 
 func NewRootExecutor_exec_Results(s *capnp.Segment) (Executor_exec_Results, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Executor_exec_Results{st}, err
+	return Executor_exec_Results(st), err
 }
 
 func ReadRootExecutor_exec_Results(msg *capnp.Message) (Executor_exec_Results, error) {
 	root, err := msg.Root()
-	return Executor_exec_Results{root.Struct()}, err
+	return Executor_exec_Results(root.Struct()), err
 }
 
 func (s Executor_exec_Results) String() string {
-	str, _ := text.Marshal(0x8d124035fd940437, s.Struct)
+	str, _ := text.Marshal(0x8d124035fd940437, capnp.Struct(s))
 	return str
 }
 
+func (s Executor_exec_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Executor_exec_Results) DecodeFromPtr(p capnp.Ptr) Executor_exec_Results {
+	return Executor_exec_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Executor_exec_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Executor_exec_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Executor_exec_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Executor_exec_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
 func (s Executor_exec_Results) Proc() Waiter {
-	p, _ := s.Struct.Ptr(0)
-	return Waiter{Client: p.Interface().Client()}
+	p, _ := capnp.Struct(s).Ptr(0)
+	return Waiter(p.Interface().Client())
 }
 
 func (s Executor_exec_Results) HasProc() bool {
-	return s.Struct.HasPtr(0)
+	return capnp.Struct(s).HasPtr(0)
 }
 
 func (s Executor_exec_Results) SetProc(v Waiter) error {
-	if !v.Client.IsValid() {
-		return s.Struct.SetPtr(0, capnp.Ptr{})
+	if !v.IsValid() {
+		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
 	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(v.Client))
-	return s.Struct.SetPtr(0, in.ToPtr())
+	in := capnp.NewInterface(seg, seg.Message().AddCap(capnp.Client(v)))
+	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
 // Executor_exec_Results_List is a list of Executor_exec_Results.
@@ -215,7 +316,7 @@ type Executor_exec_Results_List = capnp.StructList[Executor_exec_Results]
 // NewExecutor_exec_Results creates a new list of Executor_exec_Results.
 func NewExecutor_exec_Results_List(s *capnp.Segment, sz int32) (Executor_exec_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Executor_exec_Results]{List: l}, err
+	return capnp.StructList[Executor_exec_Results](l), err
 }
 
 // Executor_exec_Results_Future is a wrapper for a Executor_exec_Results promised by a client call.
@@ -223,14 +324,14 @@ type Executor_exec_Results_Future struct{ *capnp.Future }
 
 func (p Executor_exec_Results_Future) Struct() (Executor_exec_Results, error) {
 	s, err := p.Future.Struct()
-	return Executor_exec_Results{s}, err
+	return Executor_exec_Results(s), err
 }
 
 func (p Executor_exec_Results_Future) Proc() Waiter {
-	return Waiter{Client: p.Future.Field(0, nil).Client()}
+	return Waiter(p.Future.Field(0, nil).Client())
 }
 
-type Waiter struct{ Client capnp.Client }
+type Waiter capnp.Client
 
 // Waiter_TypeID is the unique identifier for the type Waiter.
 const Waiter_TypeID = 0xc66c9bda04b0f29e
@@ -246,37 +347,92 @@ func (c Waiter) Wait(ctx context.Context, params func(Waiter_wait_Params) error)
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Waiter_wait_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Waiter_wait_Params(s)) }
 	}
-	ans, release := c.Client.SendCall(ctx, s)
+	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Waiter_wait_Results_Future{Future: ans.Future()}, release
 }
 
+// String returns a string that identifies this capability for debugging
+// purposes.  Its format should not be depended on: in particular, it
+// should not be used to compare clients.  Use IsSame to compare clients
+// for equality.
+func (c Waiter) String() string {
+	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+}
+
+// AddRef creates a new Client that refers to the same capability as c.
+// If c is nil or has resolved to null, then AddRef returns nil.
 func (c Waiter) AddRef() Waiter {
-	return Waiter{
-		Client: c.Client.AddRef(),
-	}
+	return Waiter(capnp.Client(c).AddRef())
 }
 
+// Release releases a capability reference.  If this is the last
+// reference to the capability, then the underlying resources associated
+// with the capability will be released.
+//
+// Release will panic if c has already been released, but not if c is
+// nil or resolved to null.
 func (c Waiter) Release() {
-	c.Client.Release()
+	capnp.Client(c).Release()
 }
 
-// A Waiter_Server is a Waiter with a local implementation.
+// Resolve blocks until the capability is fully resolved or the Context
+// expires.
+func (c Waiter) Resolve(ctx context.Context) error {
+	return capnp.Client(c).Resolve(ctx)
+}
+
+func (c Waiter) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Client(c).EncodeAsPtr(seg)
+}
+
+func (Waiter) DecodeFromPtr(p capnp.Ptr) Waiter {
+	return Waiter(capnp.Client{}.DecodeFromPtr(p))
+}
+
+// IsValid reports whether c is a valid reference to a capability.
+// A reference is invalid if it is nil, has resolved to null, or has
+// been released.
+func (c Waiter) IsValid() bool {
+	return capnp.Client(c).IsValid()
+}
+
+// IsSame reports whether c and other refer to a capability created by the
+// same call to NewClient.  This can return false negatives if c or other
+// are not fully resolved: use Resolve if this is an issue.  If either
+// c or other are released, then IsSame panics.
+func (c Waiter) IsSame(other Waiter) bool {
+	return capnp.Client(c).IsSame(capnp.Client(other))
+}
+
+// Update the flowcontrol.FlowLimiter used to manage flow control for
+// this client. This affects all future calls, but not calls already
+// waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
+// which is also the default.
+func (c Waiter) SetFlowLimiter(lim fc.FlowLimiter) {
+	capnp.Client(c).SetFlowLimiter(lim)
+}
+
+// Get the current flowcontrol.FlowLimiter used to manage flow control
+// for this client.
+func (c Waiter) GetFlowLimiter() fc.FlowLimiter {
+	return capnp.Client(c).GetFlowLimiter()
+} // A Waiter_Server is a Waiter with a local implementation.
 type Waiter_Server interface {
 	Wait(context.Context, Waiter_wait) error
 }
 
 // Waiter_NewServer creates a new Server from an implementation of Waiter_Server.
-func Waiter_NewServer(s Waiter_Server, policy *server.Policy) *server.Server {
+func Waiter_NewServer(s Waiter_Server) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(Waiter_Methods(nil, s), s, c, policy)
+	return server.New(Waiter_Methods(nil, s), s, c)
 }
 
 // Waiter_ServerToClient creates a new Client from an implementation of Waiter_Server.
 // The caller is responsible for calling Release on the returned Client.
-func Waiter_ServerToClient(s Waiter_Server, policy *server.Policy) Waiter {
-	return Waiter{Client: capnp.NewClient(Waiter_NewServer(s, policy))}
+func Waiter_ServerToClient(s Waiter_Server) Waiter {
+	return Waiter(capnp.NewClient(Waiter_NewServer(s)))
 }
 
 // Waiter_Methods appends Methods to a slice that invoke the methods on s.
@@ -309,13 +465,13 @@ type Waiter_wait struct {
 
 // Args returns the call's arguments.
 func (c Waiter_wait) Args() Waiter_wait_Params {
-	return Waiter_wait_Params{Struct: c.Call.Args()}
+	return Waiter_wait_Params(c.Call.Args())
 }
 
 // AllocResults allocates the results struct.
 func (c Waiter_wait) AllocResults() (Waiter_wait_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Waiter_wait_Results{Struct: r}, err
+	return Waiter_wait_Results(r), err
 }
 
 // Waiter_List is a list of Waiter.
@@ -327,29 +483,52 @@ func NewWaiter_List(s *capnp.Segment, sz int32) (Waiter_List, error) {
 	return capnp.CapList[Waiter](l), err
 }
 
-type Waiter_wait_Params struct{ capnp.Struct }
+type Waiter_wait_Params capnp.Struct
 
 // Waiter_wait_Params_TypeID is the unique identifier for the type Waiter_wait_Params.
 const Waiter_wait_Params_TypeID = 0x99761c4abe038bf3
 
 func NewWaiter_wait_Params(s *capnp.Segment) (Waiter_wait_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Waiter_wait_Params{st}, err
+	return Waiter_wait_Params(st), err
 }
 
 func NewRootWaiter_wait_Params(s *capnp.Segment) (Waiter_wait_Params, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Waiter_wait_Params{st}, err
+	return Waiter_wait_Params(st), err
 }
 
 func ReadRootWaiter_wait_Params(msg *capnp.Message) (Waiter_wait_Params, error) {
 	root, err := msg.Root()
-	return Waiter_wait_Params{root.Struct()}, err
+	return Waiter_wait_Params(root.Struct()), err
 }
 
 func (s Waiter_wait_Params) String() string {
-	str, _ := text.Marshal(0x99761c4abe038bf3, s.Struct)
+	str, _ := text.Marshal(0x99761c4abe038bf3, capnp.Struct(s))
 	return str
+}
+
+func (s Waiter_wait_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Waiter_wait_Params) DecodeFromPtr(p capnp.Ptr) Waiter_wait_Params {
+	return Waiter_wait_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Waiter_wait_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Waiter_wait_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Waiter_wait_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Waiter_wait_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
 }
 
 // Waiter_wait_Params_List is a list of Waiter_wait_Params.
@@ -358,7 +537,7 @@ type Waiter_wait_Params_List = capnp.StructList[Waiter_wait_Params]
 // NewWaiter_wait_Params creates a new list of Waiter_wait_Params.
 func NewWaiter_wait_Params_List(s *capnp.Segment, sz int32) (Waiter_wait_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Waiter_wait_Params]{List: l}, err
+	return capnp.StructList[Waiter_wait_Params](l), err
 }
 
 // Waiter_wait_Params_Future is a wrapper for a Waiter_wait_Params promised by a client call.
@@ -366,32 +545,55 @@ type Waiter_wait_Params_Future struct{ *capnp.Future }
 
 func (p Waiter_wait_Params_Future) Struct() (Waiter_wait_Params, error) {
 	s, err := p.Future.Struct()
-	return Waiter_wait_Params{s}, err
+	return Waiter_wait_Params(s), err
 }
 
-type Waiter_wait_Results struct{ capnp.Struct }
+type Waiter_wait_Results capnp.Struct
 
 // Waiter_wait_Results_TypeID is the unique identifier for the type Waiter_wait_Results.
 const Waiter_wait_Results_TypeID = 0x957555c94e5b1064
 
 func NewWaiter_wait_Results(s *capnp.Segment) (Waiter_wait_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Waiter_wait_Results{st}, err
+	return Waiter_wait_Results(st), err
 }
 
 func NewRootWaiter_wait_Results(s *capnp.Segment) (Waiter_wait_Results, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Waiter_wait_Results{st}, err
+	return Waiter_wait_Results(st), err
 }
 
 func ReadRootWaiter_wait_Results(msg *capnp.Message) (Waiter_wait_Results, error) {
 	root, err := msg.Root()
-	return Waiter_wait_Results{root.Struct()}, err
+	return Waiter_wait_Results(root.Struct()), err
 }
 
 func (s Waiter_wait_Results) String() string {
-	str, _ := text.Marshal(0x957555c94e5b1064, s.Struct)
+	str, _ := text.Marshal(0x957555c94e5b1064, capnp.Struct(s))
 	return str
+}
+
+func (s Waiter_wait_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Waiter_wait_Results) DecodeFromPtr(p capnp.Ptr) Waiter_wait_Results {
+	return Waiter_wait_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Waiter_wait_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Waiter_wait_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Waiter_wait_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Waiter_wait_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
 }
 
 // Waiter_wait_Results_List is a list of Waiter_wait_Results.
@@ -400,7 +602,7 @@ type Waiter_wait_Results_List = capnp.StructList[Waiter_wait_Results]
 // NewWaiter_wait_Results creates a new list of Waiter_wait_Results.
 func NewWaiter_wait_Results_List(s *capnp.Segment, sz int32) (Waiter_wait_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Waiter_wait_Results]{List: l}, err
+	return capnp.StructList[Waiter_wait_Results](l), err
 }
 
 // Waiter_wait_Results_Future is a wrapper for a Waiter_wait_Results promised by a client call.
@@ -408,10 +610,10 @@ type Waiter_wait_Results_Future struct{ *capnp.Future }
 
 func (p Waiter_wait_Results_Future) Struct() (Waiter_wait_Results, error) {
 	s, err := p.Future.Struct()
-	return Waiter_wait_Results{s}, err
+	return Waiter_wait_Results(s), err
 }
 
-type Unix struct{ Client capnp.Client }
+type Unix capnp.Client
 
 // Unix_TypeID is the unique identifier for the type Unix.
 const Unix_TypeID = 0x85f7549a53596cef
@@ -427,37 +629,92 @@ func (c Unix) Exec(ctx context.Context, params func(Executor_exec_Params) error)
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Executor_exec_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Executor_exec_Params(s)) }
 	}
-	ans, release := c.Client.SendCall(ctx, s)
+	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Executor_exec_Results_Future{Future: ans.Future()}, release
 }
 
+// String returns a string that identifies this capability for debugging
+// purposes.  Its format should not be depended on: in particular, it
+// should not be used to compare clients.  Use IsSame to compare clients
+// for equality.
+func (c Unix) String() string {
+	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+}
+
+// AddRef creates a new Client that refers to the same capability as c.
+// If c is nil or has resolved to null, then AddRef returns nil.
 func (c Unix) AddRef() Unix {
-	return Unix{
-		Client: c.Client.AddRef(),
-	}
+	return Unix(capnp.Client(c).AddRef())
 }
 
+// Release releases a capability reference.  If this is the last
+// reference to the capability, then the underlying resources associated
+// with the capability will be released.
+//
+// Release will panic if c has already been released, but not if c is
+// nil or resolved to null.
 func (c Unix) Release() {
-	c.Client.Release()
+	capnp.Client(c).Release()
 }
 
-// A Unix_Server is a Unix with a local implementation.
+// Resolve blocks until the capability is fully resolved or the Context
+// expires.
+func (c Unix) Resolve(ctx context.Context) error {
+	return capnp.Client(c).Resolve(ctx)
+}
+
+func (c Unix) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Client(c).EncodeAsPtr(seg)
+}
+
+func (Unix) DecodeFromPtr(p capnp.Ptr) Unix {
+	return Unix(capnp.Client{}.DecodeFromPtr(p))
+}
+
+// IsValid reports whether c is a valid reference to a capability.
+// A reference is invalid if it is nil, has resolved to null, or has
+// been released.
+func (c Unix) IsValid() bool {
+	return capnp.Client(c).IsValid()
+}
+
+// IsSame reports whether c and other refer to a capability created by the
+// same call to NewClient.  This can return false negatives if c or other
+// are not fully resolved: use Resolve if this is an issue.  If either
+// c or other are released, then IsSame panics.
+func (c Unix) IsSame(other Unix) bool {
+	return capnp.Client(c).IsSame(capnp.Client(other))
+}
+
+// Update the flowcontrol.FlowLimiter used to manage flow control for
+// this client. This affects all future calls, but not calls already
+// waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
+// which is also the default.
+func (c Unix) SetFlowLimiter(lim fc.FlowLimiter) {
+	capnp.Client(c).SetFlowLimiter(lim)
+}
+
+// Get the current flowcontrol.FlowLimiter used to manage flow control
+// for this client.
+func (c Unix) GetFlowLimiter() fc.FlowLimiter {
+	return capnp.Client(c).GetFlowLimiter()
+} // A Unix_Server is a Unix with a local implementation.
 type Unix_Server interface {
 	Exec(context.Context, Executor_exec) error
 }
 
 // Unix_NewServer creates a new Server from an implementation of Unix_Server.
-func Unix_NewServer(s Unix_Server, policy *server.Policy) *server.Server {
+func Unix_NewServer(s Unix_Server) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(Unix_Methods(nil, s), s, c, policy)
+	return server.New(Unix_Methods(nil, s), s, c)
 }
 
 // Unix_ServerToClient creates a new Client from an implementation of Unix_Server.
 // The caller is responsible for calling Release on the returned Client.
-func Unix_ServerToClient(s Unix_Server, policy *server.Policy) Unix {
-	return Unix{Client: capnp.NewClient(Unix_NewServer(s, policy))}
+func Unix_ServerToClient(s Unix_Server) Unix {
+	return Unix(capnp.NewClient(Unix_NewServer(s)))
 }
 
 // Unix_Methods appends Methods to a slice that invoke the methods on s.
@@ -491,167 +748,189 @@ func NewUnix_List(s *capnp.Segment, sz int32) (Unix_List, error) {
 	return capnp.CapList[Unix](l), err
 }
 
-type Unix_Command struct{ capnp.Struct }
+type Unix_Command capnp.Struct
 
 // Unix_Command_TypeID is the unique identifier for the type Unix_Command.
 const Unix_Command_TypeID = 0x8e898dedb95cdee4
 
 func NewUnix_Command(s *capnp.Segment) (Unix_Command, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 7})
-	return Unix_Command{st}, err
+	return Unix_Command(st), err
 }
 
 func NewRootUnix_Command(s *capnp.Segment) (Unix_Command, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 7})
-	return Unix_Command{st}, err
+	return Unix_Command(st), err
 }
 
 func ReadRootUnix_Command(msg *capnp.Message) (Unix_Command, error) {
 	root, err := msg.Root()
-	return Unix_Command{root.Struct()}, err
+	return Unix_Command(root.Struct()), err
 }
 
 func (s Unix_Command) String() string {
-	str, _ := text.Marshal(0x8e898dedb95cdee4, s.Struct)
+	str, _ := text.Marshal(0x8e898dedb95cdee4, capnp.Struct(s))
 	return str
 }
 
+func (s Unix_Command) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Unix_Command) DecodeFromPtr(p capnp.Ptr) Unix_Command {
+	return Unix_Command(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Unix_Command) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Unix_Command) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Unix_Command) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Unix_Command) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
 func (s Unix_Command) Path() (string, error) {
-	p, err := s.Struct.Ptr(0)
+	p, err := capnp.Struct(s).Ptr(0)
 	return p.Text(), err
 }
 
 func (s Unix_Command) HasPath() bool {
-	return s.Struct.HasPtr(0)
+	return capnp.Struct(s).HasPtr(0)
 }
 
 func (s Unix_Command) PathBytes() ([]byte, error) {
-	p, err := s.Struct.Ptr(0)
+	p, err := capnp.Struct(s).Ptr(0)
 	return p.TextBytes(), err
 }
 
 func (s Unix_Command) SetPath(v string) error {
-	return s.Struct.SetText(0, v)
+	return capnp.Struct(s).SetText(0, v)
 }
 
 func (s Unix_Command) Dir() (string, error) {
-	p, err := s.Struct.Ptr(1)
+	p, err := capnp.Struct(s).Ptr(1)
 	return p.Text(), err
 }
 
 func (s Unix_Command) HasDir() bool {
-	return s.Struct.HasPtr(1)
+	return capnp.Struct(s).HasPtr(1)
 }
 
 func (s Unix_Command) DirBytes() ([]byte, error) {
-	p, err := s.Struct.Ptr(1)
+	p, err := capnp.Struct(s).Ptr(1)
 	return p.TextBytes(), err
 }
 
 func (s Unix_Command) SetDir(v string) error {
-	return s.Struct.SetText(1, v)
+	return capnp.Struct(s).SetText(1, v)
 }
 
 func (s Unix_Command) Args() (capnp.TextList, error) {
-	p, err := s.Struct.Ptr(2)
-	return capnp.TextList{List: p.List()}, err
+	p, err := capnp.Struct(s).Ptr(2)
+	return capnp.TextList(p.List()), err
 }
 
 func (s Unix_Command) HasArgs() bool {
-	return s.Struct.HasPtr(2)
+	return capnp.Struct(s).HasPtr(2)
 }
 
 func (s Unix_Command) SetArgs(v capnp.TextList) error {
-	return s.Struct.SetPtr(2, v.List.ToPtr())
+	return capnp.Struct(s).SetPtr(2, v.ToPtr())
 }
 
 // NewArgs sets the args field to a newly
 // allocated capnp.TextList, preferring placement in s's segment.
 func (s Unix_Command) NewArgs(n int32) (capnp.TextList, error) {
-	l, err := capnp.NewTextList(s.Struct.Segment(), n)
+	l, err := capnp.NewTextList(capnp.Struct(s).Segment(), n)
 	if err != nil {
 		return capnp.TextList{}, err
 	}
-	err = s.Struct.SetPtr(2, l.List.ToPtr())
+	err = capnp.Struct(s).SetPtr(2, l.ToPtr())
 	return l, err
 }
 
 func (s Unix_Command) Env() (capnp.TextList, error) {
-	p, err := s.Struct.Ptr(3)
-	return capnp.TextList{List: p.List()}, err
+	p, err := capnp.Struct(s).Ptr(3)
+	return capnp.TextList(p.List()), err
 }
 
 func (s Unix_Command) HasEnv() bool {
-	return s.Struct.HasPtr(3)
+	return capnp.Struct(s).HasPtr(3)
 }
 
 func (s Unix_Command) SetEnv(v capnp.TextList) error {
-	return s.Struct.SetPtr(3, v.List.ToPtr())
+	return capnp.Struct(s).SetPtr(3, v.ToPtr())
 }
 
 // NewEnv sets the env field to a newly
 // allocated capnp.TextList, preferring placement in s's segment.
 func (s Unix_Command) NewEnv(n int32) (capnp.TextList, error) {
-	l, err := capnp.NewTextList(s.Struct.Segment(), n)
+	l, err := capnp.NewTextList(capnp.Struct(s).Segment(), n)
 	if err != nil {
 		return capnp.TextList{}, err
 	}
-	err = s.Struct.SetPtr(3, l.List.ToPtr())
+	err = capnp.Struct(s).SetPtr(3, l.ToPtr())
 	return l, err
 }
 
 func (s Unix_Command) Stdin() iostream.Provider {
-	p, _ := s.Struct.Ptr(4)
-	return iostream.Provider{Client: p.Interface().Client()}
+	p, _ := capnp.Struct(s).Ptr(4)
+	return iostream.Provider(p.Interface().Client())
 }
 
 func (s Unix_Command) HasStdin() bool {
-	return s.Struct.HasPtr(4)
+	return capnp.Struct(s).HasPtr(4)
 }
 
 func (s Unix_Command) SetStdin(v iostream.Provider) error {
-	if !v.Client.IsValid() {
-		return s.Struct.SetPtr(4, capnp.Ptr{})
+	if !v.IsValid() {
+		return capnp.Struct(s).SetPtr(4, capnp.Ptr{})
 	}
 	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(v.Client))
-	return s.Struct.SetPtr(4, in.ToPtr())
+	in := capnp.NewInterface(seg, seg.Message().AddCap(capnp.Client(v)))
+	return capnp.Struct(s).SetPtr(4, in.ToPtr())
 }
 
 func (s Unix_Command) Stdout() iostream.Stream {
-	p, _ := s.Struct.Ptr(5)
-	return iostream.Stream{Client: p.Interface().Client()}
+	p, _ := capnp.Struct(s).Ptr(5)
+	return iostream.Stream(p.Interface().Client())
 }
 
 func (s Unix_Command) HasStdout() bool {
-	return s.Struct.HasPtr(5)
+	return capnp.Struct(s).HasPtr(5)
 }
 
 func (s Unix_Command) SetStdout(v iostream.Stream) error {
-	if !v.Client.IsValid() {
-		return s.Struct.SetPtr(5, capnp.Ptr{})
+	if !v.IsValid() {
+		return capnp.Struct(s).SetPtr(5, capnp.Ptr{})
 	}
 	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(v.Client))
-	return s.Struct.SetPtr(5, in.ToPtr())
+	in := capnp.NewInterface(seg, seg.Message().AddCap(capnp.Client(v)))
+	return capnp.Struct(s).SetPtr(5, in.ToPtr())
 }
 
 func (s Unix_Command) Stderr() iostream.Stream {
-	p, _ := s.Struct.Ptr(6)
-	return iostream.Stream{Client: p.Interface().Client()}
+	p, _ := capnp.Struct(s).Ptr(6)
+	return iostream.Stream(p.Interface().Client())
 }
 
 func (s Unix_Command) HasStderr() bool {
-	return s.Struct.HasPtr(6)
+	return capnp.Struct(s).HasPtr(6)
 }
 
 func (s Unix_Command) SetStderr(v iostream.Stream) error {
-	if !v.Client.IsValid() {
-		return s.Struct.SetPtr(6, capnp.Ptr{})
+	if !v.IsValid() {
+		return capnp.Struct(s).SetPtr(6, capnp.Ptr{})
 	}
 	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(v.Client))
-	return s.Struct.SetPtr(6, in.ToPtr())
+	in := capnp.NewInterface(seg, seg.Message().AddCap(capnp.Client(v)))
+	return capnp.Struct(s).SetPtr(6, in.ToPtr())
 }
 
 // Unix_Command_List is a list of Unix_Command.
@@ -660,7 +939,7 @@ type Unix_Command_List = capnp.StructList[Unix_Command]
 // NewUnix_Command creates a new list of Unix_Command.
 func NewUnix_Command_List(s *capnp.Segment, sz int32) (Unix_Command_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 7}, sz)
-	return capnp.StructList[Unix_Command]{List: l}, err
+	return capnp.StructList[Unix_Command](l), err
 }
 
 // Unix_Command_Future is a wrapper for a Unix_Command promised by a client call.
@@ -668,22 +947,22 @@ type Unix_Command_Future struct{ *capnp.Future }
 
 func (p Unix_Command_Future) Struct() (Unix_Command, error) {
 	s, err := p.Future.Struct()
-	return Unix_Command{s}, err
+	return Unix_Command(s), err
 }
 
 func (p Unix_Command_Future) Stdin() iostream.Provider {
-	return iostream.Provider{Client: p.Future.Field(4, nil).Client()}
+	return iostream.Provider(p.Future.Field(4, nil).Client())
 }
 
 func (p Unix_Command_Future) Stdout() iostream.Stream {
-	return iostream.Stream{Client: p.Future.Field(5, nil).Client()}
+	return iostream.Stream(p.Future.Field(5, nil).Client())
 }
 
 func (p Unix_Command_Future) Stderr() iostream.Stream {
-	return iostream.Stream{Client: p.Future.Field(6, nil).Client()}
+	return iostream.Stream(p.Future.Field(6, nil).Client())
 }
 
-type Unix_Proc struct{ Client capnp.Client }
+type Unix_Proc capnp.Client
 
 // Unix_Proc_TypeID is the unique identifier for the type Unix_Proc.
 const Unix_Proc_TypeID = 0xa56f29d54a3673af
@@ -699,9 +978,9 @@ func (c Unix_Proc) Signal(ctx context.Context, params func(Unix_Proc_signal_Para
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 8, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Unix_Proc_signal_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Unix_Proc_signal_Params(s)) }
 	}
-	ans, release := c.Client.SendCall(ctx, s)
+	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Unix_Proc_signal_Results_Future{Future: ans.Future()}, release
 }
 func (c Unix_Proc) Wait(ctx context.Context, params func(Waiter_wait_Params) error) (Waiter_wait_Results_Future, capnp.ReleaseFunc) {
@@ -715,23 +994,78 @@ func (c Unix_Proc) Wait(ctx context.Context, params func(Waiter_wait_Params) err
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Waiter_wait_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Waiter_wait_Params(s)) }
 	}
-	ans, release := c.Client.SendCall(ctx, s)
+	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Waiter_wait_Results_Future{Future: ans.Future()}, release
 }
 
+// String returns a string that identifies this capability for debugging
+// purposes.  Its format should not be depended on: in particular, it
+// should not be used to compare clients.  Use IsSame to compare clients
+// for equality.
+func (c Unix_Proc) String() string {
+	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+}
+
+// AddRef creates a new Client that refers to the same capability as c.
+// If c is nil or has resolved to null, then AddRef returns nil.
 func (c Unix_Proc) AddRef() Unix_Proc {
-	return Unix_Proc{
-		Client: c.Client.AddRef(),
-	}
+	return Unix_Proc(capnp.Client(c).AddRef())
 }
 
+// Release releases a capability reference.  If this is the last
+// reference to the capability, then the underlying resources associated
+// with the capability will be released.
+//
+// Release will panic if c has already been released, but not if c is
+// nil or resolved to null.
 func (c Unix_Proc) Release() {
-	c.Client.Release()
+	capnp.Client(c).Release()
 }
 
-// A Unix_Proc_Server is a Unix_Proc with a local implementation.
+// Resolve blocks until the capability is fully resolved or the Context
+// expires.
+func (c Unix_Proc) Resolve(ctx context.Context) error {
+	return capnp.Client(c).Resolve(ctx)
+}
+
+func (c Unix_Proc) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Client(c).EncodeAsPtr(seg)
+}
+
+func (Unix_Proc) DecodeFromPtr(p capnp.Ptr) Unix_Proc {
+	return Unix_Proc(capnp.Client{}.DecodeFromPtr(p))
+}
+
+// IsValid reports whether c is a valid reference to a capability.
+// A reference is invalid if it is nil, has resolved to null, or has
+// been released.
+func (c Unix_Proc) IsValid() bool {
+	return capnp.Client(c).IsValid()
+}
+
+// IsSame reports whether c and other refer to a capability created by the
+// same call to NewClient.  This can return false negatives if c or other
+// are not fully resolved: use Resolve if this is an issue.  If either
+// c or other are released, then IsSame panics.
+func (c Unix_Proc) IsSame(other Unix_Proc) bool {
+	return capnp.Client(c).IsSame(capnp.Client(other))
+}
+
+// Update the flowcontrol.FlowLimiter used to manage flow control for
+// this client. This affects all future calls, but not calls already
+// waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
+// which is also the default.
+func (c Unix_Proc) SetFlowLimiter(lim fc.FlowLimiter) {
+	capnp.Client(c).SetFlowLimiter(lim)
+}
+
+// Get the current flowcontrol.FlowLimiter used to manage flow control
+// for this client.
+func (c Unix_Proc) GetFlowLimiter() fc.FlowLimiter {
+	return capnp.Client(c).GetFlowLimiter()
+} // A Unix_Proc_Server is a Unix_Proc with a local implementation.
 type Unix_Proc_Server interface {
 	Signal(context.Context, Unix_Proc_signal) error
 
@@ -739,15 +1073,15 @@ type Unix_Proc_Server interface {
 }
 
 // Unix_Proc_NewServer creates a new Server from an implementation of Unix_Proc_Server.
-func Unix_Proc_NewServer(s Unix_Proc_Server, policy *server.Policy) *server.Server {
+func Unix_Proc_NewServer(s Unix_Proc_Server) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(Unix_Proc_Methods(nil, s), s, c, policy)
+	return server.New(Unix_Proc_Methods(nil, s), s, c)
 }
 
 // Unix_Proc_ServerToClient creates a new Client from an implementation of Unix_Proc_Server.
 // The caller is responsible for calling Release on the returned Client.
-func Unix_Proc_ServerToClient(s Unix_Proc_Server, policy *server.Policy) Unix_Proc {
-	return Unix_Proc{Client: capnp.NewClient(Unix_Proc_NewServer(s, policy))}
+func Unix_Proc_ServerToClient(s Unix_Proc_Server) Unix_Proc {
+	return Unix_Proc(capnp.NewClient(Unix_Proc_NewServer(s)))
 }
 
 // Unix_Proc_Methods appends Methods to a slice that invoke the methods on s.
@@ -792,13 +1126,13 @@ type Unix_Proc_signal struct {
 
 // Args returns the call's arguments.
 func (c Unix_Proc_signal) Args() Unix_Proc_signal_Params {
-	return Unix_Proc_signal_Params{Struct: c.Call.Args()}
+	return Unix_Proc_signal_Params(c.Call.Args())
 }
 
 // AllocResults allocates the results struct.
 func (c Unix_Proc_signal) AllocResults() (Unix_Proc_signal_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Unix_Proc_signal_Results{Struct: r}, err
+	return Unix_Proc_signal_Results(r), err
 }
 
 // Unix_Proc_List is a list of Unix_Proc.
@@ -859,37 +1193,59 @@ func NewUnix_Proc_Signal_List(s *capnp.Segment, sz int32) (Unix_Proc_Signal_List
 	return capnp.NewEnumList[Unix_Proc_Signal](s, sz)
 }
 
-type Unix_Proc_signal_Params struct{ capnp.Struct }
+type Unix_Proc_signal_Params capnp.Struct
 
 // Unix_Proc_signal_Params_TypeID is the unique identifier for the type Unix_Proc_signal_Params.
 const Unix_Proc_signal_Params_TypeID = 0x9080163041c90a87
 
 func NewUnix_Proc_signal_Params(s *capnp.Segment) (Unix_Proc_signal_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 0})
-	return Unix_Proc_signal_Params{st}, err
+	return Unix_Proc_signal_Params(st), err
 }
 
 func NewRootUnix_Proc_signal_Params(s *capnp.Segment) (Unix_Proc_signal_Params, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 0})
-	return Unix_Proc_signal_Params{st}, err
+	return Unix_Proc_signal_Params(st), err
 }
 
 func ReadRootUnix_Proc_signal_Params(msg *capnp.Message) (Unix_Proc_signal_Params, error) {
 	root, err := msg.Root()
-	return Unix_Proc_signal_Params{root.Struct()}, err
+	return Unix_Proc_signal_Params(root.Struct()), err
 }
 
 func (s Unix_Proc_signal_Params) String() string {
-	str, _ := text.Marshal(0x9080163041c90a87, s.Struct)
+	str, _ := text.Marshal(0x9080163041c90a87, capnp.Struct(s))
 	return str
 }
 
+func (s Unix_Proc_signal_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Unix_Proc_signal_Params) DecodeFromPtr(p capnp.Ptr) Unix_Proc_signal_Params {
+	return Unix_Proc_signal_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Unix_Proc_signal_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Unix_Proc_signal_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Unix_Proc_signal_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Unix_Proc_signal_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
 func (s Unix_Proc_signal_Params) Signal() Unix_Proc_Signal {
-	return Unix_Proc_Signal(s.Struct.Uint16(0))
+	return Unix_Proc_Signal(capnp.Struct(s).Uint16(0))
 }
 
 func (s Unix_Proc_signal_Params) SetSignal(v Unix_Proc_Signal) {
-	s.Struct.SetUint16(0, uint16(v))
+	capnp.Struct(s).SetUint16(0, uint16(v))
 }
 
 // Unix_Proc_signal_Params_List is a list of Unix_Proc_signal_Params.
@@ -898,7 +1254,7 @@ type Unix_Proc_signal_Params_List = capnp.StructList[Unix_Proc_signal_Params]
 // NewUnix_Proc_signal_Params creates a new list of Unix_Proc_signal_Params.
 func NewUnix_Proc_signal_Params_List(s *capnp.Segment, sz int32) (Unix_Proc_signal_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 0}, sz)
-	return capnp.StructList[Unix_Proc_signal_Params]{List: l}, err
+	return capnp.StructList[Unix_Proc_signal_Params](l), err
 }
 
 // Unix_Proc_signal_Params_Future is a wrapper for a Unix_Proc_signal_Params promised by a client call.
@@ -906,32 +1262,55 @@ type Unix_Proc_signal_Params_Future struct{ *capnp.Future }
 
 func (p Unix_Proc_signal_Params_Future) Struct() (Unix_Proc_signal_Params, error) {
 	s, err := p.Future.Struct()
-	return Unix_Proc_signal_Params{s}, err
+	return Unix_Proc_signal_Params(s), err
 }
 
-type Unix_Proc_signal_Results struct{ capnp.Struct }
+type Unix_Proc_signal_Results capnp.Struct
 
 // Unix_Proc_signal_Results_TypeID is the unique identifier for the type Unix_Proc_signal_Results.
 const Unix_Proc_signal_Results_TypeID = 0xfeda57ee26ad6825
 
 func NewUnix_Proc_signal_Results(s *capnp.Segment) (Unix_Proc_signal_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Unix_Proc_signal_Results{st}, err
+	return Unix_Proc_signal_Results(st), err
 }
 
 func NewRootUnix_Proc_signal_Results(s *capnp.Segment) (Unix_Proc_signal_Results, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Unix_Proc_signal_Results{st}, err
+	return Unix_Proc_signal_Results(st), err
 }
 
 func ReadRootUnix_Proc_signal_Results(msg *capnp.Message) (Unix_Proc_signal_Results, error) {
 	root, err := msg.Root()
-	return Unix_Proc_signal_Results{root.Struct()}, err
+	return Unix_Proc_signal_Results(root.Struct()), err
 }
 
 func (s Unix_Proc_signal_Results) String() string {
-	str, _ := text.Marshal(0xfeda57ee26ad6825, s.Struct)
+	str, _ := text.Marshal(0xfeda57ee26ad6825, capnp.Struct(s))
 	return str
+}
+
+func (s Unix_Proc_signal_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Unix_Proc_signal_Results) DecodeFromPtr(p capnp.Ptr) Unix_Proc_signal_Results {
+	return Unix_Proc_signal_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Unix_Proc_signal_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Unix_Proc_signal_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Unix_Proc_signal_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Unix_Proc_signal_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
 }
 
 // Unix_Proc_signal_Results_List is a list of Unix_Proc_signal_Results.
@@ -940,7 +1319,7 @@ type Unix_Proc_signal_Results_List = capnp.StructList[Unix_Proc_signal_Results]
 // NewUnix_Proc_signal_Results creates a new list of Unix_Proc_signal_Results.
 func NewUnix_Proc_signal_Results_List(s *capnp.Segment, sz int32) (Unix_Proc_signal_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Unix_Proc_signal_Results]{List: l}, err
+	return capnp.StructList[Unix_Proc_signal_Results](l), err
 }
 
 // Unix_Proc_signal_Results_Future is a wrapper for a Unix_Proc_signal_Results promised by a client call.
@@ -948,7 +1327,7 @@ type Unix_Proc_signal_Results_Future struct{ *capnp.Future }
 
 func (p Unix_Proc_signal_Results_Future) Struct() (Unix_Proc_signal_Results, error) {
 	s, err := p.Future.Struct()
-	return Unix_Proc_signal_Results{s}, err
+	return Unix_Proc_signal_Results(s), err
 }
 
 const schema_d78885a0de56b292 = "x\xda|T_h\x1c\xd5\x17>\xdf\xdc\xb9\xb9\xf95" +

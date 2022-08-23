@@ -18,13 +18,11 @@ import (
 type Proc api.Unix_Proc
 
 func (p Proc) AddRef() Proc {
-	return Proc{
-		Client: p.Client.AddRef(),
-	}
+	return Proc(capnp.Client(p).AddRef())
 }
 
 func (p Proc) Release() {
-	p.Client.Release()
+	capnp.Client(p).Release()
 }
 
 func (p Proc) Wait(ctx context.Context) error {
@@ -132,13 +130,13 @@ func (h *handle) Signal(_ context.Context, call api.Unix_Proc_signal) (err error
 }
 
 func input(ctx context.Context, p iostream.Provider) io.Reader {
-	if p.Client == (capnp.Client{}) {
+	if capnp.Client(p).IsSame(capnp.Client{}) {
 		return nil
 	}
 
 	pr, pw := io.Pipe()
 	go func() {
-		f, release := p.Provide(ctx, iostream.New(pw, nil))
+		f, release := p.Provide(ctx, iostream.New(pw))
 		defer release()
 
 		if err := f.Await(ctx); err != nil {
@@ -150,7 +148,7 @@ func input(ctx context.Context, p iostream.Provider) io.Reader {
 }
 
 func output(ctx context.Context, s iostream.Stream) io.Writer {
-	if s.Client == (capnp.Client{}) {
+	if capnp.Client(s).IsSame(capnp.Client{}) {
 		return nil
 	}
 

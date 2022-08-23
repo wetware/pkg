@@ -56,7 +56,7 @@ func (cmd CommandFunc) Bind(f func(proc.Unix_Command) error) CommandFunc {
 			return err
 		}
 
-		return f(proc.Unix_Command{Struct: p.Struct()})
+		return f(proc.Unix_Command(p.Struct()))
 	}
 }
 
@@ -147,7 +147,7 @@ func Env(env ...string) func(proc.Unix_Command) error {
 // stops copying, either because it has reached the end of Stdin
 // (EOF or a read error) or because writing to the pipe returned an error.
 func Stdin(r io.Reader) func(proc.Unix_Command) error {
-	return StdinCap(iostream.NewProvider(r, nil))
+	return StdinCap(iostream.NewProvider(r))
 }
 
 // Stdout and Stderr specify the process's standard output and error.
@@ -166,12 +166,12 @@ func Stdin(r io.Reader) func(proc.Unix_Command) error {
 // If Stdout and Stderr are the same writer, and have a type that can
 // be compared with ==, at most one goroutine at a time will call Write.
 func Stdout(w io.Writer) func(proc.Unix_Command) error {
-	return StdoutCap(iostream.New(w, nil))
+	return StdoutCap(iostream.New(w))
 }
 
 // Stderr behaves analogously to Stdout.
 func Stderr(w io.Writer) func(proc.Unix_Command) error {
-	return StderrCap(iostream.New(w, nil))
+	return StderrCap(iostream.New(w))
 }
 
 // StdinCap behaves analogously to Stdin, except that it takes

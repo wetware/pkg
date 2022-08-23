@@ -4,20 +4,17 @@ import (
 	"context"
 
 	"capnproto.org/go/capnp/v3"
-	"capnproto.org/go/capnp/v3/server"
 	api "github.com/wetware/ww/internal/api/proc"
 )
 
 type Executor api.Unix
 
 func (ex Executor) AddRef() Executor {
-	return Executor{
-		Client: ex.Client.AddRef(),
-	}
+	return Executor(capnp.Client(ex).AddRef())
 }
 
 func (ex Executor) Release() {
-	ex.Client.Release()
+	capnp.Client(ex).Release()
 }
 
 // Exec constructs a command and executes it in a native OS process.
@@ -36,18 +33,16 @@ type FutureProc api.Executor_exec_Results_Future
 
 // Server implements the Unix Executor capability.  It executes
 // a Command in a native OS process.
-type Server struct {
-	*server.Policy
-}
+type Server struct{}
 
 func (s *Server) Client() capnp.Client {
-	return api.Executor_ServerToClient(s, s.Policy).Client
+	return capnp.Client(s.Executor())
 }
 
 // Executor returns an Executor client-capability.  The underlying
 // client is constructed with a call to s.Client().
 func (s *Server) Executor() Executor {
-	return Executor{Client: s.Client()}
+	return Executor(api.Executor_ServerToClient(s))
 }
 
 // Exec constructs a command and executes it in a native OS process.
@@ -61,7 +56,7 @@ func (s *Server) Exec(_ context.Context, call api.Executor_exec) error {
 
 	var h handle
 	if err = s.bind(&h, call.Args()); err == nil {
-		proc := api.Unix_Proc_ServerToClient(&h, s.Policy)
+		proc := api.Unix_Proc_ServerToClient(&h)
 		err = res.SetProc(api.Waiter(proc))
 	}
 
@@ -71,7 +66,7 @@ func (s *Server) Exec(_ context.Context, call api.Executor_exec) error {
 func (s *Server) bind(h *handle, ps api.Executor_exec_Params) error {
 	ptr, err := ps.Param()
 	if err == nil {
-		cmd := api.Unix_Command{Struct: ptr.Struct()}
+		cmd := api.Unix_Command(ptr.Struct())
 		return h.bind(context.Background(), cmd)
 	}
 
