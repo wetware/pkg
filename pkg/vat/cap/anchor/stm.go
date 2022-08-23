@@ -5,7 +5,7 @@ import (
 	"reflect"
 
 	"github.com/hashicorp/go-memdb"
-	"github.com/wetware/ww/pkg/stm"
+	"github.com/wetware/casm/pkg/stm"
 )
 
 var schema = memdb.TableSchema{
