@@ -7,21 +7,15 @@ import (
 	"sync"
 
 	"capnproto.org/go/capnp/v3"
-	"capnproto.org/go/capnp/v3/server"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/lthibault/log"
 	ctxutil "github.com/lthibault/util/ctx"
 	api "github.com/wetware/ww/internal/api/pubsub"
 	"github.com/wetware/ww/pkg/vat/cap/channel"
 	"golang.org/x/sync/errgroup"
-	"golang.org/x/sync/semaphore"
 )
 
 var ErrClosed = errors.New("closed")
-
-var defaultPolicy = server.Policy{
-	MaxConcurrentCalls: 64,
-}
 
 type TopicJoiner interface {
 	Join(string, ...pubsub.TopicOpt) (*pubsub.Topic, error)
@@ -70,8 +64,12 @@ func (p *Provider) Close() (err error) {
 	return
 }
 
+func (p *Provider) PubSub() PubSub {
+	return PubSub(api.PubSub_ServerToClient(p))
+}
+
 func (p *Provider) Client() capnp.Client {
-	return api.PubSub_ServerToClient(p, &defaultPolicy).Client
+	return capnp.Client(p.PubSub())
 }
 
 func (p *Provider) Join(ctx context.Context, call api.PubSub_join) error {
@@ -92,7 +90,7 @@ func (p *Provider) Join(ctx context.Context, call api.PubSub_join) error {
 		return err
 	}
 
-	return res.SetTopic(api.Topic_ServerToClient(t, &defaultPolicy))
+	return res.SetTopic(api.Topic_ServerToClient(t))
 }
 
 func (p *Provider) getOrCreate(topic string) (*refCountedTopic, error) {
@@ -240,12 +238,6 @@ func (t *refCountedTopic) subscribe(args api.Topic_subscribe_Params) (s subscrip
 
 	if s.sub, err = t.topic.Subscribe(pubsub.WithBufferSize(int(subOpts.BufferSize()))); err == nil {
 		s.ch = channel.Sender(args.Chan().AddRef())
-		if subOpts.BufferSize() < 1 {
-			s.ch.Client.SetFlowLimiter(newFlowLimiter(1)) // limiter must be at least 1
-		} else {
-			s.ch.Client.SetFlowLimiter(newFlowLimiter(subOpts.BufferSize()))
-		}
-
 		t.ref++
 		s.t = t
 	}
@@ -289,18 +281,4 @@ func (s *subscription) send(ctx context.Context, m *pubsub.Message) func() error
 		defer release()
 		return f.Err()
 	}
-}
-
-type flowLimiter semaphore.Weighted
-
-func newFlowLimiter(limit int64) *flowLimiter {
-	return (*flowLimiter)(semaphore.NewWeighted(limit))
-}
-
-func (f *flowLimiter) StartMessage(ctx context.Context, size uint64) (gotResponse func(), err error) {
-	if err = (*semaphore.Weighted)(f).Acquire(ctx, 1); err == nil {
-		gotResponse = func() { (*semaphore.Weighted)(f).Release(1) }
-	}
-
-	return
 }

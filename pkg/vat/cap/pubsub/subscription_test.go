@@ -27,7 +27,7 @@ func TestSubscription_refcount(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		topic := Topic(api.Topic_ServerToClient(mockTopic{}, nil))
+		topic := Topic(api.Topic_ServerToClient(mockTopic{}))
 		defer topic.Release()
 
 		ctx = context.WithValue(ctx, keySenderCallback{},
@@ -68,7 +68,7 @@ func TestSubscription_refcount(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		topic := Topic(api.Topic_ServerToClient(mockTopic{}, nil))
+		topic := Topic(api.Topic_ServerToClient(mockTopic{}))
 		defer topic.Release()
 
 		ctx = context.WithValue(ctx, keySenderCallback{},

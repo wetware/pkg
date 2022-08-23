@@ -5,13 +5,15 @@ package pubsub
 import (
 	capnp "capnproto.org/go/capnp/v3"
 	text "capnproto.org/go/capnp/v3/encoding/text"
+	fc "capnproto.org/go/capnp/v3/flowcontrol"
 	schemas "capnproto.org/go/capnp/v3/schemas"
 	server "capnproto.org/go/capnp/v3/server"
 	context "context"
+	fmt "fmt"
 	channel "github.com/wetware/ww/internal/api/channel"
 )
 
-type Topic struct{ Client capnp.Client }
+type Topic capnp.Client
 
 // Topic_TypeID is the unique identifier for the type Topic.
 const Topic_TypeID = 0x986ea9282f106bb0
@@ -27,9 +29,9 @@ func (c Topic) Publish(ctx context.Context, params func(Topic_publish_Params) er
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Topic_publish_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Topic_publish_Params(s)) }
 	}
-	ans, release := c.Client.SendCall(ctx, s)
+	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Topic_publish_Results_Future{Future: ans.Future()}, release
 }
 func (c Topic) Subscribe(ctx context.Context, params func(Topic_subscribe_Params) error) (Topic_subscribe_Results_Future, capnp.ReleaseFunc) {
@@ -43,9 +45,9 @@ func (c Topic) Subscribe(ctx context.Context, params func(Topic_subscribe_Params
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 2}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Topic_subscribe_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Topic_subscribe_Params(s)) }
 	}
-	ans, release := c.Client.SendCall(ctx, s)
+	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Topic_subscribe_Results_Future{Future: ans.Future()}, release
 }
 func (c Topic) Name(ctx context.Context, params func(Topic_name_Params) error) (Topic_name_Results_Future, capnp.ReleaseFunc) {
@@ -59,23 +61,78 @@ func (c Topic) Name(ctx context.Context, params func(Topic_name_Params) error) (
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Topic_name_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Topic_name_Params(s)) }
 	}
-	ans, release := c.Client.SendCall(ctx, s)
+	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Topic_name_Results_Future{Future: ans.Future()}, release
 }
 
+// String returns a string that identifies this capability for debugging
+// purposes.  Its format should not be depended on: in particular, it
+// should not be used to compare clients.  Use IsSame to compare clients
+// for equality.
+func (c Topic) String() string {
+	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+}
+
+// AddRef creates a new Client that refers to the same capability as c.
+// If c is nil or has resolved to null, then AddRef returns nil.
 func (c Topic) AddRef() Topic {
-	return Topic{
-		Client: c.Client.AddRef(),
-	}
+	return Topic(capnp.Client(c).AddRef())
 }
 
+// Release releases a capability reference.  If this is the last
+// reference to the capability, then the underlying resources associated
+// with the capability will be released.
+//
+// Release will panic if c has already been released, but not if c is
+// nil or resolved to null.
 func (c Topic) Release() {
-	c.Client.Release()
+	capnp.Client(c).Release()
 }
 
-// A Topic_Server is a Topic with a local implementation.
+// Resolve blocks until the capability is fully resolved or the Context
+// expires.
+func (c Topic) Resolve(ctx context.Context) error {
+	return capnp.Client(c).Resolve(ctx)
+}
+
+func (c Topic) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Client(c).EncodeAsPtr(seg)
+}
+
+func (Topic) DecodeFromPtr(p capnp.Ptr) Topic {
+	return Topic(capnp.Client{}.DecodeFromPtr(p))
+}
+
+// IsValid reports whether c is a valid reference to a capability.
+// A reference is invalid if it is nil, has resolved to null, or has
+// been released.
+func (c Topic) IsValid() bool {
+	return capnp.Client(c).IsValid()
+}
+
+// IsSame reports whether c and other refer to a capability created by the
+// same call to NewClient.  This can return false negatives if c or other
+// are not fully resolved: use Resolve if this is an issue.  If either
+// c or other are released, then IsSame panics.
+func (c Topic) IsSame(other Topic) bool {
+	return capnp.Client(c).IsSame(capnp.Client(other))
+}
+
+// Update the flowcontrol.FlowLimiter used to manage flow control for
+// this client. This affects all future calls, but not calls already
+// waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
+// which is also the default.
+func (c Topic) SetFlowLimiter(lim fc.FlowLimiter) {
+	capnp.Client(c).SetFlowLimiter(lim)
+}
+
+// Get the current flowcontrol.FlowLimiter used to manage flow control
+// for this client.
+func (c Topic) GetFlowLimiter() fc.FlowLimiter {
+	return capnp.Client(c).GetFlowLimiter()
+} // A Topic_Server is a Topic with a local implementation.
 type Topic_Server interface {
 	Publish(context.Context, Topic_publish) error
 
@@ -85,15 +142,15 @@ type Topic_Server interface {
 }
 
 // Topic_NewServer creates a new Server from an implementation of Topic_Server.
-func Topic_NewServer(s Topic_Server, policy *server.Policy) *server.Server {
+func Topic_NewServer(s Topic_Server) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(Topic_Methods(nil, s), s, c, policy)
+	return server.New(Topic_Methods(nil, s), s, c)
 }
 
 // Topic_ServerToClient creates a new Client from an implementation of Topic_Server.
 // The caller is responsible for calling Release on the returned Client.
-func Topic_ServerToClient(s Topic_Server, policy *server.Policy) Topic {
-	return Topic{Client: capnp.NewClient(Topic_NewServer(s, policy))}
+func Topic_ServerToClient(s Topic_Server) Topic {
+	return Topic(capnp.NewClient(Topic_NewServer(s)))
 }
 
 // Topic_Methods appends Methods to a slice that invoke the methods on s.
@@ -150,13 +207,13 @@ type Topic_publish struct {
 
 // Args returns the call's arguments.
 func (c Topic_publish) Args() Topic_publish_Params {
-	return Topic_publish_Params{Struct: c.Call.Args()}
+	return Topic_publish_Params(c.Call.Args())
 }
 
 // AllocResults allocates the results struct.
 func (c Topic_publish) AllocResults() (Topic_publish_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Topic_publish_Results{Struct: r}, err
+	return Topic_publish_Results(r), err
 }
 
 // Topic_subscribe holds the state for a server call to Topic.subscribe.
@@ -167,13 +224,13 @@ type Topic_subscribe struct {
 
 // Args returns the call's arguments.
 func (c Topic_subscribe) Args() Topic_subscribe_Params {
-	return Topic_subscribe_Params{Struct: c.Call.Args()}
+	return Topic_subscribe_Params(c.Call.Args())
 }
 
 // AllocResults allocates the results struct.
 func (c Topic_subscribe) AllocResults() (Topic_subscribe_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Topic_subscribe_Results{Struct: r}, err
+	return Topic_subscribe_Results(r), err
 }
 
 // Topic_name holds the state for a server call to Topic.name.
@@ -184,13 +241,13 @@ type Topic_name struct {
 
 // Args returns the call's arguments.
 func (c Topic_name) Args() Topic_name_Params {
-	return Topic_name_Params{Struct: c.Call.Args()}
+	return Topic_name_Params(c.Call.Args())
 }
 
 // AllocResults allocates the results struct.
 func (c Topic_name) AllocResults() (Topic_name_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Topic_name_Results{Struct: r}, err
+	return Topic_name_Results(r), err
 }
 
 // Topic_List is a list of Topic.
@@ -202,37 +259,59 @@ func NewTopic_List(s *capnp.Segment, sz int32) (Topic_List, error) {
 	return capnp.CapList[Topic](l), err
 }
 
-type Topic_SubOpts struct{ capnp.Struct }
+type Topic_SubOpts capnp.Struct
 
 // Topic_SubOpts_TypeID is the unique identifier for the type Topic_SubOpts.
 const Topic_SubOpts_TypeID = 0xd367494d397cfef8
 
 func NewTopic_SubOpts(s *capnp.Segment) (Topic_SubOpts, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 0})
-	return Topic_SubOpts{st}, err
+	return Topic_SubOpts(st), err
 }
 
 func NewRootTopic_SubOpts(s *capnp.Segment) (Topic_SubOpts, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 0})
-	return Topic_SubOpts{st}, err
+	return Topic_SubOpts(st), err
 }
 
 func ReadRootTopic_SubOpts(msg *capnp.Message) (Topic_SubOpts, error) {
 	root, err := msg.Root()
-	return Topic_SubOpts{root.Struct()}, err
+	return Topic_SubOpts(root.Struct()), err
 }
 
 func (s Topic_SubOpts) String() string {
-	str, _ := text.Marshal(0xd367494d397cfef8, s.Struct)
+	str, _ := text.Marshal(0xd367494d397cfef8, capnp.Struct(s))
 	return str
 }
 
+func (s Topic_SubOpts) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Topic_SubOpts) DecodeFromPtr(p capnp.Ptr) Topic_SubOpts {
+	return Topic_SubOpts(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Topic_SubOpts) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Topic_SubOpts) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Topic_SubOpts) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Topic_SubOpts) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
 func (s Topic_SubOpts) BufferSize() int64 {
-	return int64(s.Struct.Uint64(0))
+	return int64(capnp.Struct(s).Uint64(0))
 }
 
 func (s Topic_SubOpts) SetBufferSize(v int64) {
-	s.Struct.SetUint64(0, uint64(v))
+	capnp.Struct(s).SetUint64(0, uint64(v))
 }
 
 // Topic_SubOpts_List is a list of Topic_SubOpts.
@@ -241,7 +320,7 @@ type Topic_SubOpts_List = capnp.StructList[Topic_SubOpts]
 // NewTopic_SubOpts creates a new list of Topic_SubOpts.
 func NewTopic_SubOpts_List(s *capnp.Segment, sz int32) (Topic_SubOpts_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 0}, sz)
-	return capnp.StructList[Topic_SubOpts]{List: l}, err
+	return capnp.StructList[Topic_SubOpts](l), err
 }
 
 // Topic_SubOpts_Future is a wrapper for a Topic_SubOpts promised by a client call.
@@ -249,45 +328,67 @@ type Topic_SubOpts_Future struct{ *capnp.Future }
 
 func (p Topic_SubOpts_Future) Struct() (Topic_SubOpts, error) {
 	s, err := p.Future.Struct()
-	return Topic_SubOpts{s}, err
+	return Topic_SubOpts(s), err
 }
 
-type Topic_publish_Params struct{ capnp.Struct }
+type Topic_publish_Params capnp.Struct
 
 // Topic_publish_Params_TypeID is the unique identifier for the type Topic_publish_Params.
 const Topic_publish_Params_TypeID = 0x8810938879cb8443
 
 func NewTopic_publish_Params(s *capnp.Segment) (Topic_publish_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Topic_publish_Params{st}, err
+	return Topic_publish_Params(st), err
 }
 
 func NewRootTopic_publish_Params(s *capnp.Segment) (Topic_publish_Params, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Topic_publish_Params{st}, err
+	return Topic_publish_Params(st), err
 }
 
 func ReadRootTopic_publish_Params(msg *capnp.Message) (Topic_publish_Params, error) {
 	root, err := msg.Root()
-	return Topic_publish_Params{root.Struct()}, err
+	return Topic_publish_Params(root.Struct()), err
 }
 
 func (s Topic_publish_Params) String() string {
-	str, _ := text.Marshal(0x8810938879cb8443, s.Struct)
+	str, _ := text.Marshal(0x8810938879cb8443, capnp.Struct(s))
 	return str
 }
 
+func (s Topic_publish_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Topic_publish_Params) DecodeFromPtr(p capnp.Ptr) Topic_publish_Params {
+	return Topic_publish_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Topic_publish_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Topic_publish_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Topic_publish_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Topic_publish_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
 func (s Topic_publish_Params) Msg() ([]byte, error) {
-	p, err := s.Struct.Ptr(0)
+	p, err := capnp.Struct(s).Ptr(0)
 	return []byte(p.Data()), err
 }
 
 func (s Topic_publish_Params) HasMsg() bool {
-	return s.Struct.HasPtr(0)
+	return capnp.Struct(s).HasPtr(0)
 }
 
 func (s Topic_publish_Params) SetMsg(v []byte) error {
-	return s.Struct.SetData(0, v)
+	return capnp.Struct(s).SetData(0, v)
 }
 
 // Topic_publish_Params_List is a list of Topic_publish_Params.
@@ -296,7 +397,7 @@ type Topic_publish_Params_List = capnp.StructList[Topic_publish_Params]
 // NewTopic_publish_Params creates a new list of Topic_publish_Params.
 func NewTopic_publish_Params_List(s *capnp.Segment, sz int32) (Topic_publish_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Topic_publish_Params]{List: l}, err
+	return capnp.StructList[Topic_publish_Params](l), err
 }
 
 // Topic_publish_Params_Future is a wrapper for a Topic_publish_Params promised by a client call.
@@ -304,32 +405,55 @@ type Topic_publish_Params_Future struct{ *capnp.Future }
 
 func (p Topic_publish_Params_Future) Struct() (Topic_publish_Params, error) {
 	s, err := p.Future.Struct()
-	return Topic_publish_Params{s}, err
+	return Topic_publish_Params(s), err
 }
 
-type Topic_publish_Results struct{ capnp.Struct }
+type Topic_publish_Results capnp.Struct
 
 // Topic_publish_Results_TypeID is the unique identifier for the type Topic_publish_Results.
 const Topic_publish_Results_TypeID = 0x9d3775c65b79b54c
 
 func NewTopic_publish_Results(s *capnp.Segment) (Topic_publish_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Topic_publish_Results{st}, err
+	return Topic_publish_Results(st), err
 }
 
 func NewRootTopic_publish_Results(s *capnp.Segment) (Topic_publish_Results, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Topic_publish_Results{st}, err
+	return Topic_publish_Results(st), err
 }
 
 func ReadRootTopic_publish_Results(msg *capnp.Message) (Topic_publish_Results, error) {
 	root, err := msg.Root()
-	return Topic_publish_Results{root.Struct()}, err
+	return Topic_publish_Results(root.Struct()), err
 }
 
 func (s Topic_publish_Results) String() string {
-	str, _ := text.Marshal(0x9d3775c65b79b54c, s.Struct)
+	str, _ := text.Marshal(0x9d3775c65b79b54c, capnp.Struct(s))
 	return str
+}
+
+func (s Topic_publish_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Topic_publish_Results) DecodeFromPtr(p capnp.Ptr) Topic_publish_Results {
+	return Topic_publish_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Topic_publish_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Topic_publish_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Topic_publish_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Topic_publish_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
 }
 
 // Topic_publish_Results_List is a list of Topic_publish_Results.
@@ -338,7 +462,7 @@ type Topic_publish_Results_List = capnp.StructList[Topic_publish_Results]
 // NewTopic_publish_Results creates a new list of Topic_publish_Results.
 func NewTopic_publish_Results_List(s *capnp.Segment, sz int32) (Topic_publish_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Topic_publish_Results]{List: l}, err
+	return capnp.StructList[Topic_publish_Results](l), err
 }
 
 // Topic_publish_Results_Future is a wrapper for a Topic_publish_Results promised by a client call.
@@ -346,73 +470,95 @@ type Topic_publish_Results_Future struct{ *capnp.Future }
 
 func (p Topic_publish_Results_Future) Struct() (Topic_publish_Results, error) {
 	s, err := p.Future.Struct()
-	return Topic_publish_Results{s}, err
+	return Topic_publish_Results(s), err
 }
 
-type Topic_subscribe_Params struct{ capnp.Struct }
+type Topic_subscribe_Params capnp.Struct
 
 // Topic_subscribe_Params_TypeID is the unique identifier for the type Topic_subscribe_Params.
 const Topic_subscribe_Params_TypeID = 0xc772c6756fef5ba8
 
 func NewTopic_subscribe_Params(s *capnp.Segment) (Topic_subscribe_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
-	return Topic_subscribe_Params{st}, err
+	return Topic_subscribe_Params(st), err
 }
 
 func NewRootTopic_subscribe_Params(s *capnp.Segment) (Topic_subscribe_Params, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
-	return Topic_subscribe_Params{st}, err
+	return Topic_subscribe_Params(st), err
 }
 
 func ReadRootTopic_subscribe_Params(msg *capnp.Message) (Topic_subscribe_Params, error) {
 	root, err := msg.Root()
-	return Topic_subscribe_Params{root.Struct()}, err
+	return Topic_subscribe_Params(root.Struct()), err
 }
 
 func (s Topic_subscribe_Params) String() string {
-	str, _ := text.Marshal(0xc772c6756fef5ba8, s.Struct)
+	str, _ := text.Marshal(0xc772c6756fef5ba8, capnp.Struct(s))
 	return str
 }
 
+func (s Topic_subscribe_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Topic_subscribe_Params) DecodeFromPtr(p capnp.Ptr) Topic_subscribe_Params {
+	return Topic_subscribe_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Topic_subscribe_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Topic_subscribe_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Topic_subscribe_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Topic_subscribe_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
 func (s Topic_subscribe_Params) Chan() channel.Sender {
-	p, _ := s.Struct.Ptr(0)
-	return channel.Sender{Client: p.Interface().Client()}
+	p, _ := capnp.Struct(s).Ptr(0)
+	return channel.Sender(p.Interface().Client())
 }
 
 func (s Topic_subscribe_Params) HasChan() bool {
-	return s.Struct.HasPtr(0)
+	return capnp.Struct(s).HasPtr(0)
 }
 
 func (s Topic_subscribe_Params) SetChan(v channel.Sender) error {
-	if !v.Client.IsValid() {
-		return s.Struct.SetPtr(0, capnp.Ptr{})
+	if !v.IsValid() {
+		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
 	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(v.Client))
-	return s.Struct.SetPtr(0, in.ToPtr())
+	in := capnp.NewInterface(seg, seg.Message().AddCap(capnp.Client(v)))
+	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
 func (s Topic_subscribe_Params) Opts() (Topic_SubOpts, error) {
-	p, err := s.Struct.Ptr(1)
-	return Topic_SubOpts{Struct: p.Struct()}, err
+	p, err := capnp.Struct(s).Ptr(1)
+	return Topic_SubOpts(p.Struct()), err
 }
 
 func (s Topic_subscribe_Params) HasOpts() bool {
-	return s.Struct.HasPtr(1)
+	return capnp.Struct(s).HasPtr(1)
 }
 
 func (s Topic_subscribe_Params) SetOpts(v Topic_SubOpts) error {
-	return s.Struct.SetPtr(1, v.Struct.ToPtr())
+	return capnp.Struct(s).SetPtr(1, capnp.Struct(v).ToPtr())
 }
 
 // NewOpts sets the opts field to a newly
 // allocated Topic_SubOpts struct, preferring placement in s's segment.
 func (s Topic_subscribe_Params) NewOpts() (Topic_SubOpts, error) {
-	ss, err := NewTopic_SubOpts(s.Struct.Segment())
+	ss, err := NewTopic_SubOpts(capnp.Struct(s).Segment())
 	if err != nil {
 		return Topic_SubOpts{}, err
 	}
-	err = s.Struct.SetPtr(1, ss.Struct.ToPtr())
+	err = capnp.Struct(s).SetPtr(1, capnp.Struct(ss).ToPtr())
 	return ss, err
 }
 
@@ -422,7 +568,7 @@ type Topic_subscribe_Params_List = capnp.StructList[Topic_subscribe_Params]
 // NewTopic_subscribe_Params creates a new list of Topic_subscribe_Params.
 func NewTopic_subscribe_Params_List(s *capnp.Segment, sz int32) (Topic_subscribe_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2}, sz)
-	return capnp.StructList[Topic_subscribe_Params]{List: l}, err
+	return capnp.StructList[Topic_subscribe_Params](l), err
 }
 
 // Topic_subscribe_Params_Future is a wrapper for a Topic_subscribe_Params promised by a client call.
@@ -430,40 +576,63 @@ type Topic_subscribe_Params_Future struct{ *capnp.Future }
 
 func (p Topic_subscribe_Params_Future) Struct() (Topic_subscribe_Params, error) {
 	s, err := p.Future.Struct()
-	return Topic_subscribe_Params{s}, err
+	return Topic_subscribe_Params(s), err
 }
 
 func (p Topic_subscribe_Params_Future) Chan() channel.Sender {
-	return channel.Sender{Client: p.Future.Field(0, nil).Client()}
+	return channel.Sender(p.Future.Field(0, nil).Client())
 }
 
 func (p Topic_subscribe_Params_Future) Opts() Topic_SubOpts_Future {
 	return Topic_SubOpts_Future{Future: p.Future.Field(1, nil)}
 }
 
-type Topic_subscribe_Results struct{ capnp.Struct }
+type Topic_subscribe_Results capnp.Struct
 
 // Topic_subscribe_Results_TypeID is the unique identifier for the type Topic_subscribe_Results.
 const Topic_subscribe_Results_TypeID = 0x8470369ac91fcc32
 
 func NewTopic_subscribe_Results(s *capnp.Segment) (Topic_subscribe_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Topic_subscribe_Results{st}, err
+	return Topic_subscribe_Results(st), err
 }
 
 func NewRootTopic_subscribe_Results(s *capnp.Segment) (Topic_subscribe_Results, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Topic_subscribe_Results{st}, err
+	return Topic_subscribe_Results(st), err
 }
 
 func ReadRootTopic_subscribe_Results(msg *capnp.Message) (Topic_subscribe_Results, error) {
 	root, err := msg.Root()
-	return Topic_subscribe_Results{root.Struct()}, err
+	return Topic_subscribe_Results(root.Struct()), err
 }
 
 func (s Topic_subscribe_Results) String() string {
-	str, _ := text.Marshal(0x8470369ac91fcc32, s.Struct)
+	str, _ := text.Marshal(0x8470369ac91fcc32, capnp.Struct(s))
 	return str
+}
+
+func (s Topic_subscribe_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Topic_subscribe_Results) DecodeFromPtr(p capnp.Ptr) Topic_subscribe_Results {
+	return Topic_subscribe_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Topic_subscribe_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Topic_subscribe_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Topic_subscribe_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Topic_subscribe_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
 }
 
 // Topic_subscribe_Results_List is a list of Topic_subscribe_Results.
@@ -472,7 +641,7 @@ type Topic_subscribe_Results_List = capnp.StructList[Topic_subscribe_Results]
 // NewTopic_subscribe_Results creates a new list of Topic_subscribe_Results.
 func NewTopic_subscribe_Results_List(s *capnp.Segment, sz int32) (Topic_subscribe_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Topic_subscribe_Results]{List: l}, err
+	return capnp.StructList[Topic_subscribe_Results](l), err
 }
 
 // Topic_subscribe_Results_Future is a wrapper for a Topic_subscribe_Results promised by a client call.
@@ -480,32 +649,55 @@ type Topic_subscribe_Results_Future struct{ *capnp.Future }
 
 func (p Topic_subscribe_Results_Future) Struct() (Topic_subscribe_Results, error) {
 	s, err := p.Future.Struct()
-	return Topic_subscribe_Results{s}, err
+	return Topic_subscribe_Results(s), err
 }
 
-type Topic_name_Params struct{ capnp.Struct }
+type Topic_name_Params capnp.Struct
 
 // Topic_name_Params_TypeID is the unique identifier for the type Topic_name_Params.
 const Topic_name_Params_TypeID = 0xf1fc6ff9f4d43e07
 
 func NewTopic_name_Params(s *capnp.Segment) (Topic_name_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Topic_name_Params{st}, err
+	return Topic_name_Params(st), err
 }
 
 func NewRootTopic_name_Params(s *capnp.Segment) (Topic_name_Params, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Topic_name_Params{st}, err
+	return Topic_name_Params(st), err
 }
 
 func ReadRootTopic_name_Params(msg *capnp.Message) (Topic_name_Params, error) {
 	root, err := msg.Root()
-	return Topic_name_Params{root.Struct()}, err
+	return Topic_name_Params(root.Struct()), err
 }
 
 func (s Topic_name_Params) String() string {
-	str, _ := text.Marshal(0xf1fc6ff9f4d43e07, s.Struct)
+	str, _ := text.Marshal(0xf1fc6ff9f4d43e07, capnp.Struct(s))
 	return str
+}
+
+func (s Topic_name_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Topic_name_Params) DecodeFromPtr(p capnp.Ptr) Topic_name_Params {
+	return Topic_name_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Topic_name_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Topic_name_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Topic_name_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Topic_name_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
 }
 
 // Topic_name_Params_List is a list of Topic_name_Params.
@@ -514,7 +706,7 @@ type Topic_name_Params_List = capnp.StructList[Topic_name_Params]
 // NewTopic_name_Params creates a new list of Topic_name_Params.
 func NewTopic_name_Params_List(s *capnp.Segment, sz int32) (Topic_name_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Topic_name_Params]{List: l}, err
+	return capnp.StructList[Topic_name_Params](l), err
 }
 
 // Topic_name_Params_Future is a wrapper for a Topic_name_Params promised by a client call.
@@ -522,50 +714,72 @@ type Topic_name_Params_Future struct{ *capnp.Future }
 
 func (p Topic_name_Params_Future) Struct() (Topic_name_Params, error) {
 	s, err := p.Future.Struct()
-	return Topic_name_Params{s}, err
+	return Topic_name_Params(s), err
 }
 
-type Topic_name_Results struct{ capnp.Struct }
+type Topic_name_Results capnp.Struct
 
 // Topic_name_Results_TypeID is the unique identifier for the type Topic_name_Results.
 const Topic_name_Results_TypeID = 0xd5765aab1c56263f
 
 func NewTopic_name_Results(s *capnp.Segment) (Topic_name_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Topic_name_Results{st}, err
+	return Topic_name_Results(st), err
 }
 
 func NewRootTopic_name_Results(s *capnp.Segment) (Topic_name_Results, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Topic_name_Results{st}, err
+	return Topic_name_Results(st), err
 }
 
 func ReadRootTopic_name_Results(msg *capnp.Message) (Topic_name_Results, error) {
 	root, err := msg.Root()
-	return Topic_name_Results{root.Struct()}, err
+	return Topic_name_Results(root.Struct()), err
 }
 
 func (s Topic_name_Results) String() string {
-	str, _ := text.Marshal(0xd5765aab1c56263f, s.Struct)
+	str, _ := text.Marshal(0xd5765aab1c56263f, capnp.Struct(s))
 	return str
 }
 
+func (s Topic_name_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Topic_name_Results) DecodeFromPtr(p capnp.Ptr) Topic_name_Results {
+	return Topic_name_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Topic_name_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Topic_name_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Topic_name_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Topic_name_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
 func (s Topic_name_Results) Name() (string, error) {
-	p, err := s.Struct.Ptr(0)
+	p, err := capnp.Struct(s).Ptr(0)
 	return p.Text(), err
 }
 
 func (s Topic_name_Results) HasName() bool {
-	return s.Struct.HasPtr(0)
+	return capnp.Struct(s).HasPtr(0)
 }
 
 func (s Topic_name_Results) NameBytes() ([]byte, error) {
-	p, err := s.Struct.Ptr(0)
+	p, err := capnp.Struct(s).Ptr(0)
 	return p.TextBytes(), err
 }
 
 func (s Topic_name_Results) SetName(v string) error {
-	return s.Struct.SetText(0, v)
+	return capnp.Struct(s).SetText(0, v)
 }
 
 // Topic_name_Results_List is a list of Topic_name_Results.
@@ -574,7 +788,7 @@ type Topic_name_Results_List = capnp.StructList[Topic_name_Results]
 // NewTopic_name_Results creates a new list of Topic_name_Results.
 func NewTopic_name_Results_List(s *capnp.Segment, sz int32) (Topic_name_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Topic_name_Results]{List: l}, err
+	return capnp.StructList[Topic_name_Results](l), err
 }
 
 // Topic_name_Results_Future is a wrapper for a Topic_name_Results promised by a client call.
@@ -582,10 +796,10 @@ type Topic_name_Results_Future struct{ *capnp.Future }
 
 func (p Topic_name_Results_Future) Struct() (Topic_name_Results, error) {
 	s, err := p.Future.Struct()
-	return Topic_name_Results{s}, err
+	return Topic_name_Results(s), err
 }
 
-type PubSub struct{ Client capnp.Client }
+type PubSub capnp.Client
 
 // PubSub_TypeID is the unique identifier for the type PubSub.
 const PubSub_TypeID = 0xf1cc149f1c06e50e
@@ -601,37 +815,92 @@ func (c PubSub) Join(ctx context.Context, params func(PubSub_join_Params) error)
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(PubSub_join_Params{Struct: s}) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(PubSub_join_Params(s)) }
 	}
-	ans, release := c.Client.SendCall(ctx, s)
+	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return PubSub_join_Results_Future{Future: ans.Future()}, release
 }
 
+// String returns a string that identifies this capability for debugging
+// purposes.  Its format should not be depended on: in particular, it
+// should not be used to compare clients.  Use IsSame to compare clients
+// for equality.
+func (c PubSub) String() string {
+	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+}
+
+// AddRef creates a new Client that refers to the same capability as c.
+// If c is nil or has resolved to null, then AddRef returns nil.
 func (c PubSub) AddRef() PubSub {
-	return PubSub{
-		Client: c.Client.AddRef(),
-	}
+	return PubSub(capnp.Client(c).AddRef())
 }
 
+// Release releases a capability reference.  If this is the last
+// reference to the capability, then the underlying resources associated
+// with the capability will be released.
+//
+// Release will panic if c has already been released, but not if c is
+// nil or resolved to null.
 func (c PubSub) Release() {
-	c.Client.Release()
+	capnp.Client(c).Release()
 }
 
-// A PubSub_Server is a PubSub with a local implementation.
+// Resolve blocks until the capability is fully resolved or the Context
+// expires.
+func (c PubSub) Resolve(ctx context.Context) error {
+	return capnp.Client(c).Resolve(ctx)
+}
+
+func (c PubSub) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Client(c).EncodeAsPtr(seg)
+}
+
+func (PubSub) DecodeFromPtr(p capnp.Ptr) PubSub {
+	return PubSub(capnp.Client{}.DecodeFromPtr(p))
+}
+
+// IsValid reports whether c is a valid reference to a capability.
+// A reference is invalid if it is nil, has resolved to null, or has
+// been released.
+func (c PubSub) IsValid() bool {
+	return capnp.Client(c).IsValid()
+}
+
+// IsSame reports whether c and other refer to a capability created by the
+// same call to NewClient.  This can return false negatives if c or other
+// are not fully resolved: use Resolve if this is an issue.  If either
+// c or other are released, then IsSame panics.
+func (c PubSub) IsSame(other PubSub) bool {
+	return capnp.Client(c).IsSame(capnp.Client(other))
+}
+
+// Update the flowcontrol.FlowLimiter used to manage flow control for
+// this client. This affects all future calls, but not calls already
+// waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
+// which is also the default.
+func (c PubSub) SetFlowLimiter(lim fc.FlowLimiter) {
+	capnp.Client(c).SetFlowLimiter(lim)
+}
+
+// Get the current flowcontrol.FlowLimiter used to manage flow control
+// for this client.
+func (c PubSub) GetFlowLimiter() fc.FlowLimiter {
+	return capnp.Client(c).GetFlowLimiter()
+} // A PubSub_Server is a PubSub with a local implementation.
 type PubSub_Server interface {
 	Join(context.Context, PubSub_join) error
 }
 
 // PubSub_NewServer creates a new Server from an implementation of PubSub_Server.
-func PubSub_NewServer(s PubSub_Server, policy *server.Policy) *server.Server {
+func PubSub_NewServer(s PubSub_Server) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(PubSub_Methods(nil, s), s, c, policy)
+	return server.New(PubSub_Methods(nil, s), s, c)
 }
 
 // PubSub_ServerToClient creates a new Client from an implementation of PubSub_Server.
 // The caller is responsible for calling Release on the returned Client.
-func PubSub_ServerToClient(s PubSub_Server, policy *server.Policy) PubSub {
-	return PubSub{Client: capnp.NewClient(PubSub_NewServer(s, policy))}
+func PubSub_ServerToClient(s PubSub_Server) PubSub {
+	return PubSub(capnp.NewClient(PubSub_NewServer(s)))
 }
 
 // PubSub_Methods appends Methods to a slice that invoke the methods on s.
@@ -664,13 +933,13 @@ type PubSub_join struct {
 
 // Args returns the call's arguments.
 func (c PubSub_join) Args() PubSub_join_Params {
-	return PubSub_join_Params{Struct: c.Call.Args()}
+	return PubSub_join_Params(c.Call.Args())
 }
 
 // AllocResults allocates the results struct.
 func (c PubSub_join) AllocResults() (PubSub_join_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return PubSub_join_Results{Struct: r}, err
+	return PubSub_join_Results(r), err
 }
 
 // PubSub_List is a list of PubSub.
@@ -682,47 +951,69 @@ func NewPubSub_List(s *capnp.Segment, sz int32) (PubSub_List, error) {
 	return capnp.CapList[PubSub](l), err
 }
 
-type PubSub_join_Params struct{ capnp.Struct }
+type PubSub_join_Params capnp.Struct
 
 // PubSub_join_Params_TypeID is the unique identifier for the type PubSub_join_Params.
 const PubSub_join_Params_TypeID = 0xfb4016d002794da7
 
 func NewPubSub_join_Params(s *capnp.Segment) (PubSub_join_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return PubSub_join_Params{st}, err
+	return PubSub_join_Params(st), err
 }
 
 func NewRootPubSub_join_Params(s *capnp.Segment) (PubSub_join_Params, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return PubSub_join_Params{st}, err
+	return PubSub_join_Params(st), err
 }
 
 func ReadRootPubSub_join_Params(msg *capnp.Message) (PubSub_join_Params, error) {
 	root, err := msg.Root()
-	return PubSub_join_Params{root.Struct()}, err
+	return PubSub_join_Params(root.Struct()), err
 }
 
 func (s PubSub_join_Params) String() string {
-	str, _ := text.Marshal(0xfb4016d002794da7, s.Struct)
+	str, _ := text.Marshal(0xfb4016d002794da7, capnp.Struct(s))
 	return str
 }
 
+func (s PubSub_join_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (PubSub_join_Params) DecodeFromPtr(p capnp.Ptr) PubSub_join_Params {
+	return PubSub_join_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s PubSub_join_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s PubSub_join_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s PubSub_join_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s PubSub_join_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
 func (s PubSub_join_Params) Name() (string, error) {
-	p, err := s.Struct.Ptr(0)
+	p, err := capnp.Struct(s).Ptr(0)
 	return p.Text(), err
 }
 
 func (s PubSub_join_Params) HasName() bool {
-	return s.Struct.HasPtr(0)
+	return capnp.Struct(s).HasPtr(0)
 }
 
 func (s PubSub_join_Params) NameBytes() ([]byte, error) {
-	p, err := s.Struct.Ptr(0)
+	p, err := capnp.Struct(s).Ptr(0)
 	return p.TextBytes(), err
 }
 
 func (s PubSub_join_Params) SetName(v string) error {
-	return s.Struct.SetText(0, v)
+	return capnp.Struct(s).SetText(0, v)
 }
 
 // PubSub_join_Params_List is a list of PubSub_join_Params.
@@ -731,7 +1022,7 @@ type PubSub_join_Params_List = capnp.StructList[PubSub_join_Params]
 // NewPubSub_join_Params creates a new list of PubSub_join_Params.
 func NewPubSub_join_Params_List(s *capnp.Segment, sz int32) (PubSub_join_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[PubSub_join_Params]{List: l}, err
+	return capnp.StructList[PubSub_join_Params](l), err
 }
 
 // PubSub_join_Params_Future is a wrapper for a PubSub_join_Params promised by a client call.
@@ -739,50 +1030,72 @@ type PubSub_join_Params_Future struct{ *capnp.Future }
 
 func (p PubSub_join_Params_Future) Struct() (PubSub_join_Params, error) {
 	s, err := p.Future.Struct()
-	return PubSub_join_Params{s}, err
+	return PubSub_join_Params(s), err
 }
 
-type PubSub_join_Results struct{ capnp.Struct }
+type PubSub_join_Results capnp.Struct
 
 // PubSub_join_Results_TypeID is the unique identifier for the type PubSub_join_Results.
 const PubSub_join_Results_TypeID = 0x9f6c50fbc67b1d88
 
 func NewPubSub_join_Results(s *capnp.Segment) (PubSub_join_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return PubSub_join_Results{st}, err
+	return PubSub_join_Results(st), err
 }
 
 func NewRootPubSub_join_Results(s *capnp.Segment) (PubSub_join_Results, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return PubSub_join_Results{st}, err
+	return PubSub_join_Results(st), err
 }
 
 func ReadRootPubSub_join_Results(msg *capnp.Message) (PubSub_join_Results, error) {
 	root, err := msg.Root()
-	return PubSub_join_Results{root.Struct()}, err
+	return PubSub_join_Results(root.Struct()), err
 }
 
 func (s PubSub_join_Results) String() string {
-	str, _ := text.Marshal(0x9f6c50fbc67b1d88, s.Struct)
+	str, _ := text.Marshal(0x9f6c50fbc67b1d88, capnp.Struct(s))
 	return str
 }
 
+func (s PubSub_join_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (PubSub_join_Results) DecodeFromPtr(p capnp.Ptr) PubSub_join_Results {
+	return PubSub_join_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s PubSub_join_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s PubSub_join_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s PubSub_join_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s PubSub_join_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
 func (s PubSub_join_Results) Topic() Topic {
-	p, _ := s.Struct.Ptr(0)
-	return Topic{Client: p.Interface().Client()}
+	p, _ := capnp.Struct(s).Ptr(0)
+	return Topic(p.Interface().Client())
 }
 
 func (s PubSub_join_Results) HasTopic() bool {
-	return s.Struct.HasPtr(0)
+	return capnp.Struct(s).HasPtr(0)
 }
 
 func (s PubSub_join_Results) SetTopic(v Topic) error {
-	if !v.Client.IsValid() {
-		return s.Struct.SetPtr(0, capnp.Ptr{})
+	if !v.IsValid() {
+		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
 	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(v.Client))
-	return s.Struct.SetPtr(0, in.ToPtr())
+	in := capnp.NewInterface(seg, seg.Message().AddCap(capnp.Client(v)))
+	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
 // PubSub_join_Results_List is a list of PubSub_join_Results.
@@ -791,7 +1104,7 @@ type PubSub_join_Results_List = capnp.StructList[PubSub_join_Results]
 // NewPubSub_join_Results creates a new list of PubSub_join_Results.
 func NewPubSub_join_Results_List(s *capnp.Segment, sz int32) (PubSub_join_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[PubSub_join_Results]{List: l}, err
+	return capnp.StructList[PubSub_join_Results](l), err
 }
 
 // PubSub_join_Results_Future is a wrapper for a PubSub_join_Results promised by a client call.
@@ -799,11 +1112,11 @@ type PubSub_join_Results_Future struct{ *capnp.Future }
 
 func (p PubSub_join_Results_Future) Struct() (PubSub_join_Results, error) {
 	s, err := p.Future.Struct()
-	return PubSub_join_Results{s}, err
+	return PubSub_join_Results(s), err
 }
 
 func (p PubSub_join_Results_Future) Topic() Topic {
-	return Topic{Client: p.Future.Field(0, nil).Client()}
+	return Topic(p.Future.Field(0, nil).Client())
 }
 
 const schema_f9d8a0180405d9ed = "x\xda\x8cSOHT[\x18\xff\xbes\xce\xf5\xcac" +

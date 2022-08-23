@@ -4,7 +4,6 @@ import (
 	"context"
 
 	capnp "capnproto.org/go/capnp/v3"
-	"capnproto.org/go/capnp/v3/server"
 
 	chan_api "github.com/wetware/ww/internal/api/channel"
 	api "github.com/wetware/ww/internal/api/pubsub"
@@ -20,11 +19,17 @@ func (ps PubSub) Join(ctx context.Context, topic string) (FutureTopic, capnp.Rel
 	return FutureTopic(f), release
 }
 
-func (ps PubSub) AddRef() PubSub {
-	return PubSub(api.PubSub(ps).AddRef())
+func (ps PubSub) Client() capnp.Client {
+	return capnp.Client(ps)
 }
 
-func (ps PubSub) Release() { ps.Client.Release() }
+func (ps PubSub) AddRef() PubSub {
+	return PubSub(ps.Client().AddRef())
+}
+
+func (ps PubSub) Release() {
+	ps.Client().Release()
+}
 
 type FutureTopic api.PubSub_join_Results_Future
 
@@ -69,8 +74,6 @@ func (t Topic) Subscribe(ctx context.Context, ch chan<- []byte) (release capnp.R
 	h := chan_api.Sender_ServerToClient(handler{
 		ms:      ch,
 		release: t.AddRef().Release,
-	}, &server.Policy{
-		MaxConcurrentCalls: cap(ch),
 	})
 
 	f, release := api.Topic(t).Subscribe(ctx, sender(h, cap(ch)))
@@ -82,10 +85,13 @@ func (t Topic) Subscribe(ctx context.Context, ch chan<- []byte) (release capnp.R
 
 	return
 }
-func (t Topic) Release() { t.Client.Release() }
 
 func (t Topic) AddRef() Topic {
 	return Topic(api.Topic(t).AddRef())
+}
+
+func (t Topic) Release() {
+	capnp.Client(t).Release()
 }
 
 func sender(s chan_api.Sender, bufferSize int) func(api.Topic_subscribe_Params) error {

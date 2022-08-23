@@ -127,7 +127,7 @@ func BenchmarkPubSubCap(b *testing.B) {
 	server := pscap.New(ps)
 	defer server.Close()
 
-	client := pscap.PubSub{Client: server.Client()}
+	client := pscap.PubSub(server.Client())
 	defer client.Release()
 
 	futTopic, release := client.Join(ctx, payload)
@@ -167,7 +167,7 @@ func BenchmarkPubSubCapNetwork(b *testing.B) {
 	conn2 := rpc.NewConn(p2, &rpc.Options{})
 	defer conn2.Close()
 
-	client := pscap.PubSub{Client: conn2.Bootstrap(ctx)}
+	client := pscap.PubSub(conn2.Bootstrap(ctx))
 	defer client.Release()
 
 	futTopic, release := client.Join(ctx, payload)
