@@ -46,12 +46,16 @@ func (c Chan) Recv(ctx context.Context) (vat.FuturePtr, capnp.ReleaseFunc) {
 	return Recver(c).Recv(ctx)
 }
 
+func (c Chan) Client() capnp.Client {
+	return capnp.Client(c)
+}
+
 func (c Chan) AddRef() Chan {
-	return Chan(capnp.Client(c).AddRef())
+	return Chan(c.Client().AddRef())
 }
 
 func (c Chan) Release() {
-	capnp.Client(c).Release()
+	c.Client().Release()
 }
 
 type PeekableChan channel.Chan
@@ -72,12 +76,16 @@ func (c PeekableChan) Recv(ctx context.Context) (vat.FuturePtr, capnp.ReleaseFun
 	return Recver(c).Recv(ctx)
 }
 
+func (c PeekableChan) Client() capnp.Client {
+	return capnp.Client(c)
+}
+
 func (c PeekableChan) AddRef() PeekableChan {
-	return PeekableChan(capnp.Client(c).AddRef())
+	return PeekableChan(c.Client().AddRef())
 }
 
 func (c PeekableChan) Release() {
-	capnp.Client(c).Release()
+	c.Client().Release()
 }
 
 type SendCloser Chan
@@ -94,12 +102,16 @@ func (sc SendCloser) Send(ctx context.Context, v Value) (vat.Future, capnp.Relea
 	return Sender(sc).Send(ctx, v)
 }
 
+func (sc SendCloser) Client() capnp.Client {
+	return capnp.Client(sc)
+}
+
 func (sc SendCloser) AddRef() SendCloser {
-	return SendCloser(capnp.Client(sc).AddRef())
+	return SendCloser(sc.Client().AddRef())
 }
 
 func (sc SendCloser) Release() {
-	capnp.Client(sc).Release()
+	sc.Client().Release()
 }
 
 type PeekRecver Chan
@@ -116,12 +128,16 @@ func (pr PeekRecver) Recv(ctx context.Context) (vat.FuturePtr, capnp.ReleaseFunc
 	return Recver(pr).Recv(ctx)
 }
 
+func (pr PeekRecver) Client() capnp.Client {
+	return capnp.Client(pr)
+}
+
 func (pr PeekRecver) AddRef() PeekRecver {
-	return PeekRecver(capnp.Client(pr).AddRef())
+	return PeekRecver(pr.Client().AddRef())
 }
 
 func (pr PeekRecver) Release() {
-	capnp.Client(pr).Release()
+	pr.Client().Release()
 }
 
 type Sender Chan
@@ -135,12 +151,16 @@ func (s Sender) Send(ctx context.Context, v Value) (vat.Future, capnp.ReleaseFun
 	return vat.Future(f), release
 }
 
+func (s Sender) Client() capnp.Client {
+	return capnp.Client(s)
+}
+
 func (s Sender) AddRef() Sender {
-	return Sender(capnp.Client(s).AddRef())
+	return Sender(s.Client().AddRef())
 }
 
 func (s Sender) Release() {
-	capnp.Client(s).Release()
+	s.Client().Release()
 }
 
 type Peeker Chan
@@ -154,12 +174,16 @@ func (p Peeker) Peek(ctx context.Context) (vat.FuturePtr, capnp.ReleaseFunc) {
 	return vat.FuturePtr(f), release
 }
 
+func (p Peeker) Client() capnp.Client {
+	return capnp.Client(p)
+}
+
 func (p Peeker) AddRef() Peeker {
-	return Peeker(capnp.Client(p).AddRef())
+	return Peeker(p.Client().AddRef())
 }
 
 func (p Peeker) Release() {
-	capnp.Client(p).Release()
+	p.Client().Release()
 }
 
 type Recver Chan
@@ -173,12 +197,16 @@ func (r Recver) Recv(ctx context.Context) (vat.FuturePtr, capnp.ReleaseFunc) {
 	return vat.FuturePtr(f), release
 }
 
+func (r Recver) Client() capnp.Client {
+	return capnp.Client(r)
+}
+
 func (r Recver) AddRef() Recver {
-	return Recver(capnp.Client(r).AddRef())
+	return Recver(r.Client().AddRef())
 }
 
 func (r Recver) Release() {
-	capnp.Client(r).Release()
+	r.Client().Release()
 }
 
 type Closer Chan
@@ -195,10 +223,14 @@ func (c Closer) Close(ctx context.Context) error {
 	return err
 }
 
+func (c Closer) Client() capnp.Client {
+	return capnp.Client(c)
+}
+
 func (c Closer) AddRef() Closer {
-	return Closer(capnp.Client(c).AddRef())
+	return Closer(c.Client().AddRef())
 }
 
 func (c Closer) Release() {
-	capnp.Client(c).Release()
+	c.Client().Release()
 }
