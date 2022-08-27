@@ -1,4 +1,4 @@
-//go:generate mockgen -source=channel.go -destination=../../../internal/mock/pkg/cluster/channel/channel.go -package=mock_channel
+//go:generate mockgen -source=channel.go -destination=../../internal/mock/pkg/channel/channel.go -package=mock_channel
 
 package channel
 

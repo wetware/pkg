@@ -6,21 +6,14 @@ $Go.package("cluster");
 $Go.import("github.com/wetware/ww/internal/api/cluster");
 
 
-interface View {
-    iter   @0 (handler :Sender) -> ();
-    lookup @1 (peerID :PeerID) -> (record :Record, ok :Bool);
- 
-    struct Record {
-        peer @0 :PeerID;
-        ttl  @1 :Int64;
-        seq  @2 :UInt64;
-    }
- 
-    using PeerID = Text;
-    using Sender = import "channel.capnp".Sender;
-}
+interface Host {
+    # Host represents a physical or virtual machine instance
+    # participating in the cluster.
 
-
-interface Host extends(import "anchor.capnp".Anchor) {
-    # view @0 () -> (view :View);
+    view @0 () -> (view :Capability);
+    # View returns the host's partial view of the cluster. A
+    # view represents a pointin-time snapshot of the cluster,
+    # and makes no guarantee of consistency.
+    #
+    # The returned :Capability SHALL be a CASM :View type.
 }

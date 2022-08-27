@@ -1,65 +1,62 @@
+//go:generate mockgen -source=host.go -destination=../../internal/mock/pkg/cluster/host.go -package=mock_cluster
+
 package cluster
 
 import (
 	"context"
 	"sync"
+	"time"
 
 	"capnproto.org/go/capnp/v3"
-	"capnproto.org/go/capnp/v3/rpc"
-	"github.com/libp2p/go-libp2p/core/peer"
 
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/cluster/view"
-	"github.com/wetware/ww/internal/api/cluster"
-	"github.com/wetware/ww/pkg/anchor"
+	api "github.com/wetware/ww/internal/api/cluster"
 )
 
 var HostCapability = casm.BasicCap{
 	"host/packed",
 	"host"}
 
-// Viewable provides a global view of namespace peers.
-type Viewable interface {
-	View() view.View
-}
-
 /*----------------------------*
 |                             |
 |    Client Implementations   |
 |                             |
 *-----------------------------*/
-type Dialer interface {
-	Dial(context.Context, peer.AddrInfo) (*rpc.Conn, error)
+
+// type Dialer interface {
+// 	Dial(context.Context, peer.AddrInfo) (*rpc.Conn, error)
+// }
+
+type Host api.Host
+
+func (h Host) View(ctx context.Context) (view.View, capnp.ReleaseFunc) {
+	f, release := api.Host(h).View(ctx, nil)
+	return view.View(f.View().Client()), release
 }
 
-type Host struct {
-	once   sync.Once
-	Client capnp.Client
-	Info   peer.AddrInfo
-}
+// func (h *Host) Ls(ctx context.Context, d Dialer) (*anchor.Iterator, capnp.ReleaseFunc) {
+// 	return anchor.Anchor(h.resolve(ctx, d)).Ls(ctx)
+// }
 
-func (h *Host) Ls(ctx context.Context, d Dialer) (*anchor.Iterator, capnp.ReleaseFunc) {
-	return anchor.Anchor(h.resolve(ctx, d)).Ls(ctx)
-}
+// // Walk to the register located at path.  Panics if len(path) == 0.
+// func (h *Host) Walk(ctx context.Context, d Dialer, path anchor.Path) (anchor.Anchor, capnp.ReleaseFunc) {
+// 	return anchor.Anchor(h.resolve(ctx, d)).Walk(ctx, path)
+// }
 
-// Walk to the register located at path.  Panics if len(path) == 0.
-func (h *Host) Walk(ctx context.Context, d Dialer, path anchor.Path) (anchor.Anchor, capnp.ReleaseFunc) {
-	return anchor.Anchor(h.resolve(ctx, d)).Walk(ctx, path)
-}
+// func (h *Host) resolve(ctx context.Context, d Dialer) api.Host {
+// 	h.once.Do(func() {
+// 		if h.Client == (capnp.Client{}) {
+// 			if conn, err := d.Dial(ctx, h.Info); err != nil {
+// 				h.Client = capnp.ErrorClient(err)
+// 			} else {
+// 				h.Client = conn.Bootstrap(ctx) // TODO:  wrap Client & call conn.Close() on Shutdown() hook?
+// 			}
+// 		}
+// 	})
 
-func (h *Host) resolve(ctx context.Context, d Dialer) cluster.Host {
-	h.once.Do(func() {
-		if h.Client == (capnp.Client{}) {
-			if conn, err := d.Dial(ctx, h.Info); err != nil {
-				h.Client = capnp.ErrorClient(err)
-			} else {
-				h.Client = conn.Bootstrap(ctx) // TODO:  wrap Client & call conn.Close() on Shutdown() hook?
-			}
-		}
-	})
-
-	return cluster.Host(h.Client)
-}
+// 	return api.Host(h.Client)
+// }
 
 /*---------------------------*
 |                            |
@@ -67,29 +64,34 @@ func (h *Host) resolve(ctx context.Context, d Dialer) cluster.Host {
 |                            |
 *----------------------------*/
 
-// HostServer represents a host instance on the network. It provides
-// the Anchor and Joiner capabilities.
-//
-// The zero-value HostServer is ready to use.
-type HostServer struct {
-	once sync.Once
-
-	// Viewable provides a global view of namespace peers.
-	// Callers MUST set this value before the first call to Client()
-	Cluster Viewable
-
-	// The root anchor for the HostServer.  Users SHOULD NOT
-	// set this field; it will be populated automatically on
-	// the first call to Client().
-	anchor.AnchorServer
+type ViewProvider interface {
+	View() view.View
 }
 
-func (h *HostServer) Client() capnp.Client {
-	h.once.Do(func() {
-		if h.AnchorServer.Path().IsZero() {
-			h.AnchorServer = anchor.Root(h)
-		}
+// Server provides the Host capability.
+type Server struct {
+	Cluster ViewProvider
+
+	once sync.Once
+	// t0 is the time at which the host server was started.
+	// It is automatically populated by the first call to
+	// Host().
+	t0 time.Time
+}
+
+func (s *Server) Host() Host {
+	s.once.Do(func() {
+		s.t0 = time.Now()
 	})
 
-	return capnp.Client(cluster.Host_ServerToClient(h))
+	return Host(api.Host_ServerToClient(s))
+}
+
+func (s *Server) View(_ context.Context, call api.Host_view) error {
+	res, err := call.AllocResults()
+	if err == nil {
+		err = res.SetView(s.Cluster.View().Client())
+	}
+
+	return err
 }
