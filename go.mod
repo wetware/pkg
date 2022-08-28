@@ -10,8 +10,7 @@ require (
 	github.com/klauspost/cpuid/v2 v2.1.1 // indirect
 	github.com/koron/go-ssdp v0.0.3 // indirect
 	github.com/libp2p/go-libp2p v0.22.0
-	github.com/libp2p/go-libp2p-core v0.20.0 // indirect
-	github.com/libp2p/go-libp2p-kad-dht v0.17.0
+	github.com/libp2p/go-libp2p-kad-dht v0.18.0
 	github.com/libp2p/go-libp2p-pubsub v0.8.0
 	github.com/lthibault/log v1.2.2
 	github.com/miekg/dns v1.1.50 // indirect
@@ -20,13 +19,13 @@ require (
 	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/sirupsen/logrus v1.9.0
 	github.com/urfave/cli/v2 v2.11.2
-	github.com/wetware/casm v0.0.0-20220827000605-a350dfecb201
+	github.com/wetware/casm v0.0.0-20220830213945-5ac8ce7dd7dc
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/fx v1.18.1
 	go.uber.org/zap v1.23.0 // indirect
-	golang.org/x/crypto v0.0.0-20220826181053-bd7e27e6170d // indirect
+	golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90 // indirect
 	golang.org/x/net v0.0.0-20220826154423-83b083e8dc8b // indirect
-	golang.org/x/sys v0.0.0-20220825204002-c680a09ffe64 // indirect
+	golang.org/x/sys v0.0.0-20220829200755-d48e67d00261 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 )
 
@@ -78,7 +77,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/ipfs/go-cid v0.3.0 // indirect
 	github.com/ipfs/go-ipfs-util v0.0.2 // indirect
-	github.com/ipfs/go-ipns v0.1.3-0.20220823165206-b4d3619cbe99 // indirect
+	github.com/ipfs/go-ipns v0.2.0 // indirect
 	github.com/ipfs/go-log v1.0.5 // indirect
 	github.com/ipfs/go-log/v2 v2.5.1 // indirect
 	github.com/ipld/go-ipld-prime v0.18.0 // indirect
@@ -90,11 +89,10 @@ require (
 	github.com/klauspost/compress v1.15.9 // indirect
 	github.com/libp2p/go-buffer-pool v0.1.0 // indirect
 	github.com/libp2p/go-cidranger v1.1.0 // indirect
-	github.com/libp2p/go-eventbus v0.3.0 // indirect
 	github.com/libp2p/go-flow-metrics v0.1.0 // indirect
 	github.com/libp2p/go-libp2p-asn-util v0.2.0 // indirect
+	github.com/libp2p/go-libp2p-core v0.20.0 // indirect
 	github.com/libp2p/go-libp2p-kbucket v0.4.7 // indirect
-	github.com/libp2p/go-libp2p-peerstore v0.8.0 // indirect
 	github.com/libp2p/go-libp2p-record v0.2.0 // indirect
 	github.com/libp2p/go-libp2p-routing-helpers v0.2.3 // indirect
 	github.com/libp2p/go-msgio v0.2.0 // indirect
@@ -139,7 +137,7 @@ require (
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/raulk/go-watchdog v1.3.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/smartystreets/assertions v0.0.0-20180927180507-b2de0cb4f26d // indirect
+	github.com/smartystreets/assertions v1.13.0 // indirect
 	github.com/spacemonkeygo/spacelog v0.0.0-20180420211403-2296661a0572 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 // indirect
