@@ -4,8 +4,6 @@ package cluster
 
 import (
 	"context"
-	"sync"
-	"time"
 
 	"capnproto.org/go/capnp/v3"
 
@@ -29,6 +27,18 @@ var HostCapability = casm.BasicCap{
 // }
 
 type Host api.Host
+
+func (h Host) AddRef() Host {
+	return Host(h.Client().AddRef())
+}
+
+func (h Host) Release() {
+	h.Client().Release()
+}
+
+func (h Host) Client() capnp.Client {
+	return capnp.Client(h)
+}
 
 func (h Host) View(ctx context.Context) (view.View, capnp.ReleaseFunc) {
 	f, release := api.Host(h).View(ctx, nil)
@@ -71,23 +81,13 @@ type ViewProvider interface {
 // Server provides the Host capability.
 type Server struct {
 	Cluster ViewProvider
-
-	once sync.Once
-	// t0 is the time at which the host server was started.
-	// It is automatically populated by the first call to
-	// Host().
-	t0 time.Time
 }
 
-func (s *Server) Host() Host {
-	s.once.Do(func() {
-		s.t0 = time.Now()
-	})
-
+func (s Server) Host() Host {
 	return Host(api.Host_ServerToClient(s))
 }
 
-func (s *Server) View(_ context.Context, call api.Host_view) error {
+func (s Server) View(_ context.Context, call api.Host_view) error {
 	res, err := call.AllocResults()
 	if err == nil {
 		err = res.SetView(s.Cluster.View().Client())

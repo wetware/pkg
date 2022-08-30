@@ -34,12 +34,12 @@ func (c Config) ServerBootstrap() fx.Option {
 func (c Config) newServerDisc(env Env, lx fx.Lifecycle, vat casm.Vat) (d discovery.Discovery, err error) {
 	if env.IsSet("addr") {
 		d, err = boot.NewStaticAddrStrings(env.StringSlice("addr")...)
-	} else {
-		d, err = bootutil.ListenString(vat.Host, env.String("discover"),
-			socket.WithLogger(env.Log()),
-			socket.WithRateLimiter(socket.NewPacketLimiter(1000, 8)))
+		return
 	}
 
+	d, err = bootutil.ListenString(vat.Host, env.String("discover"),
+		socket.WithLogger(env.Log()),
+		socket.WithRateLimiter(socket.NewPacketLimiter(1000, 8)))
 	if c, ok := d.(io.Closer); ok {
 		lx.Append(closer(c))
 	}
@@ -50,12 +50,12 @@ func (c Config) newServerDisc(env Env, lx fx.Lifecycle, vat casm.Vat) (d discove
 func (c Config) newClientDisc(env Env, lx fx.Lifecycle, vat casm.Vat) (d discovery.Discoverer, err error) {
 	if env.IsSet("addr") {
 		d, err = boot.NewStaticAddrStrings(env.StringSlice("addr")...)
-	} else {
-		d, err = bootutil.DialString(vat.Host, env.String("discover"),
-			socket.WithLogger(env.Log()),
-			socket.WithRateLimiter(socket.NewPacketLimiter(1000, 8)))
+		return
 	}
 
+	d, err = bootutil.DialString(vat.Host, env.String("discover"),
+		socket.WithLogger(env.Log()),
+		socket.WithRateLimiter(socket.NewPacketLimiter(1000, 8)))
 	if c, ok := d.(io.Closer); ok {
 		lx.Append(closer(c))
 	}

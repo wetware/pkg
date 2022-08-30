@@ -30,7 +30,7 @@ func (j Joiner) Join(ps cluster.PubSub) (*Node, error) {
 	// export the root Host capability
 	j.Vat.Export(
 		ww_cluster.HostCapability,
-		&ww_cluster.Server{Cluster: c})
+		ww_cluster.Server{Cluster: c}.Host())
 
 	return &Node{
 		Vat:  j.Vat,

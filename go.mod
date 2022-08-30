@@ -14,12 +14,12 @@ require (
 	github.com/libp2p/go-libp2p-pubsub v0.8.0
 	github.com/lthibault/log v1.2.2
 	github.com/miekg/dns v1.1.50 // indirect
-	github.com/multiformats/go-multiaddr v0.6.0 // indirect
+	github.com/multiformats/go-multiaddr v0.6.0
 	github.com/prometheus/common v0.37.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/sirupsen/logrus v1.9.0
 	github.com/urfave/cli/v2 v2.11.2
-	github.com/wetware/casm v0.0.0-20220830213945-5ac8ce7dd7dc
+	github.com/wetware/casm v0.0.0-20220830220656-21146cb6936b
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/fx v1.18.1
 	go.uber.org/zap v1.23.0 // indirect
@@ -36,6 +36,7 @@ require (
 	github.com/ipfs/go-ds-badger2 v0.1.3
 	github.com/lthibault/go-libp2p-inproc-transport v0.3.0
 	github.com/lthibault/util v0.0.12
+	github.com/multiformats/go-multistream v0.3.3
 	github.com/stretchr/testify v1.8.0
 	github.com/thejerf/suture/v4 v4.0.2
 	golang.org/x/sync v0.0.0-20220819030929-7fc1605a5dde
@@ -122,7 +123,6 @@ require (
 	github.com/multiformats/go-multibase v0.1.1 // indirect
 	github.com/multiformats/go-multicodec v0.6.0 // indirect
 	github.com/multiformats/go-multihash v0.2.1 // indirect
-	github.com/multiformats/go-multistream v0.3.3 // indirect
 	github.com/multiformats/go-varint v0.0.6 // indirect
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/onsi/ginkgo v1.16.5 // indirect

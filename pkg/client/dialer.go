@@ -15,6 +15,8 @@ import (
 	"github.com/wetware/ww/pkg/cluster"
 )
 
+var ErrNoPeers = errors.New("no peers")
+
 // Dialer is a factory type for Node.  It uses Boot to join the
 // cluster identified by Vat.NS, and returns a Node.
 type Dialer struct {
@@ -46,8 +48,7 @@ func (d Dialer) join(ctx context.Context) (n *Node, err error) {
 	for info := range peers {
 		d.Log.With(addrEntry(info)).Debug("found peer")
 
-		n, err = d.dialCaps(ctx, info)
-		if err == nil {
+		if n, err = d.connect(ctx, info); err == nil {
 			break
 		}
 
@@ -56,28 +57,21 @@ func (d Dialer) join(ctx context.Context) (n *Node, err error) {
 
 	// no peers discovered?
 	if n == nil && err == nil {
-		err = errors.New("bootstrap failed: no peers found")
+		err = ErrNoPeers
 	}
 
 	return
 }
 
-func (d Dialer) dialCaps(ctx context.Context, info peer.AddrInfo) (*Node, error) {
-	// psConn, err := d.Vat.Connect(ctx, info, pubsub.Capability)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	hostConn, err := d.Vat.Connect(ctx, info, cluster.HostCapability)
+func (d Dialer) connect(ctx context.Context, info peer.AddrInfo) (*Node, error) {
+	conn, err := d.Vat.Connect(ctx, info, cluster.HostCapability)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Node{
-		vat:  d.Vat,
-		conn: hostConn, // TODO:  do we still need an rpc.Conn?  Should we prefer one conn over the other?
-		// ps:   pubsub.PubSub(psConn.Bootstrap(context.Background())),
-		host: cluster.Host{Client: hostConn.Bootstrap(context.Background())},
+		Vat:  d.Vat,
+		conn: conn,
 	}, nil
 }
 

@@ -3,7 +3,6 @@ package runtime
 import (
 	"fmt"
 
-	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/discovery"
 	"github.com/libp2p/go-libp2p/core/protocol"
@@ -17,7 +16,6 @@ type pubSubConfig struct {
 	fx.In
 
 	Vat  casm.Vat
-	DHT  *dual.DHT
 	Boot discovery.Discovery
 	// Tracer *statsdutil.PubSubTracer  // XXX - BEFORE MERGE
 }
