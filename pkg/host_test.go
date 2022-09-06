@@ -1,17 +1,19 @@
-package cluster_test
+package ww_test
 
 import (
 	"context"
 	"testing"
 	"time"
 
-	"github.com/golang/mock/gomock"
 	"github.com/libp2p/go-libp2p/core/peer"
+
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/wetware/casm/pkg/cluster"
 	"github.com/wetware/casm/pkg/cluster/routing"
-	"github.com/wetware/casm/pkg/cluster/view"
-	mock_cluster "github.com/wetware/ww/internal/mock/pkg/cluster"
-	"github.com/wetware/ww/pkg/cluster"
+	mock_ww "github.com/wetware/ww/internal/mock/pkg"
+	ww "github.com/wetware/ww/pkg"
 )
 
 func TestHost_View(t *testing.T) {
@@ -21,21 +23,21 @@ func TestHost_View(t *testing.T) {
 	defer ctrl.Finish()
 
 	rt := mockRoutingTable{}
-	vs := view.Server{RoutingTable: rt}
+	vs := cluster.Server{RoutingTable: rt}
 
-	vp := mock_cluster.NewMockViewProvider(ctrl)
+	vp := mock_ww.NewMockViewProvider(ctrl)
 	vp.EXPECT().
 		View().
-		Return(vs.View()).
+		Return(cluster.View(vs.Client())).
 		Times(1)
 
-	server := cluster.Server{Cluster: vp}
+	server := ww.HostServer{Cluster: vp}
 	v, release := server.Host().View(context.Background())
 	require.NotNil(t, release)
 	defer release()
 	require.NotZero(t, v)
 
-	f, release := v.Lookup(context.Background(), view.All())
+	f, release := v.Lookup(context.Background(), cluster.All())
 	defer release()
 	r, err := f.Await(context.Background())
 	require.NoError(t, err)

@@ -48,6 +48,11 @@ var flags = []cli.Flag{
 		Value:   "/ip4/228.8.8.8/udp/8822/multicast/lo0",
 		EnvVars: []string{"WW_DISCOVER"},
 	},
+	&cli.StringSliceFlag{
+		Name:    "meta",
+		Usage:   "metadata fields in key=value format",
+		EnvVars: []string{"WW_META"},
+	},
 }
 
 // Command constructor

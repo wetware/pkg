@@ -17,8 +17,8 @@ import (
 
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/boot"
+	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/client"
-	"github.com/wetware/ww/pkg/cluster"
 )
 
 func TestDialer(t *testing.T) {
@@ -131,7 +131,7 @@ func TestDialer(t *testing.T) {
 			NS:   "test",
 			Host: h,
 		}
-		svr.Export(cluster.HostCapability, cluster.Host{})
+		svr.Export(ww.HostCapability, ww.HostServer{})
 
 		n, err := client.Dialer{
 			Vat:  clt,
@@ -160,7 +160,7 @@ func TestDialer(t *testing.T) {
 			NS:   "test",
 			Host: h,
 		}
-		svr.Export(cluster.HostCapability, cluster.Host{})
+		svr.Export(ww.HostCapability, ww.HostServer{})
 
 		clt := newVat()
 		defer clt.Host.Close()

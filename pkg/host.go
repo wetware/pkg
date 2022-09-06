@@ -1,6 +1,6 @@
-//go:generate mockgen -source=host.go -destination=../../internal/mock/pkg/cluster/host.go -package=mock_cluster
+//go:generate mockgen -source=host.go -destination=../internal/mock/pkg/host.go -package=mock_ww
 
-package cluster
+package ww
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"capnproto.org/go/capnp/v3"
 
 	casm "github.com/wetware/casm/pkg"
-	"github.com/wetware/casm/pkg/cluster/view"
+	"github.com/wetware/casm/pkg/cluster"
 	api "github.com/wetware/ww/internal/api/cluster"
 )
 
@@ -29,20 +29,16 @@ var HostCapability = casm.BasicCap{
 type Host api.Host
 
 func (h Host) AddRef() Host {
-	return Host(h.Client().AddRef())
+	return Host(capnp.Client(h).AddRef())
 }
 
 func (h Host) Release() {
-	h.Client().Release()
+	capnp.Client(h).Release()
 }
 
-func (h Host) Client() capnp.Client {
-	return capnp.Client(h)
-}
-
-func (h Host) View(ctx context.Context) (view.View, capnp.ReleaseFunc) {
+func (h Host) View(ctx context.Context) (cluster.View, capnp.ReleaseFunc) {
 	f, release := api.Host(h).View(ctx, nil)
-	return view.View(f.View().Client()), release
+	return cluster.View(f.View().Client()), release
 }
 
 // func (h *Host) Ls(ctx context.Context, d Dialer) (*anchor.Iterator, capnp.ReleaseFunc) {
@@ -75,22 +71,26 @@ func (h Host) View(ctx context.Context) (view.View, capnp.ReleaseFunc) {
 *----------------------------*/
 
 type ViewProvider interface {
-	View() view.View
+	View() cluster.View
 }
 
-// Server provides the Host capability.
-type Server struct {
+// HostServer provides the Host capability.
+type HostServer struct {
 	Cluster ViewProvider
 }
 
-func (s Server) Host() Host {
+func (s HostServer) Client() capnp.Client {
+	return capnp.Client(s.Host())
+}
+
+func (s HostServer) Host() Host {
 	return Host(api.Host_ServerToClient(s))
 }
 
-func (s Server) View(_ context.Context, call api.Host_view) error {
+func (s HostServer) View(_ context.Context, call api.Host_view) error {
 	res, err := call.AllocResults()
 	if err == nil {
-		err = res.SetView(s.Cluster.View().Client())
+		err = res.SetView(capnp.Client(s.Cluster.View()))
 	}
 
 	return err

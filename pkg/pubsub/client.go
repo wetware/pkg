@@ -19,16 +19,12 @@ func (ps PubSub) Join(ctx context.Context, topic string) (FutureTopic, capnp.Rel
 	return FutureTopic(f), release
 }
 
-func (ps PubSub) Client() capnp.Client {
-	return capnp.Client(ps)
-}
-
 func (ps PubSub) AddRef() PubSub {
-	return PubSub(ps.Client().AddRef())
+	return PubSub(capnp.Client(ps).AddRef())
 }
 
 func (ps PubSub) Release() {
-	ps.Client().Release()
+	capnp.Client(ps).Release()
 }
 
 type FutureTopic api.PubSub_join_Results_Future

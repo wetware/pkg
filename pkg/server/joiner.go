@@ -8,7 +8,7 @@ import (
 
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/cluster"
-	ww_cluster "github.com/wetware/ww/pkg/cluster"
+	ww "github.com/wetware/ww/pkg"
 )
 
 type Joiner struct {
@@ -17,7 +17,7 @@ type Joiner struct {
 	Log log.Logger
 	Vat casm.Vat
 	// Metrics casm.Metrics          `optional:"true"`  // XXX - implement before merging
-	Options []cluster.Option `group:"custer"`
+	Options []cluster.Option `group:"cluster"`
 }
 
 func (j Joiner) Join(ps cluster.PubSub) (*Node, error) {
@@ -29,8 +29,8 @@ func (j Joiner) Join(ps cluster.PubSub) (*Node, error) {
 
 	// export the root Host capability
 	j.Vat.Export(
-		ww_cluster.HostCapability,
-		ww_cluster.Server{Cluster: c}.Host())
+		ww.HostCapability,
+		ww.HostServer{Cluster: c})
 
 	return &Node{
 		Vat:  j.Vat,

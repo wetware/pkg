@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"github.com/lthibault/log"
 	"go.uber.org/fx"
@@ -15,6 +14,7 @@ import (
 	ds_sync "github.com/ipfs/go-datastore/sync"
 	badgerds "github.com/ipfs/go-ds-badger2"
 
+	"github.com/wetware/casm/pkg/cluster"
 	"github.com/wetware/casm/pkg/cluster/pulse"
 )
 
@@ -27,41 +27,51 @@ import (
 func (c Config) System() fx.Option {
 	return fx.Module("system", fx.Provide(
 		storage,
-		heartbeat))
+		metadata))
 }
 
-// hook populates heartbeat messages with system information from the
-// operating system.
-type hook struct {
-	once sync.Once
-	Env
+type metaOut struct {
+	fx.Out
+
+	Meta cluster.Option `group:"cluster"`
 }
 
-func heartbeat(env Env) pulse.Preparer {
-	return &hook{Env: env}
+type metaHook struct{ Env }
+
+func metadata(env Env) metaOut {
+	return metaOut{
+		Meta: cluster.WithMeta(&metaHook{Env: env}),
+	}
 }
 
-func (h *hook) Prepare(heartbeat pulse.Setter) (err error) {
-	h.once.Do(func() {
-		fields := h.StringSlice("meta")
-		meta := make(map[string]string, len(fields))
-
-		for _, field := range fields {
-			kv := strings.SplitN(field, "=", 2)
-			if len(kv) == 2 {
-				meta[kv[0]] = kv[1]
-				continue
-			}
-
-			h.Log().
-				WithField("field", field).
-				Warn("skipped invalid metadata field")
-		}
-
-		err = heartbeat.SetMeta(meta)
-	})
+func (h *metaHook) Prepare(heartbeat pulse.Setter) (err error) {
+	if h.Env != nil {
+		err = heartbeat.SetMeta(h.fields())
+		h.Env = nil
+	}
 
 	return
+}
+
+func (h *metaHook) fields() map[string]string {
+	var (
+		fields = h.StringSlice("meta")
+		meta   = make(map[string]string, len(fields))
+	)
+
+	for _, field := range fields {
+		kv := strings.SplitN(field, "=", 2)
+		if len(kv) == 2 {
+			meta[kv[0]] = kv[1]
+			continue
+		}
+
+		h.Log().
+			WithField("field", field).
+			Warn("skipped invalid metadata field")
+	}
+
+	return meta
 }
 
 func storage(env Env, lx fx.Lifecycle) (ds.Batching, error) {

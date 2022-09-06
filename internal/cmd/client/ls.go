@@ -1,9 +1,14 @@
 package client
 
 import (
-	"errors"
+	"encoding/json"
+	"fmt"
 
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/urfave/cli/v2"
+
+	"github.com/wetware/casm/pkg/cluster"
+	"github.com/wetware/casm/pkg/cluster/routing"
 )
 
 func list() *cli.Command {
@@ -15,7 +20,7 @@ func list() *cli.Command {
 				Name:    "json",
 				Usage:   "print results as json",
 				Value:   false,
-				EnvVars: []string{"OUTPUT_JSON"},
+				EnvVars: []string{"WW_FMT_JSON"},
 			},
 		},
 		Before: setup(),
@@ -25,32 +30,88 @@ func list() *cli.Command {
 }
 
 func ls() cli.ActionFunc {
-	return func(*cli.Context) error {
-		return errors.New("NOT IMPLEMENTED")
-		// var it = node.Ls(c.Context)
+	return func(c *cli.Context) error {
+		v, release := node.View(env.Context())
+		defer release()
 
-		// if c.Bool("json") {
-		// 	return lsJSON(c, it)
-		// }
-
-		// lsText(c, it)
-
-		// return nil
+		return render(v, formatter(c))
 	}
 }
 
-// func lsJSON(c *cli.Context, it client.Iterator) error {
-// 	var paths []string
+func render(view cluster.View, consume func(routing.Record) error) error {
+	it, release := view.Iter(env.Context(), cluster.All())
+	defer release()
 
-// 	for it.Next() {
-// 		paths = append(paths, it.Anchor().Path())
-// 	}
+	for record := it.Next(); record != nil; record = it.Next() {
+		if err := consume(record); err != nil {
+			return err
+		}
+	}
 
-// 	return json.NewEncoder(c.App.Writer).Encode(paths)
-// }
+	return it.Err()
+}
 
-// func lsText(c *cli.Context, it client.Iterator) {
-// 	for it.Next() {
-// 		fmt.Println(it.Anchor().Path())
-// 	}
-// }
+func formatter(c *cli.Context) func(routing.Record) error {
+	if c.Bool("json") {
+		return jsonFormatter(c)
+	}
+
+	return textFormatter(c)
+}
+
+func jsonFormatter(c *cli.Context) func(routing.Record) error {
+	enc := json.NewEncoder(c.App.Writer)
+
+	return func(r routing.Record) error {
+		rec, err := asJSON(r)
+		if err == nil {
+			err = enc.Encode(rec)
+		}
+		return err
+	}
+}
+
+type jsonRecord struct {
+	Peer     peer.ID           `json:"peer"`
+	Seq      uint64            `json:"seq"`
+	Instance uint32            `json:"instance"`
+	Host     string            `json:"host"`
+	Meta     map[string]string `json:"meta,omitempty"`
+}
+
+func asJSON(r routing.Record) (rec jsonRecord, err error) {
+	rec.Peer = r.Peer()
+	rec.Seq = r.Seq()
+	rec.Instance = r.Instance()
+
+	if rec.Host, err = r.Host(); err != nil {
+		return
+	}
+
+	var meta routing.Meta
+	if meta, err = r.Meta(); err != nil {
+		return
+	}
+
+	var field routing.Field
+	for i := 0; i < meta.Len(); i++ {
+		if field, err = meta.At(i); err != nil {
+			break
+		}
+
+		if rec.Meta == nil {
+			rec.Meta = make(map[string]string)
+		}
+
+		rec.Meta[field.Key] = field.Value
+	}
+
+	return
+}
+
+func textFormatter(c *cli.Context) func(routing.Record) error {
+	return func(r routing.Record) error {
+		_, err := fmt.Fprintf(c.App.Writer, "/%s\n", r.Peer())
+		return err
+	}
+}

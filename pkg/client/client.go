@@ -10,7 +10,8 @@ import (
 	"capnproto.org/go/capnp/v3/rpc"
 
 	casm "github.com/wetware/casm/pkg"
-	"github.com/wetware/ww/pkg/cluster"
+	"github.com/wetware/casm/pkg/cluster"
+	ww "github.com/wetware/ww/pkg"
 )
 
 // ErrDisconnected indicates that the client's connection to
@@ -22,18 +23,18 @@ type Node struct {
 
 	once sync.Once
 	conn *rpc.Conn
-	host cluster.Host
+	host ww.Host
 }
 
 // Bootstrap blocks until the context expires, or the
-// node's capabilities resolve.  It is safe to cancel
+// node's Host capability resolves.  It is safe to cancel
 // the context passed to Dial after this method returns.
 func (n *Node) Bootstrap(ctx context.Context) error {
 	n.once.Do(func() {
-		n.host = cluster.Host(n.conn.Bootstrap(ctx))
+		n.host = ww.Host(n.conn.Bootstrap(ctx))
 	})
 
-	return capnp.Client(n.host).Resolve(ctx)
+	return capnp.Client(n.host).Resolve(ctx) // TODO:  remove?
 }
 
 // Done returns a read-only channel that is closed when
@@ -45,9 +46,11 @@ func (n *Node) Done() <-chan struct{} {
 // Close the client connection.  Note that this does not
 // close the underlying host.
 func (n *Node) Close() error {
-	n.host.Release()
-
 	return n.conn.Close()
+}
+
+func (n *Node) View(ctx context.Context) (cluster.View, capnp.ReleaseFunc) {
+	return n.host.View(ctx)
 }
 
 // // Join a pubsub topic.
