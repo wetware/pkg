@@ -31,7 +31,7 @@ func TestHost_View(t *testing.T) {
 		Return(cluster.View(vs.Client())).
 		Times(1)
 
-	server := ww.HostServer{Cluster: vp}
+	server := ww.HostServer{ViewProvider: vp}
 	v, release := server.Host().View(context.Background())
 	require.NotNil(t, release)
 	defer release()

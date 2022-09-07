@@ -9,9 +9,9 @@ import (
 	api "github.com/wetware/ww/internal/api/pubsub"
 )
 
-type PubSub api.PubSub
+type Joiner api.PubSub
 
-func (ps PubSub) Join(ctx context.Context, topic string) (FutureTopic, capnp.ReleaseFunc) {
+func (ps Joiner) Join(ctx context.Context, topic string) (FutureTopic, capnp.ReleaseFunc) {
 	f, release := (api.PubSub)(ps).Join(ctx, func(ps api.PubSub_join_Params) error {
 		return ps.SetName(topic)
 	})
@@ -19,11 +19,11 @@ func (ps PubSub) Join(ctx context.Context, topic string) (FutureTopic, capnp.Rel
 	return FutureTopic(f), release
 }
 
-func (ps PubSub) AddRef() PubSub {
-	return PubSub(capnp.Client(ps).AddRef())
+func (ps Joiner) AddRef() Joiner {
+	return Joiner(capnp.Client(ps).AddRef())
 }
 
-func (ps PubSub) Release() {
+func (ps Joiner) Release() {
 	capnp.Client(ps).Release()
 }
 

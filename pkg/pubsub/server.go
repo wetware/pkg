@@ -64,8 +64,8 @@ func (p *Provider) Close() (err error) {
 	return
 }
 
-func (p *Provider) PubSub() PubSub {
-	return PubSub(api.PubSub_ServerToClient(p))
+func (p *Provider) PubSub() Joiner {
+	return Joiner(api.PubSub_ServerToClient(p))
 }
 
 func (p *Provider) Client() capnp.Client {

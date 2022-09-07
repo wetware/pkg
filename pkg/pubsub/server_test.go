@@ -58,7 +58,7 @@ func TestPubSub_refcount(t *testing.T) {
 		assert.ErrorIs(t, p.Close(), pscap.ErrClosed)
 	}()
 
-	ps := pscap.PubSub(p.Client())
+	ps := pscap.Joiner(p.Client())
 	defer ps.Release()
 
 	// ensure topic doesn't leak

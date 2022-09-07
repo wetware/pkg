@@ -76,7 +76,7 @@ type ViewProvider interface {
 
 // HostServer provides the Host capability.
 type HostServer struct {
-	Cluster ViewProvider
+	ViewProvider ViewProvider
 }
 
 func (s HostServer) Client() capnp.Client {
@@ -90,7 +90,7 @@ func (s HostServer) Host() Host {
 func (s HostServer) View(_ context.Context, call api.Host_view) error {
 	res, err := call.AllocResults()
 	if err == nil {
-		err = res.SetView(capnp.Client(s.Cluster.View()))
+		err = res.SetView(capnp.Client(s.ViewProvider.View()))
 	}
 
 	return err
