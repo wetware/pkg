@@ -10,6 +10,8 @@ import (
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/cluster"
 	api "github.com/wetware/ww/internal/api/cluster"
+	pubsub_api "github.com/wetware/ww/internal/api/pubsub"
+	"github.com/wetware/ww/pkg/pubsub"
 )
 
 var HostCapability = casm.BasicCap{
@@ -74,9 +76,14 @@ type ViewProvider interface {
 	View() cluster.View
 }
 
+type PubSubProvider interface {
+	PubSub() pubsub.Joiner
+}
+
 // HostServer provides the Host capability.
 type HostServer struct {
-	ViewProvider ViewProvider
+	ViewProvider   ViewProvider
+	PubSubProvider PubSubProvider
 }
 
 func (s HostServer) Client() capnp.Client {
@@ -91,6 +98,15 @@ func (s HostServer) View(_ context.Context, call api.Host_view) error {
 	res, err := call.AllocResults()
 	if err == nil {
 		err = res.SetView(capnp.Client(s.ViewProvider.View()))
+	}
+
+	return err
+}
+
+func (s HostServer) PubSub(_ context.Context, call api.Host_pubSub) error {
+	res, err := call.AllocResults()
+	if err == nil {
+		err = res.SetPubSub(pubsub_api.PubSub(s.PubSubProvider.PubSub()))
 	}
 
 	return err

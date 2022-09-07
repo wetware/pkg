@@ -16,4 +16,15 @@ interface Host {
     # and makes no guarantee of consistency.
     #
     # The returned :Capability SHALL be a CASM :View type.
+
+    pubSub @1 () -> (pubSub :import "pubsub.capnp".PubSub);
+    # PubSub returns an interface to the host's pubsub overlay.
+    # Callers can use this to connect to arbitrary topics.
+    #
+    # Note that the PubSub capability confers the ability to join
+    # any topic that can be designated by name. Attempts to limit
+    # access to topics based on name amounts to ambient authority,
+    # and therefore strongly discouraged. A better approach is to
+    # wrap PubSub in a capability that resolves sturdy references
+    # to Topic capabilities.
 }
