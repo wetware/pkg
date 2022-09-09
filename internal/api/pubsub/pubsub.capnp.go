@@ -44,7 +44,7 @@ func (c Topic) Subscribe(ctx context.Context, params func(Topic_subscribe_Params
 		},
 	}
 	if params != nil {
-		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 2}
+		s.ArgsSize = capnp.ObjectSize{DataSize: 8, PointerCount: 1}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Topic_subscribe_Params(s)) }
 	}
 	ans, release := capnp.Client(c).SendCall(ctx, s)
@@ -259,78 +259,6 @@ func NewTopic_List(s *capnp.Segment, sz int32) (Topic_List, error) {
 	return capnp.CapList[Topic](l), err
 }
 
-type Topic_SubOpts capnp.Struct
-
-// Topic_SubOpts_TypeID is the unique identifier for the type Topic_SubOpts.
-const Topic_SubOpts_TypeID = 0xd367494d397cfef8
-
-func NewTopic_SubOpts(s *capnp.Segment) (Topic_SubOpts, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 0})
-	return Topic_SubOpts(st), err
-}
-
-func NewRootTopic_SubOpts(s *capnp.Segment) (Topic_SubOpts, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 0})
-	return Topic_SubOpts(st), err
-}
-
-func ReadRootTopic_SubOpts(msg *capnp.Message) (Topic_SubOpts, error) {
-	root, err := msg.Root()
-	return Topic_SubOpts(root.Struct()), err
-}
-
-func (s Topic_SubOpts) String() string {
-	str, _ := text.Marshal(0xd367494d397cfef8, capnp.Struct(s))
-	return str
-}
-
-func (s Topic_SubOpts) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
-	return capnp.Struct(s).EncodeAsPtr(seg)
-}
-
-func (Topic_SubOpts) DecodeFromPtr(p capnp.Ptr) Topic_SubOpts {
-	return Topic_SubOpts(capnp.Struct{}.DecodeFromPtr(p))
-}
-
-func (s Topic_SubOpts) ToPtr() capnp.Ptr {
-	return capnp.Struct(s).ToPtr()
-}
-func (s Topic_SubOpts) IsValid() bool {
-	return capnp.Struct(s).IsValid()
-}
-
-func (s Topic_SubOpts) Message() *capnp.Message {
-	return capnp.Struct(s).Message()
-}
-
-func (s Topic_SubOpts) Segment() *capnp.Segment {
-	return capnp.Struct(s).Segment()
-}
-func (s Topic_SubOpts) BufferSize() int64 {
-	return int64(capnp.Struct(s).Uint64(0))
-}
-
-func (s Topic_SubOpts) SetBufferSize(v int64) {
-	capnp.Struct(s).SetUint64(0, uint64(v))
-}
-
-// Topic_SubOpts_List is a list of Topic_SubOpts.
-type Topic_SubOpts_List = capnp.StructList[Topic_SubOpts]
-
-// NewTopic_SubOpts creates a new list of Topic_SubOpts.
-func NewTopic_SubOpts_List(s *capnp.Segment, sz int32) (Topic_SubOpts_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 0}, sz)
-	return capnp.StructList[Topic_SubOpts](l), err
-}
-
-// Topic_SubOpts_Future is a wrapper for a Topic_SubOpts promised by a client call.
-type Topic_SubOpts_Future struct{ *capnp.Future }
-
-func (p Topic_SubOpts_Future) Struct() (Topic_SubOpts, error) {
-	s, err := p.Future.Struct()
-	return Topic_SubOpts(s), err
-}
-
 type Topic_publish_Params capnp.Struct
 
 // Topic_publish_Params_TypeID is the unique identifier for the type Topic_publish_Params.
@@ -479,12 +407,12 @@ type Topic_subscribe_Params capnp.Struct
 const Topic_subscribe_Params_TypeID = 0xc772c6756fef5ba8
 
 func NewTopic_subscribe_Params(s *capnp.Segment) (Topic_subscribe_Params, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
 	return Topic_subscribe_Params(st), err
 }
 
 func NewRootTopic_subscribe_Params(s *capnp.Segment) (Topic_subscribe_Params, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
 	return Topic_subscribe_Params(st), err
 }
 
@@ -538,28 +466,12 @@ func (s Topic_subscribe_Params) SetChan(v channel.Sender) error {
 	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
-func (s Topic_subscribe_Params) Opts() (Topic_SubOpts, error) {
-	p, err := capnp.Struct(s).Ptr(1)
-	return Topic_SubOpts(p.Struct()), err
+func (s Topic_subscribe_Params) Buf() uint16 {
+	return capnp.Struct(s).Uint16(0) ^ 16
 }
 
-func (s Topic_subscribe_Params) HasOpts() bool {
-	return capnp.Struct(s).HasPtr(1)
-}
-
-func (s Topic_subscribe_Params) SetOpts(v Topic_SubOpts) error {
-	return capnp.Struct(s).SetPtr(1, capnp.Struct(v).ToPtr())
-}
-
-// NewOpts sets the opts field to a newly
-// allocated Topic_SubOpts struct, preferring placement in s's segment.
-func (s Topic_subscribe_Params) NewOpts() (Topic_SubOpts, error) {
-	ss, err := NewTopic_SubOpts(capnp.Struct(s).Segment())
-	if err != nil {
-		return Topic_SubOpts{}, err
-	}
-	err = capnp.Struct(s).SetPtr(1, capnp.Struct(ss).ToPtr())
-	return ss, err
+func (s Topic_subscribe_Params) SetBuf(v uint16) {
+	capnp.Struct(s).SetUint16(0, v^16)
 }
 
 // Topic_subscribe_Params_List is a list of Topic_subscribe_Params.
@@ -567,7 +479,7 @@ type Topic_subscribe_Params_List = capnp.StructList[Topic_subscribe_Params]
 
 // NewTopic_subscribe_Params creates a new list of Topic_subscribe_Params.
 func NewTopic_subscribe_Params_List(s *capnp.Segment, sz int32) (Topic_subscribe_Params_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2}, sz)
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1}, sz)
 	return capnp.StructList[Topic_subscribe_Params](l), err
 }
 
@@ -581,10 +493,6 @@ func (p Topic_subscribe_Params_Future) Struct() (Topic_subscribe_Params, error) 
 
 func (p Topic_subscribe_Params_Future) Chan() channel.Sender {
 	return channel.Sender(p.Future.Field(0, nil).Client())
-}
-
-func (p Topic_subscribe_Params_Future) Opts() Topic_SubOpts_Future {
-	return Topic_SubOpts_Future{Future: p.Future.Field(1, nil)}
 }
 
 type Topic_subscribe_Results capnp.Struct
@@ -1119,49 +1027,46 @@ func (p PubSub_join_Results_Future) Topic() Topic {
 	return Topic(p.Future.Field(0, nil).Client())
 }
 
-const schema_f9d8a0180405d9ed = "x\xda\x8cSOHT[\x18\xff\xbes\xce\xf5\xcac" +
-	"\xe6\xcd\x9cw\x07\x9f\xef\xa1\x08\xa2a\x03\x99\xda_[" +
-	"4\x83!\x1144\xd7\x89\x08]\xcd\x1dF\x9d\x9a?" +
-	"\x979s\x0a-p\xe3\xc2}\x8bJ\x08\xabMI\x9b" +
-	"\\\xb8j\xd5F\xb1\\\x14%d\xfb \x02\x0b\xa1 " +
-	"\xb3\xbaqf\xbc3\xb7,kw8\xe7\xe3\xf7\xfb~" +
-	"\x7fN\xd7#\x8c\xb2n\xffU\x1d\x88yV\xabsz" +
-	"\x96[\x96\xa6\x0f\xda\x93\xc0\x0d\x04`:\xc0\xbe9\x1a" +
-	"F`\xce\xb1\xc9\xc7cSW\x82S\x95\x17\x0d\xd5\xd3" +
-	"u\xfa\x0f\x02\x1a\xb7h\x04\xd0\xb9\x7f>\xb8\xb7c6" +
-	"\x7f\x0d\xb8\x9f:k\xab\x1ak\xbc\xf9b\x03\x00\x8d\x87" +
-	"t\xdaX\xa2\xff\x02\x18O\xe9\xa2\x11S\xa0\xce\xc9\xf9" +
-	"\xb1\xa1\x05y\xe8\x86\x87\xe7\x00\xfb_\xf1L5_Z" +
-	"\xd8\x8cgg\x80\x87\xaa<\xcd\xec/\xc5\xd3\xce\x14\xcf" +
-	"\xdd\xa1w\x05\xb9P\\\xdcZ\x84\xa8\x81~\xd6\xaa\x06" +
-	"b\xec\"\xa0\xf3\xf1\xeb\xe5\xde\xd8\x89\x91g`\x1a\xe8" +
-	"YK\x91\x18\xb3\xec\xa51_>\xcd\x95\xc1\"\xbb\xce" +
-	"4\xdd\x1b\xbc\xb0\xe2U\xb5\xc2\x88\x02[-\x0f\xfc\xfd" +
-	"\xaa\xaei&\xb4\xbc\xbeM\xd5\x06\xbbm\xa0\xa6\x90\xbe" +
-	"\xb0\xe3F\xbb:9\xfa\xd1\xe7\xef7\x0a\x9f\xd7k\xaa" +
-	"\x0c\xbf\xf6\x09\x98s'6F\x9e4D7\xbd\xa2\xd6" +
-	"+4\x1fX\x04\xc6\x1d[ZBZ\x9d)\x9a\xb4\xf3" +
-	"\xf6\x91\xd3\x05;\x93\xea\x14\xd2\x12\xa9b\xc6J\xb7\x0d" +
-	"\xa4E@fK\xe2\xa7c\xb6\xb4\xb2\x191\xda\x16O" +
-	"\x16\x939\x14&\xa3\x0c\x80!\x00\xf7\xb7\x02\x98\xf5\x14" +
-	"\xcd\x10A='F\xd0\x0f\x04\xfd\x80U\x18tah" +
-	"&e2\xf4X\xc7\xb1o\"!\xadSvI\x98>" +
-	"\xaa\x01T\xf3G7:n\xf6\x01\xe1\xfd:\xd6\"A" +
-	"\xb7>\xbcw\x00\x08\xef\xd6\x91T=A\xd7j\xde\x1e" +
-	"\x06\xc2\xff\xd3'\xb6\x16\x8f\xa2\xe3*\x05LG1\x90" +
-	"O\xe6\xd2Q\x8c#\xee(w -d\x96n\xf3$" +
-	".\xad\x84\xb4:\xcf\x152\xf9\xcaHI\x00x=\xe9" +
-	"\xa9y\xd2RR\x88\xc8k\x1d\x01D\x0e\xf8\x9b4\xe2" +
-	"\xc9\xa2\x9e\xcc\x09\xb3\xbe\x0a\xba;\x0c`\xb6Q4\xbb" +
-	"\x08r\xc4\x10\xaa\xcb=\xea\xb2\x83\xa2\xb9\x9f` 5" +
-	"\x9a\xcc#w\xde6\xbc9\x1cZ{\xf0z\x8b(P" +
-	"\xb0K\x02\x835\xdb\x011\xe8\xe1'\x1e\xfer\x1a\xb4" +
-	"$\xe2\x88^9\x83\x00\xa6\x8f\xa2\xd9H\xd0\xb1\xe4\xf0" +
-	"p\xba\x98\xc8\x00\x1dO\xa3\x06\x04\xb5_hQ\x0eW" +
-	"\xdd\xf1\xa2\x85k\xe6\x94c@\x1f\x10\xf4mkL\\" +
-	"ZzBZ\x95UT9\xdc~\xa3\xfb{9W!" +
-	"kz@\x05\xf1}\x98\xe4\xc7E\"\xe5\xe6\xee\x14d" +
-	"e\xe0\x8f6\xfd\x16\x00\x00\xff\xff\xc5\xc0U\x10"
+const schema_f9d8a0180405d9ed = "x\xda\x8cS\xcdKT]\x1c\xfe=\xe7\x9c\xf1\xc8\x8b" +
+	"\xf3\x8e\xe7\xbd\xa3o\x85!\x88E\xcd\xc2\xd2\xa0\xafE" +
+	"3\x14\xd1\xa6\xe0^\x95\x88$h\xee4\xe5\xd4|1" +
+	"\xd7SX\x8b6\x06\xee#(A\xac *\xdaD\xd0" +
+	"*Z\xb4H\x91\x0cZ\x14\xe4\x1f D`!\xb41" +
+	"\x8b\x1bg\xa6{g\xca\xb2\xb6s\x9ey>\x7fw\xfb" +
+	"#\xa4Do4)\x899\x83\x91&\xbfo\xaesv" +
+	"bgy\x8c\x94\x05\"!\x89v\\\xe1\x09\x90\xf0\x0f" +
+	"\x8c\xbd\x18\x1d\xbf\xda:^{\x89\xc0<\x15\xf8\x7f " +
+	"X\x9a'\x09\xfe\xc3s\xad\xdb\xb6\xdc/^'\x15\xe5" +
+	"\xfe\xe2|D\xac\xbb\xf9v\x99\x08\xd65>aMr" +
+	"Id\xdd\xe03V\x9b!\xf5\x0f?\x1e\x1d\x9a\xd6\xbb" +
+	"&\x1bt\xbe\xf2\x0dFg|\xe3\xa5\xe9\x15;?E" +
+	"*\x1e\xea,\xf0\x7f\x8c\xcebU\xe7\xde\xd0\xc7\x92\x9e" +
+	"\xae\xcc\x90c!DDE\x97A\xb4\x89\x0b\x04?\xb9" +
+	"\xf9h\xc7\x83\xe3\xe7\xdf4Z\xbd%\x98\x01\xdc\x11\x86" +
+	"\xe2\xdf\x85\xa6\x8e\xa9\xf8\xdc\xd2*\xab\xcf\xc5m\xeb\xa5" +
+	"qc\xcd\x8aC\xd6R\xd5\xaa\xdc\xf7\xfa\xd3r\xe9\xcb" +
+	"R\xdd\xaa5/>\x93\xf0\xef\x1e\x19e\xaf\xdaS+" +
+	"\x8dN\x9f\xd6d\x9e\x89$]\xf4\xcb\xda\xf5\xb4\xdb\x93" +
+	"\xe1\xe9r\xb1\xbcw\xb0T\xceez<\xedz\x99J" +
+	"\xce\xcdv\xf7g\xbd\x98\xce\x8fx\xbf\x84\x95\xb5\x9b\xcf" +
+	"y\xc3\xddv\xba\x92.\xc0s\x04\x17D\x02D*\xda" +
+	"E\xe44s8q\x06Y\xf0\xce J\x0cQBH" +
+	"\x83\x80\x86\xe726\xe0\xb4\xf0\x08Q8\x1f\x82\xe6\x95" +
+	"\xb3\x9f\x98:(Qo\x14\xc1\xfajO?1\xd5+" +
+	"\xc1\xc2\xf4\x08JU\x9b\x12\xc4\xd4zy\xf9\xbb\xc5\x14" +
+	"\xfc \x13!\x9bB\xac\x98.dS\xb0\x815\x83\xf5" +
+	"g=\x9d\xe7\xab\xd2\xdb\xda\x1d\xd0n\xcf\xd9R\xaeX" +
+	"\x83\x8cxD\x8d\xe9\xfb\xea\xe9;G\x0c#T\xfd\xf2" +
+	"\x08P\x84?\xf4n\xa7+2]\xf0\x9c\xe6\x90tk" +
+	"\x82\xc8\xe9\xe6pN2\x00q\x00P'L\xcd\xc78" +
+	"\x9cS\x0c\xb1\xccp\xba\x08\xe5\x7fh\x7f\xbf;\xbe\xf8" +
+	"\xe4\x1d\x11\xa5\xa0\xd0\xe9\x08\x86\xc6\x1f\x15\xfew\x84\xf9" +
+	"\xb7\xcdQ\x9dE\x11\xa4\xabOC\x12\x8b\xc8\xd6\xdf8" +
+	"3}\x85Y\x1b\xa3&\xeaQ\xab\xa5\xa2\x85\x18ZV" +
+	"-mkW\x0eh\xd7L-\xaaS\x07w\x89\xe0S" +
+	"R\xcaL\x16\x911S\xeb\x8f\xd3\xb0\x9f\x8d$\xab\x17" +
+	"\xb7\xd6,5\xc0_9\xfd\x16\x00\x00\xff\xff\xf8\xc4/" +
+	"\xcb"
 
 func init() {
 	schemas.Register(schema_f9d8a0180405d9ed,
@@ -1171,7 +1076,6 @@ func init() {
 		0x9d3775c65b79b54c,
 		0x9f6c50fbc67b1d88,
 		0xc772c6756fef5ba8,
-		0xd367494d397cfef8,
 		0xd5765aab1c56263f,
 		0xf1cc149f1c06e50e,
 		0xf1fc6ff9f4d43e07,

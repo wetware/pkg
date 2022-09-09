@@ -124,15 +124,14 @@ func BenchmarkPubSubCap(b *testing.B) {
 		pubsub.WithGossipSubProtocols(Subprotocols()))
 
 	require.NoError(b, err)
-	server := pscap.New(ps)
-	defer server.Close()
+	router := pscap.Router{TopicJoiner: ps}
 
-	client := pscap.Joiner(server.Client())
+	client := pscap.Joiner(router.Client())
 	defer client.Release()
 
-	futTopic, release := client.Join(ctx, payload)
+	topic, release := client.Join(ctx, payload)
 	defer release()
-	topic, _ := futTopic.Struct()
+
 	group, ctx := errgroup.WithContext(ctx)
 
 	b.ResetTimer()
@@ -151,16 +150,15 @@ func BenchmarkPubSubCapNetwork(b *testing.B) {
 		pubsub.WithPeerExchange(true),
 		pubsub.WithProtocolMatchFn(ProtoMatchFunc()),
 		pubsub.WithGossipSubProtocols(Subprotocols()))
-
 	require.NoError(b, err)
-	server := pscap.New(ps)
-	defer server.Close()
+
+	router := pscap.Router{TopicJoiner: ps}
 
 	left, right := transport.NewPipe(1)
 	p1, p2 := rpc.NewTransport(left), rpc.NewTransport(right)
 
 	conn1 := rpc.NewConn(p1, &rpc.Options{
-		BootstrapClient: server.Client(),
+		BootstrapClient: router.Client(),
 	})
 	defer conn1.Close()
 
@@ -170,9 +168,8 @@ func BenchmarkPubSubCapNetwork(b *testing.B) {
 	client := pscap.Joiner(conn2.Bootstrap(ctx))
 	defer client.Release()
 
-	futTopic, release := client.Join(ctx, payload)
+	topic, release := client.Join(ctx, payload)
 	defer release()
-	topic, _ := futTopic.Struct()
 
 	group, ctx := errgroup.WithContext(ctx)
 

@@ -3,16 +3,16 @@ package pubsub
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 
-	"capnproto.org/go/capnp/v3"
+	capnp "capnproto.org/go/capnp/v3"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/lthibault/log"
-	ctxutil "github.com/lthibault/util/ctx"
+
+	"github.com/wetware/casm/pkg/util/stream"
+	chan_api "github.com/wetware/ww/internal/api/channel"
 	api "github.com/wetware/ww/internal/api/pubsub"
 	"github.com/wetware/ww/pkg/channel"
-	"golang.org/x/sync/errgroup"
 )
 
 var ErrClosed = errors.New("closed")
@@ -21,264 +21,191 @@ type TopicJoiner interface {
 	Join(string, ...pubsub.TopicOpt) (*pubsub.Topic, error)
 }
 
-// Provider wraps a PubSub and provides casm.ClientProvider.
-//
-// In order to export a given topic through multiple capabilities,
-// Provider tracks existing topics internally.  See 'Join' for more details.
-type Provider struct {
-	cq  chan struct{}
-	log log.Logger
-
-	ps TopicJoiner
-
-	mu sync.RWMutex
-	wg sync.WaitGroup // blocks shutdown until all tasks are released
-	ts map[string]*refCountedTopic
+type Router struct {
+	Log         log.Logger
+	TopicJoiner TopicJoiner
+	topics      *topicManager
 }
 
-func New(ps TopicJoiner, opt ...Option) *Provider {
-	var f = &Provider{
-		cq: make(chan struct{}),
-		ps: ps,
-		ts: make(map[string]*refCountedTopic),
+func (r *Router) PubSub() Joiner {
+	return Joiner(api.PubSub_ServerToClient(r))
+}
+
+func (r *Router) Client() capnp.Client {
+	return capnp.Client(r.PubSub())
+}
+
+func (r *Router) Join(ctx context.Context, call api.PubSub_join) error {
+	r.initialize() // not thread-safe
+
+	res, err := call.AllocResults()
+	if err != nil {
+		return err
 	}
-
-	for _, option := range withDefault(opt) {
-		option(f)
-	}
-
-	return f
-}
-
-func (p *Provider) Close() (err error) {
-	if p != nil {
-		select {
-		case <-p.cq:
-			err = fmt.Errorf("already %w", ErrClosed)
-		default:
-			close(p.cq)
-			p.wg.Wait()
-		}
-	}
-
-	return
-}
-
-func (p *Provider) PubSub() Joiner {
-	return Joiner(api.PubSub_ServerToClient(p))
-}
-
-func (p *Provider) Client() capnp.Client {
-	return capnp.Client(p.PubSub())
-}
-
-func (p *Provider) Join(ctx context.Context, call api.PubSub_join) error {
-	call.Ack()
 
 	name, err := call.Args().Name()
 	if err != nil {
 		return err
 	}
 
-	t, err := p.getOrCreate(name)
+	t, err := r.topics.GetOrCreate(r.TopicJoiner, name)
 	if err != nil {
 		return err
 	}
 
-	res, err := call.AllocResults()
-	if err != nil {
-		return err
-	}
-
-	return res.SetTopic(api.Topic_ServerToClient(t))
+	return res.SetTopic(r.topic(t))
 }
 
-func (p *Provider) getOrCreate(topic string) (*refCountedTopic, error) {
-	p.mu.RLock()
-
-	// fast path - already exists?
-	if t, ok := p.ts[topic]; ok {
-		defer p.mu.RUnlock()
-		return t.AddRef(), nil
-	}
-
-	// slow path
-	p.mu.RUnlock()
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	// topic may have been added while acquiring write-lock
-	if t, ok := p.ts[topic]; ok {
-		return t.AddRef(), nil
-	}
-
-	// join topic
-	return p.joinTopic(topic)
-}
-
-// joinTopic and assign a refcounted topic to tm.ts.  Callers MUST hold a
-// write-lock on f.mu.
-func (p *Provider) joinTopic(topic string) (*refCountedTopic, error) {
-	t, err := p.ps.Join(topic)
-	if err != nil {
-		return nil, err
-	}
-
-	p.wg.Add(1)
-	release := func() {
-		defer p.wg.Done()
-
-		p.mu.Lock()
-		defer p.mu.Unlock()
-
-		delete(p.ts, topic)
-
-		if err := t.Close(); err != nil {
-			p.log.
-				WithError(err).
-				Errorf("unable to close topic %s", topic)
-		}
-	}
-
-	rt := &refCountedTopic{
-		log:     p.log.WithField("topic", topic),
-		ctx:     ctxutil.C(p.cq),
+func (r *Router) topic(t *pubsub.Topic) api.Topic {
+	return api.Topic_ServerToClient(topicServer{
+		log:     r.Log,
+		manager: r.topics,
 		topic:   t,
-		ref:     1,
-		release: release,
-	}
-
-	p.ts[topic] = rt
-	return rt, nil
+	})
 }
 
-type refCountedTopic struct {
-	ctx   context.Context // root context for subscriptions
-	log   log.Logger
-	topic *pubsub.Topic
+func (r *Router) initialize() {
+	if r.topics == nil {
+		if r.Log == nil {
+			r.Log = log.New()
+		}
 
-	mu  sync.Mutex
-	ref int // number of refs from capnp.Client instances
-
-	release capnp.ReleaseFunc // caller MUST hold mu
-}
-
-// AddRef MUST be called each time a new capnp.Client is
-// created for t.
-func (t *refCountedTopic) AddRef() *refCountedTopic {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	t.ref++
-	return t
-}
-
-func (t *refCountedTopic) Release() {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	if t.ref--; t.ref == 0 {
-		t.release()
+		r.topics = newTopicManager()
 	}
 }
 
-// The refCountedTopic is unique for each *pubsub.Topic, and is
-// therefore shared across multiple capnp.Client instances. For
-// this reason, Shutdown MAY be called multiple times.
-func (t *refCountedTopic) Shutdown() { t.Release() }
+type topicServer struct {
+	log     log.Logger
+	manager *topicManager
+	topic   *pubsub.Topic
+}
 
-func (t *refCountedTopic) Name(ctx context.Context, call api.Topic_name) error {
+func (t topicServer) Shutdown() {
+	if err := t.manager.Release(t.topic); err != nil {
+		t.log.With(t).
+			WithError(err).
+			Error("failed to release reference")
+	}
+}
+
+func (t topicServer) Loggable() map[string]any {
+	return map[string]any{
+		"topic": t.topic.String(),
+		"peers": t.topic.ListPeers(),
+	}
+}
+
+func (t topicServer) Name(_ context.Context, call api.Topic_name) error {
 	res, err := call.AllocResults()
-	if err != nil {
-		return err
+	if err == nil {
+		err = res.SetName(t.topic.String())
 	}
-
-	return res.SetName(t.topic.String())
+	return err
 }
 
-func (t *refCountedTopic) Publish(ctx context.Context, call api.Topic_publish) error {
-	if t.ctx.Err() != nil {
-		return ErrClosed
-	}
-
+func (t topicServer) Publish(ctx context.Context, call api.Topic_publish) error {
 	b, err := call.Args().Msg()
 	if err == nil {
-		call.Ack()
+		// The call to t.topic.Publish() may block if the underlying router
+		// is not in the 'ready' state (e.g. discovering peers).  It's okay
+		// to block the RPC handler in such cases.  BBR will detect this as
+		// latency and automatically throttle the number of in-flight calls.
+		// Better to avoid spawning a goroutine each time we publish.
 		err = t.topic.Publish(ctx, b)
 	}
 
 	return err
 }
 
-func (t *refCountedTopic) Subscribe(_ context.Context, call api.Topic_subscribe) error {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+func (t topicServer) Subscribe(ctx context.Context, call api.Topic_subscribe) error {
+	sub, err := t.manager.Subscribe(t.topic, call.Args().Buf())
+	if err != nil {
+		return err
+	}
+	defer t.manager.Release(t.topic)
+	defer sub.Cancel()
 
-	if t.ref == 0 {
-		return ErrClosed
+	call.Ack()
+
+	sender := call.Args().Chan()
+	handler := stream.New(sender.Send)
+
+	// forward messages to the callback channel
+	for handler.Err() == nil {
+		handler.Call(ctx, bind(ctx, sub))
 	}
 
-	s, err := t.subscribe(call.Args())
-	if err == nil {
-		go s.Stream()
-	}
-
-	return err
+	return handler.Wait(ctx)
 }
 
-// subscribe creates a flow-controlled subscription, capable of streaming
-// messages through args.Chan().
-//
-// Increments t.ref.  Callers MUST hold t.mu.
-func (t *refCountedTopic) subscribe(args api.Topic_subscribe_Params) (s subscription, err error) {
-	subOpts, err := args.Opts()
+func bind(ctx context.Context, sub *pubsub.Subscription) channel.Value {
+	msg, err := sub.Next(ctx)
 	if err != nil {
-		return s, err
+		return failure(err)
 	}
 
-	if s.sub, err = t.topic.Subscribe(pubsub.WithBufferSize(int(subOpts.BufferSize()))); err == nil {
-		s.ch = channel.Sender(args.Chan().AddRef())
-		t.ref++
-		s.t = t
+	return channel.Data(msg.Data)
+}
+
+func failure(err error) channel.Value {
+	return func(chan_api.Sender_send_Params) error {
+		return err
+	}
+}
+
+type topicManager struct {
+	mu     sync.Mutex
+	topics map[string]*pubsub.Topic
+	refs   map[string]int
+}
+
+func newTopicManager() *topicManager {
+	return &topicManager{
+		topics: make(map[string]*pubsub.Topic),
+		refs:   make(map[string]int),
+	}
+}
+
+func (tm *topicManager) GetOrCreate(ps TopicJoiner, name string) (t *pubsub.Topic, err error) {
+	tm.mu.Lock()
+	defer tm.mu.Unlock()
+
+	var ok bool
+	if t, ok = tm.topics[name]; !ok {
+		t, err = ps.Join(name)
+		tm.topics[name] = t
+	}
+
+	if err == nil {
+		tm.refs[name]++
 	}
 
 	return
 }
 
-type subscription struct {
-	sub *pubsub.Subscription
-	ch  channel.Sender
-	t   *refCountedTopic
-}
+func (tm *topicManager) Release(t *pubsub.Topic) (err error) {
+	tm.mu.Lock()
+	defer tm.mu.Unlock()
 
-func (s *subscription) release() {
-	s.sub.Cancel()
-	s.ch.Release()
-	s.t.Release()
-}
+	name := t.String()
 
-func (s *subscription) Stream() {
-	defer s.release()
-
-	ctx, cancel := context.WithCancel(s.t.ctx)
-	defer cancel()
-
-	g, ctx := errgroup.WithContext(ctx)
-
-	for ctx.Err() == nil {
-		m, err := s.sub.Next(ctx)
-		if err != nil {
-			return
-		}
-
-		g.Go(s.send(ctx, m))
+	if tm.refs[name]--; tm.refs[name] == 0 {
+		delete(tm.topics, name)
+		delete(tm.refs, name)
+		err = t.Close()
 	}
+
+	return
 }
 
-func (s *subscription) send(ctx context.Context, m *pubsub.Message) func() error {
-	f, release := s.ch.Send(ctx, channel.Data(m.Data))
-	return func() error {
-		defer release()
-		return f.Err()
+func (tm *topicManager) Subscribe(t *pubsub.Topic, buf uint16) (*pubsub.Subscription, error) {
+	tm.mu.Lock()
+	defer tm.mu.Unlock()
+
+	s, err := t.Subscribe(pubsub.WithBufferSize(int(buf)))
+	if err == nil {
+		tm.refs[t.String()]++
 	}
+
+	return s, err
 }

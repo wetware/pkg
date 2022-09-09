@@ -8,14 +8,10 @@ $Go.import("github.com/wetware/ww/internal/api/pubsub");
 
 interface Topic {
     publish   @0 (msg :Data) -> ();
-    subscribe @1 (chan :Sender, opts :SubOpts) -> ();
+    subscribe @1 (chan :Sender(Data), buf :UInt16 = 32) -> ();
     name      @2 () -> (name :Text);
 
     using Sender = import "channel.capnp".Sender;
-
-    struct SubOpts{
-        bufferSize @0 :Int64;
-    }
 }
 
 
