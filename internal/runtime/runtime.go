@@ -252,10 +252,18 @@ func onclose(c io.Closer) func(context.Context) error {
 	}
 }
 
-func bootstrapper(b interface{ Bootstrap(context.Context) error }) fx.Hook {
+type bootstrappable interface {
+	Bootstrap(context.Context) error
+}
+
+func bootstrap(b bootstrappable) func(context.Context) error {
+	return func(ctx context.Context) error {
+		return b.Bootstrap(ctx)
+	}
+}
+
+func bootstrapper(b bootstrappable) fx.Hook {
 	return fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			return b.Bootstrap(ctx)
-		},
+		OnStart: bootstrap(b),
 	}
 }

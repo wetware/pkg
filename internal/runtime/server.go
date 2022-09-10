@@ -35,5 +35,8 @@ func newServerNode(j server.Joiner, ps *pubsub.PubSub) (*server.Node, error) {
 }
 
 func bootServer(lx fx.Lifecycle, n *server.Node) {
-	lx.Append(bootstrapper(n))
+	lx.Append(fx.Hook{
+		OnStart: bootstrap(n),
+		OnStop:  onclose(n),
+	})
 }

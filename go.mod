@@ -19,7 +19,7 @@ require (
 	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/sirupsen/logrus v1.9.0
 	github.com/urfave/cli/v2 v2.11.2
-	github.com/wetware/casm v0.0.0-20220830220656-21146cb6936b
+	github.com/wetware/casm v0.0.0-20220910204128-6e939c145bd8
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/fx v1.18.1
 	go.uber.org/zap v1.23.0 // indirect
@@ -35,7 +35,6 @@ require (
 	github.com/ipfs/go-datastore v0.6.0
 	github.com/ipfs/go-ds-badger2 v0.1.3
 	github.com/lthibault/go-libp2p-inproc-transport v0.3.0
-	github.com/lthibault/util v0.0.12
 	github.com/multiformats/go-multistream v0.3.3
 	github.com/stretchr/testify v1.8.0
 	github.com/thejerf/suture/v4 v4.0.2
@@ -103,6 +102,7 @@ require (
 	github.com/libp2p/go-reuseport v0.2.0 // indirect
 	github.com/libp2p/go-yamux/v3 v3.1.2 // indirect
 	github.com/lthibault/jitterbug/v2 v2.2.2 // indirect
+	github.com/lthibault/util v0.0.12 // indirect
 	github.com/lucas-clemente/quic-go v0.28.1 // indirect
 	github.com/marten-seemann/qtls-go1-16 v0.1.5 // indirect
 	github.com/marten-seemann/qtls-go1-17 v0.1.2 // indirect

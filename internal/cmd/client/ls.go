@@ -19,7 +19,6 @@ func list() *cli.Command {
 			&cli.BoolFlag{
 				Name:    "json",
 				Usage:   "print results as json",
-				Value:   false,
 				EnvVars: []string{"WW_FMT_JSON"},
 			},
 		},
@@ -31,17 +30,17 @@ func list() *cli.Command {
 
 func ls() cli.ActionFunc {
 	return func(c *cli.Context) error {
-		v, release := node.View(env.Context())
+		view, release := node.View(env.Context())
 		defer release()
 
-		return render(v, formatter(c))
+		it, release := view.Iter(env.Context(), cluster.All())
+		defer release()
+
+		return render(it, formatter(c))
 	}
 }
 
-func render(view cluster.View, consume func(routing.Record) error) error {
-	it, release := view.Iter(env.Context(), cluster.All())
-	defer release()
-
+func render(it cluster.Iterator, consume func(routing.Record) error) error {
 	for record := it.Next(); record != nil; record = it.Next() {
 		if err := consume(record); err != nil {
 			return err
@@ -74,7 +73,7 @@ func jsonFormatter(c *cli.Context) func(routing.Record) error {
 type jsonRecord struct {
 	Peer     peer.ID           `json:"peer"`
 	Seq      uint64            `json:"seq"`
-	Instance uint32            `json:"instance"`
+	Instance routing.ID        `json:"instance"`
 	Host     string            `json:"host"`
 	Meta     map[string]string `json:"meta,omitempty"`
 }

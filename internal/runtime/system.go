@@ -5,17 +5,15 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/lthibault/log"
+	"github.com/wetware/casm/pkg/cluster/pulse"
+	"github.com/wetware/casm/pkg/cluster/routing"
 	"go.uber.org/fx"
 
 	ds "github.com/ipfs/go-datastore"
 	ds_sync "github.com/ipfs/go-datastore/sync"
 	badgerds "github.com/ipfs/go-ds-badger2"
-
-	"github.com/wetware/casm/pkg/cluster"
-	"github.com/wetware/casm/pkg/cluster/pulse"
 )
 
 /*************************************************************************
@@ -30,48 +28,44 @@ func (c Config) System() fx.Option {
 		metadata))
 }
 
-type metaOut struct {
-	fx.Out
-
-	Meta cluster.Option `group:"cluster"`
+type meta struct {
+	fields []routing.Field
 }
 
-type metaHook struct{ Env }
+func metadata(env Env) (pulse.Preparer, error) {
+	ss := env.StringSlice("meta")
+	fs := make([]routing.Field, len(ss))
 
-func metadata(env Env) metaOut {
-	return metaOut{
-		Meta: cluster.WithMeta(&metaHook{Env: env}),
-	}
-}
-
-func (h *metaHook) Prepare(heartbeat pulse.Setter) (err error) {
-	if h.Env != nil {
-		err = heartbeat.SetMeta(h.fields())
-		h.Env = nil
+	var err error
+	for i, field := range ss {
+		if fs[i], err = routing.ParseField(field); err != nil {
+			return nil, err
+		}
 	}
 
-	return
+	return &meta{
+		fields: fs,
+	}, nil
 }
 
-func (h *metaHook) fields() map[string]string {
-	var (
-		fields = h.StringSlice("meta")
-		meta   = make(map[string]string, len(fields))
-	)
-
-	for _, field := range fields {
-		kv := strings.SplitN(field, "=", 2)
-		if len(kv) == 2 {
-			meta[kv[0]] = kv[1]
-			continue
+func (m *meta) Prepare(h pulse.Heartbeat) error {
+	// write meta fields only once
+	if len(m.fields) > 0 {
+		if err := h.SetMeta(m.fields); err != nil {
+			return err
 		}
 
-		h.Log().
-			WithField("field", field).
-			Warn("skipped invalid metadata field")
+		m.fields = nil
 	}
 
-	return meta
+	// hostname may change over time
+	host, err := os.Hostname()
+	if err != nil {
+		return err
+	}
+
+	return h.SetHost(host)
+
 }
 
 func storage(env Env, lx fx.Lifecycle) (ds.Batching, error) {
