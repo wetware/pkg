@@ -51,7 +51,6 @@ type Joiner struct {
 
 	Vat casm.Vat
 
-	NS           string               `optional:"true" name:"ns"`
 	Log          log.Logger           `optional:"true"`
 	TTL          time.Duration        `optional:"true"`
 	Meta         pulse.Preparer       `optional:"true"`
@@ -60,12 +59,12 @@ type Joiner struct {
 }
 
 func (j Joiner) Join(r Router) (*Node, error) {
-	err := r.RegisterTopicValidator(j.namespace(), j.validator())
+	err := r.RegisterTopicValidator(j.Vat.NS, j.validator())
 	if err != nil {
 		return nil, err
 	}
 
-	t, err := r.Join(j.namespace())
+	t, err := r.Join(j.Vat.NS)
 	if err != nil {
 		return nil, err
 	}
@@ -88,14 +87,6 @@ func (j Joiner) Join(r Router) (*Node, error) {
 		cluster: c,
 		pubsub:  r,
 	}, nil
-}
-
-func (j *Joiner) namespace() string {
-	if j.NS == "" {
-		j.NS = "ww"
-	}
-
-	return j.NS
 }
 
 func (j *Joiner) validator() ps.ValidatorEx {
