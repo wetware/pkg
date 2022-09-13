@@ -93,7 +93,6 @@ func message(b []byte) func(api.Topic_publish_Params) error {
 
 func (t Topic) Subscribe(ctx context.Context) (Subscription, capnp.ReleaseFunc) {
 	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
 
 	ch := make(handler, 32)
 	f, release := api.Topic(t).Subscribe(ctx, ch.Params)
