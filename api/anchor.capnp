@@ -6,35 +6,21 @@ $Go.package("anchor");
 $Go.import("github.com/wetware/ww/internal/api/anchor");
 
 
-# NOTE:  the Value API is unstable and may change withouth
-#        warning.  Do not use in production settings.
-struct Value {
-    union {
-        nil                @0 :Void;
-        capability         @1 :Capability;
-        chan               @2 :import "channel.capnp".PeekableChan;
-
-        # TODO(soon):  process, string, []byte, ...
-    }
-}
-
-interface Loader {
-    load  @0 () -> (value :Value);
-}
-
-interface Storer {
-    store @0 (value :Value) -> ();
-}
-
-interface Register extends(Loader, Storer) {}
-
-
 interface Anchor {
-    ls   @0 () -> (children :List(Child));
-    walk @1 (path :Text) -> (anchor :Anchor);
+    # Anchor is a shared memory register.  Anchors form a tree structure
+    # similar to a filesyste, with one important constraint: nodes along
+    # any given path can only access their children.  They cannot access
+    # their parents.  This provides strong isolation properties.
 
-    struct Child {
-        name   @0 :Text;
-        anchor @1 :Anchor;
-    }
+    ls   @0 () -> (names :List(Text), children :List(Anchor));
+    # ls returns the Anchor's children along with their names.
+    # The path to the i'th child is given by:
+    #
+    #     parent_path + "/" + names[i].
+    #
+
+    walk @1 (path :Text) -> (anchor :Anchor);
+    # Walk traverses the anchor hierarchy along the specified path. Any
+    # anchors in the path that do not currently exist are created along
+    # the way.
 }

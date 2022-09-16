@@ -27,4 +27,8 @@ interface Host {
     # and therefore strongly discouraged. A better approach is to
     # wrap PubSub in a capability that resolves sturdy references
     # to Topic capabilities.
+
+    root @2 () -> (root :import "anchor.capnp".Anchor);
+    # Root returns the host's root Anchor, which confers access to
+    # all shared memory on the host.
 }
