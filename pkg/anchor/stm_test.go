@@ -78,7 +78,7 @@ func TestChildren(t *testing.T) {
 
 		var children []anchor.Path
 		for v := cs.Next(); v != nil; v = cs.Next() {
-			children = append(children, v.(anchor.AnchorServer).Path())
+			children = append(children, v.(anchor.Server).Path())
 		}
 
 		// Should have single child:  /foo
@@ -100,7 +100,7 @@ func TestChildren(t *testing.T) {
 
 		var children []anchor.Path
 		for v := cs.Next(); v != nil; v = cs.Next() {
-			children = append(children, v.(anchor.AnchorServer).Path())
+			children = append(children, v.(anchor.Server).Path())
 		}
 
 		// Should have single child
@@ -122,7 +122,7 @@ func TestChildren(t *testing.T) {
 
 		var children []anchor.Path
 		for v := cs.Next(); v != nil; v = cs.Next() {
-			children = append(children, v.(anchor.AnchorServer).Path())
+			children = append(children, v.(anchor.Server).Path())
 		}
 
 		// Should have two children

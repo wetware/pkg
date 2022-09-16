@@ -149,42 +149,42 @@ func (t Txn) Children() (memdb.ResultIterator, error) {
 // does not match any existing prefix, a zero-value anchor is returned.
 //
 // This is a read-only operation.
-func (t Txn) WalkLongestSubpath(p Path) (a AnchorServer, _ error) {
+func (t Txn) WalkLongestSubpath(p Path) (s Server, _ error) {
 	path := t.sched.root.bind(subpath(p))
 
 	v, err := t.txn.LongestPrefix(t.sched.anchors, "id_prefix", path)
 	if v != nil {
-		a = v.(AnchorServer)
+		s = v.(Server)
 	}
 
-	return a, err
+	return s, err
 }
 
 // GetOrCreate returns the anchor along the supplied path, creating it if it
 // does not exist. It does not attempt to create any missing anchors along p.
 //
 // This is potentially a write operation.
-func (t Txn) GetOrCreate(p Path) (AnchorServer, error) {
+func (t Txn) GetOrCreate(p Path) (Server, error) {
 	path := t.sched.root.bind(subpath(p))
 	v, err := t.txn.First(t.sched.anchors, "id", path)
 	if err != nil {
-		return AnchorServer{}, err
+		return Server{}, err
 	}
 
 	if v != nil {
-		return v.(AnchorServer), nil
+		return v.(Server), nil
 	}
 
 	return t.createAnchor(path)
 }
 
-func (t Txn) createAnchor(path Path) (a AnchorServer, err error) {
-	a = AnchorServer{
+func (t Txn) createAnchor(path Path) (s Server, err error) {
+	s = Server{
 		sched:  t.sched.WithSubpath(path),
-		anchor: &a,
+		anchor: &s,
 	}
 
-	err = t.txn.Insert(t.sched.anchors, a)
+	err = t.txn.Insert(t.sched.anchors, s)
 	return
 }
 
@@ -192,15 +192,15 @@ func children(it memdb.ResultIterator, parent Path) *memdb.FilterIterator {
 	return memdb.NewFilterIterator(it, func(v interface{}) bool {
 		// NOTE:  filter is unusual in that it removes elements
 		//        for which the function returns *true*.
-		return !parent.IsChild(v.(AnchorServer).Path())
+		return !parent.IsChild(v.(Server).Path())
 	})
 }
 
 type index struct{}
 
 func (index) FromObject(obj interface{}) (bool, []byte, error) {
-	if a, ok := obj.(AnchorServer); ok {
-		return true, a.sched.root.index(), nil
+	if s, ok := obj.(Server); ok {
+		return true, s.sched.root.index(), nil
 	}
 
 	return false, nil, errType(obj)
