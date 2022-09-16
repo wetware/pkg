@@ -65,7 +65,6 @@ func (m *meta) Prepare(h pulse.Heartbeat) error {
 	}
 
 	return h.SetHost(host)
-
 }
 
 func storage(env Env, lx fx.Lifecycle) (ds.Batching, error) {

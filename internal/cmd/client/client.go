@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/lthibault/log"
 	"github.com/urfave/cli/v2"
 	"github.com/wetware/ww/internal/runtime"
 	runtimeutil "github.com/wetware/ww/internal/util/runtime"
@@ -12,15 +13,15 @@ import (
 )
 
 var (
-	app  *fx.App
-	env  runtime.Env
-	node *client.Node
+	app    *fx.App
+	node   *client.Node
+	logger log.Logger
 )
 
 var subcommands = []*cli.Command{
 	list(),
-	// Publish(),
-	// Subscribe(),
+	Publish(),
+	Subscribe(),
 	// Discover(),
 }
 
@@ -64,7 +65,7 @@ func setup() cli.BeforeFunc {
 		app = fx.New(
 			runtime.Prelude(runtimeutil.New(c)),
 			fx.StartTimeout(c.Duration("timeout")),
-			fx.Populate(&env, &node),
+			fx.Populate(&logger, &node),
 			runtime.Client())
 
 		ctx, cancel := context.WithTimeout(

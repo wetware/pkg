@@ -17,14 +17,20 @@ import (
 	"github.com/wetware/ww/pkg/pubsub"
 )
 
+type Router interface {
+	Join(string, ...ps.TopicOpt) (*ps.Topic, error)
+	RegisterTopicValidator(topic string, val interface{}, opts ...ps.ValidatorOpt) error
+	UnregisterTopicValidator(topic string) error
+}
+
 type Node struct {
 	Vat     casm.Vat
 	cluster *cluster.Router
-	pubsub  Router
+	pubsub  interface{ UnregisterTopicValidator(string) error }
 }
 
 func (n Node) String() string {
-	return n.cluster.String()
+	return n.Vat.NS
 }
 
 func (n Node) Loggable() map[string]any {
@@ -37,13 +43,7 @@ func (n Node) Bootstrap(ctx context.Context) error {
 
 func (n Node) Close() error {
 	n.cluster.Stop()
-	return n.pubsub.UnregisterTopicValidator(n.cluster.Topic.String())
-}
-
-type Router interface {
-	Join(string, ...ps.TopicOpt) (*ps.Topic, error)
-	RegisterTopicValidator(topic string, val interface{}, opts ...ps.ValidatorOpt) error
-	UnregisterTopicValidator(topic string) error
+	return n.pubsub.UnregisterTopicValidator(n.Vat.NS)
 }
 
 type Joiner struct {

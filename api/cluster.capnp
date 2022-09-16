@@ -17,7 +17,7 @@ interface Host {
     #
     # The returned :Capability SHALL be a CASM :View type.
 
-    pubSub @1 () -> (pubSub :import "pubsub.capnp".PubSub);
+    pubSub @1 () -> (pubSub :import "pubsub.capnp".Router);
     # PubSub returns an interface to the host's pubsub overlay.
     # Callers can use this to connect to arbitrary topics.
     #

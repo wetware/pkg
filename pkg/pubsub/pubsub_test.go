@@ -32,8 +32,48 @@ func TestPubSub(t *testing.T) {
 	const nmsg = 10
 	g, ctx := errgroup.WithContext(ctx)
 
+	// belt-and-suspenders; make sure we don't miss a message due
+	// to goroutine scheduling
+	sync := make(chan struct{})
+
+	// reader
+	g.Go(func() error {
+		topic, release := ps.Join(ctx, topic)
+		defer release()
+
+		sub, cancel := topic.Subscribe(ctx)
+		defer cancel()
+
+		// Ready to receive.  In principle, the RPC request may still be
+		// in-flight, but this should be good enough.  There aren't really
+		// any ordering guarantees.
+		//
+		// If this test becomes unreliable due to missed messages, we should
+		// remove synchronization and test that at least one message makes it
+		// through.
+		close(sync)
+
+		var i int
+		for got := sub.Next(); got != nil; got = sub.Next() {
+			if string(got) != "test" {
+				return fmt.Errorf("reader: unexpected message: %s", got)
+			}
+
+			i++
+			t.Logf("got message %d of %d", i, nmsg)
+
+			if i == nmsg {
+				break
+			}
+		}
+
+		return sub.Err()
+	})
+
 	// writer
 	g.Go(func() error {
+		<-sync
+
 		topic, release := ps.Join(ctx, topic)
 		defer release()
 
@@ -46,23 +86,6 @@ func TestPubSub(t *testing.T) {
 		}
 
 		return annotate("writer", g.Wait())
-	})
-
-	// reader
-	g.Go(func() error {
-		topic, release := ps.Join(ctx, topic)
-		defer release()
-
-		sub, cancel := topic.Subscribe(ctx)
-		defer cancel()
-
-		for got := sub.Next(); got != nil; got = sub.Next() {
-			if string(got) != "test" {
-				return fmt.Errorf("reader: unexpected message: %s", got)
-			}
-		}
-
-		return nil
 	})
 
 	assert.NoError(t, g.Wait())

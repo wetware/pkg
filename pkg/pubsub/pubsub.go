@@ -7,13 +7,13 @@ import (
 
 	casm "github.com/wetware/casm/pkg"
 	chan_api "github.com/wetware/ww/internal/api/channel"
-	api "github.com/wetware/ww/internal/api/pubsub"
+	"github.com/wetware/ww/internal/api/pubsub"
 )
 
-type Joiner api.PubSub
+type Joiner pubsub.Router
 
 func (ps Joiner) Join(ctx context.Context, topic string) (Topic, capnp.ReleaseFunc) {
-	f, release := (api.PubSub)(ps).Join(ctx, func(ps api.PubSub_join_Params) error {
+	f, release := (pubsub.Router)(ps).Join(ctx, func(ps pubsub.Router_join_Params) error {
 		return ps.SetName(topic)
 	})
 
@@ -28,14 +28,14 @@ func (ps Joiner) Release() {
 	capnp.Client(ps).Release()
 }
 
-type FutureTopic api.PubSub_join_Results_Future
+type FutureTopic pubsub.Router_join_Results_Future
 
 func (ft FutureTopic) Topic() Topic {
-	return Topic(api.PubSub_join_Results_Future(ft).Topic())
+	return Topic(pubsub.Router_join_Results_Future(ft).Topic())
 }
 
 func (ft FutureTopic) Struct() (Topic, error) {
-	res, err := (api.PubSub_join_Results_Future)(ft).Struct()
+	res, err := (pubsub.Router_join_Results_Future)(ft).Struct()
 	if err != nil {
 		return Topic{}, err
 	}
@@ -43,10 +43,10 @@ func (ft FutureTopic) Struct() (Topic, error) {
 	return Topic(res.Topic()), nil
 }
 
-type Topic api.Topic
+type Topic pubsub.Topic
 
 func (t Topic) AddRef() Topic {
-	return Topic(api.Topic(t).AddRef())
+	return Topic(pubsub.Topic(t).AddRef())
 }
 
 func (t Topic) Release() {
@@ -54,7 +54,7 @@ func (t Topic) Release() {
 }
 
 func (t Topic) Name(ctx context.Context) (string, error) {
-	f, release := (api.Topic)(t).Name(ctx, nil)
+	f, release := pubsub.Topic(t).Name(ctx, nil)
 	defer release()
 
 	res, err := f.Struct()
@@ -81,12 +81,12 @@ func (t Topic) Publish(ctx context.Context, b []byte) error {
 // publish a large volume of messages, and callers do not wish to spawn
 // a goroutine for each call.  PublishAsync is nevertheless thread-safe.
 func (t Topic) PublishAsync(ctx context.Context, b []byte) (casm.Future, capnp.ReleaseFunc) {
-	f, release := (api.Topic)(t).Publish(ctx, message(b))
+	f, release := pubsub.Topic(t).Publish(ctx, message(b))
 	return casm.Future(f), release
 }
 
-func message(b []byte) func(api.Topic_publish_Params) error {
-	return func(ps api.Topic_publish_Params) error {
+func message(b []byte) func(pubsub.Topic_publish_Params) error {
+	return func(ps pubsub.Topic_publish_Params) error {
 		return ps.SetMsg(b)
 	}
 }
@@ -95,7 +95,7 @@ func (t Topic) Subscribe(ctx context.Context) (Subscription, capnp.ReleaseFunc) 
 	ctx, cancel := context.WithCancel(ctx)
 
 	ch := make(handler, 32)
-	f, release := api.Topic(t).Subscribe(ctx, ch.Params)
+	f, release := pubsub.Topic(t).Subscribe(ctx, ch.Params)
 
 	sub := Subscription{
 		Future: casm.Future(f),
@@ -121,7 +121,7 @@ func (sub Subscription) Err() error {
 
 type handler chan []byte
 
-func (ch handler) Params(ps api.Topic_subscribe_Params) error {
+func (ch handler) Params(ps pubsub.Topic_subscribe_Params) error {
 	ps.SetBuf(uint16(cap(ch)))
 	return ps.SetChan(chan_api.Sender_ServerToClient(ch))
 }

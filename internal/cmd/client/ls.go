@@ -30,10 +30,10 @@ func list() *cli.Command {
 
 func ls() cli.ActionFunc {
 	return func(c *cli.Context) error {
-		view, release := node.View(env.Context())
+		view, release := node.View(c.Context)
 		defer release()
 
-		it, release := view.Iter(env.Context(), cluster.All())
+		it, release := view.Iter(c.Context, cluster.All())
 		defer release()
 
 		return render(it, formatter(c))
@@ -74,7 +74,7 @@ type jsonRecord struct {
 	Peer     peer.ID           `json:"peer"`
 	Seq      uint64            `json:"seq"`
 	Instance routing.ID        `json:"instance"`
-	Host     string            `json:"host"`
+	Host     string            `json:"host,omitempty"`
 	Meta     map[string]string `json:"meta,omitempty"`
 }
 

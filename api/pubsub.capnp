@@ -15,6 +15,6 @@ interface Topic {
 }
 
 
-interface PubSub {
+interface Router {
     join @0 (name :Text) -> (topic :Topic);
 }

@@ -28,14 +28,14 @@ type Router struct {
 }
 
 func (r *Router) PubSub() Joiner {
-	return Joiner(api.PubSub_ServerToClient(r))
+	return Joiner(api.Router_ServerToClient(r))
 }
 
 func (r *Router) Client() capnp.Client {
 	return capnp.Client(r.PubSub())
 }
 
-func (r *Router) Join(ctx context.Context, call api.PubSub_join) error {
+func (r *Router) Join(ctx context.Context, call api.Router_join) error {
 	r.initialize() // not thread-safe
 
 	res, err := call.AllocResults()
@@ -53,15 +53,14 @@ func (r *Router) Join(ctx context.Context, call api.PubSub_join) error {
 		return err
 	}
 
-	return res.SetTopic(r.topic(t))
-}
+	logger := r.Log.WithField("topic", t.String())
+	defer logger.Trace("acquired topic ref")
 
-func (r *Router) topic(t *pubsub.Topic) api.Topic {
-	return api.Topic_ServerToClient(topicServer{
-		log:     r.Log,
+	return res.SetTopic(api.Topic_ServerToClient(topicServer{
+		log:     logger,
 		manager: r.topics,
 		topic:   t,
-	})
+	}))
 }
 
 func (r *Router) initialize() {
@@ -82,16 +81,9 @@ type topicServer struct {
 
 func (t topicServer) Shutdown() {
 	if err := t.manager.Release(t.topic); err != nil {
-		t.log.With(t).
-			WithError(err).
-			Error("failed to release reference")
-	}
-}
-
-func (t topicServer) Loggable() map[string]any {
-	return map[string]any{
-		"topic": t.topic.String(),
-		"peers": t.topic.ListPeers(),
+		t.log.WithError(err).Error("failed to release topic ref")
+	} else {
+		t.log.Trace("released topic ref")
 	}
 }
 
@@ -125,17 +117,18 @@ func (t topicServer) Subscribe(ctx context.Context, call api.Topic_subscribe) er
 	defer t.manager.Release(t.topic)
 	defer sub.Cancel()
 
-	call.Ack()
-
 	sender := call.Args().Chan()
 	handler := stream.New(sender.Send)
 
+	t.log.Trace("registered subscription handler")
+	defer t.log.Trace("unregistered subscription handler")
+
 	// forward messages to the callback channel
-	for handler.Err() == nil {
+	for call.Ack(); handler.Open(); t.log.Trace("message received") {
 		handler.Call(ctx, bind(ctx, sub))
 	}
 
-	return handler.Wait(ctx)
+	return handler.Wait()
 }
 
 func bind(ctx context.Context, sub *pubsub.Subscription) channel.Value {
@@ -172,12 +165,13 @@ func (tm *topicManager) GetOrCreate(ps TopicJoiner, name string) (t *pubsub.Topi
 
 	var ok bool
 	if t, ok = tm.topics[name]; !ok {
-		t, err = ps.Join(name)
-		tm.topics[name] = t
+		if t, err = ps.Join(name); err == nil {
+			tm.topics[name] = t // add to active topics
+		}
 	}
 
 	if err == nil {
-		tm.refs[name]++
+		tm.refs[name]++ // increment the ref count
 	}
 
 	return

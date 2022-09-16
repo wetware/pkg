@@ -43,6 +43,11 @@ func (h Host) View(ctx context.Context) (cluster.View, capnp.ReleaseFunc) {
 	return cluster.View(f.View().Client()), release
 }
 
+func (h Host) PubSub(ctx context.Context) (pubsub.Joiner, capnp.ReleaseFunc) {
+	f, release := api.Host(h).PubSub(ctx, nil)
+	return pubsub.Joiner(f.PubSub()), release
+}
+
 // func (h *Host) Ls(ctx context.Context, d Dialer) (*anchor.Iterator, capnp.ReleaseFunc) {
 // 	return anchor.Anchor(h.resolve(ctx, d)).Ls(ctx)
 // }
@@ -106,7 +111,7 @@ func (s HostServer) View(_ context.Context, call api.Host_view) error {
 func (s HostServer) PubSub(_ context.Context, call api.Host_pubSub) error {
 	res, err := call.AllocResults()
 	if err == nil {
-		err = res.SetPubSub(pubsub_api.PubSub(s.PubSubProvider.PubSub()))
+		err = res.SetPubSub(pubsub_api.Router(s.PubSubProvider.PubSub()))
 	}
 
 	return err

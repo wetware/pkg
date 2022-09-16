@@ -467,11 +467,11 @@ func (s Topic_subscribe_Params) SetChan(v channel.Sender) error {
 }
 
 func (s Topic_subscribe_Params) Buf() uint16 {
-	return capnp.Struct(s).Uint16(0) ^ 16
+	return capnp.Struct(s).Uint16(0) ^ 32
 }
 
 func (s Topic_subscribe_Params) SetBuf(v uint16) {
-	capnp.Struct(s).SetUint16(0, v^16)
+	capnp.Struct(s).SetUint16(0, v^32)
 }
 
 // Topic_subscribe_Params_List is a list of Topic_subscribe_Params.
@@ -707,40 +707,40 @@ func (p Topic_name_Results_Future) Struct() (Topic_name_Results, error) {
 	return Topic_name_Results(s), err
 }
 
-type PubSub capnp.Client
+type Router capnp.Client
 
-// PubSub_TypeID is the unique identifier for the type PubSub.
-const PubSub_TypeID = 0xf1cc149f1c06e50e
+// Router_TypeID is the unique identifier for the type Router.
+const Router_TypeID = 0xde50b3e61b766f3a
 
-func (c PubSub) Join(ctx context.Context, params func(PubSub_join_Params) error) (PubSub_join_Results_Future, capnp.ReleaseFunc) {
+func (c Router) Join(ctx context.Context, params func(Router_join_Params) error) (Router_join_Results_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
 		Method: capnp.Method{
-			InterfaceID:   0xf1cc149f1c06e50e,
+			InterfaceID:   0xde50b3e61b766f3a,
 			MethodID:      0,
-			InterfaceName: "pubsub.capnp:PubSub",
+			InterfaceName: "pubsub.capnp:Router",
 			MethodName:    "join",
 		},
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(PubSub_join_Params(s)) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Router_join_Params(s)) }
 	}
 	ans, release := capnp.Client(c).SendCall(ctx, s)
-	return PubSub_join_Results_Future{Future: ans.Future()}, release
+	return Router_join_Results_Future{Future: ans.Future()}, release
 }
 
 // String returns a string that identifies this capability for debugging
 // purposes.  Its format should not be depended on: in particular, it
 // should not be used to compare clients.  Use IsSame to compare clients
 // for equality.
-func (c PubSub) String() string {
+func (c Router) String() string {
 	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
 }
 
 // AddRef creates a new Client that refers to the same capability as c.
 // If c is nil or has resolved to null, then AddRef returns nil.
-func (c PubSub) AddRef() PubSub {
-	return PubSub(capnp.Client(c).AddRef())
+func (c Router) AddRef() Router {
+	return Router(capnp.Client(c).AddRef())
 }
 
 // Release releases a capability reference.  If this is the last
@@ -749,28 +749,28 @@ func (c PubSub) AddRef() PubSub {
 //
 // Release will panic if c has already been released, but not if c is
 // nil or resolved to null.
-func (c PubSub) Release() {
+func (c Router) Release() {
 	capnp.Client(c).Release()
 }
 
 // Resolve blocks until the capability is fully resolved or the Context
 // expires.
-func (c PubSub) Resolve(ctx context.Context) error {
+func (c Router) Resolve(ctx context.Context) error {
 	return capnp.Client(c).Resolve(ctx)
 }
 
-func (c PubSub) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (c Router) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Client(c).EncodeAsPtr(seg)
 }
 
-func (PubSub) DecodeFromPtr(p capnp.Ptr) PubSub {
-	return PubSub(capnp.Client{}.DecodeFromPtr(p))
+func (Router) DecodeFromPtr(p capnp.Ptr) Router {
+	return Router(capnp.Client{}.DecodeFromPtr(p))
 }
 
 // IsValid reports whether c is a valid reference to a capability.
 // A reference is invalid if it is nil, has resolved to null, or has
 // been released.
-func (c PubSub) IsValid() bool {
+func (c Router) IsValid() bool {
 	return capnp.Client(c).IsValid()
 }
 
@@ -778,7 +778,7 @@ func (c PubSub) IsValid() bool {
 // same call to NewClient.  This can return false negatives if c or other
 // are not fully resolved: use Resolve if this is an issue.  If either
 // c or other are released, then IsSame panics.
-func (c PubSub) IsSame(other PubSub) bool {
+func (c Router) IsSame(other Router) bool {
 	return capnp.Client(c).IsSame(capnp.Client(other))
 }
 
@@ -786,218 +786,218 @@ func (c PubSub) IsSame(other PubSub) bool {
 // this client. This affects all future calls, but not calls already
 // waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
 // which is also the default.
-func (c PubSub) SetFlowLimiter(lim fc.FlowLimiter) {
+func (c Router) SetFlowLimiter(lim fc.FlowLimiter) {
 	capnp.Client(c).SetFlowLimiter(lim)
 }
 
 // Get the current flowcontrol.FlowLimiter used to manage flow control
 // for this client.
-func (c PubSub) GetFlowLimiter() fc.FlowLimiter {
+func (c Router) GetFlowLimiter() fc.FlowLimiter {
 	return capnp.Client(c).GetFlowLimiter()
-} // A PubSub_Server is a PubSub with a local implementation.
-type PubSub_Server interface {
-	Join(context.Context, PubSub_join) error
+} // A Router_Server is a Router with a local implementation.
+type Router_Server interface {
+	Join(context.Context, Router_join) error
 }
 
-// PubSub_NewServer creates a new Server from an implementation of PubSub_Server.
-func PubSub_NewServer(s PubSub_Server) *server.Server {
+// Router_NewServer creates a new Server from an implementation of Router_Server.
+func Router_NewServer(s Router_Server) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(PubSub_Methods(nil, s), s, c)
+	return server.New(Router_Methods(nil, s), s, c)
 }
 
-// PubSub_ServerToClient creates a new Client from an implementation of PubSub_Server.
+// Router_ServerToClient creates a new Client from an implementation of Router_Server.
 // The caller is responsible for calling Release on the returned Client.
-func PubSub_ServerToClient(s PubSub_Server) PubSub {
-	return PubSub(capnp.NewClient(PubSub_NewServer(s)))
+func Router_ServerToClient(s Router_Server) Router {
+	return Router(capnp.NewClient(Router_NewServer(s)))
 }
 
-// PubSub_Methods appends Methods to a slice that invoke the methods on s.
+// Router_Methods appends Methods to a slice that invoke the methods on s.
 // This can be used to create a more complicated Server.
-func PubSub_Methods(methods []server.Method, s PubSub_Server) []server.Method {
+func Router_Methods(methods []server.Method, s Router_Server) []server.Method {
 	if cap(methods) == 0 {
 		methods = make([]server.Method, 0, 1)
 	}
 
 	methods = append(methods, server.Method{
 		Method: capnp.Method{
-			InterfaceID:   0xf1cc149f1c06e50e,
+			InterfaceID:   0xde50b3e61b766f3a,
 			MethodID:      0,
-			InterfaceName: "pubsub.capnp:PubSub",
+			InterfaceName: "pubsub.capnp:Router",
 			MethodName:    "join",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.Join(ctx, PubSub_join{call})
+			return s.Join(ctx, Router_join{call})
 		},
 	})
 
 	return methods
 }
 
-// PubSub_join holds the state for a server call to PubSub.join.
+// Router_join holds the state for a server call to Router.join.
 // See server.Call for documentation.
-type PubSub_join struct {
+type Router_join struct {
 	*server.Call
 }
 
 // Args returns the call's arguments.
-func (c PubSub_join) Args() PubSub_join_Params {
-	return PubSub_join_Params(c.Call.Args())
+func (c Router_join) Args() Router_join_Params {
+	return Router_join_Params(c.Call.Args())
 }
 
 // AllocResults allocates the results struct.
-func (c PubSub_join) AllocResults() (PubSub_join_Results, error) {
+func (c Router_join) AllocResults() (Router_join_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return PubSub_join_Results(r), err
+	return Router_join_Results(r), err
 }
 
-// PubSub_List is a list of PubSub.
-type PubSub_List = capnp.CapList[PubSub]
+// Router_List is a list of Router.
+type Router_List = capnp.CapList[Router]
 
-// NewPubSub creates a new list of PubSub.
-func NewPubSub_List(s *capnp.Segment, sz int32) (PubSub_List, error) {
+// NewRouter creates a new list of Router.
+func NewRouter_List(s *capnp.Segment, sz int32) (Router_List, error) {
 	l, err := capnp.NewPointerList(s, sz)
-	return capnp.CapList[PubSub](l), err
+	return capnp.CapList[Router](l), err
 }
 
-type PubSub_join_Params capnp.Struct
+type Router_join_Params capnp.Struct
 
-// PubSub_join_Params_TypeID is the unique identifier for the type PubSub_join_Params.
-const PubSub_join_Params_TypeID = 0xfb4016d002794da7
+// Router_join_Params_TypeID is the unique identifier for the type Router_join_Params.
+const Router_join_Params_TypeID = 0xfb2fed6504f78754
 
-func NewPubSub_join_Params(s *capnp.Segment) (PubSub_join_Params, error) {
+func NewRouter_join_Params(s *capnp.Segment) (Router_join_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return PubSub_join_Params(st), err
+	return Router_join_Params(st), err
 }
 
-func NewRootPubSub_join_Params(s *capnp.Segment) (PubSub_join_Params, error) {
+func NewRootRouter_join_Params(s *capnp.Segment) (Router_join_Params, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return PubSub_join_Params(st), err
+	return Router_join_Params(st), err
 }
 
-func ReadRootPubSub_join_Params(msg *capnp.Message) (PubSub_join_Params, error) {
+func ReadRootRouter_join_Params(msg *capnp.Message) (Router_join_Params, error) {
 	root, err := msg.Root()
-	return PubSub_join_Params(root.Struct()), err
+	return Router_join_Params(root.Struct()), err
 }
 
-func (s PubSub_join_Params) String() string {
-	str, _ := text.Marshal(0xfb4016d002794da7, capnp.Struct(s))
+func (s Router_join_Params) String() string {
+	str, _ := text.Marshal(0xfb2fed6504f78754, capnp.Struct(s))
 	return str
 }
 
-func (s PubSub_join_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (s Router_join_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Struct(s).EncodeAsPtr(seg)
 }
 
-func (PubSub_join_Params) DecodeFromPtr(p capnp.Ptr) PubSub_join_Params {
-	return PubSub_join_Params(capnp.Struct{}.DecodeFromPtr(p))
+func (Router_join_Params) DecodeFromPtr(p capnp.Ptr) Router_join_Params {
+	return Router_join_Params(capnp.Struct{}.DecodeFromPtr(p))
 }
 
-func (s PubSub_join_Params) ToPtr() capnp.Ptr {
+func (s Router_join_Params) ToPtr() capnp.Ptr {
 	return capnp.Struct(s).ToPtr()
 }
-func (s PubSub_join_Params) IsValid() bool {
+func (s Router_join_Params) IsValid() bool {
 	return capnp.Struct(s).IsValid()
 }
 
-func (s PubSub_join_Params) Message() *capnp.Message {
+func (s Router_join_Params) Message() *capnp.Message {
 	return capnp.Struct(s).Message()
 }
 
-func (s PubSub_join_Params) Segment() *capnp.Segment {
+func (s Router_join_Params) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s PubSub_join_Params) Name() (string, error) {
+func (s Router_join_Params) Name() (string, error) {
 	p, err := capnp.Struct(s).Ptr(0)
 	return p.Text(), err
 }
 
-func (s PubSub_join_Params) HasName() bool {
+func (s Router_join_Params) HasName() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s PubSub_join_Params) NameBytes() ([]byte, error) {
+func (s Router_join_Params) NameBytes() ([]byte, error) {
 	p, err := capnp.Struct(s).Ptr(0)
 	return p.TextBytes(), err
 }
 
-func (s PubSub_join_Params) SetName(v string) error {
+func (s Router_join_Params) SetName(v string) error {
 	return capnp.Struct(s).SetText(0, v)
 }
 
-// PubSub_join_Params_List is a list of PubSub_join_Params.
-type PubSub_join_Params_List = capnp.StructList[PubSub_join_Params]
+// Router_join_Params_List is a list of Router_join_Params.
+type Router_join_Params_List = capnp.StructList[Router_join_Params]
 
-// NewPubSub_join_Params creates a new list of PubSub_join_Params.
-func NewPubSub_join_Params_List(s *capnp.Segment, sz int32) (PubSub_join_Params_List, error) {
+// NewRouter_join_Params creates a new list of Router_join_Params.
+func NewRouter_join_Params_List(s *capnp.Segment, sz int32) (Router_join_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[PubSub_join_Params](l), err
+	return capnp.StructList[Router_join_Params](l), err
 }
 
-// PubSub_join_Params_Future is a wrapper for a PubSub_join_Params promised by a client call.
-type PubSub_join_Params_Future struct{ *capnp.Future }
+// Router_join_Params_Future is a wrapper for a Router_join_Params promised by a client call.
+type Router_join_Params_Future struct{ *capnp.Future }
 
-func (p PubSub_join_Params_Future) Struct() (PubSub_join_Params, error) {
+func (p Router_join_Params_Future) Struct() (Router_join_Params, error) {
 	s, err := p.Future.Struct()
-	return PubSub_join_Params(s), err
+	return Router_join_Params(s), err
 }
 
-type PubSub_join_Results capnp.Struct
+type Router_join_Results capnp.Struct
 
-// PubSub_join_Results_TypeID is the unique identifier for the type PubSub_join_Results.
-const PubSub_join_Results_TypeID = 0x9f6c50fbc67b1d88
+// Router_join_Results_TypeID is the unique identifier for the type Router_join_Results.
+const Router_join_Results_TypeID = 0xe8a6b1cad09d4625
 
-func NewPubSub_join_Results(s *capnp.Segment) (PubSub_join_Results, error) {
+func NewRouter_join_Results(s *capnp.Segment) (Router_join_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return PubSub_join_Results(st), err
+	return Router_join_Results(st), err
 }
 
-func NewRootPubSub_join_Results(s *capnp.Segment) (PubSub_join_Results, error) {
+func NewRootRouter_join_Results(s *capnp.Segment) (Router_join_Results, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return PubSub_join_Results(st), err
+	return Router_join_Results(st), err
 }
 
-func ReadRootPubSub_join_Results(msg *capnp.Message) (PubSub_join_Results, error) {
+func ReadRootRouter_join_Results(msg *capnp.Message) (Router_join_Results, error) {
 	root, err := msg.Root()
-	return PubSub_join_Results(root.Struct()), err
+	return Router_join_Results(root.Struct()), err
 }
 
-func (s PubSub_join_Results) String() string {
-	str, _ := text.Marshal(0x9f6c50fbc67b1d88, capnp.Struct(s))
+func (s Router_join_Results) String() string {
+	str, _ := text.Marshal(0xe8a6b1cad09d4625, capnp.Struct(s))
 	return str
 }
 
-func (s PubSub_join_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (s Router_join_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Struct(s).EncodeAsPtr(seg)
 }
 
-func (PubSub_join_Results) DecodeFromPtr(p capnp.Ptr) PubSub_join_Results {
-	return PubSub_join_Results(capnp.Struct{}.DecodeFromPtr(p))
+func (Router_join_Results) DecodeFromPtr(p capnp.Ptr) Router_join_Results {
+	return Router_join_Results(capnp.Struct{}.DecodeFromPtr(p))
 }
 
-func (s PubSub_join_Results) ToPtr() capnp.Ptr {
+func (s Router_join_Results) ToPtr() capnp.Ptr {
 	return capnp.Struct(s).ToPtr()
 }
-func (s PubSub_join_Results) IsValid() bool {
+func (s Router_join_Results) IsValid() bool {
 	return capnp.Struct(s).IsValid()
 }
 
-func (s PubSub_join_Results) Message() *capnp.Message {
+func (s Router_join_Results) Message() *capnp.Message {
 	return capnp.Struct(s).Message()
 }
 
-func (s PubSub_join_Results) Segment() *capnp.Segment {
+func (s Router_join_Results) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s PubSub_join_Results) Topic() Topic {
+func (s Router_join_Results) Topic() Topic {
 	p, _ := capnp.Struct(s).Ptr(0)
 	return Topic(p.Interface().Client())
 }
 
-func (s PubSub_join_Results) HasTopic() bool {
+func (s Router_join_Results) HasTopic() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s PubSub_join_Results) SetTopic(v Topic) error {
+func (s Router_join_Results) SetTopic(v Topic) error {
 	if !v.IsValid() {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
@@ -1006,67 +1006,67 @@ func (s PubSub_join_Results) SetTopic(v Topic) error {
 	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
-// PubSub_join_Results_List is a list of PubSub_join_Results.
-type PubSub_join_Results_List = capnp.StructList[PubSub_join_Results]
+// Router_join_Results_List is a list of Router_join_Results.
+type Router_join_Results_List = capnp.StructList[Router_join_Results]
 
-// NewPubSub_join_Results creates a new list of PubSub_join_Results.
-func NewPubSub_join_Results_List(s *capnp.Segment, sz int32) (PubSub_join_Results_List, error) {
+// NewRouter_join_Results creates a new list of Router_join_Results.
+func NewRouter_join_Results_List(s *capnp.Segment, sz int32) (Router_join_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[PubSub_join_Results](l), err
+	return capnp.StructList[Router_join_Results](l), err
 }
 
-// PubSub_join_Results_Future is a wrapper for a PubSub_join_Results promised by a client call.
-type PubSub_join_Results_Future struct{ *capnp.Future }
+// Router_join_Results_Future is a wrapper for a Router_join_Results promised by a client call.
+type Router_join_Results_Future struct{ *capnp.Future }
 
-func (p PubSub_join_Results_Future) Struct() (PubSub_join_Results, error) {
+func (p Router_join_Results_Future) Struct() (Router_join_Results, error) {
 	s, err := p.Future.Struct()
-	return PubSub_join_Results(s), err
+	return Router_join_Results(s), err
 }
 
-func (p PubSub_join_Results_Future) Topic() Topic {
+func (p Router_join_Results_Future) Topic() Topic {
 	return Topic(p.Future.Field(0, nil).Client())
 }
 
-const schema_f9d8a0180405d9ed = "x\xda\x8cS\xcdKT]\x1c\xfe=\xe7\x9c\xf1\xc8\x8b" +
-	"\xf3\x8e\xe7\xbd\xa3o\x85!\x88E\xcd\xc2\xd2\xa0\xafE" +
-	"3\x14\xd1\xa6\xe0^\x95\x88$h\xee4\xe5\xd4|1" +
-	"\xd7SX\x8b6\x06\xee#(A\xac *\xdaD\xd0" +
-	"*Z\xb4H\x91\x0cZ\x14\xe4\x1f D`!\xb41" +
-	"\x8b\x1bg\xa6{g\xca\xb2\xb6s\x9ey>\x7fw\xfb" +
-	"#\xa4Do4)\x899\x83\x91&\xbfo\xaesv" +
-	"bgy\x8c\x94\x05\"!\x89v\\\xe1\x09\x90\xf0\x0f" +
-	"\x8c\xbd\x18\x1d\xbf\xda:^{\x89\xc0<\x15\xf8\x7f " +
-	"X\x9a'\x09\xfe\xc3s\xad\xdb\xb6\xdc/^'\x15\xe5" +
-	"\xfe\xe2|D\xac\xbb\xf9v\x99\x08\xd65>aMr" +
-	"Id\xdd\xe03V\x9b!\xf5\x0f?\x1e\x1d\x9a\xd6\xbb" +
-	"&\x1bt\xbe\xf2\x0dFg|\xe3\xa5\xe9\x15;?E" +
-	"*\x1e\xea,\xf0\x7f\x8c\xcebU\xe7\xde\xd0\xc7\x92\x9e" +
-	"\xae\xcc\x90c!DDE\x97A\xb4\x89\x0b\x04?\xb9" +
-	"\xf9h\xc7\x83\xe3\xe7\xdf4Z\xbd%\x98\x01\xdc\x11\x86" +
-	"\xe2\xdf\x85\xa6\x8e\xa9\xf8\xdc\xd2*\xab\xcf\xc5m\xeb\xa5" +
-	"qc\xcd\x8aC\xd6R\xd5\xaa\xdc\xf7\xfa\xd3r\xe9\xcb" +
-	"R\xdd\xaa5/>\x93\xf0\xef\x1e\x19e\xaf\xdaS+" +
-	"\x8dN\x9f\xd6d\x9e\x89$]\xf4\xcb\xda\xf5\xb4\xdb\x93" +
-	"\xe1\xe9r\xb1\xbcw\xb0T\xceez<\xedz\x99J" +
-	"\xce\xcdv\xf7g\xbd\x98\xce\x8fx\xbf\x84\x95\xb5\x9b\xcf" +
-	"y\xc3\xddv\xba\x92.\xc0s\x04\x17D\x02D*\xda" +
-	"E\xe44s8q\x06Y\xf0\xce J\x0cQBH" +
-	"\x83\x80\x86\xe726\xe0\xb4\xf0\x08Q8\x1f\x82\xe6\x95" +
-	"\xb3\x9f\x98:(Qo\x14\xc1\xfajO?1\xd5+" +
-	"\xc1\xc2\xf4\x08JU\x9b\x12\xc4\xd4zy\xf9\xbb\xc5\x14" +
-	"\xfc \x13!\x9bB\xac\x98.dS\xb0\x815\x83\xf5" +
-	"g=\x9d\xe7\xab\xd2\xdb\xda\x1d\xd0n\xcf\xd9R\xaeX" +
-	"\x83\x8cxD\x8d\xe9\xfb\xea\xe9;G\x0c#T\xfd\xf2" +
-	"\x08P\x84?\xf4n\xa7+2]\xf0\x9c\xe6\x90tk" +
-	"\x82\xc8\xe9\xe6pN2\x00q\x00P'L\xcd\xc78" +
-	"\x9cS\x0c\xb1\xccp\xba\x08\xe5\x7fh\x7f\xbf;\xbe\xf8" +
-	"\xe4\x1d\x11\xa5\xa0\xd0\xe9\x08\x86\xc6\x1f\x15\xfew\x84\xf9" +
-	"\xb7\xcdQ\x9dE\x11\xa4\xabOC\x12\x8b\xc8\xd6\xdf8" +
-	"3}\x85Y\x1b\xa3&\xeaQ\xab\xa5\xa2\x85\x18ZV" +
-	"-mkW\x0eh\xd7L-\xaaS\x07w\x89\xe0S" +
-	"R\xcaL\x16\x911S\xeb\x8f\xd3\xb0\x9f\x8d$\xab\x17" +
-	"\xb7\xd6,5\xc0_9\xfd\x16\x00\x00\xff\xff\xf8\xc4/" +
-	"\xcb"
+const schema_f9d8a0180405d9ed = "x\xda\x8c\x93Mh\x13A\x1c\xc5\xffof\xe2\x14i" +
+	"H\xc7\x8d\xdfB\xa5\xb4\xa29\xb4\xb6\x82\x1f=\x98\xa0" +
+	"\xa8\x17\x0f\xd9PD,\x82I\\m\xb4\xc9\x86l\xb6" +
+	"RA\xbcT\xec]\x04-\x04TP\x14/V\xf1 " +
+	"\xe2\xc1KK\xd5\x83\x07\x05{\xf1\xa6\x14!\x8a H" +
+	"\xfd`e\x12w\x13m-^wf\xde\xff\xf7\xde\xfb" +
+	"\xef\xd6\xfbH\x88\xdep\\\x123\x07B\xcb\xbc\xbe\x17" +
+	"\xed3\x13\xdb\x8bc\xa4\x0c\x10\x09I\xb4\xed\x02\x8f\x81" +
+	"\x84\xb7w\xec\xf9\xe8\xf8\xa5\xb6\xf1\xfaI\x08\xfa(\xcf" +
+	"W\x80`\xb8<N\xf0\xee\x9dn\xeb\xd9|\xa7p\x85" +
+	"T\x98{\xd5\xd9\x90Xs\xed\xcd<\x11\x8c\xcb|\xc2" +
+	"\xa8pId\\\xe5\xd3\xc6J-\xea\x1d|8:8" +
+	"\xe5\xee\xa84\xcd\xf9\xc9\xd7\xe99\xb7\x07?\xd9\xeeT" +
+	"i\x9aL\x03\xc1\xa0w\xbcC\x0f\xaa\xf23\x04/\xbe" +
+	"\xe9\xd0\x86\xbbGF^7\x93\x8c\x0a\xa6/\x9c\x13\x9a" +
+	"\xa4\xdf\x1eY\xff\xfeA\xf2\xed\x02\x92\x8a\xb8a\xdc\xd4" +
+	"\xc3\x8c\xeb\xe2\x801S#\xe9\xda_y\xf9l\xf2\xd6" +
+	"\x1c\xa9h\xa06)\x96k\xb5G55\xb9\xfb\xd5\x97" +
+	"y\xfb\xc7\xe7\x06\xaa1+\xbe\x91\xf0\x06.~\x15V" +
+	"\xb5\xe7{\xf3\xcb'u\x8e\xa7\"Ng\xbd\xa2\x9bq" +
+	"\xdcLw\x96\xa7\x8b\x85b\xff\x80]\xcce\xbb\x1d7" +
+	"\xe3dK\xb9\x8c\xd5\x99\xb2\x9c\x88;\\v\x16\xbdV" +
+	"t3\xc39g\xa83\x99.\xa5\xf3pL\xc1\x05\x91" +
+	"\x00\x91\x0aw\x10\x99-\x1cf\x94A\xe6\x9d\x93\x08\x13" +
+	"C\x98\x10\xc8\xc0\x97\xe1\xb9l\x120[y\x88(\xa8" +
+	"\x0f~\xf2\xca\xdcCL\xed\x93@\x109\xfc\xf6\xd5\xae" +
+	"\x141\xd5+\xc1\x02\xf7\xf0SW]1bj\xad<" +
+	"\xff\x1b1\x01\xcf\xf7D\xb0\x12\x88\x14\xd2y+\x81$" +
+	"\xb0\xa4\xb1\x94\xe5\xb8\xc3\xfc\x1f\xee\x1b!%\xd3%\x99" +
+	"\xce;fK\xe0\x7fK\x8c\xc8\xec\xe40\x8f1\x00Q" +
+	"\x00PGu&\x879\xcc\xe3\x0c\x91\xecP\xba\x00\xe5" +
+	"}\\\xf5ag\xb4\xfax\x8e\x88\x12Ph7\x05C" +
+	"\xf3G\x85\xd5\xa6\xd0\xaf\x93\x1c\xb5\x0c\x15Af\xdc\x13" +
+	"\x90\xc4Br#-\x8e\xaf\xcd\xd5\xd9\xcb\x0e5\xb7\x12" +
+	"k\xb4RK\x00\xad\xc4\xd0\xba\xa0\x96\x94\xed\xca\xb2U" +
+	"\xd2\xbd\x88Z/\xfe\x12\xc1\xdfC\xa5t\xbe!\x199" +
+	"e\xe7\x0a\x8b\xe5\x98\xb2\xdd\xb2U\xea\xd6\xc7\x01\xc9\x1f" +
+	"(}\x0d\x94\xf6\xb2\xa6\x86j\xfc\x9c\x04m4\x90d" +
+	"\x7f{\x8b\xd76\xceYbf\xfd\xc2\x7f\x99\xff\x15\x00" +
+	"\x00\xff\xff\x9f14\x0d"
 
 func init() {
 	schemas.Register(schema_f9d8a0180405d9ed,
@@ -1074,10 +1074,10 @@ func init() {
 		0x8810938879cb8443,
 		0x986ea9282f106bb0,
 		0x9d3775c65b79b54c,
-		0x9f6c50fbc67b1d88,
 		0xc772c6756fef5ba8,
 		0xd5765aab1c56263f,
-		0xf1cc149f1c06e50e,
+		0xde50b3e61b766f3a,
+		0xe8a6b1cad09d4625,
 		0xf1fc6ff9f4d43e07,
-		0xfb4016d002794da7)
+		0xfb2fed6504f78754)
 }

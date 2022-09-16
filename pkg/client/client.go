@@ -12,6 +12,7 @@ import (
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/cluster"
 	ww "github.com/wetware/ww/pkg"
+	"github.com/wetware/ww/pkg/pubsub"
 )
 
 // ErrDisconnected indicates that the client's connection to
@@ -53,16 +54,13 @@ func (n *Node) View(ctx context.Context) (cluster.View, capnp.ReleaseFunc) {
 	return n.host.View(ctx)
 }
 
-// // Join a pubsub topic.
-// func (n *Node) Join(ctx context.Context, topic string) Topic {
-// 	var f, release = n.ps.Join(ctx, topic)
-// 	defer release()
+// Join a pubsub topic.
+func (n *Node) Join(ctx context.Context, topic string) (pubsub.Topic, capnp.ReleaseFunc) {
+	router, release := n.host.PubSub(ctx)
+	defer release()
 
-// 	return Topic{
-// 		Name:  topic,  // TODO:  can we use the client brand/meta for this?
-// 		Topic: f.Topic().AddRef(),
-// 	}
-// }
+	return router.Join(ctx, topic)
+}
 
 // func (n *Node) Path() string { return "/" }
 
