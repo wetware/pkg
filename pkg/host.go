@@ -9,8 +9,10 @@ import (
 
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/cluster"
+	anchor_api "github.com/wetware/ww/internal/api/anchor"
 	api "github.com/wetware/ww/internal/api/cluster"
 	pubsub_api "github.com/wetware/ww/internal/api/pubsub"
+	"github.com/wetware/ww/pkg/anchor"
 	"github.com/wetware/ww/pkg/pubsub"
 )
 
@@ -46,6 +48,11 @@ func (h Host) View(ctx context.Context) (cluster.View, capnp.ReleaseFunc) {
 func (h Host) PubSub(ctx context.Context) (pubsub.Joiner, capnp.ReleaseFunc) {
 	f, release := api.Host(h).PubSub(ctx, nil)
 	return pubsub.Joiner(f.PubSub()), release
+}
+
+func (h Host) Root(ctx context.Context) (anchor.Anchor, capnp.ReleaseFunc) {
+	f, release := api.Host(h).Root(ctx, nil)
+	return anchor.Anchor(f.Root()), release
 }
 
 // func (h *Host) Ls(ctx context.Context, d Dialer) (*anchor.Iterator, capnp.ReleaseFunc) {
@@ -85,10 +92,15 @@ type PubSubProvider interface {
 	PubSub() pubsub.Joiner
 }
 
+type AnchorProvider interface {
+	Anchor() anchor.Anchor
+}
+
 // HostServer provides the Host capability.
 type HostServer struct {
 	ViewProvider   ViewProvider
 	PubSubProvider PubSubProvider
+	AnchorProvider AnchorProvider
 }
 
 func (s HostServer) Client() capnp.Client {
@@ -112,6 +124,15 @@ func (s HostServer) PubSub(_ context.Context, call api.Host_pubSub) error {
 	res, err := call.AllocResults()
 	if err == nil {
 		err = res.SetPubSub(pubsub_api.Router(s.PubSubProvider.PubSub()))
+	}
+
+	return err
+}
+
+func (s HostServer) Root(_ context.Context, call api.Host_root) error {
+	res, err := call.AllocResults()
+	if err == nil {
+		err = res.SetRoot(anchor_api.Anchor(s.AnchorProvider.Anchor()))
 	}
 
 	return err
