@@ -17,22 +17,10 @@ var root = Path{}.bind(identity)
 type PathProvider interface {
 	// Path returns a path string. The returned string need not be
 	// in canonical form, and need not be valid.  Callers MUST NOT
-	// assume the result to be well formed, even when the error is
-	// nil.
+	// assume the result to be valid, even when the error is nil.
 	//
 	// The result SHOULD be passed to NewPath promptly.
 	Path() (string, error)
-}
-
-// PathSetter represents a type capable of receiving a well-formed
-// path. Callers MUST pass well-formed paths, though these need not
-// be in canonical form.
-type PathSetter interface {
-	// SetPath assigns the supplied path to the underlying value of
-	// PathSetter.  Callers MUST supply a valid paths, but MAY pass
-	// non-canonical path strings. In particular, callers MAY strip
-	// the leading separator from a path before calling SetPath.
-	SetPath(string) error
 }
 
 // Path represents the location of an anchor. It is a bounded value
@@ -164,16 +152,6 @@ func (p Path) IsSubpath(path Path) bool {
 func (p Path) Next() (Path, string) {
 	name := p.bind(head).String()
 	return p.bind(tail), trimmed(name)
-}
-
-// Param binds the path to the supplied PathSetter, stripping
-// the leading separator.  If successful, it returns the path
-// unmodified.
-func (p Path) Bind(target PathSetter) error {
-	return p.bind(func(path string) bounded.Type[string] {
-		err := target.SetPath(trimmed(path))
-		return bounded.Failure[string](err) // can be nil
-	}).Err()
 }
 
 func (p Path) index() []byte {

@@ -6,19 +6,8 @@ import (
 	"capnproto.org/go/capnp/v3"
 	casm "github.com/wetware/casm/pkg"
 	api "github.com/wetware/ww/internal/api/anchor"
+	"github.com/wetware/ww/pkg/internal/bounded"
 )
-
-// type Anchor interface {
-// 	String() string
-// 	Path() Path
-
-// 	Ls(context.Context) (Iterator, capnp.ReleaseFunc)
-// 	Walk(context.Context, string) Anchor
-
-// 	Client() capnp.Client
-// 	AddRef() Anchor
-// 	Release()
-// }
 
 type Anchor api.Anchor
 
@@ -32,7 +21,12 @@ func (a Anchor) Release() {
 
 func (a Anchor) Ls(ctx context.Context) (Iterator, capnp.ReleaseFunc) {
 	f, release := api.Anchor(a).Ls(ctx, nil)
-	h := &handler{Future: casm.Future(f)}
+
+	h := &sequence{
+		Future: casm.Future(f),
+		pos:    -1,
+	}
+
 	return Iterator{
 		Seq:    h,
 		Future: h,
@@ -47,71 +41,137 @@ func (a Anchor) Walk(ctx context.Context, path string) (Anchor, capnp.ReleaseFun
 		return Anchor(a), a.AddRef().Release
 	}
 
-	f, release := api.Anchor(a).Walk(ctx, walkParam(p))
+	f, release := api.Anchor(a).Walk(ctx, destination(p))
 	return Anchor(f.Anchor()), release
 }
 
-type Iterator casm.Iterator[Anchor]
+type Child interface {
+	String() string
+	Anchor() Anchor
+}
 
-type handler struct {
+type Iterator casm.Iterator[Child]
+
+func (it Iterator) Next() Child {
+	r, _ := it.Seq.Next()
+	return r
+}
+
+type sequence struct {
 	casm.Future
 	err error
 	pos int
 }
 
-func (h *handler) Err() error {
-	if h.err == nil {
+func (seq *sequence) Err() error {
+	if seq.err == nil {
 		select {
-		case <-h.Future.Done():
-			_, h.err = h.Struct()
+		case <-seq.Future.Done():
+			_, seq.err = seq.Struct()
 		default:
 		}
 	}
 
-	return h.err
+	return seq.err
 }
 
-func (h *handler) Next() (a Anchor, ok bool) {
-	if a, ok = h.anchor(h.pos); ok {
-		h.pos++
+func (seq *sequence) Next() (Child, bool) {
+	if ok := seq.advance(); ok {
+		return seq, true
+	}
+
+	return nil, false
+}
+
+func (seq *sequence) String() string {
+	names, err := seq.results().Names()
+	if err != nil {
+		panic(err) // already validated; should never fail
+	}
+
+	name, err := names.At(seq.pos)
+	if err != nil {
+		panic(err)
+	}
+
+	return name
+}
+
+func (seq *sequence) Anchor() Anchor {
+	children, err := seq.results().Children()
+	if err != nil {
+		panic(err) // already validated; should never fail
+	}
+
+	anchor, err := children.At(seq.pos)
+	if err != nil {
+		panic(err)
+	}
+
+	return Anchor(anchor)
+}
+
+func (seq *sequence) advance() (ok bool) {
+	if ok = seq.Err() == nil; ok {
+		seq.pos++
+		ok = seq.validate()
 	}
 
 	return
 }
 
-func (h *handler) anchor(i int) (Anchor, bool) {
-	res, ok := h.results()
-	if !ok {
-		return Anchor{}, false
+func (seq *sequence) validate() bool {
+	var s capnp.Struct
+	if s, seq.err = seq.Struct(); seq.err != nil {
+		return false
 	}
 
-	children, err := res.Children()
-	if err != nil {
-		h.err = err
-		return Anchor{}, false
+	res := api.Anchor_ls_Results(s)
+	if !(res.HasNames() && res.HasChildren()) {
+		return false
 	}
 
-	a, err := children.At(i)
-	if err != nil {
-		h.err = err
-		return Anchor{}, false
-	}
-
-	return Anchor(a), true
+	return seq.validateName(res) && seq.validateChildren(res)
 }
 
-func (h *handler) results() (res api.Anchor_ls_Results, ok bool) {
-	if err := h.Err(); err == nil {
-		r, err := h.Struct()
-		res = api.Anchor_ls_Results(r)
-		ok = err == nil && res.HasChildren() && res.HasNames()
+func (seq *sequence) validateName(res api.Anchor_ls_Results) (ok bool) {
+	if ok = res.HasNames(); ok {
+		names, err := res.Names()
+		if ok = err == nil; ok {
+			_, err = names.At(seq.pos)
+			ok = err == nil
+		}
 	}
 
 	return
 }
 
-func walkParam(path Path) func(api.Anchor_walk_Params) error {
+func (seq *sequence) validateChildren(res api.Anchor_ls_Results) (ok bool) {
+	if ok = res.HasChildren(); ok {
+		children, err := res.Children()
+		if ok = err == nil; ok {
+			_, err = children.At(seq.pos)
+			ok = err == nil
+		}
+	}
+
+	return
+}
+
+func (seq *sequence) results() api.Anchor_ls_Results {
+	res, err := seq.Struct()
+	if err != nil {
+		panic(err)
+	}
+
+	return api.Anchor_ls_Results(res)
+}
+
+func destination(path Path) func(api.Anchor_walk_Params) error {
 	return func(ps api.Anchor_walk_Params) error {
-		return path.Bind(ps)
+		return path.bind(func(s string) bounded.Type[string] {
+			err := ps.SetPath(trimmed(s))
+			return bounded.Failure[string](err) // can be nil
+		}).Err()
 	}
 }
