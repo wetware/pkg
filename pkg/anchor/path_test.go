@@ -1,7 +1,6 @@
 package anchor_test
 
 import (
-	"errors"
 	"strings"
 	"testing"
 
@@ -59,35 +58,6 @@ func TestPathFromParts(t *testing.T) {
 
 	failed := anchor.PathFromParts([]string{"foo", "/fail"})
 	assert.Error(t, failed.Err(), "should not bind invalid path segment")
-}
-
-func TestPathFromProvider(t *testing.T) {
-	t.Parallel()
-	t.Helper()
-
-	t.Run("Succeed", func(t *testing.T) {
-		p := pathProvider(func() (string, error) {
-			return "foo/bar", nil
-		})
-
-		path := anchor.PathFromProvider(p)
-		require.NoError(t, path.Err(),
-			"path should not contain error")
-		require.Equal(t, "/foo/bar", path.String(),
-			"should contain expected path string")
-	})
-
-	t.Run("Fail", func(t *testing.T) {
-		p := pathProvider(func() (string, error) {
-			return "/should/not/appear", errors.New("error")
-		})
-
-		path := anchor.PathFromProvider(p)
-		require.Error(t, path.Err(),
-			"error should be present in returned path")
-		require.Zero(t, path.String(),
-			"should not contain path string")
-	})
 }
 
 func TestPathIteration(t *testing.T) {
@@ -276,10 +246,4 @@ func TestIsChild(t *testing.T) {
 
 func trimmed(s string) string {
 	return strings.Trim(s, "/")
-}
-
-type pathProvider func() (string, error)
-
-func (path pathProvider) Path() (string, error) {
-	return path()
 }

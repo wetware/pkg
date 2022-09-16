@@ -62,43 +62,43 @@ func (n *Node) Join(ctx context.Context, topic string) (pubsub.Topic, capnp.Rele
 	return router.Join(ctx, topic)
 }
 
-// func (n *Node) Path() string { return "/" }
+func (n *Node) Path() string { return "/" }
 
-// func (n *Node) Ls(ctx context.Context) Iterator {
-// 	// TODO(performance):  cache an instance of the View capability
-// 	f, release := n.host.View(ctx, nil)
-// 	defer release()
+// func (n *Node) Ls(ctx context.Context) anchor.Iterator {
+// 	// // TODO(performance):  cache an instance of the View capability
+// 	// f, release := n.host.View(ctx, nil)
+// 	// defer release()
 
-// 	it := f.View().Iter(ctx)
-// 	runtime.SetFinalizer(it, func(it *cluster.RecordStream) {
-// 		it.Finish()
-// 	})
+// 	// it := f.View().Iter(ctx)
+// 	// runtime.SetFinalizer(it, func(it *cluster.RecordStream) {
+// 	// 	it.Finish()
+// 	// })
 
-// 	return hostSet{
-// 		dialer:       dialer(n.vat),
-// 		RecordStream: it,
-// 	}
+// 	// return hostSet{
+// 	// 	dialer:       dialer(n.vat),
+// 	// 	RecordStream: it,
+// 	// }
 // }
 
-// func (n *Node) Walk(ctx context.Context, path string) Anchor {
-// 	p := anchor.NewPath(path)
-// 	if p.Err() != nil {
-// 		return newErrorHost(p.Err())
-// 	}
+// func (n *Node) Walk(ctx context.Context, path string) anchor.Anchor {
+// 	// p := anchor.NewPath(path)
+// 	// if p.Err() != nil {
+// 	// 	return newErrorHost(p.Err())
+// 	// }
 
-// 	if p.IsRoot() {
-// 		return n
-// 	}
+// 	// if p.IsRoot() {
+// 	// 	return n
+// 	// }
 
-// 	p, name := p.Next()
+// 	// p, name := p.Next()
 
-// 	id, err := peer.Decode(name)
-// 	if err != nil {
-// 		return newErrorHost(fmt.Errorf("invalid id: %w", err))
-// 	}
+// 	// id, err := peer.Decode(name)
+// 	// if err != nil {
+// 	// 	return newErrorHost(fmt.Errorf("invalid id: %w", err))
+// 	// }
 
-// 	return Host{
-// 		dialer: dialer(n.vat),
-// 		host:   &cluster.Host{Info: peer.AddrInfo{ID: id}},
-// 	}.Walk(ctx, p.String())
+// 	// return Host{
+// 	// 	dialer: dialer(n.vat),
+// 	// 	host:   &cluster.Host{Info: peer.AddrInfo{ID: id}},
+// 	// }.Walk(ctx, p.String())
 // }

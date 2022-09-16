@@ -12,17 +12,6 @@ import (
 
 var root = Path{}.bind(identity)
 
-// PathProvider represents any type capable of returning a path.
-// See NewPathFromProvider.
-type PathProvider interface {
-	// Path returns a path string. The returned string need not be
-	// in canonical form, and need not be valid.  Callers MUST NOT
-	// assume the result to be valid, even when the error is nil.
-	//
-	// The result SHOULD be passed to NewPath promptly.
-	Path() (string, error)
-}
-
 // Path represents the location of an anchor. It is a bounded value
 // that enforces the following constraints:  paths are strings that
 // MAY contain any printable ASCII characters except the backslash.
@@ -68,27 +57,6 @@ func PathFromParts(parts []string) Path {
 	}
 
 	return NewPath(path.Join(parts...))
-}
-
-// PathFromProvider constructs a new path from any type that provides
-// a Path() (string, error) method.  The resulting path is valid if p
-// returns a string without error, and if the string produces a valid
-// path when passed to NewPath.
-//
-// Callers SHOULD check Path.Err() before proceeding.
-func PathFromProvider(p PathProvider) Path {
-	raw, err := p.Path()
-	if err == nil {
-		return NewPath(raw)
-	}
-
-	// The caller is expected to check the error, and
-	// handle it differently from validation errors.
-	//
-	// However, we don't want to provide users with a way
-	// to create valid empty-string Paths, so we return a
-	// failed path as well.
-	return failure(err)
 }
 
 // Err returns a non-nil error if the path is malformed.

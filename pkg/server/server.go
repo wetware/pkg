@@ -14,6 +14,7 @@ import (
 	"github.com/wetware/casm/pkg/cluster/pulse"
 	"github.com/wetware/casm/pkg/cluster/routing"
 	ww "github.com/wetware/ww/pkg"
+	"github.com/wetware/ww/pkg/anchor"
 	"github.com/wetware/ww/pkg/pubsub"
 )
 
@@ -80,6 +81,7 @@ func (j Joiner) Join(r Router) (*Node, error) {
 	j.Vat.Export(ww.HostCapability, ww.HostServer{
 		ViewProvider:   c,
 		PubSubProvider: j.pubsub(r),
+		AnchorProvider: j.anchor(),
 	})
 
 	return &Node{
@@ -107,4 +109,8 @@ func (j Joiner) pubsub(router pubsub.TopicJoiner) *pubsub.Router {
 		TopicJoiner: router,
 		// TODO:  metrics that track view size
 	}
+}
+
+func (j Joiner) anchor() anchor.Server {
+	return anchor.Root()
 }

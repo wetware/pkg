@@ -32,7 +32,10 @@ func NewScheduler(root Path) Scheduler {
 	)
 
 	// Error is always nil since the scheduler is freshly instantiated.
-	sched, _ := f.NewScheduler()
+	sched, err := f.NewScheduler()
+	if err != nil {
+		panic(err)
+	}
 
 	return Scheduler{
 		sched:   sched,
@@ -180,8 +183,7 @@ func (t Txn) GetOrCreate(p Path) (Server, error) {
 
 func (t Txn) createAnchor(path Path) (s Server, err error) {
 	s = Server{
-		sched:  t.sched.WithSubpath(path),
-		anchor: &s,
+		sched: t.sched.WithSubpath(path),
 	}
 
 	err = t.txn.Insert(t.sched.anchors, s)
@@ -198,34 +200,46 @@ func children(it memdb.ResultIterator, parent Path) *memdb.FilterIterator {
 
 type index struct{}
 
-func (index) FromObject(obj interface{}) (bool, []byte, error) {
-	if s, ok := obj.(Server); ok {
-		return true, s.sched.root.index(), nil
+func (index) FromObject(obj any) (bool, []byte, error) {
+	switch x := obj.(type) {
+	case string:
+		path := NewPath(x)
+		err := path.Err()
+		return err == nil, path.index(), err
+
+	case Path:
+		return true, x.index(), nil
+
+	case interface{ PathBytes() ([]byte, error) }:
+		index, err := x.PathBytes()
+		return true, index, err
 	}
 
 	return false, nil, errType(obj)
 }
 
-func (index) FromArgs(args ...interface{}) ([]byte, error) {
-	path, err := argsToPath(args...)
-	return path.index(), err
-}
-
-func (index) PrefixFromArgs(args ...interface{}) ([]byte, error) {
-	path, err := argsToPath(args...)
-	return path.index(), err
-}
-
-func argsToPath(args ...any) (Path, error) {
+func (index) FromArgs(args ...any) ([]byte, error) {
 	if len(args) != 1 {
-		return Path{}, errNArgs(args)
+		return nil, errNArgs(args)
 	}
 
-	if path, ok := args[0].(Path); ok {
-		return path, path.Err()
+	switch x := args[0].(type) {
+	case string:
+		path := NewPath(x)
+		return path.index(), path.Err()
+
+	case Path:
+		return x.index(), nil
+
+	case interface{ PathBytes() ([]byte, error) }:
+		return x.PathBytes()
 	}
 
-	return Path{}, errNArgs(args)
+	return nil, errType(args[0])
+}
+
+func (index) PrefixFromArgs(args ...any) ([]byte, error) {
+	return index{}.FromArgs(args...)
 }
 
 func errType(v any) error {
