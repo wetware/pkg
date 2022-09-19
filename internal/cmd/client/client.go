@@ -20,8 +20,8 @@ var (
 
 var subcommands = []*cli.Command{
 	list(),
-	Publish(),
-	Subscribe(),
+	publish(),
+	subscribe(),
 	// Discover(),
 }
 

@@ -37,7 +37,7 @@ func TestHost_View(t *testing.T) {
 	defer release()
 	require.NotZero(t, v)
 
-	f, release := v.Lookup(context.Background(), cluster.All())
+	f, release := v.Lookup(context.Background(), cluster.NewQuery(cluster.All()))
 	defer release()
 	r, err := f.Await(context.Background())
 	require.NoError(t, err)

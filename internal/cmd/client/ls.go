@@ -33,7 +33,7 @@ func ls() cli.ActionFunc {
 		view, release := node.View(c.Context)
 		defer release()
 
-		it, release := view.Iter(c.Context, cluster.All())
+		it, release := view.Iter(c.Context, query(c))
 		defer release()
 
 		return render(it, formatter(c))

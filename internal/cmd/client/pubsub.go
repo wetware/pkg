@@ -7,7 +7,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func Publish() *cli.Command {
+func publish() *cli.Command {
 	return &cli.Command{
 		Name:    "publish",
 		Aliases: []string{"pub"},
@@ -22,11 +22,11 @@ func Publish() *cli.Command {
 		},
 		Before: setup(),
 		After:  teardown(),
-		Action: publish(),
+		Action: pubAction(),
 	}
 }
 
-func Subscribe() *cli.Command {
+func subscribe() *cli.Command {
 	return &cli.Command{
 		Name:    "subscribe",
 		Aliases: []string{"sub"},
@@ -45,11 +45,11 @@ func Subscribe() *cli.Command {
 		},
 		Before: setup(),
 		After:  teardown(),
-		Action: subscribe(),
+		Action: subAction(),
 	}
 }
 
-func publish() cli.ActionFunc {
+func pubAction() cli.ActionFunc {
 	return func(c *cli.Context) error {
 		t, release := node.Join(c.Context, c.String("topic"))
 		defer release()
@@ -63,7 +63,7 @@ func publish() cli.ActionFunc {
 	}
 }
 
-func subscribe() cli.ActionFunc {
+func subAction() cli.ActionFunc {
 	return func(c *cli.Context) (err error) {
 		t, release := node.Join(c.Context, c.String("topic"))
 		defer release()
