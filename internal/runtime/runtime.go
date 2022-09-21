@@ -236,8 +236,14 @@ func (env environment) Log() log.Logger {
 	return env.log
 }
 
-func decorateLogger(log log.Logger, vat casm.Vat) log.Logger {
-	return log.With(vat)
+func decorateLogger(env Env, vat casm.Vat) log.Logger {
+	log := env.Log().With(vat)
+
+	if env.IsSet("meta") {
+		log = log.WithField("meta", env.StringSlice("meta"))
+	}
+
+	return log
 }
 
 func closer(c io.Closer) fx.Hook {
