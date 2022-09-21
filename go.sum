@@ -590,6 +590,10 @@ github.com/viant/toolbox v0.24.0/go.mod h1:OxMCG57V0PXuIP2HNQrtJf2CjqdmbrOx5EkMI
 github.com/warpfork/go-wish v0.0.0-20200122115046-b9ea61034e4a h1:G++j5e0OC488te356JvdhaM8YS6nMsjLAYF7JxCv07w=
 github.com/wetware/casm v0.0.0-20220920151913-23e722065e61 h1:sPLFa+dG1Vc7ZKwK0R5hzwV15aorSHJfAobQTCvIfGA=
 github.com/wetware/casm v0.0.0-20220920151913-23e722065e61/go.mod h1:caTHLs79jzhhEbhoZKNA4Ce17BWn+aIMihzRROYbepc=
+github.com/wetware/casm v0.0.0-20220921145826-150041ababe6 h1:iQoiL4fZoVniqjAmUsjfWD0RNwJQqRXnDePfbnkRN/c=
+github.com/wetware/casm v0.0.0-20220921145826-150041ababe6/go.mod h1:caTHLs79jzhhEbhoZKNA4Ce17BWn+aIMihzRROYbepc=
+github.com/wetware/casm v0.0.0-20220921215508-b93891e30e9f h1:ELIg8H7MIxOaycvlKZq1xQPkgSe8Y+p0S6J2gJgOAuQ=
+github.com/wetware/casm v0.0.0-20220921215508-b93891e30e9f/go.mod h1:caTHLs79jzhhEbhoZKNA4Ce17BWn+aIMihzRROYbepc=
 github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 h1:EKhdznlJHPMoKr0XTrX+IlJs1LH3lyx2nfr1dOlZ79k=
 github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1/go.mod h1:8UvriyWtv5Q5EOgjHaSseUEdkQfvwFv1I/In/O2M9gc=
 github.com/whyrusleeping/timecache v0.0.0-20160911033111-cfcb2f1abfee h1:lYbXeSvJi5zk5GLKVuid9TVjS9a0OmLIDKTfoZBL6Ow=

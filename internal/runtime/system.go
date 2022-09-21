@@ -29,12 +29,12 @@ func (c Config) System() fx.Option {
 }
 
 type meta struct {
-	fields []routing.Field
+	fields []routing.MetaField
 }
 
 func metadata(env Env) (pulse.Preparer, error) {
 	ss := env.StringSlice("meta")
-	fs := make([]routing.Field, len(ss))
+	fs := make([]routing.MetaField, len(ss))
 
 	var err error
 	for i, field := range ss {

@@ -131,7 +131,7 @@ func (ix index) HostBytes() ([]byte, error) {
 	return []byte(ix[1]), nil
 }
 
-func (ix index) MetaField() (routing.Field, error) {
+func (ix index) MetaField() (routing.MetaField, error) {
 	return routing.ParseField(ix[1])
 }
 

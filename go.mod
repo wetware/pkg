@@ -37,7 +37,7 @@ require (
 	github.com/multiformats/go-multistream v0.3.3
 	github.com/stretchr/testify v1.8.0
 	github.com/thejerf/suture/v4 v4.0.2
-	github.com/wetware/casm v0.0.0-20220920151913-23e722065e61
+	github.com/wetware/casm v0.0.0-20220921215508-b93891e30e9f
 	golang.org/x/sync v0.0.0-20220907140024-f12130a52804
 	gopkg.in/alexcesaro/statsd.v2 v2.0.0
 )

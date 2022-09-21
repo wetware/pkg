@@ -92,7 +92,7 @@ func asJSON(r routing.Record) (rec jsonRecord, err error) {
 		return
 	}
 
-	var field routing.Field
+	var field routing.MetaField
 	for i := 0; i < meta.Len(); i++ {
 		if field, err = meta.At(i); err != nil {
 			break
