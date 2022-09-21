@@ -9,6 +9,8 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	cluster "github.com/wetware/casm/pkg/cluster"
+	anchor "github.com/wetware/ww/pkg/anchor"
+	pubsub "github.com/wetware/ww/pkg/pubsub"
 )
 
 // MockViewProvider is a mock of ViewProvider interface.
@@ -46,4 +48,78 @@ func (m *MockViewProvider) View() cluster.View {
 func (mr *MockViewProviderMockRecorder) View() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "View", reflect.TypeOf((*MockViewProvider)(nil).View))
+}
+
+// MockPubSubProvider is a mock of PubSubProvider interface.
+type MockPubSubProvider struct {
+	ctrl     *gomock.Controller
+	recorder *MockPubSubProviderMockRecorder
+}
+
+// MockPubSubProviderMockRecorder is the mock recorder for MockPubSubProvider.
+type MockPubSubProviderMockRecorder struct {
+	mock *MockPubSubProvider
+}
+
+// NewMockPubSubProvider creates a new mock instance.
+func NewMockPubSubProvider(ctrl *gomock.Controller) *MockPubSubProvider {
+	mock := &MockPubSubProvider{ctrl: ctrl}
+	mock.recorder = &MockPubSubProviderMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockPubSubProvider) EXPECT() *MockPubSubProviderMockRecorder {
+	return m.recorder
+}
+
+// PubSub mocks base method.
+func (m *MockPubSubProvider) PubSub() pubsub.Joiner {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PubSub")
+	ret0, _ := ret[0].(pubsub.Joiner)
+	return ret0
+}
+
+// PubSub indicates an expected call of PubSub.
+func (mr *MockPubSubProviderMockRecorder) PubSub() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PubSub", reflect.TypeOf((*MockPubSubProvider)(nil).PubSub))
+}
+
+// MockAnchorProvider is a mock of AnchorProvider interface.
+type MockAnchorProvider struct {
+	ctrl     *gomock.Controller
+	recorder *MockAnchorProviderMockRecorder
+}
+
+// MockAnchorProviderMockRecorder is the mock recorder for MockAnchorProvider.
+type MockAnchorProviderMockRecorder struct {
+	mock *MockAnchorProvider
+}
+
+// NewMockAnchorProvider creates a new mock instance.
+func NewMockAnchorProvider(ctrl *gomock.Controller) *MockAnchorProvider {
+	mock := &MockAnchorProvider{ctrl: ctrl}
+	mock.recorder = &MockAnchorProviderMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockAnchorProvider) EXPECT() *MockAnchorProviderMockRecorder {
+	return m.recorder
+}
+
+// Anchor mocks base method.
+func (m *MockAnchorProvider) Anchor() anchor.Anchor {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Anchor")
+	ret0, _ := ret[0].(anchor.Anchor)
+	return ret0
+}
+
+// Anchor indicates an expected call of Anchor.
+func (mr *MockAnchorProviderMockRecorder) Anchor() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Anchor", reflect.TypeOf((*MockAnchorProvider)(nil).Anchor))
 }

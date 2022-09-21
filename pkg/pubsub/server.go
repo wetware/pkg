@@ -2,7 +2,6 @@ package pubsub
 
 import (
 	"context"
-	"errors"
 	"sync"
 
 	capnp "capnproto.org/go/capnp/v3"
@@ -15,8 +14,6 @@ import (
 	"github.com/wetware/ww/pkg/channel"
 )
 
-var ErrClosed = errors.New("closed")
-
 type TopicJoiner interface {
 	Join(string, ...pubsub.TopicOpt) (*pubsub.Topic, error)
 }
@@ -28,14 +25,14 @@ type Router struct {
 }
 
 func (r *Router) PubSub() Joiner {
-	return Joiner(api.Router_ServerToClient(r))
+	return NewJoiner(r)
 }
 
 func (r *Router) Client() capnp.Client {
 	return capnp.Client(r.PubSub())
 }
 
-func (r *Router) Join(ctx context.Context, call api.Router_join) error {
+func (r *Router) Join(ctx context.Context, call MethodJoin) error {
 	r.initialize() // not thread-safe
 
 	res, err := call.AllocResults()
@@ -87,7 +84,7 @@ func (t topicServer) Shutdown() {
 	}
 }
 
-func (t topicServer) Name(_ context.Context, call api.Topic_name) error {
+func (t topicServer) Name(_ context.Context, call MethodName) error {
 	res, err := call.AllocResults()
 	if err == nil {
 		err = res.SetName(t.topic.String())
@@ -95,7 +92,7 @@ func (t topicServer) Name(_ context.Context, call api.Topic_name) error {
 	return err
 }
 
-func (t topicServer) Publish(ctx context.Context, call api.Topic_publish) error {
+func (t topicServer) Publish(ctx context.Context, call MethodPublish) error {
 	b, err := call.Args().Msg()
 	if err == nil {
 		// The call to t.topic.Publish() may block if the underlying router
@@ -109,7 +106,7 @@ func (t topicServer) Publish(ctx context.Context, call api.Topic_publish) error 
 	return err
 }
 
-func (t topicServer) Subscribe(ctx context.Context, call api.Topic_subscribe) error {
+func (t topicServer) Subscribe(ctx context.Context, call MethodSubscribe) error {
 	sub, err := t.manager.Subscribe(t.topic, call.Args().Buf())
 	if err != nil {
 		return err
