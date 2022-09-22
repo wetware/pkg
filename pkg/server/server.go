@@ -30,8 +30,12 @@ type Node struct {
 	pubsub  interface{ UnregisterTopicValidator(string) error }
 }
 
+func (n Node) ID() routing.ID {
+	return n.cluster.ID()
+}
+
 func (n Node) String() string {
-	return n.Vat.NS
+	return n.cluster.String()
 }
 
 func (n Node) Loggable() map[string]any {

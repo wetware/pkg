@@ -91,8 +91,8 @@ func (it *mockIterator) Next() routing.Record {
 type mockRecord struct{}
 
 func (mockRecord) Peer() peer.ID               { return "foobar" }
+func (mockRecord) Server() routing.ID          { return routing.ID(42) }
 func (mockRecord) TTL() time.Duration          { return time.Second }
-func (mockRecord) Instance() routing.ID        { return routing.ID(42) }
 func (mockRecord) Seq() uint64                 { return 1 }
 func (mockRecord) Host() (string, error)       { return "foo", nil }
 func (mockRecord) Meta() (routing.Meta, error) { return routing.Meta{}, nil }

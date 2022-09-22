@@ -70,18 +70,16 @@ func jsonFormatter(c *cli.Context) func(routing.Record) error {
 	}
 }
 
-type jsonRecord struct {
-	Peer     peer.ID           `json:"peer"`
-	Seq      uint64            `json:"seq"`
-	Instance routing.ID        `json:"instance"`
-	Host     string            `json:"host,omitempty"`
-	Meta     map[string]string `json:"meta,omitempty"`
+type record struct {
+	Server routing.ID        `json:"server"`
+	Peer   peer.ID           `json:"peer"`
+	Host   string            `json:"host,omitempty"`
+	Meta   map[string]string `json:"meta,omitempty"`
 }
 
-func asJSON(r routing.Record) (rec jsonRecord, err error) {
+func asJSON(r routing.Record) (rec record, err error) {
 	rec.Peer = r.Peer()
-	rec.Seq = r.Seq()
-	rec.Instance = r.Instance()
+	rec.Server = r.Server()
 
 	if rec.Host, err = r.Host(); err != nil {
 		return
@@ -110,7 +108,7 @@ func asJSON(r routing.Record) (rec jsonRecord, err error) {
 
 func textFormatter(c *cli.Context) func(routing.Record) error {
 	return func(r routing.Record) error {
-		_, err := fmt.Fprintf(c.App.Writer, "/%s\n", r.Peer())
+		_, err := fmt.Fprintf(c.App.Writer, "/%s\n", r.Server())
 		return err
 	}
 }

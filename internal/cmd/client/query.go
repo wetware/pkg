@@ -89,16 +89,12 @@ func parseIndexExpr(args arguments) (routing.Index, arguments, error) {
 	}
 
 	switch expr.String() {
-	case "id", "host":
+	case "id", "peer", "server", "host":
 		return index(expr), args.Tail(), nil
 
 	default:
 		return index{"meta", args.Head()}, args.Tail(), nil
 	}
-}
-
-func isPrefix(s string) bool {
-	return strings.HasSuffix(s, "_prefix")
 }
 
 type index []string
@@ -108,23 +104,32 @@ func indexExpr(args arguments) index {
 }
 
 func (ix index) Prefix() bool {
-	return isPrefix(ix[0])
+	return true
 }
 
 func (ix index) String() string {
-	return strings.TrimSuffix(ix[0], "_prefix")
+	return ix[0]
 }
 
 func (ix index) PeerBytes() ([]byte, error) {
-	if !strings.HasPrefix(ix[0], "id") {
-		panic("not a peer index")
+	switch ix.String() {
+	case "id", "peer":
+		return []byte(ix[1]), nil
+	}
+
+	panic("not a peer index")
+}
+
+func (ix index) ServerBytes() ([]byte, error) {
+	if ix.String() != "server" {
+		panic("not a server index")
 	}
 
 	return []byte(ix[1]), nil
 }
 
 func (ix index) HostBytes() ([]byte, error) {
-	if !strings.HasPrefix(ix[0], "host") {
+	if ix.String() != "host" {
 		panic("not a host index")
 	}
 
@@ -132,6 +137,10 @@ func (ix index) HostBytes() ([]byte, error) {
 }
 
 func (ix index) MetaField() (routing.MetaField, error) {
+	if ix.String() != "meta" {
+		panic("not a meta index")
+	}
+
 	return routing.ParseField(ix[1])
 }
 
