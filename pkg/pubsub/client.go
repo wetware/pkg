@@ -104,6 +104,10 @@ func (t Topic) Subscribe(ctx context.Context) (Subscription, capnp.ReleaseFunc) 
 		Seq:    ch,
 	}
 
+	if !api.Topic(t).IsValid() {
+		close(ch) // necessary in case capnp.Client is wrong in the client side (e.g. is nil)
+	}
+
 	return sub, func() {
 		cancel()
 		release()
