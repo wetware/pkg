@@ -9,7 +9,7 @@ require (
 	github.com/huin/goupnp v1.0.3 // indirect
 	github.com/klauspost/cpuid/v2 v2.1.1 // indirect
 	github.com/koron/go-ssdp v0.0.3 // indirect
-	github.com/libp2p/go-libp2p v0.23.1
+	github.com/libp2p/go-libp2p v0.23.2
 	github.com/libp2p/go-libp2p-kad-dht v0.18.0
 	github.com/libp2p/go-libp2p-pubsub v0.8.1
 	github.com/lthibault/log v1.2.2
@@ -37,7 +37,7 @@ require (
 	github.com/multiformats/go-multistream v0.3.3
 	github.com/stretchr/testify v1.8.0
 	github.com/thejerf/suture/v4 v4.0.2
-	github.com/wetware/casm v0.0.0-20220922222301-64c2a34cb82e
+	github.com/wetware/casm v0.0.0-20220923194627-3ed9a66c8190
 	golang.org/x/sync v0.0.0-20220907140024-f12130a52804
 	gopkg.in/alexcesaro/statsd.v2 v2.0.0
 )
@@ -101,7 +101,7 @@ require (
 	github.com/libp2p/go-yamux/v4 v4.0.0 // indirect
 	github.com/lthibault/jitterbug/v2 v2.2.2 // indirect
 	github.com/lthibault/util v0.0.12 // indirect
-	github.com/lucas-clemente/quic-go v0.29.0 // indirect
+	github.com/lucas-clemente/quic-go v0.29.1 // indirect
 	github.com/marten-seemann/qtls-go1-18 v0.1.2 // indirect
 	github.com/marten-seemann/qtls-go1-19 v0.1.0 // indirect
 	github.com/marten-seemann/tcp v0.0.0-20210406111302-dfbc87cc63fd // indirect
@@ -142,7 +142,7 @@ require (
 	go.opencensus.io v0.23.0 // indirect
 	go.uber.org/dig v1.15.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
-	golang.org/x/exp v0.0.0-20220916125017-b168a2c6b86b // indirect
+	golang.org/x/exp v0.0.0-20220921164117-439092de6870 // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220922195421-2adab6b8c60e // indirect
 	golang.org/x/time v0.0.0-20220922220347-f3bd1da661af // indirect
 	golang.org/x/tools v0.1.12 // indirect
@@ -150,4 +150,3 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/blake3 v1.1.7 // indirect
 )
-
