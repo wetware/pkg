@@ -8,6 +8,9 @@ import (
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
 
+	"net/http"
+	_ "net/http/pprof"
+
 	"github.com/wetware/ww/internal/runtime"
 	runtimeutil "github.com/wetware/ww/internal/util/runtime"
 	"github.com/wetware/ww/pkg/server"
@@ -81,6 +84,10 @@ func setup() cli.BeforeFunc {
 func serve() cli.ActionFunc {
 	return func(*cli.Context) error {
 		logger.Info("wetware started")
+
+		go func() {
+			logger.Info(http.ListenAndServe("0.0.0.0:6060", nil))
+		}()
 
 		signal := <-app.Done()
 		logger.
