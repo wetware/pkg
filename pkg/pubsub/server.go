@@ -107,6 +107,9 @@ func (t topicServer) Publish(ctx context.Context, call MethodPublish) error {
 }
 
 func (t topicServer) Subscribe(ctx context.Context, call MethodSubscribe) error {
+	t.log.Info("SUBSCRIBE")
+	defer t.log.Info("EXIT")
+
 	sub, err := t.manager.Subscribe(t.topic, call.Args().Buf())
 	if err != nil {
 		return err
@@ -131,6 +134,7 @@ func (t topicServer) Subscribe(ctx context.Context, call MethodSubscribe) error 
 func bind(ctx context.Context, sub *pubsub.Subscription) channel.Value {
 	msg, err := sub.Next(ctx)
 	if err != nil {
+		log.Error(err)
 		return failure(err)
 	}
 
