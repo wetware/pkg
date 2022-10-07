@@ -8,19 +8,20 @@ $Go.import("github.com/wetware/ww/internal/api/proc");
 using Chan = import "channel.capnp";
 
 
-interface Executor(T) {
-    exec @0 (param :T) -> (proc :Waiter);
+interface Executor(Param, Result) {
+    exec @0 (param :Param) -> (proc :Waiter(Result));
 }
+
 
 # Waiter is the basic interface to an asynchronous process.
 # It allows callers to block until the process has terminated.
-interface Waiter {
-    wait @0 () -> ();
+interface Waiter(Result) {
+    wait @0 () -> (result :Result);
 }
 
 
 # Unix executor that spawns OS processes through a POSIX-like API.
-interface Unix extends(Executor(Command)) {
+interface Unix extends(Executor(Command, Proc)) {
     struct Command {
         path @0 :Text;
         dir  @1 :Text;
