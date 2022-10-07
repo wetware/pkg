@@ -5,7 +5,9 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"github.com/tetratelabs/wazero"
 	"github.com/wetware/ww/pkg/process/wasm"
 )
@@ -13,18 +15,26 @@ import (
 func TestWASM(t *testing.T) {
 	t.Parallel()
 
-	b, err := os.ReadFile("./testdata/hello.wasm")
+	src, err := os.ReadFile("./testdata/hello.wasm")
 	require.NoError(t, err)
-	require.NotNil(t, b)
+	require.NotNil(t, src)
 
 	config := wazero.NewRuntimeConfigCompiler()
-	f := wasm.RuntimeFactory{Config: config}
+	rf := wasm.RuntimeFactory{Config: config}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	fut, release := f.Runtime(ctx).Exec(ctx, b)
+	runctx := wasm.NewRunContext(src).
+		WithStdin(os.Stdin).
+		WithStdout(os.Stdout).
+		WithStderr(os.Stderr)
+
+	p, release := rf.Runtime(ctx).Exec(ctx, runctx)
 	defer release()
 
-	require.NoError(t, fut.Err())
+	f, release := p.Run(context.Background())
+	defer release()
+
+	assert.NoError(t, f.Err())
 }

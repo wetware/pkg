@@ -3,8 +3,7 @@ package wasm
 import (
 	"context"
 	"fmt"
-	"io"
-	"os"
+	"sync"
 
 	"capnproto.org/go/capnp/v3"
 
@@ -12,11 +11,32 @@ import (
 	gojs "github.com/tetratelabs/wazero/imports/go"
 	"github.com/tetratelabs/wazero/sys"
 
-	api "github.com/wetware/ww/internal/api/proc"
+	casm "github.com/wetware/casm/pkg"
+	"github.com/wetware/ww/internal/api/proc"
 	"github.com/wetware/ww/internal/api/wasm"
+	"github.com/wetware/ww/pkg/process"
 )
 
-type ConfigFunc func(api.Executor_exec_Params) error
+type Param process.Param[wasm.Runtime_Config]
+
+type RunContext process.Config[wasm.Runtime_Config]
+
+func NewRunContext(src []byte) RunContext {
+	config := process.NewConfig(wasm.NewRuntime_Config)
+	return RunContext(config).Bind(source(src))
+}
+
+func source(b []byte) Param {
+	return func(rc wasm.Runtime_Config) error {
+		return rc.SetSrc(b)
+	}
+}
+
+func (c RunContext) Bind(p Param) RunContext {
+	param := process.Param[wasm.Runtime_Config](p)
+	config := process.Config[wasm.Runtime_Config](c)
+	return RunContext(config.Bind(param))
+}
 
 type RuntimeFactory struct {
 	Config wazero.RuntimeConfig
@@ -46,50 +66,88 @@ func (r Runtime) Release() {
 	wasm.Runtime(r).Release()
 }
 
-func (r Runtime) Exec(ctx context.Context, config ConfigFunc) (Proc, capnp.ReleaseFunc) {
-	f, release := wasm.Runtime(r).Exec(ctx, config)
+func (r Runtime) Exec(ctx context.Context, c RunContext) (Proc, capnp.ReleaseFunc) {
+	f, release := wasm.Runtime(r).Exec(ctx, c)
 	return Proc(f.Proc()), release
 }
 
-// func (r Runtime) Close(ctx context.Context) error {
-// 	return r.CloseWithStatus(ctx, 0)
-// }
+type Proc wasm.Runtime_Context
 
-// func (r Runtime) CloseWithStatus(ctx context.Context, code uint32) error {
-// 	f, release := wasm.Runtime(r).Close(ctx, func(r wasm.Runtime_close_Params) error {
-// 		r.SetExitCode(code)
-// 		return nil
-// 	})
-// 	defer release()
+func (p Proc) AddRef() Proc {
+	return Proc(capnp.Client(p).AddRef())
+}
 
-// 	return casm.Future(f).Err()
-// }
+func (p Proc) Release() {
+	capnp.Client(p).Release()
+}
+
+func (p Proc) Run(ctx context.Context) (casm.Future, capnp.ReleaseFunc) {
+	f, release := wasm.Runtime_Context(p).Run(ctx, nil)
+	return casm.Future(f), release
+}
+
+func (p Proc) Wait(ctx context.Context) error {
+	f, release := wasm.Runtime_Context(p).Wait(ctx, nil)
+	defer release()
+
+	return casm.Future(f).Err()
+}
+
+func (p Proc) Close(ctx context.Context) error {
+	return p.CloseWithExitCode(ctx, 0)
+}
+
+func (p Proc) CloseWithExitCode(ctx context.Context, status uint32) error {
+	f, release := wasm.Runtime_Context(p).Close(ctx, statusCode(status))
+	defer release()
+
+	return casm.Future(f).Err()
+}
+
+func statusCode(u uint32) func(wasm.Runtime_Context_close_Params) error {
+	return func(ps wasm.Runtime_Context_close_Params) error {
+		ps.SetExitCode(u)
+		return nil
+	}
+}
 
 type RuntimeServer struct {
 	wazero.Runtime
 }
 
-// func (s RuntimeServer) Shutdown() {
-// 	if err := s.Runtime.Close(context.TODO()); err != nil {
-// 		panic(err)
-// 	}
-// }
-
-// func (s RuntimeServer) Close(ctx context.Context, call wasm.Runtime_close) error {
-// 	return s.Runtime.CloseWithExitCode(ctx, call.Args().ExitCode())
-// }
-
-func (s RuntimeServer) Exec(_ context.Context, call api.Executor_exec) error {
+func (s RuntimeServer) Exec(_ context.Context, call proc.Executor_exec) error {
 	mod, err := s.compile(call)
 	if err != nil {
-		return fmt.Errorf("module: %w", err)
+		return fmt.Errorf("compile: %w", err)
 	}
 
-	return s.run(ctx, mod, config(call))
+	cfg, err := s.config(call)
+	if err != nil {
+		return fmt.Errorf("config: %w", err)
+	}
+
+	rx := wasm.Runtime_Context_ServerToClient(&execContext{
+		Runtime: s.Runtime,
+		Module:  mod,
+		Config:  cfg,
+		done:    make(chan struct{}),
+	})
+
+	res, err := call.AllocResults()
+	if err == nil {
+		err = res.SetProc(proc.Waiter(rx))
+	}
+
+	return err
 }
 
-func (s RuntimeServer) compile(call wasm.Runtime_exec) (wazero.CompiledModule, error) {
-	src, err := call.Args().Source()
+func (s RuntimeServer) compile(call proc.Executor_exec) (wazero.CompiledModule, error) {
+	c, err := config(call)
+	if err != nil {
+		return nil, err
+	}
+
+	src, err := c.Src()
 	if err != nil {
 		return nil, err
 	}
@@ -97,31 +155,82 @@ func (s RuntimeServer) compile(call wasm.Runtime_exec) (wazero.CompiledModule, e
 	return s.Runtime.CompileModule(context.TODO(), src)
 }
 
-func (s RuntimeServer) run(ctx context.Context, mod wazero.CompiledModule, config wazero.ModuleConfig) error {
-	err := gojs.Run(context.TODO(), s.Runtime, mod, config)
-	if ex, ok := err.(*sys.ExitError); ok && ex.ExitCode() != 0 {
-		return fmt.Errorf("exit(%d)", ex.ExitCode())
+func (s RuntimeServer) config(call proc.Executor_exec) (wazero.ModuleConfig, error) {
+	c, err := config(call)
+	if err != nil {
+		return nil, err
+	}
+
+	// I/O streams are discarded by default.
+	return wazero.NewModuleConfig().
+		WithStdin(stdin(c)).
+		WithStdout(stdout(c)).
+		WithStderr(stderr(c)), nil
+}
+
+func config(call proc.Executor_exec) (wasm.Runtime_Config, error) {
+	ptr, err := call.Args().Config()
+	return wasm.Runtime_Config(ptr.Struct()), err
+}
+
+type execContext struct {
+	Runtime wazero.Runtime
+	Module  wazero.CompiledModule
+	Config  wazero.ModuleConfig
+
+	once sync.Once
+	stat *sys.ExitError
+	done chan struct{}
+}
+
+func (ex *execContext) Shutdown() {
+	ex.once.Do(func() {
+		close(ex.done)
+	})
+}
+
+func (ex *execContext) Run(ctx context.Context, call wasm.Runtime_Context_run) error {
+	ex.once.Do(func() {
+		defer close(ex.done)
+		call.Ack()
+
+		err := gojs.Run(context.TODO(), ex.Runtime, ex.Module, ex.Config)
+		if e, ok := err.(*sys.ExitError); ok && e.ExitCode() != 0 {
+			ex.stat = e
+		}
+	})
+
+	if ex.stat != nil {
+		return ex.stat
 	}
 
 	return nil
 }
 
-func config(call wasm.Runtime_exec) wazero.ModuleConfig {
-	// I/O streams are discarded by default.
-	return wazero.NewModuleConfig().
-		WithStdin(stdin(call)).
-		WithStdout(stdout(call)).
-		WithStderr(stderr(call))
+func (ex *execContext) Close(ctx context.Context, call wasm.Runtime_Context_close) error {
+	if status := call.Args().ExitCode(); status != 0 {
+		return ex.Runtime.CloseWithExitCode(ctx, status)
+	}
+
+	return ex.Runtime.Close(ctx)
 }
 
-func stdin(call wasm.Runtime_exec) io.Reader {
-	return os.Stdin
-}
+func (ex *execContext) Wait(ctx context.Context, call proc.Waiter_wait) error {
+	select {
+	case <-ex.done:
+		res, err := call.AllocResults()
+		if err != nil {
+			return err
+		}
 
-func stdout(call wasm.Runtime_exec) io.Writer {
-	return os.Stdout
-}
+		stat, err := wasm.NewRuntime_Context_Status(res.Segment())
+		if err == nil {
+			stat.SetStatusCode(ex.stat.ExitCode())
+		}
 
-func stderr(call wasm.Runtime_exec) io.Writer {
-	return os.Stderr
+		return err
+
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
