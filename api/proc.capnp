@@ -20,27 +20,27 @@ interface Waiter(Result) {
 }
 
 
-# Unix executor that spawns OS processes through a POSIX-like API.
-interface Unix extends(Executor(Command, Proc)) {
-    struct Command {
-        path @0 :Text;
-        dir  @1 :Text;
-        args @2 :List(Text);
-        env  @3 :List(Text);
-
-        stdin  @4 :IOStream.Provider;
-        stdout @5 :IOStream.Stream;
-        stderr @6 :IOStream.Stream;
-
-        using IOStream = import "iostream.capnp";
-    }
-
-    interface Proc extends(Waiter) {
-        signal @0 (signal :Signal);
-        enum Signal {
-            sigINT  @0;
-            sigTERM @1;
-            sigKILL @2;
-        }
-    }
-}
+## Unix executor that spawns OS processes through a POSIX-like API.
+#interface Unix extends(Executor(Command, Proc)) {
+#    struct Command {
+#        path @0 :Text;
+#        dir  @1 :Text;
+#        args @2 :List(Text);
+#        env  @3 :List(Text);
+#
+#        stdin  @4 :IOStream.Provider;
+#        stdout @5 :IOStream.Stream;
+#        stderr @6 :IOStream.Stream;
+#
+#        using IOStream = import "iostream.capnp";
+#    }
+#
+#    interface Proc extends(Waiter) {
+#        signal @0 (signal :Signal);
+#        enum Signal {
+#            sigINT  @0;
+#            sigTERM @1;
+#            sigKILL @2;
+#        }
+#    }
+#}
