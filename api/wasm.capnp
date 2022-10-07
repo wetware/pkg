@@ -19,7 +19,7 @@ interface Runtime extends(Executor(Config, Context)) {
         using IOStream = import "iostream.capnp";
     }
 
-    interface Context extends(Waiter) {
+    interface Context extends(Waiter(Status)) {
         run   @0 () -> ();
         # Run the compiled WASM module in the present context.
 
@@ -27,6 +27,10 @@ interface Runtime extends(Executor(Config, Context)) {
         # Close all the modules that have been initialized in this Runtime
         # with the provided exit code.  An error is returned if any module
         # returns an error when closed.
+
+        struct Status {
+            statusCode @0 :UInt32;
+        }
 
         using Waiter = import "proc.capnp".Waiter;
     }
