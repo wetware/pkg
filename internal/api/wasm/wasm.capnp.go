@@ -300,40 +300,72 @@ func (p Runtime_Config_Future) Stderr() iostream.Stream {
 	return iostream.Stream(p.Future.Field(3, nil).Client())
 }
 
-type Runtime_Proc capnp.Client
+type Runtime_Context capnp.Client
 
-// Runtime_Proc_TypeID is the unique identifier for the type Runtime_Proc.
-const Runtime_Proc_TypeID = 0x9127e3f68aed3c7b
+// Runtime_Context_TypeID is the unique identifier for the type Runtime_Context.
+const Runtime_Context_TypeID = 0xf0d086c2f7dd91fa
 
-func (c Runtime_Proc) Close(ctx context.Context, params func(Runtime_Proc_close_Params) error) (Runtime_Proc_close_Results_Future, capnp.ReleaseFunc) {
+func (c Runtime_Context) Run(ctx context.Context, params func(Runtime_Context_run_Params) error) (Runtime_Context_run_Results_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
 		Method: capnp.Method{
-			InterfaceID:   0x9127e3f68aed3c7b,
+			InterfaceID:   0xf0d086c2f7dd91fa,
 			MethodID:      0,
-			InterfaceName: "wasm.capnp:Runtime.Proc",
+			InterfaceName: "wasm.capnp:Runtime.Context",
+			MethodName:    "run",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Runtime_Context_run_Params(s)) }
+	}
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return Runtime_Context_run_Results_Future{Future: ans.Future()}, release
+}
+func (c Runtime_Context) Close(ctx context.Context, params func(Runtime_Context_close_Params) error) (Runtime_Context_close_Results_Future, capnp.ReleaseFunc) {
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0xf0d086c2f7dd91fa,
+			MethodID:      1,
+			InterfaceName: "wasm.capnp:Runtime.Context",
 			MethodName:    "close",
 		},
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 8, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Runtime_Proc_close_Params(s)) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Runtime_Context_close_Params(s)) }
 	}
 	ans, release := capnp.Client(c).SendCall(ctx, s)
-	return Runtime_Proc_close_Results_Future{Future: ans.Future()}, release
+	return Runtime_Context_close_Results_Future{Future: ans.Future()}, release
+}
+func (c Runtime_Context) Wait(ctx context.Context, params func(proc.Waiter_wait_Params) error) (proc.Waiter_wait_Results_Future, capnp.ReleaseFunc) {
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0xc66c9bda04b0f29e,
+			MethodID:      0,
+			InterfaceName: "proc.capnp:Waiter",
+			MethodName:    "wait",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(proc.Waiter_wait_Params(s)) }
+	}
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return proc.Waiter_wait_Results_Future{Future: ans.Future()}, release
 }
 
 // String returns a string that identifies this capability for debugging
 // purposes.  Its format should not be depended on: in particular, it
 // should not be used to compare clients.  Use IsSame to compare clients
 // for equality.
-func (c Runtime_Proc) String() string {
+func (c Runtime_Context) String() string {
 	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
 }
 
 // AddRef creates a new Client that refers to the same capability as c.
 // If c is nil or has resolved to null, then AddRef returns nil.
-func (c Runtime_Proc) AddRef() Runtime_Proc {
-	return Runtime_Proc(capnp.Client(c).AddRef())
+func (c Runtime_Context) AddRef() Runtime_Context {
+	return Runtime_Context(capnp.Client(c).AddRef())
 }
 
 // Release releases a capability reference.  If this is the last
@@ -342,28 +374,28 @@ func (c Runtime_Proc) AddRef() Runtime_Proc {
 //
 // Release will panic if c has already been released, but not if c is
 // nil or resolved to null.
-func (c Runtime_Proc) Release() {
+func (c Runtime_Context) Release() {
 	capnp.Client(c).Release()
 }
 
 // Resolve blocks until the capability is fully resolved or the Context
 // expires.
-func (c Runtime_Proc) Resolve(ctx context.Context) error {
+func (c Runtime_Context) Resolve(ctx context.Context) error {
 	return capnp.Client(c).Resolve(ctx)
 }
 
-func (c Runtime_Proc) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (c Runtime_Context) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Client(c).EncodeAsPtr(seg)
 }
 
-func (Runtime_Proc) DecodeFromPtr(p capnp.Ptr) Runtime_Proc {
-	return Runtime_Proc(capnp.Client{}.DecodeFromPtr(p))
+func (Runtime_Context) DecodeFromPtr(p capnp.Ptr) Runtime_Context {
+	return Runtime_Context(capnp.Client{}.DecodeFromPtr(p))
 }
 
 // IsValid reports whether c is a valid reference to a capability.
 // A reference is invalid if it is nil, has resolved to null, or has
 // been released.
-func (c Runtime_Proc) IsValid() bool {
+func (c Runtime_Context) IsValid() bool {
 	return capnp.Client(c).IsValid()
 }
 
@@ -371,7 +403,7 @@ func (c Runtime_Proc) IsValid() bool {
 // same call to NewClient.  This can return false negatives if c or other
 // are not fully resolved: use Resolve if this is an issue.  If either
 // c or other are released, then IsSame panics.
-func (c Runtime_Proc) IsSame(other Runtime_Proc) bool {
+func (c Runtime_Context) IsSame(other Runtime_Context) bool {
 	return capnp.Client(c).IsSame(capnp.Client(other))
 }
 
@@ -379,257 +411,439 @@ func (c Runtime_Proc) IsSame(other Runtime_Proc) bool {
 // this client. This affects all future calls, but not calls already
 // waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
 // which is also the default.
-func (c Runtime_Proc) SetFlowLimiter(lim fc.FlowLimiter) {
+func (c Runtime_Context) SetFlowLimiter(lim fc.FlowLimiter) {
 	capnp.Client(c).SetFlowLimiter(lim)
 }
 
 // Get the current flowcontrol.FlowLimiter used to manage flow control
 // for this client.
-func (c Runtime_Proc) GetFlowLimiter() fc.FlowLimiter {
+func (c Runtime_Context) GetFlowLimiter() fc.FlowLimiter {
 	return capnp.Client(c).GetFlowLimiter()
-} // A Runtime_Proc_Server is a Runtime_Proc with a local implementation.
-type Runtime_Proc_Server interface {
-	Close(context.Context, Runtime_Proc_close) error
+} // A Runtime_Context_Server is a Runtime_Context with a local implementation.
+type Runtime_Context_Server interface {
+	Run(context.Context, Runtime_Context_run) error
+
+	Close(context.Context, Runtime_Context_close) error
+
+	Wait(context.Context, proc.Waiter_wait) error
 }
 
-// Runtime_Proc_NewServer creates a new Server from an implementation of Runtime_Proc_Server.
-func Runtime_Proc_NewServer(s Runtime_Proc_Server) *server.Server {
+// Runtime_Context_NewServer creates a new Server from an implementation of Runtime_Context_Server.
+func Runtime_Context_NewServer(s Runtime_Context_Server) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(Runtime_Proc_Methods(nil, s), s, c)
+	return server.New(Runtime_Context_Methods(nil, s), s, c)
 }
 
-// Runtime_Proc_ServerToClient creates a new Client from an implementation of Runtime_Proc_Server.
+// Runtime_Context_ServerToClient creates a new Client from an implementation of Runtime_Context_Server.
 // The caller is responsible for calling Release on the returned Client.
-func Runtime_Proc_ServerToClient(s Runtime_Proc_Server) Runtime_Proc {
-	return Runtime_Proc(capnp.NewClient(Runtime_Proc_NewServer(s)))
+func Runtime_Context_ServerToClient(s Runtime_Context_Server) Runtime_Context {
+	return Runtime_Context(capnp.NewClient(Runtime_Context_NewServer(s)))
 }
 
-// Runtime_Proc_Methods appends Methods to a slice that invoke the methods on s.
+// Runtime_Context_Methods appends Methods to a slice that invoke the methods on s.
 // This can be used to create a more complicated Server.
-func Runtime_Proc_Methods(methods []server.Method, s Runtime_Proc_Server) []server.Method {
+func Runtime_Context_Methods(methods []server.Method, s Runtime_Context_Server) []server.Method {
 	if cap(methods) == 0 {
-		methods = make([]server.Method, 0, 1)
+		methods = make([]server.Method, 0, 3)
 	}
 
 	methods = append(methods, server.Method{
 		Method: capnp.Method{
-			InterfaceID:   0x9127e3f68aed3c7b,
+			InterfaceID:   0xf0d086c2f7dd91fa,
 			MethodID:      0,
-			InterfaceName: "wasm.capnp:Runtime.Proc",
+			InterfaceName: "wasm.capnp:Runtime.Context",
+			MethodName:    "run",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Run(ctx, Runtime_Context_run{call})
+		},
+	})
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xf0d086c2f7dd91fa,
+			MethodID:      1,
+			InterfaceName: "wasm.capnp:Runtime.Context",
 			MethodName:    "close",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.Close(ctx, Runtime_Proc_close{call})
+			return s.Close(ctx, Runtime_Context_close{call})
+		},
+	})
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xc66c9bda04b0f29e,
+			MethodID:      0,
+			InterfaceName: "proc.capnp:Waiter",
+			MethodName:    "wait",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Wait(ctx, proc.Waiter_wait{call})
 		},
 	})
 
 	return methods
 }
 
-// Runtime_Proc_close holds the state for a server call to Runtime_Proc.close.
+// Runtime_Context_run holds the state for a server call to Runtime_Context.run.
 // See server.Call for documentation.
-type Runtime_Proc_close struct {
+type Runtime_Context_run struct {
 	*server.Call
 }
 
 // Args returns the call's arguments.
-func (c Runtime_Proc_close) Args() Runtime_Proc_close_Params {
-	return Runtime_Proc_close_Params(c.Call.Args())
+func (c Runtime_Context_run) Args() Runtime_Context_run_Params {
+	return Runtime_Context_run_Params(c.Call.Args())
 }
 
 // AllocResults allocates the results struct.
-func (c Runtime_Proc_close) AllocResults() (Runtime_Proc_close_Results, error) {
+func (c Runtime_Context_run) AllocResults() (Runtime_Context_run_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Runtime_Proc_close_Results(r), err
+	return Runtime_Context_run_Results(r), err
 }
 
-// Runtime_Proc_List is a list of Runtime_Proc.
-type Runtime_Proc_List = capnp.CapList[Runtime_Proc]
+// Runtime_Context_close holds the state for a server call to Runtime_Context.close.
+// See server.Call for documentation.
+type Runtime_Context_close struct {
+	*server.Call
+}
 
-// NewRuntime_Proc creates a new list of Runtime_Proc.
-func NewRuntime_Proc_List(s *capnp.Segment, sz int32) (Runtime_Proc_List, error) {
+// Args returns the call's arguments.
+func (c Runtime_Context_close) Args() Runtime_Context_close_Params {
+	return Runtime_Context_close_Params(c.Call.Args())
+}
+
+// AllocResults allocates the results struct.
+func (c Runtime_Context_close) AllocResults() (Runtime_Context_close_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Runtime_Context_close_Results(r), err
+}
+
+// Runtime_Context_List is a list of Runtime_Context.
+type Runtime_Context_List = capnp.CapList[Runtime_Context]
+
+// NewRuntime_Context creates a new list of Runtime_Context.
+func NewRuntime_Context_List(s *capnp.Segment, sz int32) (Runtime_Context_List, error) {
 	l, err := capnp.NewPointerList(s, sz)
-	return capnp.CapList[Runtime_Proc](l), err
+	return capnp.CapList[Runtime_Context](l), err
 }
 
-type Runtime_Proc_close_Params capnp.Struct
+type Runtime_Context_run_Params capnp.Struct
 
-// Runtime_Proc_close_Params_TypeID is the unique identifier for the type Runtime_Proc_close_Params.
-const Runtime_Proc_close_Params_TypeID = 0xb16facd5d46db063
+// Runtime_Context_run_Params_TypeID is the unique identifier for the type Runtime_Context_run_Params.
+const Runtime_Context_run_Params_TypeID = 0xb0895fd1357e7852
 
-func NewRuntime_Proc_close_Params(s *capnp.Segment) (Runtime_Proc_close_Params, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 0})
-	return Runtime_Proc_close_Params(st), err
+func NewRuntime_Context_run_Params(s *capnp.Segment) (Runtime_Context_run_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Runtime_Context_run_Params(st), err
 }
 
-func NewRootRuntime_Proc_close_Params(s *capnp.Segment) (Runtime_Proc_close_Params, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 0})
-	return Runtime_Proc_close_Params(st), err
+func NewRootRuntime_Context_run_Params(s *capnp.Segment) (Runtime_Context_run_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Runtime_Context_run_Params(st), err
 }
 
-func ReadRootRuntime_Proc_close_Params(msg *capnp.Message) (Runtime_Proc_close_Params, error) {
+func ReadRootRuntime_Context_run_Params(msg *capnp.Message) (Runtime_Context_run_Params, error) {
 	root, err := msg.Root()
-	return Runtime_Proc_close_Params(root.Struct()), err
+	return Runtime_Context_run_Params(root.Struct()), err
 }
 
-func (s Runtime_Proc_close_Params) String() string {
-	str, _ := text.Marshal(0xb16facd5d46db063, capnp.Struct(s))
+func (s Runtime_Context_run_Params) String() string {
+	str, _ := text.Marshal(0xb0895fd1357e7852, capnp.Struct(s))
 	return str
 }
 
-func (s Runtime_Proc_close_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (s Runtime_Context_run_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Struct(s).EncodeAsPtr(seg)
 }
 
-func (Runtime_Proc_close_Params) DecodeFromPtr(p capnp.Ptr) Runtime_Proc_close_Params {
-	return Runtime_Proc_close_Params(capnp.Struct{}.DecodeFromPtr(p))
+func (Runtime_Context_run_Params) DecodeFromPtr(p capnp.Ptr) Runtime_Context_run_Params {
+	return Runtime_Context_run_Params(capnp.Struct{}.DecodeFromPtr(p))
 }
 
-func (s Runtime_Proc_close_Params) ToPtr() capnp.Ptr {
+func (s Runtime_Context_run_Params) ToPtr() capnp.Ptr {
 	return capnp.Struct(s).ToPtr()
 }
-func (s Runtime_Proc_close_Params) IsValid() bool {
+func (s Runtime_Context_run_Params) IsValid() bool {
 	return capnp.Struct(s).IsValid()
 }
 
-func (s Runtime_Proc_close_Params) Message() *capnp.Message {
+func (s Runtime_Context_run_Params) Message() *capnp.Message {
 	return capnp.Struct(s).Message()
 }
 
-func (s Runtime_Proc_close_Params) Segment() *capnp.Segment {
+func (s Runtime_Context_run_Params) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s Runtime_Proc_close_Params) ExitCode() uint32 {
+
+// Runtime_Context_run_Params_List is a list of Runtime_Context_run_Params.
+type Runtime_Context_run_Params_List = capnp.StructList[Runtime_Context_run_Params]
+
+// NewRuntime_Context_run_Params creates a new list of Runtime_Context_run_Params.
+func NewRuntime_Context_run_Params_List(s *capnp.Segment, sz int32) (Runtime_Context_run_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	return capnp.StructList[Runtime_Context_run_Params](l), err
+}
+
+// Runtime_Context_run_Params_Future is a wrapper for a Runtime_Context_run_Params promised by a client call.
+type Runtime_Context_run_Params_Future struct{ *capnp.Future }
+
+func (p Runtime_Context_run_Params_Future) Struct() (Runtime_Context_run_Params, error) {
+	s, err := p.Future.Struct()
+	return Runtime_Context_run_Params(s), err
+}
+
+type Runtime_Context_run_Results capnp.Struct
+
+// Runtime_Context_run_Results_TypeID is the unique identifier for the type Runtime_Context_run_Results.
+const Runtime_Context_run_Results_TypeID = 0xb93034daf157d388
+
+func NewRuntime_Context_run_Results(s *capnp.Segment) (Runtime_Context_run_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Runtime_Context_run_Results(st), err
+}
+
+func NewRootRuntime_Context_run_Results(s *capnp.Segment) (Runtime_Context_run_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Runtime_Context_run_Results(st), err
+}
+
+func ReadRootRuntime_Context_run_Results(msg *capnp.Message) (Runtime_Context_run_Results, error) {
+	root, err := msg.Root()
+	return Runtime_Context_run_Results(root.Struct()), err
+}
+
+func (s Runtime_Context_run_Results) String() string {
+	str, _ := text.Marshal(0xb93034daf157d388, capnp.Struct(s))
+	return str
+}
+
+func (s Runtime_Context_run_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Runtime_Context_run_Results) DecodeFromPtr(p capnp.Ptr) Runtime_Context_run_Results {
+	return Runtime_Context_run_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Runtime_Context_run_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Runtime_Context_run_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Runtime_Context_run_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Runtime_Context_run_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+
+// Runtime_Context_run_Results_List is a list of Runtime_Context_run_Results.
+type Runtime_Context_run_Results_List = capnp.StructList[Runtime_Context_run_Results]
+
+// NewRuntime_Context_run_Results creates a new list of Runtime_Context_run_Results.
+func NewRuntime_Context_run_Results_List(s *capnp.Segment, sz int32) (Runtime_Context_run_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	return capnp.StructList[Runtime_Context_run_Results](l), err
+}
+
+// Runtime_Context_run_Results_Future is a wrapper for a Runtime_Context_run_Results promised by a client call.
+type Runtime_Context_run_Results_Future struct{ *capnp.Future }
+
+func (p Runtime_Context_run_Results_Future) Struct() (Runtime_Context_run_Results, error) {
+	s, err := p.Future.Struct()
+	return Runtime_Context_run_Results(s), err
+}
+
+type Runtime_Context_close_Params capnp.Struct
+
+// Runtime_Context_close_Params_TypeID is the unique identifier for the type Runtime_Context_close_Params.
+const Runtime_Context_close_Params_TypeID = 0xaa1dccc1067f5c60
+
+func NewRuntime_Context_close_Params(s *capnp.Segment) (Runtime_Context_close_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 0})
+	return Runtime_Context_close_Params(st), err
+}
+
+func NewRootRuntime_Context_close_Params(s *capnp.Segment) (Runtime_Context_close_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 0})
+	return Runtime_Context_close_Params(st), err
+}
+
+func ReadRootRuntime_Context_close_Params(msg *capnp.Message) (Runtime_Context_close_Params, error) {
+	root, err := msg.Root()
+	return Runtime_Context_close_Params(root.Struct()), err
+}
+
+func (s Runtime_Context_close_Params) String() string {
+	str, _ := text.Marshal(0xaa1dccc1067f5c60, capnp.Struct(s))
+	return str
+}
+
+func (s Runtime_Context_close_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Runtime_Context_close_Params) DecodeFromPtr(p capnp.Ptr) Runtime_Context_close_Params {
+	return Runtime_Context_close_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Runtime_Context_close_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Runtime_Context_close_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Runtime_Context_close_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Runtime_Context_close_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Runtime_Context_close_Params) ExitCode() uint32 {
 	return capnp.Struct(s).Uint32(0)
 }
 
-func (s Runtime_Proc_close_Params) SetExitCode(v uint32) {
+func (s Runtime_Context_close_Params) SetExitCode(v uint32) {
 	capnp.Struct(s).SetUint32(0, v)
 }
 
-// Runtime_Proc_close_Params_List is a list of Runtime_Proc_close_Params.
-type Runtime_Proc_close_Params_List = capnp.StructList[Runtime_Proc_close_Params]
+// Runtime_Context_close_Params_List is a list of Runtime_Context_close_Params.
+type Runtime_Context_close_Params_List = capnp.StructList[Runtime_Context_close_Params]
 
-// NewRuntime_Proc_close_Params creates a new list of Runtime_Proc_close_Params.
-func NewRuntime_Proc_close_Params_List(s *capnp.Segment, sz int32) (Runtime_Proc_close_Params_List, error) {
+// NewRuntime_Context_close_Params creates a new list of Runtime_Context_close_Params.
+func NewRuntime_Context_close_Params_List(s *capnp.Segment, sz int32) (Runtime_Context_close_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 0}, sz)
-	return capnp.StructList[Runtime_Proc_close_Params](l), err
+	return capnp.StructList[Runtime_Context_close_Params](l), err
 }
 
-// Runtime_Proc_close_Params_Future is a wrapper for a Runtime_Proc_close_Params promised by a client call.
-type Runtime_Proc_close_Params_Future struct{ *capnp.Future }
+// Runtime_Context_close_Params_Future is a wrapper for a Runtime_Context_close_Params promised by a client call.
+type Runtime_Context_close_Params_Future struct{ *capnp.Future }
 
-func (p Runtime_Proc_close_Params_Future) Struct() (Runtime_Proc_close_Params, error) {
+func (p Runtime_Context_close_Params_Future) Struct() (Runtime_Context_close_Params, error) {
 	s, err := p.Future.Struct()
-	return Runtime_Proc_close_Params(s), err
+	return Runtime_Context_close_Params(s), err
 }
 
-type Runtime_Proc_close_Results capnp.Struct
+type Runtime_Context_close_Results capnp.Struct
 
-// Runtime_Proc_close_Results_TypeID is the unique identifier for the type Runtime_Proc_close_Results.
-const Runtime_Proc_close_Results_TypeID = 0xbbf4295048e582c6
+// Runtime_Context_close_Results_TypeID is the unique identifier for the type Runtime_Context_close_Results.
+const Runtime_Context_close_Results_TypeID = 0xff9b3afef257e11a
 
-func NewRuntime_Proc_close_Results(s *capnp.Segment) (Runtime_Proc_close_Results, error) {
+func NewRuntime_Context_close_Results(s *capnp.Segment) (Runtime_Context_close_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Runtime_Proc_close_Results(st), err
+	return Runtime_Context_close_Results(st), err
 }
 
-func NewRootRuntime_Proc_close_Results(s *capnp.Segment) (Runtime_Proc_close_Results, error) {
+func NewRootRuntime_Context_close_Results(s *capnp.Segment) (Runtime_Context_close_Results, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Runtime_Proc_close_Results(st), err
+	return Runtime_Context_close_Results(st), err
 }
 
-func ReadRootRuntime_Proc_close_Results(msg *capnp.Message) (Runtime_Proc_close_Results, error) {
+func ReadRootRuntime_Context_close_Results(msg *capnp.Message) (Runtime_Context_close_Results, error) {
 	root, err := msg.Root()
-	return Runtime_Proc_close_Results(root.Struct()), err
+	return Runtime_Context_close_Results(root.Struct()), err
 }
 
-func (s Runtime_Proc_close_Results) String() string {
-	str, _ := text.Marshal(0xbbf4295048e582c6, capnp.Struct(s))
+func (s Runtime_Context_close_Results) String() string {
+	str, _ := text.Marshal(0xff9b3afef257e11a, capnp.Struct(s))
 	return str
 }
 
-func (s Runtime_Proc_close_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (s Runtime_Context_close_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Struct(s).EncodeAsPtr(seg)
 }
 
-func (Runtime_Proc_close_Results) DecodeFromPtr(p capnp.Ptr) Runtime_Proc_close_Results {
-	return Runtime_Proc_close_Results(capnp.Struct{}.DecodeFromPtr(p))
+func (Runtime_Context_close_Results) DecodeFromPtr(p capnp.Ptr) Runtime_Context_close_Results {
+	return Runtime_Context_close_Results(capnp.Struct{}.DecodeFromPtr(p))
 }
 
-func (s Runtime_Proc_close_Results) ToPtr() capnp.Ptr {
+func (s Runtime_Context_close_Results) ToPtr() capnp.Ptr {
 	return capnp.Struct(s).ToPtr()
 }
-func (s Runtime_Proc_close_Results) IsValid() bool {
+func (s Runtime_Context_close_Results) IsValid() bool {
 	return capnp.Struct(s).IsValid()
 }
 
-func (s Runtime_Proc_close_Results) Message() *capnp.Message {
+func (s Runtime_Context_close_Results) Message() *capnp.Message {
 	return capnp.Struct(s).Message()
 }
 
-func (s Runtime_Proc_close_Results) Segment() *capnp.Segment {
+func (s Runtime_Context_close_Results) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
 
-// Runtime_Proc_close_Results_List is a list of Runtime_Proc_close_Results.
-type Runtime_Proc_close_Results_List = capnp.StructList[Runtime_Proc_close_Results]
+// Runtime_Context_close_Results_List is a list of Runtime_Context_close_Results.
+type Runtime_Context_close_Results_List = capnp.StructList[Runtime_Context_close_Results]
 
-// NewRuntime_Proc_close_Results creates a new list of Runtime_Proc_close_Results.
-func NewRuntime_Proc_close_Results_List(s *capnp.Segment, sz int32) (Runtime_Proc_close_Results_List, error) {
+// NewRuntime_Context_close_Results creates a new list of Runtime_Context_close_Results.
+func NewRuntime_Context_close_Results_List(s *capnp.Segment, sz int32) (Runtime_Context_close_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Runtime_Proc_close_Results](l), err
+	return capnp.StructList[Runtime_Context_close_Results](l), err
 }
 
-// Runtime_Proc_close_Results_Future is a wrapper for a Runtime_Proc_close_Results promised by a client call.
-type Runtime_Proc_close_Results_Future struct{ *capnp.Future }
+// Runtime_Context_close_Results_Future is a wrapper for a Runtime_Context_close_Results promised by a client call.
+type Runtime_Context_close_Results_Future struct{ *capnp.Future }
 
-func (p Runtime_Proc_close_Results_Future) Struct() (Runtime_Proc_close_Results, error) {
+func (p Runtime_Context_close_Results_Future) Struct() (Runtime_Context_close_Results, error) {
 	s, err := p.Future.Struct()
-	return Runtime_Proc_close_Results(s), err
+	return Runtime_Context_close_Results(s), err
 }
 
-const schema_9419a7a54f76d35b = "x\xda\x84\x92\xcfKT_\x18\xc6\x9f\xe7\x9c{\xcf\x8c" +
-	"\xf8\x9d\xaf\x1e\xee@\xb6i@\x0a\xd1\x85\x98\xee,\xd0" +
-	"pQ\xb4i\x8e\xd1\xa6 \x18fn2\xe4\xcc\xd8\xbd" +
-	"wJ\xa8\xd0B#C\xa1\xa0E\xb5+\x886\x05J" +
-	"E\x0bwA\x91\xcb~\xfe\x01E\xd0\xa2\x1f\x1b\xa9\xc0" +
-	"\xc5\x89#\xe8\x95\x0a\xda\x1c\x0e\xef\xfb\x9c\xcf\xfb\xbe\xcf" +
-	"y\xfb\xa4\x18\xf6v\xe72\xad\x10f\xdaWV\xbf\xd8" +
-	"5\xf1\xf3\xe5\xc3K0\x01i\xff_;\xba\xb8\xf4\xe4" +
-	"\xa4\x85\xefe\x80\xa0\xea\xbf\x0a\x9a~\x06\x188\xe5\x17" +
-	"\x08\xda\xb3{\xbf\\\xf9\xfe\xa1\xeb\x1at S1\x18" +
-	"\xcc\xaa\xa7\xc1\x82ro\xe6\xd4\xfe`\xc9\xddly\xb1" +
-	"\xf6\xe6\xed\xfd\xc6\x12L\x07\x098\xe2\xc0M\xd5C0" +
-	"\xb8\xad\x86@\xfb\xfc\xe2\xc7\x03\xc5\xee\xd5e\xe8\x8e\x8d" +
-	"\xfc3\xd5Ox)Z\xb7J{\xec\xf5\xe9Cw\xef" +
-	"m\xbf\xee\xea<P\xb7\x82\xc7\xaa\x0b\x08VT&X" +
-	"Q\xdb`\xd1m\xcf\x94\xe2Zo\xb94!\xea\x13\x83" +
-	"\xa3\xcdzR\xad\x85\xbd#\x8d\xfa\x89*\xc7\x8a\xa4\xc9" +
-	"K\x0f\xf0\x08\xe8\xf3\x9d\x80\x99\x9443\x82\x9a\xcc\xbb" +
-	"\xbe\xf4\x85~\xc0\x9c\x934\x97\x05\xb5\x10y\x0a@\xcf" +
-	"\x0e\x02fZ\xd2\xcc\x0bj)\xf3\x94\x80\x9es\xc1\x19" +
-	"IsU\x90^\x9e\x1e\xa0\x17\x0e\x02f^\xd2\xdc\x10" +
-	"\xcc\xc4Q\x999\x08\xe6\xc0B\x9cT\xaau\xea\x1fG" +
-	"\xf6|\x9b:\xde\xf9\x19\xa4\x06\x87\xe2\xa4\xd2h&\xd4" +
-	"\xf6\xfd\xbeG\xefv|m\x9bF\x9a\x08\xa3\xe8\xcf\x84" +
-	"\x8dJ\xf5\xca\xe10\xac\x00`\x0b\x04[\xc0\xbf\x0e\\" +
-	"\x8c\x1ae\xb8q=\xe9oq\x9f\x1b.k\xdd\x0f\xa1" +
-	"\xfdL\xa1<\xde\x88\xc3a\x16\x99r\xe4o\x9c\xdeu" +
-	"\xcd\xceb\xa9-*\xd5b\xe3m\x1a\x98s\xd3\xfe'" +
-	"i:\x04m8YMF\x1a\x95\xd0u\x96\x85`\x16" +
-	"\xff$\x8e\x86\x85\xb89\x9e\xc4\x9b:n\xe8d-4" +
-	"Y2]H\xdd2\xb8e\xdf\xfc\x9e\xa1\xf5\x1f\x1dk" +
-	"s\xb4\xa2\xf4\x8dG\xda5\xb5zg\xaao\xf9\x13\x86" +
-	"\xa9Y0\x9e\xd8\x12\x024\xbb\x1c\x924Y\xe9\xcev" +
-	"I\xb6\xa7\x05\x9c\xbfi\x05\xf0W\x00\x00\x00\xff\xff\x0b" +
-	"\x9c\xe3\x9a"
+const schema_9419a7a54f76d35b = "x\xda\x8cSOHT_\x18=\xdf\xbd\xef\xcf\x0c\xfe" +
+	"\xe6\x97\x977P&5$\x8a\xb4H\x1c\xad\xcd\x84\xcc" +
+	"\xa4;7\xcd\x9d\x08\xa1\xa2\x1a\x9c\x97\x0c932\xef" +
+	"M\xcd\xa2\x1a\x033\x05\x83\x82\x16\x91\xd0\"\x88\xa0\x95" +
+	"Q \xd1\xca\x16QP\x90\x09A\x82\x0b\x03\xa1ET" +
+	"J`$t\xe3M\xcd\x9f\xa8\xa8\xcd[|\xe7\xe3\x9c" +
+	"\xef\xbcsng\x98\xc5\xb4p`\xb6\x01LN\xe8\x86" +
+	"\x12O\xdaF>\xcf\xdf\x1b\x87\xb4\x88\xd4\xff\x1b\x87f" +
+	"\xee\xce\x9eT\xd05\x13\xb0\xe6\xf4\x97\xd6s\xdd\x04\xba" +
+	"\x9f\xea!\x02\xa9\xe3GJ\xc6\xdc\xb3mw \x9b\x89" +
+	"\x00o\xa9{\xc9\xe8%\x90\xb5bDA*Q<\xb7" +
+	"g\xfe\xd8\xe4\x0cDs\x05\xf7\x9b]\x04MM,\x0c" +
+	"\xac.\xee\xee|P\x87\xac\x1a\x11\x0f\xf9rei\xfd" +
+	"\xd1\xf8\x8b\x8f\x10\x16\xaf]\x00\xb2^\x1b\x8b\xd6\x8a\xe1" +
+	"\x1d\xb2l\\\xb4\xc2\xe6f\xa0\x86\x8b\x06\xae\x0e/\x9c" +
+	"\xda\x7f\xebv\xd3Uoy\x87y\xdd\xdai\xb6\x03V" +
+	"\x8fiZ=\xe5\xe5\xad\xcb\x03k_#\xd3\xaaN\xb3" +
+	"`\xf6\x13\x14v\xa9\xd3I'\xd31\x98\x1ca\xd9\x91" +
+	"H\xa2\x90u\xd3\x19\xbb\xa3/\x97=\x91\xa6\xa18\x91" +
+	"\x0cr\x0d\xd0\x08\x10g[\x00Y\xe4$\xc7\x18\x09\xa2" +
+	"\xa0g\\\x9c\xef\x02\xe4\x19Nr\x82\x91`,H\x0c" +
+	"\x10\x17\"\x80\x1c\xe5$\xa7\x18\x09\xce\x83\xc4\x011\xe9" +
+	"\x0d\xc78\xc9\xcb\x8cH\x0b\x92\x06\x88K\xfd\x80\x9c\xe2" +
+	"$\xaf12\x9d\xfc \x05\xc0(\x00\x0a9n*\x9d" +
+	"%\xb1~p\xef\x87\xd2\xd1\x96w \x12\xa0\xa8\xe3\xa6" +
+	"r\x05\x97\x84z\xb3\xef\xfe\xab\xed\xef7\x8d\xa2\x06\xd8" +
+	"\xf9\xfc\xaf\x80\xca'\xb3\xa9\x03\xb6\x9d\x02@~0\xf2" +
+	"\x83\xaa\x86\xb5\x9f\x0d\xbbv\xd1\xed\x18\x1c\xce9vk" +
+	"<\x99Of\x1cH\xad\xea=\xe0\x1d\xfa\x1f'\xb9\x85" +
+	"\x91\xb2\x8bi\xb7/\x97\xb2=R\x1f\x18\xf9\xeaH\xf9" +
+	"oH\xf3\x85lk<T\xe6\xfc\xeb^\"j;\x85" +
+	"a\xd7\xf9S,\xae\xcd\x8b\xae\x97\x8b\x8f\xeb@\xb5f" +
+	"Ti\x95\x08\xb7\x80\x896\x93j\x1d\xa5J\xfa\xa2\xa9" +
+	"\x0bL\x04L3_\xc8\xc6(T\xf6\x1a#\xa9\x11\xa9" +
+	"\x1bk3\xda\xe2\xf4\xf0c\x00Ue\xaa(\xf3\x8c-" +
+	"}D\xb5'\"\xfc\x91\xba\xb2\xea\xbd\xd1r_\x86J" +
+	"?\x8c\xc4\xb9^&\xdd0>\xdd,u>|\x8b\x18" +
+	"\x09\x0aI\x8d\xd5\x8d\x00A\xed\x1ek\xd9\x8a\xf7m\xe4" +
+	"D\x8d5\x0d/\xc0\x9a\xc8?\xc5\x96\xf8\xfe\xeb\x80o" +
+	"\x01\x00\x00\xff\xffQ[+\x82"
 
 func init() {
 	schemas.Register(schema_9419a7a54f76d35b,
 		0x86b3d1f87025c811,
-		0x9127e3f68aed3c7b,
-		0xb16facd5d46db063,
-		0xbbf4295048e582c6,
-		0xff6bb7b1b05afb0e)
+		0xaa1dccc1067f5c60,
+		0xb0895fd1357e7852,
+		0xb93034daf157d388,
+		0xf0d086c2f7dd91fa,
+		0xff6bb7b1b05afb0e,
+		0xff9b3afef257e11a)
 }
