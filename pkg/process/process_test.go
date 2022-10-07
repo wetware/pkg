@@ -2,87 +2,53 @@ package process_test
 
 import (
 	"context"
-	"errors"
 	"testing"
-	"time"
+
+	"capnproto.org/go/capnp/v3"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/wetware/ww/internal/api/proc"
 	"github.com/wetware/ww/pkg/process"
 )
 
-var errTest = errors.New("test")
-
-func TestProcess_wait(t *testing.T) {
+func TestConfig(t *testing.T) {
 	t.Parallel()
-	t.Helper()
 
-	t.Run("NilError", func(t *testing.T) {
-		t.Parallel()
+	_, seg := capnp.NewSingleSegmentMessage(nil)
+	ps, err := proc.NewRootExecutor_exec_Params(seg)
+	require.NoError(t, err)
 
-		p := process.New(func(context.Context) error {
-			return nil
-		})
+	config := process.NewConfig(mockType()).
+		Bind(mockParam)
 
-		err := p.Wait(context.TODO())
-		assert.NoError(t, err, "should succeed immediately")
-	})
+	err = config(ps)
+	require.NoError(t, err, "configuration should succeed")
 
-	t.Run("NonError", func(t *testing.T) {
-		t.Parallel()
+	ptr, err := ps.Config()
+	require.NoError(t, err)
 
-		p := process.New(func(context.Context) error {
-			return errTest
-		})
+	// HACK:  we used a results struct as a mock config type
+	conf := proc.Executor_exec_Results(ptr.Struct())
+	ok := conf.Proc().IsValid()
+	assert.True(t, ok, "should have set parameter")
+}
 
-		err := p.Wait(context.TODO())
-		assert.ErrorIs(t, err, errTest, "should return errTest")
-	})
+// HACK:  use results struct as a mock config
+func mockType() process.ConfigType[proc.Executor_exec_Results] {
+	return func(a capnp.Arena) (proc.Executor_exec_Results, error) {
+		_, seg := capnp.NewSingleSegmentMessage(nil)
+		return proc.NewRootExecutor_exec_Results(seg)
+	}
+}
 
-	t.Run("ContextErrorsReported", func(t *testing.T) {
-		t.Parallel()
+func mockParam(ps proc.Executor_exec_Results) error {
+	return ps.SetProc(proc.Waiter_ServerToClient(mockProc{}))
+}
 
-		/*
-			Check that context errors are returned as expected.
-		*/
+type mockProc struct{}
 
-		ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
-		defer cancel()
-
-		cherr := make(chan error)
-		defer close(cherr)
-
-		p := process.New(func(context.Context) error {
-			return <-cherr
-		})
-
-		err := p.Wait(ctx)
-		assert.ErrorIs(t, err, context.DeadlineExceeded, "should report context error")
-	})
-
-	t.Run("ShutdownAfterRelease", func(t *testing.T) {
-		t.Parallel()
-
-		/*
-			Check that releasing a process causes the context to expire.
-		*/
-
-		var (
-			callCtx context.Context
-			sync    = make(chan struct{})
-		)
-		p := process.New(func(ctx context.Context) error {
-			callCtx = ctx
-			close(sync)
-			<-ctx.Done()
-			return nil
-		})
-
-		<-sync
-
-		p.AddRef().Release()
-		assert.NoError(t, callCtx.Err(), "context should not expire")
-
-		p.Release() // drop the only reference to p
-		assert.Error(t, callCtx.Err(), "context should have expired")
-	})
+func (mockProc) Wait(context.Context, proc.Waiter_wait) error {
+	return nil
 }
