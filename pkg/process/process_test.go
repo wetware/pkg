@@ -37,9 +37,8 @@ func TestConfig(t *testing.T) {
 
 // HACK:  use results struct as a mock config
 func mockType() process.ConfigType[proc.Executor_exec_Results] {
-	return func(a capnp.Arena) (proc.Executor_exec_Results, error) {
-		_, seg := capnp.NewSingleSegmentMessage(nil)
-		return proc.NewRootExecutor_exec_Results(seg)
+	return func(seg *capnp.Segment) (proc.Executor_exec_Results, error) {
+		return proc.NewExecutor_exec_Results(seg)
 	}
 }
 

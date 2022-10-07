@@ -13,7 +13,7 @@ type Param[T ~capnp.StructKind] func(T) error
 
 // ConfigType can allocate a configuration struct for the specific Executor
 // implementation.
-type ConfigType[T ~capnp.StructKind] func(capnp.Arena) (T, error)
+type ConfigType[T ~capnp.StructKind] func(*capnp.Segment) (T, error)
 
 // Config is a generic 'SetParams' callback that can be passed to a generic
 // exec call.
@@ -21,7 +21,7 @@ type Config[T ~capnp.StructKind] func(proc.Executor_exec_Params) error
 
 func NewConfig[T ~capnp.StructKind](alloc ConfigType[T]) Config[T] {
 	return func(ps proc.Executor_exec_Params) error {
-		t, err := alloc(ps.Message().Arena)
+		t, err := alloc(ps.Segment())
 		if err != nil {
 			return fmt.Errorf("alloc config: %w", err)
 		}
