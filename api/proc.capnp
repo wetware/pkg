@@ -8,8 +8,8 @@ $Go.import("github.com/wetware/ww/internal/api/proc");
 using Chan = import "channel.capnp";
 
 
-interface Executor(Param, Result) {
-    exec @0 (param :Param) -> (proc :Waiter(Result));
+interface Executor(Config, Result) {
+    exec @0 (config :Config) -> (proc :Waiter(Result));
 }
 
 
