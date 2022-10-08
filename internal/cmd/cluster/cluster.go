@@ -1,4 +1,4 @@
-package client
+package cluster
 
 import (
 	"context"
@@ -27,8 +27,9 @@ var subcommands = []*cli.Command{
 
 func Command() *cli.Command {
 	return &cli.Command{
-		Name:  "client",
-		Usage: "cli client for wetware clusters",
+		Name:    "cluster",
+		Usage:   "cli client for wetware clusters",
+		Aliases: []string{"client"}, // TODO(soon):  deprecate
 		Flags: []cli.Flag{
 			&cli.StringSliceFlag{
 				Name:    "addr",

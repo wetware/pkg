@@ -11,7 +11,7 @@ import (
 	"github.com/lthibault/log"
 	"github.com/urfave/cli/v2"
 
-	"github.com/wetware/ww/internal/cmd/client"
+	"github.com/wetware/ww/internal/cmd/cluster"
 	"github.com/wetware/ww/internal/cmd/start"
 	ww "github.com/wetware/ww/pkg"
 )
@@ -55,7 +55,7 @@ var flags = []cli.Flag{
 
 var commands = []*cli.Command{
 	start.Command(),
-	client.Command(),
+	cluster.Command(),
 }
 
 func main() {
