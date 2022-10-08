@@ -1,11 +1,11 @@
 package wasm_test
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tetratelabs/wazero"
@@ -25,10 +25,9 @@ func TestWASM(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	var buf bytes.Buffer
 	runctx := wasm.NewRunContext(src).
-		WithStdin(os.Stdin).
-		WithStdout(os.Stdout).
-		WithStderr(os.Stderr)
+		WithStdout(&buf)
 
 	p, release := rf.Runtime(ctx).Exec(ctx, runctx)
 	defer release()
@@ -36,5 +35,6 @@ func TestWASM(t *testing.T) {
 	f, release := p.Run(context.Background())
 	defer release()
 
-	assert.NoError(t, f.Err())
+	require.NoError(t, f.Err())
+	require.Equal(t, "hello, WASM!\n", buf.String())
 }

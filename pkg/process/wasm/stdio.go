@@ -107,12 +107,12 @@ func input(p iostream.Provider) io.Reader {
 	return pr
 }
 
-func output(s iostream.Stream) (w io.Writer) {
+func output(s iostream.Stream) io.Writer {
 	if invalid(s) {
-		w = s.Writer(context.TODO())
+		return nil
 	}
 
-	return
+	return s.Writer(context.TODO())
 }
 
 func invalid[T ~capnp.ClientKind](t T) bool {
