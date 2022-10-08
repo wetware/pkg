@@ -93,7 +93,7 @@ func (r Runtime) Exec(ctx context.Context, c RunContext) (Proc, capnp.ReleaseFun
 	return Proc(f.Proc()), release
 }
 
-type Proc wasm.Runtime_Context
+type Proc wasm.Runtime_Module
 
 func (p Proc) AddRef() Proc {
 	return Proc(capnp.Client(p).AddRef())
@@ -104,12 +104,12 @@ func (p Proc) Release() {
 }
 
 func (p Proc) Run(ctx context.Context) (casm.Future, capnp.ReleaseFunc) {
-	f, release := wasm.Runtime_Context(p).Run(ctx, nil)
+	f, release := wasm.Runtime_Module(p).Run(ctx, nil)
 	return casm.Future(f), release
 }
 
 func (p Proc) Wait(ctx context.Context) error {
-	f, release := wasm.Runtime_Context(p).Wait(ctx, nil)
+	f, release := wasm.Runtime_Module(p).Wait(ctx, nil)
 	defer release()
 
 	return casm.Future(f).Err()
@@ -120,14 +120,14 @@ func (p Proc) Close(ctx context.Context) error {
 }
 
 func (p Proc) CloseWithExitCode(ctx context.Context, status uint32) error {
-	f, release := wasm.Runtime_Context(p).Close(ctx, statusCode(status))
+	f, release := wasm.Runtime_Module(p).Close(ctx, statusCode(status))
 	defer release()
 
 	return casm.Future(f).Err()
 }
 
-func statusCode(u uint32) func(wasm.Runtime_Context_close_Params) error {
-	return func(ps wasm.Runtime_Context_close_Params) error {
+func statusCode(u uint32) func(wasm.Runtime_Module_close_Params) error {
+	return func(ps wasm.Runtime_Module_close_Params) error {
 		ps.SetExitCode(u)
 		return nil
 	}
@@ -148,7 +148,7 @@ func (s RuntimeServer) Exec(_ context.Context, call proc.Executor_exec) error {
 		return fmt.Errorf("config: %w", err)
 	}
 
-	rx := wasm.Runtime_Context_ServerToClient(&execContext{
+	rx := wasm.Runtime_Module_ServerToClient(&execContext{
 		Runtime: s.Runtime,
 		Module:  mod,
 		Config:  cfg,
@@ -235,7 +235,7 @@ func (ex *execContext) Shutdown() {
 	})
 }
 
-func (ex *execContext) Run(ctx context.Context, call wasm.Runtime_Context_run) error {
+func (ex *execContext) Run(ctx context.Context, call wasm.Runtime_Module_run) error {
 	ex.once.Do(func() {
 		defer close(ex.done)
 		call.Ack()
@@ -253,7 +253,7 @@ func (ex *execContext) Run(ctx context.Context, call wasm.Runtime_Context_run) e
 	return nil
 }
 
-func (ex *execContext) Close(ctx context.Context, call wasm.Runtime_Context_close) error {
+func (ex *execContext) Close(ctx context.Context, call wasm.Runtime_Module_close) error {
 	if status := call.Args().ExitCode(); status != 0 {
 		return ex.Runtime.CloseWithExitCode(ctx, status)
 	}
@@ -269,7 +269,7 @@ func (ex *execContext) Wait(ctx context.Context, call proc.Waiter_wait) error {
 			return err
 		}
 
-		stat, err := wasm.NewRuntime_Context_Status(res.Segment())
+		stat, err := wasm.NewRuntime_Module_Status(res.Segment())
 		if err == nil {
 			stat.SetStatusCode(ex.stat.ExitCode())
 		}

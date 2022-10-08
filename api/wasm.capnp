@@ -6,7 +6,7 @@ $Go.package("wasm");
 $Go.import("github.com/wetware/ww/internal/api/wasm");
 
 
-interface Runtime extends(Executor(Config, Context)) {
+interface Runtime extends(Executor(Config, Module)) {
     struct Config {
         src      @0 :Data;
         env      @1 :List(Field);
@@ -25,7 +25,7 @@ interface Runtime extends(Executor(Config, Context)) {
         using IOStream = import "iostream.capnp";
     }
 
-    interface Context extends(Waiter(Status)) {
+    interface Module extends(Waiter(Status)) {
         run   @0 () -> ();
         # Run the compiled WASM module in the present context.
 
