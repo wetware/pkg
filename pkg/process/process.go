@@ -7,19 +7,18 @@ import (
 	"github.com/wetware/ww/internal/api/proc"
 )
 
-// Param represents a single parameter in a configuration type.
-// TODO:  create capnp.PtrKind and update type constraint.
+// Param represents a single parameter in a context.
 type Param[T ~capnp.StructKind] func(T) error
 
-// ConfigType can allocate a configuration struct for the specific Executor
-// implementation.
-type ConfigType[T ~capnp.StructKind] func(*capnp.Segment) (T, error)
+// Type is a type parameter that is passed to NewConfig to create
+// a Context for a specific Executor implementation.
+type Type[T ~capnp.StructKind] func(*capnp.Segment) (T, error)
 
-// Config is a generic 'SetParams' callback that can be passed to a generic
+// Context is a generic 'SetParams' callback that can be passed to a generic
 // exec call.
-type Config[T ~capnp.StructKind] func(proc.Executor_exec_Params) error
+type Context[T ~capnp.StructKind] func(proc.Executor_exec_Params) error
 
-func NewConfig[T ~capnp.StructKind](alloc ConfigType[T]) Config[T] {
+func NewConfig[T ~capnp.StructKind](alloc Type[T]) Context[T] {
 	return func(ps proc.Executor_exec_Params) error {
 		t, err := alloc(ps.Segment())
 		if err != nil {
@@ -31,7 +30,7 @@ func NewConfig[T ~capnp.StructKind](alloc ConfigType[T]) Config[T] {
 }
 
 // Bind a parameter to the configuration type.
-func (c Config[T]) Bind(param Param[T]) Config[T] {
+func (c Context[T]) Bind(param Param[T]) Context[T] {
 	return func(ps proc.Executor_exec_Params) error {
 		if c != nil {
 			if err := c(ps); err != nil {

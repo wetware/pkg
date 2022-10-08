@@ -6,8 +6,8 @@ $Go.package("wasm");
 $Go.import("github.com/wetware/ww/internal/api/wasm");
 
 
-interface Runtime extends(Executor(Config, Module)) {
-    struct Config {
+interface Runtime extends(Executor(Context, Module)) {
+    struct Context {
         src      @0 :Data;
         env      @1 :List(Field);
         

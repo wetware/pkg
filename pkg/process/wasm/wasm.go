@@ -17,29 +17,29 @@ import (
 	"github.com/wetware/ww/pkg/process"
 )
 
-type Param process.Param[wasm.Runtime_Config]
+type Param process.Param[wasm.Runtime_Context]
 
-type RunContext process.Config[wasm.Runtime_Config]
+type RunContext process.Context[wasm.Runtime_Context]
 
 func NewRunContext(src []byte) RunContext {
-	config := process.NewConfig(wasm.NewRuntime_Config)
+	config := process.NewConfig(wasm.NewRuntime_Context)
 	return RunContext(config).Bind(source(src))
 }
 
 func source(b []byte) Param {
-	return func(rc wasm.Runtime_Config) error {
+	return func(rc wasm.Runtime_Context) error {
 		return rc.SetSrc(b)
 	}
 }
 
 func (c RunContext) Bind(p Param) RunContext {
-	param := process.Param[wasm.Runtime_Config](p)
-	config := process.Config[wasm.Runtime_Config](c)
+	param := process.Param[wasm.Runtime_Context](p)
+	config := process.Context[wasm.Runtime_Context](c)
 	return RunContext(config.Bind(param))
 }
 
 func (c RunContext) WithEnv(env map[string]string) RunContext {
-	return c.Bind(func(cr wasm.Runtime_Config) error {
+	return c.Bind(func(cr wasm.Runtime_Context) error {
 		fs, err := cr.NewEnv(int32(len(env)))
 		if err != nil {
 			return err
@@ -214,9 +214,9 @@ func (s RuntimeServer) config(call proc.Executor_exec) (wazero.ModuleConfig, err
 	return conf, nil
 }
 
-func config(call proc.Executor_exec) (wasm.Runtime_Config, error) {
+func config(call proc.Executor_exec) (wasm.Runtime_Context, error) {
 	ptr, err := call.Args().Config()
-	return wasm.Runtime_Config(ptr.Struct()), err
+	return wasm.Runtime_Context(ptr.Struct()), err
 }
 
 type execContext struct {

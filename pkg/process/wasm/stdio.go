@@ -53,7 +53,7 @@ func (c RunContext) WithStderr(w io.Writer) RunContext {
 // Stdin behaves analogously to Stdin, except that it takes
 // an iostream.Provider.
 func Stdin(p iostream.Provider) Param {
-	return func(rc wasm.Runtime_Config) error {
+	return func(rc wasm.Runtime_Context) error {
 		return rc.SetStdin(api.Provider(p))
 	}
 }
@@ -61,7 +61,7 @@ func Stdin(p iostream.Provider) Param {
 // Stdout behaves analogously to Stdout, except that it takes
 // an iostream.Stream.
 func Stdout(s iostream.Stream) Param {
-	return func(rc wasm.Runtime_Config) error {
+	return func(rc wasm.Runtime_Context) error {
 		return rc.SetStdout(api.Stream(s))
 	}
 }
@@ -69,22 +69,22 @@ func Stdout(s iostream.Stream) Param {
 // Stderr behaves analogously to Stderr, except that it takes
 // an iostream.Stream.
 func Stderr(s iostream.Stream) Param {
-	return func(rc wasm.Runtime_Config) error {
+	return func(rc wasm.Runtime_Context) error {
 		return rc.SetStderr(api.Stream(s))
 	}
 }
 
-func stdin(c wasm.Runtime_Config) io.Reader {
+func stdin(c wasm.Runtime_Context) io.Reader {
 	r := c.Stdin().AddRef()
 	return input(iostream.Provider(r))
 }
 
-func stdout(c wasm.Runtime_Config) io.Writer {
+func stdout(c wasm.Runtime_Context) io.Writer {
 	w := c.Stdout().AddRef()
 	return output(iostream.Stream(w))
 }
 
-func stderr(c wasm.Runtime_Config) io.Writer {
+func stderr(c wasm.Runtime_Context) io.Writer {
 	w := c.Stderr().AddRef()
 	return output(iostream.Stream(w))
 }
