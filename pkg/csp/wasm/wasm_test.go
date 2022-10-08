@@ -26,7 +26,7 @@ func TestWASM(t *testing.T) {
 	defer cancel()
 
 	var buf bytes.Buffer
-	runctx := wasm.NewRunContext(src).
+	runctx := wasm.NewContext(src).
 		WithStdout(&buf)
 
 	p, release := rf.Runtime(ctx).Exec(ctx, runctx)

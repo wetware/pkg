@@ -21,7 +21,7 @@ type Param csp.Param[wasm.Runtime_Context]
 
 type RunContext csp.Context[wasm.Runtime_Context]
 
-func NewRunContext(src []byte) RunContext {
+func NewContext(src []byte) RunContext {
 	config := csp.NewContext(wasm.NewRuntime_Context)
 	return RunContext(config).Bind(source(src))
 }
