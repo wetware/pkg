@@ -1,4 +1,4 @@
-package process_test
+package csp_test
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/wetware/ww/internal/api/proc"
-	"github.com/wetware/ww/pkg/process"
+	"github.com/wetware/ww/pkg/csp"
 )
 
 func TestConfig(t *testing.T) {
@@ -20,7 +20,7 @@ func TestConfig(t *testing.T) {
 	ps, err := proc.NewRootExecutor_exec_Params(seg)
 	require.NoError(t, err)
 
-	config := process.NewConfig(mockType()).
+	config := csp.NewContext(mockType()).
 		Bind(mockParam)
 
 	err = config(ps)
@@ -36,7 +36,7 @@ func TestConfig(t *testing.T) {
 }
 
 // HACK:  use results struct as a mock config
-func mockType() process.Type[proc.Executor_exec_Results] {
+func mockType() csp.Type[proc.Executor_exec_Results] {
 	return func(seg *capnp.Segment) (proc.Executor_exec_Results, error) {
 		return proc.NewExecutor_exec_Results(seg)
 	}

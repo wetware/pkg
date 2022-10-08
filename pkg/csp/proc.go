@@ -1,4 +1,4 @@
-package process
+package csp
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	"github.com/wetware/ww/internal/api/proc"
 )
 
-// Param represents a single parameter in a context.
+// Param represents a single parameter in a process' execution context.
 type Param[T ~capnp.StructKind] func(T) error
 
 // Type is a type parameter that is passed to NewConfig to create
@@ -18,7 +18,7 @@ type Type[T ~capnp.StructKind] func(*capnp.Segment) (T, error)
 // exec call.
 type Context[T ~capnp.StructKind] func(proc.Executor_exec_Params) error
 
-func NewConfig[T ~capnp.StructKind](alloc Type[T]) Context[T] {
+func NewContext[T ~capnp.StructKind](alloc Type[T]) Context[T] {
 	return func(ps proc.Executor_exec_Params) error {
 		t, err := alloc(ps.Segment())
 		if err != nil {

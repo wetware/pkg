@@ -1,12 +1,64 @@
-package channel
+//go:generate mockgen -source=chan.go -destination=../../internal/mock/pkg/csp/chan.go -package=mock_csp
+
+package csp
 
 import (
 	"context"
+	"errors"
 
 	"capnproto.org/go/capnp/v3"
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/ww/internal/api/channel"
 )
+
+var (
+	ErrEmpty  = errors.New("empty")
+	ErrClosed = errors.New("closed")
+)
+
+type (
+	MethodClose = channel.Closer_close
+	MethodSend  = channel.Sender_send
+	MethodRecv  = channel.Recver_recv
+	MethodPeek  = channel.Peeker_peek
+)
+
+type CloseServer interface {
+	Close(context.Context, MethodClose) error
+}
+
+type SendServer interface {
+	Send(context.Context, MethodSend) error
+}
+
+type RecvServer interface {
+	Recv(context.Context, MethodRecv) error
+}
+
+type PeekServer interface {
+	Peek(context.Context, MethodPeek) error
+}
+
+type SendCloseServer interface {
+	SendServer
+	CloseServer
+}
+
+type PeekRecvServer interface {
+	PeekServer
+	RecvServer
+}
+
+type Server interface {
+	CloseServer
+	SendServer
+	RecvServer
+}
+
+type PeekableServer interface {
+	Server
+	PeekServer
+}
 
 type Value func(channel.Sender_send_Params) error
 

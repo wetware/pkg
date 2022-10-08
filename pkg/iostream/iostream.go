@@ -11,7 +11,7 @@ import (
 	casm "github.com/wetware/casm/pkg"
 	chan_api "github.com/wetware/ww/internal/api/channel"
 	"github.com/wetware/ww/internal/api/iostream"
-	"github.com/wetware/ww/pkg/channel"
+	"github.com/wetware/ww/pkg/csp"
 )
 
 var ErrClosed = errors.New("closed")
@@ -51,12 +51,11 @@ func NewProvider(r io.Reader) Provider {
 // call to Provide returns, all references to dst are owned by p.
 // In practice, callers MAY relax this invariant when either:
 //
-//   (a)  References not owned by p are released before the future
-//        returned by Provide() is resolved.
+//	  (a)  References not owned by p are released before the future
+//	       returned by Provide() is resolved.
 //
-//	 (b)  The consumer behind 'dst' does not distinguish between
-//        normal and erroneous stream termination.
-//
+//		 (b)  The consumer behind 'dst' does not distinguish between
+//	       normal and erroneous stream termination.
 func (p Provider) Provide(ctx context.Context, s Stream) (casm.Future, capnp.ReleaseFunc) {
 	stream := func(ps iostream.Provider_provide_Params) error {
 		return ps.SetStream(iostream.Stream(s))
@@ -98,7 +97,7 @@ func New(w io.Writer) Stream {
 // s.Write will return after all bytes have been written to the stream,
 // or an error occurs (whichever happens first).
 func (s Stream) Write(ctx context.Context, b []byte) (casm.Future, capnp.ReleaseFunc) {
-	f, release := iostream.Stream(s).Send(ctx, channel.Data(b))
+	f, release := iostream.Stream(s).Send(ctx, csp.Data(b))
 	return casm.Future(f), release
 }
 

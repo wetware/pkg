@@ -14,15 +14,15 @@ import (
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/ww/internal/api/proc"
 	"github.com/wetware/ww/internal/api/wasm"
-	"github.com/wetware/ww/pkg/process"
+	"github.com/wetware/ww/pkg/csp"
 )
 
-type Param process.Param[wasm.Runtime_Context]
+type Param csp.Param[wasm.Runtime_Context]
 
-type RunContext process.Context[wasm.Runtime_Context]
+type RunContext csp.Context[wasm.Runtime_Context]
 
 func NewRunContext(src []byte) RunContext {
-	config := process.NewConfig(wasm.NewRuntime_Context)
+	config := csp.NewContext(wasm.NewRuntime_Context)
 	return RunContext(config).Bind(source(src))
 }
 
@@ -33,8 +33,8 @@ func source(b []byte) Param {
 }
 
 func (c RunContext) Bind(p Param) RunContext {
-	param := process.Param[wasm.Runtime_Context](p)
-	config := process.Context[wasm.Runtime_Context](c)
+	param := csp.Param[wasm.Runtime_Context](p)
+	config := csp.Context[wasm.Runtime_Context](c)
 	return RunContext(config.Bind(param))
 }
 

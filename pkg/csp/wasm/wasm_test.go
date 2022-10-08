@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tetratelabs/wazero"
-	"github.com/wetware/ww/pkg/process/wasm"
+	"github.com/wetware/ww/pkg/csp/wasm"
 )
 
 func TestWASM(t *testing.T) {

@@ -11,7 +11,7 @@ import (
 	"github.com/wetware/casm/pkg/util/stream"
 	chan_api "github.com/wetware/ww/internal/api/channel"
 	api "github.com/wetware/ww/internal/api/pubsub"
-	"github.com/wetware/ww/pkg/channel"
+	"github.com/wetware/ww/pkg/csp"
 )
 
 type TopicJoiner interface {
@@ -128,16 +128,16 @@ func (t topicServer) Subscribe(ctx context.Context, call MethodSubscribe) error 
 	return handler.Wait()
 }
 
-func bind(ctx context.Context, sub *pubsub.Subscription) channel.Value {
+func bind(ctx context.Context, sub *pubsub.Subscription) csp.Value {
 	msg, err := sub.Next(ctx)
 	if err != nil {
 		return failure(err)
 	}
 
-	return channel.Data(msg.Data)
+	return csp.Data(msg.Data)
 }
 
-func failure(err error) channel.Value {
+func failure(err error) csp.Value {
 	return func(chan_api.Sender_send_Params) error {
 		return err
 	}
