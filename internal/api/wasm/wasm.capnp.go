@@ -155,12 +155,12 @@ type Runtime_Config capnp.Struct
 const Runtime_Config_TypeID = 0x86b3d1f87025c811
 
 func NewRuntime_Config(s *capnp.Segment) (Runtime_Config, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 4})
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 5})
 	return Runtime_Config(st), err
 }
 
 func NewRootRuntime_Config(s *capnp.Segment) (Runtime_Config, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 4})
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 5})
 	return Runtime_Config(st), err
 }
 
@@ -209,34 +209,40 @@ func (s Runtime_Config) SetSrc(v []byte) error {
 	return capnp.Struct(s).SetData(0, v)
 }
 
+func (s Runtime_Config) Env() (Runtime_Config_Field_List, error) {
+	p, err := capnp.Struct(s).Ptr(1)
+	return Runtime_Config_Field_List(p.List()), err
+}
+
+func (s Runtime_Config) HasEnv() bool {
+	return capnp.Struct(s).HasPtr(1)
+}
+
+func (s Runtime_Config) SetEnv(v Runtime_Config_Field_List) error {
+	return capnp.Struct(s).SetPtr(1, v.ToPtr())
+}
+
+// NewEnv sets the env field to a newly
+// allocated Runtime_Config_Field_List, preferring placement in s's segment.
+func (s Runtime_Config) NewEnv(n int32) (Runtime_Config_Field_List, error) {
+	l, err := NewRuntime_Config_Field_List(capnp.Struct(s).Segment(), n)
+	if err != nil {
+		return Runtime_Config_Field_List{}, err
+	}
+	err = capnp.Struct(s).SetPtr(1, l.ToPtr())
+	return l, err
+}
+
 func (s Runtime_Config) Stdin() iostream.Provider {
-	p, _ := capnp.Struct(s).Ptr(1)
+	p, _ := capnp.Struct(s).Ptr(2)
 	return iostream.Provider(p.Interface().Client())
 }
 
 func (s Runtime_Config) HasStdin() bool {
-	return capnp.Struct(s).HasPtr(1)
-}
-
-func (s Runtime_Config) SetStdin(v iostream.Provider) error {
-	if !v.IsValid() {
-		return capnp.Struct(s).SetPtr(1, capnp.Ptr{})
-	}
-	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(capnp.Client(v)))
-	return capnp.Struct(s).SetPtr(1, in.ToPtr())
-}
-
-func (s Runtime_Config) Stdout() iostream.Stream {
-	p, _ := capnp.Struct(s).Ptr(2)
-	return iostream.Stream(p.Interface().Client())
-}
-
-func (s Runtime_Config) HasStdout() bool {
 	return capnp.Struct(s).HasPtr(2)
 }
 
-func (s Runtime_Config) SetStdout(v iostream.Stream) error {
+func (s Runtime_Config) SetStdin(v iostream.Provider) error {
 	if !v.IsValid() {
 		return capnp.Struct(s).SetPtr(2, capnp.Ptr{})
 	}
@@ -245,22 +251,40 @@ func (s Runtime_Config) SetStdout(v iostream.Stream) error {
 	return capnp.Struct(s).SetPtr(2, in.ToPtr())
 }
 
-func (s Runtime_Config) Stderr() iostream.Stream {
+func (s Runtime_Config) Stdout() iostream.Stream {
 	p, _ := capnp.Struct(s).Ptr(3)
 	return iostream.Stream(p.Interface().Client())
 }
 
-func (s Runtime_Config) HasStderr() bool {
+func (s Runtime_Config) HasStdout() bool {
 	return capnp.Struct(s).HasPtr(3)
 }
 
-func (s Runtime_Config) SetStderr(v iostream.Stream) error {
+func (s Runtime_Config) SetStdout(v iostream.Stream) error {
 	if !v.IsValid() {
 		return capnp.Struct(s).SetPtr(3, capnp.Ptr{})
 	}
 	seg := s.Segment()
 	in := capnp.NewInterface(seg, seg.Message().AddCap(capnp.Client(v)))
 	return capnp.Struct(s).SetPtr(3, in.ToPtr())
+}
+
+func (s Runtime_Config) Stderr() iostream.Stream {
+	p, _ := capnp.Struct(s).Ptr(4)
+	return iostream.Stream(p.Interface().Client())
+}
+
+func (s Runtime_Config) HasStderr() bool {
+	return capnp.Struct(s).HasPtr(4)
+}
+
+func (s Runtime_Config) SetStderr(v iostream.Stream) error {
+	if !v.IsValid() {
+		return capnp.Struct(s).SetPtr(4, capnp.Ptr{})
+	}
+	seg := s.Segment()
+	in := capnp.NewInterface(seg, seg.Message().AddCap(capnp.Client(v)))
+	return capnp.Struct(s).SetPtr(4, in.ToPtr())
 }
 
 func (s Runtime_Config) RandSeed() uint64 {
@@ -276,7 +300,7 @@ type Runtime_Config_List = capnp.StructList[Runtime_Config]
 
 // NewRuntime_Config creates a new list of Runtime_Config.
 func NewRuntime_Config_List(s *capnp.Segment, sz int32) (Runtime_Config_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 4}, sz)
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 5}, sz)
 	return capnp.StructList[Runtime_Config](l), err
 }
 
@@ -289,15 +313,115 @@ func (p Runtime_Config_Future) Struct() (Runtime_Config, error) {
 }
 
 func (p Runtime_Config_Future) Stdin() iostream.Provider {
-	return iostream.Provider(p.Future.Field(1, nil).Client())
+	return iostream.Provider(p.Future.Field(2, nil).Client())
 }
 
 func (p Runtime_Config_Future) Stdout() iostream.Stream {
-	return iostream.Stream(p.Future.Field(2, nil).Client())
+	return iostream.Stream(p.Future.Field(3, nil).Client())
 }
 
 func (p Runtime_Config_Future) Stderr() iostream.Stream {
-	return iostream.Stream(p.Future.Field(3, nil).Client())
+	return iostream.Stream(p.Future.Field(4, nil).Client())
+}
+
+type Runtime_Config_Field capnp.Struct
+
+// Runtime_Config_Field_TypeID is the unique identifier for the type Runtime_Config_Field.
+const Runtime_Config_Field_TypeID = 0x9ff14ea4ccb756ba
+
+func NewRuntime_Config_Field(s *capnp.Segment) (Runtime_Config_Field, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
+	return Runtime_Config_Field(st), err
+}
+
+func NewRootRuntime_Config_Field(s *capnp.Segment) (Runtime_Config_Field, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
+	return Runtime_Config_Field(st), err
+}
+
+func ReadRootRuntime_Config_Field(msg *capnp.Message) (Runtime_Config_Field, error) {
+	root, err := msg.Root()
+	return Runtime_Config_Field(root.Struct()), err
+}
+
+func (s Runtime_Config_Field) String() string {
+	str, _ := text.Marshal(0x9ff14ea4ccb756ba, capnp.Struct(s))
+	return str
+}
+
+func (s Runtime_Config_Field) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Runtime_Config_Field) DecodeFromPtr(p capnp.Ptr) Runtime_Config_Field {
+	return Runtime_Config_Field(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Runtime_Config_Field) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Runtime_Config_Field) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Runtime_Config_Field) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Runtime_Config_Field) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Runtime_Config_Field) Key() (string, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return p.Text(), err
+}
+
+func (s Runtime_Config_Field) HasKey() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Runtime_Config_Field) KeyBytes() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return p.TextBytes(), err
+}
+
+func (s Runtime_Config_Field) SetKey(v string) error {
+	return capnp.Struct(s).SetText(0, v)
+}
+
+func (s Runtime_Config_Field) Value() (string, error) {
+	p, err := capnp.Struct(s).Ptr(1)
+	return p.Text(), err
+}
+
+func (s Runtime_Config_Field) HasValue() bool {
+	return capnp.Struct(s).HasPtr(1)
+}
+
+func (s Runtime_Config_Field) ValueBytes() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(1)
+	return p.TextBytes(), err
+}
+
+func (s Runtime_Config_Field) SetValue(v string) error {
+	return capnp.Struct(s).SetText(1, v)
+}
+
+// Runtime_Config_Field_List is a list of Runtime_Config_Field.
+type Runtime_Config_Field_List = capnp.StructList[Runtime_Config_Field]
+
+// NewRuntime_Config_Field creates a new list of Runtime_Config_Field.
+func NewRuntime_Config_Field_List(s *capnp.Segment, sz int32) (Runtime_Config_Field_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2}, sz)
+	return capnp.StructList[Runtime_Config_Field](l), err
+}
+
+// Runtime_Config_Field_Future is a wrapper for a Runtime_Config_Field promised by a client call.
+type Runtime_Config_Field_Future struct{ *capnp.Future }
+
+func (p Runtime_Config_Field_Future) Struct() (Runtime_Config_Field, error) {
+	s, err := p.Future.Struct()
+	return Runtime_Config_Field(s), err
 }
 
 type Runtime_Context capnp.Client
@@ -868,56 +992,64 @@ func (p Runtime_Context_close_Results_Future) Struct() (Runtime_Context_close_Re
 	return Runtime_Context_close_Results(s), err
 }
 
-const schema_9419a7a54f76d35b = "x\xda\x8cSMh+U\x18=\xe7\xde\x99\xde\x04_" +
-	"|\xef:\x91g}h\xa0\xf4\xd1\x95\xa5?\x164\"" +
-	"I\xdb\x95\x0517E\x0aU\xd4\xd8\x8c%\xd8$%" +
-	"3\xd1,\xd4T\xa8\xb5\x85\x0a\x0a\"jAD\x10\xc1" +
-	"UEA\x8a \xd4\x85\xb8pa-uQp\xa1+" +
-	"\x17\xfe\xd4\xa2T-82S\x93\x8cZ\xd1M\x08\xdf" +
-	"9s\xbe\xf3}\xf7|#\x0f\x8b\xbc5\x9a\xbax\x01" +
-	"\xc2l\xda}\x81\xfe\xe4\xea\xf2/{\xef\xae\xc18d" +
-	"p\xed\xe9\xfc\xf6;\xef?\x1a\xc0\xb6\x14\xe0|g\x7f" +
-	"\xee\xfcj+`\xfcg;C0\x18\xbd\xf3\xf5\x0fo" +
-	"\x1b<z\x09\xe6\x0a\x19\xfc\xf6\xc2\x97'\x1f\xad}v" +
-	"\x84\x90<\x9eT\xd7\xd1\xe9W\xe1w\xd7\xab\x1c\x18<" +
-	"t\x7f\xbbo\xf7\xd3\x9b\xde\x8e\xc88#\xdd\xae\xa6\x08" +
-	":\x93\x11\xa1\xd8zjb\xef\xc1\x8dm\xe8+\x1d\xdc" +
-	"Uc\x84\x15\xac\xef\xcf\xfdxx\xeb\xc8N\x0c\xb9[" +
-	"eC\xa4\xdbS;\xb2g\x17t&\xd4\xa13\xa9." +
-	"\x03\xce]\xeaY\xe7\x95\xf0_\x0f\xd7\xd7\xc8\xe0\xbe\xfd" +
-	"\xc7\xeey\xf3\xad\xfe\x17C\xf2\x8ez\xd5\xd9UC\x80" +
-	"s\xa0\x94s\x10\x91o\xfcj\xee\xf8\xf7\xecV\x10\xeb" +
-	"\x99J\xcc\x10\x01n\x09\x1e/y\xd5\xe1\x85\xd2\xb2\xa8" +
-	"-g\x8b\xcd\x9a_\xa9\xba\xc3\xd3\xf5\xda#\x15.\x16" +
-	"H\x93\x96\x16`\x11\xd0O\x0e\x00\xa6%iV\x055" +
-	"\x99\x0e\x07\xd7O\x8f\x01\xe6\x09I\xb3.\xa8\x85HS" +
-	"\x00\xfa\x99,`V$\xcd\xa6\xa0\x962M\x09\xe8\x8d" +
-	"\xb0\xb8*i\x9e\x17\xa4\x95\xa6\x05\xe8\xe7f\x00\xb3)" +
-	"i^\x16T^c\x81)\x08\xa6\xc0\x8c\xe7\x97+5" +
-	"\xea\x93{\xef\xf8\xa1\xfd\xc0\xc0\xb7 5\x98\xf3\xfcr" +
-	"\xbd\xe9S\x07_O\xbe\xf7\xc5\xcd\xdf_\\A\x0fp" +
-	"\x1b\x8d\x7f\x02A\xa3T+\xcf\xban\x19\x00\x93\x10L" +
-	"\x82\xdd\x81\xe5_\x07\xf6\xdd\x96?<\xeb\x97\xfc&\xbd" +
-	"pp\xab;xj\x1e0\x17$\xcd\x0d\x82\x81\x172" +
-	"\xbc\xe9:d\xd9e\x02\x82\x89\x98\xa4u\x8e\xe4\xc2R" +
-	"\xdds\x07\x0b\xa5F\xa9\xea!\xae:\x13Su[\x15" +
-	"\x7f\xba^vC\x9f\x7f\x17=\xcfg\xa3Y\x1b,d" +
-	"\"\xcd\xff\xe4\x15s\xae\xd7\\\xf2\xbd\x7f{i\xdf\x95" +
-	"-\xdfX\x8c\x9d\x80f6\x17\xad\xc23\x09i\x03\xdd" +
-	"8\xb3\x93^=:\x00\xa1\xaf*\xf6n\x81\x9d\x94\xe9" +
-	"\xfe1\x08\x9dR\xaa\xd1\xac\xe5\x99\x89\x16\x90g\xd4\xe1" +
-	"\xb5\xe3m\xebpk\xe9c\xe4\xa9\x991\x96\x88\x95\x00" +
-	"\xcd\xcb!\x8b,H\xf2R\xcfNl\x19\xecx\x97U" +
-	"\xd7$\xc8\xde\x91\xebd6vA\xf6T.\x0a\xf1b" +
-	"\xfb\xcfU\x14\xa4\x1d98\xed\xfb\xe9\x8d\xf6\xc8\x07\xdf" +
-	"\xc4\x1ctK\xa1\x83\xa1P\x954\x09\x19\xfe^\x8a\x8c" +
-	"t{\x84\xa9\xea5\xf9_\x0f_<[>\xf0G\x00" +
-	"\x00\x00\xff\xff\xd6\xeda<"
+const schema_9419a7a54f76d35b = "x\xda\x8c\x94Ah\x1cU\x18\xc7\xff\xff\xf7fv&" +
+	"\x98\xad}\xceB\x9a\x96\xba\x18\x12j\x0e\x09I\xda\x82" +
+	"\xac\xc8\xc6\x06<\x04\xd4})\x1a\xa8\xa2.\xd9iX" +
+	"\xba\xd9\x0d;\xb3i\xbc\x18\xbdT=\x08\x0aE\xac\xa5" +
+	"ZE)\x8a\x87\x14#\xb5\xda\x15\x15\x94\x0a=X\x0b" +
+	"\x1e\x02\x1e\xf4\xe4A\xb4-J\xc5\x82#o\xd2\x9d\x1d" +
+	"\xd1\x92^\x96\x9d\xef\xfb\xe6\xff\xfd\xdf\xef}\xdf\x8c\x9d" +
+	"\x12\x93\xd6xv\xbe\x17B\xbflg\"u~h\xf1" +
+	"\xcf\x8b\x1f\x1e\x81\xf6\xc8h\xcb\xf5\x03\xab\xa7\xcf\x1c\x8a" +
+	"`\xdb\x0e\xe0\xf5g\xbe\xf3\x862}\xc0\xee\x91\xcc," +
+	"\xc1h\xfc\xbe\x93\x9f\xdd3x\xf9U\xe8\x1dd\xf4\xd7" +
+	"+?\\\xfb\xf2\xc8\xb7\x97a9\xc0\xee\x97\x9c;\xe8" +
+	"\x9dp\xcc{\xc7\x9c\"\x18}\xf2\xe8\x99\x0b\xef<t" +
+	"\xe5M\xa8\xed\xec\xf6\xb1\x85)n;\x82\xde7q\xf1" +
+	"W\xcea0z\xea\xf1\x95\xcc\x17\x17v\xbe\x1f+c" +
+	"C\xf1.w\x1fAo\xd85j3\xcb\xcf\xec\xbd\xf8" +
+	"\xe4\x8b\xabP;:\xf9\x07\xdd\x09\xc2\x8a^\xb84{" +
+	"e}\xcf\xd8\xd9Tf\xaf[0\x99\xc4\xa0\xf2d\xf7" +
+	"l\xa0\xb7\xd3]\xf7\x86\xdd>\xc0\x1bw\x9f\xf7\x9e3" +
+	"\xff\xbayu\x9b\x8c\x1e\xbb\xb4\xf4\xf0\xbb\xa7\xfa\x8f\x9a" +
+	"\xe2\xb7\xdc\xd7\xbd\xf7\xdc]\x80\xd7v\x1d\xaf\x1d\x17o" +
+	"\xffq\xf6\xea\xdf\x85\xe3Q\xaa\xe7\x1f\xee4\x11a$" +
+	":\\\x0e\x16F\xe7\xca\x8b\xa2\xbeX\x98i\xd5\xc3\xea" +
+	"\x82?:\xd5\xa8\x1f\xacr^[Ls\xe1D\xfe\x81" +
+	"\xaa_\xab\xe8m\xd2\x02,\x02\xea\xd8\x00\xa0\x8fJ\xea" +
+	"\x93\x82\x8a\xcc\x19\x18\xea\x84\x09\xbe&\xa9\xd7\x04\x95\x10" +
+	"9\x0a@\x9d\x9e\x00\xf4\x07\x92\xfacA%e\x8e\x12" +
+	"P\x1f\x15\x00\xbd*\xa9\xcf\x09*\xcb\xca\xd1\x02\xd4Y" +
+	"\x13\\\x93\xd4\x9f\x0b\xd2\xce\xd1\x06T{\x1a\xd0\xe7$" +
+	"\xf5yA'h\xce1\x0b\xc1,\xe8\xf8\xf5%n\x01" +
+	"K\x92\xdc\xda\xb5\x0a\x9a`>\x08+\xd5:\xd5\xb5G" +
+	"\xee\xfdm\xe5\x89\x81_@*\xb0\x18\x84\x95F+\xa4" +
+	"\x8a~\xba\x7f\xed\xfb;\x7f\xbd\xfdYt\x13~\xb3\xf9" +
+	"\xdfD\xd4,\xd7+\xfb}\xbf\x02\x80=\x10\xec\x01\x13" +
+	"l\xf2\xdf\xd8B\x7f9\x1c\xdd\x1f\x96\xc3\x16\x83\x12\xa9" +
+	"\xad\x04U\xf6\x00\xa0{%\xf56\xc1(0\x15\xc1T" +
+	"\x03\xb2\xe2\xd3\x85\xa0{s\xc9\x83\xd5\xf9\xd1\x98;\x8c" +
+	"\xa0\x9b\x08\x0e\x1b\xcc\x83\x92z,\xc5~\xc4`\xbe[" +
+	"R\xef\x11t\x0e\xf9O\xb3\x17\x82\xbd`~\xa9\\k" +
+	"\xf9\x9d\xa7\xa4\x95\xf5?\xee\xe7j\x8d\xc0\x1f,\x95\x9b" +
+	"\xe5\x85\x00\xe9\x03L\xa7\x0e\xe0/W\xc3\xa9F\xc57" +
+	"H6\xf1\x1f\x8b6[\xf5\xc1R>\xd6\xdc\xb4n\xa6" +
+	"\xe8\x07\xadZ\x18\xdcl4C_.\x87\xf1l&\x0b" +
+	"\xaeX(\xc6\xd4\x03\xedJ\x1bH\xf6\x8f\x9duS\xe3" +
+	"\x03\x10j\xc8awy\xd9Y\x0b\xd5?\x01\xa1\xb2\x8e" +
+	"\xd3l\xd5'\x99\x8f\x01L2\xee\xf0\xc6\xd5Uk\xfd" +
+	"x\xedkLR1\xaf-\x91\x0a\x01\x8a}\xa6\x8a7" +
+	"\xe6/\xb1\x93\x82\xc1\x8ew\xb9\xe0k\x97\xa9O\x8b\xea" +
+	")\xa4V\xde\xdeW\xdc\xb8\xeb\x95\x1b(J\xd2\x8e\x1d" +
+	"\\\xcf\xfc\xfe\xf6\xca\xd8\xa7?\xa7\x1c$!\xe3`\x97" +
+	"Q\x8d\x07\xc3\xfcn\x8d\x8d$=\xcc\x00w\x9b\xdc\xd2" +
+	"\xc5\xcfl\xc0\x07\xfe\x09\x00\x00\xff\xff\xa1\xab\x9a\x0e"
 
 func init() {
 	schemas.Register(schema_9419a7a54f76d35b,
 		0x86b3d1f87025c811,
 		0x96f02438bea03d31,
+		0x9ff14ea4ccb756ba,
 		0xaa1dccc1067f5c60,
 		0xb0895fd1357e7852,
 		0xb93034daf157d388,

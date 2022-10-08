@@ -38,6 +38,28 @@ func (c RunContext) Bind(p Param) RunContext {
 	return RunContext(config.Bind(param))
 }
 
+func (c RunContext) WithEnv(env map[string]string) RunContext {
+	return c.Bind(func(cr wasm.Runtime_Config) error {
+		fs, err := cr.NewEnv(int32(len(env)))
+		if err != nil {
+			return err
+		}
+
+		var i int
+		for k, v := range env {
+			if err = fs.At(i).SetKey(k); err != nil {
+				break
+			}
+
+			if err = fs.At(i).SetValue(v); err != nil {
+				break
+			}
+		}
+
+		return err
+	})
+}
+
 type RuntimeFactory struct {
 	Config wazero.RuntimeConfig
 }
@@ -161,11 +183,35 @@ func (s RuntimeServer) config(call proc.Executor_exec) (wazero.ModuleConfig, err
 		return nil, err
 	}
 
+	conf := wazero.NewModuleConfig()
+
 	// I/O streams are discarded by default.
-	return wazero.NewModuleConfig().
+	conf = conf.
 		WithStdin(stdin(c)).
 		WithStdout(stdout(c)).
-		WithStderr(stderr(c)), nil
+		WithStderr(stderr(c))
+
+	// Set the environment
+	env, err := c.Env()
+	if err != nil {
+		return nil, err
+	}
+
+	for i := 0; i < env.Len(); i++ {
+		key, err := env.At(i).Key()
+		if err != nil {
+			return nil, err
+		}
+
+		val, err := env.At(i).Value()
+		if err != nil {
+			return nil, err
+		}
+
+		conf = conf.WithEnv(key, val)
+	}
+
+	return conf, nil
 }
 
 func config(call proc.Executor_exec) (wasm.Runtime_Config, error) {
