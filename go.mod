@@ -20,7 +20,7 @@ require (
 	github.com/sirupsen/logrus v1.9.0
 	github.com/urfave/cli/v2 v2.19.2
 	go.uber.org/atomic v1.10.0 // indirect
-	go.uber.org/fx v1.18.1
+	go.uber.org/fx v1.18.2
 	go.uber.org/zap v1.23.0 // indirect
 	golang.org/x/crypto v0.0.0-20220919173607-35f4265a4bc0 // indirect
 	golang.org/x/net v0.0.0-20221004154528-8021a29435af // indirect
@@ -39,7 +39,7 @@ require (
 	github.com/tetratelabs/wazero v1.0.0-pre.2
 	github.com/thejerf/suture/v4 v4.0.2
 	github.com/wetware/casm v0.0.0-20221011175852-3d250cb6a82a
-	golang.org/x/sync v0.0.0-20220907140024-f12130a52804
+	golang.org/x/sync v0.0.0-20220929204114-8fcdb60fdcc0
 	gopkg.in/alexcesaro/statsd.v2 v2.0.0
 )
 
