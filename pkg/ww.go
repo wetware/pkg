@@ -8,10 +8,7 @@ import (
 	protoutil "github.com/wetware/casm/pkg/util/proto"
 )
 
-const (
-	Version             = "0.0.0"
-	Proto   protocol.ID = "/ww/" + Version
-)
+const Version = "0.0.0"
 
 var match = casm.NewMatcher("ww").
 	Then(protoutil.SemVer(Version))
