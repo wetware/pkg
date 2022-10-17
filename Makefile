@@ -10,11 +10,7 @@ all: capnp
 clean: clean-capnp clean-mocks
 
 
-<<<<<<< HEAD
 capnp: capnp-anchor capnp-pubsub capnp-cluster capnp-channel capnp-proc capnp-iostream capnp-discovery capnp-wasm
-=======
-capnp: capnp-anchor capnp-pubsub capnp-cluster capnp-channel capnp-proc capnp-iostream capnp-service
->>>>>>> 4b08603 (add unimplemented server and client)
 # N.B.:  compiling capnp schemas requires having capnproto.org/go/capnp/v3 installed
 #        on the GOPATH.
 
@@ -42,7 +38,6 @@ capnp-iostream:
 	@mkdir -p internal/api/iostream
 	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/std -ogo:internal/api/iostream --src-prefix=api api/iostream.capnp
 
-<<<<<<< HEAD
 capnp-wasm:
 	@mkdir -p internal/api/wasm
 	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/std -ogo:internal/api/wasm --src-prefix=api api/wasm.capnp
@@ -53,13 +48,6 @@ capnp-discovery:
 
 
 clean-capnp: clean-capnp-anchor clean-capnp-pubsub clean-capnp-cluster clean-capnp-channel clean-capnp-proc clean-capnp-iostream clean-capnpn-discovery clean-capnp-wasm
-=======
-capnp-service:
-	@mkdir -p internal/api/service
-	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/std -ogo:internal/api/service --src-prefix=api api/service.capnp
-
-clean-capnp: clean-capnp-anchor clean-capnp-pubsub clean-capnp-cluster clean-capnp-channel clean-capnp-proc clean-capnp-iostream clean-capnpn-service
->>>>>>> 4b08603 (add unimplemented server and client)
 
 clean-capnp-anchor:
 	@rm -rf internal/api/anchor
@@ -79,16 +67,11 @@ clean-capnp-proc:
 clean-capnp-iostream:
 	@rm -rf internal/api/iostream
 
-<<<<<<< HEAD
 clean-capnp-wasm:
 	@rm -rf internal/api/wasm
 
 clean-capnp-discovery:
 	@rm -rf internal/api/discovery
-=======
-clean-capnp-service:
-	@rm -rf internal/api/service
->>>>>>> 4b08603 (add unimplemented server and client)
 
 mocks: clean-mocks
 # This roundabout call to 'go generate' allows us to:
