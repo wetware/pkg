@@ -38,7 +38,7 @@ require (
 	github.com/stretchr/testify v1.8.0
 	github.com/tetratelabs/wazero v1.0.0-pre.2
 	github.com/thejerf/suture/v4 v4.0.2
-	github.com/wetware/casm v0.0.0-20221011175852-3d250cb6a82a
+	github.com/wetware/casm v0.0.0-20221018200103-901773ed82d1
 	golang.org/x/sync v0.0.0-20220929204114-8fcdb60fdcc0
 	gopkg.in/alexcesaro/statsd.v2 v2.0.0
 )
