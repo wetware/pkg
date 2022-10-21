@@ -80,30 +80,23 @@ func (s *ProviderServer) Shutdown() {
 }
 
 func (s *ProviderServer) Provide(ctx context.Context, call api.Provider_provide) error {
-	println("Provide")
 	response, err := encodeResponse(call)
 	if err != nil {
 		return err
 	}
 
 	// subscribe to topic
-	println("Provide", "SUBSCRIBING REQUEST")
 	sub, release := s.Topic.Subscribe(ctx)
-	println("Provide", "SUBSCRIBED")
 	defer release()
 
 	call.Go()
-	println("Provide", "WAITING REQUEST")
 	for b := sub.Next(); b != nil; b = sub.Next() {
-		println("Provide", "RECV REQUEST?")
 		msg, err := decodeMessage(b)
 		if err != nil {
 			return err
 		}
 
 		if msg.Which() == api.Message_Which_request {
-			println("Provide", "RECV REQUEST")
-
 			if err := s.Topic.Publish(ctx, response); err != nil {
 				return err
 			}
@@ -120,46 +113,34 @@ type LocatorServer struct {
 }
 
 func (s *LocatorServer) Shutdown() {
-	println("LocatorServer", "SHUTDOWN ")
 	s.release()
 }
 
 func (s *LocatorServer) FindProviders(ctx context.Context, call api.Locator_findProviders) error {
-	println("FindProviders")
-
 	request, err := encodeRequest(call)
 	if err != nil {
 		return err
 	}
-	println("FindProviders", "SUBSCRIBING")
 	sub, release := s.Topic.Subscribe(ctx)
-	println("FindProviders", "SUBSCRIBED")
 	defer release()
 
 	time.Sleep(time.Second)
 
 	// publish a request
 	call.Go()
-	println("FindProviders", "PUBLSHING REQUEST")
 	if err := s.Topic.Publish(ctx, request); err != nil {
-		println("Err", err.Error())
 		return err
 	}
-	println("PUBLSIH REQUEST")
 
 	// wait for responses or until context is canceled
 	sender := call.Args().Chan()
 
-	println("WAITING RESPONSE")
 	for b := sub.Next(); b != nil; b = sub.Next() {
-		println("RECV RESPONSE?")
-
 		msg, err := decodeMessage(b)
 		if err != nil {
 			return err
 		}
 		if msg.Which() == api.Message_Which_response {
-			println("RECV RESPONSE")
 			response, err := msg.Response()
 			if err != nil {
 				return err

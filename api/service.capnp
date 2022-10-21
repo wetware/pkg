@@ -31,7 +31,7 @@ struct AddrInfo {
 
 struct Message {
     union {
-        request @0 :Request;
+        request @0 :Request;  # TODO: use Void type
         response @1 :Response;
     }
 
