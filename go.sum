@@ -1,5 +1,5 @@
-capnproto.org/go/capnp/v3 v3.0.0-alpha.7.0.20221017163422-cbde3a8dd951 h1:XWK9HVupc+jIp3UNFXXG6J2O/CJWiKPArn+uHge7jDI=
-capnproto.org/go/capnp/v3 v3.0.0-alpha.7.0.20221017163422-cbde3a8dd951/go.mod h1:Dynqh9/LE2Wy7jYd2wIoYgqFwh3hZHCmG7j6/uCWX6c=
+capnproto.org/go/capnp/v3 v3.0.0-alpha.8 h1:rTN8jzSLBBBFWPhRHfrwdfGLiUpL6mtE/fUGfIxujb0=
+capnproto.org/go/capnp/v3 v3.0.0-alpha.8/go.mod h1:Dynqh9/LE2Wy7jYd2wIoYgqFwh3hZHCmG7j6/uCWX6c=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.31.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
@@ -582,8 +582,8 @@ github.com/urfave/cli/v2 v2.20.2/go.mod h1:1CNUng3PtjQMtRzJO4FMXBQvkGtuYRxxiR9xM
 github.com/viant/assertly v0.4.8/go.mod h1:aGifi++jvCrUaklKEKT0BU95igDNaqkvz+49uaYMPRU=
 github.com/viant/toolbox v0.24.0/go.mod h1:OxMCG57V0PXuIP2HNQrtJf2CjqdmbrOx5EkMILuUhzM=
 github.com/warpfork/go-wish v0.0.0-20200122115046-b9ea61034e4a h1:G++j5e0OC488te356JvdhaM8YS6nMsjLAYF7JxCv07w=
-github.com/wetware/casm v0.0.0-20221021154938-1812b7c8fa01 h1:AONZLGzAP+86HlElmy41d30YciANaqLkvbQIIocDI2M=
-github.com/wetware/casm v0.0.0-20221021154938-1812b7c8fa01/go.mod h1:F2plgks1E5+YiNhcw2oVU8Y+GrmsLkANIXojIQOO4xQ=
+github.com/wetware/casm v0.0.0-20221024123749-3cd796fd038c h1:v6/R/qolLmRI5JloE20/dc+gV3jmvBYqbMn8qTzGE8A=
+github.com/wetware/casm v0.0.0-20221024123749-3cd796fd038c/go.mod h1:imF6FZcquQnT0ShuOIrd3IIMUe6gUt+NGiDUTTfiOGk=
 github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 h1:EKhdznlJHPMoKr0XTrX+IlJs1LH3lyx2nfr1dOlZ79k=
 github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1/go.mod h1:8UvriyWtv5Q5EOgjHaSseUEdkQfvwFv1I/In/O2M9gc=
 github.com/whyrusleeping/timecache v0.0.0-20160911033111-cfcb2f1abfee h1:lYbXeSvJi5zk5GLKVuid9TVjS9a0OmLIDKTfoZBL6Ow=
