@@ -111,7 +111,6 @@ func (j Joiner) pubsub(router pubsub.TopicJoiner) *pubsub.Router {
 	return &pubsub.Router{
 		Log:         j.Log,
 		TopicJoiner: router,
-		// TODO:  metrics that track view size
 	}
 }
 

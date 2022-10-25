@@ -46,6 +46,10 @@ type Metrics interface {
 	// Histogram sends an histogram value to a bucket.
 	Histogram(bucket string, value any)
 
+	// WithPrefix returns a new Metrics instance with 'prefix'
+	// appended to the current prefix string, separated by '.'.
+	WithPrefix(prefix string) Metrics
+
 	// Flush writes all buffered metrics.
 	Flush()
 }
