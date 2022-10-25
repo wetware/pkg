@@ -60,7 +60,6 @@ type Joiner struct {
 	TTL          time.Duration        `optional:"true"`
 	Meta         pulse.Preparer       `optional:"true"`
 	RoutingTable cluster.RoutingTable `optional:"true"`
-	// Metrics casm.Metrics          `optional:"true"`  // XXX - implement before merging
 }
 
 func (j Joiner) Join(r Router) (*Node, error) {
