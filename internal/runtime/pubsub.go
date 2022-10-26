@@ -9,6 +9,7 @@ import (
 	casm "github.com/wetware/casm/pkg"
 	protoutil "github.com/wetware/casm/pkg/util/proto"
 	ww "github.com/wetware/ww/pkg"
+	ww_pubsub "github.com/wetware/ww/pkg/pubsub"
 	"go.uber.org/fx"
 )
 
@@ -17,7 +18,6 @@ type pubSubConfig struct {
 
 	Vat  casm.Vat
 	Boot discovery.Discovery
-	// Tracer *statsdutil.PubSubTracer  // XXX - BEFORE MERGE
 }
 
 func (c *Config) PubSub() fx.Option {
@@ -29,10 +29,17 @@ func (c *Config) PubSub() fx.Option {
 func (c *Config) newPubSub(env Env, config pubSubConfig) (*pubsub.PubSub, error) {
 	return pubsub.NewGossipSub(env.Context(), config.Vat.Host,
 		pubsub.WithPeerExchange(true),
-		// pubsub.WithRawTracer(config.Tracer),
+		pubsub.WithRawTracer(config.tracer(env)),
 		pubsub.WithDiscovery(config.Boot),
 		pubsub.WithProtocolMatchFn(config.protoMatchFunc(env)),
 		pubsub.WithGossipSubProtocols(config.subProtos(env)))
+}
+
+func (pubSubConfig) tracer(env Env) ww_pubsub.Tracer {
+	return ww_pubsub.Tracer{
+		Log:     env.Log(),
+		Metrics: env.Metrics().WithPrefix("pubsub"),
+	}
 }
 
 func (config pubSubConfig) protoMatchFunc(env Env) pubsub.ProtocolMatchFn {

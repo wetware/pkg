@@ -27,7 +27,7 @@ func New(env Env, log log.Logger) ww.Metrics {
 		addr(env),
 		muted(env),
 		logger(env, log),
-		statsd.Prefix("ww."),
+		statsd.Prefix("ww"),
 		statsd.SampleRate(.1),
 		statsd.FlushPeriod(time.Millisecond*250))
 	if err != nil {
@@ -49,6 +49,12 @@ func (m Metrics) Decr(bucket string) {
 
 func (m Metrics) Duration(bucket string, d time.Duration) {
 	m.Client.Timing(bucket, d.Milliseconds())
+}
+
+func (m Metrics) WithPrefix(prefix string) ww.Metrics {
+	return Metrics{
+		Client: m.Client.Clone(statsd.Prefix(prefix)),
+	}
 }
 
 func addr(env Env) statsd.Option {
@@ -80,3 +86,4 @@ func (nopMetrics) Gauge(string, any)              {}
 func (nopMetrics) Duration(string, time.Duration) {}
 func (nopMetrics) Histogram(string, any)          {}
 func (nopMetrics) Flush()                         {}
+func (nopMetrics) WithPrefix(string) ww.Metrics   { return nopMetrics{} }

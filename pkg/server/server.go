@@ -60,7 +60,6 @@ type Joiner struct {
 	TTL          time.Duration        `optional:"true"`
 	Meta         pulse.Preparer       `optional:"true"`
 	RoutingTable cluster.RoutingTable `optional:"true"`
-	// Metrics casm.Metrics          `optional:"true"`  // XXX - implement before merging
 }
 
 func (j Joiner) Join(r Router) (*Node, error) {
@@ -111,7 +110,6 @@ func (j Joiner) pubsub(router pubsub.TopicJoiner) *pubsub.Router {
 	return &pubsub.Router{
 		Log:         j.Log,
 		TopicJoiner: router,
-		// TODO:  metrics that track view size
 	}
 }
 
