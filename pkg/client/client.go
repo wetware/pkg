@@ -57,7 +57,7 @@ func (n *Node) View(ctx context.Context) (cluster.View, capnp.ReleaseFunc) {
 // Join a pubsub topic.
 func (n *Node) Join(ctx context.Context, topic string) (pubsub.Topic, capnp.ReleaseFunc) {
 	router, release := n.host.PubSub(ctx)
-	defer func() { go release() }()
+	defer release()
 
 	return router.Join(ctx, topic)
 }
