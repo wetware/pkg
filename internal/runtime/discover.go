@@ -39,7 +39,7 @@ func (c Config) newServerDisc(env Env, lx fx.Lifecycle, vat casm.Vat) (d discove
 
 	d, err = bootutil.ListenString(vat.Host, env.String("discover"),
 		socket.WithLogger(env.Log()),
-		socket.WithRateLimiter(socket.NewPacketLimiter(1000, 8)))
+		socket.WithRateLimiter(socket.NewPacketLimiter(10000, 8)))
 	if c, ok := d.(io.Closer); ok {
 		lx.Append(closer(c))
 	}
@@ -55,7 +55,7 @@ func (c Config) newClientDisc(env Env, lx fx.Lifecycle, vat casm.Vat) (d discove
 
 	d, err = bootutil.DialString(vat.Host, env.String("discover"),
 		socket.WithLogger(env.Log()),
-		socket.WithRateLimiter(socket.NewPacketLimiter(1000, 8)))
+		socket.WithRateLimiter(socket.NewPacketLimiter(10000, 8)))
 	if c, ok := d.(io.Closer); ok {
 		lx.Append(closer(c))
 	}
