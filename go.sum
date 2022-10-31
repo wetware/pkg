@@ -582,10 +582,8 @@ github.com/urfave/cli/v2 v2.20.2/go.mod h1:1CNUng3PtjQMtRzJO4FMXBQvkGtuYRxxiR9xM
 github.com/viant/assertly v0.4.8/go.mod h1:aGifi++jvCrUaklKEKT0BU95igDNaqkvz+49uaYMPRU=
 github.com/viant/toolbox v0.24.0/go.mod h1:OxMCG57V0PXuIP2HNQrtJf2CjqdmbrOx5EkMILuUhzM=
 github.com/warpfork/go-wish v0.0.0-20200122115046-b9ea61034e4a h1:G++j5e0OC488te356JvdhaM8YS6nMsjLAYF7JxCv07w=
-github.com/wetware/casm v0.0.0-20221024123749-3cd796fd038c h1:v6/R/qolLmRI5JloE20/dc+gV3jmvBYqbMn8qTzGE8A=
-github.com/wetware/casm v0.0.0-20221024123749-3cd796fd038c/go.mod h1:imF6FZcquQnT0ShuOIrd3IIMUe6gUt+NGiDUTTfiOGk=
-github.com/wetware/casm v0.0.0-20221028145340-c237b9c278e9 h1:ti/GXolBpOvn8dhtMntdVSSllkK7hNg68BiLyrE9Z5s=
-github.com/wetware/casm v0.0.0-20221028145340-c237b9c278e9/go.mod h1:imF6FZcquQnT0ShuOIrd3IIMUe6gUt+NGiDUTTfiOGk=
+github.com/wetware/casm v0.0.0-20221031025925-ef75e3407c43 h1:M7ef8mBrSjo0XKGLz6esbg+6UGxUGxcXwe55fbDmfys=
+github.com/wetware/casm v0.0.0-20221031025925-ef75e3407c43/go.mod h1:imF6FZcquQnT0ShuOIrd3IIMUe6gUt+NGiDUTTfiOGk=
 github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 h1:EKhdznlJHPMoKr0XTrX+IlJs1LH3lyx2nfr1dOlZ79k=
 github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1/go.mod h1:8UvriyWtv5Q5EOgjHaSseUEdkQfvwFv1I/In/O2M9gc=
 github.com/whyrusleeping/timecache v0.0.0-20160911033111-cfcb2f1abfee h1:lYbXeSvJi5zk5GLKVuid9TVjS9a0OmLIDKTfoZBL6Ow=
