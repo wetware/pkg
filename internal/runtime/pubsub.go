@@ -32,7 +32,9 @@ func (c *Config) newPubSub(env Env, config pubSubConfig) (*pubsub.PubSub, error)
 		pubsub.WithRawTracer(config.tracer(env)),
 		pubsub.WithDiscovery(config.Boot),
 		pubsub.WithProtocolMatchFn(config.protoMatchFunc(env)),
-		pubsub.WithGossipSubProtocols(config.subProtos(env)))
+		pubsub.WithGossipSubProtocols(config.subProtos(env)),
+		pubsub.WithPeerOutboundQueueSize(256),
+	)
 }
 
 func (pubSubConfig) tracer(env Env) ww_pubsub.Tracer {
