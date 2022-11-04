@@ -38,6 +38,7 @@ func newVat(env Env, lx fx.Lifecycle, f casm.HostFactory) (casm.Vat, error) {
 	vat, err := casm.New(env.String("ns"), f)
 	if err == nil {
 		lx.Append(closer(vat.Host))
+		vat.Metrics = env.Metrics().WithPrefix("vat")
 	}
 
 	return vat, err
