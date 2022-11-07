@@ -78,10 +78,9 @@ func (t Tracer) DeliverMessage(*pubsub.Message) {
 
 // RejectMessage is invoked when a message is Rejected or Ignored.
 // The reason argument can be one of the named strings Reject*.
-func (t Tracer) RejectMessage(m *pubsub.Message, reason string) {
+func (t Tracer) RejectMessage(_ *pubsub.Message, reason string) {
 	t.Log.
 		WithField("reason", reason).
-		WithField("message", m.ID).
 		Info("message rejected")
 	t.Metrics.Incr("rejected")
 }
@@ -120,10 +119,8 @@ func (t Tracer) DropRPC(r *pubsub.RPC, id peer.ID) {
 
 // UndeliverableMessage is invoked when the consumer of Subscribe is not reading messages fast enough and
 // the pressure release mechanism trigger, dropping messages.
-func (t Tracer) UndeliverableMessage(m *pubsub.Message) {
-	t.Log.
-		WithField("message", m.ID).
-		Warn("message undeliverable")
+func (t Tracer) UndeliverableMessage(_ *pubsub.Message) {
+	t.Log.Warn("message undeliverable")
 	t.Metrics.Incr("undeliverable")
 }
 
