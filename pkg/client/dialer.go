@@ -41,7 +41,7 @@ func (d Dialer) Dial(ctx context.Context) (*Node, error) {
 
 func (d Dialer) join(ctx context.Context) (n *Node, err error) {
 	var peers <-chan peer.AddrInfo
-	if peers, err = d.Boot.FindPeers(ctx, d.Vat.NS, discovery.Limit(100)); err != nil { // TODO: check the limit, and DONT DELETE!
+	if peers, err = d.Boot.FindPeers(ctx, d.Vat.NS); err != nil {
 		return nil, fmt.Errorf("discover: %w", err)
 	}
 
