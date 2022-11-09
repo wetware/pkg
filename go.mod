@@ -35,10 +35,10 @@ require (
 	github.com/ipfs/go-ds-badger2 v0.1.3
 	github.com/lthibault/go-libp2p-inproc-transport v0.3.0
 	github.com/multiformats/go-multistream v0.3.3
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.1
 	github.com/tetratelabs/wazero v1.0.0-pre.3
 	github.com/thejerf/suture/v4 v4.0.2
-	github.com/wetware/casm v0.0.0-20221108211458-4d6c7d36f907
+	github.com/wetware/casm v0.0.0-20221109171839-bb95c18bc33d
 	golang.org/x/sync v0.1.0
 	gopkg.in/alexcesaro/statsd.v2 v2.0.0
 )
@@ -101,6 +101,7 @@ require (
 	github.com/libp2p/go-reuseport v0.2.0 // indirect
 	github.com/libp2p/go-yamux/v4 v4.0.0 // indirect
 	github.com/lthibault/jitterbug/v2 v2.2.2 // indirect
+	github.com/lthibault/uq v1.0.0 // indirect
 	github.com/lthibault/util v0.0.12 // indirect
 	github.com/lucas-clemente/quic-go v0.29.2 // indirect
 	github.com/marten-seemann/qtls-go1-18 v0.1.3 // indirect
