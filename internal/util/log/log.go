@@ -6,6 +6,7 @@ import (
 
 	"github.com/lthibault/log"
 	"github.com/sirupsen/logrus"
+	ww "github.com/wetware/ww/pkg"
 )
 
 type Env interface {
@@ -18,7 +19,8 @@ func New(env Env) log.Logger {
 	return log.New(
 		WithLevel(env),
 		WithFormat(env),
-		withErrWriter(env))
+		withErrWriter(env)).
+		WithField("version", ww.Version)
 }
 
 // WithLevel returns a log.Option that configures a logger's level.
