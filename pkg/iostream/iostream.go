@@ -157,7 +157,7 @@ func (p *sreader) Provide(ctx context.Context, call iostream.Provider_provide) (
 	return err
 }
 
-// swriter is the server type for StreamWriter.  It wraps an io.Closer and
+// swriter is the server type for StreamWriter.  It wraps an io.Writer and
 // exports a Send method, thereby satisfying the channel.Sender capability
 // interface.
 type swriter struct {

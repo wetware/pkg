@@ -31,4 +31,10 @@ interface Host {
     root @2 () -> (root :import "anchor.capnp".Anchor);
     # Root returns the host's root Anchor, which confers access to
     # all shared memory on the host.
+
+    debug @3 () -> (debugger :Capability);
+    # Debugger provides a set of tools for debugging live Wetware
+    # hosts.  The debugger can potentially reveal sensitive data,
+    # including cryptographic secrets and SHOULD NOT be provided
+    # to untrusted parties.
 }

@@ -9,6 +9,7 @@ import (
 
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/cluster"
+	"github.com/wetware/casm/pkg/debug"
 	anchor_api "github.com/wetware/ww/internal/api/anchor"
 	api "github.com/wetware/ww/internal/api/cluster"
 	pubsub_api "github.com/wetware/ww/internal/api/pubsub"
@@ -55,28 +56,10 @@ func (h Host) Root(ctx context.Context) (anchor.Anchor, capnp.ReleaseFunc) {
 	return anchor.Anchor(f.Root()), release
 }
 
-// func (h *Host) Ls(ctx context.Context, d Dialer) (*anchor.Iterator, capnp.ReleaseFunc) {
-// 	return anchor.Anchor(h.resolve(ctx, d)).Ls(ctx)
-// }
-
-// // Walk to the register located at path.  Panics if len(path) == 0.
-// func (h *Host) Walk(ctx context.Context, d Dialer, path anchor.Path) (anchor.Anchor, capnp.ReleaseFunc) {
-// 	return anchor.Anchor(h.resolve(ctx, d)).Walk(ctx, path)
-// }
-
-// func (h *Host) resolve(ctx context.Context, d Dialer) api.Host {
-// 	h.once.Do(func() {
-// 		if h.Client == (capnp.Client{}) {
-// 			if conn, err := d.Dial(ctx, h.Info); err != nil {
-// 				h.Client = capnp.ErrorClient(err)
-// 			} else {
-// 				h.Client = conn.Bootstrap(ctx) // TODO:  wrap Client & call conn.Close() on Shutdown() hook?
-// 			}
-// 		}
-// 	})
-
-// 	return api.Host(h.Client)
-// }
+func (h Host) Debug(ctx context.Context) (debug.Debugger, capnp.ReleaseFunc) {
+	f, release := api.Host(h).Debug(ctx, nil)
+	return debug.Debugger(f.Debugger().Client()), release
+}
 
 /*---------------------------*
 |                            |
@@ -96,11 +79,16 @@ type AnchorProvider interface {
 	Anchor() anchor.Anchor
 }
 
+type DebugProvider interface {
+	Debugger() debug.Debugger
+}
+
 // HostServer provides the Host capability.
 type HostServer struct {
 	ViewProvider   ViewProvider
 	PubSubProvider PubSubProvider
 	AnchorProvider AnchorProvider
+	DebugProvider  DebugProvider
 }
 
 func (s HostServer) Client() capnp.Client {
@@ -133,6 +121,16 @@ func (s HostServer) Root(_ context.Context, call api.Host_root) error {
 	res, err := call.AllocResults()
 	if err == nil {
 		err = res.SetRoot(anchor_api.Anchor(s.AnchorProvider.Anchor()))
+	}
+
+	return err
+}
+
+func (s HostServer) Debug(_ context.Context, call api.Host_debug) error {
+	res, err := call.AllocResults()
+	if err == nil {
+		debugger := s.DebugProvider.Debugger()
+		err = res.SetDebugger(capnp.Client(debugger))
 	}
 
 	return err

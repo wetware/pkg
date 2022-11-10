@@ -3,7 +3,6 @@ package server
 
 import (
 	"context"
-	"time"
 
 	ps "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/lthibault/log"
@@ -11,7 +10,6 @@ import (
 
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/cluster"
-	"github.com/wetware/casm/pkg/cluster/pulse"
 	"github.com/wetware/casm/pkg/cluster/routing"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/anchor"
@@ -56,35 +54,22 @@ type Joiner struct {
 
 	Vat casm.Vat
 
-	Log          log.Logger           `optional:"true"`
-	TTL          time.Duration        `optional:"true"`
-	Meta         pulse.Preparer       `optional:"true"`
-	RoutingTable cluster.RoutingTable `optional:"true"`
+	Log      log.Logger    `optional:"true"`
+	Router   RoutingConfig `optional:"true"`
+	Debugger DebugConfig   `optional:"true"`
 }
 
 func (j Joiner) Join(r Router) (*Node, error) {
-	err := r.RegisterTopicValidator(j.Vat.NS, j.validator())
+	c, err := j.Router.Bind(r, j.Vat.NS)
 	if err != nil {
 		return nil, err
-	}
-
-	t, err := r.Join(j.Vat.NS)
-	if err != nil {
-		return nil, err
-	}
-
-	c := &cluster.Router{
-		Topic:        t,
-		Log:          j.Log,
-		TTL:          j.TTL,
-		Meta:         j.Meta,
-		RoutingTable: j.routing(),
 	}
 
 	j.Vat.Export(ww.HostCapability, ww.HostServer{
 		ViewProvider:   c,
 		PubSubProvider: j.pubsub(r),
 		AnchorProvider: j.anchor(),
+		DebugProvider:  j.Debugger.New(),
 	})
 
 	return &Node{
@@ -92,18 +77,6 @@ func (j Joiner) Join(r Router) (*Node, error) {
 		cluster: c,
 		pubsub:  r,
 	}, nil
-}
-
-func (j *Joiner) validator() ps.ValidatorEx {
-	return pulse.NewValidator(j.routing())
-}
-
-func (j *Joiner) routing() cluster.RoutingTable {
-	if j.RoutingTable == nil {
-		j.RoutingTable = routing.New(time.Now())
-	}
-
-	return j.RoutingTable
 }
 
 func (j Joiner) pubsub(router pubsub.TopicJoiner) *pubsub.Router {
