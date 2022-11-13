@@ -12,6 +12,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/wetware/ww/internal/cmd/cluster"
+	"github.com/wetware/ww/internal/cmd/debug"
 	"github.com/wetware/ww/internal/cmd/start"
 	ww "github.com/wetware/ww/pkg"
 )
@@ -56,11 +57,13 @@ var flags = []cli.Flag{
 var commands = []*cli.Command{
 	start.Command(),
 	cluster.Command(),
+	debug.Command(),
 }
 
 func main() {
 	run(&cli.App{
 		Name:                 "wetware",
+		HelpName:             "ww",
 		Usage:                "simple, secure clusters",
 		UsageText:            "ww [global options] command [command options] [arguments...]",
 		Copyright:            "2020 The Wetware Project",

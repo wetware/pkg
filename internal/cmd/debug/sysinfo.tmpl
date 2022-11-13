@@ -1,0 +1,26 @@
+=========
+ VERSION 
+=========
+
+Wetware v{{ .Version }}
+CASM    v{{ .CASMVersion }}
+
+=========
+ RUNTIME
+=========
+
+GOOS        {{ .Runtime.GOOS }}
+GOARCH      {{ .Runtime.GOARCH }}
+Compiler    {{ .Runtime.Compiler }}
+NumCPU      {{ .Runtime.NumCPU }}
+
+==================
+ Operating System
+==================
+
+PID             {{ .OS.PID }}
+Hostname        {{ .OS.Hostname }}
+Args            {{ .OS.Args }}
+User Login      {{ .OS.User.Username }}
+User Name       {{ .OS.User.DisplayName }}
+Home Directory  {{ .OS.User.HomeDir }}

@@ -11,6 +11,7 @@ import (
 
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/cluster"
+	"github.com/wetware/casm/pkg/debug"
 	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/pubsub"
 )
@@ -60,6 +61,10 @@ func (n *Node) Join(ctx context.Context, topic string) (pubsub.Topic, capnp.Rele
 	defer release()
 
 	return router.Join(ctx, topic)
+}
+
+func (n *Node) Debug(ctx context.Context) (debug.Debugger, capnp.ReleaseFunc) {
+	return n.host.Debug(ctx)
 }
 
 func (n *Node) Path() string { return "/" }
