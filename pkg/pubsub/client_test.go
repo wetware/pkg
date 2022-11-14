@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/libp2p/go-libp2p"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -89,6 +90,42 @@ func TestPubSub(t *testing.T) {
 	})
 
 	assert.NoError(t, g.Wait())
+}
+
+func TestSubscribe_cancel(t *testing.T) {
+	t.Parallel()
+
+	/*
+		Test that releasing a subscription causes the iterator to
+		unblock.
+	*/
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	gs, release := newGossipSub(ctx)
+	defer release()
+
+	ps := (&pscap.Router{TopicJoiner: gs}).PubSub()
+	defer ps.Release()
+
+	topic, release := ps.Join(ctx, "test")
+	defer release()
+
+	sub, release := topic.Subscribe(ctx)
+	defer release()
+
+	assert.Eventually(t, func() bool {
+		release()
+
+		select {
+		case <-sub.Future.Done():
+			return true
+		default:
+			return false
+		}
+	}, time.Millisecond*10, time.Millisecond,
+		"should eventually abort iteration")
 }
 
 func annotate(prefix string, err error) error {
