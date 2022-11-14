@@ -24,7 +24,7 @@ var subcommands = []*cli.Command{
 	env(),
 	info(),
 	profile(),
-	// trace(),
+	trace(),
 }
 
 func Command() *cli.Command {
