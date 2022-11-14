@@ -21,6 +21,7 @@ var (
 )
 
 var subcommands = []*cli.Command{
+	env(),
 	info(),
 	profile(),
 	// trace(),
