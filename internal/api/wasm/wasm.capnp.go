@@ -232,7 +232,6 @@ func (s Runtime_Context) NewEnv(n int32) (Runtime_Context_Field_List, error) {
 	err = capnp.Struct(s).SetPtr(1, l.ToPtr())
 	return l, err
 }
-
 func (s Runtime_Context) Stdin() iostream.Provider {
 	p, _ := capnp.Struct(s).Ptr(2)
 	return iostream.Provider(p.Interface().Client())
@@ -307,11 +306,10 @@ func NewRuntime_Context_List(s *capnp.Segment, sz int32) (Runtime_Context_List, 
 // Runtime_Context_Future is a wrapper for a Runtime_Context promised by a client call.
 type Runtime_Context_Future struct{ *capnp.Future }
 
-func (p Runtime_Context_Future) Struct() (Runtime_Context, error) {
-	s, err := p.Future.Struct()
-	return Runtime_Context(s), err
+func (f Runtime_Context_Future) Struct() (Runtime_Context, error) {
+	p, err := f.Future.Ptr()
+	return Runtime_Context(p.Struct()), err
 }
-
 func (p Runtime_Context_Future) Stdin() iostream.Provider {
 	return iostream.Provider(p.Future.Field(2, nil).Client())
 }
@@ -419,9 +417,9 @@ func NewRuntime_Context_Field_List(s *capnp.Segment, sz int32) (Runtime_Context_
 // Runtime_Context_Field_Future is a wrapper for a Runtime_Context_Field promised by a client call.
 type Runtime_Context_Field_Future struct{ *capnp.Future }
 
-func (p Runtime_Context_Field_Future) Struct() (Runtime_Context_Field, error) {
-	s, err := p.Future.Struct()
-	return Runtime_Context_Field(s), err
+func (f Runtime_Context_Field_Future) Struct() (Runtime_Context_Field, error) {
+	p, err := f.Future.Ptr()
+	return Runtime_Context_Field(p.Struct()), err
 }
 
 type Runtime_Module capnp.Client
@@ -720,9 +718,9 @@ func NewRuntime_Module_Status_List(s *capnp.Segment, sz int32) (Runtime_Module_S
 // Runtime_Module_Status_Future is a wrapper for a Runtime_Module_Status promised by a client call.
 type Runtime_Module_Status_Future struct{ *capnp.Future }
 
-func (p Runtime_Module_Status_Future) Struct() (Runtime_Module_Status, error) {
-	s, err := p.Future.Struct()
-	return Runtime_Module_Status(s), err
+func (f Runtime_Module_Status_Future) Struct() (Runtime_Module_Status, error) {
+	p, err := f.Future.Ptr()
+	return Runtime_Module_Status(p.Struct()), err
 }
 
 type Runtime_Module_run_Params capnp.Struct
@@ -785,9 +783,9 @@ func NewRuntime_Module_run_Params_List(s *capnp.Segment, sz int32) (Runtime_Modu
 // Runtime_Module_run_Params_Future is a wrapper for a Runtime_Module_run_Params promised by a client call.
 type Runtime_Module_run_Params_Future struct{ *capnp.Future }
 
-func (p Runtime_Module_run_Params_Future) Struct() (Runtime_Module_run_Params, error) {
-	s, err := p.Future.Struct()
-	return Runtime_Module_run_Params(s), err
+func (f Runtime_Module_run_Params_Future) Struct() (Runtime_Module_run_Params, error) {
+	p, err := f.Future.Ptr()
+	return Runtime_Module_run_Params(p.Struct()), err
 }
 
 type Runtime_Module_run_Results capnp.Struct
@@ -850,9 +848,9 @@ func NewRuntime_Module_run_Results_List(s *capnp.Segment, sz int32) (Runtime_Mod
 // Runtime_Module_run_Results_Future is a wrapper for a Runtime_Module_run_Results promised by a client call.
 type Runtime_Module_run_Results_Future struct{ *capnp.Future }
 
-func (p Runtime_Module_run_Results_Future) Struct() (Runtime_Module_run_Results, error) {
-	s, err := p.Future.Struct()
-	return Runtime_Module_run_Results(s), err
+func (f Runtime_Module_run_Results_Future) Struct() (Runtime_Module_run_Results, error) {
+	p, err := f.Future.Ptr()
+	return Runtime_Module_run_Results(p.Struct()), err
 }
 
 type Runtime_Module_close_Params capnp.Struct
@@ -922,9 +920,9 @@ func NewRuntime_Module_close_Params_List(s *capnp.Segment, sz int32) (Runtime_Mo
 // Runtime_Module_close_Params_Future is a wrapper for a Runtime_Module_close_Params promised by a client call.
 type Runtime_Module_close_Params_Future struct{ *capnp.Future }
 
-func (p Runtime_Module_close_Params_Future) Struct() (Runtime_Module_close_Params, error) {
-	s, err := p.Future.Struct()
-	return Runtime_Module_close_Params(s), err
+func (f Runtime_Module_close_Params_Future) Struct() (Runtime_Module_close_Params, error) {
+	p, err := f.Future.Ptr()
+	return Runtime_Module_close_Params(p.Struct()), err
 }
 
 type Runtime_Module_close_Results capnp.Struct
@@ -987,9 +985,9 @@ func NewRuntime_Module_close_Results_List(s *capnp.Segment, sz int32) (Runtime_M
 // Runtime_Module_close_Results_Future is a wrapper for a Runtime_Module_close_Results promised by a client call.
 type Runtime_Module_close_Results_Future struct{ *capnp.Future }
 
-func (p Runtime_Module_close_Results_Future) Struct() (Runtime_Module_close_Results, error) {
-	s, err := p.Future.Struct()
-	return Runtime_Module_close_Results(s), err
+func (f Runtime_Module_close_Results_Future) Struct() (Runtime_Module_close_Results, error) {
+	p, err := f.Future.Ptr()
+	return Runtime_Module_close_Results(p.Struct()), err
 }
 
 const schema_9419a7a54f76d35b = "x\xda|T]h\x1cU\x14\xfe\xbe{gg&6" +

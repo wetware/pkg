@@ -331,9 +331,9 @@ func NewTopic_publish_Params_List(s *capnp.Segment, sz int32) (Topic_publish_Par
 // Topic_publish_Params_Future is a wrapper for a Topic_publish_Params promised by a client call.
 type Topic_publish_Params_Future struct{ *capnp.Future }
 
-func (p Topic_publish_Params_Future) Struct() (Topic_publish_Params, error) {
-	s, err := p.Future.Struct()
-	return Topic_publish_Params(s), err
+func (f Topic_publish_Params_Future) Struct() (Topic_publish_Params, error) {
+	p, err := f.Future.Ptr()
+	return Topic_publish_Params(p.Struct()), err
 }
 
 type Topic_publish_Results capnp.Struct
@@ -396,9 +396,9 @@ func NewTopic_publish_Results_List(s *capnp.Segment, sz int32) (Topic_publish_Re
 // Topic_publish_Results_Future is a wrapper for a Topic_publish_Results promised by a client call.
 type Topic_publish_Results_Future struct{ *capnp.Future }
 
-func (p Topic_publish_Results_Future) Struct() (Topic_publish_Results, error) {
-	s, err := p.Future.Struct()
-	return Topic_publish_Results(s), err
+func (f Topic_publish_Results_Future) Struct() (Topic_publish_Results, error) {
+	p, err := f.Future.Ptr()
+	return Topic_publish_Results(p.Struct()), err
 }
 
 type Topic_subscribe_Params capnp.Struct
@@ -486,11 +486,10 @@ func NewTopic_subscribe_Params_List(s *capnp.Segment, sz int32) (Topic_subscribe
 // Topic_subscribe_Params_Future is a wrapper for a Topic_subscribe_Params promised by a client call.
 type Topic_subscribe_Params_Future struct{ *capnp.Future }
 
-func (p Topic_subscribe_Params_Future) Struct() (Topic_subscribe_Params, error) {
-	s, err := p.Future.Struct()
-	return Topic_subscribe_Params(s), err
+func (f Topic_subscribe_Params_Future) Struct() (Topic_subscribe_Params, error) {
+	p, err := f.Future.Ptr()
+	return Topic_subscribe_Params(p.Struct()), err
 }
-
 func (p Topic_subscribe_Params_Future) Chan() channel.Sender {
 	return channel.Sender(p.Future.Field(0, nil).Client())
 }
@@ -555,9 +554,9 @@ func NewTopic_subscribe_Results_List(s *capnp.Segment, sz int32) (Topic_subscrib
 // Topic_subscribe_Results_Future is a wrapper for a Topic_subscribe_Results promised by a client call.
 type Topic_subscribe_Results_Future struct{ *capnp.Future }
 
-func (p Topic_subscribe_Results_Future) Struct() (Topic_subscribe_Results, error) {
-	s, err := p.Future.Struct()
-	return Topic_subscribe_Results(s), err
+func (f Topic_subscribe_Results_Future) Struct() (Topic_subscribe_Results, error) {
+	p, err := f.Future.Ptr()
+	return Topic_subscribe_Results(p.Struct()), err
 }
 
 type Topic_name_Params capnp.Struct
@@ -620,9 +619,9 @@ func NewTopic_name_Params_List(s *capnp.Segment, sz int32) (Topic_name_Params_Li
 // Topic_name_Params_Future is a wrapper for a Topic_name_Params promised by a client call.
 type Topic_name_Params_Future struct{ *capnp.Future }
 
-func (p Topic_name_Params_Future) Struct() (Topic_name_Params, error) {
-	s, err := p.Future.Struct()
-	return Topic_name_Params(s), err
+func (f Topic_name_Params_Future) Struct() (Topic_name_Params, error) {
+	p, err := f.Future.Ptr()
+	return Topic_name_Params(p.Struct()), err
 }
 
 type Topic_name_Results capnp.Struct
@@ -702,9 +701,9 @@ func NewTopic_name_Results_List(s *capnp.Segment, sz int32) (Topic_name_Results_
 // Topic_name_Results_Future is a wrapper for a Topic_name_Results promised by a client call.
 type Topic_name_Results_Future struct{ *capnp.Future }
 
-func (p Topic_name_Results_Future) Struct() (Topic_name_Results, error) {
-	s, err := p.Future.Struct()
-	return Topic_name_Results(s), err
+func (f Topic_name_Results_Future) Struct() (Topic_name_Results, error) {
+	p, err := f.Future.Ptr()
+	return Topic_name_Results(p.Struct()), err
 }
 
 type Router capnp.Client
@@ -936,9 +935,9 @@ func NewRouter_join_Params_List(s *capnp.Segment, sz int32) (Router_join_Params_
 // Router_join_Params_Future is a wrapper for a Router_join_Params promised by a client call.
 type Router_join_Params_Future struct{ *capnp.Future }
 
-func (p Router_join_Params_Future) Struct() (Router_join_Params, error) {
-	s, err := p.Future.Struct()
-	return Router_join_Params(s), err
+func (f Router_join_Params_Future) Struct() (Router_join_Params, error) {
+	p, err := f.Future.Ptr()
+	return Router_join_Params(p.Struct()), err
 }
 
 type Router_join_Results capnp.Struct
@@ -1018,11 +1017,10 @@ func NewRouter_join_Results_List(s *capnp.Segment, sz int32) (Router_join_Result
 // Router_join_Results_Future is a wrapper for a Router_join_Results promised by a client call.
 type Router_join_Results_Future struct{ *capnp.Future }
 
-func (p Router_join_Results_Future) Struct() (Router_join_Results, error) {
-	s, err := p.Future.Struct()
-	return Router_join_Results(s), err
+func (f Router_join_Results_Future) Struct() (Router_join_Results, error) {
+	p, err := f.Future.Ptr()
+	return Router_join_Results(p.Struct()), err
 }
-
 func (p Router_join_Results_Future) Topic() Topic {
 	return Topic(p.Future.Field(0, nil).Client())
 }

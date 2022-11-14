@@ -408,11 +408,10 @@ func NewProvider_provide_Params_List(s *capnp.Segment, sz int32) (Provider_provi
 // Provider_provide_Params_Future is a wrapper for a Provider_provide_Params promised by a client call.
 type Provider_provide_Params_Future struct{ *capnp.Future }
 
-func (p Provider_provide_Params_Future) Struct() (Provider_provide_Params, error) {
-	s, err := p.Future.Struct()
-	return Provider_provide_Params(s), err
+func (f Provider_provide_Params_Future) Struct() (Provider_provide_Params, error) {
+	p, err := f.Future.Ptr()
+	return Provider_provide_Params(p.Struct()), err
 }
-
 func (p Provider_provide_Params_Future) Stream() Stream {
 	return Stream(p.Future.Field(0, nil).Client())
 }
@@ -477,9 +476,9 @@ func NewProvider_provide_Results_List(s *capnp.Segment, sz int32) (Provider_prov
 // Provider_provide_Results_Future is a wrapper for a Provider_provide_Results promised by a client call.
 type Provider_provide_Results_Future struct{ *capnp.Future }
 
-func (p Provider_provide_Results_Future) Struct() (Provider_provide_Results, error) {
-	s, err := p.Future.Struct()
-	return Provider_provide_Results(s), err
+func (f Provider_provide_Results_Future) Struct() (Provider_provide_Results, error) {
+	p, err := f.Future.Ptr()
+	return Provider_provide_Results(p.Struct()), err
 }
 
 const schema_89c985e63e991441 = "x\xdat\xd0?HBQ\x14\x06\xf0\xef\xbcs\x9f\xaf" +

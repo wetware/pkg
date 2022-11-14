@@ -271,9 +271,9 @@ func NewAnchor_ls_Params_List(s *capnp.Segment, sz int32) (Anchor_ls_Params_List
 // Anchor_ls_Params_Future is a wrapper for a Anchor_ls_Params promised by a client call.
 type Anchor_ls_Params_Future struct{ *capnp.Future }
 
-func (p Anchor_ls_Params_Future) Struct() (Anchor_ls_Params, error) {
-	s, err := p.Future.Struct()
-	return Anchor_ls_Params(s), err
+func (f Anchor_ls_Params_Future) Struct() (Anchor_ls_Params, error) {
+	p, err := f.Future.Ptr()
+	return Anchor_ls_Params(p.Struct()), err
 }
 
 type Anchor_ls_Results capnp.Struct
@@ -346,7 +346,6 @@ func (s Anchor_ls_Results) NewNames(n int32) (capnp.TextList, error) {
 	err = capnp.Struct(s).SetPtr(0, l.ToPtr())
 	return l, err
 }
-
 func (s Anchor_ls_Results) Children() (Anchor_List, error) {
 	p, err := capnp.Struct(s).Ptr(1)
 	return Anchor_List(p.List()), err
@@ -383,9 +382,9 @@ func NewAnchor_ls_Results_List(s *capnp.Segment, sz int32) (Anchor_ls_Results_Li
 // Anchor_ls_Results_Future is a wrapper for a Anchor_ls_Results promised by a client call.
 type Anchor_ls_Results_Future struct{ *capnp.Future }
 
-func (p Anchor_ls_Results_Future) Struct() (Anchor_ls_Results, error) {
-	s, err := p.Future.Struct()
-	return Anchor_ls_Results(s), err
+func (f Anchor_ls_Results_Future) Struct() (Anchor_ls_Results, error) {
+	p, err := f.Future.Ptr()
+	return Anchor_ls_Results(p.Struct()), err
 }
 
 type Anchor_walk_Params capnp.Struct
@@ -465,9 +464,9 @@ func NewAnchor_walk_Params_List(s *capnp.Segment, sz int32) (Anchor_walk_Params_
 // Anchor_walk_Params_Future is a wrapper for a Anchor_walk_Params promised by a client call.
 type Anchor_walk_Params_Future struct{ *capnp.Future }
 
-func (p Anchor_walk_Params_Future) Struct() (Anchor_walk_Params, error) {
-	s, err := p.Future.Struct()
-	return Anchor_walk_Params(s), err
+func (f Anchor_walk_Params_Future) Struct() (Anchor_walk_Params, error) {
+	p, err := f.Future.Ptr()
+	return Anchor_walk_Params(p.Struct()), err
 }
 
 type Anchor_walk_Results capnp.Struct
@@ -547,11 +546,10 @@ func NewAnchor_walk_Results_List(s *capnp.Segment, sz int32) (Anchor_walk_Result
 // Anchor_walk_Results_Future is a wrapper for a Anchor_walk_Results promised by a client call.
 type Anchor_walk_Results_Future struct{ *capnp.Future }
 
-func (p Anchor_walk_Results_Future) Struct() (Anchor_walk_Results, error) {
-	s, err := p.Future.Struct()
-	return Anchor_walk_Results(s), err
+func (f Anchor_walk_Results_Future) Struct() (Anchor_walk_Results, error) {
+	p, err := f.Future.Ptr()
+	return Anchor_walk_Results(p.Struct()), err
 }
-
 func (p Anchor_walk_Results_Future) Anchor() Anchor {
 	return Anchor(p.Future.Field(0, nil).Client())
 }

@@ -235,11 +235,10 @@ func NewExecutor_exec_Params_List(s *capnp.Segment, sz int32) (Executor_exec_Par
 // Executor_exec_Params_Future is a wrapper for a Executor_exec_Params promised by a client call.
 type Executor_exec_Params_Future struct{ *capnp.Future }
 
-func (p Executor_exec_Params_Future) Struct() (Executor_exec_Params, error) {
-	s, err := p.Future.Struct()
-	return Executor_exec_Params(s), err
+func (f Executor_exec_Params_Future) Struct() (Executor_exec_Params, error) {
+	p, err := f.Future.Ptr()
+	return Executor_exec_Params(p.Struct()), err
 }
-
 func (p Executor_exec_Params_Future) Config() *capnp.Future {
 	return p.Future.Field(0, nil)
 }
@@ -321,11 +320,10 @@ func NewExecutor_exec_Results_List(s *capnp.Segment, sz int32) (Executor_exec_Re
 // Executor_exec_Results_Future is a wrapper for a Executor_exec_Results promised by a client call.
 type Executor_exec_Results_Future struct{ *capnp.Future }
 
-func (p Executor_exec_Results_Future) Struct() (Executor_exec_Results, error) {
-	s, err := p.Future.Struct()
-	return Executor_exec_Results(s), err
+func (f Executor_exec_Results_Future) Struct() (Executor_exec_Results, error) {
+	p, err := f.Future.Ptr()
+	return Executor_exec_Results(p.Struct()), err
 }
-
 func (p Executor_exec_Results_Future) Proc() Waiter {
 	return Waiter(p.Future.Field(0, nil).Client())
 }
@@ -542,9 +540,9 @@ func NewWaiter_wait_Params_List(s *capnp.Segment, sz int32) (Waiter_wait_Params_
 // Waiter_wait_Params_Future is a wrapper for a Waiter_wait_Params promised by a client call.
 type Waiter_wait_Params_Future struct{ *capnp.Future }
 
-func (p Waiter_wait_Params_Future) Struct() (Waiter_wait_Params, error) {
-	s, err := p.Future.Struct()
-	return Waiter_wait_Params(s), err
+func (f Waiter_wait_Params_Future) Struct() (Waiter_wait_Params, error) {
+	p, err := f.Future.Ptr()
+	return Waiter_wait_Params(p.Struct()), err
 }
 
 type Waiter_wait_Results capnp.Struct
@@ -618,11 +616,10 @@ func NewWaiter_wait_Results_List(s *capnp.Segment, sz int32) (Waiter_wait_Result
 // Waiter_wait_Results_Future is a wrapper for a Waiter_wait_Results promised by a client call.
 type Waiter_wait_Results_Future struct{ *capnp.Future }
 
-func (p Waiter_wait_Results_Future) Struct() (Waiter_wait_Results, error) {
-	s, err := p.Future.Struct()
-	return Waiter_wait_Results(s), err
+func (f Waiter_wait_Results_Future) Struct() (Waiter_wait_Results, error) {
+	p, err := f.Future.Ptr()
+	return Waiter_wait_Results(p.Struct()), err
 }
-
 func (p Waiter_wait_Results_Future) Result() *capnp.Future {
 	return p.Future.Field(0, nil)
 }

@@ -225,9 +225,9 @@ func NewCloser_close_Params_List(s *capnp.Segment, sz int32) (Closer_close_Param
 // Closer_close_Params_Future is a wrapper for a Closer_close_Params promised by a client call.
 type Closer_close_Params_Future struct{ *capnp.Future }
 
-func (p Closer_close_Params_Future) Struct() (Closer_close_Params, error) {
-	s, err := p.Future.Struct()
-	return Closer_close_Params(s), err
+func (f Closer_close_Params_Future) Struct() (Closer_close_Params, error) {
+	p, err := f.Future.Ptr()
+	return Closer_close_Params(p.Struct()), err
 }
 
 type Closer_close_Results capnp.Struct
@@ -290,9 +290,9 @@ func NewCloser_close_Results_List(s *capnp.Segment, sz int32) (Closer_close_Resu
 // Closer_close_Results_Future is a wrapper for a Closer_close_Results promised by a client call.
 type Closer_close_Results_Future struct{ *capnp.Future }
 
-func (p Closer_close_Results_Future) Struct() (Closer_close_Results, error) {
-	s, err := p.Future.Struct()
-	return Closer_close_Results(s), err
+func (f Closer_close_Results_Future) Struct() (Closer_close_Results, error) {
+	p, err := f.Future.Ptr()
+	return Closer_close_Results(p.Struct()), err
 }
 
 type Sender capnp.Client
@@ -518,11 +518,10 @@ func NewSender_send_Params_List(s *capnp.Segment, sz int32) (Sender_send_Params_
 // Sender_send_Params_Future is a wrapper for a Sender_send_Params promised by a client call.
 type Sender_send_Params_Future struct{ *capnp.Future }
 
-func (p Sender_send_Params_Future) Struct() (Sender_send_Params, error) {
-	s, err := p.Future.Struct()
-	return Sender_send_Params(s), err
+func (f Sender_send_Params_Future) Struct() (Sender_send_Params, error) {
+	p, err := f.Future.Ptr()
+	return Sender_send_Params(p.Struct()), err
 }
-
 func (p Sender_send_Params_Future) Value() *capnp.Future {
 	return p.Future.Field(0, nil)
 }
@@ -739,9 +738,9 @@ func NewPeeker_peek_Params_List(s *capnp.Segment, sz int32) (Peeker_peek_Params_
 // Peeker_peek_Params_Future is a wrapper for a Peeker_peek_Params promised by a client call.
 type Peeker_peek_Params_Future struct{ *capnp.Future }
 
-func (p Peeker_peek_Params_Future) Struct() (Peeker_peek_Params, error) {
-	s, err := p.Future.Struct()
-	return Peeker_peek_Params(s), err
+func (f Peeker_peek_Params_Future) Struct() (Peeker_peek_Params, error) {
+	p, err := f.Future.Ptr()
+	return Peeker_peek_Params(p.Struct()), err
 }
 
 type Peeker_peek_Results capnp.Struct
@@ -815,11 +814,10 @@ func NewPeeker_peek_Results_List(s *capnp.Segment, sz int32) (Peeker_peek_Result
 // Peeker_peek_Results_Future is a wrapper for a Peeker_peek_Results promised by a client call.
 type Peeker_peek_Results_Future struct{ *capnp.Future }
 
-func (p Peeker_peek_Results_Future) Struct() (Peeker_peek_Results, error) {
-	s, err := p.Future.Struct()
-	return Peeker_peek_Results(s), err
+func (f Peeker_peek_Results_Future) Struct() (Peeker_peek_Results, error) {
+	p, err := f.Future.Ptr()
+	return Peeker_peek_Results(p.Struct()), err
 }
-
 func (p Peeker_peek_Results_Future) Value() *capnp.Future {
 	return p.Future.Field(0, nil)
 }
@@ -1036,9 +1034,9 @@ func NewRecver_recv_Params_List(s *capnp.Segment, sz int32) (Recver_recv_Params_
 // Recver_recv_Params_Future is a wrapper for a Recver_recv_Params promised by a client call.
 type Recver_recv_Params_Future struct{ *capnp.Future }
 
-func (p Recver_recv_Params_Future) Struct() (Recver_recv_Params, error) {
-	s, err := p.Future.Struct()
-	return Recver_recv_Params(s), err
+func (f Recver_recv_Params_Future) Struct() (Recver_recv_Params, error) {
+	p, err := f.Future.Ptr()
+	return Recver_recv_Params(p.Struct()), err
 }
 
 type Recver_recv_Results capnp.Struct
@@ -1112,11 +1110,10 @@ func NewRecver_recv_Results_List(s *capnp.Segment, sz int32) (Recver_recv_Result
 // Recver_recv_Results_Future is a wrapper for a Recver_recv_Results promised by a client call.
 type Recver_recv_Results_Future struct{ *capnp.Future }
 
-func (p Recver_recv_Results_Future) Struct() (Recver_recv_Results, error) {
-	s, err := p.Future.Struct()
-	return Recver_recv_Results(s), err
+func (f Recver_recv_Results_Future) Struct() (Recver_recv_Results, error) {
+	p, err := f.Future.Ptr()
+	return Recver_recv_Results(p.Struct()), err
 }
-
 func (p Recver_recv_Results_Future) Value() *capnp.Future {
 	return p.Future.Field(0, nil)
 }

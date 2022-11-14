@@ -3,7 +3,7 @@ module github.com/wetware/ww
 go 1.18
 
 require (
-	capnproto.org/go/capnp/v3 v3.0.0-alpha.8
+	capnproto.org/go/capnp/v3 v3.0.0-alpha.9
 	github.com/davidlazar/go-crypto v0.0.0-20200604182044-b73af7476f6c // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/huin/goupnp v1.0.3 // indirect
@@ -38,7 +38,7 @@ require (
 	github.com/stretchr/testify v1.8.1
 	github.com/tetratelabs/wazero v1.0.0-pre.3
 	github.com/thejerf/suture/v4 v4.0.2
-	github.com/wetware/casm v0.0.0-20221109171839-bb95c18bc33d
+	github.com/wetware/casm v0.0.0-20221114083238-bbe359f9f4bc
 	golang.org/x/sync v0.1.0
 	gopkg.in/alexcesaro/statsd.v2 v2.0.0
 )
@@ -152,5 +152,3 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/blake3 v1.1.7 // indirect
 )
-
-replace github.com/wetware/casm => /Users/lthibault/Go/src/github.com/wetware/casm

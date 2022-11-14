@@ -367,9 +367,9 @@ func NewHost_view_Params_List(s *capnp.Segment, sz int32) (Host_view_Params_List
 // Host_view_Params_Future is a wrapper for a Host_view_Params promised by a client call.
 type Host_view_Params_Future struct{ *capnp.Future }
 
-func (p Host_view_Params_Future) Struct() (Host_view_Params, error) {
-	s, err := p.Future.Struct()
-	return Host_view_Params(s), err
+func (f Host_view_Params_Future) Struct() (Host_view_Params, error) {
+	p, err := f.Future.Ptr()
+	return Host_view_Params(p.Struct()), err
 }
 
 type Host_view_Results capnp.Struct
@@ -449,13 +449,12 @@ func NewHost_view_Results_List(s *capnp.Segment, sz int32) (Host_view_Results_Li
 // Host_view_Results_Future is a wrapper for a Host_view_Results promised by a client call.
 type Host_view_Results_Future struct{ *capnp.Future }
 
-func (p Host_view_Results_Future) Struct() (Host_view_Results, error) {
-	s, err := p.Future.Struct()
-	return Host_view_Results(s), err
+func (f Host_view_Results_Future) Struct() (Host_view_Results, error) {
+	p, err := f.Future.Ptr()
+	return Host_view_Results(p.Struct()), err
 }
-
-func (p Host_view_Results_Future) View() *capnp.Future {
-	return p.Future.Field(0, nil)
+func (p Host_view_Results_Future) View() capnp.Client {
+	return p.Future.Field(0, nil).Client()
 }
 
 type Host_pubSub_Params capnp.Struct
@@ -518,9 +517,9 @@ func NewHost_pubSub_Params_List(s *capnp.Segment, sz int32) (Host_pubSub_Params_
 // Host_pubSub_Params_Future is a wrapper for a Host_pubSub_Params promised by a client call.
 type Host_pubSub_Params_Future struct{ *capnp.Future }
 
-func (p Host_pubSub_Params_Future) Struct() (Host_pubSub_Params, error) {
-	s, err := p.Future.Struct()
-	return Host_pubSub_Params(s), err
+func (f Host_pubSub_Params_Future) Struct() (Host_pubSub_Params, error) {
+	p, err := f.Future.Ptr()
+	return Host_pubSub_Params(p.Struct()), err
 }
 
 type Host_pubSub_Results capnp.Struct
@@ -600,11 +599,10 @@ func NewHost_pubSub_Results_List(s *capnp.Segment, sz int32) (Host_pubSub_Result
 // Host_pubSub_Results_Future is a wrapper for a Host_pubSub_Results promised by a client call.
 type Host_pubSub_Results_Future struct{ *capnp.Future }
 
-func (p Host_pubSub_Results_Future) Struct() (Host_pubSub_Results, error) {
-	s, err := p.Future.Struct()
-	return Host_pubSub_Results(s), err
+func (f Host_pubSub_Results_Future) Struct() (Host_pubSub_Results, error) {
+	p, err := f.Future.Ptr()
+	return Host_pubSub_Results(p.Struct()), err
 }
-
 func (p Host_pubSub_Results_Future) PubSub() pubsub.Router {
 	return pubsub.Router(p.Future.Field(0, nil).Client())
 }
@@ -669,9 +667,9 @@ func NewHost_root_Params_List(s *capnp.Segment, sz int32) (Host_root_Params_List
 // Host_root_Params_Future is a wrapper for a Host_root_Params promised by a client call.
 type Host_root_Params_Future struct{ *capnp.Future }
 
-func (p Host_root_Params_Future) Struct() (Host_root_Params, error) {
-	s, err := p.Future.Struct()
-	return Host_root_Params(s), err
+func (f Host_root_Params_Future) Struct() (Host_root_Params, error) {
+	p, err := f.Future.Ptr()
+	return Host_root_Params(p.Struct()), err
 }
 
 type Host_root_Results capnp.Struct
@@ -751,11 +749,10 @@ func NewHost_root_Results_List(s *capnp.Segment, sz int32) (Host_root_Results_Li
 // Host_root_Results_Future is a wrapper for a Host_root_Results promised by a client call.
 type Host_root_Results_Future struct{ *capnp.Future }
 
-func (p Host_root_Results_Future) Struct() (Host_root_Results, error) {
-	s, err := p.Future.Struct()
-	return Host_root_Results(s), err
+func (f Host_root_Results_Future) Struct() (Host_root_Results, error) {
+	p, err := f.Future.Ptr()
+	return Host_root_Results(p.Struct()), err
 }
-
 func (p Host_root_Results_Future) Root() anchor.Anchor {
 	return anchor.Anchor(p.Future.Field(0, nil).Client())
 }
@@ -820,9 +817,9 @@ func NewHost_debug_Params_List(s *capnp.Segment, sz int32) (Host_debug_Params_Li
 // Host_debug_Params_Future is a wrapper for a Host_debug_Params promised by a client call.
 type Host_debug_Params_Future struct{ *capnp.Future }
 
-func (p Host_debug_Params_Future) Struct() (Host_debug_Params, error) {
-	s, err := p.Future.Struct()
-	return Host_debug_Params(s), err
+func (f Host_debug_Params_Future) Struct() (Host_debug_Params, error) {
+	p, err := f.Future.Ptr()
+	return Host_debug_Params(p.Struct()), err
 }
 
 type Host_debug_Results capnp.Struct
@@ -902,13 +899,12 @@ func NewHost_debug_Results_List(s *capnp.Segment, sz int32) (Host_debug_Results_
 // Host_debug_Results_Future is a wrapper for a Host_debug_Results promised by a client call.
 type Host_debug_Results_Future struct{ *capnp.Future }
 
-func (p Host_debug_Results_Future) Struct() (Host_debug_Results, error) {
-	s, err := p.Future.Struct()
-	return Host_debug_Results(s), err
+func (f Host_debug_Results_Future) Struct() (Host_debug_Results, error) {
+	p, err := f.Future.Ptr()
+	return Host_debug_Results(p.Struct()), err
 }
-
-func (p Host_debug_Results_Future) Debugger() *capnp.Future {
-	return p.Future.Field(0, nil)
+func (p Host_debug_Results_Future) Debugger() capnp.Client {
+	return p.Future.Field(0, nil).Client()
 }
 
 const schema_fcf6ac08e448a6ac = "x\xda\x8c\x92Mh\x13A\x14\xc7\xdf\x7ff\xb2\xdb\xd6" +

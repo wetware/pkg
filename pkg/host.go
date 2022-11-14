@@ -27,10 +27,6 @@ var HostCapability = casm.BasicCap{
 |                             |
 *-----------------------------*/
 
-// type Dialer interface {
-// 	Dial(context.Context, peer.AddrInfo) (*rpc.Conn, error)
-// }
-
 type Host api.Host
 
 func (h Host) AddRef() Host {
@@ -43,7 +39,7 @@ func (h Host) Release() {
 
 func (h Host) View(ctx context.Context) (cluster.View, capnp.ReleaseFunc) {
 	f, release := api.Host(h).View(ctx, nil)
-	return cluster.View(f.View().Client()), release
+	return cluster.View(f.View()), release
 }
 
 func (h Host) PubSub(ctx context.Context) (pubsub.Joiner, capnp.ReleaseFunc) {
@@ -58,7 +54,7 @@ func (h Host) Root(ctx context.Context) (anchor.Anchor, capnp.ReleaseFunc) {
 
 func (h Host) Debug(ctx context.Context) (debug.Debugger, capnp.ReleaseFunc) {
 	f, release := api.Host(h).Debug(ctx, nil)
-	return debug.Debugger(f.Debugger().Client()), release
+	return debug.Debugger(f.Debugger()), release
 }
 
 /*---------------------------*
