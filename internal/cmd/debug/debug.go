@@ -22,7 +22,7 @@ var (
 
 var subcommands = []*cli.Command{
 	info(),
-	// profile(),
+	profile(),
 	// trace(),
 }
 
