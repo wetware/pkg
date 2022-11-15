@@ -3,9 +3,12 @@ package pubsub_test
 import (
 	"context"
 	"fmt"
+	"net"
 	"testing"
 	"time"
 
+	capnp "capnproto.org/go/capnp/v3"
+	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/libp2p/go-libp2p"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -109,22 +112,32 @@ func TestSubscribe_cancel(t *testing.T) {
 	ps := (&pscap.Router{TopicJoiner: gs}).PubSub()
 	defer ps.Release()
 
-	topic, release := ps.Join(ctx, "test")
+	p0, p1 := net.Pipe()
+	c0 := rpc.NewConn(rpc.NewStreamTransport(p0), &rpc.Options{
+		BootstrapClient: capnp.Client(ps),
+	})
+	defer c0.Close()
+
+	c1 := rpc.NewConn(rpc.NewStreamTransport(p1), nil)
+	defer c1.Close()
+
+	joiner := pscap.Joiner(c1.Bootstrap(ctx))
+
+	topic, release := joiner.Join(ctx, "test")
 	defer release()
 
 	sub, release := topic.Subscribe(ctx)
 	defer release()
 
 	assert.Eventually(t, func() bool {
-		release()
-
 		select {
 		case <-sub.Future.Done():
 			return true
 		default:
+			release()
 			return false
 		}
-	}, time.Millisecond*10, time.Millisecond,
+	}, time.Millisecond*100, time.Millisecond*10,
 		"should eventually abort iteration")
 }
 
