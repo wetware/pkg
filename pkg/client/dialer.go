@@ -27,7 +27,9 @@ type Dialer struct {
 	Boot discovery.Discoverer
 }
 
-// Dial creates a client and connects it to a cluster.
+// Dial connects to the cluster, obtains a Host capability and
+// returns a client node.  The context is safe to cancel after
+// Dial returns.
 func (d Dialer) Dial(ctx context.Context) (*Node, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -70,7 +72,7 @@ func (d Dialer) connect(ctx context.Context, info peer.AddrInfo) (*Node, error) 
 	}
 
 	return &Node{
-		Vat:  d.Vat,
+		vat:  d.Vat,
 		conn: conn,
 	}, nil
 }

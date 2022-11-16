@@ -4,7 +4,6 @@ package client
 import (
 	"context"
 	"errors"
-	"sync"
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
@@ -21,22 +20,23 @@ import (
 var ErrDisconnected = errors.New("disconnected")
 
 type Node struct {
-	casm.Vat
-
-	once sync.Once
+	vat  casm.Vat
 	conn *rpc.Conn
-	host ww.Host
 }
 
-// Bootstrap blocks until the context expires, or the
-// node's Host capability resolves.  It is safe to cancel
-// the context passed to Dial after this method returns.
-func (n *Node) Bootstrap(ctx context.Context) error {
-	n.once.Do(func() {
-		n.host = ww.Host(n.conn.Bootstrap(ctx))
-	})
+// Return the host's underlying vat.  This is a low-level API that
+// exposes raw CASM and libp2p functionality.
+func (n *Node) Vat() casm.Vat {
+	return n.vat
+}
 
-	return capnp.Client(n.host).Resolve(ctx) // TODO:  remove?
+// Host to which the client node is connected.  This is a low-level API
+// that is not subject to Wetware's backwards-compatibility guarantees.
+// Users are encouraged to access this functionality by calling Node's
+// other methods.   This capability is null until a successful call to
+// Boostrap().
+func (n *Node) Host(ctx context.Context) ww.Host {
+	return ww.Host(n.conn.Bootstrap(ctx))
 }
 
 // Done returns a read-only channel that is closed when
@@ -52,19 +52,19 @@ func (n *Node) Close() error {
 }
 
 func (n *Node) View(ctx context.Context) (cluster.View, capnp.ReleaseFunc) {
-	return n.host.View(ctx)
+	return n.Host(ctx).View(ctx)
 }
 
 // Join a pubsub topic.
 func (n *Node) Join(ctx context.Context, topic string) (pubsub.Topic, capnp.ReleaseFunc) {
-	router, release := n.host.PubSub(ctx)
+	router, release := n.Host(ctx).PubSub(ctx)
 	defer release()
 
 	return router.Join(ctx, topic)
 }
 
 func (n *Node) Debug(ctx context.Context) (debug.Debugger, capnp.ReleaseFunc) {
-	return n.host.Debug(ctx)
+	return n.Host(ctx).Debug(ctx)
 }
 
 func (n *Node) Path() string { return "/" }

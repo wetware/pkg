@@ -8,6 +8,7 @@ import (
 	"go.uber.org/fx"
 )
 
+// Client declares dependencies for a *client.Node.
 func Client(opt ...Option) fx.Option {
 	var c Config
 	for _, option := range clientDefaults(opt) {
@@ -18,8 +19,7 @@ func Client(opt ...Option) fx.Option {
 		c.Vat(),
 		c.System(),
 		c.ClientBootstrap(),
-		fx.Provide(newClientNode),
-		fx.Invoke(bootClient))
+		fx.Provide(newClientNode))
 }
 
 func newClientNode(env Env, d client.Dialer) (*client.Node, error) {
@@ -27,10 +27,6 @@ func newClientNode(env Env, d client.Dialer) (*client.Node, error) {
 	defer cancel()
 
 	return d.Dial(ctx)
-}
-
-func bootClient(lx fx.Lifecycle, n *client.Node) {
-	lx.Append(bootstrapper(n))
 }
 
 func clientDefaults(opt []Option) []Option {

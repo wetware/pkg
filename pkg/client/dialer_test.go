@@ -172,9 +172,6 @@ func TestDialer(t *testing.T) {
 
 		require.NoError(t, err, "should return without error")
 		require.NotNil(t, n, "should return non-nil node")
-
-		err = n.Bootstrap(ctx)
-		assert.NoError(t, err, "should bootstrap successfully")
 	})
 }
 
