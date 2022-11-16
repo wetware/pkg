@@ -1,6 +1,6 @@
-//go:generate mockgen -source=host.go -destination=../internal/mock/pkg/host.go -package=mock_ww
+//go:generate mockgen -source=host.go -destination=../../internal/mock/pkg/host/host.go -package=mock_host
 
-package ww
+package host
 
 import (
 	"context"
@@ -17,7 +17,7 @@ import (
 	"github.com/wetware/ww/pkg/pubsub"
 )
 
-var HostCapability = casm.BasicCap{
+var Capability = casm.BasicCap{
 	"host/packed",
 	"host"}
 
@@ -79,23 +79,23 @@ type DebugProvider interface {
 	Debugger() debug.Debugger
 }
 
-// HostServer provides the Host capability.
-type HostServer struct {
+// Server provides the Host capability.
+type Server struct {
 	ViewProvider   ViewProvider
 	PubSubProvider PubSubProvider
 	AnchorProvider AnchorProvider
 	DebugProvider  DebugProvider
 }
 
-func (s HostServer) Client() capnp.Client {
+func (s Server) Client() capnp.Client {
 	return capnp.Client(s.Host())
 }
 
-func (s HostServer) Host() Host {
+func (s Server) Host() Host {
 	return Host(api.Host_ServerToClient(s))
 }
 
-func (s HostServer) View(_ context.Context, call api.Host_view) error {
+func (s Server) View(_ context.Context, call api.Host_view) error {
 	res, err := call.AllocResults()
 	if err == nil {
 		err = res.SetView(capnp.Client(s.ViewProvider.View()))
@@ -104,7 +104,7 @@ func (s HostServer) View(_ context.Context, call api.Host_view) error {
 	return err
 }
 
-func (s HostServer) PubSub(_ context.Context, call api.Host_pubSub) error {
+func (s Server) PubSub(_ context.Context, call api.Host_pubSub) error {
 	res, err := call.AllocResults()
 	if err == nil {
 		err = res.SetPubSub(pubsub_api.Router(s.PubSubProvider.PubSub()))
@@ -113,7 +113,7 @@ func (s HostServer) PubSub(_ context.Context, call api.Host_pubSub) error {
 	return err
 }
 
-func (s HostServer) Root(_ context.Context, call api.Host_root) error {
+func (s Server) Root(_ context.Context, call api.Host_root) error {
 	res, err := call.AllocResults()
 	if err == nil {
 		err = res.SetRoot(anchor_api.Anchor(s.AnchorProvider.Anchor()))
@@ -122,7 +122,7 @@ func (s HostServer) Root(_ context.Context, call api.Host_root) error {
 	return err
 }
 
-func (s HostServer) Debug(_ context.Context, call api.Host_debug) error {
+func (s Server) Debug(_ context.Context, call api.Host_debug) error {
 	res, err := call.AllocResults()
 	if err == nil {
 		debugger := s.DebugProvider.Debugger()

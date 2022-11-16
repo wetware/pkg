@@ -1,4 +1,4 @@
-package ww_test
+package host_test
 
 import (
 	"context"
@@ -12,8 +12,8 @@ import (
 
 	"github.com/wetware/casm/pkg/cluster"
 	"github.com/wetware/casm/pkg/cluster/routing"
-	mock_ww "github.com/wetware/ww/internal/mock/pkg"
-	ww "github.com/wetware/ww/pkg"
+	mock_ww "github.com/wetware/ww/internal/mock/pkg/host"
+	"github.com/wetware/ww/pkg/host"
 )
 
 func TestHost_View(t *testing.T) {
@@ -31,7 +31,7 @@ func TestHost_View(t *testing.T) {
 		Return(cluster.View(vs.Client())).
 		Times(1)
 
-	server := ww.HostServer{ViewProvider: vp}
+	server := host.Server{ViewProvider: vp}
 	v, release := server.Host().View(context.Background())
 	require.NotNil(t, release)
 	defer release()

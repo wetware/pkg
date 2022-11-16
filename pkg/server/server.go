@@ -11,8 +11,8 @@ import (
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/cluster"
 	"github.com/wetware/casm/pkg/cluster/routing"
-	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/anchor"
+	"github.com/wetware/ww/pkg/host"
 	"github.com/wetware/ww/pkg/pubsub"
 )
 
@@ -65,7 +65,7 @@ func (j Joiner) Join(r Router) (*Node, error) {
 		return nil, err
 	}
 
-	j.Vat.Export(ww.HostCapability, ww.HostServer{
+	j.Vat.Export(host.Capability, host.Server{
 		ViewProvider:   c,
 		PubSubProvider: j.pubsub(r),
 		AnchorProvider: j.anchor(),

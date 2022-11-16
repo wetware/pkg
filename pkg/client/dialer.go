@@ -12,7 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	casm "github.com/wetware/casm/pkg"
-	ww "github.com/wetware/ww/pkg"
+	"github.com/wetware/ww/pkg/host"
 )
 
 var ErrNoPeers = errors.New("no peers")
@@ -66,7 +66,7 @@ func (d Dialer) join(ctx context.Context) (n *Node, err error) {
 }
 
 func (d Dialer) connect(ctx context.Context, info peer.AddrInfo) (*Node, error) {
-	conn, err := d.Vat.Connect(ctx, info, ww.HostCapability)
+	conn, err := d.Vat.Connect(ctx, info, host.Capability)
 	if err != nil {
 		return nil, err
 	}

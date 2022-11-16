@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p/core/host"
+	p2p_host "github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/net/swarm"
 	inproc "github.com/lthibault/go-libp2p-inproc-transport"
@@ -17,8 +17,8 @@ import (
 
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/boot"
-	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/client"
+	"github.com/wetware/ww/pkg/host"
 )
 
 func TestDialer(t *testing.T) {
@@ -100,7 +100,7 @@ func TestDialer(t *testing.T) {
 
 		n, err := client.Dialer{
 			Vat:  clt,
-			Boot: boot.StaticAddrs{*host.InfoFromHost(h)},
+			Boot: boot.StaticAddrs{*p2p_host.InfoFromHost(h)},
 		}.Dial(ctx)
 
 		assert.ErrorIs(t, err, multistream.ErrNotSupported)
@@ -131,11 +131,11 @@ func TestDialer(t *testing.T) {
 			NS:   "test",
 			Host: h,
 		}
-		svr.Export(ww.HostCapability, ww.HostServer{})
+		svr.Export(host.Capability, host.Server{})
 
 		n, err := client.Dialer{
 			Vat:  clt,
-			Boot: boot.StaticAddrs{*host.InfoFromHost(h)},
+			Boot: boot.StaticAddrs{*p2p_host.InfoFromHost(h)},
 		}.Dial(ctx)
 
 		assert.ErrorIs(t, err, casm.ErrInvalidNS)
@@ -160,14 +160,14 @@ func TestDialer(t *testing.T) {
 			NS:   "test",
 			Host: h,
 		}
-		svr.Export(ww.HostCapability, ww.HostServer{})
+		svr.Export(host.Capability, host.Server{})
 
 		clt := newVat()
 		defer clt.Host.Close()
 
 		n, err := client.Dialer{
 			Vat:  clt,
-			Boot: boot.StaticAddrs{*host.InfoFromHost(h)},
+			Boot: boot.StaticAddrs{*p2p_host.InfoFromHost(h)},
 		}.Dial(ctx)
 
 		require.NoError(t, err, "should return without error")

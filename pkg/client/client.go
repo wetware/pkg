@@ -11,7 +11,7 @@ import (
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/cluster"
 	"github.com/wetware/casm/pkg/debug"
-	ww "github.com/wetware/ww/pkg"
+	"github.com/wetware/ww/pkg/host"
 	"github.com/wetware/ww/pkg/pubsub"
 )
 
@@ -35,8 +35,8 @@ func (n *Node) Vat() casm.Vat {
 // Users are encouraged to access this functionality by calling Node's
 // other methods.   This capability is null until a successful call to
 // Boostrap().
-func (n *Node) Host(ctx context.Context) ww.Host {
-	return ww.Host(n.conn.Bootstrap(ctx))
+func (n *Node) Host(ctx context.Context) host.Host {
+	return host.Host(n.conn.Bootstrap(ctx))
 }
 
 // Done returns a read-only channel that is closed when
