@@ -267,9 +267,3 @@ func bootstrap(b bootstrappable) func(context.Context) error {
 		return b.Bootstrap(ctx)
 	}
 }
-
-func bootstrapper(b bootstrappable) fx.Hook {
-	return fx.Hook{
-		OnStart: bootstrap(b),
-	}
-}
