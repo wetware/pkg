@@ -3,9 +3,10 @@ package statsdutil
 import (
 	"time"
 
+	"github.com/wetware/casm/pkg/util/metrics"
+
 	"github.com/lthibault/log"
 
-	ww "github.com/wetware/ww/pkg"
 	"gopkg.in/alexcesaro/statsd.v2"
 )
 
@@ -17,13 +18,13 @@ type Env interface {
 	Duration(string) time.Duration
 }
 
-// Metrics wraps a statsd client and satisfies the Wetware
+// Client wraps a statsd client and satisfies the Wetware
 // metrics interface.
-type Metrics struct{ *statsd.Client }
+type Client struct{ *statsd.Client }
 
 // New statsd client.
-func New(env Env, log log.Logger) ww.Metrics {
-	m, err := statsd.New(
+func New(env Env, log log.Logger) metrics.Client {
+	c, err := statsd.New(
 		addr(env),
 		muted(env),
 		logger(env, log),
@@ -33,27 +34,43 @@ func New(env Env, log log.Logger) ww.Metrics {
 	if err != nil {
 		log.WithError(err).
 			Warn("setup failed for statsd metrics")
-		return nopMetrics{}
+		return metrics.NopClient{}
 	}
 
-	return Metrics{m}
+	return Client{c}
 }
 
-func (m Metrics) Incr(bucket string) {
-	m.Client.Count(bucket, 1)
+func (c Client) Incr(bucket string) {
+	c.Client.Count(bucket, 1)
 }
 
-func (m Metrics) Decr(bucket string) {
-	m.Client.Count(bucket, -1)
+func (c Client) Decr(bucket string) {
+	c.Client.Count(bucket, -1)
 }
 
-func (m Metrics) Duration(bucket string, d time.Duration) {
-	m.Client.Timing(bucket, d.Milliseconds())
+func (c Client) Count(bucket string, n int) {
+	c.Client.Count(bucket, n)
 }
 
-func (m Metrics) WithPrefix(prefix string) ww.Metrics {
-	return Metrics{
-		Client: m.Client.Clone(statsd.Prefix(prefix)),
+func (c Client) Gauge(bucket string, n int) {
+	c.Client.Count(bucket, n)
+}
+
+func (c Client) Histogram(bucket string, n int) {
+	c.Client.Histogram(bucket, n)
+}
+
+func (c Client) Duration(bucket string, d time.Duration) {
+	c.Client.Timing(bucket, d.Milliseconds())
+}
+
+func (c Client) Timing(t0 time.Time) metrics.Timing {
+	return metrics.NewTiming(c, t0)
+}
+
+func (c Client) WithPrefix(prefix string) metrics.Client {
+	return Client{
+		Client: c.Client.Clone(statsd.Prefix(prefix)),
 	}
 }
 
@@ -76,14 +93,3 @@ func logger(env Env, log log.Logger) statsd.Option {
 func muted(env Env) statsd.Option {
 	return statsd.Mute(!env.IsSet("statsd"))
 }
-
-type nopMetrics struct{}
-
-func (nopMetrics) Incr(string)                    {}
-func (nopMetrics) Decr(string)                    {}
-func (nopMetrics) Count(string, any)              {}
-func (nopMetrics) Gauge(string, any)              {}
-func (nopMetrics) Duration(string, time.Duration) {}
-func (nopMetrics) Histogram(string, any)          {}
-func (nopMetrics) Flush()                         {}
-func (nopMetrics) WithPrefix(string) ww.Metrics   { return nopMetrics{} }

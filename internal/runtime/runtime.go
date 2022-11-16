@@ -13,7 +13,7 @@ import (
 	"go.uber.org/fx/fxevent"
 
 	casm "github.com/wetware/casm/pkg"
-	ww "github.com/wetware/ww/pkg"
+	"github.com/wetware/casm/pkg/util/metrics"
 )
 
 /****************************************************************
@@ -35,7 +35,7 @@ type Env interface {
 	*/
 
 	Log() log.Logger
-	Metrics() ww.Metrics
+	Metrics() metrics.Client
 
 	/*
 		Configuration
@@ -57,7 +57,7 @@ func Prelude(env Env) fx.Option {
 		fx.Supply(
 			fx.Annotate(env, fx.As(new(Env))),
 			fx.Annotate(env.Log(), fx.As(new(log.Logger))),
-			fx.Annotate(env.Metrics(), fx.As(new(ww.Metrics)))),
+			fx.Annotate(env.Metrics(), fx.As(new(metrics.Client)))),
 		fx.Decorate(
 			decorateLogger,
 			decorateEnv))

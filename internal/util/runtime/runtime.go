@@ -7,10 +7,10 @@ import (
 	"github.com/lthibault/log"
 	"github.com/urfave/cli/v2"
 
+	"github.com/wetware/casm/pkg/util/metrics"
 	"github.com/wetware/ww/internal/runtime"
 	logutil "github.com/wetware/ww/internal/util/log"
 	statsdutil "github.com/wetware/ww/internal/util/statsd"
-	ww "github.com/wetware/ww/pkg"
 )
 
 func New(c *cli.Context) runtime.Env {
@@ -27,7 +27,7 @@ func New(c *cli.Context) runtime.Env {
 type env struct {
 	flags
 	logging log.Logger
-	metrics ww.Metrics
+	metrics metrics.Client
 }
 
 func (env env) Context() context.Context {
@@ -38,7 +38,7 @@ func (env env) Log() log.Logger {
 	return env.logging
 }
 
-func (env env) Metrics() ww.Metrics {
+func (env env) Metrics() metrics.Client {
 	return env.metrics
 }
 

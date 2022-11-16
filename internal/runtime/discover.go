@@ -19,7 +19,7 @@ import (
 	"github.com/wetware/casm/pkg/boot/socket"
 	bootutil "github.com/wetware/casm/pkg/boot/util"
 	"github.com/wetware/casm/pkg/pex"
-	ww "github.com/wetware/ww/pkg"
+	"github.com/wetware/casm/pkg/util/metrics"
 	"go.uber.org/fx"
 )
 
@@ -161,7 +161,7 @@ func (b logMetricDisc) Advertise(ctx context.Context, ns string, opt ...discover
 type bootMetrics struct {
 	env interface {
 		Log() log.Logger
-		Metrics() ww.Metrics
+		Metrics() metrics.Client
 	}
 }
 
