@@ -593,6 +593,8 @@ github.com/wetware/casm v0.0.0-20221116015544-f5a968cc6fb8 h1:PUq1SmY9OYx4Ru5uvv
 github.com/wetware/casm v0.0.0-20221116015544-f5a968cc6fb8/go.mod h1:nqqwLAhR09dsVOae6CNK+643kK7CLY3Igq5NcNf/1SA=
 github.com/wetware/casm v0.0.0-20221116045712-1d612e526b65 h1:b0ntAgjejjpdsSniryWqrr5Wr0LXsLMGgq29lScy5zo=
 github.com/wetware/casm v0.0.0-20221116045712-1d612e526b65/go.mod h1:nqqwLAhR09dsVOae6CNK+643kK7CLY3Igq5NcNf/1SA=
+github.com/wetware/casm v0.0.0-20221118012254-b6c6908effa9 h1:t+LFOeMRKxPHwZJUoODmiz03gnF9tizpbcwZBjkonR0=
+github.com/wetware/casm v0.0.0-20221118012254-b6c6908effa9/go.mod h1:nqqwLAhR09dsVOae6CNK+643kK7CLY3Igq5NcNf/1SA=
 github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 h1:EKhdznlJHPMoKr0XTrX+IlJs1LH3lyx2nfr1dOlZ79k=
 github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1/go.mod h1:8UvriyWtv5Q5EOgjHaSseUEdkQfvwFv1I/In/O2M9gc=
 github.com/whyrusleeping/timecache v0.0.0-20160911033111-cfcb2f1abfee h1:lYbXeSvJi5zk5GLKVuid9TVjS9a0OmLIDKTfoZBL6Ow=
