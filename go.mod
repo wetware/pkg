@@ -1,6 +1,6 @@
 module github.com/wetware/ww
 
-go 1.18
+go 1.19
 
 require (
 	capnproto.org/go/capnp/v3 v3.0.0-alpha.9
