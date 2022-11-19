@@ -24,6 +24,14 @@ type Node struct {
 	conn *rpc.Conn
 }
 
+func (n *Node) String() string {
+	return n.vat.NS
+}
+
+func (n *Node) Loggable() map[string]any {
+	return n.vat.Loggable()
+}
+
 // Return the host's underlying vat.  This is a low-level API that
 // exposes raw CASM and libp2p functionality.
 func (n *Node) Vat() casm.Vat {
