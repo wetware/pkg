@@ -58,6 +58,7 @@ var flags = []cli.Flag{
 		Usage:   "enable nat",
 		Value:   false,
 		EnvVars: []string{"WW_NAT"},
+	},
 }
 
 // Command constructor
