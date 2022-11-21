@@ -53,6 +53,11 @@ var flags = []cli.Flag{
 		Usage:   "metadata fields in key=value format",
 		EnvVars: []string{"WW_META"},
 	},
+	&cli.BoolFlag{
+		Name:    "nat",
+		Usage:   "enable nat",
+		Value:   false,
+		EnvVars: []string{"WW_NAT"},
 }
 
 // Command constructor

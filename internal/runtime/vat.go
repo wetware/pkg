@@ -27,11 +27,17 @@ type hostFactoryConfig struct {
 }
 
 func (c Config) newHostFactory(env Env, cfg hostFactoryConfig) casm.HostFactory {
-	return c.newHost(append([]libp2p.Option{
+	opts := []libp2p.Option{
 		libp2p.ListenAddrStrings(env.StringSlice("listen")...),
 		// libp2p.BandwidthReporter(cfg.Metrics),
 		libp2p.Identity(cfg.Priv),
-	}, c.hostOpt...)...)
+	}
+
+	if env.Bool("nat") {
+		opts = append(opts, libp2p.EnableNATService())
+	}
+
+	return c.newHost(append(opts, c.hostOpt...)...)
 }
 
 func newVat(env Env, lx fx.Lifecycle, f casm.HostFactory) (casm.Vat, error) {
