@@ -79,12 +79,14 @@ func setup() cli.BeforeFunc {
 }
 
 func teardown() cli.AfterFunc {
-	return func(c *cli.Context) error {
-		ctx, cancel := context.WithTimeout(
-			context.Background(),
-			app.StopTimeout())
-		defer cancel()
-
-		return app.Stop(ctx)
+	return func(c *cli.Context) (err error) {
+		if app != nil {
+			ctx, cancel := context.WithTimeout(
+				context.Background(),
+				app.StopTimeout())
+			defer cancel()
+			err = app.Stop(ctx)
+		}
+		return
 	}
 }
