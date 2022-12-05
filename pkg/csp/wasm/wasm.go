@@ -238,7 +238,7 @@ func (ex *execContext) Shutdown() {
 func (ex *execContext) Run(ctx context.Context, call wasm.Runtime_Module_run) error {
 	ex.once.Do(func() {
 		defer close(ex.done)
-		call.Ack()
+		call.Go()
 
 		err := gojs.Run(context.TODO(), ex.Runtime, ex.Module, ex.Config)
 		if e, ok := err.(*sys.ExitError); ok && e.ExitCode() != 0 {

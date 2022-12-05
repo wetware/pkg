@@ -121,7 +121,7 @@ func (t topicServer) Subscribe(ctx context.Context, call MethodSubscribe) error 
 	defer t.log.Trace("unregistered subscription handler")
 
 	// forward messages to the callback channel
-	for call.Ack(); handler.Open(); t.log.Trace("message received") {
+	for call.Go(); handler.Open(); t.log.Trace("message received") {
 		handler.Call(ctx, bind(ctx, sub))
 	}
 
