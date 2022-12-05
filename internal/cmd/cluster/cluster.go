@@ -78,6 +78,7 @@ func setup() cli.BeforeFunc {
 	}
 }
 
+// test
 func teardown() cli.AfterFunc {
 	return func(c *cli.Context) (err error) {
 		if app != nil {
