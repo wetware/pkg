@@ -1,10 +1,7 @@
 package runtime
 
 import (
-	"context"
-
 	casm "github.com/wetware/casm/pkg"
-	"github.com/wetware/ww/pkg/client"
 	"go.uber.org/fx"
 )
 
@@ -19,15 +16,16 @@ func Client(opt ...Option) fx.Option {
 		c.Vat(),
 		c.System(),
 		c.ClientBootstrap(),
-		fx.Provide(newClientNode))
+		//fx.Provide(newClientNode)
+	)
 }
 
-func newClientNode(env Env, d client.Dialer) (*client.Node, error) {
-	ctx, cancel := context.WithTimeout(env.Context(), env.Duration("timeout"))
-	defer cancel()
+// func newClientNode(env Env, d client.Dialer) (*client.Node, error) {
+// 	ctx, cancel := context.WithTimeout(env.Context(), env.Duration("timeout"))
+// 	defer cancel()
 
-	return d.Dial(ctx)
-}
+// 	return d.Dial(ctx)
+// }
 
 func clientDefaults(opt []Option) []Option {
 	return append([]Option{

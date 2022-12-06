@@ -16,6 +16,7 @@ var (
 	app    *fx.App
 	node   *client.Node
 	logger log.Logger
+	dialer client.Dialer
 )
 
 var subcommands = []*cli.Command{
@@ -62,11 +63,11 @@ func Command() *cli.Command {
 }
 
 func setup() cli.BeforeFunc {
-	return func(c *cli.Context) error {
+	return func(c *cli.Context) (err error) {
 		app = fx.New(
 			runtime.Prelude(runtimeutil.New(c)),
 			fx.StartTimeout(c.Duration("timeout")),
-			fx.Populate(&logger, &node),
+			fx.Populate(&logger, &dialer),
 			runtime.Client())
 
 		ctx, cancel := context.WithTimeout(
@@ -74,20 +75,22 @@ func setup() cli.BeforeFunc {
 			app.StartTimeout())
 		defer cancel()
 
+		node, err = dialer.Dial(ctx)
+
 		return app.Start(ctx)
 	}
 }
 
-// test
 func teardown() cli.AfterFunc {
 	return func(c *cli.Context) (err error) {
-		if app != nil {
-			ctx, cancel := context.WithTimeout(
-				context.Background(),
-				app.StopTimeout())
-			defer cancel()
-			err = app.Stop(ctx)
-		}
-		return
+		// if app != nil {
+		ctx, cancel := context.WithTimeout(
+			context.Background(),
+			app.StopTimeout())
+		defer cancel()
+		return app.Stop(ctx)
+		//err = app.Stop(ctx)
+		//}
+		//return
 	}
 }
