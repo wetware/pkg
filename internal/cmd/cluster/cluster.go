@@ -60,8 +60,6 @@ func Command() *cli.Command {
 		Usage:       "cli client for wetware clusters",
 		Aliases:     []string{"client"}, // TODO(soon):  deprecate
 		Flags:       flags,
-		Before:      setup(),
-		After:       teardown(),
 		Subcommands: subcommands,
 	}
 }
@@ -79,7 +77,9 @@ func setup() cli.BeforeFunc {
 			app.StartTimeout())
 		defer cancel()
 
-		node, err = dialer.Dial(ctx)
+		if node, err = dialer.Dial(ctx); err != nil {
+			return
+		}
 
 		return app.Start(ctx)
 	}

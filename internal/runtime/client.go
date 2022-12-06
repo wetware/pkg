@@ -16,7 +16,6 @@ func Client(opt ...Option) fx.Option {
 		c.Vat(),
 		c.System(),
 		c.ClientBootstrap(),
-		//fx.Provide(newClientNode)
 	)
 }
 
