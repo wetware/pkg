@@ -20,13 +20,6 @@ func Client(opt ...Option) fx.Option {
 	)
 }
 
-// func newClientNode(env Env, d client.Dialer) (*client.Node, error) {
-// 	ctx, cancel := context.WithTimeout(env.Context(), env.Duration("timeout"))
-// 	defer cancel()
-
-// 	return d.Dial(ctx)
-// }
-
 func clientDefaults(opt []Option) []Option {
 	return append([]Option{
 		WithHostConfig(casm.Client),
