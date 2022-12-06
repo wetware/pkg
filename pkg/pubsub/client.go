@@ -141,16 +141,20 @@ func (ch handler) Next() (b []byte, ok bool) {
 
 func (ch handler) Send(ctx context.Context, call chan_api.Sender_send) error {
 	ptr, err := call.Args().Value()
-	if err == nil {
-		// It's okay to block here, since there is only one writer.
-		// Back-pressure will be handled by the BBR flow-limiter.
-		select {
-		case ch <- ptr.Data():
-			return nil
-		case <-ctx.Done():
-			return ctx.Err()
-		}
+	if err != nil {
+		return err
 	}
 
-	return err
+	// Copy the message data.  The segment will be zeroed when Send returns.
+	msg := make([]byte, len(ptr.Data()))
+	copy(msg, ptr.Data())
+
+	// It's okay to block here, since there is only one writer.
+	// Back-pressure will be handled by the BBR flow-limiter.
+	select {
+	case ch <- msg:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }

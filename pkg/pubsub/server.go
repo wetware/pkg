@@ -94,16 +94,21 @@ func (t topicServer) Name(_ context.Context, call MethodName) error {
 
 func (t topicServer) Publish(ctx context.Context, call MethodPublish) error {
 	b, err := call.Args().Msg()
-	if err == nil {
-		// The call to t.topic.Publish() may block if the underlying router
-		// is not in the 'ready' state (e.g. discovering peers).  It's okay
-		// to block the RPC handler in such cases.  BBR will detect this as
-		// latency and automatically throttle the number of in-flight calls.
-		// Better to avoid spawning a goroutine each time we publish.
-		err = t.topic.Publish(ctx, b)
+	if err != nil {
+		return err
 	}
 
-	return err
+	// Copy the message data.  t.topic.Publish is asynchronous, and the
+	// segment will be zeroed when Send returns.
+	msg := make([]byte, len(b))
+	copy(msg, b)
+
+	// The call to t.topic.Publish() may block if the underlying router
+	// is not in the 'ready' state (e.g. discovering peers).  It's okay
+	// to block the RPC handler in such cases.  BBR will detect this as
+	// latency and automatically throttle the number of in-flight calls.
+	// Better to avoid spawning a goroutine each time we publish.
+	return t.topic.Publish(ctx, msg)
 }
 
 func (t topicServer) Subscribe(ctx context.Context, call MethodSubscribe) error {
