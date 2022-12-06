@@ -74,7 +74,7 @@ func setup() cli.BeforeFunc {
 
 		ctx, cancel := context.WithTimeout(
 			c.Context,
-			app.StartTimeout())
+			c.Duration("timeout"))
 		defer cancel()
 
 		if node, err = dialer.Dial(ctx); err != nil {
