@@ -14,6 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	inproc "github.com/lthibault/go-libp2p-inproc-transport"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 
 	pscap "github.com/wetware/ww/pkg/pubsub"
@@ -139,6 +140,57 @@ func TestSubscribe_cancel(t *testing.T) {
 		}
 	}, time.Millisecond*100, time.Millisecond*10,
 		"should eventually abort iteration")
+}
+
+func TestMessageCopy(t *testing.T) {
+	t.Parallel()
+
+	/*
+		This is a regression test that ensures pubsub messages are
+		copied prior to releasing their underlying Cap'n Proto segments.
+
+		Starting with Cap'n Proto v3.0.0-alpha.10, RPC messages and their
+		segments are pooled and zeroed between use.  This would manifest
+		as messages containing only null bytes.
+	*/
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	gs, release := newGossipSub(ctx)
+	defer release()
+
+	ps := (&pscap.Router{TopicJoiner: gs}).PubSub()
+	defer ps.Release()
+
+	p0, p1 := net.Pipe()
+	c0 := rpc.NewConn(rpc.NewStreamTransport(p0), &rpc.Options{
+		BootstrapClient: capnp.Client(ps),
+	})
+	defer c0.Close()
+
+	c1 := rpc.NewConn(rpc.NewStreamTransport(p1), nil)
+	defer c1.Close()
+
+	joiner := pscap.Joiner(c1.Bootstrap(ctx))
+
+	topic, release := joiner.Join(ctx, "test")
+	defer release()
+
+	sub, release := topic.Subscribe(ctx)
+	defer release()
+
+	cherr := make(chan error, 1)
+	go func() {
+		defer close(cherr)
+		cherr <- topic.Publish(ctx, []byte("test"))
+	}()
+
+	require.NoError(t, <-cherr,
+		"must publish test message before testing payload")
+
+	assert.Equal(t, "test", string(sub.Next()),
+		"should copy message payload before segment is zeroed")
 }
 
 func annotate(prefix string, err error) error {
