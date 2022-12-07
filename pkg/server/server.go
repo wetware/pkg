@@ -12,6 +12,7 @@ import (
 	"github.com/wetware/casm/pkg/cluster"
 	"github.com/wetware/casm/pkg/cluster/routing"
 	"github.com/wetware/ww/pkg/anchor"
+	"github.com/wetware/ww/pkg/discovery"
 	"github.com/wetware/ww/pkg/host"
 	"github.com/wetware/ww/pkg/pubsub"
 )
@@ -65,11 +66,13 @@ func (j Joiner) Join(r Router) (*Node, error) {
 		return nil, err
 	}
 
+	router := j.pubsub(r)
 	j.Vat.Export(host.Capability, host.Server{
 		ViewProvider:   c,
-		PubSubProvider: j.pubsub(r),
+		PubSubProvider: router,
 		AnchorProvider: j.anchor(),
 		DebugProvider:  j.Debugger.New(),
+		DiscoveryProvider: j.discovery(router.PubSub()),
 	})
 
 	return &Node{
@@ -83,6 +86,12 @@ func (j Joiner) pubsub(router pubsub.TopicJoiner) *pubsub.Router {
 	return &pubsub.Router{
 		Log:         j.Log,
 		TopicJoiner: router,
+	}
+}
+
+func (j Joiner) discovery(ps pubsub.Joiner) *discovery.DiscoveryServiceServer {
+	return &discovery.DiscoveryServiceServer{
+		Joiner: ps,
 	}
 }
 

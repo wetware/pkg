@@ -11,6 +11,7 @@ import (
 	context "context"
 	fmt "fmt"
 	channel "github.com/wetware/ww/internal/api/channel"
+	strconv "strconv"
 )
 
 type DiscoveryService capnp.Client
@@ -289,9 +290,9 @@ func NewDiscoveryService_provider_Params_List(s *capnp.Segment, sz int32) (Disco
 // DiscoveryService_provider_Params_Future is a wrapper for a DiscoveryService_provider_Params promised by a client call.
 type DiscoveryService_provider_Params_Future struct{ *capnp.Future }
 
-func (p DiscoveryService_provider_Params_Future) Struct() (DiscoveryService_provider_Params, error) {
-	s, err := p.Future.Struct()
-	return DiscoveryService_provider_Params(s), err
+func (f DiscoveryService_provider_Params_Future) Struct() (DiscoveryService_provider_Params, error) {
+	p, err := f.Future.Ptr()
+	return DiscoveryService_provider_Params(p.Struct()), err
 }
 
 type DiscoveryService_provider_Results capnp.Struct
@@ -341,16 +342,16 @@ func (s DiscoveryService_provider_Results) Message() *capnp.Message {
 func (s DiscoveryService_provider_Results) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s DiscoveryService_provider_Results) Provider() ServiceProvider {
+func (s DiscoveryService_provider_Results) Provider() Provider {
 	p, _ := capnp.Struct(s).Ptr(0)
-	return ServiceProvider(p.Interface().Client())
+	return Provider(p.Interface().Client())
 }
 
 func (s DiscoveryService_provider_Results) HasProvider() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s DiscoveryService_provider_Results) SetProvider(v ServiceProvider) error {
+func (s DiscoveryService_provider_Results) SetProvider(v Provider) error {
 	if !v.IsValid() {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
@@ -371,13 +372,12 @@ func NewDiscoveryService_provider_Results_List(s *capnp.Segment, sz int32) (Disc
 // DiscoveryService_provider_Results_Future is a wrapper for a DiscoveryService_provider_Results promised by a client call.
 type DiscoveryService_provider_Results_Future struct{ *capnp.Future }
 
-func (p DiscoveryService_provider_Results_Future) Struct() (DiscoveryService_provider_Results, error) {
-	s, err := p.Future.Struct()
-	return DiscoveryService_provider_Results(s), err
+func (f DiscoveryService_provider_Results_Future) Struct() (DiscoveryService_provider_Results, error) {
+	p, err := f.Future.Ptr()
+	return DiscoveryService_provider_Results(p.Struct()), err
 }
-
-func (p DiscoveryService_provider_Results_Future) Provider() ServiceProvider {
-	return ServiceProvider(p.Future.Field(0, nil).Client())
+func (p DiscoveryService_provider_Results_Future) Provider() Provider {
+	return Provider(p.Future.Field(0, nil).Client())
 }
 
 type DiscoveryService_locator_Params capnp.Struct
@@ -457,9 +457,9 @@ func NewDiscoveryService_locator_Params_List(s *capnp.Segment, sz int32) (Discov
 // DiscoveryService_locator_Params_Future is a wrapper for a DiscoveryService_locator_Params promised by a client call.
 type DiscoveryService_locator_Params_Future struct{ *capnp.Future }
 
-func (p DiscoveryService_locator_Params_Future) Struct() (DiscoveryService_locator_Params, error) {
-	s, err := p.Future.Struct()
-	return DiscoveryService_locator_Params(s), err
+func (f DiscoveryService_locator_Params_Future) Struct() (DiscoveryService_locator_Params, error) {
+	p, err := f.Future.Ptr()
+	return DiscoveryService_locator_Params(p.Struct()), err
 }
 
 type DiscoveryService_locator_Results capnp.Struct
@@ -509,16 +509,16 @@ func (s DiscoveryService_locator_Results) Message() *capnp.Message {
 func (s DiscoveryService_locator_Results) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s DiscoveryService_locator_Results) Locator() ServiceLocator {
+func (s DiscoveryService_locator_Results) Locator() Locator {
 	p, _ := capnp.Struct(s).Ptr(0)
-	return ServiceLocator(p.Interface().Client())
+	return Locator(p.Interface().Client())
 }
 
 func (s DiscoveryService_locator_Results) HasLocator() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s DiscoveryService_locator_Results) SetLocator(v ServiceLocator) error {
+func (s DiscoveryService_locator_Results) SetLocator(v Locator) error {
 	if !v.IsValid() {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
@@ -539,49 +539,48 @@ func NewDiscoveryService_locator_Results_List(s *capnp.Segment, sz int32) (Disco
 // DiscoveryService_locator_Results_Future is a wrapper for a DiscoveryService_locator_Results promised by a client call.
 type DiscoveryService_locator_Results_Future struct{ *capnp.Future }
 
-func (p DiscoveryService_locator_Results_Future) Struct() (DiscoveryService_locator_Results, error) {
-	s, err := p.Future.Struct()
-	return DiscoveryService_locator_Results(s), err
+func (f DiscoveryService_locator_Results_Future) Struct() (DiscoveryService_locator_Results, error) {
+	p, err := f.Future.Ptr()
+	return DiscoveryService_locator_Results(p.Struct()), err
+}
+func (p DiscoveryService_locator_Results_Future) Locator() Locator {
+	return Locator(p.Future.Field(0, nil).Client())
 }
 
-func (p DiscoveryService_locator_Results_Future) Locator() ServiceLocator {
-	return ServiceLocator(p.Future.Field(0, nil).Client())
-}
+type Provider capnp.Client
 
-type ServiceProvider capnp.Client
+// Provider_TypeID is the unique identifier for the type Provider.
+const Provider_TypeID = 0xcdc156a3faea6ebf
 
-// ServiceProvider_TypeID is the unique identifier for the type ServiceProvider.
-const ServiceProvider_TypeID = 0xa45793ff12ac3387
-
-func (c ServiceProvider) Provide(ctx context.Context, params func(ServiceProvider_provide_Params) error) (ServiceProvider_provide_Results_Future, capnp.ReleaseFunc) {
+func (c Provider) Provide(ctx context.Context, params func(Provider_provide_Params) error) (Provider_provide_Results_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
 		Method: capnp.Method{
-			InterfaceID:   0xa45793ff12ac3387,
+			InterfaceID:   0xcdc156a3faea6ebf,
 			MethodID:      0,
-			InterfaceName: "discovery.capnp:ServiceProvider",
+			InterfaceName: "discovery.capnp:Provider",
 			MethodName:    "provide",
 		},
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(ServiceProvider_provide_Params(s)) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Provider_provide_Params(s)) }
 	}
 	ans, release := capnp.Client(c).SendCall(ctx, s)
-	return ServiceProvider_provide_Results_Future{Future: ans.Future()}, release
+	return Provider_provide_Results_Future{Future: ans.Future()}, release
 }
 
 // String returns a string that identifies this capability for debugging
 // purposes.  Its format should not be depended on: in particular, it
 // should not be used to compare clients.  Use IsSame to compare clients
 // for equality.
-func (c ServiceProvider) String() string {
+func (c Provider) String() string {
 	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
 }
 
 // AddRef creates a new Client that refers to the same capability as c.
 // If c is nil or has resolved to null, then AddRef returns nil.
-func (c ServiceProvider) AddRef() ServiceProvider {
-	return ServiceProvider(capnp.Client(c).AddRef())
+func (c Provider) AddRef() Provider {
+	return Provider(capnp.Client(c).AddRef())
 }
 
 // Release releases a capability reference.  If this is the last
@@ -590,28 +589,28 @@ func (c ServiceProvider) AddRef() ServiceProvider {
 //
 // Release will panic if c has already been released, but not if c is
 // nil or resolved to null.
-func (c ServiceProvider) Release() {
+func (c Provider) Release() {
 	capnp.Client(c).Release()
 }
 
 // Resolve blocks until the capability is fully resolved or the Context
 // expires.
-func (c ServiceProvider) Resolve(ctx context.Context) error {
+func (c Provider) Resolve(ctx context.Context) error {
 	return capnp.Client(c).Resolve(ctx)
 }
 
-func (c ServiceProvider) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (c Provider) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Client(c).EncodeAsPtr(seg)
 }
 
-func (ServiceProvider) DecodeFromPtr(p capnp.Ptr) ServiceProvider {
-	return ServiceProvider(capnp.Client{}.DecodeFromPtr(p))
+func (Provider) DecodeFromPtr(p capnp.Ptr) Provider {
+	return Provider(capnp.Client{}.DecodeFromPtr(p))
 }
 
 // IsValid reports whether c is a valid reference to a capability.
 // A reference is invalid if it is nil, has resolved to null, or has
 // been released.
-func (c ServiceProvider) IsValid() bool {
+func (c Provider) IsValid() bool {
 	return capnp.Client(c).IsValid()
 }
 
@@ -619,7 +618,7 @@ func (c ServiceProvider) IsValid() bool {
 // same call to NewClient.  This can return false negatives if c or other
 // are not fully resolved: use Resolve if this is an issue.  If either
 // c or other are released, then IsSame panics.
-func (c ServiceProvider) IsSame(other ServiceProvider) bool {
+func (c Provider) IsSame(other Provider) bool {
 	return capnp.Client(c).IsSame(capnp.Client(other))
 }
 
@@ -627,266 +626,269 @@ func (c ServiceProvider) IsSame(other ServiceProvider) bool {
 // this client. This affects all future calls, but not calls already
 // waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
 // which is also the default.
-func (c ServiceProvider) SetFlowLimiter(lim fc.FlowLimiter) {
+func (c Provider) SetFlowLimiter(lim fc.FlowLimiter) {
 	capnp.Client(c).SetFlowLimiter(lim)
 }
 
 // Get the current flowcontrol.FlowLimiter used to manage flow control
 // for this client.
-func (c ServiceProvider) GetFlowLimiter() fc.FlowLimiter {
+func (c Provider) GetFlowLimiter() fc.FlowLimiter {
 	return capnp.Client(c).GetFlowLimiter()
-} // A ServiceProvider_Server is a ServiceProvider with a local implementation.
-type ServiceProvider_Server interface {
-	Provide(context.Context, ServiceProvider_provide) error
+} // A Provider_Server is a Provider with a local implementation.
+type Provider_Server interface {
+	Provide(context.Context, Provider_provide) error
 }
 
-// ServiceProvider_NewServer creates a new Server from an implementation of ServiceProvider_Server.
-func ServiceProvider_NewServer(s ServiceProvider_Server) *server.Server {
+// Provider_NewServer creates a new Server from an implementation of Provider_Server.
+func Provider_NewServer(s Provider_Server) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(ServiceProvider_Methods(nil, s), s, c)
+	return server.New(Provider_Methods(nil, s), s, c)
 }
 
-// ServiceProvider_ServerToClient creates a new Client from an implementation of ServiceProvider_Server.
+// Provider_ServerToClient creates a new Client from an implementation of Provider_Server.
 // The caller is responsible for calling Release on the returned Client.
-func ServiceProvider_ServerToClient(s ServiceProvider_Server) ServiceProvider {
-	return ServiceProvider(capnp.NewClient(ServiceProvider_NewServer(s)))
+func Provider_ServerToClient(s Provider_Server) Provider {
+	return Provider(capnp.NewClient(Provider_NewServer(s)))
 }
 
-// ServiceProvider_Methods appends Methods to a slice that invoke the methods on s.
+// Provider_Methods appends Methods to a slice that invoke the methods on s.
 // This can be used to create a more complicated Server.
-func ServiceProvider_Methods(methods []server.Method, s ServiceProvider_Server) []server.Method {
+func Provider_Methods(methods []server.Method, s Provider_Server) []server.Method {
 	if cap(methods) == 0 {
 		methods = make([]server.Method, 0, 1)
 	}
 
 	methods = append(methods, server.Method{
 		Method: capnp.Method{
-			InterfaceID:   0xa45793ff12ac3387,
+			InterfaceID:   0xcdc156a3faea6ebf,
 			MethodID:      0,
-			InterfaceName: "discovery.capnp:ServiceProvider",
+			InterfaceName: "discovery.capnp:Provider",
 			MethodName:    "provide",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.Provide(ctx, ServiceProvider_provide{call})
+			return s.Provide(ctx, Provider_provide{call})
 		},
 	})
 
 	return methods
 }
 
-// ServiceProvider_provide holds the state for a server call to ServiceProvider.provide.
+// Provider_provide holds the state for a server call to Provider.provide.
 // See server.Call for documentation.
-type ServiceProvider_provide struct {
+type Provider_provide struct {
 	*server.Call
 }
 
 // Args returns the call's arguments.
-func (c ServiceProvider_provide) Args() ServiceProvider_provide_Params {
-	return ServiceProvider_provide_Params(c.Call.Args())
+func (c Provider_provide) Args() Provider_provide_Params {
+	return Provider_provide_Params(c.Call.Args())
 }
 
 // AllocResults allocates the results struct.
-func (c ServiceProvider_provide) AllocResults() (ServiceProvider_provide_Results, error) {
+func (c Provider_provide) AllocResults() (Provider_provide_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return ServiceProvider_provide_Results(r), err
+	return Provider_provide_Results(r), err
 }
 
-// ServiceProvider_List is a list of ServiceProvider.
-type ServiceProvider_List = capnp.CapList[ServiceProvider]
+// Provider_List is a list of Provider.
+type Provider_List = capnp.CapList[Provider]
 
-// NewServiceProvider creates a new list of ServiceProvider.
-func NewServiceProvider_List(s *capnp.Segment, sz int32) (ServiceProvider_List, error) {
+// NewProvider creates a new list of Provider.
+func NewProvider_List(s *capnp.Segment, sz int32) (Provider_List, error) {
 	l, err := capnp.NewPointerList(s, sz)
-	return capnp.CapList[ServiceProvider](l), err
+	return capnp.CapList[Provider](l), err
 }
 
-type ServiceProvider_provide_Params capnp.Struct
+type Provider_provide_Params capnp.Struct
 
-// ServiceProvider_provide_Params_TypeID is the unique identifier for the type ServiceProvider_provide_Params.
-const ServiceProvider_provide_Params_TypeID = 0x9cd95e7efd9775b4
+// Provider_provide_Params_TypeID is the unique identifier for the type Provider_provide_Params.
+const Provider_provide_Params_TypeID = 0xd80e24dbc41b1f0d
 
-func NewServiceProvider_provide_Params(s *capnp.Segment) (ServiceProvider_provide_Params, error) {
+func NewProvider_provide_Params(s *capnp.Segment) (Provider_provide_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return ServiceProvider_provide_Params(st), err
+	return Provider_provide_Params(st), err
 }
 
-func NewRootServiceProvider_provide_Params(s *capnp.Segment) (ServiceProvider_provide_Params, error) {
+func NewRootProvider_provide_Params(s *capnp.Segment) (Provider_provide_Params, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return ServiceProvider_provide_Params(st), err
+	return Provider_provide_Params(st), err
 }
 
-func ReadRootServiceProvider_provide_Params(msg *capnp.Message) (ServiceProvider_provide_Params, error) {
+func ReadRootProvider_provide_Params(msg *capnp.Message) (Provider_provide_Params, error) {
 	root, err := msg.Root()
-	return ServiceProvider_provide_Params(root.Struct()), err
+	return Provider_provide_Params(root.Struct()), err
 }
 
-func (s ServiceProvider_provide_Params) String() string {
-	str, _ := text.Marshal(0x9cd95e7efd9775b4, capnp.Struct(s))
+func (s Provider_provide_Params) String() string {
+	str, _ := text.Marshal(0xd80e24dbc41b1f0d, capnp.Struct(s))
 	return str
 }
 
-func (s ServiceProvider_provide_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (s Provider_provide_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Struct(s).EncodeAsPtr(seg)
 }
 
-func (ServiceProvider_provide_Params) DecodeFromPtr(p capnp.Ptr) ServiceProvider_provide_Params {
-	return ServiceProvider_provide_Params(capnp.Struct{}.DecodeFromPtr(p))
+func (Provider_provide_Params) DecodeFromPtr(p capnp.Ptr) Provider_provide_Params {
+	return Provider_provide_Params(capnp.Struct{}.DecodeFromPtr(p))
 }
 
-func (s ServiceProvider_provide_Params) ToPtr() capnp.Ptr {
+func (s Provider_provide_Params) ToPtr() capnp.Ptr {
 	return capnp.Struct(s).ToPtr()
 }
-func (s ServiceProvider_provide_Params) IsValid() bool {
+func (s Provider_provide_Params) IsValid() bool {
 	return capnp.Struct(s).IsValid()
 }
 
-func (s ServiceProvider_provide_Params) Message() *capnp.Message {
+func (s Provider_provide_Params) Message() *capnp.Message {
 	return capnp.Struct(s).Message()
 }
 
-func (s ServiceProvider_provide_Params) Segment() *capnp.Segment {
+func (s Provider_provide_Params) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s ServiceProvider_provide_Params) Addrs() (AddrInfo_List, error) {
+func (s Provider_provide_Params) Addrs() (Addr, error) {
 	p, err := capnp.Struct(s).Ptr(0)
-	return AddrInfo_List(p.List()), err
+	return Addr(p.Struct()), err
 }
 
-func (s ServiceProvider_provide_Params) HasAddrs() bool {
+func (s Provider_provide_Params) HasAddrs() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s ServiceProvider_provide_Params) SetAddrs(v AddrInfo_List) error {
-	return capnp.Struct(s).SetPtr(0, v.ToPtr())
+func (s Provider_provide_Params) SetAddrs(v Addr) error {
+	return capnp.Struct(s).SetPtr(0, capnp.Struct(v).ToPtr())
 }
 
 // NewAddrs sets the addrs field to a newly
-// allocated AddrInfo_List, preferring placement in s's segment.
-func (s ServiceProvider_provide_Params) NewAddrs(n int32) (AddrInfo_List, error) {
-	l, err := NewAddrInfo_List(capnp.Struct(s).Segment(), n)
+// allocated Addr struct, preferring placement in s's segment.
+func (s Provider_provide_Params) NewAddrs() (Addr, error) {
+	ss, err := NewAddr(capnp.Struct(s).Segment())
 	if err != nil {
-		return AddrInfo_List{}, err
+		return Addr{}, err
 	}
-	err = capnp.Struct(s).SetPtr(0, l.ToPtr())
-	return l, err
+	err = capnp.Struct(s).SetPtr(0, capnp.Struct(ss).ToPtr())
+	return ss, err
 }
 
-// ServiceProvider_provide_Params_List is a list of ServiceProvider_provide_Params.
-type ServiceProvider_provide_Params_List = capnp.StructList[ServiceProvider_provide_Params]
+// Provider_provide_Params_List is a list of Provider_provide_Params.
+type Provider_provide_Params_List = capnp.StructList[Provider_provide_Params]
 
-// NewServiceProvider_provide_Params creates a new list of ServiceProvider_provide_Params.
-func NewServiceProvider_provide_Params_List(s *capnp.Segment, sz int32) (ServiceProvider_provide_Params_List, error) {
+// NewProvider_provide_Params creates a new list of Provider_provide_Params.
+func NewProvider_provide_Params_List(s *capnp.Segment, sz int32) (Provider_provide_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[ServiceProvider_provide_Params](l), err
+	return capnp.StructList[Provider_provide_Params](l), err
 }
 
-// ServiceProvider_provide_Params_Future is a wrapper for a ServiceProvider_provide_Params promised by a client call.
-type ServiceProvider_provide_Params_Future struct{ *capnp.Future }
+// Provider_provide_Params_Future is a wrapper for a Provider_provide_Params promised by a client call.
+type Provider_provide_Params_Future struct{ *capnp.Future }
 
-func (p ServiceProvider_provide_Params_Future) Struct() (ServiceProvider_provide_Params, error) {
-	s, err := p.Future.Struct()
-	return ServiceProvider_provide_Params(s), err
+func (f Provider_provide_Params_Future) Struct() (Provider_provide_Params, error) {
+	p, err := f.Future.Ptr()
+	return Provider_provide_Params(p.Struct()), err
+}
+func (p Provider_provide_Params_Future) Addrs() Addr_Future {
+	return Addr_Future{Future: p.Future.Field(0, nil)}
 }
 
-type ServiceProvider_provide_Results capnp.Struct
+type Provider_provide_Results capnp.Struct
 
-// ServiceProvider_provide_Results_TypeID is the unique identifier for the type ServiceProvider_provide_Results.
-const ServiceProvider_provide_Results_TypeID = 0xfd493bfa60bc16b8
+// Provider_provide_Results_TypeID is the unique identifier for the type Provider_provide_Results.
+const Provider_provide_Results_TypeID = 0x9f93db577b084c4b
 
-func NewServiceProvider_provide_Results(s *capnp.Segment) (ServiceProvider_provide_Results, error) {
+func NewProvider_provide_Results(s *capnp.Segment) (Provider_provide_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return ServiceProvider_provide_Results(st), err
+	return Provider_provide_Results(st), err
 }
 
-func NewRootServiceProvider_provide_Results(s *capnp.Segment) (ServiceProvider_provide_Results, error) {
+func NewRootProvider_provide_Results(s *capnp.Segment) (Provider_provide_Results, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return ServiceProvider_provide_Results(st), err
+	return Provider_provide_Results(st), err
 }
 
-func ReadRootServiceProvider_provide_Results(msg *capnp.Message) (ServiceProvider_provide_Results, error) {
+func ReadRootProvider_provide_Results(msg *capnp.Message) (Provider_provide_Results, error) {
 	root, err := msg.Root()
-	return ServiceProvider_provide_Results(root.Struct()), err
+	return Provider_provide_Results(root.Struct()), err
 }
 
-func (s ServiceProvider_provide_Results) String() string {
-	str, _ := text.Marshal(0xfd493bfa60bc16b8, capnp.Struct(s))
+func (s Provider_provide_Results) String() string {
+	str, _ := text.Marshal(0x9f93db577b084c4b, capnp.Struct(s))
 	return str
 }
 
-func (s ServiceProvider_provide_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (s Provider_provide_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Struct(s).EncodeAsPtr(seg)
 }
 
-func (ServiceProvider_provide_Results) DecodeFromPtr(p capnp.Ptr) ServiceProvider_provide_Results {
-	return ServiceProvider_provide_Results(capnp.Struct{}.DecodeFromPtr(p))
+func (Provider_provide_Results) DecodeFromPtr(p capnp.Ptr) Provider_provide_Results {
+	return Provider_provide_Results(capnp.Struct{}.DecodeFromPtr(p))
 }
 
-func (s ServiceProvider_provide_Results) ToPtr() capnp.Ptr {
+func (s Provider_provide_Results) ToPtr() capnp.Ptr {
 	return capnp.Struct(s).ToPtr()
 }
-func (s ServiceProvider_provide_Results) IsValid() bool {
+func (s Provider_provide_Results) IsValid() bool {
 	return capnp.Struct(s).IsValid()
 }
 
-func (s ServiceProvider_provide_Results) Message() *capnp.Message {
+func (s Provider_provide_Results) Message() *capnp.Message {
 	return capnp.Struct(s).Message()
 }
 
-func (s ServiceProvider_provide_Results) Segment() *capnp.Segment {
+func (s Provider_provide_Results) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
 
-// ServiceProvider_provide_Results_List is a list of ServiceProvider_provide_Results.
-type ServiceProvider_provide_Results_List = capnp.StructList[ServiceProvider_provide_Results]
+// Provider_provide_Results_List is a list of Provider_provide_Results.
+type Provider_provide_Results_List = capnp.StructList[Provider_provide_Results]
 
-// NewServiceProvider_provide_Results creates a new list of ServiceProvider_provide_Results.
-func NewServiceProvider_provide_Results_List(s *capnp.Segment, sz int32) (ServiceProvider_provide_Results_List, error) {
+// NewProvider_provide_Results creates a new list of Provider_provide_Results.
+func NewProvider_provide_Results_List(s *capnp.Segment, sz int32) (Provider_provide_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[ServiceProvider_provide_Results](l), err
+	return capnp.StructList[Provider_provide_Results](l), err
 }
 
-// ServiceProvider_provide_Results_Future is a wrapper for a ServiceProvider_provide_Results promised by a client call.
-type ServiceProvider_provide_Results_Future struct{ *capnp.Future }
+// Provider_provide_Results_Future is a wrapper for a Provider_provide_Results promised by a client call.
+type Provider_provide_Results_Future struct{ *capnp.Future }
 
-func (p ServiceProvider_provide_Results_Future) Struct() (ServiceProvider_provide_Results, error) {
-	s, err := p.Future.Struct()
-	return ServiceProvider_provide_Results(s), err
+func (f Provider_provide_Results_Future) Struct() (Provider_provide_Results, error) {
+	p, err := f.Future.Ptr()
+	return Provider_provide_Results(p.Struct()), err
 }
 
-type ServiceLocator capnp.Client
+type Locator capnp.Client
 
-// ServiceLocator_TypeID is the unique identifier for the type ServiceLocator.
-const ServiceLocator_TypeID = 0xc2aa099e87f4d0eb
+// Locator_TypeID is the unique identifier for the type Locator.
+const Locator_TypeID = 0xd8eba41bb8f5845d
 
-func (c ServiceLocator) FindProviders(ctx context.Context, params func(ServiceLocator_findProviders_Params) error) (ServiceLocator_findProviders_Results_Future, capnp.ReleaseFunc) {
+func (c Locator) FindProviders(ctx context.Context, params func(Locator_findProviders_Params) error) (Locator_findProviders_Results_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
 		Method: capnp.Method{
-			InterfaceID:   0xc2aa099e87f4d0eb,
+			InterfaceID:   0xd8eba41bb8f5845d,
 			MethodID:      0,
-			InterfaceName: "discovery.capnp:ServiceLocator",
+			InterfaceName: "discovery.capnp:Locator",
 			MethodName:    "findProviders",
 		},
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(ServiceLocator_findProviders_Params(s)) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Locator_findProviders_Params(s)) }
 	}
 	ans, release := capnp.Client(c).SendCall(ctx, s)
-	return ServiceLocator_findProviders_Results_Future{Future: ans.Future()}, release
+	return Locator_findProviders_Results_Future{Future: ans.Future()}, release
 }
 
 // String returns a string that identifies this capability for debugging
 // purposes.  Its format should not be depended on: in particular, it
 // should not be used to compare clients.  Use IsSame to compare clients
 // for equality.
-func (c ServiceLocator) String() string {
+func (c Locator) String() string {
 	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
 }
 
 // AddRef creates a new Client that refers to the same capability as c.
 // If c is nil or has resolved to null, then AddRef returns nil.
-func (c ServiceLocator) AddRef() ServiceLocator {
-	return ServiceLocator(capnp.Client(c).AddRef())
+func (c Locator) AddRef() Locator {
+	return Locator(capnp.Client(c).AddRef())
 }
 
 // Release releases a capability reference.  If this is the last
@@ -895,28 +897,28 @@ func (c ServiceLocator) AddRef() ServiceLocator {
 //
 // Release will panic if c has already been released, but not if c is
 // nil or resolved to null.
-func (c ServiceLocator) Release() {
+func (c Locator) Release() {
 	capnp.Client(c).Release()
 }
 
 // Resolve blocks until the capability is fully resolved or the Context
 // expires.
-func (c ServiceLocator) Resolve(ctx context.Context) error {
+func (c Locator) Resolve(ctx context.Context) error {
 	return capnp.Client(c).Resolve(ctx)
 }
 
-func (c ServiceLocator) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (c Locator) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Client(c).EncodeAsPtr(seg)
 }
 
-func (ServiceLocator) DecodeFromPtr(p capnp.Ptr) ServiceLocator {
-	return ServiceLocator(capnp.Client{}.DecodeFromPtr(p))
+func (Locator) DecodeFromPtr(p capnp.Ptr) Locator {
+	return Locator(capnp.Client{}.DecodeFromPtr(p))
 }
 
 // IsValid reports whether c is a valid reference to a capability.
 // A reference is invalid if it is nil, has resolved to null, or has
 // been released.
-func (c ServiceLocator) IsValid() bool {
+func (c Locator) IsValid() bool {
 	return capnp.Client(c).IsValid()
 }
 
@@ -924,7 +926,7 @@ func (c ServiceLocator) IsValid() bool {
 // same call to NewClient.  This can return false negatives if c or other
 // are not fully resolved: use Resolve if this is an issue.  If either
 // c or other are released, then IsSame panics.
-func (c ServiceLocator) IsSame(other ServiceLocator) bool {
+func (c Locator) IsSame(other Locator) bool {
 	return capnp.Client(c).IsSame(capnp.Client(other))
 }
 
@@ -932,136 +934,136 @@ func (c ServiceLocator) IsSame(other ServiceLocator) bool {
 // this client. This affects all future calls, but not calls already
 // waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
 // which is also the default.
-func (c ServiceLocator) SetFlowLimiter(lim fc.FlowLimiter) {
+func (c Locator) SetFlowLimiter(lim fc.FlowLimiter) {
 	capnp.Client(c).SetFlowLimiter(lim)
 }
 
 // Get the current flowcontrol.FlowLimiter used to manage flow control
 // for this client.
-func (c ServiceLocator) GetFlowLimiter() fc.FlowLimiter {
+func (c Locator) GetFlowLimiter() fc.FlowLimiter {
 	return capnp.Client(c).GetFlowLimiter()
-} // A ServiceLocator_Server is a ServiceLocator with a local implementation.
-type ServiceLocator_Server interface {
-	FindProviders(context.Context, ServiceLocator_findProviders) error
+} // A Locator_Server is a Locator with a local implementation.
+type Locator_Server interface {
+	FindProviders(context.Context, Locator_findProviders) error
 }
 
-// ServiceLocator_NewServer creates a new Server from an implementation of ServiceLocator_Server.
-func ServiceLocator_NewServer(s ServiceLocator_Server) *server.Server {
+// Locator_NewServer creates a new Server from an implementation of Locator_Server.
+func Locator_NewServer(s Locator_Server) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(ServiceLocator_Methods(nil, s), s, c)
+	return server.New(Locator_Methods(nil, s), s, c)
 }
 
-// ServiceLocator_ServerToClient creates a new Client from an implementation of ServiceLocator_Server.
+// Locator_ServerToClient creates a new Client from an implementation of Locator_Server.
 // The caller is responsible for calling Release on the returned Client.
-func ServiceLocator_ServerToClient(s ServiceLocator_Server) ServiceLocator {
-	return ServiceLocator(capnp.NewClient(ServiceLocator_NewServer(s)))
+func Locator_ServerToClient(s Locator_Server) Locator {
+	return Locator(capnp.NewClient(Locator_NewServer(s)))
 }
 
-// ServiceLocator_Methods appends Methods to a slice that invoke the methods on s.
+// Locator_Methods appends Methods to a slice that invoke the methods on s.
 // This can be used to create a more complicated Server.
-func ServiceLocator_Methods(methods []server.Method, s ServiceLocator_Server) []server.Method {
+func Locator_Methods(methods []server.Method, s Locator_Server) []server.Method {
 	if cap(methods) == 0 {
 		methods = make([]server.Method, 0, 1)
 	}
 
 	methods = append(methods, server.Method{
 		Method: capnp.Method{
-			InterfaceID:   0xc2aa099e87f4d0eb,
+			InterfaceID:   0xd8eba41bb8f5845d,
 			MethodID:      0,
-			InterfaceName: "discovery.capnp:ServiceLocator",
+			InterfaceName: "discovery.capnp:Locator",
 			MethodName:    "findProviders",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.FindProviders(ctx, ServiceLocator_findProviders{call})
+			return s.FindProviders(ctx, Locator_findProviders{call})
 		},
 	})
 
 	return methods
 }
 
-// ServiceLocator_findProviders holds the state for a server call to ServiceLocator.findProviders.
+// Locator_findProviders holds the state for a server call to Locator.findProviders.
 // See server.Call for documentation.
-type ServiceLocator_findProviders struct {
+type Locator_findProviders struct {
 	*server.Call
 }
 
 // Args returns the call's arguments.
-func (c ServiceLocator_findProviders) Args() ServiceLocator_findProviders_Params {
-	return ServiceLocator_findProviders_Params(c.Call.Args())
+func (c Locator_findProviders) Args() Locator_findProviders_Params {
+	return Locator_findProviders_Params(c.Call.Args())
 }
 
 // AllocResults allocates the results struct.
-func (c ServiceLocator_findProviders) AllocResults() (ServiceLocator_findProviders_Results, error) {
+func (c Locator_findProviders) AllocResults() (Locator_findProviders_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return ServiceLocator_findProviders_Results(r), err
+	return Locator_findProviders_Results(r), err
 }
 
-// ServiceLocator_List is a list of ServiceLocator.
-type ServiceLocator_List = capnp.CapList[ServiceLocator]
+// Locator_List is a list of Locator.
+type Locator_List = capnp.CapList[Locator]
 
-// NewServiceLocator creates a new list of ServiceLocator.
-func NewServiceLocator_List(s *capnp.Segment, sz int32) (ServiceLocator_List, error) {
+// NewLocator creates a new list of Locator.
+func NewLocator_List(s *capnp.Segment, sz int32) (Locator_List, error) {
 	l, err := capnp.NewPointerList(s, sz)
-	return capnp.CapList[ServiceLocator](l), err
+	return capnp.CapList[Locator](l), err
 }
 
-type ServiceLocator_findProviders_Params capnp.Struct
+type Locator_findProviders_Params capnp.Struct
 
-// ServiceLocator_findProviders_Params_TypeID is the unique identifier for the type ServiceLocator_findProviders_Params.
-const ServiceLocator_findProviders_Params_TypeID = 0x91d93eb8c530a76e
+// Locator_findProviders_Params_TypeID is the unique identifier for the type Locator_findProviders_Params.
+const Locator_findProviders_Params_TypeID = 0xa94bdd0b5449db25
 
-func NewServiceLocator_findProviders_Params(s *capnp.Segment) (ServiceLocator_findProviders_Params, error) {
+func NewLocator_findProviders_Params(s *capnp.Segment) (Locator_findProviders_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return ServiceLocator_findProviders_Params(st), err
+	return Locator_findProviders_Params(st), err
 }
 
-func NewRootServiceLocator_findProviders_Params(s *capnp.Segment) (ServiceLocator_findProviders_Params, error) {
+func NewRootLocator_findProviders_Params(s *capnp.Segment) (Locator_findProviders_Params, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return ServiceLocator_findProviders_Params(st), err
+	return Locator_findProviders_Params(st), err
 }
 
-func ReadRootServiceLocator_findProviders_Params(msg *capnp.Message) (ServiceLocator_findProviders_Params, error) {
+func ReadRootLocator_findProviders_Params(msg *capnp.Message) (Locator_findProviders_Params, error) {
 	root, err := msg.Root()
-	return ServiceLocator_findProviders_Params(root.Struct()), err
+	return Locator_findProviders_Params(root.Struct()), err
 }
 
-func (s ServiceLocator_findProviders_Params) String() string {
-	str, _ := text.Marshal(0x91d93eb8c530a76e, capnp.Struct(s))
+func (s Locator_findProviders_Params) String() string {
+	str, _ := text.Marshal(0xa94bdd0b5449db25, capnp.Struct(s))
 	return str
 }
 
-func (s ServiceLocator_findProviders_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (s Locator_findProviders_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Struct(s).EncodeAsPtr(seg)
 }
 
-func (ServiceLocator_findProviders_Params) DecodeFromPtr(p capnp.Ptr) ServiceLocator_findProviders_Params {
-	return ServiceLocator_findProviders_Params(capnp.Struct{}.DecodeFromPtr(p))
+func (Locator_findProviders_Params) DecodeFromPtr(p capnp.Ptr) Locator_findProviders_Params {
+	return Locator_findProviders_Params(capnp.Struct{}.DecodeFromPtr(p))
 }
 
-func (s ServiceLocator_findProviders_Params) ToPtr() capnp.Ptr {
+func (s Locator_findProviders_Params) ToPtr() capnp.Ptr {
 	return capnp.Struct(s).ToPtr()
 }
-func (s ServiceLocator_findProviders_Params) IsValid() bool {
+func (s Locator_findProviders_Params) IsValid() bool {
 	return capnp.Struct(s).IsValid()
 }
 
-func (s ServiceLocator_findProviders_Params) Message() *capnp.Message {
+func (s Locator_findProviders_Params) Message() *capnp.Message {
 	return capnp.Struct(s).Message()
 }
 
-func (s ServiceLocator_findProviders_Params) Segment() *capnp.Segment {
+func (s Locator_findProviders_Params) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s ServiceLocator_findProviders_Params) Chan() channel.Sender {
+func (s Locator_findProviders_Params) Chan() channel.Sender {
 	p, _ := capnp.Struct(s).Ptr(0)
 	return channel.Sender(p.Interface().Client())
 }
 
-func (s ServiceLocator_findProviders_Params) HasChan() bool {
+func (s Locator_findProviders_Params) HasChan() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s ServiceLocator_findProviders_Params) SetChan(v channel.Sender) error {
+func (s Locator_findProviders_Params) SetChan(v channel.Sender) error {
 	if !v.IsValid() {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
@@ -1070,259 +1072,565 @@ func (s ServiceLocator_findProviders_Params) SetChan(v channel.Sender) error {
 	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
-// ServiceLocator_findProviders_Params_List is a list of ServiceLocator_findProviders_Params.
-type ServiceLocator_findProviders_Params_List = capnp.StructList[ServiceLocator_findProviders_Params]
+// Locator_findProviders_Params_List is a list of Locator_findProviders_Params.
+type Locator_findProviders_Params_List = capnp.StructList[Locator_findProviders_Params]
 
-// NewServiceLocator_findProviders_Params creates a new list of ServiceLocator_findProviders_Params.
-func NewServiceLocator_findProviders_Params_List(s *capnp.Segment, sz int32) (ServiceLocator_findProviders_Params_List, error) {
+// NewLocator_findProviders_Params creates a new list of Locator_findProviders_Params.
+func NewLocator_findProviders_Params_List(s *capnp.Segment, sz int32) (Locator_findProviders_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[ServiceLocator_findProviders_Params](l), err
+	return capnp.StructList[Locator_findProviders_Params](l), err
 }
 
-// ServiceLocator_findProviders_Params_Future is a wrapper for a ServiceLocator_findProviders_Params promised by a client call.
-type ServiceLocator_findProviders_Params_Future struct{ *capnp.Future }
+// Locator_findProviders_Params_Future is a wrapper for a Locator_findProviders_Params promised by a client call.
+type Locator_findProviders_Params_Future struct{ *capnp.Future }
 
-func (p ServiceLocator_findProviders_Params_Future) Struct() (ServiceLocator_findProviders_Params, error) {
-	s, err := p.Future.Struct()
-	return ServiceLocator_findProviders_Params(s), err
+func (f Locator_findProviders_Params_Future) Struct() (Locator_findProviders_Params, error) {
+	p, err := f.Future.Ptr()
+	return Locator_findProviders_Params(p.Struct()), err
 }
-
-func (p ServiceLocator_findProviders_Params_Future) Chan() channel.Sender {
+func (p Locator_findProviders_Params_Future) Chan() channel.Sender {
 	return channel.Sender(p.Future.Field(0, nil).Client())
 }
 
-type ServiceLocator_findProviders_Results capnp.Struct
+type Locator_findProviders_Results capnp.Struct
 
-// ServiceLocator_findProviders_Results_TypeID is the unique identifier for the type ServiceLocator_findProviders_Results.
-const ServiceLocator_findProviders_Results_TypeID = 0x9ee26eaff034c49d
+// Locator_findProviders_Results_TypeID is the unique identifier for the type Locator_findProviders_Results.
+const Locator_findProviders_Results_TypeID = 0xa33c37f7a390a3bf
 
-func NewServiceLocator_findProviders_Results(s *capnp.Segment) (ServiceLocator_findProviders_Results, error) {
+func NewLocator_findProviders_Results(s *capnp.Segment) (Locator_findProviders_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return ServiceLocator_findProviders_Results(st), err
+	return Locator_findProviders_Results(st), err
 }
 
-func NewRootServiceLocator_findProviders_Results(s *capnp.Segment) (ServiceLocator_findProviders_Results, error) {
+func NewRootLocator_findProviders_Results(s *capnp.Segment) (Locator_findProviders_Results, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return ServiceLocator_findProviders_Results(st), err
+	return Locator_findProviders_Results(st), err
 }
 
-func ReadRootServiceLocator_findProviders_Results(msg *capnp.Message) (ServiceLocator_findProviders_Results, error) {
+func ReadRootLocator_findProviders_Results(msg *capnp.Message) (Locator_findProviders_Results, error) {
 	root, err := msg.Root()
-	return ServiceLocator_findProviders_Results(root.Struct()), err
+	return Locator_findProviders_Results(root.Struct()), err
 }
 
-func (s ServiceLocator_findProviders_Results) String() string {
-	str, _ := text.Marshal(0x9ee26eaff034c49d, capnp.Struct(s))
+func (s Locator_findProviders_Results) String() string {
+	str, _ := text.Marshal(0xa33c37f7a390a3bf, capnp.Struct(s))
 	return str
 }
 
-func (s ServiceLocator_findProviders_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (s Locator_findProviders_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Struct(s).EncodeAsPtr(seg)
 }
 
-func (ServiceLocator_findProviders_Results) DecodeFromPtr(p capnp.Ptr) ServiceLocator_findProviders_Results {
-	return ServiceLocator_findProviders_Results(capnp.Struct{}.DecodeFromPtr(p))
+func (Locator_findProviders_Results) DecodeFromPtr(p capnp.Ptr) Locator_findProviders_Results {
+	return Locator_findProviders_Results(capnp.Struct{}.DecodeFromPtr(p))
 }
 
-func (s ServiceLocator_findProviders_Results) ToPtr() capnp.Ptr {
+func (s Locator_findProviders_Results) ToPtr() capnp.Ptr {
 	return capnp.Struct(s).ToPtr()
 }
-func (s ServiceLocator_findProviders_Results) IsValid() bool {
+func (s Locator_findProviders_Results) IsValid() bool {
 	return capnp.Struct(s).IsValid()
 }
 
-func (s ServiceLocator_findProviders_Results) Message() *capnp.Message {
+func (s Locator_findProviders_Results) Message() *capnp.Message {
 	return capnp.Struct(s).Message()
 }
 
-func (s ServiceLocator_findProviders_Results) Segment() *capnp.Segment {
+func (s Locator_findProviders_Results) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
 
-// ServiceLocator_findProviders_Results_List is a list of ServiceLocator_findProviders_Results.
-type ServiceLocator_findProviders_Results_List = capnp.StructList[ServiceLocator_findProviders_Results]
+// Locator_findProviders_Results_List is a list of Locator_findProviders_Results.
+type Locator_findProviders_Results_List = capnp.StructList[Locator_findProviders_Results]
 
-// NewServiceLocator_findProviders_Results creates a new list of ServiceLocator_findProviders_Results.
-func NewServiceLocator_findProviders_Results_List(s *capnp.Segment, sz int32) (ServiceLocator_findProviders_Results_List, error) {
+// NewLocator_findProviders_Results creates a new list of Locator_findProviders_Results.
+func NewLocator_findProviders_Results_List(s *capnp.Segment, sz int32) (Locator_findProviders_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[ServiceLocator_findProviders_Results](l), err
+	return capnp.StructList[Locator_findProviders_Results](l), err
 }
 
-// ServiceLocator_findProviders_Results_Future is a wrapper for a ServiceLocator_findProviders_Results promised by a client call.
-type ServiceLocator_findProviders_Results_Future struct{ *capnp.Future }
+// Locator_findProviders_Results_Future is a wrapper for a Locator_findProviders_Results promised by a client call.
+type Locator_findProviders_Results_Future struct{ *capnp.Future }
 
-func (p ServiceLocator_findProviders_Results_Future) Struct() (ServiceLocator_findProviders_Results, error) {
-	s, err := p.Future.Struct()
-	return ServiceLocator_findProviders_Results(s), err
+func (f Locator_findProviders_Results_Future) Struct() (Locator_findProviders_Results, error) {
+	p, err := f.Future.Ptr()
+	return Locator_findProviders_Results(p.Struct()), err
 }
 
-type AddrInfo capnp.Struct
+type Addr capnp.Struct
 
-// AddrInfo_TypeID is the unique identifier for the type AddrInfo.
-const AddrInfo_TypeID = 0xeb56805616fef06f
+// Addr_TypeID is the unique identifier for the type Addr.
+const Addr_TypeID = 0xd0ec85d808eaabd9
 
-func NewAddrInfo(s *capnp.Segment) (AddrInfo, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
-	return AddrInfo(st), err
+func NewAddr(s *capnp.Segment) (Addr, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Addr(st), err
 }
 
-func NewRootAddrInfo(s *capnp.Segment) (AddrInfo, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
-	return AddrInfo(st), err
+func NewRootAddr(s *capnp.Segment) (Addr, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Addr(st), err
 }
 
-func ReadRootAddrInfo(msg *capnp.Message) (AddrInfo, error) {
+func ReadRootAddr(msg *capnp.Message) (Addr, error) {
 	root, err := msg.Root()
-	return AddrInfo(root.Struct()), err
+	return Addr(root.Struct()), err
 }
 
-func (s AddrInfo) String() string {
-	str, _ := text.Marshal(0xeb56805616fef06f, capnp.Struct(s))
+func (s Addr) String() string {
+	str, _ := text.Marshal(0xd0ec85d808eaabd9, capnp.Struct(s))
 	return str
 }
 
-func (s AddrInfo) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (s Addr) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Struct(s).EncodeAsPtr(seg)
 }
 
-func (AddrInfo) DecodeFromPtr(p capnp.Ptr) AddrInfo {
-	return AddrInfo(capnp.Struct{}.DecodeFromPtr(p))
+func (Addr) DecodeFromPtr(p capnp.Ptr) Addr {
+	return Addr(capnp.Struct{}.DecodeFromPtr(p))
 }
 
-func (s AddrInfo) ToPtr() capnp.Ptr {
+func (s Addr) ToPtr() capnp.Ptr {
 	return capnp.Struct(s).ToPtr()
 }
-func (s AddrInfo) IsValid() bool {
+func (s Addr) IsValid() bool {
 	return capnp.Struct(s).IsValid()
 }
 
-func (s AddrInfo) Message() *capnp.Message {
+func (s Addr) Message() *capnp.Message {
 	return capnp.Struct(s).Message()
 }
 
-func (s AddrInfo) Segment() *capnp.Segment {
+func (s Addr) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s AddrInfo) Id() (string, error) {
+func (s Addr) Maddrs() (capnp.DataList, error) {
 	p, err := capnp.Struct(s).Ptr(0)
-	return p.Text(), err
-}
-
-func (s AddrInfo) HasId() bool {
-	return capnp.Struct(s).HasPtr(0)
-}
-
-func (s AddrInfo) IdBytes() ([]byte, error) {
-	p, err := capnp.Struct(s).Ptr(0)
-	return p.TextBytes(), err
-}
-
-func (s AddrInfo) SetId(v string) error {
-	return capnp.Struct(s).SetText(0, v)
-}
-
-func (s AddrInfo) Addrs() (capnp.DataList, error) {
-	p, err := capnp.Struct(s).Ptr(1)
 	return capnp.DataList(p.List()), err
 }
 
-func (s AddrInfo) HasAddrs() bool {
-	return capnp.Struct(s).HasPtr(1)
+func (s Addr) HasMaddrs() bool {
+	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s AddrInfo) SetAddrs(v capnp.DataList) error {
-	return capnp.Struct(s).SetPtr(1, v.ToPtr())
+func (s Addr) SetMaddrs(v capnp.DataList) error {
+	return capnp.Struct(s).SetPtr(0, v.ToPtr())
 }
 
-// NewAddrs sets the addrs field to a newly
+// NewMaddrs sets the maddrs field to a newly
 // allocated capnp.DataList, preferring placement in s's segment.
-func (s AddrInfo) NewAddrs(n int32) (capnp.DataList, error) {
+func (s Addr) NewMaddrs(n int32) (capnp.DataList, error) {
 	l, err := capnp.NewDataList(capnp.Struct(s).Segment(), n)
 	if err != nil {
 		return capnp.DataList{}, err
 	}
-	err = capnp.Struct(s).SetPtr(1, l.ToPtr())
+	err = capnp.Struct(s).SetPtr(0, l.ToPtr())
 	return l, err
 }
 
-// AddrInfo_List is a list of AddrInfo.
-type AddrInfo_List = capnp.StructList[AddrInfo]
+// Addr_List is a list of Addr.
+type Addr_List = capnp.StructList[Addr]
 
-// NewAddrInfo creates a new list of AddrInfo.
-func NewAddrInfo_List(s *capnp.Segment, sz int32) (AddrInfo_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2}, sz)
-	return capnp.StructList[AddrInfo](l), err
+// NewAddr creates a new list of Addr.
+func NewAddr_List(s *capnp.Segment, sz int32) (Addr_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[Addr](l), err
 }
 
-// AddrInfo_Future is a wrapper for a AddrInfo promised by a client call.
-type AddrInfo_Future struct{ *capnp.Future }
+// Addr_Future is a wrapper for a Addr promised by a client call.
+type Addr_Future struct{ *capnp.Future }
 
-func (p AddrInfo_Future) Struct() (AddrInfo, error) {
-	s, err := p.Future.Struct()
-	return AddrInfo(s), err
+func (f Addr_Future) Struct() (Addr, error) {
+	p, err := f.Future.Ptr()
+	return Addr(p.Struct()), err
 }
 
-const schema_fcba4f486a351ac3 = "x\xda\x9cT]H\x14]\x18~\xdf3g\\\xfd\xd8" +
-	"U\xcf7\xe2\xf7)\xc4&l\x90\x81\xa6YP\x86\xed" +
-	"&\x82iA;\x06FQ\xd2\xb0\xb3\xd2\xc6\xbak3" +
-	"\xaea`\xa67B\xd4\x85u\x11A\x19\x84 X " +
-	"A\x81\xf4s\xd1\x1fDW\x06\x11\x18H\x10]hb" +
-	"y\xd1EI6qfvf\x7f\xda\x05\xeb\xeep\xe6" +
-	"\x99\xe7y\xde\xe7}\xdfS\xc7H\x80\xd6{\xbe\xb8\x80" +
-	"\xc8\xc7\xc4\x02#6Y\xf7bf\xcf\xdc\x180/\x02" +
-	"\x88\xe8\x02h\x98\x17n!\xa0\xb4,\xf8\x01\x8d{\x89" +
-	"\xabk\xe7\xba\xe6\xae\x03\xdb\xe8\x00\x9a\xe8Y\x0eh\xa3" +
-	"\x1cp\xe3\xf9\xf6\x95\xe9\xd8\x87q\x8b\x81\xf2\xef\x03t" +
-	"\x0a\x81\x1a\xa3\x0dw\xfe5\xae\x1c\x9e\x00V*\x18\xcf" +
-	"*w\x9c\xdaw\xf0\xc1\x0f\x00l\x88P\x82R\x82C" +
-	"\xa5\xd3\xb4U\xba\xc6O\xc6\xcb\xc9\x9b\xef\x85\x8e\xfdw" +
-	"\x81U9B\xc3\xf42\x17\x1a3\x85\x96f\xbf\x8e\x8e" +
-	"\x17M=\xcd\xa6\x93\xee\xd3U\xe9\x89\xc9\xf6\x98\xb6J" +
-	"\x8b&[T\x99\xd6\x0b\xb6\x16\xbfIg{MG8" +
-	"\xdb\xbc\xc96\xa15\xba\x07\x8f\x1c}\x97\x0eX\xa3\x17" +
-	"8\xc0#r\xc0\xec\xdbM\xfe\xe3\x17'>\xfe\xe6\xbe" +
-	"F\xfc\x07\xa5&\x91\xeb\xed\x12G\xa5K\xfcd\xc4W" +
-	"~\x96w\x9e\xef\\\x02V\x8a)\xb4H8*!\xbe" +
-	"\x92\x86M\xfc\xa0x\x06\xd0X\\\xee\xaa\xa8\xba\xbd\xf0" +
-	"-]zQ4\xa5\xbf\x9b\xd23\xe5\x8fN\xac\xeen" +
-	"[\xb327#\xad(\x18A\x184\xd4\x88\x1e\x8a\xf7" +
-	"\x875q\xa06\xa4\xf4\xc6z\x1b\x0f\x85\xb5\xfeH(" +
-	"| \x1eR\xfa\xe2Zmw$\xa6\x06\xb5x\x7fD" +
-	"\x0dk\xba/\xa8h.\xa5G\x97\xa9@\x01(\x020" +
-	"\xcf\x16\x00\xb9P@\xb9\x85`I\xe8\xa4\x12Cf|" +
-	".\xff\xb4\xb3l\xf9\xe1\x02\x00\x04\x90\xa1W\xa6\x04\xd3" +
-	"/\x19\xfe'SD\xc4\xa0\x80X\x9a\xaa\x14\x10\x19\xa0" +
-	"c\x89fY\xb2m\xd4\xf6Z\x07\x9f?\xa8hYn" +
-	"\xb6%\xdd\xf8\x08z\x15U\xd5t,\x86\x1c2\xc5i" +
-	"2\xeb\xab\xbc#\xac\x97$\xa2}\xba\xf3\x9b\x90\xc7\x1d" +
-	"\x04\x11e*\x88\x00\xce\xa4\xa3\x1d?c\xcd@\x98\xe8" +
-	"\x1aJV\x10\xc0 \xe60\xd2\x92\xbc\x18HR\xdb\x05" +
-	"k\xdcE\"\xda\x87\x19%\xb7\x03\xc8n\x01\xe5\xff\x09" +
-	"\x1a6\x10\x00\x90\xa5\xd6%+X\x92]\xb1\xdf*9" +
-	"\xe5\xdc^b\xb4w\x911\x0d\x08+r\x19v*\xe0" +
-	"5sYo\x05QK\xc1gu\x0cr\x0dP\x19\xc1" +
-	"\x92\x98\xd2\x13F7\x10t\xc3\x9f\xb0Z\xb1\xe8\x90\xc1" +
-	"\xdb\x9c\xe2\x1dJ\x02\x91\xa5v>+\x13!\x9f\x08\x98" +
-	"\x0d-4c\xb1\xf7\x0c\xed\xa7\x85\xd5\xb7\x03a\xd5." +
-	"D\xe7}@\xfb\x1d`\x1bx\xb3\x99+\xbd)\x01\xc7" +
-	"JfpNG\xf6\xaa\xaa\xd6\x16\xeb\x8e\xdb\xaav5" +
-	"\xd5\x95\x00\xb2O@\xb9\x8e C,C~Y\xc3\xa7" +
-	"}\xb3\xb5{BD\xb5\x83\xcb\x1c|\x0f\x90\xdc\xe3\x9e" +
-	"\x7f\xca\x92M\xfa\xcb.\xe5\xdbV\xbbI\xbf\x02\x00\x00" +
-	"\xff\xff\xd4\x05\xcf\xa6"
+type Message capnp.Struct
+type Message_Which uint16
+
+const (
+	Message_Which_request  Message_Which = 0
+	Message_Which_response Message_Which = 1
+)
+
+func (w Message_Which) String() string {
+	const s = "requestresponse"
+	switch w {
+	case Message_Which_request:
+		return s[0:7]
+	case Message_Which_response:
+		return s[7:15]
+
+	}
+	return "Message_Which(" + strconv.FormatUint(uint64(w), 10) + ")"
+}
+
+// Message_TypeID is the unique identifier for the type Message.
+const Message_TypeID = 0xd2afeaf36c70c91f
+
+func NewMessage(s *capnp.Segment) (Message, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
+	return Message(st), err
+}
+
+func NewRootMessage(s *capnp.Segment) (Message, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
+	return Message(st), err
+}
+
+func ReadRootMessage(msg *capnp.Message) (Message, error) {
+	root, err := msg.Root()
+	return Message(root.Struct()), err
+}
+
+func (s Message) String() string {
+	str, _ := text.Marshal(0xd2afeaf36c70c91f, capnp.Struct(s))
+	return str
+}
+
+func (s Message) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Message) DecodeFromPtr(p capnp.Ptr) Message {
+	return Message(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Message) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+
+func (s Message) Which() Message_Which {
+	return Message_Which(capnp.Struct(s).Uint16(0))
+}
+func (s Message) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Message) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Message) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Message) Request() (Message_Request, error) {
+	if capnp.Struct(s).Uint16(0) != 0 {
+		panic("Which() != request")
+	}
+	p, err := capnp.Struct(s).Ptr(0)
+	return Message_Request(p.Struct()), err
+}
+
+func (s Message) HasRequest() bool {
+	if capnp.Struct(s).Uint16(0) != 0 {
+		return false
+	}
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Message) SetRequest(v Message_Request) error {
+	capnp.Struct(s).SetUint16(0, 0)
+	return capnp.Struct(s).SetPtr(0, capnp.Struct(v).ToPtr())
+}
+
+// NewRequest sets the request field to a newly
+// allocated Message_Request struct, preferring placement in s's segment.
+func (s Message) NewRequest() (Message_Request, error) {
+	capnp.Struct(s).SetUint16(0, 0)
+	ss, err := NewMessage_Request(capnp.Struct(s).Segment())
+	if err != nil {
+		return Message_Request{}, err
+	}
+	err = capnp.Struct(s).SetPtr(0, capnp.Struct(ss).ToPtr())
+	return ss, err
+}
+
+func (s Message) Response() (Message_Response, error) {
+	if capnp.Struct(s).Uint16(0) != 1 {
+		panic("Which() != response")
+	}
+	p, err := capnp.Struct(s).Ptr(0)
+	return Message_Response(p.Struct()), err
+}
+
+func (s Message) HasResponse() bool {
+	if capnp.Struct(s).Uint16(0) != 1 {
+		return false
+	}
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Message) SetResponse(v Message_Response) error {
+	capnp.Struct(s).SetUint16(0, 1)
+	return capnp.Struct(s).SetPtr(0, capnp.Struct(v).ToPtr())
+}
+
+// NewResponse sets the response field to a newly
+// allocated Message_Response struct, preferring placement in s's segment.
+func (s Message) NewResponse() (Message_Response, error) {
+	capnp.Struct(s).SetUint16(0, 1)
+	ss, err := NewMessage_Response(capnp.Struct(s).Segment())
+	if err != nil {
+		return Message_Response{}, err
+	}
+	err = capnp.Struct(s).SetPtr(0, capnp.Struct(ss).ToPtr())
+	return ss, err
+}
+
+// Message_List is a list of Message.
+type Message_List = capnp.StructList[Message]
+
+// NewMessage creates a new list of Message.
+func NewMessage_List(s *capnp.Segment, sz int32) (Message_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1}, sz)
+	return capnp.StructList[Message](l), err
+}
+
+// Message_Future is a wrapper for a Message promised by a client call.
+type Message_Future struct{ *capnp.Future }
+
+func (f Message_Future) Struct() (Message, error) {
+	p, err := f.Future.Ptr()
+	return Message(p.Struct()), err
+}
+func (p Message_Future) Request() Message_Request_Future {
+	return Message_Request_Future{Future: p.Future.Field(0, nil)}
+}
+func (p Message_Future) Response() Message_Response_Future {
+	return Message_Response_Future{Future: p.Future.Field(0, nil)}
+}
+
+type Message_Request capnp.Struct
+
+// Message_Request_TypeID is the unique identifier for the type Message_Request.
+const Message_Request_TypeID = 0x9fe65a406fba5583
+
+func NewMessage_Request(s *capnp.Segment) (Message_Request, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Message_Request(st), err
+}
+
+func NewRootMessage_Request(s *capnp.Segment) (Message_Request, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Message_Request(st), err
+}
+
+func ReadRootMessage_Request(msg *capnp.Message) (Message_Request, error) {
+	root, err := msg.Root()
+	return Message_Request(root.Struct()), err
+}
+
+func (s Message_Request) String() string {
+	str, _ := text.Marshal(0x9fe65a406fba5583, capnp.Struct(s))
+	return str
+}
+
+func (s Message_Request) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Message_Request) DecodeFromPtr(p capnp.Ptr) Message_Request {
+	return Message_Request(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Message_Request) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Message_Request) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Message_Request) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Message_Request) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+
+// Message_Request_List is a list of Message_Request.
+type Message_Request_List = capnp.StructList[Message_Request]
+
+// NewMessage_Request creates a new list of Message_Request.
+func NewMessage_Request_List(s *capnp.Segment, sz int32) (Message_Request_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	return capnp.StructList[Message_Request](l), err
+}
+
+// Message_Request_Future is a wrapper for a Message_Request promised by a client call.
+type Message_Request_Future struct{ *capnp.Future }
+
+func (f Message_Request_Future) Struct() (Message_Request, error) {
+	p, err := f.Future.Ptr()
+	return Message_Request(p.Struct()), err
+}
+
+type Message_Response capnp.Struct
+
+// Message_Response_TypeID is the unique identifier for the type Message_Response.
+const Message_Response_TypeID = 0xf42beb36cd723e35
+
+func NewMessage_Response(s *capnp.Segment) (Message_Response, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Message_Response(st), err
+}
+
+func NewRootMessage_Response(s *capnp.Segment) (Message_Response, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Message_Response(st), err
+}
+
+func ReadRootMessage_Response(msg *capnp.Message) (Message_Response, error) {
+	root, err := msg.Root()
+	return Message_Response(root.Struct()), err
+}
+
+func (s Message_Response) String() string {
+	str, _ := text.Marshal(0xf42beb36cd723e35, capnp.Struct(s))
+	return str
+}
+
+func (s Message_Response) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Message_Response) DecodeFromPtr(p capnp.Ptr) Message_Response {
+	return Message_Response(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Message_Response) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Message_Response) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Message_Response) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Message_Response) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Message_Response) Addr() (Addr, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return Addr(p.Struct()), err
+}
+
+func (s Message_Response) HasAddr() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Message_Response) SetAddr(v Addr) error {
+	return capnp.Struct(s).SetPtr(0, capnp.Struct(v).ToPtr())
+}
+
+// NewAddr sets the addr field to a newly
+// allocated Addr struct, preferring placement in s's segment.
+func (s Message_Response) NewAddr() (Addr, error) {
+	ss, err := NewAddr(capnp.Struct(s).Segment())
+	if err != nil {
+		return Addr{}, err
+	}
+	err = capnp.Struct(s).SetPtr(0, capnp.Struct(ss).ToPtr())
+	return ss, err
+}
+
+// Message_Response_List is a list of Message_Response.
+type Message_Response_List = capnp.StructList[Message_Response]
+
+// NewMessage_Response creates a new list of Message_Response.
+func NewMessage_Response_List(s *capnp.Segment, sz int32) (Message_Response_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[Message_Response](l), err
+}
+
+// Message_Response_Future is a wrapper for a Message_Response promised by a client call.
+type Message_Response_Future struct{ *capnp.Future }
+
+func (f Message_Response_Future) Struct() (Message_Response, error) {
+	p, err := f.Future.Ptr()
+	return Message_Response(p.Struct()), err
+}
+func (p Message_Response_Future) Addr() Addr_Future {
+	return Addr_Future{Future: p.Future.Field(0, nil)}
+}
+
+const schema_fcba4f486a351ac3 = "x\xda\x8cU]h\x1cU\x18\xfd\xce\x9d;\xbb[\xdd" +
+	"M\xe62A\x1bKY\x02\x1b$jck\x89\x96 " +
+	"f]*\xd5\xa4\xc5\x9d\xf5\x8f\x16*\x0e\xbb\xa3MI" +
+	"v\xb73i$J\x09\xf8\x83(\x16D\x9f%\x0f\x09" +
+	"H\xedC\xc9\x9bV\xa4X}\xb0B\xa0\x15\x95\xd4 " +
+	"\"\x88\xb4\xa9\xf5E\xa5*\xea\x95;?;\xb3\x9b\xd8" +
+	"\xe6m\x989\xf7|\xe7\x9e\xef|\xdfl\x7f\x86\x15\xf9" +
+	"\x8e\xdc\xb5\x0c1\xeb\x90\x9e\x92c{3/>\xb5\xf2" +
+	"\xce\x1c\x89^\x10\xf14\xd1N\x9b\x8f\x82\xb8|\xf9\x89" +
+	"\xd3\x8d\xe2\x81\x9f\xe6Hl\x86\xcc\x9fkN\xfc\xbaz" +
+	"\xea\xcb\x00\xb1\x8f3\x98\xfby\x9a4yf\xfe\xad\xf9" +
+	"k\xf7\xdd?\xafP\xe1\xf9!\xee\xaa\xf3\xfd+\x8f<" +
+	"~\xf3wc'\x82/:\xd4\xa7>~\x18\x04s\x1b" +
+	"\x1f!\xc8\xcf\xdf\x9b\xfb^\xab\x8c-\x92\xe8k\x01\x8e" +
+	"\xf1\xb7\x15\xe0\xb8\x0f8S_\xfdk\xfe\xc9O\x96H" +
+	"\x18\x9a\xfc\xf4\xb6\xa1\xc3\x0f?z\xfao\"\x98\x8b\xfc" +
+	"\x0b\xf3cU\xcb\xfc\x90\xef1\x7fPO\xf2\xe2\xc9\xd5" +
+	"\xcc\xf2\xab?\x9f'a \x06\xfb\xac\xe69\xfe\xbey" +
+	"\xc1\xc7/\xf9\xc4\xad\xdbX\x06\x12\xe0\x87\x90fD\xe6" +
+	"?\xfc\xac\xa9\xeb\xb7\x13\x99[\xf5\xe7\x09r\xc2>\xe5" +
+	"\xa5\xee\xee\xfa\xaaM\xa7\xfe\x92\xd2\xf9\xba\xae\xe8r\xf9" +
+	"-\x9f\xad\x14\xba\x96\x03\x0f\x03\xc0\x09\xbd\xa4\x00\x8b>" +
+	"\xe0\xe0+\xbf\x7f\xb0e\xe1\xca\xf2\x9a\x8b\\\xd0\xcf\x9a" +
+	"\x17u%\xeck}\x8f\x89\x94\xba\xc8\x82;\x9c=\xb6" +
+	"\xff\xc0\xb7\xc9r\x97\xf57\x14\xdb\x9f>\xdb\xf9o\xfa" +
+	"G\x0e\xbe\xb9\xf0c'\xdb\xce\xde\xd4M0\x07\x14\x89" +
+	"\xd9\x9fz\xcd\x9c\xf1\xe9\x86\x1ep\x97\xee\xbdr\xe7o" +
+	"\xedm\x0chmu\xe0\x88\x7f`2\xa5\xa8/_}" +
+	"\xba\xb7\xef\xe4\xa5?\x92\xb5\x8f\xa7\xfc\xda\xef\xa6F\xe8" +
+	"\x05Y\x1b\xf7\xaa\x8di\xc7\xe53\x83U\xbbYo\x0e" +
+	"\x97\xdd\xc6\xf4x\xcdq\x07\x9b\xc1C\xa1\xe2xG'" +
+	"\xa6<\xa2\x16V\x8b\xb0\xfb\x1c\xcf\xb3\x9fs\x06+\xce" +
+	"\x91\xa3\x8e7Ee`-\xe1\xdeF\xd5\x9ej\xb8\x83" +
+	"\xcf\x8e\xd7k\x11\xb9W\xa88y\x9fv\xa3\xf8\xb2\xdd" +
+	"\xed\xda\x93\x9e\xc55N\xc4A$rw\x10Y\x19\x0d" +
+	"\xd6n\x86\xee\xea!\xbb\x0e!\x7f\xb9euW\xcf\xd5" +
+	"\x8f.\x11Q\x11\x02y\x8b3$_\x0a\xdcjq\x00" +
+	"(k\x80\x11G\x8c\x00A\xb1v=\xd2\xb2;|1" +
+	"\xf3\x98\xe3N\x8fW\x9d\xc8\x147t\x05m\x82F\x89" +
+	"\xac\xac\x06k3\x83\x8c\x80D\x04\x11\x07\xbf\xa3\x10\xeb" +
+	"t\x9d\x94\x87\x16\xd7t\xa2V\x0a\x11\x8d\xb4\x10%b" +
+	"BO\xcf\x86\xe4E$\x0dG\xc4\xd5\xfd`\xad\xe6\x06" +
+	"4-i\xc3\xa1W\x05\x86\x91I\xbbVs=t\x91" +
+	"\xefB\x8e\x98z\\+)l.Y\x19 \xb1;6" +
+	"\x95\x12\x09\xd4Gg\xc3\xde\xcb\x8a\xe35\x1bu\xcf!" +
+	"\xbf\x12\xcfJ\xe9W\x1e(\x11Y\x05\x0d\xd6v\x86\x1c" +
+	"\xfe\x95=Po\xb7)\xab\xee\xd2`\xedb\x98u\x03" +
+	"\x06\x18q\x15\x02\x0c\x82tcN\x18q\xd9\xf0\xeb\x8d" +
+	"\xbb5\x11D\xa9P\xb6Uvh\xbd\xf0\xf40t\xd7" +
+	"\xedI\x07Yb\xc8\x1260\x10\xeb\xb0\xdd\x13\xb3\xe5" +
+	"\x03w\xdb\xc3e\xacgp\x18\xf4D\xc7\xa3\x0d\x8bh" +
+	"\x09\x0b\xe1\x12\x13\x9b\xd22\x1a\x06\xca\xfb\xe3\xd0\xde\xf9" +
+	"\x1b\x1b\xd0\x9a\xe1\xa4\xe8R,z6\x04B\xc4\xab\xad" +
+	"#\xaa\xda\xff\x15\x09\"\x9b\xf1/\x10\xad\x1bD\xbf\x02" +
+	"\xb1c\x94\x98\x18H#\xde\xba\x88\xf6\xa1\xd8\xaa\xe2," +
+	"\xd2\xc9Y)\xb6\xa4\xb4_q\x9d\x95\x13E\xa3#\xe9" +
+	"\xc9\xc6\xaaV\\\xa7\x13\x1b\x18\xf3\xb0\xd7\x1b\x8a\xce\x7f" +
+	"\x01\x00\x00\xff\xffi\x00:\xc7"
 
 func init() {
 	schemas.Register(schema_fcba4f486a351ac3,
-		0x91d93eb8c530a76e,
-		0x9cd95e7efd9775b4,
-		0x9ee26eaff034c49d,
-		0xa45793ff12ac3387,
+		0x9f93db577b084c4b,
+		0x9fe65a406fba5583,
+		0xa33c37f7a390a3bf,
+		0xa94bdd0b5449db25,
 		0xb14b5203df9fa7c8,
-		0xc2aa099e87f4d0eb,
+		0xcdc156a3faea6ebf,
+		0xd0ec85d808eaabd9,
+		0xd2afeaf36c70c91f,
 		0xd40e2f0673af616c,
+		0xd80e24dbc41b1f0d,
+		0xd8eba41bb8f5845d,
 		0xda5a597d0c3a72a4,
 		0xe4a48c5d3f25d6d0,
-		0xeb56805616fef06f,
-		0xf8e8ab21195eede9,
-		0xfd493bfa60bc16b8)
+		0xf42beb36cd723e35,
+		0xf8e8ab21195eede9)
 }

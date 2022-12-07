@@ -11,6 +11,7 @@ import (
 	context "context"
 	fmt "fmt"
 	anchor "github.com/wetware/ww/internal/api/anchor"
+	discovery "github.com/wetware/ww/internal/api/discovery"
 	pubsub "github.com/wetware/ww/internal/api/pubsub"
 )
 
@@ -82,6 +83,22 @@ func (c Host) Debug(ctx context.Context, params func(Host_debug_Params) error) (
 	}
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Host_debug_Results_Future{Future: ans.Future()}, release
+}
+func (c Host) Discovery(ctx context.Context, params func(Host_discovery_Params) error) (Host_discovery_Results_Future, capnp.ReleaseFunc) {
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0x957cbefc645fd307,
+			MethodID:      4,
+			InterfaceName: "cluster.capnp:Host",
+			MethodName:    "discovery",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Host_discovery_Params(s)) }
+	}
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return Host_discovery_Results_Future{Future: ans.Future()}, release
 }
 
 // String returns a string that identifies this capability for debugging
@@ -158,6 +175,8 @@ type Host_Server interface {
 	Root(context.Context, Host_root) error
 
 	Debug(context.Context, Host_debug) error
+
+	Discovery(context.Context, Host_discovery) error
 }
 
 // Host_NewServer creates a new Server from an implementation of Host_Server.
@@ -176,7 +195,7 @@ func Host_ServerToClient(s Host_Server) Host {
 // This can be used to create a more complicated Server.
 func Host_Methods(methods []server.Method, s Host_Server) []server.Method {
 	if cap(methods) == 0 {
-		methods = make([]server.Method, 0, 4)
+		methods = make([]server.Method, 0, 5)
 	}
 
 	methods = append(methods, server.Method{
@@ -224,6 +243,18 @@ func Host_Methods(methods []server.Method, s Host_Server) []server.Method {
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
 			return s.Debug(ctx, Host_debug{call})
+		},
+	})
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0x957cbefc645fd307,
+			MethodID:      4,
+			InterfaceName: "cluster.capnp:Host",
+			MethodName:    "discovery",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Discovery(ctx, Host_discovery{call})
 		},
 	})
 
@@ -296,6 +327,23 @@ func (c Host_debug) Args() Host_debug_Params {
 func (c Host_debug) AllocResults() (Host_debug_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
 	return Host_debug_Results(r), err
+}
+
+// Host_discovery holds the state for a server call to Host.discovery.
+// See server.Call for documentation.
+type Host_discovery struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c Host_discovery) Args() Host_discovery_Params {
+	return Host_discovery_Params(c.Call.Args())
+}
+
+// AllocResults allocates the results struct.
+func (c Host_discovery) AllocResults() (Host_discovery_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Host_discovery_Results(r), err
 }
 
 // Host_List is a list of Host.
@@ -907,39 +955,195 @@ func (p Host_debug_Results_Future) Debugger() capnp.Client {
 	return p.Future.Field(0, nil).Client()
 }
 
-const schema_fcf6ac08e448a6ac = "x\xda\x8c\x92Mh\x13A\x14\xc7\xdf\x7ff\xb2\xdb\xd6" +
-	"\xa6q\xb2\x1e*\xa2B\xcd\xc1\xf4P\xadR\xd4\\\x12" +
-	"\x0f\x85\xe2\x07d\xedA\x05A\x93t)B51\xbb" +
-	"[/\x9e\x84\x82\"D\x10=\xe8M(\x82R\xbc\x88" +
-	"\x88\x88\x11<\x0a\x1eD=\x08\xe2)\xf5$\xc5\x0f*" +
-	"T\x02#\xb3\xc9&k\xad\xd8\xdb\xc2\xfb\xed\xff\xbd\xf7" +
-	"{\xb3{\x17\xcb\x89\xd1\xf8\x8b~b\xf6\xcd\x98\xa1\xea" +
-	"O\x96\x16w\xec\xbcv\x99\xa4\x05\"a\x12Y\xe3\xc6" +
-	"/\x12\xeaG\xe9\xfb\xd7m\xb5/W\xbb\x85\xbdi\x83" +
-	"\x81\x84Z~wd\xaev\xe3\xc4\xf5V%\x06]\x8a" +
-	"\xeb\x12,id\x09\xca|{z\xaaY\xbft\x8b\xe4" +
-	"\x00W\x0b\xf7&\x1a=\x0b?\x9bD\xb0F\x8d;\xd6" +
-	"\x01C\xf3c\x86\x09\xeb\xbd\xfeT\x8d\xa7\xfe\xe4\xe1\x97" +
-	"b>2\xc1\xf3`\x82\xb4H<\xe4g\x06\xeb\xd1>" +
-	"w\x8d>\xdd\xe7~\xd0g\xc3\xf8\xf1\xf9\xb9S\xcf^" +
-	"E\x81\xd7\xadA\xde\x04\xc0\xd2@\xef\xb2\xbfr\xe5c" +
-	"\x14\xf8f$5\xb0\x12\x00\xb7\x1f4c\xfe\xd0\xe3\xc5" +
-	"\xc8\x92\x9b\xcd>\x90\xa2\xfd\xaa4\xe3\xbb\x9eS\x1da" +
-	"\xa5B\xe5|%3Qv\xbd\x91j\xb9\xec\xa5\xb2\xf9" +
-	"B\xb5p\xce\xed\x00f\x04\x98r\x8a\xfet\xaa\x05P" +
-	"\x08D\xea\xb3g\x9d\x8b\xa9c\x8e\xeb\xcfx.\xd9\x82" +
-	"\x0b\"\x01\"\x19\x1f&\xb2{8\xecM\x0c\x09\x0d!" +
-	")8\x01IB\xa7\x0f\xc2\x1c\xeezy\xc0\xde\xc8c" +
-	"\x11}\x08\xcf\"/\x0c\x13\x93\x8e\x89\xeez\x08E\xc8" +
-	"\x93\x19b\xf2\xa8\x09\xd69<B\x8b\xf2\xa0\xfeo\xcc" +
-	"\x04\xef\xdc\x1e\xe1\x09dz\x0f1\xb9\xd5\x0cF\xcb!" +
-	"[\xf1\x8b\x93~1\x87\x84\x16\x92\xc3\xf6`\xed\x1c\xf2" +
-	"\xc0\x9a\xda\x82\xadWk\xe3\x7fi\x0b\xbd\xfc!\xe6\x10" +
-	"\x91\xdd\xcfa\x0f2\xa8\x00\x9bv\xaaD\xb4\x86\x1f\xbe" +
-	"\xfaP\xff\xf3\xac!H5\xf4\xa1\xd6\xdb\xd8\x97l\x10" +
-	"\x01\xf2\x1fy\xad\x85\xdb\x89p\xa3\x89\x99nb\xdb\x0b" +
-	"\xa4\xca\x94g\xb7|~\x94\xff\xb4\x8e\xcc\xf6c\xa1\xdf" +
-	"\x01\x00\x00\xff\xff)\x10\x07\xf5"
+type Host_discovery_Params capnp.Struct
+
+// Host_discovery_Params_TypeID is the unique identifier for the type Host_discovery_Params.
+const Host_discovery_Params_TypeID = 0xbe5314ed29d84c52
+
+func NewHost_discovery_Params(s *capnp.Segment) (Host_discovery_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Host_discovery_Params(st), err
+}
+
+func NewRootHost_discovery_Params(s *capnp.Segment) (Host_discovery_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Host_discovery_Params(st), err
+}
+
+func ReadRootHost_discovery_Params(msg *capnp.Message) (Host_discovery_Params, error) {
+	root, err := msg.Root()
+	return Host_discovery_Params(root.Struct()), err
+}
+
+func (s Host_discovery_Params) String() string {
+	str, _ := text.Marshal(0xbe5314ed29d84c52, capnp.Struct(s))
+	return str
+}
+
+func (s Host_discovery_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Host_discovery_Params) DecodeFromPtr(p capnp.Ptr) Host_discovery_Params {
+	return Host_discovery_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Host_discovery_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Host_discovery_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Host_discovery_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Host_discovery_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+
+// Host_discovery_Params_List is a list of Host_discovery_Params.
+type Host_discovery_Params_List = capnp.StructList[Host_discovery_Params]
+
+// NewHost_discovery_Params creates a new list of Host_discovery_Params.
+func NewHost_discovery_Params_List(s *capnp.Segment, sz int32) (Host_discovery_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	return capnp.StructList[Host_discovery_Params](l), err
+}
+
+// Host_discovery_Params_Future is a wrapper for a Host_discovery_Params promised by a client call.
+type Host_discovery_Params_Future struct{ *capnp.Future }
+
+func (f Host_discovery_Params_Future) Struct() (Host_discovery_Params, error) {
+	p, err := f.Future.Ptr()
+	return Host_discovery_Params(p.Struct()), err
+}
+
+type Host_discovery_Results capnp.Struct
+
+// Host_discovery_Results_TypeID is the unique identifier for the type Host_discovery_Results.
+const Host_discovery_Results_TypeID = 0x9e8120f9bb059602
+
+func NewHost_discovery_Results(s *capnp.Segment) (Host_discovery_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Host_discovery_Results(st), err
+}
+
+func NewRootHost_discovery_Results(s *capnp.Segment) (Host_discovery_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Host_discovery_Results(st), err
+}
+
+func ReadRootHost_discovery_Results(msg *capnp.Message) (Host_discovery_Results, error) {
+	root, err := msg.Root()
+	return Host_discovery_Results(root.Struct()), err
+}
+
+func (s Host_discovery_Results) String() string {
+	str, _ := text.Marshal(0x9e8120f9bb059602, capnp.Struct(s))
+	return str
+}
+
+func (s Host_discovery_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Host_discovery_Results) DecodeFromPtr(p capnp.Ptr) Host_discovery_Results {
+	return Host_discovery_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Host_discovery_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Host_discovery_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Host_discovery_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Host_discovery_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Host_discovery_Results) Discovery() discovery.DiscoveryService {
+	p, _ := capnp.Struct(s).Ptr(0)
+	return discovery.DiscoveryService(p.Interface().Client())
+}
+
+func (s Host_discovery_Results) HasDiscovery() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Host_discovery_Results) SetDiscovery(v discovery.DiscoveryService) error {
+	if !v.IsValid() {
+		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
+	}
+	seg := s.Segment()
+	in := capnp.NewInterface(seg, seg.Message().AddCap(capnp.Client(v)))
+	return capnp.Struct(s).SetPtr(0, in.ToPtr())
+}
+
+// Host_discovery_Results_List is a list of Host_discovery_Results.
+type Host_discovery_Results_List = capnp.StructList[Host_discovery_Results]
+
+// NewHost_discovery_Results creates a new list of Host_discovery_Results.
+func NewHost_discovery_Results_List(s *capnp.Segment, sz int32) (Host_discovery_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[Host_discovery_Results](l), err
+}
+
+// Host_discovery_Results_Future is a wrapper for a Host_discovery_Results promised by a client call.
+type Host_discovery_Results_Future struct{ *capnp.Future }
+
+func (f Host_discovery_Results_Future) Struct() (Host_discovery_Results, error) {
+	p, err := f.Future.Ptr()
+	return Host_discovery_Results(p.Struct()), err
+}
+func (p Host_discovery_Results_Future) Discovery() discovery.DiscoveryService {
+	return discovery.DiscoveryService(p.Future.Field(0, nil).Client())
+}
+
+const schema_fcf6ac08e448a6ac = "x\xda\x8c\x92Ah\x13O\x14\xc6\xdf\x9b\xdd\xfcw\xf7" +
+	"\xafm\x98l\x0f\x05A\xa5V\xb0=\x14\xab\x07! " +
+	"\xd9\x8bX\xb5\x87l\x8a\xe8A\xd14YJ\xa15a" +
+	"7\x1b\x09\xe8A!\xa0\xa8\x11\x85\x08z\x10\x84((" +
+	"\xc5\x8b\x88\x94b\x0eB\x11\x85BA\x11\x0b\xe2)\xd5" +
+	"\x8b-\xa2Th\x09\x8c\xcc&\xbb\x99\xb4\x15=\xbf\xef" +
+	"}3\xdf\xef{{\xd7\x88!\x0fv|\xa5@\xcc\xf9" +
+	"\xd0\x7f\xac\xfabyq\xd7\x9ek\x97\x81\xea\x08 +" +
+	"\x00\xfa\x82\xba\x062\xfb\x99\xfa\xf1}{\xe9\xdb\xd5\xd6" +
+	"`\xffK\x95 \xc8l\xe5\xfdp\xb1t\xfb\xe4\xcd\xc6" +
+	"$\x84|\xf4\x80\x8fP\x7f\xa8\xc6\x00\x99\xf2\xeeL\xba" +
+	"^\xbdP\x06\xda)\xb1\xa9GC5u\xeaW\x1d\x00" +
+	"\xf5Y\xf5\x9e>\xa7r\xfd\x1b\xf50\xeaeM\x01`" +
+	"\xe4Nhfu\xe7\xa5\xfb\xa2\xddE\xad\x9f\xdb\x155" +
+	"nW\x9bvG\x8e\xbd\x92+\xc2\x17\x1fk\xfc\x8b}" +
+	"r\xf8\xa9t\xb6\xbb*n\xde\xd0\xfe\xe7\x9beo3" +
+	"1\xfc\xb1o\xa9k\xa4*d\x98\xd6zx\x86-\x87" +
+	"NT\x8a\xa7f\xde\xb6e\xd0\x1a\x19\xbc\xd5\xe5Nm" +
+	"\xc5]\xbd\xf2I\x14\xccj\x11.\x98\xf3\x04w\x9f\xd4" +
+	"Cn\xcf\xf3E\xc1{\x89\xbf\xcd\xe05KM\xb8N" +
+	"\xce\xb2\x07H*\x99=\x97\x8d\x0ee\x9c\xdc\x80\x9d\xc9" +
+	"\xe4zc\xf1\xa4\x9d\x9ct\x02\x81\"\x08\xd2\xd6\xa8;" +
+	"\xd6\xdb\x10\x80/\x10\xe6\xf9q\xeb|o\xc2r\xdc\x89" +
+	"\x9c\x03\xa6,\xc9\x002\x02\xd0\x8e~\x00S\x95\xd0\xec" +
+	"\"\x18\xe6\"\x8c\xc8\x12 F\x00\x83w\xd0\xf7\x91\x9c" +
+	"\\\x1c\xd1\xec\x92B\x00\x01X\xf4\x1b\xa5\xb7\xfa\x81\xd0" +
+	"\xa2\x82\xadx\xe8\x83\xa0\x85(\x10:\xa9 \x09n\x06" +
+	"}\x8a4\xc9\xf7\x8e+(\x05g\x83~9\xf4\xc8>" +
+	" \xf4\xa0\x82rP\x07\xfa\x95\xd3\xc1\x04\x10\xda\xa7x" +
+	"\xdf60\x96uGG\xdcQ\x03\xc3\x1c\x96\x81;<" +
+	"$\x06\xb2\xf4\xb8\x93\xca\xe4-\x1b\xb0``\x1c[\xb9" +
+	"$\x91_ST\xe0\x90\xc2\x9c\x92\x08)\x01`n\x95" +
+	"\xd0\xec&mvH\xd9\xfc\x87\xdd\xb1\xd3\xd7+5\x00" +
+	"D*0#\xeb\xd9\xaf/O\xdaP\x9e\xdfN[=" +
+	"G\xc5\x97\xb9l\xcc\xb2\x01`\x93\x966O\x13O\xda" +
+	"\xca\x9f\x9e\xf5\x8e\xeao7\xc1EHY\xcfBI\xab" +
+	"\x1d\x88l\xc8)\xfa5\x0ah:b\x1b\xc0h\xcb\xb1" +
+	"\xd9\x13R\x16\xcd\xe4\xb7}y\x16\xff\xfc\x0f\x9e\xcd\xc3" +
+	"\x86\xdf\x01\x00\x00\xff\xff\x92\xfdS\x9f"
 
 func init() {
 	schemas.Register(schema_fcf6ac08e448a6ac,
@@ -947,8 +1151,10 @@ func init() {
 		0x89ec8e1ef0f263f3,
 		0x8f58928e854cd4f5,
 		0x957cbefc645fd307,
+		0x9e8120f9bb059602,
 		0xa404c24b5375b9e4,
 		0xbe186003ae0f0429,
+		0xbe5314ed29d84c52,
 		0xcabb5c85a457450b,
 		0xdc88f975f5090eee,
 		0xe5b5227505fcaa99)

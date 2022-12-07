@@ -11,6 +11,7 @@ import (
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/cluster"
 	"github.com/wetware/casm/pkg/debug"
+	"github.com/wetware/ww/pkg/discovery"
 	"github.com/wetware/ww/pkg/host"
 	"github.com/wetware/ww/pkg/pubsub"
 )
@@ -73,6 +74,10 @@ func (n *Node) Join(ctx context.Context, topic string) (pubsub.Topic, capnp.Rele
 
 func (n *Node) Debug(ctx context.Context) (debug.Debugger, capnp.ReleaseFunc) {
 	return n.Host(ctx).Debug(ctx)
+}
+
+func (n *Node) Discovery(ctx context.Context) (discovery.DiscoveryService, capnp.ReleaseFunc) {
+	return n.Host(ctx).Discovery(ctx)
 }
 
 func (n *Node) Path() string { return "/" }

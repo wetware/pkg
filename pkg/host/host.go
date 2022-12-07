@@ -13,7 +13,9 @@ import (
 	anchor_api "github.com/wetware/ww/internal/api/anchor"
 	api "github.com/wetware/ww/internal/api/cluster"
 	pubsub_api "github.com/wetware/ww/internal/api/pubsub"
+	disc_api "github.com/wetware/ww/internal/api/discovery"
 	"github.com/wetware/ww/pkg/anchor"
+	"github.com/wetware/ww/pkg/discovery"
 	"github.com/wetware/ww/pkg/pubsub"
 )
 
@@ -57,6 +59,11 @@ func (h Host) Debug(ctx context.Context) (debug.Debugger, capnp.ReleaseFunc) {
 	return debug.Debugger(f.Debugger()), release
 }
 
+func (h Host) Discovery(ctx context.Context) (discovery.DiscoveryService, capnp.ReleaseFunc) {
+	f, release := api.Host(h).Discovery(ctx, nil)
+	return discovery.DiscoveryService(f.Discovery()), release
+}
+
 /*---------------------------*
 |                            |
 |    Server Implementation   |
@@ -79,12 +86,17 @@ type DebugProvider interface {
 	Debugger() debug.Debugger
 }
 
+type DiscoveryProvider interface {
+	Discovery() discovery.DiscoveryService
+}
+
 // Server provides the Host capability.
 type Server struct {
-	ViewProvider   ViewProvider
-	PubSubProvider PubSubProvider
-	AnchorProvider AnchorProvider
-	DebugProvider  DebugProvider
+	ViewProvider      ViewProvider
+	PubSubProvider    PubSubProvider
+	AnchorProvider    AnchorProvider
+	DebugProvider     DebugProvider
+	DiscoveryProvider DiscoveryProvider
 }
 
 func (s Server) Client() capnp.Client {
@@ -127,6 +139,16 @@ func (s Server) Debug(_ context.Context, call api.Host_debug) error {
 	if err == nil {
 		debugger := s.DebugProvider.Debugger()
 		err = res.SetDebugger(capnp.Client(debugger))
+	}
+
+	return err
+}
+
+func (s Server) Discovery(_ context.Context, call api.Host_discovery) error {
+	res, err := call.AllocResults()
+	if err == nil {
+		discovery := s.DiscoveryProvider.Discovery()
+		err = res.SetDiscovery(disc_api.DiscoveryService(discovery))
 	}
 
 	return err

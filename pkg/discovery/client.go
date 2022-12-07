@@ -2,40 +2,49 @@ package discovery
 
 import (
 	"context"
+	"fmt"
 
 	"capnproto.org/go/capnp/v3"
-	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	casm "github.com/wetware/casm/pkg"
 	chan_api "github.com/wetware/ww/internal/api/channel"
-	api "github.com/wetware/ww/internal/api/service"
+	api "github.com/wetware/ww/internal/api/discovery"
 )
 
-type DiscoveryService struct {
-	api.DiscoveryService
+type Addr struct {
+	Maddrs []ma.Multiaddr
+	// TODO: metada or any other field
 }
 
-func (c *DiscoveryService) Provider(ctx context.Context, name string) (Provider, capnp.ReleaseFunc) {
-	fut, release := c.DiscoveryService.Provider(ctx, func(ps api.DiscoveryService_provider_Params) error {
+func (addr Addr) String() string {
+	return fmt.Sprintf("%v", addr.Maddrs)
+}
+
+type DiscoveryService api.DiscoveryService
+
+func (c DiscoveryService) Provider(ctx context.Context, name string) (Provider, capnp.ReleaseFunc) {
+	fut, release := api.DiscoveryService(c).Provider(ctx, func(ps api.DiscoveryService_provider_Params) error {
 		return ps.SetName(name)
 	})
 
-	return Provider{fut.Provider()}, release
+	return Provider(fut.Provider()), release
 }
 
-type Provider struct {
-	api.Provider
+func (c DiscoveryService) Release() {
+	api.DiscoveryService(c).Release()
 }
 
-func (c *Provider) Provide(ctx context.Context, infos []peer.AddrInfo) (casm.Future, capnp.ReleaseFunc) {
+type Provider api.Provider
+
+func (c Provider) Provide(ctx context.Context, addr Addr) (casm.Future, capnp.ReleaseFunc) {
 	ctx, cancel := context.WithCancel(ctx)
 
-	fut, release := c.Provider.Provide(ctx, func(ps api.Provider_provide_Params) error {
-		capInfos, err := ToCapInfoList(infos)
+	fut, release := api.Provider(c).Provide(ctx, func(ps api.Provider_provide_Params) error {
+		capAddr, err := ToCapAddr(addr)
 		if err != nil {
 			return err
 		}
-		return ps.SetAddrs(capInfos)
+		return ps.SetAddrs(capAddr)
 	})
 
 	return casm.Future(fut), func() {
@@ -44,28 +53,34 @@ func (c *Provider) Provide(ctx context.Context, infos []peer.AddrInfo) (casm.Fut
 	}
 }
 
-func (c *DiscoveryService) Locator(ctx context.Context, name string) (Locator, capnp.ReleaseFunc) {
-	fut, release := c.DiscoveryService.Locator(ctx, func(ps api.DiscoveryService_locator_Params) error {
+func (c Provider) Release() {
+	api.Provider(c).Release()
+}
+
+func (c DiscoveryService) Locator(ctx context.Context, name string) (Locator, capnp.ReleaseFunc) {
+	fut, release := api.DiscoveryService(c).Locator(ctx, func(ps api.DiscoveryService_locator_Params) error {
 		return ps.SetName(name)
 	})
 
-	return Locator{api.Locator(fut.Locator())}, release
+	return Locator(fut.Locator()), release
 }
 
-type Locator struct {
-	api.Locator
+type Locator api.Locator
+
+func (c Locator) Release() {
+	api.Locator(c).Release()
 }
 
-func (c *Locator) FindProviders(ctx context.Context) (casm.Iterator[peer.AddrInfo], capnp.ReleaseFunc) {
+func (c Locator) FindProviders(ctx context.Context) (casm.Iterator[Addr], capnp.ReleaseFunc) {
 	ctx, cancel := context.WithCancel(ctx)
 
 	handler := make(handler, 32)
 
-	fut, release := c.Locator.FindProviders(ctx, func(ps api.Locator_findProviders_Params) error {
+	fut, release := api.Locator(c).FindProviders(ctx, func(ps api.Locator_findProviders_Params) error {
 		return ps.SetChan(chan_api.Sender_ServerToClient(handler))
 	})
 
-	iterator := casm.Iterator[peer.AddrInfo]{
+	iterator := casm.Iterator[Addr]{
 		Future: casm.Future(fut),
 		Seq:    handler, // TODO: decide buffer size
 	}
@@ -76,11 +91,11 @@ func (c *Locator) FindProviders(ctx context.Context) (casm.Iterator[peer.AddrInf
 	}
 }
 
-type handler chan peer.AddrInfo
+type handler chan Addr
 
 func (ch handler) Shutdown() { close(ch) }
 
-func (ch handler) Next() (b peer.AddrInfo, ok bool) {
+func (ch handler) Next() (b Addr, ok bool) {
 	b, ok = <-ch
 	return
 }
@@ -90,7 +105,7 @@ func (ch handler) Send(ctx context.Context, call chan_api.Sender_send) error {
 	if err == nil {
 		// It's okay to block here, since there is only one writer.
 		// Back-pressure will be handled by the BBR flow-limiter.
-		info, err := toInfo(api.AddrInfo(ptr.Struct()))
+		info, err := toAddr(api.Addr(ptr.Struct()))
 		if err != nil {
 			return err
 		}
@@ -106,82 +121,49 @@ func (ch handler) Send(ctx context.Context, call chan_api.Sender_send) error {
 	return err
 }
 
-func toInfo(capInfo api.AddrInfo) (peer.AddrInfo, error) {
-	var info peer.AddrInfo
-
-	id, err := capInfo.Id()
+func toAddr(capInfo api.Addr) (Addr, error) {
+	addrs, err := capInfo.Maddrs()
 	if err != nil {
-		return info, err
+		return Addr{}, err
 	}
 
-	info.ID = peer.ID(id)
-
-	addrs, err := capInfo.Addrs()
-	if err != nil {
-		return info, err
-	}
-
+	addr := Addr{}
 	maddrs := make([]ma.Multiaddr, 0, addrs.Len())
 	for i := 0; i < addrs.Len(); i++ { // TODO: is this the most efficient way?
 		data, err := addrs.At(i)
 		if err != nil {
-			return info, err
+			return addr, err
 		}
 
-		addr, err := ma.NewMultiaddrBytes(data)
+		maddr, err := ma.NewMultiaddrBytes(data)
 		if err != nil {
-			return info, err
+			return addr, err
 		}
 
-		maddrs = append(maddrs, addr)
+		maddrs = append(maddrs, maddr)
 	}
 
-	info.Addrs = maddrs
-
-	return info, nil
+	addr.Maddrs = maddrs
+	return addr, nil
 }
 
-func ToCapInfoList(infos []peer.AddrInfo) (api.AddrInfo_List, error) {
+func ToCapAddr(addr Addr) (api.Addr, error) {
 	_, seg := capnp.NewSingleSegmentMessage(nil)
-	capInfos, err := api.NewAddrInfo_List(seg, int32(len(infos)))
+	capAddr, err := api.NewAddr(seg)
 	if err != nil {
-		return api.AddrInfo_List{}, err
+		return api.Addr{}, err
 	}
 
-	for i, info := range infos {
-		capInfo, err := toCapInfo(info)
-		if err != nil {
-			return api.AddrInfo_List{}, err
-		}
-
-		if err := capInfos.Set(i, capInfo); err != nil {
-			return api.AddrInfo_List{}, err
-		}
-	}
-	return capInfos, nil
-}
-
-func toCapInfo(info peer.AddrInfo) (api.AddrInfo, error) {
-	_, seg := capnp.NewSingleSegmentMessage(nil)
-	capInfo, err := api.NewAddrInfo(seg)
+	capMaddrs, err := capAddr.NewMaddrs(int32(len(addr.Maddrs)))
 	if err != nil {
-		return api.AddrInfo{}, err
+		return api.Addr{}, err
 	}
 
-	if err := capInfo.SetId(string(info.ID)); err != nil {
-		return api.AddrInfo{}, err
-	}
-
-	capAddrs, err := capInfo.NewAddrs(int32(len(info.Addrs)))
-	if err != nil {
-		return api.AddrInfo{}, err
-	}
-
-	for i, addr := range info.Addrs {
-		if err := capAddrs.Set(i, addr.Bytes()); err != nil {
-			return api.AddrInfo{}, err
+	for i, maddr := range addr.Maddrs {
+		if err := capMaddrs.Set(i, maddr.Bytes()); err != nil {
+			return api.Addr{}, err
 		}
 	}
 
-	return capInfo, err
+	return capAddr, nil
 }

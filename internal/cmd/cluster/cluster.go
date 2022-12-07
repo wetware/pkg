@@ -23,7 +23,8 @@ var subcommands = []*cli.Command{
 	list(),
 	publish(),
 	subscribe(),
-	// Discover(),
+	discover(),
+	provide(),
 }
 
 var flags = []cli.Flag{

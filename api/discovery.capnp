@@ -2,8 +2,8 @@ using Go = import "/go.capnp";
 
 @0xfcba4f486a351ac3;
 
-$Go.package("service");
-$Go.import("github.com/wetware/ww/internal/api/service");
+$Go.package("discovery");
+$Go.import("github.com/wetware/ww/internal/api/discovery");
 
 
 interface DiscoveryService {
@@ -12,20 +12,18 @@ interface DiscoveryService {
 }
 
 interface Provider {
-    provide @0 (addrs :List(AddrInfo)) -> ();
+    provide @0 (addrs :Addr) -> ();
 }
 
 interface Locator {
-    findProviders @0 (chan :Sender(AddrInfo)) -> ();
+    findProviders @0 (chan :Sender(Addr)) -> ();
     
     using Sender = import "channel.capnp".Sender;
 }
 
-struct AddrInfo {
-    id      @0 :PeerID;
-    addrs   @1 :List(Multiaddr);
+struct Addr {
+    maddrs   @0 :List(Multiaddr);
 
-    using PeerID   = Text;
     using Multiaddr = Data;
 }
 
@@ -38,6 +36,6 @@ struct Message {
     struct Request {}
 
     struct Response {
-        addrs @0 :List(AddrInfo);
+        addr @0 :Addr;
     }
 }

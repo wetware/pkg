@@ -6,7 +6,7 @@ import (
 
 	"capnproto.org/go/capnp/v3"
 	"github.com/wetware/ww/internal/api/channel"
-	api "github.com/wetware/ww/internal/api/service"
+	api "github.com/wetware/ww/internal/api/discovery"
 	"github.com/wetware/ww/pkg/pubsub"
 )
 
@@ -16,6 +16,10 @@ type DiscoveryServiceServer struct {
 
 func (s *DiscoveryServiceServer) Client() capnp.Client {
 	return capnp.Client(api.DiscoveryService_ServerToClient(s))
+}
+
+func (s *DiscoveryServiceServer) Discovery() DiscoveryService {
+	return DiscoveryService(s.Client())
 }
 
 func (s *DiscoveryServiceServer) Provider(_ context.Context, call api.DiscoveryService_provider) error {
@@ -80,6 +84,7 @@ func (s *ProviderServer) Shutdown() {
 }
 
 func (s *ProviderServer) Provide(ctx context.Context, call api.Provider_provide) error {
+	println("PROVIDE")
 	response, err := encodeResponse(call)
 	if err != nil {
 		return err
@@ -145,22 +150,21 @@ func (s *LocatorServer) FindProviders(ctx context.Context, call api.Locator_find
 			if err != nil {
 				return err
 			}
-			addrs, err := response.Addrs()
+			addr, err := response.Addr()
 			if err != nil {
 				return err
 			}
 
-			for i := 0; i < addrs.Len(); i++ {
-				fut, release := sender.Send(ctx, func(ps channel.Sender_send_Params) error {
-					return ps.SetValue(addrs.At(i).ToPtr())
-				})
-				defer release()
+			fut, release := sender.Send(ctx, func(ps channel.Sender_send_Params) error {
+				return ps.SetValue(addr.ToPtr())
+			})
+			defer release()
 
-				_, err := fut.Struct()
-				if err != nil {
-					return err
-				}
+			_, err = fut.Struct()
+			if err != nil {
+				return err
 			}
+
 		}
 	}
 	return nil
@@ -182,7 +186,7 @@ func encodeRequest(call api.Locator_findProviders) ([]byte, error) {
 }
 
 func encodeResponse(call api.Provider_provide) ([]byte, error) {
-	addrs, err := call.Args().Addrs()
+	addr, err := call.Args().Addrs()
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +202,7 @@ func encodeResponse(call api.Provider_provide) ([]byte, error) {
 		return nil, err
 	}
 
-	if err := response.SetAddrs(addrs); err != nil {
+	if err := response.SetAddr(addr); err != nil {
 		return nil, err
 	}
 
