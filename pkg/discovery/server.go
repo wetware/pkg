@@ -84,7 +84,6 @@ func (s *ProviderServer) Shutdown() {
 }
 
 func (s *ProviderServer) Provide(ctx context.Context, call api.Provider_provide) error {
-	println("PROVIDE")
 	response, err := encodeResponse(call)
 	if err != nil {
 		return err
