@@ -17,6 +17,7 @@ import (
 var (
 	app    *fx.App
 	node   *client.Node
+	dialer client.Dialer
 	logger log.Logger
 )
 
@@ -64,17 +65,21 @@ func Command() *cli.Command {
 }
 
 func setup() cli.BeforeFunc {
-	return func(c *cli.Context) error {
+	return func(c *cli.Context) (err error) {
 		app = fx.New(
 			runtime.Prelude(runtimeutil.New(c)),
 			fx.StartTimeout(c.Duration("timeout")),
-			fx.Populate(&logger, &node),
+			fx.Populate(&logger, &dialer),
 			runtime.Client())
 
 		ctx, cancel := context.WithTimeout(
 			c.Context,
-			app.StartTimeout())
+			c.Duration("timeout"))
 		defer cancel()
+
+		if node, err = dialer.Dial(ctx); err != nil {
+			return
+		}
 
 		return app.Start(ctx)
 	}
