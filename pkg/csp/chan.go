@@ -49,14 +49,14 @@ type PeekRecvServer interface {
 	RecvServer
 }
 
-type Server interface {
+type ChanServer interface {
 	CloseServer
 	SendServer
 	RecvServer
 }
 
 type PeekableServer interface {
-	Server
+	ChanServer
 	PeekServer
 }
 
@@ -82,7 +82,7 @@ func Text(s string) Value {
 
 type Chan channel.Chan
 
-func New(s Server) Chan {
+func New(s ChanServer) Chan {
 	return Chan(channel.Chan_ServerToClient(s))
 }
 
