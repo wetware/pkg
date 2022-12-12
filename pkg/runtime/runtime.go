@@ -14,6 +14,8 @@ import (
 
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/util/metrics"
+	logutil "github.com/wetware/ww/internal/util/log"
+	statsdutil "github.com/wetware/ww/internal/util/statsd"
 )
 
 /****************************************************************
@@ -41,6 +43,11 @@ type Env interface {
 		Configuration
 	*/
 
+	Flags
+}
+
+// Flags are used to query configuration parameters.
+type Flags interface {
 	Bool(string) bool
 	IsSet(string) bool
 	Path(string) string
@@ -48,6 +55,37 @@ type Env interface {
 	StringSlice(string) []string
 	Duration(string) time.Duration
 	Float64(string) float64
+}
+
+func NewEnv(ctx context.Context, fs Flags) Env {
+	logging := logutil.New(fs)
+	metrics := statsdutil.New(fs, logging)
+
+	return &basicEnv{
+		Flags:   fs,
+		context: ctx,
+		logging: logging,
+		metrics: metrics,
+	}
+}
+
+type basicEnv struct {
+	Flags
+	context context.Context
+	logging log.Logger
+	metrics metrics.Client
+}
+
+func (env basicEnv) Context() context.Context {
+	return env.context
+}
+
+func (env basicEnv) Log() log.Logger {
+	return env.logging
+}
+
+func (env basicEnv) Metrics() metrics.Client {
+	return env.metrics
 }
 
 // Prelude provides the core wetware runtime.  It MUST be passed

@@ -9,7 +9,6 @@ import (
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
 
-	runtimeutil "github.com/wetware/ww/internal/util/runtime"
 	"github.com/wetware/ww/pkg/client"
 	"github.com/wetware/ww/pkg/runtime"
 )
@@ -67,7 +66,7 @@ func Command() *cli.Command {
 func setup() cli.BeforeFunc {
 	return func(c *cli.Context) (err error) {
 		app = fx.New(
-			runtime.Prelude(runtimeutil.New(c)),
+			runtime.Prelude(runtime.NewEnv(c.Context, c)),
 			fx.StartTimeout(c.Duration("timeout")),
 			fx.Populate(&logger, &dialer),
 			runtime.Client())
