@@ -6,9 +6,9 @@ import (
 
 	"github.com/lthibault/log"
 	"github.com/urfave/cli/v2"
-	"github.com/wetware/ww/internal/runtime"
 	runtimeutil "github.com/wetware/ww/internal/util/runtime"
 	"github.com/wetware/ww/pkg/client"
+	"github.com/wetware/ww/pkg/runtime"
 	"go.uber.org/fx"
 )
 

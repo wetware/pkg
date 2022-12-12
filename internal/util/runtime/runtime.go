@@ -8,9 +8,9 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/wetware/casm/pkg/util/metrics"
-	"github.com/wetware/ww/internal/runtime"
 	logutil "github.com/wetware/ww/internal/util/log"
 	statsdutil "github.com/wetware/ww/internal/util/statsd"
+	"github.com/wetware/ww/pkg/runtime"
 )
 
 func New(c *cli.Context) runtime.Env {

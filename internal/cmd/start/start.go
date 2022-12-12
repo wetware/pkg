@@ -8,8 +8,8 @@ import (
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
 
-	"github.com/wetware/ww/internal/runtime"
 	runtimeutil "github.com/wetware/ww/internal/util/runtime"
+	"github.com/wetware/ww/pkg/runtime"
 	"github.com/wetware/ww/pkg/server"
 )
 
