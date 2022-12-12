@@ -12,6 +12,7 @@ import (
 	ds "github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	"github.com/libp2p/go-libp2p/core/discovery"
+	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/discovery/routing"
 	casm "github.com/wetware/casm/pkg"
@@ -26,9 +27,21 @@ import (
 type bootConfig struct {
 	fx.In
 
-	Log  log.Logger
-	Vat  casm.Vat
-	Flag Flags
+	Log     log.Logger
+	Metrics metrics.Client
+	Vat     casm.Vat
+	Flag    Flags
+}
+
+func (bc bootConfig) host() host.Host {
+	return bc.Vat.Host
+}
+
+func (bc bootConfig) metrics() bootMetrics {
+	return bootMetrics{
+		Log:     bc.Log,
+		Metrics: bc.Metrics,
+	}
 }
 
 func (c Config) ClientBootstrap() fx.Option {
@@ -45,7 +58,7 @@ func (c Config) newServerDisc(config bootConfig, lx fx.Lifecycle) (d discovery.D
 		return
 	}
 
-	d, err = bootutil.ListenString(config.Vat.Host, config.Flag.String("discover"),
+	d, err = bootutil.ListenString(config.host(), config.Flag.String("discover"),
 		socket.WithLogger(config.Log),
 		socket.WithRateLimiter(socket.NewPacketLimiter(256, 16)))
 	if c, ok := d.(io.Closer); ok {
@@ -55,14 +68,14 @@ func (c Config) newServerDisc(config bootConfig, lx fx.Lifecycle) (d discovery.D
 	return
 }
 
-func (c Config) newClientDisc(env Env, lx fx.Lifecycle, vat casm.Vat) (d discovery.Discoverer, err error) {
-	if env.Flag.IsSet("addr") {
-		d, err = boot.NewStaticAddrStrings(env.Flag.StringSlice("addr")...)
+func (c Config) newClientDisc(config bootConfig, lx fx.Lifecycle) (d discovery.Discoverer, err error) {
+	if config.Flag.IsSet("addr") {
+		d, err = boot.NewStaticAddrStrings(config.Flag.StringSlice("addr")...)
 		return
 	}
 
-	d, err = bootutil.DialString(vat.Host, env.Flag.String("discover"),
-		socket.WithLogger(env.Log),
+	d, err = bootutil.DialString(config.host(), config.Flag.String("discover"),
+		socket.WithLogger(config.Log),
 		socket.WithRateLimiter(socket.NewPacketLimiter(256, 16)))
 	if c, ok := d.(io.Closer); ok {
 		lx.Append(closer(c))
@@ -70,7 +83,7 @@ func (c Config) newClientDisc(env Env, lx fx.Lifecycle, vat casm.Vat) (d discove
 
 	return &logMetricDisc{
 		disc:    d,
-		metrics: bootMetrics{Log: env.Log, Metrics: env.Metrics},
+		metrics: config.metrics(),
 	}, err
 }
 
@@ -86,10 +99,7 @@ func (c Config) withPubSubDiscovery(d discovery.Discovery, config psBootConfig) 
 type psBootConfig struct {
 	fx.In
 
-	Log       log.Logger
-	Metrics   metrics.Client
-	Flag      Flags
-	Vat       casm.Vat
+	Boot      bootConfig
 	DHT       *dual.DHT
 	Datastore ds.Batching
 	Lifecycle fx.Lifecycle
@@ -101,9 +111,9 @@ func (config psBootConfig) maybePeX(d discovery.Discovery, opt []pex.Option) (di
 		return d, nil
 	}
 
-	px, err := pex.New(config.Vat.Host, append([]pex.Option{
+	px, err := pex.New(config.Boot.host(), append([]pex.Option{
 		// default options for PeX
-		pex.WithLogger(config.Log),
+		pex.WithLogger(config.Boot.Log),
 		pex.WithDatastore(config.Datastore),
 		pex.WithDiscovery(d),
 	}, opt...)...)
@@ -120,7 +130,7 @@ func (config psBootConfig) Wrap(d discovery.Discovery) *boot.Namespace {
 	//
 	//  1. the bootstrap service, iff namespace matches cluster topic; else
 	//  2. the DHT-backed discovery service.
-	bootTopic := "floodsub:" + config.Flag.String("ns")
+	bootTopic := "floodsub:" + config.Boot.Flag.String("ns")
 	match := func(ns string) bool {
 		return ns == bootTopic
 	}
@@ -128,7 +138,7 @@ func (config psBootConfig) Wrap(d discovery.Discovery) *boot.Namespace {
 	target := logMetricDisc{
 		disc:    d,
 		advt:    d,
-		metrics: bootMetrics{Log: config.Log, Metrics: config.Metrics},
+		metrics: config.Boot.metrics(),
 	}
 
 	return &boot.Namespace{

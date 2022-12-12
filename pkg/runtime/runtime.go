@@ -29,7 +29,7 @@ import (
 // are passed directly to Client().
 func NewClient(ctx context.Context, fs Flags, opt ...Option) fx.Option {
 	return fx.Options(
-		Env{Ctx: ctx, Flag: fs}.Options(),
+		Env{Ctx: ctx, Flags: fs}.Options(),
 		Config{}.With(clientDefaults(opt)).Client(),
 	)
 }
@@ -38,7 +38,7 @@ func NewClient(ctx context.Context, fs Flags, opt ...Option) fx.Option {
 // are passed directly to Server().
 func NewServer(ctx context.Context, fs Flags, opt ...Option) fx.Option {
 	return fx.Options(
-		Env{Ctx: ctx, Flag: fs}.Options(),
+		Env{Ctx: ctx, Flags: fs}.Options(),
 		Config{}.With(serverDefaults(opt)).Server(),
 	)
 }
@@ -74,7 +74,7 @@ type Env struct {
 	Ctx     context.Context `optional:"true"`
 	Log     log.Logger      `optional:"true"`
 	Metrics metrics.Client  `optional:"true"`
-	Flag    Flags
+	Flags   Flags
 }
 
 // Options for the Wetware runtime.  These MUST be passed to
@@ -84,7 +84,7 @@ func (env Env) Options() fx.Option {
 	return fx.Options(
 		fx.WithLogger(newFxLogger),
 		fx.Supply(
-			fx.Annotate(env.Flag, fx.As(new(Flags))),
+			fx.Annotate(env.Flags, fx.As(new(Flags))),
 			fx.Annotate(env.context(), fx.As(new(context.Context))),
 			fx.Annotate(env.logging(), fx.As(new(log.Logger))),
 			fx.Annotate(env.metrics(), fx.As(new(metrics.Client)))),
@@ -102,7 +102,7 @@ func (env Env) context() context.Context {
 
 func (env *Env) logging() log.Logger {
 	if env.Log == nil {
-		env.Log = logutil.New(env.Flag)
+		env.Log = logutil.New(env.Flags)
 	}
 
 	return env.Log
@@ -110,7 +110,7 @@ func (env *Env) logging() log.Logger {
 
 func (env *Env) metrics() metrics.Client {
 	if env.Metrics == nil {
-		env.Metrics = statsdutil.New(env.Flag, env.logging())
+		env.Metrics = statsdutil.New(env.Flags, env.logging())
 	}
 
 	return env.Metrics
@@ -284,8 +284,8 @@ func (lx fxLogger) MaybeModule(name string) fxLogger {
 func decorateLogger(env Env, vat casm.Vat) log.Logger {
 	log := env.Log.With(vat)
 
-	if env.Flag.IsSet("meta") {
-		log = log.WithField("meta", env.Flag.StringSlice("meta"))
+	if env.Flags.IsSet("meta") {
+		log = log.WithField("meta", env.Flags.StringSlice("meta"))
 	}
 
 	return log
