@@ -59,8 +59,8 @@ type meta struct {
 	fields []routing.MetaField
 }
 
-func metadata(env Env) (pulse.Preparer, error) {
-	ss := env.StringSlice("meta")
+func metadata(flag Flags) (pulse.Preparer, error) {
+	ss := flag.StringSlice("meta")
 	fs := make([]routing.MetaField, len(ss))
 
 	var err error
@@ -94,29 +94,29 @@ func (m *meta) Prepare(h pulse.Heartbeat) error {
 	return h.SetHost(host)
 }
 
-func storage(env Env, lx fx.Lifecycle) (ds.Batching, error) {
-	if !env.IsSet("data") {
+func storage(log log.Logger, flag Flags, lx fx.Lifecycle) (ds.Batching, error) {
+	if !flag.IsSet("data") {
 		return memstore(), nil
 	}
 
-	err := os.MkdirAll(storagePath(env), 0700)
+	err := os.MkdirAll(storagePath(flag), 0700)
 	if err != nil {
 		return nil, fmt.Errorf("mkdir: %w", err)
 	}
 
-	return dbstore(env, lx)
+	return dbstore(log, flag, lx)
 }
 
 func memstore() ds.Batching {
 	return ds_sync.MutexWrap(ds.NewMapDatastore())
 }
 
-func dbstore(env Env, lx fx.Lifecycle) (ds.Batching, error) {
-	log := newBadgerLogger(env)
-	badgerds.DefaultOptions.Logger = log
+func dbstore(log log.Logger, flag Flags, lx fx.Lifecycle) (ds.Batching, error) {
+	logger := newBadgerLogger(log, flag)
+	badgerds.DefaultOptions.Logger = logger
 
 	d, err := badgerds.NewDatastore(
-		storagePath(env),
+		storagePath(flag),
 		&badgerds.DefaultOptions)
 	if d == nil {
 		lx.Append(closer(d))
@@ -126,8 +126,8 @@ func dbstore(env Env, lx fx.Lifecycle) (ds.Batching, error) {
 	return d, err
 }
 
-func storagePath(env Env) string {
-	return filepath.Join(env.Path("data"), "data")
+func storagePath(flag Flags) string {
+	return filepath.Join(flag.Path("data"), "data")
 }
 
 func syncer(log log.Logger, s interface {
@@ -143,9 +143,9 @@ func syncer(log log.Logger, s interface {
 
 type badgerLogger struct{ log.Logger }
 
-func newBadgerLogger(env Env) badgerLogger {
+func newBadgerLogger(log log.Logger, flag Flags) badgerLogger {
 	return badgerLogger{
-		Logger: env.Log().WithField("data_dir", storagePath(env)),
+		Logger: log.WithField("data_dir", storagePath(flag)),
 	}
 }
 

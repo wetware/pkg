@@ -66,10 +66,9 @@ func Command() *cli.Command {
 func setup() cli.BeforeFunc {
 	return func(c *cli.Context) (err error) {
 		app = fx.New(
-			runtime.Prelude(runtime.NewEnv(c.Context, c)),
+			runtime.NewClient(c.Context, c),
 			fx.StartTimeout(c.Duration("timeout")),
-			fx.Populate(&logger, &dialer),
-			runtime.Client())
+			fx.Populate(&logger, &dialer))
 
 		ctx, cancel := context.WithTimeout(
 			c.Context,

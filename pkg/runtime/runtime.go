@@ -8,14 +8,15 @@ import (
 	"reflect"
 	"time"
 
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/lthibault/log"
-	"go.uber.org/fx"
-	"go.uber.org/fx/fxevent"
-
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/util/metrics"
 	logutil "github.com/wetware/ww/internal/util/log"
 	statsdutil "github.com/wetware/ww/internal/util/statsd"
+	"github.com/wetware/ww/pkg/server"
+	"go.uber.org/fx"
+	"go.uber.org/fx/fxevent"
 )
 
 /****************************************************************
@@ -24,26 +25,34 @@ import (
  *                                                              *
  ****************************************************************/
 
-// Env is a context object that exposes environmental data and
-// effectful operations to the runtime.
-type Env interface {
-	// Context returns the main runtime context.  The returned
-	// context MAY expire, in which case callers SHOULD finish
-	// any outstanding work and terminate promptly.
-	Context() context.Context
+// NewClient returns Fx options for a client runtime.  Options
+// are passed directly to Client().
+func NewClient(ctx context.Context, fs Flags, opt ...Option) fx.Option {
+	return fx.Options(
+		Env{Ctx: ctx, Flag: fs}.Options(),
+		Config{}.With(clientDefaults(opt)).Client(),
+	)
+}
 
-	/*
-		Observability
-	*/
+// NewClient returns Fx options for a server runtime.  Options
+// are passed directly to Server().
+func NewServer(ctx context.Context, fs Flags, opt ...Option) fx.Option {
+	return fx.Options(
+		Env{Ctx: ctx, Flag: fs}.Options(),
+		Config{}.With(serverDefaults(opt)).Server(),
+	)
+}
 
-	Log() log.Logger
-	Metrics() metrics.Client
+func clientDefaults(opt []Option) []Option {
+	return append([]Option{
+		WithHostConfig(casm.Client),
+	}, opt...)
+}
 
-	/*
-		Configuration
-	*/
-
-	Flags
+func serverDefaults(opt []Option) []Option {
+	return append([]Option{
+		WithHostConfig(casm.Server),
+	}, opt...)
 }
 
 // Flags are used to query configuration parameters.
@@ -57,54 +66,64 @@ type Flags interface {
 	Float64(string) float64
 }
 
-func NewEnv(ctx context.Context, fs Flags) Env {
-	logging := logutil.New(fs)
-	metrics := statsdutil.New(fs, logging)
+// Env is a context object that exposes environmental data and
+// effectful operations to the runtime.
+type Env struct {
+	fx.In
 
-	return &basicEnv{
-		Flags:   fs,
-		context: ctx,
-		logging: logging,
-		metrics: metrics,
-	}
+	Ctx     context.Context `optional:"true"`
+	Log     log.Logger      `optional:"true"`
+	Metrics metrics.Client  `optional:"true"`
+	Flag    Flags
 }
 
-type basicEnv struct {
-	Flags
-	context context.Context
-	logging log.Logger
-	metrics metrics.Client
-}
-
-func (env basicEnv) Context() context.Context {
-	return env.context
-}
-
-func (env basicEnv) Log() log.Logger {
-	return env.logging
-}
-
-func (env basicEnv) Metrics() metrics.Client {
-	return env.metrics
-}
-
-// Prelude provides the core wetware runtime.  It MUST be passed
-// to the top-level call to fx.New.
-func Prelude(env Env) fx.Option {
-	return fx.Options(fx.WithLogger(newFxLogger),
+// Options for the Wetware runtime.  These MUST be passed to
+// the top-level call to fx.New, along with either options
+// provided by either Config.Client() or Config.Server().
+func (env Env) Options() fx.Option {
+	return fx.Options(
+		fx.WithLogger(newFxLogger),
 		fx.Supply(
-			fx.Annotate(env, fx.As(new(Env))),
-			fx.Annotate(env.Log(), fx.As(new(log.Logger))),
-			fx.Annotate(env.Metrics(), fx.As(new(metrics.Client)))),
+			fx.Annotate(env.Flag, fx.As(new(Flags))),
+			fx.Annotate(env.context(), fx.As(new(context.Context))),
+			fx.Annotate(env.logging(), fx.As(new(log.Logger))),
+			fx.Annotate(env.metrics(), fx.As(new(metrics.Client)))),
 		fx.Decorate(
-			decorateLogger,
-			decorateEnv))
+			decorateLogger))
 }
+
+func (env Env) context() context.Context {
+	if env.Ctx == nil {
+		env.Ctx = context.Background()
+	}
+
+	return env.Ctx
+}
+
+func (env *Env) logging() log.Logger {
+	if env.Log == nil {
+		env.Log = logutil.New(env.Flag)
+	}
+
+	return env.Log
+}
+
+func (env *Env) metrics() metrics.Client {
+	if env.Metrics == nil {
+		env.Metrics = statsdutil.New(env.Flag, env.logging())
+	}
+
+	return env.Metrics
+}
+
+/*
+	Fx Logger
+*/
 
 type fxLogger struct{ log.Logger }
 
 func newFxLogger(env Env) fxevent.Logger {
-	return fxLogger{env.Log()}
+	return fxLogger{env.Log}
 }
 
 func (lx fxLogger) LogEvent(ev fxevent.Event) {
@@ -258,30 +277,30 @@ func (lx fxLogger) MaybeModule(name string) fxLogger {
 	return lx
 }
 
-type environment struct {
-	log log.Logger
-	Env
-}
-
-func decorateEnv(env Env, log log.Logger) Env {
-	return environment{
-		log: log,
-		Env: env,
-	}
-}
-
-func (env environment) Log() log.Logger {
-	return env.log
-}
+/*
+	Misc.
+*/
 
 func decorateLogger(env Env, vat casm.Vat) log.Logger {
-	log := env.Log().With(vat)
+	log := env.Log.With(vat)
 
-	if env.IsSet("meta") {
-		log = log.WithField("meta", env.StringSlice("meta"))
+	if env.Flag.IsSet("meta") {
+		log = log.WithField("meta", env.Flag.StringSlice("meta"))
 	}
 
 	return log
+}
+
+func newServerNode(j server.Joiner, ps *pubsub.PubSub) (*server.Node, error) {
+	// TODO:  this should use lx.OnStart to benefit from the start timeout.
+	return j.Join(ps)
+}
+
+func bootServer(lx fx.Lifecycle, n *server.Node) {
+	lx.Append(fx.Hook{
+		OnStart: bootstrap(n),
+		OnStop:  onclose(n),
+	})
 }
 
 func closer(c io.Closer) fx.Hook {

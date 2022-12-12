@@ -23,6 +23,14 @@ import (
 	"go.uber.org/fx"
 )
 
+type bootConfig struct {
+	fx.In
+
+	Log  log.Logger
+	Vat  casm.Vat
+	Flag Flags
+}
+
 func (c Config) ClientBootstrap() fx.Option {
 	return fx.Provide(c.newClientDisc)
 }
@@ -31,14 +39,14 @@ func (c Config) ServerBootstrap() fx.Option {
 	return fx.Provide(c.newServerDisc)
 }
 
-func (c Config) newServerDisc(env Env, lx fx.Lifecycle, vat casm.Vat) (d discovery.Discovery, err error) {
-	if env.IsSet("addr") {
-		d, err = boot.NewStaticAddrStrings(env.StringSlice("addr")...)
+func (c Config) newServerDisc(config bootConfig, lx fx.Lifecycle) (d discovery.Discovery, err error) {
+	if config.Flag.IsSet("addr") {
+		d, err = boot.NewStaticAddrStrings(config.Flag.StringSlice("addr")...)
 		return
 	}
 
-	d, err = bootutil.ListenString(vat.Host, env.String("discover"),
-		socket.WithLogger(env.Log()),
+	d, err = bootutil.ListenString(config.Vat.Host, config.Flag.String("discover"),
+		socket.WithLogger(config.Log),
 		socket.WithRateLimiter(socket.NewPacketLimiter(256, 16)))
 	if c, ok := d.(io.Closer); ok {
 		lx.Append(closer(c))
@@ -48,13 +56,13 @@ func (c Config) newServerDisc(env Env, lx fx.Lifecycle, vat casm.Vat) (d discove
 }
 
 func (c Config) newClientDisc(env Env, lx fx.Lifecycle, vat casm.Vat) (d discovery.Discoverer, err error) {
-	if env.IsSet("addr") {
-		d, err = boot.NewStaticAddrStrings(env.StringSlice("addr")...)
+	if env.Flag.IsSet("addr") {
+		d, err = boot.NewStaticAddrStrings(env.Flag.StringSlice("addr")...)
 		return
 	}
 
-	d, err = bootutil.DialString(vat.Host, env.String("discover"),
-		socket.WithLogger(env.Log()),
+	d, err = bootutil.DialString(vat.Host, env.Flag.String("discover"),
+		socket.WithLogger(env.Log),
 		socket.WithRateLimiter(socket.NewPacketLimiter(256, 16)))
 	if c, ok := d.(io.Closer); ok {
 		lx.Append(closer(c))
@@ -62,7 +70,7 @@ func (c Config) newClientDisc(env Env, lx fx.Lifecycle, vat casm.Vat) (d discove
 
 	return &logMetricDisc{
 		disc:    d,
-		metrics: bootMetrics{env},
+		metrics: bootMetrics{Log: env.Log, Metrics: env.Metrics},
 	}, err
 }
 
@@ -78,7 +86,9 @@ func (c Config) withPubSubDiscovery(d discovery.Discovery, config psBootConfig) 
 type psBootConfig struct {
 	fx.In
 
-	Env       Env
+	Log       log.Logger
+	Metrics   metrics.Client
+	Flag      Flags
 	Vat       casm.Vat
 	DHT       *dual.DHT
 	Datastore ds.Batching
@@ -93,7 +103,7 @@ func (config psBootConfig) maybePeX(d discovery.Discovery, opt []pex.Option) (di
 
 	px, err := pex.New(config.Vat.Host, append([]pex.Option{
 		// default options for PeX
-		pex.WithLogger(config.Env.Log()),
+		pex.WithLogger(config.Log),
 		pex.WithDatastore(config.Datastore),
 		pex.WithDiscovery(d),
 	}, opt...)...)
@@ -110,7 +120,7 @@ func (config psBootConfig) Wrap(d discovery.Discovery) *boot.Namespace {
 	//
 	//  1. the bootstrap service, iff namespace matches cluster topic; else
 	//  2. the DHT-backed discovery service.
-	bootTopic := "floodsub:" + config.Env.String("ns")
+	bootTopic := "floodsub:" + config.Flag.String("ns")
 	match := func(ns string) bool {
 		return ns == bootTopic
 	}
@@ -118,7 +128,7 @@ func (config psBootConfig) Wrap(d discovery.Discovery) *boot.Namespace {
 	target := logMetricDisc{
 		disc:    d,
 		advt:    d,
-		metrics: bootMetrics{config.Env},
+		metrics: bootMetrics{Log: config.Log, Metrics: config.Metrics},
 	}
 
 	return &boot.Namespace{
@@ -159,18 +169,16 @@ func (b logMetricDisc) Advertise(ctx context.Context, ns string, opt ...discover
 }
 
 type bootMetrics struct {
-	env interface {
-		Log() log.Logger
-		Metrics() metrics.Client
-	}
+	Log     log.Logger
+	Metrics metrics.Client
 }
 
 func (m bootMetrics) OnFindPeers(ns string) {
-	m.env.Log().Debug("bootstrapping namespace")
-	m.env.Metrics().Incr(fmt.Sprintf("boot.%s.find_peers", ns))
+	m.Log.Debug("bootstrapping namespace")
+	m.Metrics.Incr(fmt.Sprintf("boot.%s.find_peers", ns))
 }
 
 func (m bootMetrics) OnAdvertise(ns string) {
-	m.env.Log().Debug("advertising namespace")
-	m.env.Metrics().Decr(fmt.Sprintf("boot.%s.find_peers", ns))
+	m.Log.Debug("advertising namespace")
+	m.Metrics.Decr(fmt.Sprintf("boot.%s.find_peers", ns))
 }

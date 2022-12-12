@@ -1,12 +1,15 @@
 package runtime
 
 import (
+	"context"
 	"fmt"
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/discovery"
 	"github.com/libp2p/go-libp2p/core/protocol"
+	"github.com/lthibault/log"
 	casm "github.com/wetware/casm/pkg"
+	"github.com/wetware/casm/pkg/util/metrics"
 	protoutil "github.com/wetware/casm/pkg/util/proto"
 	ww "github.com/wetware/ww/pkg"
 	ww_pubsub "github.com/wetware/ww/pkg/pubsub"
@@ -16,8 +19,12 @@ import (
 type pubSubConfig struct {
 	fx.In
 
-	Vat  casm.Vat
-	Boot discovery.Discovery
+	Ctx     context.Context
+	Log     log.Logger
+	Metrics metrics.Client
+	Flag    Flags
+	Vat     casm.Vat
+	Boot    discovery.Discovery
 }
 
 func (c *Config) PubSub() fx.Option {
@@ -26,26 +33,26 @@ func (c *Config) PubSub() fx.Option {
 		fx.Decorate(c.withPubSubDiscovery))
 }
 
-func (c *Config) newPubSub(env Env, config pubSubConfig) (*pubsub.PubSub, error) {
-	return pubsub.NewGossipSub(env.Context(), config.Vat.Host,
+func (c *Config) newPubSub(config pubSubConfig) (*pubsub.PubSub, error) {
+	return pubsub.NewGossipSub(config.Ctx, config.Vat.Host,
 		pubsub.WithPeerExchange(true),
-		pubsub.WithRawTracer(config.tracer(env)),
+		pubsub.WithRawTracer(config.tracer()),
 		pubsub.WithDiscovery(config.Boot),
-		pubsub.WithProtocolMatchFn(config.protoMatchFunc(env)),
-		pubsub.WithGossipSubProtocols(config.subProtos(env)),
+		pubsub.WithProtocolMatchFn(config.protoMatchFunc()),
+		pubsub.WithGossipSubProtocols(config.subProtos()),
 		pubsub.WithPeerOutboundQueueSize(256),
 	)
 }
 
-func (pubSubConfig) tracer(env Env) ww_pubsub.Tracer {
+func (config pubSubConfig) tracer() ww_pubsub.Tracer {
 	return ww_pubsub.Tracer{
-		Log:     env.Log(),
-		Metrics: env.Metrics().WithPrefix("pubsub"),
+		Log:     config.Log,
+		Metrics: config.Metrics.WithPrefix("pubsub"),
 	}
 }
 
-func (config pubSubConfig) protoMatchFunc(env Env) pubsub.ProtocolMatchFn {
-	match := matcher(env)
+func (config pubSubConfig) protoMatchFunc() pubsub.ProtocolMatchFn {
+	match := matcher(config.Flag)
 
 	return func(local string) func(string) bool {
 		if match.Match(local) {
@@ -56,10 +63,10 @@ func (config pubSubConfig) protoMatchFunc(env Env) pubsub.ProtocolMatchFn {
 	}
 }
 
-func (config pubSubConfig) features(env Env) func(pubsub.GossipSubFeature, protocol.ID) bool {
-	supportGossip := matcher(env)
+func (config pubSubConfig) features() func(pubsub.GossipSubFeature, protocol.ID) bool {
+	supportGossip := matcher(config.Flag)
 
-	_, version := protoutil.Split(protoID(env))
+	_, version := protoutil.Split(protoID(config.Flag))
 	supportsPX := protoutil.Suffix(version)
 
 	return func(feat pubsub.GossipSubFeature, proto protocol.ID) bool {
@@ -76,19 +83,19 @@ func (config pubSubConfig) features(env Env) func(pubsub.GossipSubFeature, proto
 	}
 }
 
-func matcher(env Env) protoutil.MatchFunc {
+func matcher(flag Flags) protoutil.MatchFunc {
 	proto, version := protoutil.Split(pubsub.GossipSubID_v11)
 	return protoutil.Match(
-		ww.NewMatcher(env.String("ns")),
+		ww.NewMatcher(flag.String("ns")),
 		protoutil.Exactly(string(proto)),
 		protoutil.SemVer(string(version)))
 }
 
-func (config pubSubConfig) subProtos(env Env) ([]protocol.ID, func(pubsub.GossipSubFeature, protocol.ID) bool) {
-	return []protocol.ID{protoID(env)}, config.features(env)
+func (config pubSubConfig) subProtos() ([]protocol.ID, func(pubsub.GossipSubFeature, protocol.ID) bool) {
+	return []protocol.ID{protoID(config.Flag)}, config.features()
 }
 
-func protoID(env Env) protocol.ID {
+func protoID(flag Flags) protocol.ID {
 	// FIXME: For security, the cluster topic should not be present
 	//        in the root pubsub capability server.
 
@@ -98,6 +105,6 @@ func protoID(env Env) protocol.ID {
 
 	// /casm/<casm-version>/ww/<version>/<ns>/meshsub/1.1.0
 	return protoutil.Join(
-		ww.Subprotocol(env.String("ns")),
+		ww.Subprotocol(flag.String("ns")),
 		pubsub.GossipSubID_v11)
 }

@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"github.com/libp2p/go-libp2p"
+	"go.uber.org/fx"
 
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/pex"
@@ -15,8 +16,35 @@ import (
 type Config struct {
 	newHost HostConfig
 	hostOpt []libp2p.Option
+	pexOpt  []pex.Option
+}
 
-	pexOpt []pex.Option
+// With returns a new Config populated by the supplied options.
+func (c Config) With(opt []Option) Config {
+	for _, option := range opt {
+		option(&c)
+	}
+
+	return c
+}
+
+func (c Config) Client() fx.Option {
+	return fx.Module("client",
+		c.Vat(),
+		c.System(),
+		c.ClientBootstrap(),
+	)
+}
+
+func (c Config) Server() fx.Option {
+	return fx.Module("server",
+		c.Vat(),
+		c.System(),
+		c.PubSub(),
+		c.Routing(),
+		c.ServerBootstrap(),
+		fx.Provide(newServerNode),
+		fx.Invoke(bootServer))
 }
 
 // Option can modify the state of Config.  It is used to set

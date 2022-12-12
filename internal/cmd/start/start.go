@@ -69,9 +69,8 @@ func Command() *cli.Command {
 func setup() cli.BeforeFunc {
 	return func(c *cli.Context) error {
 		app = fx.New(
-			runtime.Prelude(runtime.NewEnv(c.Context, c)),
-			fx.Populate(&logger, &node),
-			runtime.Server())
+			runtime.NewServer(c.Context, c),
+			fx.Populate(&logger, &node))
 
 		return start(c.Context, app)
 	}
