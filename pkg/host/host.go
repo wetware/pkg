@@ -42,9 +42,9 @@ func (h Host) View(ctx context.Context) (cluster.View, capnp.ReleaseFunc) {
 	return cluster.View(f.View()), release
 }
 
-func (h Host) PubSub(ctx context.Context) (pubsub.Joiner, capnp.ReleaseFunc) {
+func (h Host) PubSub(ctx context.Context) (pubsub.Router, capnp.ReleaseFunc) {
 	f, release := api.Host(h).PubSub(ctx, nil)
-	return pubsub.Joiner(f.PubSub()), release
+	return pubsub.Router(f.PubSub()), release
 }
 
 func (h Host) Root(ctx context.Context) (anchor.Anchor, capnp.ReleaseFunc) {
@@ -68,7 +68,7 @@ type ViewProvider interface {
 }
 
 type PubSubProvider interface {
-	PubSub() pubsub.Joiner
+	PubSub() pubsub.Router
 }
 
 type AnchorProvider interface {

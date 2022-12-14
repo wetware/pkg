@@ -38,8 +38,8 @@ type JoinServer interface {
 //
 // NewJoiner allows callers to supply alternate implementations of
 // JoinServer.  This is most commonly used in unit-testing.
-func NewJoiner(s JoinServer) Joiner {
-	return Joiner(api.Router_ServerToClient(s))
+func NewJoiner(s JoinServer) Router {
+	return Router(api.Router_ServerToClient(s))
 }
 
 // TopicServer is an interface that allows alternate server implementations

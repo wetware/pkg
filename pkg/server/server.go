@@ -79,8 +79,8 @@ func (j Joiner) Join(r Router) (*Node, error) {
 	}, nil
 }
 
-func (j Joiner) pubsub(router pubsub.TopicJoiner) *pubsub.Router {
-	return &pubsub.Router{
+func (j Joiner) pubsub(router pubsub.TopicJoiner) *pubsub.Server {
+	return &pubsub.Server{
 		Log:         j.Log,
 		TopicJoiner: router,
 	}

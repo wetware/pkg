@@ -31,7 +31,7 @@ func TestPubSub(t *testing.T) {
 	gs, release := newGossipSub(ctx)
 	defer release()
 
-	ps := (&pscap.Router{TopicJoiner: gs}).PubSub()
+	ps := (&pscap.Server{TopicJoiner: gs}).PubSub()
 	defer ps.Release()
 
 	const nmsg = 10
@@ -110,7 +110,7 @@ func TestSubscribe_cancel(t *testing.T) {
 	gs, release := newGossipSub(ctx)
 	defer release()
 
-	ps := (&pscap.Router{TopicJoiner: gs}).PubSub()
+	ps := (&pscap.Server{TopicJoiner: gs}).PubSub()
 	defer ps.Release()
 
 	p0, p1 := net.Pipe()
@@ -122,7 +122,7 @@ func TestSubscribe_cancel(t *testing.T) {
 	c1 := rpc.NewConn(rpc.NewStreamTransport(p1), nil)
 	defer c1.Close()
 
-	joiner := pscap.Joiner(c1.Bootstrap(ctx))
+	joiner := pscap.Router(c1.Bootstrap(ctx))
 
 	topic, release := joiner.Join(ctx, "test")
 	defer release()
@@ -160,7 +160,7 @@ func TestMessageCopy(t *testing.T) {
 	gs, release := newGossipSub(ctx)
 	defer release()
 
-	ps := (&pscap.Router{TopicJoiner: gs}).PubSub()
+	ps := (&pscap.Server{TopicJoiner: gs}).PubSub()
 	defer ps.Release()
 
 	p0, p1 := net.Pipe()
@@ -172,7 +172,7 @@ func TestMessageCopy(t *testing.T) {
 	c1 := rpc.NewConn(rpc.NewStreamTransport(p1), nil)
 	defer c1.Close()
 
-	joiner := pscap.Joiner(c1.Bootstrap(ctx))
+	joiner := pscap.Router(c1.Bootstrap(ctx))
 
 	topic, release := joiner.Join(ctx, "test")
 	defer release()
