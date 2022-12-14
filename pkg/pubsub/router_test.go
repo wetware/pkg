@@ -32,7 +32,10 @@ func TestRouter(t *testing.T) {
 		TopicJoiner: ps,
 	}
 
-	topic, release := r.PubSub().Join(ctx, "test")
+	joiner := r.PubSub()
+	defer joiner.Release()
+
+	topic, release := joiner.Join(ctx, "test")
 	defer release()
 	require.NotZero(t, topic, "should not return null capability")
 }
