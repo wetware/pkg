@@ -2,7 +2,6 @@ package pubsub
 
 import (
 	"context"
-	"sync"
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/exp/clock"
@@ -93,71 +92,6 @@ func (t Topic) Subscribe(ctx context.Context) (Subscription, capnp.ReleaseFunc) 
 }
 
 /*
-	Topic Manager
-*/
-
-// topicManager is responsible for refcounting *pubsub.Topic instances.
-type topicManager struct {
-	mu     sync.Mutex
-	topics map[string]api.Topic
-}
-
-func (tm *topicManager) GetOrCreate(log log.Logger, ps TopicJoiner, name string) (api.Topic, error) {
-	tm.mu.Lock()
-	defer tm.mu.Unlock()
-
-	// do we have one, already?
-	if t := tm.topics[name]; capnp.Client(t).IsValid() {
-		return t.AddRef(), nil
-	}
-
-	// slow path...
-
-	return tm.join(log, ps, name)
-}
-
-// join a topic and add it to the map.  Caller MUST hold mu.
-func (tm *topicManager) join(log log.Logger, ps TopicJoiner, name string) (topic api.Topic, err error) {
-	var t *pubsub.Topic
-	if t, err = ps.Join(name); err == nil {
-		topic = tm.asCapability(log, t)
-	}
-
-	return
-
-}
-
-// returns a capability for the supplied topic.  Caller MUST hold mu.
-func (tm *topicManager) asCapability(log log.Logger, t *pubsub.Topic) api.Topic {
-	if tm.topics == nil {
-		tm.topics = make(map[string]api.Topic)
-	}
-
-	server := tm.newTopicServer(log, t)
-	topic := api.Topic_ServerToClient(server)
-
-	tm.topics[t.String()] = topic
-
-	return topic
-}
-
-// closes the topic and removes it from the map. Caller MUST hold mu.
-func (tm *topicManager) leave(t *pubsub.Topic) error {
-	// NOTE: we MUST hold mu until leave() returns. If we release before
-	// t has been closed, a concurrent call might try to join t, causing
-	// a "topic already exists" error.
-	tm.mu.Lock()
-	defer tm.mu.Unlock()
-
-	// The defer isn't actually be necessary, but it ensures stale topics
-	// aren't left in the map if t.Close() were to panic.
-	defer delete(tm.topics, t.String())
-
-	// MUST happen before tm.mu.Unlock()
-	return t.Close()
-}
-
-/*
 	Topic Server
 */
 
@@ -167,17 +101,11 @@ type topicServer struct {
 	leave func(*pubsub.Topic) error
 }
 
-func (tm *topicManager) newTopicServer(log log.Logger, t *pubsub.Topic) *topicServer {
-	return &topicServer{
-		log:   log.WithField("topic", t),
-		topic: t,
-		leave: tm.leave,
-	}
-}
-
 func (t topicServer) Shutdown() {
+	defer log.Trace("topic released")
+
 	if err := t.leave(t.topic); err != nil {
-		t.log.Fatal(err) // refcounting error; application state is invalid.
+		panic(err) // invalid refcount
 	}
 }
 
@@ -209,7 +137,11 @@ func (t topicServer) Publish(ctx context.Context, call MethodPublish) error {
 }
 
 func (t topicServer) Subscribe(ctx context.Context, call MethodSubscribe) error {
-	sub, err := t.subscribe(ctx, call.Args())
+	// Subscribe can't be called with a released client, so there's no need to
+	// check the context before subscribing to the libp2p topic. We will catch
+	// context cancellations in the stream handler.
+
+	sub, err := t.subscribe(call)
 	if err != nil {
 		return err
 	}
@@ -232,13 +164,9 @@ func (t topicServer) Subscribe(ctx context.Context, call MethodSubscribe) error 
 	return handler.Wait()
 }
 
-func (t topicServer) subscribe(ctx context.Context, args api.Topic_subscribe_Params) (sub *pubsub.Subscription, err error) {
-	if err = ctx.Err(); err == nil {
-		bufsize := int(args.Buf())
-		sub, err = t.topic.Subscribe(pubsub.WithBufferSize(bufsize))
-	}
-
-	return
+func (t topicServer) subscribe(call MethodSubscribe) (*pubsub.Subscription, error) {
+	bufsize := int(call.Args().Buf())
+	return t.topic.Subscribe(pubsub.WithBufferSize(bufsize))
 }
 
 func bind(ctx context.Context, sub *pubsub.Subscription) csp.Value {

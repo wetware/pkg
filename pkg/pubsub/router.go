@@ -71,7 +71,7 @@ func (r *Server) Join(ctx context.Context, call MethodJoin) error {
 		return err
 	}
 
-	t, err := r.topics.GetOrCreate(r.Log, r.TopicJoiner, name)
+	t, err := r.topics.GetOrCreate(ctx, r.Log, r.TopicJoiner, name)
 	if err == nil {
 		err = res.SetTopic(t)
 	}
