@@ -107,7 +107,7 @@ func (tm *topicManager) GetOrCreate(log log.Logger, ps TopicJoiner, name string)
 	defer tm.mu.Unlock()
 
 	// do we have one, already?
-	if t := tm.topics[name]; (t != api.Topic{}) {
+	if t := tm.topics[name]; capnp.Client(t).IsValid() {
 		return t.AddRef(), nil
 	}
 
