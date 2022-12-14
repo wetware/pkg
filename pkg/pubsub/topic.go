@@ -102,11 +102,11 @@ type topicServer struct {
 }
 
 func (t topicServer) Shutdown() {
-	defer log.Trace("topic released")
-
 	if err := t.leave(t.topic); err != nil {
 		panic(err) // invalid refcount
 	}
+
+	t.log.Debug("left topic")
 }
 
 func (t topicServer) Name(_ context.Context, call MethodName) error {

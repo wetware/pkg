@@ -18,11 +18,14 @@ type topicManager struct {
 }
 
 func (tm *topicManager) GetOrCreate(ctx context.Context, log log.Logger, ps TopicJoiner, name string) (api.Topic, error) {
+	log = log.WithField("topic", name)
+
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
 
 	// do we have one, already?
 	if t := tm.topics[name]; capnp.Client(t).IsValid() {
+		defer log.Trace("topic ref acquired")
 		return t.AddRef(), nil
 	}
 
@@ -33,6 +36,8 @@ func (tm *topicManager) GetOrCreate(ctx context.Context, log log.Logger, ps Topi
 
 // join a topic and add it to the map.  Caller MUST hold mu.
 func (tm *topicManager) join(log log.Logger, ps TopicJoiner, name string) (topic api.Topic, err error) {
+	defer log.Debug("joined topic")
+
 	var t *pubsub.Topic
 	if t, err = ps.Join(name); err == nil {
 		topic = tm.asCapability(log, t)
@@ -56,7 +61,7 @@ func (tm *topicManager) asCapability(log log.Logger, t *pubsub.Topic) api.Topic 
 
 func (tm *topicManager) newTopic(log log.Logger, t *pubsub.Topic) api.Topic {
 	server := &topicServer{
-		log:   log.WithField("topic", t),
+		log:   log,
 		topic: t,
 		leave: tm.leave,
 	}
