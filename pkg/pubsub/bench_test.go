@@ -124,9 +124,9 @@ func BenchmarkPubSubCap(b *testing.B) {
 		pubsub.WithGossipSubProtocols(Subprotocols()))
 
 	require.NoError(b, err)
-	router := pscap.Router{TopicJoiner: ps}
+	router := pscap.Server{TopicJoiner: ps}
 
-	client := pscap.Joiner(router.Client())
+	client := pscap.Router(router.Client())
 	defer client.Release()
 
 	topic, release := client.Join(ctx, payload)
@@ -152,7 +152,7 @@ func BenchmarkPubSubCapNetwork(b *testing.B) {
 		pubsub.WithGossipSubProtocols(Subprotocols()))
 	require.NoError(b, err)
 
-	router := pscap.Router{TopicJoiner: ps}
+	router := pscap.Server{TopicJoiner: ps}
 
 	left, right := transport.NewPipe(1)
 	p1, p2 := rpc.NewTransport(left), rpc.NewTransport(right)
@@ -165,7 +165,7 @@ func BenchmarkPubSubCapNetwork(b *testing.B) {
 	conn2 := rpc.NewConn(p2, &rpc.Options{})
 	defer conn2.Close()
 
-	client := pscap.Joiner(conn2.Bootstrap(ctx))
+	client := pscap.Router(conn2.Bootstrap(ctx))
 	defer client.Release()
 
 	topic, release := client.Join(ctx, payload)

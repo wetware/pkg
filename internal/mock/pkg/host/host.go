@@ -75,10 +75,10 @@ func (m *MockPubSubProvider) EXPECT() *MockPubSubProviderMockRecorder {
 }
 
 // PubSub mocks base method.
-func (m *MockPubSubProvider) PubSub() pubsub.Joiner {
+func (m *MockPubSubProvider) PubSub() pubsub.Router {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PubSub")
-	ret0, _ := ret[0].(pubsub.Joiner)
+	ret0, _ := ret[0].(pubsub.Router)
 	return ret0
 }
 
