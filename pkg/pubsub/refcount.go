@@ -87,7 +87,9 @@ type refCounter struct {
 // NewClient returns an api.Topic and increments the refcount.
 // Callers MUST hold mu.
 func (s *refCounter) NewClient() api.Topic {
-	s.refs++
+	if s.refs++; s.refs <= 0 {
+		panic("called NewClient() on released server")
+	}
 
 	return api.Topic(capnp.NewClient(s))
 }
@@ -100,10 +102,11 @@ func (s *refCounter) Shutdown() {
 
 	// decrement the refcount and check that it's valid
 	if s.refs--; s.refs < 0 {
-		panic("refcounting error:  released server with zero refs")
+		panic("called Shutdown() on released server")
 	}
 
 	if s.refs == 0 {
+		s.refs = ^int(0) // signal shutdown to NewClient()
 		s.ClientHook.Shutdown()
 	}
 }

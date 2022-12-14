@@ -188,15 +188,18 @@ func TestRefCounter(t *testing.T) {
 	t.Run("ShutdownWhenReleased", func(t *testing.T) {
 		require.NotPanics(t, s.Shutdown,
 			"should not panic during shutdown")
-		assert.Zero(t, s.refs,
+		assert.Less(t, s.refs, 0,
 			"should have decremented references by one")
 		assert.True(t, bool(h),
 			"should not have triggered shutdown")
 	})
 
-	t.Run("InvalidRefPanics", func(t *testing.T) {
+	t.Run("PanicIfReleased", func(t *testing.T) {
 		assert.Panics(t, s.Shutdown,
-			"should panic if refcount is zero")
+			"should panic if released")
+
+		assert.Panics(t, func() { _ = s.NewClient() },
+			"should panic if released")
 	})
 }
 
