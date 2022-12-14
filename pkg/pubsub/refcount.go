@@ -13,7 +13,7 @@ import (
 // topicManager is responsible for refcounting *pubsub.Topic instances.
 type topicManager struct {
 	mu     sync.Mutex
-	topics map[string]*managedServer
+	topics map[string]*refCounter
 }
 
 func (tm *topicManager) GetOrCreate(ctx context.Context, log log.Logger, ps TopicJoiner, name string) (api.Topic, error) {
@@ -49,7 +49,7 @@ func (tm *topicManager) join(log log.Logger, ps TopicJoiner, name string) (topic
 // returns a capability for the supplied topic.  Caller MUST hold mu.
 func (tm *topicManager) asCapability(log log.Logger, t *pubsub.Topic) api.Topic {
 	if tm.topics == nil {
-		tm.topics = make(map[string]*managedServer)
+		tm.topics = make(map[string]*refCounter)
 	}
 
 	server := tm.newTopicServer(log, t)
@@ -58,14 +58,14 @@ func (tm *topicManager) asCapability(log log.Logger, t *pubsub.Topic) api.Topic 
 	return server.NewClient()
 }
 
-func (tm *topicManager) newTopicServer(log log.Logger, t *pubsub.Topic) *managedServer {
+func (tm *topicManager) newTopicServer(log log.Logger, t *pubsub.Topic) *refCounter {
 	server := &topicServer{
 		log:   log,
 		topic: t,
 		leave: tm.leave,
 	}
 
-	return &managedServer{
+	return &refCounter{
 		ClientHook: api.Topic_NewServer(server),
 		mu:         &tm.mu,
 	}
@@ -76,9 +76,9 @@ func (tm *topicManager) leave(t *pubsub.Topic) error {
 	return t.Close()
 }
 
-// managedServer is a capnp.ClientHook that locks the topic manager
+// refCounter is a capnp.ClientHook that locks the topic manager
 // during shutdown.
-type managedServer struct {
+type refCounter struct {
 	mu   *sync.Mutex // topicManager.mu
 	refs int
 	capnp.ClientHook
@@ -86,13 +86,13 @@ type managedServer struct {
 
 // NewClient returns an api.Topic and increments the refcount.
 // Callers MUST hold mu.
-func (s *managedServer) NewClient() api.Topic {
+func (s *refCounter) NewClient() api.Topic {
 	s.refs++
 
 	return api.Topic(capnp.NewClient(s))
 }
 
-func (s *managedServer) Shutdown() {
+func (s *refCounter) Shutdown() {
 	// Prevent concurrent goroutines from manipulating the topic map
 	// during shutdown.
 	s.mu.Lock()

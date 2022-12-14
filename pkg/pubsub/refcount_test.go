@@ -164,13 +164,13 @@ func TestTopicManager(t *testing.T) {
 	})
 }
 
-func TestManagedServer(t *testing.T) {
+func TestRefCounter(t *testing.T) {
 	t.Parallel()
 	t.Helper()
 
 	var h mockClientHook
 
-	var s = &managedServer{
+	var s = &refCounter{
 		refs:       2,
 		mu:         new(sync.Mutex),
 		ClientHook: &h,
