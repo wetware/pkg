@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	capnp "capnproto.org/go/capnp/v3"
-	"capnproto.org/go/capnp/v3/server"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/lthibault/log"
 	api "github.com/wetware/ww/internal/api/pubsub"
@@ -14,7 +13,7 @@ import (
 // topicManager is responsible for refcounting *pubsub.Topic instances.
 type topicManager struct {
 	mu     sync.Mutex
-	topics map[string]api.Topic
+	topics map[string]*managedServer
 }
 
 func (tm *topicManager) GetOrCreate(ctx context.Context, log log.Logger, ps TopicJoiner, name string) (api.Topic, error) {
@@ -24,9 +23,9 @@ func (tm *topicManager) GetOrCreate(ctx context.Context, log log.Logger, ps Topi
 	defer tm.mu.Unlock()
 
 	// do we have one, already?
-	if t := tm.topics[name]; capnp.Client(t).IsValid() {
+	if server, ok := tm.topics[name]; ok {
 		defer log.Trace("topic ref acquired")
-		return t.AddRef(), nil
+		return server.NewClient(), nil
 	}
 
 	// slow path...
@@ -50,28 +49,26 @@ func (tm *topicManager) join(log log.Logger, ps TopicJoiner, name string) (topic
 // returns a capability for the supplied topic.  Caller MUST hold mu.
 func (tm *topicManager) asCapability(log log.Logger, t *pubsub.Topic) api.Topic {
 	if tm.topics == nil {
-		tm.topics = make(map[string]api.Topic)
+		tm.topics = make(map[string]*managedServer)
 	}
 
-	topic := tm.newTopic(log, t)
-	tm.topics[t.String()] = topic
+	server := tm.newTopicServer(log, t)
+	tm.topics[t.String()] = server
 
-	return topic
+	return server.NewClient()
 }
 
-func (tm *topicManager) newTopic(log log.Logger, t *pubsub.Topic) api.Topic {
+func (tm *topicManager) newTopicServer(log log.Logger, t *pubsub.Topic) *managedServer {
 	server := &topicServer{
 		log:   log,
 		topic: t,
 		leave: tm.leave,
 	}
 
-	hook := &managedServer{
-		Server: api.Topic_NewServer(server),
-		mu:     &tm.mu,
+	return &managedServer{
+		ClientHook: api.Topic_NewServer(server),
+		mu:         &tm.mu,
 	}
-
-	return api.Topic(capnp.NewClient(hook))
 }
 
 func (tm *topicManager) leave(t *pubsub.Topic) error {
@@ -82,15 +79,31 @@ func (tm *topicManager) leave(t *pubsub.Topic) error {
 // managedServer is a capnp.ClientHook that locks the topic manager
 // during shutdown.
 type managedServer struct {
-	mu *sync.Mutex // topicManager.mu
-	*server.Server
+	mu   *sync.Mutex // topicManager.mu
+	refs int
+	capnp.ClientHook
 }
 
-func (s managedServer) Shutdown() {
+// NewClient returns an api.Topic and increments the refcount.
+// Callers MUST hold mu.
+func (s *managedServer) NewClient() api.Topic {
+	s.refs++
+
+	return api.Topic(capnp.NewClient(s))
+}
+
+func (s *managedServer) Shutdown() {
 	// Prevent concurrent goroutines from manipulating the topic map
 	// during shutdown.
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.Server.Shutdown()
+	// decrement the refcount and check that it's valid
+	if s.refs--; s.refs < 0 {
+		panic("refcounting error:  released server with zero refs")
+	}
+
+	if s.refs == 0 {
+		s.ClientHook.Shutdown()
+	}
 }
