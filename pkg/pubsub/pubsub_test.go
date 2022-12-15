@@ -123,6 +123,7 @@ func TestSubscribe_cancel(t *testing.T) {
 	defer c1.Close()
 
 	joiner := pscap.Router(c1.Bootstrap(ctx))
+	defer joiner.Release()
 
 	topic, release := joiner.Join(ctx, "test")
 	defer release()
@@ -173,6 +174,7 @@ func TestMessageCopy(t *testing.T) {
 	defer c1.Close()
 
 	joiner := pscap.Router(c1.Bootstrap(ctx))
+	defer joiner.Release()
 
 	topic, release := joiner.Join(ctx, "test")
 	defer release()

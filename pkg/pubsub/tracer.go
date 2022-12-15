@@ -38,7 +38,7 @@ func (t Tracer) RemovePeer(id peer.ID) {
 func (t Tracer) Join(topic string) {
 	t.Log.
 		WithField("topic", topic).
-		Trace("joined topic")
+		Debug("joined topic")
 	t.Metrics.Incr("topics")
 }
 
@@ -46,7 +46,7 @@ func (t Tracer) Join(topic string) {
 func (t Tracer) Leave(topic string) {
 	t.Log.
 		WithField("topic", topic).
-		Trace("left topic")
+		Debug("left topic")
 	t.Metrics.Decr("topics")
 }
 

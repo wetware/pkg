@@ -105,8 +105,6 @@ func (t topicServer) Shutdown() {
 	if err := t.leave(t.topic); err != nil {
 		panic(err) // invalid refcount
 	}
-
-	t.log.Debug("left topic")
 }
 
 func (t topicServer) Name(_ context.Context, call MethodName) error {

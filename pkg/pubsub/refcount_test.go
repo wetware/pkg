@@ -2,7 +2,6 @@ package pubsub
 
 import (
 	"context"
-	"sync"
 	"testing"
 
 	capnp "capnproto.org/go/capnp/v3"
@@ -43,12 +42,6 @@ func TestTopicManager(t *testing.T) {
 			WithField("topic", name).
 			Return(logger).
 			Times(1)
-		logger.EXPECT().
-			Debug("joined topic").
-			Times(1)
-		logger.EXPECT().
-			Debug("left topic").
-			Times(1)
 
 		joiner, release := newGossipSub(ctx)
 		defer release()
@@ -78,16 +71,7 @@ func TestTopicManager(t *testing.T) {
 		logger.EXPECT().
 			WithField("topic", name).
 			Return(logger).
-			Times(n)
-		logger.EXPECT().
-			Debug("joined topic").
-			Times(1)
-		logger.EXPECT().
-			Trace("topic ref acquired").
-			Times(n - 1)
-		logger.EXPECT().
-			Debug("left topic").
-			Times(1)
+			Times(1) // called on join
 
 		joiner, release := newGossipSub(ctx)
 		defer release()
@@ -115,7 +99,6 @@ func TestTopicManager(t *testing.T) {
 			future references.
 		*/
 
-		const n = 3
 		var manager topicManager
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -128,15 +111,6 @@ func TestTopicManager(t *testing.T) {
 		logger.EXPECT().
 			WithField("topic", name).
 			Return(logger).
-			Times(n)
-		logger.EXPECT().
-			Debug("joined topic").
-			Times(1)
-		logger.EXPECT().
-			Trace("topic ref acquired").
-			Times(n - 1)
-		logger.EXPECT().
-			Debug("left topic").
 			Times(1)
 
 		joiner, release := newGossipSub(ctx)
@@ -164,45 +138,6 @@ func TestTopicManager(t *testing.T) {
 	})
 }
 
-func TestRefCounter(t *testing.T) {
-	t.Parallel()
-	t.Helper()
-
-	var h mockClientHook
-
-	var s = &refCounter{
-		refs:       2,
-		mu:         new(sync.Mutex),
-		ClientHook: &h,
-	}
-
-	t.Run("NoShutdownIfRefs", func(t *testing.T) {
-		require.NotPanics(t, s.Shutdown,
-			"should not panic during shutdown")
-		assert.Equal(t, 1, s.refs,
-			"should have decremented references by one")
-		assert.False(t, bool(h),
-			"should not have triggered shutdown")
-	})
-
-	t.Run("ShutdownWhenReleased", func(t *testing.T) {
-		require.NotPanics(t, s.Shutdown,
-			"should not panic during shutdown")
-		assert.Less(t, s.refs, 0,
-			"should have decremented references by one")
-		assert.True(t, bool(h),
-			"should not have triggered shutdown")
-	})
-
-	t.Run("PanicIfReleased", func(t *testing.T) {
-		assert.Panics(t, s.Shutdown,
-			"should panic if released")
-
-		assert.Panics(t, func() { _ = s.NewClient() },
-			"should panic if released")
-	})
-}
-
 func newGossipSub(ctx context.Context) (*pubsub.PubSub, func()) {
 	h := newTestHost()
 
@@ -225,22 +160,4 @@ func newTestHost() host.Host {
 	}
 
 	return h
-}
-
-type mockClientHook bool
-
-func (mockClientHook) Send(context.Context, capnp.Send) (*capnp.Answer, capnp.ReleaseFunc) {
-	panic("NOT IMPLEMENTED")
-}
-
-func (mockClientHook) Recv(context.Context, capnp.Recv) capnp.PipelineCaller {
-	panic("NOT IMPLEMENTED")
-}
-
-func (mockClientHook) Brand() capnp.Brand {
-	panic("NOT IMPLEMENTED")
-}
-
-func (hook *mockClientHook) Shutdown() {
-	*hook = true
 }
