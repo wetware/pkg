@@ -11,7 +11,7 @@ import (
 
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/util/stream"
-	chan_api "github.com/wetware/ww/internal/api/channel"
+	"github.com/wetware/ww/internal/api/channel"
 	api "github.com/wetware/ww/internal/api/pubsub"
 	"github.com/wetware/ww/pkg/csp"
 )
@@ -148,15 +148,13 @@ func (t topicServer) Subscribe(ctx context.Context, call MethodSubscribe) error 
 	sender := call.Args().Chan()
 	sender.SetFlowLimiter(bbr.NewLimiter(clock.System))
 
-	handler := stream.New(sender.Send)
-	next := bind(ctx, sub)
-
-	t.log.Trace("registered subscription handler")
-	defer t.log.Trace("unregistered subscription handler")
+	t.log.Debug("registered subscription handler")
+	defer t.log.Debug("unregistered subscription handler")
 
 	// forward messages to the callback channel
+	handler := stream.New(sender.Send)
 	for call.Go(); handler.Open(); t.log.Trace("message received") {
-		handler.Call(ctx, next)
+		handler.Call(ctx, bind(ctx, sub))
 	}
 
 	return handler.Wait()
@@ -167,13 +165,20 @@ func (t topicServer) subscribe(call MethodSubscribe) (*pubsub.Subscription, erro
 	return t.topic.Subscribe(pubsub.WithBufferSize(bufsize))
 }
 
+// bind the libp2p subscription to the handler.  Note that
+// we MUST NOT call sub.Next() inside of the callback, or
+// capnp will deadlock.
 func bind(ctx context.Context, sub *pubsub.Subscription) csp.Value {
-	return func(ps chan_api.Sender_send_Params) error {
-		msg, err := sub.Next(ctx)
-		if err != nil {
-			return err
-		}
+	msg, err := sub.Next(ctx)
+	if err != nil {
+		return failure(err)
+	}
 
-		return capnp.Struct(ps).SetData(0, msg.Data)
+	return csp.Data(msg.Data)
+}
+
+func failure(err error) csp.Value {
+	return func(channel.Sender_send_Params) error {
+		return err
 	}
 }

@@ -11,12 +11,6 @@ import (
 	"github.com/wetware/ww/pkg/pubsub"
 )
 
-func init() {
-	capnp.SetClientLeakFunc(func(msg string) {
-		panic(msg)
-	})
-}
-
 func TestRouter(t *testing.T) {
 	t.Parallel()
 

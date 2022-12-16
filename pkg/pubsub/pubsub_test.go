@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"runtime"
 	"testing"
 	"time"
 
@@ -19,6 +20,15 @@ import (
 
 	pscap "github.com/wetware/ww/pkg/pubsub"
 )
+
+func TestMain(m *testing.M) {
+	capnp.SetClientLeakFunc(func(msg string) {
+		fmt.Println(msg)
+	})
+	defer runtime.GC()
+
+	m.Run()
+}
 
 func TestPubSub(t *testing.T) {
 	t.Parallel()
@@ -131,12 +141,12 @@ func TestSubscribe_cancel(t *testing.T) {
 	sub, release := topic.Subscribe(ctx)
 	defer release()
 
+	release()
 	assert.Eventually(t, func() bool {
 		select {
 		case <-sub.Future.Done():
 			return true
 		default:
-			release()
 			return false
 		}
 	}, time.Millisecond*100, time.Millisecond*10,

@@ -89,6 +89,7 @@ func teardown() cli.AfterFunc {
 			context.Background(),
 			app.StopTimeout())
 		defer cancel()
+
 		return app.Stop(ctx)
 	}
 }
