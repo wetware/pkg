@@ -39,6 +39,14 @@ type HostConn struct {
 	bc capnp.Client
 }
 
+func (c *HostConn) Close() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	defer c.bc.Release()
+
+	return c.Conn.Close()
+}
+
 // Bootstrap returns the remote vat's bootstrap interface.
 // Bootstrap clients are cached until they become invalid.
 //

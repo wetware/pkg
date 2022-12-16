@@ -14,7 +14,7 @@ import (
 	"github.com/wetware/ww/pkg/client"
 )
 
-func TestHostConn(t *testing.T) {
+func TestHostConn_Bootstrap(t *testing.T) {
 	t.Parallel()
 	t.Helper()
 
@@ -66,3 +66,45 @@ func TestHostConn(t *testing.T) {
 			"should bootstrap when cached client resolves to error")
 	})
 }
+
+func TestHostConn_Close(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	c := capnp.NewClient(&mockClientHook{})
+
+	conn := mock_client.NewMockConn(ctrl)
+	conn.EXPECT().
+		Bootstrap(gomock.Any()).
+		Return(c).
+		Times(1)
+	conn.EXPECT().
+		Close().
+		Return(nil).
+		Times(1)
+
+	hconn := &client.HostConn{
+		Conn: conn,
+	}
+
+	// call once to cache the error client...
+	_ = hconn.Bootstrap(context.Background())
+
+	require.NoError(t, hconn.Close(), "should close without error")
+	require.Panics(t, func() {
+		c.AddRef().Release()
+	}, "should release bootstrap client")
+}
+
+type mockClientHook struct{}
+
+func (mockClientHook) Send(context.Context, capnp.Send) (*capnp.Answer, capnp.ReleaseFunc) {
+	panic("NOT IMPLEMENTED")
+}
+func (mockClientHook) Recv(context.Context, capnp.Recv) capnp.PipelineCaller {
+	panic("NOT IMPLEMENTED")
+}
+func (mockClientHook) Brand() capnp.Brand { panic("NOT IMPLEMENTED") }
+func (mockClientHook) Shutdown()          {}
