@@ -71,24 +71,30 @@ func message(b []byte) func(api.Topic_publish_Params) error {
 // Subscribe to the topic.  Callers MUST call the provided ReleaseFunc
 // when finished with the subscription, or a resource leak will occur.
 func (t Topic) Subscribe(ctx context.Context) (Subscription, capnp.ReleaseFunc) {
+	// Aborting early simplifies the lifecycle logic for the handler.
+	// We still invoke api.Topic.Subscribe() in order to report the
+	// null capability error to the caller.
+	if !api.Topic(t).IsValid() {
+		f, release := api.Topic(t).Subscribe(ctx, nil)
+		return Subscription{Future: casm.Future(f)}, release
+	}
+
+	// The user needs to be able to abort the call, so we derive a
+	// context and wrap its CancelFunc in the release function.
 	ctx, cancel := context.WithCancel(ctx)
 
-	ch := make(handler, 16)
-	f, release := api.Topic(t).Subscribe(ctx, ch.Params)
+	var (
+		h          = make(handler, 16)
+		f, release = api.Topic(t).Subscribe(ctx, h.Params)
+	)
 
-	sub := Subscription{
-		Future: casm.Future(f),
-		Seq:    ch,
-	}
-
-	if !api.Topic(t).IsValid() {
-		close(ch) // necessary in case capnp.Client is wrong in the client side (e.g. is nil)
-	}
-
-	return sub, func() {
-		cancel()
-		release()
-	}
+	return Subscription{
+			Future: casm.Future(f),
+			Seq:    h,
+		}, func() {
+			cancel()
+			release()
+		}
 }
 
 /*

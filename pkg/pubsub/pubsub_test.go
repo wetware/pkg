@@ -6,7 +6,6 @@ import (
 	"net"
 	"runtime"
 	"testing"
-	"time"
 
 	capnp "capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
@@ -104,53 +103,6 @@ func TestPubSub(t *testing.T) {
 	})
 
 	assert.NoError(t, g.Wait())
-}
-
-func TestSubscribe_cancel(t *testing.T) {
-	t.Parallel()
-
-	/*
-		Test that releasing a subscription causes the iterator to
-		unblock.
-	*/
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	gs, release := newGossipSub(ctx)
-	defer release()
-
-	ps := (&pscap.Server{TopicJoiner: gs}).PubSub()
-	defer ps.Release()
-
-	p0, p1 := net.Pipe()
-	c0 := rpc.NewConn(rpc.NewStreamTransport(p0), &rpc.Options{
-		BootstrapClient: capnp.Client(ps),
-	})
-	defer c0.Close()
-
-	c1 := rpc.NewConn(rpc.NewStreamTransport(p1), nil)
-	defer c1.Close()
-
-	joiner := pscap.Router(c1.Bootstrap(ctx))
-	defer joiner.Release()
-
-	topic, release := joiner.Join(ctx, "test")
-	defer release()
-
-	sub, release := topic.Subscribe(ctx)
-	defer release()
-
-	release()
-	assert.Eventually(t, func() bool {
-		select {
-		case <-sub.Future.Done():
-			return true
-		default:
-			return false
-		}
-	}, time.Millisecond*100, time.Millisecond*10,
-		"should eventually abort iteration")
 }
 
 func TestMessageCopy(t *testing.T) {

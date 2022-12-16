@@ -14,7 +14,7 @@ type Subscription casm.Iterator[[]byte]
 // Next blocks until the next message is received, and returns it.  It
 // returns nil when the subscription is canceled.
 func (sub Subscription) Next() []byte {
-	b, _ := sub.Seq.Next()
+	b, _ := casm.Iterator[[]byte](sub).Next()
 	return b
 }
 
