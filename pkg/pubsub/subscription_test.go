@@ -6,7 +6,10 @@ import (
 	"time"
 
 	"capnproto.org/go/capnp/v3/exc"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+
+	mock_pubsub "github.com/wetware/ww/internal/mock/pkg/pubsub"
 	"github.com/wetware/ww/pkg/pubsub"
 )
 
@@ -33,29 +36,27 @@ func TestSubscribe_cancel(t *testing.T) {
 		unblock.
 	*/
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-	gs, release := newGossipSub(ctx)
-	defer release()
+	server := mock_pubsub.NewMockTopicServer(ctrl)
+	server.EXPECT().
+		Subscribe(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, _ pubsub.MethodSubscribe) error {
+			<-ctx.Done()
+			return ctx.Err()
+		}).
+		Times(1)
 
-	router := (&pubsub.Server{TopicJoiner: gs}).PubSub()
-	defer router.Release()
+	topic := pubsub.NewTopic(server)
+	defer topic.Release()
 
-	topic, release := router.Join(ctx, "test")
-	defer release()
+	sub, release := topic.Subscribe(context.Background())
+	release() // immediate release
 
-	sub, release := topic.Subscribe(ctx)
-	defer release()
-
-	release()
-	assert.Eventually(t, func() bool {
-		select {
-		case <-sub.Future.Done():
-			return true
-		default:
-			return false
-		}
-	}, time.Millisecond*100, time.Millisecond*10,
-		"should eventually abort iteration")
+	select {
+	case <-sub.Future.Done():
+	case <-time.After(time.Millisecond * 100):
+		t.Error("should cancel subscription quickly")
+	}
 }
