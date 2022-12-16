@@ -3,10 +3,8 @@ package client
 
 import (
 	"context"
-	"errors"
 
 	"capnproto.org/go/capnp/v3"
-	"capnproto.org/go/capnp/v3/rpc"
 
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/cluster"
@@ -15,48 +13,23 @@ import (
 	"github.com/wetware/ww/pkg/pubsub"
 )
 
-// ErrDisconnected indicates that the client's connection to
-// the cluster was lost.
-var ErrDisconnected = errors.New("disconnected")
-
 type Node struct {
-	vat  casm.Vat
-	conn *rpc.Conn
-}
-
-func (n *Node) String() string {
-	return n.vat.NS
-}
-
-func (n *Node) Loggable() map[string]any {
-	return n.vat.Loggable()
-}
-
-// Return the host's underlying vat.  This is a low-level API that
-// exposes raw CASM and libp2p functionality.
-func (n *Node) Vat() casm.Vat {
-	return n.vat
+	Vat casm.Vat
+	Conn
 }
 
 // Host to which the client node is connected.  This is a low-level API
 // that is not subject to Wetware's backwards-compatibility guarantees.
 // Users are encouraged to access this functionality by calling Node's
-// other methods.   This capability is null until a successful call to
-// Boostrap().
+// other methods.
 func (n *Node) Host(ctx context.Context) host.Host {
-	return host.Host(n.conn.Bootstrap(ctx))
+	client := n.Conn.Bootstrap(ctx)
+	return host.Host(client)
 }
 
-// Done returns a read-only channel that is closed when
-// 'n' becomes disconnected from the cluster.
-func (n *Node) Done() <-chan struct{} {
-	return n.conn.Done()
-}
-
-// Close the client connection.  Note that this does not
-// close the underlying host.
-func (n *Node) Close() error {
-	return n.conn.Close()
+// Bootstrap blocks until the bootstrap capability has been resolved.
+func (n *Node) Bootstrap(ctx context.Context) error {
+	return capnp.Client(n.Host(ctx)).Resolve(ctx)
 }
 
 func (n *Node) View(ctx context.Context) (cluster.View, capnp.ReleaseFunc) {

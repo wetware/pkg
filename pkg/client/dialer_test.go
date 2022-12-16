@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p/core/discovery"
 	p2p_host "github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/net/swarm"
@@ -24,6 +25,25 @@ import (
 func TestDialer(t *testing.T) {
 	t.Parallel()
 	t.Helper()
+
+	t.Run("BootError", func(t *testing.T) {
+		t.Parallel()
+
+		vat := newVat()
+		defer vat.Host.Close()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		n, err := client.Dialer{
+			Vat:  vat,
+			Boot: bootErr{},
+		}.Dial(ctx)
+
+		assert.ErrorAs(t, err, new(bootErr),
+			"should wrap errors from bootstrapper")
+		assert.Nil(t, n, "should return nil client node")
+	})
 
 	t.Run("NoPeers", func(t *testing.T) {
 		t.Parallel()
@@ -188,4 +208,12 @@ func newVat() casm.Vat {
 		NS:   "test",
 		Host: h,
 	}
+}
+
+type bootErr struct{}
+
+func (bootErr) Error() string { return "test" }
+
+func (bootErr) FindPeers(context.Context, string, ...discovery.Option) (<-chan peer.AddrInfo, error) {
+	return nil, bootErr{}
 }

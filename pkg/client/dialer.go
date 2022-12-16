@@ -68,12 +68,12 @@ func (d Dialer) join(ctx context.Context) (n *Node, err error) {
 func (d Dialer) connect(ctx context.Context, info peer.AddrInfo) (*Node, error) {
 	conn, err := d.Vat.Connect(ctx, info, host.Capability)
 	if err != nil {
-		return nil, err
+		return nil, err // caller tests for nil *Node
 	}
 
 	return &Node{
-		vat:  d.Vat,
-		conn: conn,
+		Vat:  d.Vat,
+		Conn: conn,
 	}, nil
 }
 
