@@ -73,7 +73,7 @@ func (d Dialer) connect(ctx context.Context, info peer.AddrInfo) (*Node, error) 
 
 	return &Node{
 		Vat:  d.Vat,
-		Conn: conn,
+		Conn: &HostConn{Conn: conn},
 	}, nil
 }
 
