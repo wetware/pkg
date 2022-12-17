@@ -7,7 +7,10 @@ import (
 	"errors"
 
 	"capnproto.org/go/capnp/v3"
+	"capnproto.org/go/capnp/v3/exp/clock"
+	"capnproto.org/go/capnp/v3/flowcontrol/bbr"
 	casm "github.com/wetware/casm/pkg"
+	"github.com/wetware/casm/pkg/util/stream"
 	"github.com/wetware/ww/internal/api/channel"
 )
 
@@ -98,6 +101,13 @@ func (c Chan) Recv(ctx context.Context) (casm.FuturePtr, capnp.ReleaseFunc) {
 	return Recver(c).Recv(ctx)
 }
 
+// NewStream for the sender.   This will overwrite the existing
+// flow limiter. Callers SHOULD NOT create more than one stream
+// for a given sender.
+func (c Chan) NewStream(ctx context.Context) SendStream {
+	return Sender(c).NewStream(ctx)
+}
+
 func (c Chan) AddRef() Chan {
 	return Chan(capnp.Client(c).AddRef())
 }
@@ -146,6 +156,13 @@ func (sc SendCloser) Send(ctx context.Context, v Value) (casm.Future, capnp.Rele
 	return Sender(sc).Send(ctx, v)
 }
 
+// NewStream for the sender.   This will overwrite the existing
+// flow limiter. Callers SHOULD NOT create more than one stream
+// for a given sender.
+func (sc SendCloser) NewStream(ctx context.Context) SendStream {
+	return Sender(sc).NewStream(ctx)
+}
+
 func (sc SendCloser) AddRef() SendCloser {
 	return SendCloser(capnp.Client(sc).AddRef())
 }
@@ -185,6 +202,19 @@ func NewSender(s SendServer) Sender {
 func (s Sender) Send(ctx context.Context, v Value) (casm.Future, capnp.ReleaseFunc) {
 	f, release := channel.Sender(s).Send(ctx, v)
 	return casm.Future(f), release
+}
+
+// NewStream for the sender.   This will overwrite the existing
+// flow limiter. Callers SHOULD NOT create more than one stream
+// for a given sender.
+func (s Sender) NewStream(ctx context.Context) SendStream {
+	sender := channel.Sender(s)
+	sender.SetFlowLimiter(bbr.NewLimiter(clock.System))
+
+	return SendStream{
+		ctx:    ctx,
+		stream: stream.New(channel.Sender(s).Send),
+	}
 }
 
 func (s Sender) AddRef() Sender {
