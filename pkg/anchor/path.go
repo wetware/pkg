@@ -20,7 +20,7 @@ var root = Path{}.bind(identity)
 // All paths are relative; there is no way of referencing a parent
 // anchor from its child. This provides a form of capability-based
 // isolation wherein principals are limited to the scope of anchor
-// references in their posession.
+// references in their possession.
 //
 // A path comprising a single '/' is the "root" path. The root path
 // designates the current anchor. Equivalently, it can be said that
