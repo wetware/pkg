@@ -18,6 +18,11 @@ type Node struct {
 	Conn
 }
 
+// Loggable fields for the node.
+func (n *Node) Logger() map[string]any {
+	return n.Vat.Loggable()
+}
+
 // Host to which the client node is connected.  This is a low-level API
 // that is not subject to Wetware's backwards-compatibility guarantees.
 // Users are encouraged to access this functionality by calling Node's
