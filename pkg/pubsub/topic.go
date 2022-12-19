@@ -53,6 +53,19 @@ func (t Topic) Publish(ctx context.Context, b []byte) error {
 	return f.Err()
 }
 
+// NewStream provides an interface for publishing large volumes of data
+// through a flow-controlled channel.   This will override the existing
+// FlowLimiter.
+func (t Topic) NewStream(ctx context.Context) Stream {
+	topic := api.Topic(t)
+	topic.SetFlowLimiter(bbr.NewLimiter(clock.System))
+
+	return Stream{
+		ctx:    ctx,
+		stream: stream.New(topic.Publish),
+	}
+}
+
 // PublishAsync submits a message for broadcast over the topic.  Unlike
 // Publish, it returns a future.  This is useful when applications must
 // publish a large volume of messages, and callers do not wish to spawn
@@ -60,12 +73,6 @@ func (t Topic) Publish(ctx context.Context, b []byte) error {
 func (t Topic) PublishAsync(ctx context.Context, b []byte) (casm.Future, capnp.ReleaseFunc) {
 	f, release := api.Topic(t).Publish(ctx, message(b))
 	return casm.Future(f), release
-}
-
-func message(b []byte) func(api.Topic_publish_Params) error {
-	return func(ps api.Topic_publish_Params) error {
-		return ps.SetMsg(b)
-	}
 }
 
 // Subscribe to the topic.  Callers MUST call the provided ReleaseFunc
@@ -95,6 +102,29 @@ func (t Topic) Subscribe(ctx context.Context) (Subscription, capnp.ReleaseFunc) 
 			cancel()
 			release()
 		}
+}
+
+type Stream struct {
+	ctx    context.Context
+	stream *stream.Stream[api.Topic_publish_Params]
+}
+
+func (s Stream) Publish(msg []byte) (err error) {
+	if s.stream.Call(s.ctx, message(msg)); !s.stream.Open() {
+		err = s.Close()
+	}
+
+	return
+}
+
+func (s Stream) Close() error {
+	return s.stream.Wait()
+}
+
+func message(b []byte) func(api.Topic_publish_Params) error {
+	return func(ps api.Topic_publish_Params) error {
+		return ps.SetMsg(b)
+	}
 }
 
 /*
