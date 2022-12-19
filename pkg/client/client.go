@@ -19,7 +19,7 @@ type Node struct {
 }
 
 // Loggable fields for the node.
-func (n *Node) Logger() map[string]any {
+func (n *Node) Loggable() map[string]any {
 	return n.Vat.Loggable()
 }
 
