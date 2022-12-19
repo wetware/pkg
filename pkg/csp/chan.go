@@ -213,7 +213,7 @@ func (s Sender) NewStream(ctx context.Context) SendStream {
 
 	return SendStream{
 		ctx:    ctx,
-		stream: stream.New(channel.Sender(s).Send),
+		stream: stream.New(sender.Send),
 	}
 }
 
