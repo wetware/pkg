@@ -121,9 +121,9 @@ func (t Tracer) DropRPC(r *pubsub.RPC, id peer.ID) {
 // UndeliverableMessage is invoked when the consumer of Subscribe is not reading messages fast enough and
 // the pressure release mechanism trigger, dropping messages.
 func (t Tracer) UndeliverableMessage(m *pubsub.Message) {
-	// t.Log.
-	// 	WithField("topic", m.GetTopic()).
-	// 	Warn("message undeliverable")
+	t.Log.
+		WithField("topic", m.GetTopic()).
+		Warn("message undeliverable")
 	t.Metrics.Incr("undeliverable")
 }
 
