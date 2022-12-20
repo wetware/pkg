@@ -40,9 +40,10 @@ var flags = []cli.Flag{
 	},
 	// Statsd
 	&cli.StringFlag{
-		Name:        "statsd",
-		Usage:       "send metrics to statsd daemon on `host:port`",
-		EnvVars:     []string{"WW_STATSD"},
+		Name:        "metrics",
+		Aliases:     []string{"statsd"},
+		Usage:       "send metrics to udp `host:port`",
+		EnvVars:     []string{"WW_METRICS", "WW_STATSD"},
 		DefaultText: "disabled",
 	},
 	// Misc.
