@@ -7,9 +7,10 @@ $Go.import("github.com/wetware/ww/internal/api/pubsub");
 
 
 interface Topic {
-    publish   @0 (msg :Data) -> ();
+    publish   @0 (msg :Data) -> stream;
     subscribe @1 (chan :Sender(Data), buf :UInt16 = 32) -> ();
     name      @2 () -> (name :Text);
+
 
     using Sender = import "channel.capnp".Sender;
 }

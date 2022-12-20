@@ -8,6 +8,7 @@ import (
 	fc "capnproto.org/go/capnp/v3/flowcontrol"
 	schemas "capnproto.org/go/capnp/v3/schemas"
 	server "capnproto.org/go/capnp/v3/server"
+	stream "capnproto.org/go/capnp/v3/std/capnp/stream"
 	context "context"
 	fmt "fmt"
 	channel "github.com/wetware/ww/internal/api/channel"
@@ -18,7 +19,7 @@ type Topic capnp.Client
 // Topic_TypeID is the unique identifier for the type Topic.
 const Topic_TypeID = 0x986ea9282f106bb0
 
-func (c Topic) Publish(ctx context.Context, params func(Topic_publish_Params) error) (Topic_publish_Results_Future, capnp.ReleaseFunc) {
+func (c Topic) Publish(ctx context.Context, params func(Topic_publish_Params) error) (stream.StreamResult_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0x986ea9282f106bb0,
@@ -32,7 +33,7 @@ func (c Topic) Publish(ctx context.Context, params func(Topic_publish_Params) er
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Topic_publish_Params(s)) }
 	}
 	ans, release := capnp.Client(c).SendCall(ctx, s)
-	return Topic_publish_Results_Future{Future: ans.Future()}, release
+	return stream.StreamResult_Future{Future: ans.Future()}, release
 }
 func (c Topic) Subscribe(ctx context.Context, params func(Topic_subscribe_Params) error) (Topic_subscribe_Results_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
@@ -211,9 +212,9 @@ func (c Topic_publish) Args() Topic_publish_Params {
 }
 
 // AllocResults allocates the results struct.
-func (c Topic_publish) AllocResults() (Topic_publish_Results, error) {
+func (c Topic_publish) AllocResults() (stream.StreamResult, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Topic_publish_Results(r), err
+	return stream.StreamResult(r), err
 }
 
 // Topic_subscribe holds the state for a server call to Topic.subscribe.
@@ -334,71 +335,6 @@ type Topic_publish_Params_Future struct{ *capnp.Future }
 func (f Topic_publish_Params_Future) Struct() (Topic_publish_Params, error) {
 	p, err := f.Future.Ptr()
 	return Topic_publish_Params(p.Struct()), err
-}
-
-type Topic_publish_Results capnp.Struct
-
-// Topic_publish_Results_TypeID is the unique identifier for the type Topic_publish_Results.
-const Topic_publish_Results_TypeID = 0x9d3775c65b79b54c
-
-func NewTopic_publish_Results(s *capnp.Segment) (Topic_publish_Results, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Topic_publish_Results(st), err
-}
-
-func NewRootTopic_publish_Results(s *capnp.Segment) (Topic_publish_Results, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Topic_publish_Results(st), err
-}
-
-func ReadRootTopic_publish_Results(msg *capnp.Message) (Topic_publish_Results, error) {
-	root, err := msg.Root()
-	return Topic_publish_Results(root.Struct()), err
-}
-
-func (s Topic_publish_Results) String() string {
-	str, _ := text.Marshal(0x9d3775c65b79b54c, capnp.Struct(s))
-	return str
-}
-
-func (s Topic_publish_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
-	return capnp.Struct(s).EncodeAsPtr(seg)
-}
-
-func (Topic_publish_Results) DecodeFromPtr(p capnp.Ptr) Topic_publish_Results {
-	return Topic_publish_Results(capnp.Struct{}.DecodeFromPtr(p))
-}
-
-func (s Topic_publish_Results) ToPtr() capnp.Ptr {
-	return capnp.Struct(s).ToPtr()
-}
-func (s Topic_publish_Results) IsValid() bool {
-	return capnp.Struct(s).IsValid()
-}
-
-func (s Topic_publish_Results) Message() *capnp.Message {
-	return capnp.Struct(s).Message()
-}
-
-func (s Topic_publish_Results) Segment() *capnp.Segment {
-	return capnp.Struct(s).Segment()
-}
-
-// Topic_publish_Results_List is a list of Topic_publish_Results.
-type Topic_publish_Results_List = capnp.StructList[Topic_publish_Results]
-
-// NewTopic_publish_Results creates a new list of Topic_publish_Results.
-func NewTopic_publish_Results_List(s *capnp.Segment, sz int32) (Topic_publish_Results_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Topic_publish_Results](l), err
-}
-
-// Topic_publish_Results_Future is a wrapper for a Topic_publish_Results promised by a client call.
-type Topic_publish_Results_Future struct{ *capnp.Future }
-
-func (f Topic_publish_Results_Future) Struct() (Topic_publish_Results, error) {
-	p, err := f.Future.Ptr()
-	return Topic_publish_Results(p.Struct()), err
 }
 
 type Topic_subscribe_Params capnp.Struct
@@ -1025,53 +961,51 @@ func (p Router_join_Results_Future) Topic() Topic {
 	return Topic(p.Future.Field(0, nil).Client())
 }
 
-const schema_f9d8a0180405d9ed = "x\xda\x8c\x93Mh\x13A\x1c\xc5\xffof\xe2\x14i" +
-	"H\xc7\x8d\xdfB\xa5\xb4\xa29\xb4\xb6\x82\x1f=\x98\xa0" +
-	"\xa8\x17\x0f\xd9PD,\x82I\\m\xb4\xc9\x86l\xb6" +
-	"RA\xbcT\xec]\x04-\x04TP\x14/V\xf1 " +
-	"\xe2\xc1KK\xd5\x83\x07\x05{\xf1\xa6\x14!\x8a H" +
-	"\xfd`e\x12w\x13m-^wf\xde\xff\xf7\xde\xfb" +
-	"\xef\xd6\xfbH\x88\xdep\\\x123\x07B\xcb\xbc\xbe\x17" +
-	"\xed3\x13\xdb\x8bc\xa4\x0c\x10\x09I\xb4\xed\x02\x8f\x81" +
-	"\x84\xb7w\xec\xf9\xe8\xf8\xa5\xb6\xf1\xfaI\x08\xfa(\xcf" +
-	"W\x80`\xb8<N\xf0\xee\x9dn\xeb\xd9|\xa7p\x85" +
-	"T\x98{\xd5\xd9\x90Xs\xed\xcd<\x11\x8c\xcb|\xc2" +
-	"\xa8pId\\\xe5\xd3\xc6J-\xea\x1d|8:8" +
-	"\xe5\xee\xa84\xcd\xf9\xc9\xd7\xe99\xb7\x07?\xd9\xeeT" +
-	"i\x9aL\x03\xc1\xa0w\xbcC\x0f\xaa\xf23\x04/\xbe" +
-	"\xe9\xd0\x86\xbbGF^7\x93\x8c\x0a\xa6/\x9c\x13\x9a" +
-	"\xa4\xdf\x1eY\xff\xfeA\xf2\xed\x02\x92\x8a\xb8a\xdc\xd4" +
-	"\xc3\x8c\xeb\xe2\x801S#\xe9\xda_y\xf9l\xf2\xd6" +
-	"\x1c\xa9h\xa06)\x96k\xb5G55\xb9\xfb\xd5\x97" +
-	"y\xfb\xc7\xe7\x06\xaa1+\xbe\x91\xf0\x06.~\x15V" +
-	"\xb5\xe7{\xf3\xcb'u\x8e\xa7\"Ng\xbd\xa2\x9bq" +
-	"\xdcLw\x96\xa7\x8b\x85b\xff\x80]\xcce\xbb\x1d7" +
-	"\xe3dK\xb9\x8c\xd5\x99\xb2\x9c\x88;\\v\x16\xbdV" +
-	"t3\xc39g\xa83\x99.\xa5\xf3pL\xc1\x05\x91" +
-	"\x00\x91\x0aw\x10\x99-\x1cf\x94A\xe6\x9d\x93\x08\x13" +
-	"C\x98\x10\xc8\xc0\x97\xe1\xb9l\x120[y\x88(\xa8" +
-	"\x0f~\xf2\xca\xdcCL\xed\x93@\x109\xfc\xf6\xd5\xae" +
-	"\x141\xd5+\xc1\x02\xf7\xf0SW]1bj\xad<" +
-	"\xff\x1b1\x01\xcf\xf7D\xb0\x12\x88\x14\xd2y+\x81$" +
-	"\xb0\xa4\xb1\x94\xe5\xb8\xc3\xfc\x1f\xee\x1b!%\xd3%\x99" +
-	"\xce;fK\xe0\x7fK\x8c\xc8\xec\xe40\x8f1\x00Q" +
-	"\x00PGu&\x879\xcc\xe3\x0c\x91\xecP\xba\x00\xe5" +
-	"}\\\xf5ag\xb4\xfax\x8e\x88\x12Ph7\x05C" +
-	"\xf3G\x85\xd5\xa6\xd0\xaf\x93\x1c\xb5\x0c\x15Af\xdc\x13" +
-	"\x90\xc4Br#-\x8e\xaf\xcd\xd5\xd9\xcb\x0e5\xb7\x12" +
-	"k\xb4RK\x00\xad\xc4\xd0\xba\xa0\x96\x94\xed\xca\xb2U" +
-	"\xd2\xbd\x88Z/\xfe\x12\xc1\xdfC\xa5t\xbe!\x199" +
-	"e\xe7\x0a\x8b\xe5\x98\xb2\xdd\xb2U\xea\xd6\xc7\x01\xc9\x1f" +
-	"(}\x0d\x94\xf6\xb2\xa6\x86j\xfc\x9c\x04m4\x90d" +
-	"\x7f{\x8b\xd76\xceYbf\xfd\xc2\x7f\x99\xff\x15\x00" +
-	"\x00\xff\xff\x9f14\x0d"
+const schema_f9d8a0180405d9ed = "x\xda\x8c\x93Oh\x13M\x18\xc6\xdfgf\xd2-\x1f" +
+	"\x0d\xe9|\x1b\xbeOQ\xa8\x94V4\x87\xd6\xb6 \xda" +
+	"\x83\x89\x8a\x8a\xb7\x9dP\xc4?\x88n\xe2jW\x9bl" +
+	"\xccf[\xf4\xe2\xa5`=x\x10/Z(HA\xb1" +
+	"\x88`\x11O^\xbch\xf1\xcfAA\xc1^<j\x15" +
+	"\xaa\x08\x82T\x85\x95I\xcd&\xda\xa2\xde\x86\x9dw\x9e" +
+	"\xf7y~\xef\xbb\x1b&\x91\x11=\xf17M\xc4\x94\x15" +
+	"k\x0a{\x9f\xb4=\x1c\xdfX\x1a%i\x82H\x18D" +
+	"}\xfbx\x0a$\xc2\xed\xa3\x8fO\x8d]l\x1d[\xbc" +
+	"\x89A_m\xe5\xff\x82`\xee\xe6iBx\xebDk" +
+	"\xf7\xba\xa9\xe2%\x92q\x1e\xce\xcf\xc6\xc4\x8a+/\x17" +
+	"\x88`\xba|\xdc<\xc9\x0d\"\xb3\xc0g\xcc\xb7\xfa\x14" +
+	"^?\xf0\xc1\x0b\x1e\x94gH\x99\x88\xe4\x9e\xf1v-" +
+	"7\xcbG\x08az\xed\x9e\xd57\xf6\x0f\xbfh\xec\xe7" +
+	"\x08\xa6\x0b\\\xa1\xfb\xf5{\xc3\xab^\xdf\xb6^-\xe9" +
+	"wNL\x9a\x17\xb4u\xf3\xbc\xd8e\xde\xd1\xa7\xb0s" +
+	"\xe7\xc4\xd3G\xd3\xd7\xe6H&#\xb5\x09\xf1\x8fV\xbb" +
+	"ZU3\xb6<\xff\xb4\xe0}\xfbX\x0fn\xde\x17_" +
+	"H\x84\x03g?\x0bg\xbe\xfbk\xe3\xcb\xa9E\x1f7" +
+	"E\x9aN\x87\xa5 \xe7\x07\xb9\xae<\xb7K\xc5R\xff" +
+	"\x80Wr\xf3]~\x90\xf3\xf3e7\xe7td\x1d?" +
+	"\x11\x0cU\xfce\xcbJAn\xc8\xf5\x07;,\xbbl" +
+	"\x17\xe0+\xc1\x05\x91\x00\x91\x8c\xb7\x13\xa9f\x0e\x95d" +
+	"0\x0a\xfe1\xc4\x89!N\x88dP\x93\xe1n\xde\x02" +
+	"T\x0b\x8f\x11ECBq\xfa\xdeH\xdf\xf8\xa1\xcbR" +
+	"m#&w\x18@\x84\x1c\xb5\x19\xcb\xcdYb\xb2\xc7" +
+	"\x00\x8b\xd2\xa3F]v\xa6\x88\xc9\x95\xc6\x99\x1f\x163" +
+	"\x08k\x99\x08N\x06\x89\xa2]p2\xb0\x80?\xe4\xb7" +
+	"\xec\xb2a\x17|\xd5\x1cE[\x9f\"R\x1d\x1c\xea0" +
+	"\x03\x90\x04\x00yP\xc7\xdd\xcb\xa1\x8e0$\xf2\x83v" +
+	"\x112|\xff\xdf\xbbM\xc9\xf9\xbbsD\x94\x81D\x9b" +
+	"\x12\x0c\x8d\x1f%\xfeWB\xbf\xb68\xaax$\xc1\xc8" +
+	"\x05Ga\x10\x8b\x19khyg\xda\xb7\x1e\x8a\x9e\x09" +
+	"5\x02O\xd5\x81W\xc3\xa1\x85\x18Z\x96\x10\xcfz\x81" +
+	"Qq\xca\x1a\xb9\xa8\"\xaf\xed\x07j+&\xa5F\x17" +
+	"3\x12\xc7=\xb7\xb8\x1c\xa2\xac\x17T\x9cr\x97\xbe\x8e" +
+	"\x9c\xfcd\xa5\xb7n\xa5\xad\xa2]C\xd6\xff.\x82\x0e" +
+	"\x1aI\xb2_\xb3\xa5\xab\xcb\xe4\xff\xa6\xe7b\xc1_\x85" +
+	"\xff\x1e\x00\x00\xff\xffJ\x1a\x1e\xef"
 
 func init() {
 	schemas.Register(schema_f9d8a0180405d9ed,
 		0x8470369ac91fcc32,
 		0x8810938879cb8443,
 		0x986ea9282f106bb0,
-		0x9d3775c65b79b54c,
 		0xc772c6756fef5ba8,
 		0xd5765aab1c56263f,
 		0xde50b3e61b766f3a,
