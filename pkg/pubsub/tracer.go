@@ -17,6 +17,10 @@ type Tracer struct {
 	}
 }
 
+/*
+	Control Messages
+*/
+
 // AddPeer is invoked when a new peer is added.
 func (t Tracer) AddPeer(id peer.ID, proto protocol.ID) {
 	t.Log.
@@ -68,6 +72,10 @@ func (t Tracer) Prune(id peer.ID, topic string) {
 	t.Metrics.Incr("prune")
 }
 
+/*
+	User Messages
+*/
+
 // ValidateMessage is invoked when a message first enters the validation pipeline.
 func (t Tracer) ValidateMessage(*pubsub.Message) {}
 
@@ -82,7 +90,7 @@ func (t Tracer) RejectMessage(m *pubsub.Message, reason string) {
 	t.Log.
 		WithField("topic", m.GetTopic()).
 		WithField("reason", reason).
-		Info("message rejected")
+		Debug("message rejected")
 	t.Metrics.Incr("rejected")
 }
 
@@ -90,6 +98,16 @@ func (t Tracer) RejectMessage(m *pubsub.Message, reason string) {
 func (t Tracer) DuplicateMessage(*pubsub.Message) {
 	t.Metrics.Incr("duplicates")
 }
+
+// UndeliverableMessage is invoked when the consumer of Subscribe is not reading messages fast enough and
+// the pressure release mechanism trigger, dropping messages.
+func (t Tracer) UndeliverableMessage(m *pubsub.Message) {
+	t.Metrics.Incr("undeliverable")
+}
+
+/*
+	RPC  Messages
+*/
 
 // ThrottlePeer is invoked when a peer is throttled by the peer gater.
 func (t Tracer) ThrottlePeer(id peer.ID) {
@@ -111,84 +129,5 @@ func (t Tracer) SendRPC(*pubsub.RPC, peer.ID) {
 
 // DropRPC is invoked when an outbound RPC is dropped, typically because of a queue full.
 func (t Tracer) DropRPC(r *pubsub.RPC, id peer.ID) {
-	t.Log.
-		With(rpcFields(r)).
-		WithField("peer", id).
-		Warn("outbound rpc failed")
 	t.Metrics.Incr("rpc.dropped")
-}
-
-// UndeliverableMessage is invoked when the consumer of Subscribe is not reading messages fast enough and
-// the pressure release mechanism trigger, dropping messages.
-func (t Tracer) UndeliverableMessage(m *pubsub.Message) {
-	t.Log.
-		WithField("topic", m.GetTopic()).
-		Warn("message undeliverable")
-	t.Metrics.Incr("undeliverable")
-}
-
-func rpcFields(r *pubsub.RPC) log.F {
-	if r.Publish != nil {
-		return publishFields(r)
-	}
-
-	return controlFields(r)
-}
-
-func publishFields(r *pubsub.RPC) log.F {
-	return log.F{
-		"rpc": "publish",
-	}
-}
-
-func controlFields(r *pubsub.RPC) log.F {
-	switch {
-	case r.Control.Graft != nil:
-		return log.F{
-			"rpc":    "control",
-			"method": "graft",
-			"topics": graftTopics(r),
-		}
-
-	case r.Control.Prune != nil:
-		return log.F{
-			"rpc":    "control",
-			"method": "prune",
-			"topics": pruneTopics(r),
-		}
-
-	case r.Control.Iwant != nil:
-		return log.F{
-			"rpc":    "control",
-			"method": "iwant",
-		}
-
-	case r.Control.Ihave != nil:
-		return log.F{
-			"rpc":    "control",
-			"method": "ihave",
-		}
-
-	default:
-		return log.F{
-			"rpc":    "control",
-			"method": "unknown",
-		}
-	}
-}
-
-func graftTopics(r *pubsub.RPC) []string {
-	ss := make([]string, len(r.Control.Graft))
-	for i, topic := range r.Control.Graft {
-		ss[i] = *topic.TopicID
-	}
-	return ss
-}
-
-func pruneTopics(r *pubsub.RPC) []string {
-	ss := make([]string, len(r.Control.Prune))
-	for i, topic := range r.Control.Prune {
-		ss[i] = *topic.TopicID
-	}
-	return ss
 }
