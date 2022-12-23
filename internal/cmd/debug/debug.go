@@ -9,14 +9,14 @@ import (
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
 
-	"github.com/wetware/ww/internal/runtime"
-	runtimeutil "github.com/wetware/ww/internal/util/runtime"
 	"github.com/wetware/ww/pkg/client"
+	"github.com/wetware/ww/pkg/runtime"
 )
 
 var (
 	app    *fx.App
 	node   *client.Node
+	dialer client.Dialer
 	logger log.Logger
 )
 
@@ -64,17 +64,20 @@ func Command() *cli.Command {
 }
 
 func setup() cli.BeforeFunc {
-	return func(c *cli.Context) error {
+	return func(c *cli.Context) (err error) {
 		app = fx.New(
-			runtime.Prelude(runtimeutil.New(c)),
+			runtime.NewClient(c.Context, c),
 			fx.StartTimeout(c.Duration("timeout")),
-			fx.Populate(&logger, &node),
-			runtime.Client())
+			fx.Populate(&logger, &dialer))
 
 		ctx, cancel := context.WithTimeout(
 			c.Context,
-			app.StartTimeout())
+			c.Duration("timeout"))
 		defer cancel()
+
+		if node, err = dialer.Dial(ctx); err != nil {
+			return
+		}
 
 		return app.Start(ctx)
 	}

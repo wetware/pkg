@@ -1,6 +1,8 @@
 package runtime
 
 import (
+	"context"
+
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -16,7 +18,15 @@ func (c Config) Routing() fx.Option {
 		fx.Decorate(routedHost))
 }
 
-func (c Config) newDHT(env Env, lx fx.Lifecycle, vat casm.Vat) (*dual.DHT, error) {
+type routingConfig struct {
+	fx.In
+
+	Ctx  context.Context
+	Flag Flags
+	Vat  casm.Vat
+}
+
+func (c Config) newDHT(config routingConfig, lx fx.Lifecycle) (*dual.DHT, error) {
 	// TODO:  Use dht.BootstrapPeersFunc to get bootstrap peers from PeX?
 	//        This might allow us to greatly simplify our architecture and
 	//        runtime initialization.  In particular:
@@ -27,9 +37,9 @@ func (c Config) newDHT(env Env, lx fx.Lifecycle, vat casm.Vat) (*dual.DHT, error
 	//          2. The server.Joiner type could be simplified, and perhaps
 	//             eliminated entirely.
 
-	d, err := dual.New(env.Context(), vat.Host,
-		dual.LanDHTOption(lanOpt(env)...), // TODO:  options (w/ defaults) from Config
-		dual.WanDHTOption(wanOpt(env)...)) // TODO:  options (w/ defaults) from Config
+	d, err := dual.New(config.Ctx, config.Vat.Host,
+		dual.LanDHTOption(lanOpt(config.Flag)...), // TODO:  options (w/ defaults) from Config
+		dual.WanDHTOption(wanOpt(config.Flag)...)) // TODO:  options (w/ defaults) from Config
 
 	if err == nil {
 		lx.Append(fx.Hook{
@@ -45,16 +55,16 @@ func routedHost(h host.Host, dht *dual.DHT) host.Host {
 	return routedhost.Wrap(h, dht)
 }
 
-func lanOpt(env Env) []dht.Option {
+func lanOpt(flag Flags) []dht.Option {
 	return []dht.Option{
 		dht.Mode(dht.ModeServer),
-		dht.ProtocolPrefix(ww.Subprotocol(env.String("ns"))),
+		dht.ProtocolPrefix(ww.Subprotocol(flag.String("ns"))),
 		dht.ProtocolExtension("lan")}
 }
 
-func wanOpt(env Env) []dht.Option {
+func wanOpt(flag Flags) []dht.Option {
 	return []dht.Option{
 		dht.Mode(dht.ModeAuto),
-		dht.ProtocolPrefix(ww.Subprotocol(env.String("ns"))),
+		dht.ProtocolPrefix(ww.Subprotocol(flag.String("ns"))),
 		dht.ProtocolExtension("wan")}
 }

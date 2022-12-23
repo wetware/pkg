@@ -4,6 +4,7 @@ package host
 
 import (
 	"context"
+	"time"
 
 	"capnproto.org/go/capnp/v3"
 
@@ -12,8 +13,8 @@ import (
 	"github.com/wetware/casm/pkg/debug"
 	anchor_api "github.com/wetware/ww/internal/api/anchor"
 	api "github.com/wetware/ww/internal/api/cluster"
-	pubsub_api "github.com/wetware/ww/internal/api/pubsub"
 	disc_api "github.com/wetware/ww/internal/api/discovery"
+	pubsub_api "github.com/wetware/ww/internal/api/pubsub"
 	"github.com/wetware/ww/pkg/anchor"
 	"github.com/wetware/ww/pkg/discovery"
 	"github.com/wetware/ww/pkg/pubsub"
@@ -44,9 +45,9 @@ func (h Host) View(ctx context.Context) (cluster.View, capnp.ReleaseFunc) {
 	return cluster.View(f.View()), release
 }
 
-func (h Host) PubSub(ctx context.Context) (pubsub.Joiner, capnp.ReleaseFunc) {
+func (h Host) PubSub(ctx context.Context) (pubsub.Router, capnp.ReleaseFunc) {
 	f, release := api.Host(h).PubSub(ctx, nil)
-	return pubsub.Joiner(f.PubSub()), release
+	return pubsub.Router(f.PubSub()), release
 }
 
 func (h Host) Root(ctx context.Context) (anchor.Anchor, capnp.ReleaseFunc) {
@@ -75,7 +76,7 @@ type ViewProvider interface {
 }
 
 type PubSubProvider interface {
-	PubSub() pubsub.Joiner
+	PubSub() pubsub.Router
 }
 
 type AnchorProvider interface {

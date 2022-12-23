@@ -8,8 +8,7 @@ import (
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
 
-	"github.com/wetware/ww/internal/runtime"
-	runtimeutil "github.com/wetware/ww/internal/util/runtime"
+	"github.com/wetware/ww/pkg/runtime"
 	"github.com/wetware/ww/pkg/server"
 )
 
@@ -70,9 +69,8 @@ func Command() *cli.Command {
 func setup() cli.BeforeFunc {
 	return func(c *cli.Context) error {
 		app = fx.New(
-			runtime.Prelude(runtimeutil.New(c)),
-			fx.Populate(&logger, &node),
-			runtime.Server())
+			runtime.NewServer(c.Context, c),
+			fx.Populate(&logger, &node))
 
 		return start(c.Context, app)
 	}

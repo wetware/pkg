@@ -103,8 +103,6 @@ func (ch handler) Next() (b Addr, ok bool) {
 func (ch handler) Send(ctx context.Context, call chan_api.Sender_send) error {
 	ptr, err := call.Args().Value()
 	if err == nil {
-		// It's okay to block here, since there is only one writer.
-		// Back-pressure will be handled by the BBR flow-limiter.
 		info, err := toAddr(api.Addr(ptr.Struct()))
 		if err != nil {
 			return err
@@ -135,7 +133,10 @@ func toAddr(capInfo api.Addr) (Addr, error) {
 			return addr, err
 		}
 
-		maddr, err := ma.NewMultiaddrBytes(data)
+		b := make([]byte, len(data))
+		copy(b, data)
+
+		maddr, err := ma.NewMultiaddrBytes(b)
 		if err != nil {
 			return addr, err
 		}

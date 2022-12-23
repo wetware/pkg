@@ -12,6 +12,7 @@ import (
 	ds "github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	"github.com/libp2p/go-libp2p/core/discovery"
+	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/discovery/routing"
 	casm "github.com/wetware/casm/pkg"
@@ -23,6 +24,26 @@ import (
 	"go.uber.org/fx"
 )
 
+type bootConfig struct {
+	fx.In
+
+	Log     log.Logger
+	Metrics metrics.Client
+	Vat     casm.Vat
+	Flag    Flags
+}
+
+func (bc bootConfig) host() host.Host {
+	return bc.Vat.Host
+}
+
+func (bc bootConfig) metrics() bootMetrics {
+	return bootMetrics{
+		Log:     bc.Log,
+		Metrics: bc.Metrics,
+	}
+}
+
 func (c Config) ClientBootstrap() fx.Option {
 	return fx.Provide(c.newClientDisc)
 }
@@ -31,14 +52,14 @@ func (c Config) ServerBootstrap() fx.Option {
 	return fx.Provide(c.newServerDisc)
 }
 
-func (c Config) newServerDisc(env Env, lx fx.Lifecycle, vat casm.Vat) (d discovery.Discovery, err error) {
-	if env.IsSet("addr") {
-		d, err = boot.NewStaticAddrStrings(env.StringSlice("addr")...)
+func (c Config) newServerDisc(config bootConfig, lx fx.Lifecycle) (d discovery.Discovery, err error) {
+	if config.Flag.IsSet("addr") {
+		d, err = boot.NewStaticAddrStrings(config.Flag.StringSlice("addr")...)
 		return
 	}
 
-	d, err = bootutil.ListenString(vat.Host, env.String("discover"),
-		socket.WithLogger(env.Log()),
+	d, err = bootutil.ListenString(config.host(), config.Flag.String("discover"),
+		socket.WithLogger(config.Log),
 		socket.WithRateLimiter(socket.NewPacketLimiter(256, 16)))
 	if c, ok := d.(io.Closer); ok {
 		lx.Append(closer(c))
@@ -47,14 +68,14 @@ func (c Config) newServerDisc(env Env, lx fx.Lifecycle, vat casm.Vat) (d discove
 	return
 }
 
-func (c Config) newClientDisc(env Env, lx fx.Lifecycle, vat casm.Vat) (d discovery.Discoverer, err error) {
-	if env.IsSet("addr") {
-		d, err = boot.NewStaticAddrStrings(env.StringSlice("addr")...)
+func (c Config) newClientDisc(config bootConfig, lx fx.Lifecycle) (d discovery.Discoverer, err error) {
+	if config.Flag.IsSet("addr") {
+		d, err = boot.NewStaticAddrStrings(config.Flag.StringSlice("addr")...)
 		return
 	}
 
-	d, err = bootutil.DialString(vat.Host, env.String("discover"),
-		socket.WithLogger(env.Log()),
+	d, err = bootutil.DialString(config.host(), config.Flag.String("discover"),
+		socket.WithLogger(config.Log),
 		socket.WithRateLimiter(socket.NewPacketLimiter(256, 16)))
 	if c, ok := d.(io.Closer); ok {
 		lx.Append(closer(c))
@@ -62,7 +83,7 @@ func (c Config) newClientDisc(env Env, lx fx.Lifecycle, vat casm.Vat) (d discove
 
 	return &logMetricDisc{
 		disc:    d,
-		metrics: bootMetrics{env},
+		metrics: config.metrics(),
 	}, err
 }
 
@@ -78,8 +99,7 @@ func (c Config) withPubSubDiscovery(d discovery.Discovery, config psBootConfig) 
 type psBootConfig struct {
 	fx.In
 
-	Env       Env
-	Vat       casm.Vat
+	Boot      bootConfig
 	DHT       *dual.DHT
 	Datastore ds.Batching
 	Lifecycle fx.Lifecycle
@@ -91,9 +111,9 @@ func (config psBootConfig) maybePeX(d discovery.Discovery, opt []pex.Option) (di
 		return d, nil
 	}
 
-	px, err := pex.New(config.Vat.Host, append([]pex.Option{
+	px, err := pex.New(config.Boot.host(), append([]pex.Option{
 		// default options for PeX
-		pex.WithLogger(config.Env.Log()),
+		pex.WithLogger(config.Boot.Log),
 		pex.WithDatastore(config.Datastore),
 		pex.WithDiscovery(d),
 	}, opt...)...)
@@ -110,7 +130,7 @@ func (config psBootConfig) Wrap(d discovery.Discovery) *boot.Namespace {
 	//
 	//  1. the bootstrap service, iff namespace matches cluster topic; else
 	//  2. the DHT-backed discovery service.
-	bootTopic := "floodsub:" + config.Env.String("ns")
+	bootTopic := "floodsub:" + config.Boot.Flag.String("ns")
 	match := func(ns string) bool {
 		return ns == bootTopic
 	}
@@ -118,7 +138,7 @@ func (config psBootConfig) Wrap(d discovery.Discovery) *boot.Namespace {
 	target := logMetricDisc{
 		disc:    d,
 		advt:    d,
-		metrics: bootMetrics{config.Env},
+		metrics: config.Boot.metrics(),
 	}
 
 	return &boot.Namespace{
@@ -159,18 +179,16 @@ func (b logMetricDisc) Advertise(ctx context.Context, ns string, opt ...discover
 }
 
 type bootMetrics struct {
-	env interface {
-		Log() log.Logger
-		Metrics() metrics.Client
-	}
+	Log     log.Logger
+	Metrics metrics.Client
 }
 
 func (m bootMetrics) OnFindPeers(ns string) {
-	m.env.Log().Debug("bootstrapping namespace")
-	m.env.Metrics().Incr(fmt.Sprintf("boot.%s.find_peers", ns))
+	m.Log.Debug("bootstrapping namespace")
+	m.Metrics.Incr(fmt.Sprintf("boot.%s.find_peers", ns))
 }
 
 func (m bootMetrics) OnAdvertise(ns string) {
-	m.env.Log().Debug("advertising namespace")
-	m.env.Metrics().Decr(fmt.Sprintf("boot.%s.find_peers", ns))
+	m.Log.Debug("advertising namespace")
+	m.Metrics.Decr(fmt.Sprintf("boot.%s.find_peers", ns))
 }

@@ -262,31 +262,31 @@ func (mr *MockPeekRecvServerMockRecorder) Recv(arg0, arg1 interface{}) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Recv", reflect.TypeOf((*MockPeekRecvServer)(nil).Recv), arg0, arg1)
 }
 
-// MockServer is a mock of Server interface.
-type MockServer struct {
+// MockChanServer is a mock of ChanServer interface.
+type MockChanServer struct {
 	ctrl     *gomock.Controller
-	recorder *MockServerMockRecorder
+	recorder *MockChanServerMockRecorder
 }
 
-// MockServerMockRecorder is the mock recorder for MockServer.
-type MockServerMockRecorder struct {
-	mock *MockServer
+// MockChanServerMockRecorder is the mock recorder for MockChanServer.
+type MockChanServerMockRecorder struct {
+	mock *MockChanServer
 }
 
-// NewMockServer creates a new mock instance.
-func NewMockServer(ctrl *gomock.Controller) *MockServer {
-	mock := &MockServer{ctrl: ctrl}
-	mock.recorder = &MockServerMockRecorder{mock}
+// NewMockChanServer creates a new mock instance.
+func NewMockChanServer(ctrl *gomock.Controller) *MockChanServer {
+	mock := &MockChanServer{ctrl: ctrl}
+	mock.recorder = &MockChanServerMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockServer) EXPECT() *MockServerMockRecorder {
+func (m *MockChanServer) EXPECT() *MockChanServerMockRecorder {
 	return m.recorder
 }
 
 // Close mocks base method.
-func (m *MockServer) Close(arg0 context.Context, arg1 csp.MethodClose) error {
+func (m *MockChanServer) Close(arg0 context.Context, arg1 csp.MethodClose) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Close", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -294,13 +294,13 @@ func (m *MockServer) Close(arg0 context.Context, arg1 csp.MethodClose) error {
 }
 
 // Close indicates an expected call of Close.
-func (mr *MockServerMockRecorder) Close(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockChanServerMockRecorder) Close(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockServer)(nil).Close), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockChanServer)(nil).Close), arg0, arg1)
 }
 
 // Recv mocks base method.
-func (m *MockServer) Recv(arg0 context.Context, arg1 csp.MethodRecv) error {
+func (m *MockChanServer) Recv(arg0 context.Context, arg1 csp.MethodRecv) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Recv", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -308,13 +308,13 @@ func (m *MockServer) Recv(arg0 context.Context, arg1 csp.MethodRecv) error {
 }
 
 // Recv indicates an expected call of Recv.
-func (mr *MockServerMockRecorder) Recv(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockChanServerMockRecorder) Recv(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Recv", reflect.TypeOf((*MockServer)(nil).Recv), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Recv", reflect.TypeOf((*MockChanServer)(nil).Recv), arg0, arg1)
 }
 
 // Send mocks base method.
-func (m *MockServer) Send(arg0 context.Context, arg1 csp.MethodSend) error {
+func (m *MockChanServer) Send(arg0 context.Context, arg1 csp.MethodSend) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Send", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -322,9 +322,9 @@ func (m *MockServer) Send(arg0 context.Context, arg1 csp.MethodSend) error {
 }
 
 // Send indicates an expected call of Send.
-func (mr *MockServerMockRecorder) Send(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockChanServerMockRecorder) Send(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Send", reflect.TypeOf((*MockServer)(nil).Send), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Send", reflect.TypeOf((*MockChanServer)(nil).Send), arg0, arg1)
 }
 
 // MockPeekableServer is a mock of PeekableServer interface.

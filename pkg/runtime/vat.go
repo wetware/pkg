@@ -9,6 +9,7 @@ import (
 	"go.uber.org/fx"
 
 	casm "github.com/wetware/casm/pkg"
+	"github.com/wetware/casm/pkg/util/metrics"
 )
 
 func (c Config) Vat() fx.Option {
@@ -26,19 +27,19 @@ type hostFactoryConfig struct {
 	Priv crypto.PrivKey
 }
 
-func (c Config) newHostFactory(env Env, cfg hostFactoryConfig) casm.HostFactory {
+func (c Config) newHostFactory(flag Flags, cfg hostFactoryConfig) casm.HostFactory {
 	return c.newHost(append([]libp2p.Option{
-		libp2p.ListenAddrStrings(env.StringSlice("listen")...),
+		libp2p.ListenAddrStrings(flag.StringSlice("listen")...),
 		// libp2p.BandwidthReporter(cfg.Metrics),
 		libp2p.Identity(cfg.Priv),
 	}, c.hostOpt...)...)
 }
 
-func newVat(env Env, lx fx.Lifecycle, f casm.HostFactory) (casm.Vat, error) {
-	vat, err := casm.New(env.String("ns"), f)
+func newVat(mc metrics.Client, flag Flags, lx fx.Lifecycle, f casm.HostFactory) (casm.Vat, error) {
+	vat, err := casm.New(flag.String("ns"), f)
 	if err == nil {
 		lx.Append(closer(vat.Host))
-		vat.Metrics = env.Metrics().WithPrefix("vat")
+		vat.Metrics = mc.WithPrefix("vat")
 	}
 
 	return vat, err

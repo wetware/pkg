@@ -25,12 +25,12 @@ func TestDiscover(t *testing.T) {
 	gs, release := newGossipSub(ctx)
 	defer release()
 
-	ps := (&pscap.Router{TopicJoiner: gs}).PubSub()
+	ps := (&pscap.Server{TopicJoiner: gs}).PubSub()
 	defer ps.Release()
 
 	// create server
 	server := discovery.DiscoveryServiceServer{
-		Joiner: ps,
+		Router: ps,
 	}
 	// create 1 client
 	client := discovery.DiscoveryService(api.DiscoveryService_ServerToClient(&server))

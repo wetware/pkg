@@ -63,7 +63,7 @@ func discAction() cli.ActionFunc {
 		defer release()
 
 		for addr, ok := addrs.Next(); ok; addr, ok = addrs.Next() {
-			fmt.Println(addr)
+			fmt.Println(addr.String())
 		}
 
 		return addrs.Err()
@@ -75,7 +75,9 @@ func provAction() cli.ActionFunc {
 		disc, release := node.Discovery(c.Context)
 		defer release()
 
-		provider, release := disc.Provider(c.Context, c.String("name"))
+		serviceId := c.String("name")
+
+		provider, release := disc.Provider(c.Context, serviceId)
 		defer release()
 
 		maddrsStr := c.StringSlice("maddr")
@@ -92,7 +94,7 @@ func provAction() cli.ActionFunc {
 		fut, release := provider.Provide(c.Context, addr)
 		defer release()
 
-		fmt.Println("providing...")
+		fmt.Printf("providing |%s| at %s...\n", serviceId, addr.String())
 
 		return fut.Await(c.Context)
 	}

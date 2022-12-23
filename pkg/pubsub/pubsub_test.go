@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"runtime"
 	"testing"
-	"time"
 
 	capnp "capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
@@ -20,6 +20,15 @@ import (
 	pscap "github.com/wetware/ww/pkg/pubsub"
 )
 
+func TestMain(m *testing.M) {
+	capnp.SetClientLeakFunc(func(msg string) {
+		fmt.Println(msg)
+	})
+	defer runtime.GC()
+
+	m.Run()
+}
+
 func TestPubSub(t *testing.T) {
 	t.Parallel()
 
@@ -31,7 +40,7 @@ func TestPubSub(t *testing.T) {
 	gs, release := newGossipSub(ctx)
 	defer release()
 
-	ps := (&pscap.Router{TopicJoiner: gs}).PubSub()
+	ps := (&pscap.Server{TopicJoiner: gs}).PubSub()
 	defer ps.Release()
 
 	const nmsg = 10
@@ -96,52 +105,6 @@ func TestPubSub(t *testing.T) {
 	assert.NoError(t, g.Wait())
 }
 
-func TestSubscribe_cancel(t *testing.T) {
-	t.Parallel()
-
-	/*
-		Test that releasing a subscription causes the iterator to
-		unblock.
-	*/
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	gs, release := newGossipSub(ctx)
-	defer release()
-
-	ps := (&pscap.Router{TopicJoiner: gs}).PubSub()
-	defer ps.Release()
-
-	p0, p1 := net.Pipe()
-	c0 := rpc.NewConn(rpc.NewStreamTransport(p0), &rpc.Options{
-		BootstrapClient: capnp.Client(ps),
-	})
-	defer c0.Close()
-
-	c1 := rpc.NewConn(rpc.NewStreamTransport(p1), nil)
-	defer c1.Close()
-
-	joiner := pscap.Joiner(c1.Bootstrap(ctx))
-
-	topic, release := joiner.Join(ctx, "test")
-	defer release()
-
-	sub, release := topic.Subscribe(ctx)
-	defer release()
-
-	assert.Eventually(t, func() bool {
-		select {
-		case <-sub.Future.Done():
-			return true
-		default:
-			release()
-			return false
-		}
-	}, time.Millisecond*100, time.Millisecond*10,
-		"should eventually abort iteration")
-}
-
 func TestMessageCopy(t *testing.T) {
 	t.Parallel()
 
@@ -160,7 +123,7 @@ func TestMessageCopy(t *testing.T) {
 	gs, release := newGossipSub(ctx)
 	defer release()
 
-	ps := (&pscap.Router{TopicJoiner: gs}).PubSub()
+	ps := (&pscap.Server{TopicJoiner: gs}).PubSub()
 	defer ps.Release()
 
 	p0, p1 := net.Pipe()
@@ -172,7 +135,8 @@ func TestMessageCopy(t *testing.T) {
 	c1 := rpc.NewConn(rpc.NewStreamTransport(p1), nil)
 	defer c1.Close()
 
-	joiner := pscap.Joiner(c1.Bootstrap(ctx))
+	joiner := pscap.Router(c1.Bootstrap(ctx))
+	defer joiner.Release()
 
 	topic, release := joiner.Join(ctx, "test")
 	defer release()

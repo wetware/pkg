@@ -11,7 +11,7 @@ import (
 )
 
 type DiscoveryServiceServer struct {
-	pubsub.Joiner
+	pubsub.Router
 }
 
 func (s *DiscoveryServiceServer) Client() capnp.Client {

@@ -53,7 +53,7 @@ func New(log log.Logger, m Metrics) suture.EventHook {
 			}).Warn("unhandled exception")
 			metric.OnPanic(ev)
 
-			// Print to stdout to avoid interferring with log
+			// Print to stdout to avoid interfering with log
 			// collection daemons.
 			fmt.Fprintf(os.Stdout, "%s\n%s\n",
 				ev.PanicMsg,

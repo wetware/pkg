@@ -82,16 +82,16 @@ func (j Joiner) Join(r Router) (*Node, error) {
 	}, nil
 }
 
-func (j Joiner) pubsub(router pubsub.TopicJoiner) *pubsub.Router {
-	return &pubsub.Router{
+func (j Joiner) pubsub(router pubsub.TopicJoiner) *pubsub.Server {
+	return &pubsub.Server{
 		Log:         j.Log,
 		TopicJoiner: router,
 	}
 }
 
-func (j Joiner) discovery(ps pubsub.Joiner) *discovery.DiscoveryServiceServer {
+func (j Joiner) discovery(rt pubsub.Router) *discovery.DiscoveryServiceServer {
 	return &discovery.DiscoveryServiceServer{
-		Joiner: ps,
+		Router: rt,
 	}
 }
 
