@@ -8,6 +8,7 @@ import (
 	"capnproto.org/go/capnp/v3/exc"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	mock_pubsub "github.com/wetware/ww/internal/mock/pkg/pubsub"
 	"github.com/wetware/ww/pkg/pubsub"
@@ -21,11 +22,10 @@ func TestNullSubscription(t *testing.T) {
 
 	assert.Nil(t, topic.Next(), "should be exhausted")
 
-	var target exc.Exception
-	assert.ErrorAs(t, topic.Err(), &target,
-		"should report null-client exception")
-	assert.Equal(t, exc.Failed, target.Type,
-		"should return 'failed' exception type")
+	require.NotNil(t, topic.Err(), "should return error")
+
+	failed := exc.IsType(topic.Err(), exc.Failed)
+	assert.True(t, failed, "should return 'failed' exception")
 }
 
 func TestSubscribe_cancel(t *testing.T) {
