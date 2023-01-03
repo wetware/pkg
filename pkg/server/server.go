@@ -53,14 +53,14 @@ type Joiner struct {
 	fx.In
 
 	Log      log.Logger    `optional:"true"`
-	Router   ClusterConfig `optional:"true"`
+	Cluster  ClusterConfig `optional:"true"`
 	Debugger DebugConfig   `optional:"true"`
 }
 
 // Join the cluster.  Note that callers MUST call Bootstrap() on
 // the returned *Node to complete the bootstrap process.
 func (j Joiner) Join(vat casm.Vat, r Router) (*Node, error) {
-	c, err := j.Router.New(vat, r, j.Log)
+	c, err := j.Cluster.New(vat, r, j.Log)
 	if err != nil {
 		return nil, err
 	}
