@@ -193,7 +193,8 @@ func (t topicServer) Subscribe(ctx context.Context, call MethodSubscribe) error 
 		handler.Call(ctx, bind(ctx, sub))
 	}
 
-	return handler.Wait()
+	return nil
+	// return handler.Wait()  // FIXME
 }
 
 func (t topicServer) subscribe(call MethodSubscribe) (*pubsub.Subscription, error) {
