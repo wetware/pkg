@@ -22,7 +22,6 @@ var ErrNoPeers = errors.New("no peers")
 type Dialer struct {
 	fx.In
 
-	Log  log.Logger
 	Vat  casm.Vat
 	Boot discovery.Discoverer
 }
@@ -34,8 +33,8 @@ func (d Dialer) Dial(ctx context.Context) (*Node, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	if d.Log == nil {
-		d.Log = log.New()
+	if d.Vat.Logger == nil {
+		d.Vat.Logger = log.New()
 	}
 
 	return d.join(ctx)
@@ -48,13 +47,13 @@ func (d Dialer) join(ctx context.Context) (n *Node, err error) {
 	}
 
 	for info := range peers {
-		d.Log.With(addrEntry(info)).Debug("found peer")
+		d.Vat.Logger.With(addrEntry(info)).Debug("found peer")
 
 		if n, err = d.connect(ctx, info); err == nil {
 			break
 		}
 
-		d.Log.WithError(err).Debug("failed to connect to peer")
+		d.Vat.Logger.WithError(err).Debug("failed to connect to peer")
 	}
 
 	// no peers discovered?
