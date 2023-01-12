@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"capnproto.org/go/capnp/v3"
+	"capnproto.org/go/capnp/v3/flowcontrol"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/lthibault/log"
 
@@ -56,6 +57,7 @@ func (t Topic) Publish(ctx context.Context, b []byte) error {
 // FlowLimiter.
 func (t Topic) NewStream(ctx context.Context) Stream {
 	// TODO:  use BBR once scheduler bug is fixed
+	api.Topic(t).SetFlowLimiter(flowcontrol.NewFixedLimiter(1024))
 
 	cherr := make(chan error, 1)
 	done := make(chan struct{})
@@ -233,7 +235,7 @@ func (t topicServer) Subscribe(ctx context.Context, call MethodSubscribe) error 
 	defer sub.Cancel()
 
 	sender := call.Args().Chan()
-	// TODO:  use BBR once scheduler bug is fixed
+	sender.SetFlowLimiter(flowcontrol.NewFixedLimiter(1024)) // TODO:  use BBR once scheduler bug is fixed
 
 	t.log.Debug("registered subscription handler")
 	defer t.log.Debug("unregistered subscription handler")

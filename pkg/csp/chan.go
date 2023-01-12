@@ -7,6 +7,7 @@ import (
 	"errors"
 
 	"capnproto.org/go/capnp/v3"
+	"capnproto.org/go/capnp/v3/flowcontrol"
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/util/stream"
 	"github.com/wetware/ww/internal/api/channel"
@@ -207,7 +208,7 @@ func (s Sender) Send(ctx context.Context, v Value) (casm.Future, capnp.ReleaseFu
 // for a given sender.
 func (s Sender) NewStream(ctx context.Context) SendStream {
 	sender := channel.Sender(s)
-	// TODO:  use BBR once scheduler bug is fixed
+	sender.SetFlowLimiter(flowcontrol.NewFixedLimiter(1024)) // TODO:  use BBR once scheduler bug is fixed
 
 	return SendStream{
 		ctx:    ctx,
