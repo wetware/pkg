@@ -746,25 +746,25 @@ func (s Provider_provide_Params) Message() *capnp.Message {
 func (s Provider_provide_Params) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s Provider_provide_Params) Addrs() (Addr, error) {
+func (s Provider_provide_Params) Location() (SignedLocation, error) {
 	p, err := capnp.Struct(s).Ptr(0)
-	return Addr(p.Struct()), err
+	return SignedLocation(p.Struct()), err
 }
 
-func (s Provider_provide_Params) HasAddrs() bool {
+func (s Provider_provide_Params) HasLocation() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s Provider_provide_Params) SetAddrs(v Addr) error {
+func (s Provider_provide_Params) SetLocation(v SignedLocation) error {
 	return capnp.Struct(s).SetPtr(0, capnp.Struct(v).ToPtr())
 }
 
-// NewAddrs sets the addrs field to a newly
-// allocated Addr struct, preferring placement in s's segment.
-func (s Provider_provide_Params) NewAddrs() (Addr, error) {
-	ss, err := NewAddr(capnp.Struct(s).Segment())
+// NewLocation sets the location field to a newly
+// allocated SignedLocation struct, preferring placement in s's segment.
+func (s Provider_provide_Params) NewLocation() (SignedLocation, error) {
+	ss, err := NewSignedLocation(capnp.Struct(s).Segment())
 	if err != nil {
-		return Addr{}, err
+		return SignedLocation{}, err
 	}
 	err = capnp.Struct(s).SetPtr(0, capnp.Struct(ss).ToPtr())
 	return ss, err
@@ -786,8 +786,8 @@ func (f Provider_provide_Params_Future) Struct() (Provider_provide_Params, error
 	p, err := f.Future.Ptr()
 	return Provider_provide_Params(p.Struct()), err
 }
-func (p Provider_provide_Params_Future) Addrs() Addr_Future {
-	return Addr_Future{Future: p.Future.Field(0, nil)}
+func (p Provider_provide_Params_Future) Location() SignedLocation_Future {
+	return SignedLocation_Future{Future: p.Future.Field(0, nil)}
 }
 
 type Provider_provide_Results capnp.Struct
@@ -1157,92 +1157,316 @@ func (f Locator_findProviders_Results_Future) Struct() (Locator_findProviders_Re
 	return Locator_findProviders_Results(p.Struct()), err
 }
 
-type Addr capnp.Struct
+type SignedLocation capnp.Struct
 
-// Addr_TypeID is the unique identifier for the type Addr.
-const Addr_TypeID = 0xd0ec85d808eaabd9
+// SignedLocation_TypeID is the unique identifier for the type SignedLocation.
+const SignedLocation_TypeID = 0x95d97bd68e78b8dc
 
-func NewAddr(s *capnp.Segment) (Addr, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Addr(st), err
+func NewSignedLocation(s *capnp.Segment) (SignedLocation, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
+	return SignedLocation(st), err
 }
 
-func NewRootAddr(s *capnp.Segment) (Addr, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Addr(st), err
+func NewRootSignedLocation(s *capnp.Segment) (SignedLocation, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
+	return SignedLocation(st), err
 }
 
-func ReadRootAddr(msg *capnp.Message) (Addr, error) {
+func ReadRootSignedLocation(msg *capnp.Message) (SignedLocation, error) {
 	root, err := msg.Root()
-	return Addr(root.Struct()), err
+	return SignedLocation(root.Struct()), err
 }
 
-func (s Addr) String() string {
-	str, _ := text.Marshal(0xd0ec85d808eaabd9, capnp.Struct(s))
+func (s SignedLocation) String() string {
+	str, _ := text.Marshal(0x95d97bd68e78b8dc, capnp.Struct(s))
 	return str
 }
 
-func (s Addr) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (s SignedLocation) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Struct(s).EncodeAsPtr(seg)
 }
 
-func (Addr) DecodeFromPtr(p capnp.Ptr) Addr {
-	return Addr(capnp.Struct{}.DecodeFromPtr(p))
+func (SignedLocation) DecodeFromPtr(p capnp.Ptr) SignedLocation {
+	return SignedLocation(capnp.Struct{}.DecodeFromPtr(p))
 }
 
-func (s Addr) ToPtr() capnp.Ptr {
+func (s SignedLocation) ToPtr() capnp.Ptr {
 	return capnp.Struct(s).ToPtr()
 }
-func (s Addr) IsValid() bool {
+func (s SignedLocation) IsValid() bool {
 	return capnp.Struct(s).IsValid()
 }
 
-func (s Addr) Message() *capnp.Message {
+func (s SignedLocation) Message() *capnp.Message {
 	return capnp.Struct(s).Message()
 }
 
-func (s Addr) Segment() *capnp.Segment {
+func (s SignedLocation) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s Addr) Maddrs() (capnp.DataList, error) {
+func (s SignedLocation) Signature() ([]byte, error) {
 	p, err := capnp.Struct(s).Ptr(0)
-	return capnp.DataList(p.List()), err
+	return []byte(p.Data()), err
 }
 
-func (s Addr) HasMaddrs() bool {
+func (s SignedLocation) HasSignature() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s Addr) SetMaddrs(v capnp.DataList) error {
-	return capnp.Struct(s).SetPtr(0, v.ToPtr())
+func (s SignedLocation) SetSignature(v []byte) error {
+	return capnp.Struct(s).SetData(0, v)
+}
+
+func (s SignedLocation) Location() (Location, error) {
+	p, err := capnp.Struct(s).Ptr(1)
+	return Location(p.Struct()), err
+}
+
+func (s SignedLocation) HasLocation() bool {
+	return capnp.Struct(s).HasPtr(1)
+}
+
+func (s SignedLocation) SetLocation(v Location) error {
+	return capnp.Struct(s).SetPtr(1, capnp.Struct(v).ToPtr())
+}
+
+// NewLocation sets the location field to a newly
+// allocated Location struct, preferring placement in s's segment.
+func (s SignedLocation) NewLocation() (Location, error) {
+	ss, err := NewLocation(capnp.Struct(s).Segment())
+	if err != nil {
+		return Location{}, err
+	}
+	err = capnp.Struct(s).SetPtr(1, capnp.Struct(ss).ToPtr())
+	return ss, err
+}
+
+// SignedLocation_List is a list of SignedLocation.
+type SignedLocation_List = capnp.StructList[SignedLocation]
+
+// NewSignedLocation creates a new list of SignedLocation.
+func NewSignedLocation_List(s *capnp.Segment, sz int32) (SignedLocation_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2}, sz)
+	return capnp.StructList[SignedLocation](l), err
+}
+
+// SignedLocation_Future is a wrapper for a SignedLocation promised by a client call.
+type SignedLocation_Future struct{ *capnp.Future }
+
+func (f SignedLocation_Future) Struct() (SignedLocation, error) {
+	p, err := f.Future.Ptr()
+	return SignedLocation(p.Struct()), err
+}
+func (p SignedLocation_Future) Location() Location_Future {
+	return Location_Future{Future: p.Future.Field(1, nil)}
+}
+
+type Location capnp.Struct
+type Location_Which uint16
+
+const (
+	Location_Which_maddrs Location_Which = 0
+	Location_Which_anchor Location_Which = 1
+	Location_Which_custom Location_Which = 2
+)
+
+func (w Location_Which) String() string {
+	const s = "maddrsanchorcustom"
+	switch w {
+	case Location_Which_maddrs:
+		return s[0:6]
+	case Location_Which_anchor:
+		return s[6:12]
+	case Location_Which_custom:
+		return s[12:18]
+
+	}
+	return "Location_Which(" + strconv.FormatUint(uint64(w), 10) + ")"
+}
+
+// Location_TypeID is the unique identifier for the type Location.
+const Location_TypeID = 0xe61540af32cf81b6
+
+func NewLocation(s *capnp.Segment) (Location, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 3})
+	return Location(st), err
+}
+
+func NewRootLocation(s *capnp.Segment) (Location, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 3})
+	return Location(st), err
+}
+
+func ReadRootLocation(msg *capnp.Message) (Location, error) {
+	root, err := msg.Root()
+	return Location(root.Struct()), err
+}
+
+func (s Location) String() string {
+	str, _ := text.Marshal(0xe61540af32cf81b6, capnp.Struct(s))
+	return str
+}
+
+func (s Location) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Location) DecodeFromPtr(p capnp.Ptr) Location {
+	return Location(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Location) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+
+func (s Location) Which() Location_Which {
+	return Location_Which(capnp.Struct(s).Uint16(0))
+}
+func (s Location) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Location) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Location) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Location) Id() (string, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return p.Text(), err
+}
+
+func (s Location) HasId() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Location) IdBytes() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return p.TextBytes(), err
+}
+
+func (s Location) SetId(v string) error {
+	return capnp.Struct(s).SetText(0, v)
+}
+
+func (s Location) Maddrs() (capnp.DataList, error) {
+	if capnp.Struct(s).Uint16(0) != 0 {
+		panic("Which() != maddrs")
+	}
+	p, err := capnp.Struct(s).Ptr(1)
+	return capnp.DataList(p.List()), err
+}
+
+func (s Location) HasMaddrs() bool {
+	if capnp.Struct(s).Uint16(0) != 0 {
+		return false
+	}
+	return capnp.Struct(s).HasPtr(1)
+}
+
+func (s Location) SetMaddrs(v capnp.DataList) error {
+	capnp.Struct(s).SetUint16(0, 0)
+	return capnp.Struct(s).SetPtr(1, v.ToPtr())
 }
 
 // NewMaddrs sets the maddrs field to a newly
 // allocated capnp.DataList, preferring placement in s's segment.
-func (s Addr) NewMaddrs(n int32) (capnp.DataList, error) {
+func (s Location) NewMaddrs(n int32) (capnp.DataList, error) {
+	capnp.Struct(s).SetUint16(0, 0)
 	l, err := capnp.NewDataList(capnp.Struct(s).Segment(), n)
 	if err != nil {
 		return capnp.DataList{}, err
 	}
-	err = capnp.Struct(s).SetPtr(0, l.ToPtr())
+	err = capnp.Struct(s).SetPtr(1, l.ToPtr())
+	return l, err
+}
+func (s Location) Anchor() (string, error) {
+	if capnp.Struct(s).Uint16(0) != 1 {
+		panic("Which() != anchor")
+	}
+	p, err := capnp.Struct(s).Ptr(1)
+	return p.Text(), err
+}
+
+func (s Location) HasAnchor() bool {
+	if capnp.Struct(s).Uint16(0) != 1 {
+		return false
+	}
+	return capnp.Struct(s).HasPtr(1)
+}
+
+func (s Location) AnchorBytes() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(1)
+	return p.TextBytes(), err
+}
+
+func (s Location) SetAnchor(v string) error {
+	capnp.Struct(s).SetUint16(0, 1)
+	return capnp.Struct(s).SetText(1, v)
+}
+
+func (s Location) Custom() (capnp.Ptr, error) {
+	if capnp.Struct(s).Uint16(0) != 2 {
+		panic("Which() != custom")
+	}
+	return capnp.Struct(s).Ptr(1)
+}
+
+func (s Location) HasCustom() bool {
+	if capnp.Struct(s).Uint16(0) != 2 {
+		return false
+	}
+	return capnp.Struct(s).HasPtr(1)
+}
+
+func (s Location) SetCustom(v capnp.Ptr) error {
+	capnp.Struct(s).SetUint16(0, 2)
+	return capnp.Struct(s).SetPtr(1, v)
+}
+func (s Location) Meta() (capnp.TextList, error) {
+	p, err := capnp.Struct(s).Ptr(2)
+	return capnp.TextList(p.List()), err
+}
+
+func (s Location) HasMeta() bool {
+	return capnp.Struct(s).HasPtr(2)
+}
+
+func (s Location) SetMeta(v capnp.TextList) error {
+	return capnp.Struct(s).SetPtr(2, v.ToPtr())
+}
+
+// NewMeta sets the meta field to a newly
+// allocated capnp.TextList, preferring placement in s's segment.
+func (s Location) NewMeta(n int32) (capnp.TextList, error) {
+	l, err := capnp.NewTextList(capnp.Struct(s).Segment(), n)
+	if err != nil {
+		return capnp.TextList{}, err
+	}
+	err = capnp.Struct(s).SetPtr(2, l.ToPtr())
 	return l, err
 }
 
-// Addr_List is a list of Addr.
-type Addr_List = capnp.StructList[Addr]
+// Location_List is a list of Location.
+type Location_List = capnp.StructList[Location]
 
-// NewAddr creates a new list of Addr.
-func NewAddr_List(s *capnp.Segment, sz int32) (Addr_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Addr](l), err
+// NewLocation creates a new list of Location.
+func NewLocation_List(s *capnp.Segment, sz int32) (Location_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 3}, sz)
+	return capnp.StructList[Location](l), err
 }
 
-// Addr_Future is a wrapper for a Addr promised by a client call.
-type Addr_Future struct{ *capnp.Future }
+// Location_Future is a wrapper for a Location promised by a client call.
+type Location_Future struct{ *capnp.Future }
 
-func (f Addr_Future) Struct() (Addr, error) {
+func (f Location_Future) Struct() (Location, error) {
 	p, err := f.Future.Ptr()
-	return Addr(p.Struct()), err
+	return Location(p.Struct()), err
+}
+func (p Location_Future) Custom() *capnp.Future {
+	return p.Future.Field(1, nil)
 }
 
 type Message capnp.Struct
@@ -1513,25 +1737,25 @@ func (s Message_Response) Message() *capnp.Message {
 func (s Message_Response) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s Message_Response) Addr() (Addr, error) {
+func (s Message_Response) Location() (SignedLocation, error) {
 	p, err := capnp.Struct(s).Ptr(0)
-	return Addr(p.Struct()), err
+	return SignedLocation(p.Struct()), err
 }
 
-func (s Message_Response) HasAddr() bool {
+func (s Message_Response) HasLocation() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s Message_Response) SetAddr(v Addr) error {
+func (s Message_Response) SetLocation(v SignedLocation) error {
 	return capnp.Struct(s).SetPtr(0, capnp.Struct(v).ToPtr())
 }
 
-// NewAddr sets the addr field to a newly
-// allocated Addr struct, preferring placement in s's segment.
-func (s Message_Response) NewAddr() (Addr, error) {
-	ss, err := NewAddr(capnp.Struct(s).Segment())
+// NewLocation sets the location field to a newly
+// allocated SignedLocation struct, preferring placement in s's segment.
+func (s Message_Response) NewLocation() (SignedLocation, error) {
+	ss, err := NewSignedLocation(capnp.Struct(s).Segment())
 	if err != nil {
-		return Addr{}, err
+		return SignedLocation{}, err
 	}
 	err = capnp.Struct(s).SetPtr(0, capnp.Struct(ss).ToPtr())
 	return ss, err
@@ -1553,84 +1777,97 @@ func (f Message_Response_Future) Struct() (Message_Response, error) {
 	p, err := f.Future.Ptr()
 	return Message_Response(p.Struct()), err
 }
-func (p Message_Response_Future) Addr() Addr_Future {
-	return Addr_Future{Future: p.Future.Field(0, nil)}
+func (p Message_Response_Future) Location() SignedLocation_Future {
+	return SignedLocation_Future{Future: p.Future.Field(0, nil)}
 }
 
-const schema_fcba4f486a351ac3 = "x\xda\x8cU]h\x1cU\x18\xfd\xce\x9d;\xbb[\xdd" +
-	"M\xe62A\x1bKY\x02\x1b$jck\x89\x96 " +
-	"f]*\xd5\xa4\xc5\x9d\xf5\x8f\x16*\x0e\xbb\xa3MI" +
-	"v\xb73i$J\x09\xf8\x83(\x16D\x9f%\x0f\x09" +
-	"H\xedC\xc9\x9bV\xa4X}\xb0B\xa0\x15\x95\xd4 " +
-	"\"\x88\xb4\xa9\xf5E\xa5*\xea\x95;?;\xb3\x9b\xd8" +
-	"\xe6m\x989\xf7|\xe7\x9e\xef|\xdfl\x7f\x86\x15\xf9" +
-	"\x8e\xdc\xb5\x0c1\xeb\x90\x9e\x92c{3/>\xb5\xf2" +
-	"\xce\x1c\x89^\x10\xf14\xd1N\x9b\x8f\x82\xb8|\xf9\x89" +
-	"\xd3\x8d\xe2\x81\x9f\xe6Hl\x86\xcc\x9fkN\xfc\xbaz" +
-	"\xea\xcb\x00\xb1\x8f3\x98\xfby\x9a4yf\xfe\xad\xf9" +
-	"k\xf7\xdd?\xafP\xe1\xf9!\xee\xaa\xf3\xfd+\x8f<" +
-	"~\xf3wc'\x82/:\xd4\xa7>~\x18\x04s\x1b" +
-	"\x1f!\xc8\xcf\xdf\x9b\xfb^\xab\x8c-\x92\xe8k\x01\x8e" +
-	"\xf1\xb7\x15\xe0\xb8\x0f8S_\xfdk\xfe\xc9O\x96H" +
-	"\x18\x9a\xfc\xf4\xb6\xa1\xc3\x0f?z\xfao\"\x98\x8b\xfc" +
-	"\x0b\xf3cU\xcb\xfc\x90\xef1\x7fPO\xf2\xe2\xc9\xd5" +
-	"\xcc\xf2\xab?\x9f'a \x06\xfb\xac\xe69\xfe\xbey" +
-	"\xc1\xc7/\xf9\xc4\xad\xdbX\x06\x12\xe0\x87\x90fD\xe6" +
-	"?\xfc\xac\xa9\xeb\xb7\x13\x99[\xf5\xe7\x09r\xc2>\xe5" +
-	"\xa5\xee\xee\xfa\xaaM\xa7\xfe\x92\xd2\xf9\xba\xae\xe8r\xf9" +
-	"-\x9f\xad\x14\xba\x96\x03\x0f\x03\xc0\x09\xbd\xa4\x00\x8b>" +
-	"\xe0\xe0+\xbf\x7f\xb0e\xe1\xca\xf2\x9a\x8b\\\xd0\xcf\x9a" +
-	"\x17u%\xeck}\x8f\x89\x94\xba\xc8\x82;\x9c=\xb6" +
-	"\xff\xc0\xb7\xc9r\x97\xf57\x14\xdb\x9f>\xdb\xf9o\xfa" +
-	"G\x0e\xbe\xb9\xf0c'\xdb\xce\xde\xd4M0\x07\x14\x89" +
-	"\xd9\x9fz\xcd\x9c\xf1\xe9\x86\x1ep\x97\xee\xbdr\xe7o" +
-	"\xedm\x0chmu\xe0\x88\x7f`2\xa5\xa8/_}" +
-	"\xba\xb7\xef\xe4\xa5?\x92\xb5\x8f\xa7\xfc\xda\xef\xa6F\xe8" +
-	"\x05Y\x1b\xf7\xaa\x8di\xc7\xe53\x83U\xbbYo\x0e" +
-	"\x97\xdd\xc6\xf4x\xcdq\x07\x9b\xc1C\xa1\xe2xG'" +
-	"\xa6<\xa2\x16V\x8b\xb0\xfb\x1c\xcf\xb3\x9fs\x06+\xce" +
-	"\x91\xa3\x8e7Ee`-\xe1\xdeF\xd5\x9ej\xb8\x83" +
-	"\xcf\x8e\xd7k\x11\xb9W\xa88y\x9fv\xa3\xf8\xb2\xdd" +
-	"\xed\xda\x93\x9e\xc55N\xc4A$rw\x10Y\x19\x0d" +
-	"\xd6n\x86\xee\xea!\xbb\x0e!\x7f\xb9euW\xcf\xd5" +
-	"\x8f.\x11Q\x11\x02y\x8b3$_\x0a\xdcjq\x00" +
-	"(k\x80\x11G\x8c\x00A\xb1v=\xd2\xb2;|1" +
-	"\xf3\x98\xe3N\x8fW\x9d\xc8\x147t\x05m\x82F\x89" +
-	"\xac\xac\x06k3\x83\x8c\x80D\x04\x11\x07\xbf\xa3\x10\xeb" +
-	"t\x9d\x94\x87\x16\xd7t\xa2V\x0a\x11\x8d\xb4\x10%b" +
-	"BO\xcf\x86\xe4E$\x0dG\xc4\xd5\xfd`\xad\xe6\x06" +
-	"4-i\xc3\xa1W\x05\x86\x91I\xbbVs=t\x91" +
-	"\xefB\x8e\x98z\\+)l.Y\x19 \xb1;6" +
-	"\x95\x12\x09\xd4Gg\xc3\xde\xcb\x8a\xe35\x1bu\xcf!" +
-	"\xbf\x12\xcfJ\xe9W\x1e(\x11Y\x05\x0d\xd6v\x86\x1c" +
-	"\xfe\x95=Po\xb7)\xab\xee\xd2`\xedb\x98u\x03" +
-	"\x06\x18q\x15\x02\x0c\x82tcN\x18q\xd9\xf0\xeb\x8d" +
-	"\xbb5\x11D\xa9P\xb6Uvh\xbd\xf0\xf40t\xd7" +
-	"\xedI\x07Yb\xc8\x1260\x10\xeb\xb0\xdd\x13\xb3\xe5" +
-	"\x03w\xdb\xc3e\xacgp\x18\xf4D\xc7\xa3\x0d\x8bh" +
-	"\x09\x0b\xe1\x12\x13\x9b\xd22\x1a\x06\xca\xfb\xe3\xd0\xde\xf9" +
-	"\x1b\x1b\xd0\x9a\xe1\xa4\xe8R,z6\x04B\xc4\xab\xad" +
-	"#\xaa\xda\xff\x15\x09\"\x9b\xf1/\x10\xad\x1bD\xbf\x02" +
-	"\xb1c\x94\x98\x18H#\xde\xba\x88\xf6\xa1\xd8\xaa\xe2," +
-	"\xd2\xc9Y)\xb6\xa4\xb4_q\x9d\x95\x13E\xa3#\xe9" +
-	"\xc9\xc6\xaaV\\\xa7\x13\x1b\x18\xf3\xb0\xd7\x1b\x8a\xce\x7f" +
-	"\x01\x00\x00\xff\xffi\x00:\xc7"
+const schema_fcba4f486a351ac3 = "x\xda\xa4Ukh\x1cU\x18\xfd\xce\xbd3\xb3\xdb\xba" +
+	"\x9b\xec\xed\xa4\xda\x07a)\xa4h}\xc4\xd6Z\xad\xa5" +
+	"\xba\xdbP\xa9m#\xdd\xbb\xb5\x8a\x85\x0a\xc3\xee\x98n" +
+	"Iv\xe3\xcc&6\xd6\x12\xa2\x05A\xac\xd4G\xa0\x05" +
+	"%B\x02\"\xfe\x08\x82H\xad?\x8aU\xc1\x16\x82\x0f" +
+	"j\xa9F\x91\x82\x96\x9a\x12AT\xd4\xa2\x1d\xb9;;" +
+	"\xbb\x935\xd1\x80\xff.w\xce\xfd\x1e\xe7;\xdf\x99\xd5" +
+	"gYZ[\x13\xdf\xb1\x80\x98\xec\xd6\x0d\xef\xeb\xe3\xfb" +
+	"\x9f?w\xe0\xcba\x12\x09x\x1f,[\xb7\xef\xbe\x1d" +
+	"'\xfe$\x9dE\x88\xcc\xc3\xda\x15\xf3\x98\xa6N\xc3\xda" +
+	"\xe3\x04o{g\xf4\xc0C\x93/\x8d\x90X\x0a\"\xf5" +
+	"a\xed\x1f\xda6\x90\xe6=\xbd\xebD)\xbd\xfb\xe2\x08" +
+	"\x89%\xf0\x92\xa7{\xbb\x7f\x9e\x1a\xff\xdcG|\xaf1" +
+	"\x98?i\x11\xe2\xde\xc9\xd1#\xa3\xbf\xdd\xb9qT\xa1" +
+	"\xaa\xef'4G\xbd_9\xb9\xf5\x81k\xbe\xd9\xfe\x86" +
+	"\xffE\x87\xfa\xf4\xae\xb6\x0f\x04\xf3#-E\xf0>~" +
+	"}\xe4[\x9e\xdd\xfe\x16\x89\x155\xc0b\xfdE\x05X" +
+	"\xa9+\xc0\xc9\xe2\xd4\x95\xd1\x07\xdf\x9f \x91\xe0\xf5>" +
+	"\x08\xe6V\xfd\x8c\xb9KWMH}\x8b9\xa0N\xf5" +
+	"\x0ae\x02\xa1\xae\xefE\x84\x11\x99\x96~\xca,\xe8\xd7" +
+	"\x13\x99C\xbaj\xbb\xdb\x1aw\x8d[\x9b\xce\x86s_" +
+	"\xd0\x9fR\xb9\xa7+\xb9\xe3\xc9\xe5\x1fN\xb65\x9d\xf7" +
+	"y\xf1\x01q\xa3C\x01\x16\x1b\x0a\xb0\xe7\xd0\xaf\xc7\x97" +
+	"\x8f]>\xff\x8f\xe2\xee2N\x99\x9b\x0cU\xdc\xdd\xc6" +
+	"\x16\xb3\xa0N\xde\x98\xb3!v\xf0\xe1\xdd_\x85\xd3I" +
+	"\xe3Y\x15\xcd\xaaD\xfb\xf4\xdc\xca\xd4\x9e\xe7\xc6\xbek" +
+	"\x8c\xb6v\xc8X\x08\xf3\x85J\xb8\xc3\xc63\xe6\x85J" +
+	"\xb8w\x86>\xb9m<\xbd\xf8bc\xaf<\xc2\x89\xcc" +
+	"\xd3\xc6\x19\xf3\x0b\x85[\xfb\x99\x91\x04\xc1[w\x8f3" +
+	"q\xc7\xe5\x9b~\x999I\xbf\x0aD\x17\xc2\x14Q\x15" +
+	"?\x1eU\x95\xfc0\xfd\xc8\xd2\x15o^\xfa=\\\xea" +
+	"\x9ah\xa5\xd4M\xd1\x14=\xe1\xe5\x0bn\xae\xd4o;" +
+	"l\xa0=g\xf5\x16{7\xec,t\x15\xed|g)" +
+	"\x95\xb3\xca\x85R1\x03\xc8(\xd7\x884\x10\x89UY" +
+	"\"y\x03\x87\xbc\x9dA\x00-P\x97k\xb6\x11\xc9\xd5" +
+	"\x1cr#\x83\xe7\x16\xba\x8aV\xb9\xcf!\xd8\x88\x13C" +
+	"\\\x8d\xa7\xe4\xc7\"\"$\xea\xed\x12\x90 \xd4*\xd0" +
+	"\x82\x0a2N\xa9\xbf\x90\xb7\x9d\xf6^\xff\xd0\x96\xb5\xdd" +
+	"\xbe\xee\xb2KT\xc3\xf2\x00{\xbf\xed\xbaV\x97\xdd\x9e" +
+	"\xb5\x1f\xeb\xb3\xdd2e0K\xc0N\x95\xbf\xe4\xb4?" +
+	"Z(\xe6\x83\xe0n[\xd6NV\xc2\xce\x17\x9f\xb1\x9a" +
+	"\x1d\xab\xc7\x95Z\x8d\x8d\xf8\x8dD2\xca!734" +
+	"\xe7\xf6ZE\x08\xef\xc7k\xa7\xd6\xb7L\xbfw\x89\x88" +
+	"\xd2\x10HJ\x8d!|)p\x9d\xd4\x00 \xc3\x81D" +
+	"}\xb9\x09\x10!2\xf4\xa0\x96\xcd\xd5\x8b\x81\x9d\xb6\xd3" +
+	"_\xc8\xd9\x01)N\x95\x15\xcc(HM\"\xc6!\x97" +
+	"0x\x01P\xb1.\xea\xdb\xd7\x90\x885\xb2N\x8aC" +
+	"\xa9q\x9d\xa8\xb66\x08|E\x88\x0ebB\x8f\x0cV" +
+	"\x83\xa7\x11&\x9c5L\x85d\x14\x089\xcf\x82\x8e\x90" +
+	"x\xf5m\x83\xd5\xa1yY\xdb\xed-\x15]\x9b*t" +
+	"j1\xcf\xf3\xc5\xd6A$\xdb8\xe4j\x868\xaez" +
+	"\xbe\xdanQ=\xde\xcc!\xd73\x0c:~\x04$\xea" +
+	"Y\xaa\xaar\xea1\x91\xa8\xa7m\xd0\xdc\xdc4w\xfb" +
+	"\x1ah\xcbXj\xe84\xdb\xd4[\x18\x9a\x8bV\x8f\x8d" +
+	"\x181\xc4\xe6\xa5\xe4Y\xa2\x85G6sQ\xc2\xdaH" +
+	"\xcc6\xb2\xaaNC\x03\x0b\\\x1a\x81\x91\x0b\xe1\x10\x13" +
+	"\x0b\"^\xa0eJV\xd4<sp\xffMCm\x05" +
+	"\xc3\xa5w\xd4\x89\x18\xac\x02!\xeaV\xda\xa04>W" +
+	"\x12_q\xd1J\x03\x81_!\xf8\x9d(wabU" +
+	"\x04u\x97G\xe0\xbf\xa2U\xa9QD\xc2RO\xd7J" +
+	"\x99C\x9b\x9d5\x8eU\xd6\x96Z7\x07\x97\x11\xc9\xfd" +
+	"\x1c\xf2\x10C+<\xafjnC\x1b\x88\xe4\x93\x1c\xf2" +
+	"(C+\xbb\xaa\xae\x19\x91\x18V\xd7G8\xe4+\x0c" +
+	"\xad\xfc/u\xcd\x89\xc41u\xfd2\x87|\x8dAh" +
+	"\xac\x05\x1a\x91xU\x09\xe6(\x87|\x9b\x81\x17\xf2\x81" +
+	"\\R=V>\xef\xb8h\xa2\x8a\x17(\xb3l\"\xa4" +
+	"\xacbno\xc9\xa9\x81r}n\xb9\xd4\x83E\xc4\xb0" +
+	"\x88\xd0\xdcc\x97\xad\xe0E\xcc\x7f\xf1o\xa6\x18\xec\x80" +
+	"\xaf\x90\xff\xa1\xb9y\xf8QU\xdb\xf3Z\x95\xbf\x03\x00" +
+	"\x00\xff\xff\x0c\xac\x88\x91"
 
 func init() {
 	schemas.Register(schema_fcba4f486a351ac3,
+		0x95d97bd68e78b8dc,
 		0x9f93db577b084c4b,
 		0x9fe65a406fba5583,
 		0xa33c37f7a390a3bf,
 		0xa94bdd0b5449db25,
 		0xb14b5203df9fa7c8,
 		0xcdc156a3faea6ebf,
-		0xd0ec85d808eaabd9,
 		0xd2afeaf36c70c91f,
 		0xd40e2f0673af616c,
 		0xd80e24dbc41b1f0d,
 		0xd8eba41bb8f5845d,
 		0xda5a597d0c3a72a4,
 		0xe4a48c5d3f25d6d0,
+		0xe61540af32cf81b6,
 		0xf42beb36cd723e35,
 		0xf8e8ab21195eede9)
 }

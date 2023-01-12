@@ -5,16 +5,12 @@ import (
 	"fmt"
 
 	"capnproto.org/go/capnp/v3"
+	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	casm "github.com/wetware/casm/pkg"
 	chan_api "github.com/wetware/ww/internal/api/channel"
 	api "github.com/wetware/ww/internal/api/discovery"
 )
-
-type Addr struct {
-	Maddrs []ma.Multiaddr
-	// TODO: metada or any other field
-}
 
 func (addr Addr) String() string {
 	return fmt.Sprintf("%v", addr.Maddrs)
@@ -36,15 +32,58 @@ func (c DiscoveryService) Release() {
 
 type Provider api.Provider
 
-func (c Provider) Provide(ctx context.Context, addr Addr) (casm.Future, capnp.ReleaseFunc) {
+type MaddrLocation struct {
+	ID   peer.ID
+	Meta []string
+
+	Maddrs []ma.Multiaddr
+}
+
+func (c Provider) ProvideMultiaddr(ctx context.Context, maddr MaddrLocation) (casm.Future, capnp.ReleaseFunc) {
 	ctx, cancel := context.WithCancel(ctx)
 
 	fut, release := api.Provider(c).Provide(ctx, func(ps api.Provider_provide_Params) error {
-		capAddr, err := ToCapAddr(addr)
-		if err != nil {
-			return err
-		}
-		return ps.SetAddrs(capAddr)
+		return nil // TODO
+	})
+
+	return casm.Future(fut), func() {
+		cancel()
+		release()
+	}
+}
+
+type AnchorLocation struct {
+	ID   peer.ID
+	Meta []string
+
+	Anchor string
+}
+
+func (c Provider) ProvideAnchor(ctx context.Context, anchor AnchorLocation) (casm.Future, capnp.ReleaseFunc) {
+	ctx, cancel := context.WithCancel(ctx)
+
+	fut, release := api.Provider(c).Provide(ctx, func(ps api.Provider_provide_Params) error {
+		return nil // TODO
+	})
+
+	return casm.Future(fut), func() {
+		cancel()
+		release()
+	}
+}
+
+type CustomLocation struct {
+	ID   peer.ID
+	Meta []string
+
+	Custom []byte
+}
+
+func (c Provider) ProvideCustom(ctx context.Context, custom CustomLocation) (casm.Future, capnp.ReleaseFunc) {
+	ctx, cancel := context.WithCancel(ctx)
+
+	fut, release := api.Provider(c).Provide(ctx, func(ps api.Provider_provide_Params) error {
+		return nil // TODO
 	})
 
 	return casm.Future(fut), func() {

@@ -4,7 +4,6 @@ package host
 
 import (
 	"context"
-	"time"
 
 	"capnproto.org/go/capnp/v3"
 
