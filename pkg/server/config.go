@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/lthibault/log"
 	"go.uber.org/fx"
 
 	casm "github.com/wetware/casm/pkg"
@@ -22,7 +21,7 @@ type ClusterConfig struct {
 	RoutingTable cluster.RoutingTable `optional:"true"`
 }
 
-func (rc ClusterConfig) New(vat casm.Vat, r Router, log log.Logger) (Cluster, error) {
+func (rc ClusterConfig) New(vat casm.Vat, r Router) (Cluster, error) {
 	rt := rc.routingTable()
 
 	err := r.RegisterTopicValidator(vat.NS, pulse.NewValidator(rt))
@@ -37,7 +36,7 @@ func (rc ClusterConfig) New(vat casm.Vat, r Router, log log.Logger) (Cluster, er
 
 	cr := &cluster.Router{
 		Topic:        t,
-		Log:          log,
+		Log:          vat.Logger,
 		TTL:          rc.TTL,
 		Meta:         rc.Meta,
 		RoutingTable: rt,
