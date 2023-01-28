@@ -64,9 +64,6 @@ func newVat(config vatConfig, lx fx.Lifecycle) (vat casm.Vat, err error) {
 }
 
 func newED25519() (crypto.PrivKey, error) {
-	priv, _, err := crypto.GenerateKeyPairWithReader(
-		crypto.Ed25519,
-		2048,
-		rand.Reader)
+	priv, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	return priv, err
 }
