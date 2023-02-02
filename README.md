@@ -12,7 +12,7 @@
 
 ## Wetware Users
 
-Is your organization using Wetware?  Open a PR to add yourself to the list!
+Is your organization using Wetware?  Open a PR to add it to the list!
 
 <!-- prettier-ignore-start -->
 <!-- markdownlint-disable -->
