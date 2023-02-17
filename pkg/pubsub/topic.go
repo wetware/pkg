@@ -4,8 +4,7 @@ import (
 	"context"
 
 	"capnproto.org/go/capnp/v3"
-	"capnproto.org/go/capnp/v3/exp/clock"
-	"capnproto.org/go/capnp/v3/flowcontrol/bbr"
+	"capnproto.org/go/capnp/v3/flowcontrol"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/lthibault/log"
 
@@ -57,13 +56,34 @@ func (t Topic) Publish(ctx context.Context, b []byte) error {
 // through a flow-controlled channel.   This will override the existing
 // FlowLimiter.
 func (t Topic) NewStream(ctx context.Context) Stream {
-	topic := api.Topic(t)
-	topic.SetFlowLimiter(bbr.NewLimiter(clock.System))
+	// TODO:  use BBR once scheduler bug is fixed
+	api.Topic(t).SetFlowLimiter(flowcontrol.NewFixedLimiter(1e6))
 
-	return Stream{
+	cherr := make(chan error, 1)
+	done := make(chan struct{})
+
+	ctx, cancel := context.WithCancel(ctx)
+
+	s := Stream{
 		ctx:    ctx,
-		stream: stream.New(topic.Publish),
+		cancel: cancel,
+		cherr:  cherr,
+		done:   done,
+		topic:  t,
 	}
+
+	go func() {
+		defer cancel()
+		defer close(done)
+
+		select {
+		case s.err = <-cherr:
+		case <-ctx.Done():
+			s.err = ctx.Err()
+		}
+	}()
+
+	return s
 }
 
 // PublishAsync submits a message for broadcast over the topic.  Unlike
@@ -106,19 +126,52 @@ func (t Topic) Subscribe(ctx context.Context) (Subscription, capnp.ReleaseFunc) 
 
 type Stream struct {
 	ctx    context.Context
-	stream *stream.Stream[api.Topic_publish_Params]
+	cancel context.CancelFunc
+	topic  Topic
+	cherr  chan<- error
+	done   <-chan struct{}
+	err    error
 }
 
-func (s Stream) Publish(msg []byte) (err error) {
-	if s.stream.Call(s.ctx, message(msg)); !s.stream.Open() {
-		err = s.Close()
+func (s Stream) Publish(msg []byte) error {
+	if err := s.ctx.Err(); err != nil {
+		return err
 	}
 
-	return
+	f, release := s.topic.PublishAsync(s.ctx, msg)
+	go func() {
+		defer release()
+
+		select {
+		case <-f.Done():
+			if err := f.Err(); err != nil {
+				select {
+				case s.cherr <- f.Err():
+				default:
+				}
+			}
+
+		case <-s.ctx.Done():
+		}
+	}()
+
+	select {
+	case <-s.done:
+		return s.err
+	default:
+		return nil
+	}
 }
 
 func (s Stream) Close() error {
-	return s.stream.Wait()
+	s.cancel()
+
+	select {
+	case <-s.done:
+		return s.err
+	default:
+		return nil
+	}
 }
 
 func message(b []byte) func(api.Topic_publish_Params) error {
@@ -182,7 +235,7 @@ func (t topicServer) Subscribe(ctx context.Context, call MethodSubscribe) error 
 	defer sub.Cancel()
 
 	sender := call.Args().Chan()
-	sender.SetFlowLimiter(bbr.NewLimiter(clock.System))
+	sender.SetFlowLimiter(flowcontrol.NewFixedLimiter(1e6)) // TODO:  use BBR once scheduler bug is fixed
 
 	t.log.Debug("registered subscription handler")
 	defer t.log.Debug("unregistered subscription handler")
@@ -193,7 +246,8 @@ func (t topicServer) Subscribe(ctx context.Context, call MethodSubscribe) error 
 		handler.Call(ctx, bind(ctx, sub))
 	}
 
-	return handler.Wait()
+	return nil
+	// return handler.Wait()  // FIXME
 }
 
 func (t topicServer) subscribe(call MethodSubscribe) (*pubsub.Subscription, error) {

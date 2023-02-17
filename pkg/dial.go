@@ -76,6 +76,6 @@ func WithLogger(l log.Logger) DialOpt {
 	}
 
 	return func(d *client.Dialer) {
-		d.Log = l
+		d.Vat.Logger = l
 	}
 }

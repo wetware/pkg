@@ -5,6 +5,7 @@ import (
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/lthibault/log"
 
 	"go.uber.org/fx"
 
@@ -35,20 +36,34 @@ func (c Config) newHostFactory(flag Flags, cfg hostFactoryConfig) casm.HostFacto
 	}, c.hostOpt...)...)
 }
 
-func newVat(mc metrics.Client, flag Flags, lx fx.Lifecycle, f casm.HostFactory) (casm.Vat, error) {
-	vat, err := casm.New(flag.String("ns"), f)
-	if err == nil {
-		lx.Append(closer(vat.Host))
-		vat.Metrics = mc.WithPrefix("vat")
+type vatConfig struct {
+	fx.In
+
+	Flags   Flags
+	Log     log.Logger
+	Metrics metrics.Client
+	NewHost casm.HostFactory
+}
+
+func (config vatConfig) New() (vat casm.Vat, err error) {
+	if vat.Host, err = config.NewHost(); err == nil {
+		vat.NS = config.Flags.String("ns")
+		vat.Logger = config.Log
+		vat.Metrics = config.Metrics.WithPrefix("vat")
 	}
 
-	return vat, err
+	return
+}
+
+func newVat(config vatConfig, lx fx.Lifecycle) (vat casm.Vat, err error) {
+	if vat, err = config.New(); err == nil {
+		lx.Append(closer(vat.Host))
+	}
+
+	return
 }
 
 func newED25519() (crypto.PrivKey, error) {
-	priv, _, err := crypto.GenerateKeyPairWithReader(
-		crypto.Ed25519,
-		2048,
-		rand.Reader)
+	priv, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	return priv, err
 }

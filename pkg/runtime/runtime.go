@@ -291,9 +291,9 @@ func decorateLogger(env Env, vat casm.Vat) log.Logger {
 	return log
 }
 
-func newServerNode(j server.Joiner, ps *pubsub.PubSub) (*server.Node, error) {
+func newServerNode(vat casm.Vat, j server.Joiner, ps *pubsub.PubSub) (*server.Node, error) {
 	// TODO:  this should use lx.OnStart to benefit from the start timeout.
-	return j.Join(ps)
+	return j.Join(vat, ps)
 }
 
 func bootServer(lx fx.Lifecycle, n *server.Node) {
@@ -315,12 +315,8 @@ func onclose(c io.Closer) func(context.Context) error {
 	}
 }
 
-type bootstrappable interface {
-	Bootstrap(context.Context) error
-}
-
-func bootstrap(b bootstrappable) func(context.Context) error {
+func bootstrap(n *server.Node) func(context.Context) error {
 	return func(ctx context.Context) error {
-		return b.Bootstrap(ctx)
+		return n.Bootstrap(ctx)
 	}
 }
