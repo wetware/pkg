@@ -22,15 +22,14 @@ interface Locator {
 }
 
 struct SignedLocation {
-    signature @0: Data;
-    location @1: Location;
+    signature @0 :Data;
+    location  @1 :Location;
 }
 
-
 struct Location {
-    id @0: PeerID;
+    id @0 :PeerID;
     union{
-        maddrs   @1 :List(Multiaddr);
+        maddrs @1 :List(Multiaddr);
         anchor @2 :AnchorPath;
         custom @3 :AnyPointer;
     }

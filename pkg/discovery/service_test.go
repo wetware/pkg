@@ -2,6 +2,7 @@ package discovery_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -46,8 +47,10 @@ func TestDiscover(t *testing.T) {
 	provider, release := client.Provider(ctx, serviceName)
 	defer release()
 
-	addr := generateAddr(maddrN)
-	_, release = provider.Provide(ctx, addr)
+	loc, err := generateLocation(maddrN)
+	require.NoError(t, err)
+
+	_, release = provider.Provide(ctx, loc)
 	defer release()
 
 	time.Sleep(time.Second) // give time for the provider to set
@@ -58,13 +61,23 @@ func TestDiscover(t *testing.T) {
 	providers, release := finder.FindProviders(ctx)
 	defer release()
 
-	gotAddr, ok := providers.Next()
+	gotLocation, ok := providers.Next()
 	require.True(t, ok)
 
-	require.EqualValues(t, addr, gotAddr)
+	expected, err := loc.Maddrs()
+	require.NoError(t, err)
+
+	got, err := gotLocation.Maddrs()
+	require.NoError(t, err)
+
+	require.EqualValues(t, expected, got)
 }
 
-func generateAddr(n int) (addr discovery.Addr) {
+func generateLocation(n int) (discovery.Location, error) {
+	loc, err := discovery.NewLocation()
+	if err != nil {
+		return loc, fmt.Errorf("failed to create location: %w", err)
+	}
 	maddrs := make([]ma.Multiaddr, 0, n)
 
 	for i := 0; i < n; i++ {
@@ -72,9 +85,7 @@ func generateAddr(n int) (addr discovery.Addr) {
 		maddrs = append(maddrs, maddr)
 	}
 
-	addr.Maddrs = maddrs
-
-	return addr
+	return loc, loc.SetMaddrs(maddrs)
 }
 
 func newGossipSub(ctx context.Context) (*pubsub.PubSub, func()) {

@@ -149,13 +149,13 @@ func (s *LocatorServer) FindProviders(ctx context.Context, call api.Locator_find
 			if err != nil {
 				return err
 			}
-			addr, err := response.Addr()
+			loc, err := response.Location()
 			if err != nil {
 				return err
 			}
 
 			fut, release := sender.Send(ctx, func(ps channel.Sender_send_Params) error {
-				return ps.SetValue(addr.ToPtr())
+				return ps.SetValue(loc.ToPtr())
 			})
 			defer release()
 
@@ -185,7 +185,7 @@ func encodeRequest(call api.Locator_findProviders) ([]byte, error) {
 }
 
 func encodeResponse(call api.Provider_provide) ([]byte, error) {
-	addr, err := call.Args().Addrs()
+	loc, err := call.Args().Location()
 	if err != nil {
 		return nil, err
 	}
@@ -201,7 +201,7 @@ func encodeResponse(call api.Provider_provide) ([]byte, error) {
 		return nil, err
 	}
 
-	if err := response.SetAddr(addr); err != nil {
+	if err := response.SetLocation(loc); err != nil {
 		return nil, err
 	}
 
