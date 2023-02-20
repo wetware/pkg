@@ -15,6 +15,6 @@ func TestProto(t *testing.T) {
 	proto := ww.Subprotocol(ns)
 	t.Log(proto)
 
-	assert.True(t, matcher.MatchProto(proto),
+	assert.True(t, matcher.Match(proto),
 		"matcher should match subprotocol")
 }

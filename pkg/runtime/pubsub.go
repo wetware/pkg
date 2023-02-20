@@ -54,7 +54,7 @@ func (config pubSubConfig) tracer() ww_pubsub.Tracer {
 func (config pubSubConfig) protoMatchFunc() pubsub.ProtocolMatchFn {
 	match := matcher(config.Flag)
 
-	return func(local string) func(string) bool {
+	return func(local protocol.ID) func(protocol.ID) bool {
 		if match.Match(local) {
 			return match.Match
 		}
@@ -72,10 +72,10 @@ func (config pubSubConfig) features() func(pubsub.GossipSubFeature, protocol.ID)
 	return func(feat pubsub.GossipSubFeature, proto protocol.ID) bool {
 		switch feat {
 		case pubsub.GossipSubFeatureMesh:
-			return supportGossip.MatchProto(proto)
+			return supportGossip.Match(proto)
 
 		case pubsub.GossipSubFeaturePX:
-			return supportsPX.MatchProto(proto)
+			return supportsPX.Match(proto)
 
 		default:
 			return false

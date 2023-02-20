@@ -198,10 +198,10 @@ func Features() func(pubsub.GossipSubFeature, protocol.ID) bool {
 	return func(feat pubsub.GossipSubFeature, proto protocol.ID) bool {
 		switch feat {
 		case pubsub.GossipSubFeatureMesh:
-			return supportGossip.MatchProto(proto)
+			return supportGossip.Match(proto)
 
 		case pubsub.GossipSubFeaturePX:
-			return supportsPX.MatchProto(proto)
+			return supportsPX.Match(proto)
 
 		default:
 			return false
@@ -224,7 +224,7 @@ func Matcher() protoutil.MatchFunc {
 func ProtoMatchFunc() pubsub.ProtocolMatchFn {
 	match := Matcher()
 
-	return func(local string) func(string) bool {
+	return func(local protocol.ID) func(protocol.ID) bool {
 		if match.Match(local) {
 			return match.Match
 		}

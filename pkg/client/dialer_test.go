@@ -8,6 +8,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/discovery"
 	p2p_host "github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/libp2p/go-libp2p/p2p/net/swarm"
 	inproc "github.com/lthibault/go-libp2p-inproc-transport"
 	ma "github.com/multiformats/go-multiaddr"
@@ -123,7 +124,7 @@ func TestDialer(t *testing.T) {
 			Boot: boot.StaticAddrs{*p2p_host.InfoFromHost(h)},
 		}.Dial(ctx)
 
-		assert.ErrorIs(t, err, multistream.ErrNotSupported)
+		assert.ErrorIs(t, err, multistream.ErrNotSupported[protocol.ID]{})
 		assert.EqualError(t, err, "protocol not supported")
 		assert.Nil(t, n, "should return nil client node")
 	})
