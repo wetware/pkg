@@ -82,3 +82,4 @@ this agreement shall remain valid and enforceable.
 # Contributors
 
 - Ayaz Abbas
+- Evan Schott
