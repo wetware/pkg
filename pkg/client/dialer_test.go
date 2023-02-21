@@ -124,8 +124,12 @@ func TestDialer(t *testing.T) {
 			Boot: boot.StaticAddrs{*p2p_host.InfoFromHost(h)},
 		}.Dial(ctx)
 
-		assert.ErrorIs(t, err, multistream.ErrNotSupported[protocol.ID]{})
-		assert.EqualError(t, err, "protocol not supported")
+		var want multistream.ErrNotSupported[protocol.ID]
+		assert.ErrorAs(t, err, &want)
+		assert.Contains(t, want.Protos, protocol.ID("/casm/0.0.0/test/host/packed"),
+			"packed protocol missing")
+		assert.Contains(t, want.Protos, protocol.ID("/casm/0.0.0/test/host"),
+			"standard protocol missing")
 		assert.Nil(t, n, "should return nil client node")
 	})
 
