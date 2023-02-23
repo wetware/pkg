@@ -3,6 +3,7 @@ package iostream_test
 import (
 	"bytes"
 	"context"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -41,22 +42,58 @@ func TestStream(t *testing.T) {
 }
 
 func TestProvider(t *testing.T) {
-	rbuf := &mockCloser{Buffer: bytes.NewBufferString("hello, world!")}
-	p := iostream.NewProvider(rbuf)
-	defer p.Release()
+	const bufferSize = 2048
+	const s1, s2 = "hello, world!\n", "hello again, world!\n"
+	rc, wc := io.Pipe() // Client Reader/Writer
+	rs, ws := io.Pipe() // Server Reader/Writer, could be replaced with bytes.Buffer
 
-	p.AddRef().Release() // for test coverage
+	defer rc.Close()
+	defer wc.Close()
+	defer rs.Close()
+	defer ws.Close()
 
-	buf := &mockCloser{Buffer: new(bytes.Buffer)}
-	f, release := p.Provide(context.TODO(), iostream.New(buf))
-	defer release()
+	// Write s1 to the client writer
+	go func() {
+		n, err := wc.Write([]byte(s1))
+		require.NoError(t, err)
+		assert.Equal(t, n, len(s1))
+	}()
 
-	require.NoError(t, f.Err(), "should succeed")
-	require.Equal(t, "hello, world!", buf.String())
-	assert.True(t, buf.Closed, "writer should have been closed")
+	// Provide the client reader to the server writer
+	go func() {
+		p := iostream.NewProvider(rc)
+		defer p.Release()
+		p.AddRef().Release() // For test coverage
+		_, release := p.Provide(context.TODO(), iostream.New(ws))
+		defer release()
+	}()
 
-	p.Release() // signal that the reader should be closed
-	assert.True(t, rbuf.Closed, "reader should have been closed")
+	// Check the server reader for s1
+	b1 := make([]byte, bufferSize)
+	n, err := rs.Read(b1)
+	require.NoError(t, err)
+	assert.Equal(t, n, len(s1))
+	assert.Equal(t, string(b1[0:n]), s1)
+
+	// Write s2 to the client writer
+	go func() {
+		n, err := wc.Write([]byte(s2))
+		require.NoError(t, err)
+		assert.Equal(t, n, len(s2))
+	}()
+
+	// Check server reader for s2
+	n, err = rs.Read(b1)
+	require.NoError(t, err)
+	assert.Equal(t, n, len(s2))
+	assert.Equal(t, string(b1[0:n]), s2)
+
+	// Closing the client reader should make the provider close the
+	// server pipe writer (and therefore reader)
+	rc.Close()
+	_, err = rs.Read(make([]byte, 0))
+	assert.NotNil(t, err)
+	assert.Equal(t, err.Error(), "EOF")
 }
 
 type mockCloser struct {
