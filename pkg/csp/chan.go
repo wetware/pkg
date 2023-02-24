@@ -82,7 +82,9 @@ func Text(s string) Value {
 	}
 }
 
-// Future result from a Chan operation.
+// Future result from a Chan operation. It is a specialized instance
+// of a casm.Future that provides typed methods for common capnp.Ptr
+// types.
 type Future casm.Future
 
 func (f Future) Await(ctx context.Context) (val capnp.Ptr, err error) {
