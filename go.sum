@@ -507,6 +507,8 @@ github.com/warpfork/go-wish v0.0.0-20220906213052-39a1cc7a02d0 h1:GDDkbFiaK8jsSD
 github.com/warpfork/go-wish v0.0.0-20220906213052-39a1cc7a02d0/go.mod h1:x6AKhvSSexNrVSrViXSHUEbICjmGXhtgABaHIySUSGw=
 github.com/wetware/casm v0.0.0-20230221204520-1957fd184f20 h1:TYrOgmbPbxUO4PqjwRF2foxpKoqDdu2fRvmAd1ptKTI=
 github.com/wetware/casm v0.0.0-20230221204520-1957fd184f20/go.mod h1:POhb5OT6s9paBkfl2/GVEUPYFx0WVLy1t9u9KprDMOU=
+github.com/wetware/casm v0.0.0-20230224203443-f715090fc92c h1:vOxUhNnjyzBuIq0/nhdlyoVj8gug4SQlgtojo0Pg8Bo=
+github.com/wetware/casm v0.0.0-20230224203443-f715090fc92c/go.mod h1:POhb5OT6s9paBkfl2/GVEUPYFx0WVLy1t9u9KprDMOU=
 github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 h1:EKhdznlJHPMoKr0XTrX+IlJs1LH3lyx2nfr1dOlZ79k=
 github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1/go.mod h1:8UvriyWtv5Q5EOgjHaSseUEdkQfvwFv1I/In/O2M9gc=
 github.com/xordataexchange/crypt v0.0.3-0.20170626215501-b2862e3d0a77/go.mod h1:aYKd//L2LvnjZzWKhF00oedf4jCCReLcmhLdhm1A27Q=
