@@ -64,21 +64,39 @@ type PeekableServer interface {
 
 type Value func(channel.Sender_send_Params) error
 
+// Ptr takes any capnp pointer and converts it into a value
+// capable of being sent through a channel.
 func Ptr(ptr capnp.Ptr) Value {
 	return func(ps channel.Sender_send_Params) error {
 		return ps.SetValue(ptr)
 	}
 }
 
-func Data(b []byte) Value {
+// Struct takes any capnp struct and converts it into a value
+// capable of being sent through a channel.
+func Struct[T ~capnp.StructKind](t T) Value {
+	return Ptr(capnp.Struct(t).ToPtr())
+}
+
+// List takes any capnp list and converts it into a value capable
+// of being sent through a channel.
+func List[T ~capnp.ListKind](t T) Value {
+	return Ptr(capnp.List(t).ToPtr())
+}
+
+// Data takes any []byte-like type and converts it into a value
+// capable of being sent through a channel.
+func Data[T ~[]byte](t T) Value {
 	return func(ps channel.Sender_send_Params) error {
-		return capnp.Struct(ps).SetData(0, b)
+		return capnp.Struct(ps).SetData(0, []byte(t))
 	}
 }
 
-func Text(s string) Value {
+// Text takes any string-like type and converts it into a value
+// capable of being sent through a channel.
+func Text[T ~string](t T) Value {
 	return func(ps channel.Sender_send_Params) error {
-		return capnp.Struct(ps).SetText(0, s)
+		return capnp.Struct(ps).SetText(0, string(t))
 	}
 }
 
