@@ -82,6 +82,68 @@ func Text(s string) Value {
 	}
 }
 
+// Future result from a Chan operation.
+type Future casm.Future
+
+func (f Future) Await(ctx context.Context) (val capnp.Ptr, err error) {
+	if err = casm.Future(f).Await(ctx); err == nil {
+		val, err = f.Ptr()
+	}
+
+	return
+}
+
+func (f Future) AwaitClient(ctx context.Context) (c capnp.Client, err error) {
+	if err = casm.Future(f).Await(ctx); err == nil {
+		c = f.Client()
+	}
+
+	return
+}
+
+func (f Future) AwaitBytes(ctx context.Context) ([]byte, error) {
+	ptr, err := f.Await(ctx)
+	return ptr.Data(), err
+}
+
+func (f Future) AwaitString(ctx context.Context) (string, error) {
+	ptr, err := f.Await(ctx)
+	return ptr.Text(), err
+}
+
+func (f Future) Ptr() (capnp.Ptr, error) {
+	res, err := channel.Recver_recv_Results_Future(f).Struct()
+	if err != nil {
+		return capnp.Ptr{}, err
+	}
+
+	return res.Value()
+}
+
+func (f Future) Client() capnp.Client {
+	ptr, err := f.Ptr()
+	if err != nil {
+		return capnp.ErrorClient(err)
+	}
+
+	return ptr.Interface().Client()
+}
+
+func (f Future) Struct() (capnp.Struct, error) {
+	ptr, err := f.Ptr()
+	return ptr.Struct(), err
+}
+
+func (f Future) Data() ([]byte, error) {
+	ptr, err := f.Ptr()
+	return ptr.Data(), err
+}
+
+func (f Future) Text() (string, error) {
+	ptr, err := f.Ptr()
+	return ptr.Text(), err
+}
+
 type Chan channel.Chan
 
 func New(s ChanServer) Chan {
@@ -96,8 +158,9 @@ func (c Chan) Send(ctx context.Context, v Value) (casm.Future, capnp.ReleaseFunc
 	return Sender(c).Send(ctx, v)
 }
 
-func (c Chan) Recv(ctx context.Context) (casm.FuturePtr, capnp.ReleaseFunc) {
-	return Recver(c).Recv(ctx)
+func (c Chan) Recv(ctx context.Context) (Future, capnp.ReleaseFunc) {
+	f, release := Recver(c).Recv(ctx)
+	return Future(f), release
 }
 
 // NewStream for the sender.   This will overwrite the existing
@@ -129,7 +192,7 @@ func (c PeekableChan) Send(ctx context.Context, v Value) (casm.Future, capnp.Rel
 	return Sender(c).Send(ctx, v)
 }
 
-func (c PeekableChan) Recv(ctx context.Context) (casm.FuturePtr, capnp.ReleaseFunc) {
+func (c PeekableChan) Recv(ctx context.Context) (Future, capnp.ReleaseFunc) {
 	return Recver(c).Recv(ctx)
 }
 
@@ -176,11 +239,11 @@ func NewPeekRecver(pr PeekRecvServer) PeekRecver {
 	return PeekRecver(channel.PeekRecver_ServerToClient(pr))
 }
 
-func (pr PeekRecver) Peek(ctx context.Context) (casm.FuturePtr, capnp.ReleaseFunc) {
+func (pr PeekRecver) Peek(ctx context.Context) (Future, capnp.ReleaseFunc) {
 	return Peeker(pr).Peek(ctx)
 }
 
-func (pr PeekRecver) Recv(ctx context.Context) (casm.FuturePtr, capnp.ReleaseFunc) {
+func (pr PeekRecver) Recv(ctx context.Context) (Future, capnp.ReleaseFunc) {
 	return Recver(pr).Recv(ctx)
 }
 
@@ -230,9 +293,9 @@ func NewPeeker(p PeekServer) Peeker {
 	return Peeker(channel.Peeker_ServerToClient(p))
 }
 
-func (p Peeker) Peek(ctx context.Context) (casm.FuturePtr, capnp.ReleaseFunc) {
+func (p Peeker) Peek(ctx context.Context) (Future, capnp.ReleaseFunc) {
 	f, release := channel.Peeker(p).Peek(ctx, nil)
-	return casm.FuturePtr(f), release
+	return Future(f), release
 }
 
 func (p Peeker) AddRef() Peeker {
@@ -249,9 +312,9 @@ func NewRecver(r RecvServer) Recver {
 	return Recver(channel.Recver_ServerToClient(r))
 }
 
-func (r Recver) Recv(ctx context.Context) (casm.FuturePtr, capnp.ReleaseFunc) {
+func (r Recver) Recv(ctx context.Context) (Future, capnp.ReleaseFunc) {
 	f, release := channel.Recver(r).Recv(ctx, nil)
-	return casm.FuturePtr(f), release
+	return Future(f), release
 }
 
 func (r Recver) AddRef() Recver {
