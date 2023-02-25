@@ -123,43 +123,6 @@ func (mr *MockRecvServerMockRecorder) Recv(arg0, arg1 interface{}) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Recv", reflect.TypeOf((*MockRecvServer)(nil).Recv), arg0, arg1)
 }
 
-// MockPeekServer is a mock of PeekServer interface.
-type MockPeekServer struct {
-	ctrl     *gomock.Controller
-	recorder *MockPeekServerMockRecorder
-}
-
-// MockPeekServerMockRecorder is the mock recorder for MockPeekServer.
-type MockPeekServerMockRecorder struct {
-	mock *MockPeekServer
-}
-
-// NewMockPeekServer creates a new mock instance.
-func NewMockPeekServer(ctrl *gomock.Controller) *MockPeekServer {
-	mock := &MockPeekServer{ctrl: ctrl}
-	mock.recorder = &MockPeekServerMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockPeekServer) EXPECT() *MockPeekServerMockRecorder {
-	return m.recorder
-}
-
-// Peek mocks base method.
-func (m *MockPeekServer) Peek(arg0 context.Context, arg1 csp.MethodPeek) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Peek", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Peek indicates an expected call of Peek.
-func (mr *MockPeekServerMockRecorder) Peek(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Peek", reflect.TypeOf((*MockPeekServer)(nil).Peek), arg0, arg1)
-}
-
 // MockSendCloseServer is a mock of SendCloseServer interface.
 type MockSendCloseServer struct {
 	ctrl     *gomock.Controller
@@ -209,57 +172,6 @@ func (m *MockSendCloseServer) Send(arg0 context.Context, arg1 csp.MethodSend) er
 func (mr *MockSendCloseServerMockRecorder) Send(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Send", reflect.TypeOf((*MockSendCloseServer)(nil).Send), arg0, arg1)
-}
-
-// MockPeekRecvServer is a mock of PeekRecvServer interface.
-type MockPeekRecvServer struct {
-	ctrl     *gomock.Controller
-	recorder *MockPeekRecvServerMockRecorder
-}
-
-// MockPeekRecvServerMockRecorder is the mock recorder for MockPeekRecvServer.
-type MockPeekRecvServerMockRecorder struct {
-	mock *MockPeekRecvServer
-}
-
-// NewMockPeekRecvServer creates a new mock instance.
-func NewMockPeekRecvServer(ctrl *gomock.Controller) *MockPeekRecvServer {
-	mock := &MockPeekRecvServer{ctrl: ctrl}
-	mock.recorder = &MockPeekRecvServerMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockPeekRecvServer) EXPECT() *MockPeekRecvServerMockRecorder {
-	return m.recorder
-}
-
-// Peek mocks base method.
-func (m *MockPeekRecvServer) Peek(arg0 context.Context, arg1 csp.MethodPeek) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Peek", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Peek indicates an expected call of Peek.
-func (mr *MockPeekRecvServerMockRecorder) Peek(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Peek", reflect.TypeOf((*MockPeekRecvServer)(nil).Peek), arg0, arg1)
-}
-
-// Recv mocks base method.
-func (m *MockPeekRecvServer) Recv(arg0 context.Context, arg1 csp.MethodRecv) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Recv", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Recv indicates an expected call of Recv.
-func (mr *MockPeekRecvServerMockRecorder) Recv(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Recv", reflect.TypeOf((*MockPeekRecvServer)(nil).Recv), arg0, arg1)
 }
 
 // MockChanServer is a mock of ChanServer interface.
@@ -325,83 +237,4 @@ func (m *MockChanServer) Send(arg0 context.Context, arg1 csp.MethodSend) error {
 func (mr *MockChanServerMockRecorder) Send(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Send", reflect.TypeOf((*MockChanServer)(nil).Send), arg0, arg1)
-}
-
-// MockPeekableServer is a mock of PeekableServer interface.
-type MockPeekableServer struct {
-	ctrl     *gomock.Controller
-	recorder *MockPeekableServerMockRecorder
-}
-
-// MockPeekableServerMockRecorder is the mock recorder for MockPeekableServer.
-type MockPeekableServerMockRecorder struct {
-	mock *MockPeekableServer
-}
-
-// NewMockPeekableServer creates a new mock instance.
-func NewMockPeekableServer(ctrl *gomock.Controller) *MockPeekableServer {
-	mock := &MockPeekableServer{ctrl: ctrl}
-	mock.recorder = &MockPeekableServerMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockPeekableServer) EXPECT() *MockPeekableServerMockRecorder {
-	return m.recorder
-}
-
-// Close mocks base method.
-func (m *MockPeekableServer) Close(arg0 context.Context, arg1 csp.MethodClose) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Close", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Close indicates an expected call of Close.
-func (mr *MockPeekableServerMockRecorder) Close(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockPeekableServer)(nil).Close), arg0, arg1)
-}
-
-// Peek mocks base method.
-func (m *MockPeekableServer) Peek(arg0 context.Context, arg1 csp.MethodPeek) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Peek", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Peek indicates an expected call of Peek.
-func (mr *MockPeekableServerMockRecorder) Peek(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Peek", reflect.TypeOf((*MockPeekableServer)(nil).Peek), arg0, arg1)
-}
-
-// Recv mocks base method.
-func (m *MockPeekableServer) Recv(arg0 context.Context, arg1 csp.MethodRecv) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Recv", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Recv indicates an expected call of Recv.
-func (mr *MockPeekableServerMockRecorder) Recv(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Recv", reflect.TypeOf((*MockPeekableServer)(nil).Recv), arg0, arg1)
-}
-
-// Send mocks base method.
-func (m *MockPeekableServer) Send(arg0 context.Context, arg1 csp.MethodSend) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Send", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Send indicates an expected call of Send.
-func (mr *MockPeekableServerMockRecorder) Send(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Send", reflect.TypeOf((*MockPeekableServer)(nil).Send), arg0, arg1)
 }
