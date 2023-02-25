@@ -22,7 +22,6 @@ type (
 	MethodClose = channel.Closer_close
 	MethodSend  = channel.Sender_send
 	MethodRecv  = channel.Recver_recv
-	MethodPeek  = channel.Peeker_peek
 )
 
 type CloseServer interface {
@@ -37,29 +36,15 @@ type RecvServer interface {
 	Recv(context.Context, MethodRecv) error
 }
 
-type PeekServer interface {
-	Peek(context.Context, MethodPeek) error
-}
-
 type SendCloseServer interface {
 	SendServer
 	CloseServer
-}
-
-type PeekRecvServer interface {
-	PeekServer
-	RecvServer
 }
 
 type ChanServer interface {
 	CloseServer
 	SendServer
 	RecvServer
-}
-
-type PeekableServer interface {
-	ChanServer
-	PeekServer
 }
 
 type Value func(channel.Sender_send_Params) error
@@ -198,32 +183,6 @@ func (c Chan) Release() {
 	capnp.Client(c).Release()
 }
 
-type PeekableChan channel.Chan
-
-func (c PeekableChan) Close(ctx context.Context) error {
-	return Closer(c).Close(ctx)
-}
-
-func NewPeekableChan(s PeekableServer) PeekableChan {
-	return PeekableChan(channel.PeekableChan_ServerToClient(s))
-}
-
-func (c PeekableChan) Send(ctx context.Context, v Value) (casm.Future, capnp.ReleaseFunc) {
-	return Sender(c).Send(ctx, v)
-}
-
-func (c PeekableChan) Recv(ctx context.Context) (Future, capnp.ReleaseFunc) {
-	return Recver(c).Recv(ctx)
-}
-
-func (c PeekableChan) AddRef() PeekableChan {
-	return PeekableChan(capnp.Client(c).AddRef())
-}
-
-func (c PeekableChan) Release() {
-	capnp.Client(c).Release()
-}
-
 type SendCloser Chan
 
 func NewSendCloser(sc SendCloseServer) SendCloser {
@@ -251,28 +210,6 @@ func (sc SendCloser) AddRef() SendCloser {
 
 func (sc SendCloser) Release() {
 	capnp.Client(sc).Release()
-}
-
-type PeekRecver Chan
-
-func NewPeekRecver(pr PeekRecvServer) PeekRecver {
-	return PeekRecver(channel.PeekRecver_ServerToClient(pr))
-}
-
-func (pr PeekRecver) Peek(ctx context.Context) (Future, capnp.ReleaseFunc) {
-	return Peeker(pr).Peek(ctx)
-}
-
-func (pr PeekRecver) Recv(ctx context.Context) (Future, capnp.ReleaseFunc) {
-	return Recver(pr).Recv(ctx)
-}
-
-func (pr PeekRecver) AddRef() PeekRecver {
-	return PeekRecver(capnp.Client(pr).AddRef())
-}
-
-func (pr PeekRecver) Release() {
-	capnp.Client(pr).Release()
 }
 
 type Sender Chan
@@ -305,25 +242,6 @@ func (s Sender) AddRef() Sender {
 
 func (s Sender) Release() {
 	capnp.Client(s).Release()
-}
-
-type Peeker Chan
-
-func NewPeeker(p PeekServer) Peeker {
-	return Peeker(channel.Peeker_ServerToClient(p))
-}
-
-func (p Peeker) Peek(ctx context.Context) (Future, capnp.ReleaseFunc) {
-	f, release := channel.Peeker(p).Peek(ctx, nil)
-	return Future(f), release
-}
-
-func (p Peeker) AddRef() Peeker {
-	return Peeker(capnp.Client(p).AddRef())
-}
-
-func (p Peeker) Release() {
-	capnp.Client(p).Release()
 }
 
 type Recver Chan

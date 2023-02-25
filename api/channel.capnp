@@ -16,17 +16,10 @@ interface Sender(T) {
 }
 
 
-interface Peeker(T) {
-    peek @0 () -> (value :T);
-}
-
-
 interface Recver(T) {
     recv  @0 () -> (value :T);
 }
 
 
 interface SendCloser(T) extends(Sender(T), Closer) {}
-interface PeekRecver(T) extends(Peeker(T), Recver(T)) {}
 interface Chan(T) extends(SendCloser(T), Recver(T)) {}
-interface PeekableChan(T) extends(SendCloser(T), PeekRecver(T)) {}
