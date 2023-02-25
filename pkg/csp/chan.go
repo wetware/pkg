@@ -113,14 +113,6 @@ func (f Future) Await(ctx context.Context) (val capnp.Ptr, err error) {
 	return
 }
 
-func (f Future) AwaitClient(ctx context.Context) (c capnp.Client, err error) {
-	if err = casm.Future(f).Await(ctx); err == nil {
-		c = f.Client()
-	}
-
-	return
-}
-
 func (f Future) AwaitBytes(ctx context.Context) ([]byte, error) {
 	ptr, err := f.Await(ctx)
 	return ptr.Data(), err
@@ -141,12 +133,7 @@ func (f Future) Ptr() (capnp.Ptr, error) {
 }
 
 func (f Future) Client() capnp.Client {
-	ptr, err := f.Ptr()
-	if err != nil {
-		return capnp.ErrorClient(err)
-	}
-
-	return ptr.Interface().Client()
+	return f.Future.Field(0, nil).Client()
 }
 
 func (f Future) Struct() (capnp.Struct, error) {
