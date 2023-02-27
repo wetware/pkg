@@ -20,10 +20,10 @@ interface Process {
     wait @2 () -> (error :Text);  # wait for an started process to finish
     close @3 () -> ();  # close should always be called after running a process
     
-    input @4 () -> (stream :IOStream.Stream);
+    input @4 () -> (stdin :IOStream.Stream);
     # the resulting stream can be used to provide input to the process
-    output @5(stream :IOStream.Stream) -> (error :Text);
-    # receives an stream to provide output to
+    output @5(stdout :IOStream.Stream, stderr :IOStream.Stream) -> ();
+    # receives an stream to provide stdout and stderr to
 
     using IOStream = import "iostream.capnp";
 }

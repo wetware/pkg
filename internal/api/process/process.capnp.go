@@ -440,7 +440,7 @@ func (c Process) Output(ctx context.Context, params func(Process_output_Params) 
 		},
 	}
 	if params != nil {
-		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 2}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Process_output_Params(s)) }
 	}
 	ans, release := capnp.Client(c).SendCall(ctx, s)
@@ -719,7 +719,7 @@ func (c Process_output) Args() Process_output_Params {
 
 // AllocResults allocates the results struct.
 func (c Process_output) AllocResults() (Process_output_Results, error) {
-	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
 	return Process_output_Results(r), err
 }
 
@@ -1381,16 +1381,16 @@ func (s Process_input_Results) Message() *capnp.Message {
 func (s Process_input_Results) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s Process_input_Results) Stream() iostream.Stream {
+func (s Process_input_Results) Stdin() iostream.Stream {
 	p, _ := capnp.Struct(s).Ptr(0)
 	return iostream.Stream(p.Interface().Client())
 }
 
-func (s Process_input_Results) HasStream() bool {
+func (s Process_input_Results) HasStdin() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s Process_input_Results) SetStream(v iostream.Stream) error {
+func (s Process_input_Results) SetStdin(v iostream.Stream) error {
 	if !v.IsValid() {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
@@ -1415,7 +1415,7 @@ func (f Process_input_Results_Future) Struct() (Process_input_Results, error) {
 	p, err := f.Future.Ptr()
 	return Process_input_Results(p.Struct()), err
 }
-func (p Process_input_Results_Future) Stream() iostream.Stream {
+func (p Process_input_Results_Future) Stdin() iostream.Stream {
 	return iostream.Stream(p.Future.Field(0, nil).Client())
 }
 
@@ -1425,12 +1425,12 @@ type Process_output_Params capnp.Struct
 const Process_output_Params_TypeID = 0xf5c2d7ad2dde5570
 
 func NewProcess_output_Params(s *capnp.Segment) (Process_output_Params, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
 	return Process_output_Params(st), err
 }
 
 func NewRootProcess_output_Params(s *capnp.Segment) (Process_output_Params, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
 	return Process_output_Params(st), err
 }
 
@@ -1466,16 +1466,16 @@ func (s Process_output_Params) Message() *capnp.Message {
 func (s Process_output_Params) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s Process_output_Params) Stream() iostream.Stream {
+func (s Process_output_Params) Stdout() iostream.Stream {
 	p, _ := capnp.Struct(s).Ptr(0)
 	return iostream.Stream(p.Interface().Client())
 }
 
-func (s Process_output_Params) HasStream() bool {
+func (s Process_output_Params) HasStdout() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s Process_output_Params) SetStream(v iostream.Stream) error {
+func (s Process_output_Params) SetStdout(v iostream.Stream) error {
 	if !v.IsValid() {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
@@ -1484,12 +1484,30 @@ func (s Process_output_Params) SetStream(v iostream.Stream) error {
 	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
+func (s Process_output_Params) Stderr() iostream.Stream {
+	p, _ := capnp.Struct(s).Ptr(1)
+	return iostream.Stream(p.Interface().Client())
+}
+
+func (s Process_output_Params) HasStderr() bool {
+	return capnp.Struct(s).HasPtr(1)
+}
+
+func (s Process_output_Params) SetStderr(v iostream.Stream) error {
+	if !v.IsValid() {
+		return capnp.Struct(s).SetPtr(1, capnp.Ptr{})
+	}
+	seg := s.Segment()
+	in := capnp.NewInterface(seg, seg.Message().AddCap(capnp.Client(v)))
+	return capnp.Struct(s).SetPtr(1, in.ToPtr())
+}
+
 // Process_output_Params_List is a list of Process_output_Params.
 type Process_output_Params_List = capnp.StructList[Process_output_Params]
 
 // NewProcess_output_Params creates a new list of Process_output_Params.
 func NewProcess_output_Params_List(s *capnp.Segment, sz int32) (Process_output_Params_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2}, sz)
 	return capnp.StructList[Process_output_Params](l), err
 }
 
@@ -1500,8 +1518,12 @@ func (f Process_output_Params_Future) Struct() (Process_output_Params, error) {
 	p, err := f.Future.Ptr()
 	return Process_output_Params(p.Struct()), err
 }
-func (p Process_output_Params_Future) Stream() iostream.Stream {
+func (p Process_output_Params_Future) Stdout() iostream.Stream {
 	return iostream.Stream(p.Future.Field(0, nil).Client())
+}
+
+func (p Process_output_Params_Future) Stderr() iostream.Stream {
+	return iostream.Stream(p.Future.Field(1, nil).Client())
 }
 
 type Process_output_Results capnp.Struct
@@ -1510,12 +1532,12 @@ type Process_output_Results capnp.Struct
 const Process_output_Results_TypeID = 0xeafb60603769c851
 
 func NewProcess_output_Results(s *capnp.Segment) (Process_output_Results, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
 	return Process_output_Results(st), err
 }
 
 func NewRootProcess_output_Results(s *capnp.Segment) (Process_output_Results, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
 	return Process_output_Results(st), err
 }
 
@@ -1551,30 +1573,13 @@ func (s Process_output_Results) Message() *capnp.Message {
 func (s Process_output_Results) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s Process_output_Results) Error() (string, error) {
-	p, err := capnp.Struct(s).Ptr(0)
-	return p.Text(), err
-}
-
-func (s Process_output_Results) HasError() bool {
-	return capnp.Struct(s).HasPtr(0)
-}
-
-func (s Process_output_Results) ErrorBytes() ([]byte, error) {
-	p, err := capnp.Struct(s).Ptr(0)
-	return p.TextBytes(), err
-}
-
-func (s Process_output_Results) SetError(v string) error {
-	return capnp.Struct(s).SetText(0, v)
-}
 
 // Process_output_Results_List is a list of Process_output_Results.
 type Process_output_Results_List = capnp.StructList[Process_output_Results]
 
 // NewProcess_output_Results creates a new list of Process_output_Results.
 func NewProcess_output_Results_List(s *capnp.Segment, sz int32) (Process_output_Results_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
 	return capnp.StructList[Process_output_Results](l), err
 }
 
@@ -1586,57 +1591,58 @@ func (f Process_output_Results_Future) Struct() (Process_output_Results, error) 
 	return Process_output_Results(p.Struct()), err
 }
 
-const schema_9a51e53177277763 = "x\xda\x9cT]Hde\x18~\xdf\xf3+\xe8 \x9f" +
-	"#RF\xcdE#\x91\xe5\xffE5(s\x14D\xf0" +
-	"\xa69B\x97\xd6\x1c\x87\x13\x1e\xd29\xa7\xf3\xc3$1" +
-	"\x94\x90\x89A\x04\x85DFd\x17\x83]di\x09Q" +
-	"!Q\x10\xb4\x17\x0b\xbb\xb3\xeb\x8a\xee\xb2\x0b\xca\xc2\xe2" +
-	"\x85,\x0b^,\xcbr\x96\xef\x1c\xcf\x99\xa3\xe3(\xec" +
-	"\xdd\x99y\xde\xef}\xde\xe7\xf9\x9e\xf7\xeb.2\x12\xd7" +
-	"\x13{\xa7\x1e\x18\xf9\x13^p\xdf\x936[c\x83\xfb" +
-	"\x9f\x02iE\x00N\x04\xe8[\xe4S\x08\x9c\xfbJv" +
-	"\xf9\xfba;\xfb\x9d\x8f\xf0H\xa1\"\x850>\xc7\xa7" +
-	"\x01\xdd\xb23[\xfa\xf3\xed\xce_\x804\xb1n\xae\xf0" +
-	"R\xa1\xe7\xae\xbc\x04\x80\xf1\x12\xbf\x1b_\xe7E\x80\xf8" +
-	"*?\x12\xdf\xa2_n\xf6\xb3\xb9\xcc\xce`\xdb\xef\x11" +
-	"\x9eM\x9f\xe7\xdb+\xe5\x95\xb5\x967\xff\x02\xf2\\\xc8" +
-	"S\xe2G)\xcf\xba\xc7s\xf8\xf5u\xeb\xd7\xc9\x9e\xff" +
-	"\"G\xaf\xfaG\xef\xcd\xff#\xdcq\xba\xca\x11\xe4\x0f" +
-	"\xbe\x97\"?\x8dt'\x977\xda\xb7#\xc8\x0f\xfc\x10" +
-	"E\xfa/}8\xb1\xbc\xd4\xbf\x13A\x16|\xa4Oh" +
-	"\xfb\xf1\xda\xfd\x17w\xab\xf4\xbc\xcf\x97\xe3E\xaa\xa2o" +
-	"\x86\x9f\xc7\xb8&PA\xf2\xff\xdak\xd9\xec\xa3\x83\xa8" +
-	"=\xb2\xe0\x8d=.\xd0\xb1G\xc6\xbb\xd6\x9e\xfdy\xe5" +
-	"0BT\x14\xbc\xe1\x9a\xbe\xfar\xf1`\xa0\xfe\xc1\xb1" +
-	"b\x86B\xaa0D\x8fN\x0b\x05@\xf7\x8b\x81\x83\xc9" +
-	"\x96[\x0bG\xd1\xde\x97\xfd\x82-\xaf\xb7\xf1\xd6\xed\x8e" +
-	"\xd5\xed\x7fO\x14\x1c\xf9\x05\x8f\xbd\x82\xfd\xdfn\xd6\xed" +
-	"\x8dj\x0f#\xe4\xcf\x8b)\x84\xbf]\xc5\xd0\xba\x0cS" +
-	"\xcf\xb1\xaaeu\xe6\x14#o\xa42\xa6\x9e\xf3~M" +
-	"\xe9\x96\x9aLg\x14S\x99\xb6\xce+,(\x9a\x9d\x1c" +
-	"K\xab\x963e[2\xc7r\x00\x1c\x02\x90X/\x80" +
-	"\\\xc7\xa2\xdc\xcc`B5M\xdd\xc4\x06`\xb0\x010" +
-	"\xec\xc6T\xba\x0d\x7f\xa0\xe6\x1c\x9b\xd5\xcd\x0c\xa2\xcc\xb1" +
-	"<@\xe8\x0c\x06\xa1 \xa4\x17\x18\xc2\x8b\x09\xcbP\x0a" +
-	"y\x093\x88\xe7\x0d\xa6\xe5\x0d\xc7\xaeR\xc0\x9d\xe6\xd4" +
-	"\xcdN\xaf_r\xcc\x97\x00\x10\x151T\x11\xf1\x91\xe1" +
-	"7FRI\x07 \x128w\x0a\xcb\xd6\x8d\xd0\x9e\x0b" +
-	"}\xcc$NN\xdbpVC\xc5\xb4\xc3a\x83\xc2Z" +
-	"\x17xQ\x1dZ\xd4\xf0g<\xc3\x83\x9c`\xb00d" +
-	"\x9d\x1a^\x12\xb1\x12`\x0c\x16\x90|\xd3\x0e\x0c\xf9\\" +
-	"D&\xdc<\x0c^\x092K1GD6|R0" +
-	"X5\xa2\xd1\x9e\xe3\"r\xe13\x80A\xc4\x89L\xb1" +
-	"a\x11\xf90\xd4\x18\xac\x16y#\x05\x0c\xe9\x10\x13\x9e" +
-	"~\x09\x1b\xa9\xb1\x126R\xdb$Lxj%Lx" +
-	"\x97.aZwl\xef#\x9a\x11\xae\xda$\xbf\xec\xec" +
-	"\xab\xbf8\xbf\xb5\xae\xfb\xf4-\xd6\xce\x9c\x1fN\xca\x13" +
-	"\xd0\xbe\x9c\x02\x90\x93,\xca\xdd\x0c\x12\xc4f\xa4\x7fv" +
-	"\x98\x00\xf2\xab,\xca\xaf3\x98\x9e\xd0\xf2\x8a9\x831" +
-	"`0\x06\xe8\xaay\xdb\x9cy\xd7\xc9C\"gkz" +
-	"\xbejH\xae\xd6f\x04\xa2\xa3\x9aS\x15\xcdi\xcb6" +
-	"Ue\x1a\x89\xbb7\xb8q\xe3\x85\xc3\xc6\x8fO\xa7\xbd" +
-	"\xb6\x9f\x81\xac\xa7\xed\xcc\xd6\x8a\xfd\xf16?\x09\x00\x00" +
-	"\xff\xff\xe7Y\x04~"
+const schema_9a51e53177277763 = "x\xda\x8cToH$u\x18~\xdf\xf9+\xe8\"?" +
+	"W$\x0d\xda\x0f\xadT\xd6\xfa7\xa8\x16eGA\x04" +
+	"\xbf\xb4#\xf4\xd1\xdaq\xddp\xc8f\xa6\xf9\xc3&%" +
+	"%db A!\x91\x11\xd9\x87\xc5>di\x19Q" +
+	"!Q\x10\xd4\xb7n\xef\x8f\xe8\x1dw\xa0\x1c\x1c~\x90" +
+	"\xe3\xe0>\x1c\xf7a\x8e\xdf\x8c3;\xe7\xde\xae\xf7m" +
+	"w\x9ew\x9e\xf7}\x9e\xf7y\xa7\xf7}F\xe2\xfab" +
+	"o4\x02#\x7f\xc4\x0b\xee[\xd2nGl\xf8\xe8c" +
+	" \x1d\x08\xc0\x89\x00\x03\xab|\x1a\x81s\x9f\xcf\xad\x7f" +
+	"3j\xe7\xbe\xf6\x11\x1e)4O!\x8c/\xf2\x19@" +
+	"\xb7\xec,\x94~\x7f\xbd\xfbG -\xac\x9b/>S" +
+	"\xec\xbb)\xaf\x01`\xbc\xc4\x1f\xc4\xb7y\x11 \xbe\xc9" +
+	"\x8f\xc5/\xd3_n\xee\x93\xc5\xec\xfep\xe7\xaf\x91>" +
+	"\xbb~\x9f\xaf\xfe/ol\xb5\xbd\xfa\x07\x90'\xc3>" +
+	"%~\x9c\xf6\xd9\xf6\xfa\x9c|q\xc9\xfai\xa6\xef\x9f" +
+	"\xc8\xab\x17\xfcWo-\xfd%\xdcpz\xca\x11\xe47" +
+	"\xbe\x9f\"\xdf\x8f\xf5&\xd7w\xba\xf6\"\xc8\xb7\xfc\x08" +
+	"E\x06\xff{oj}mp?\x82,\xfb\xc8\x80\xd0" +
+	"\xf9\xdd\xc5\xdbO\x1fT\xe9y\x87/\xc7\xe7\xa9\x8a\x81" +
+	"9~\x09\xe3\xaa@\x05\xc9\xff\xaa/\xe5r\xf7\x8f#" +
+	"<\xb20Ny\xc6&{\xb6\xda\x7f\xd88\x89 C" +
+	"\x827U\xcb\xe7\x9f\xad\x1e\x0f5\xde9\x95\xcaP\xa8" +
+	"S\x18\xa1RSB\x11\xd0\xfdt\xe8x\xa6\xed\xda\xf2" +
+	"\xdd\xa8\xe7+~\xc1\xaa@\xbd0^\xbb\x9e\xda\xdc\xfb" +
+	";(\xf0\x18~\xf1\x0bv=\x86\xa3\x9f\xaf6\x1c\x8e" +
+	"\xab\xf7\"\xcd\xdb\xc54\xc2\x9f\xaeb\xa8=\x86\xa9\xe7" +
+	"\xd9\x82eu\xe7\x15C3\xd2YS\xcf{\xfffu" +
+	"\xab\x90\xccd\x15Sy\xdb\xaaWXTT;9\x91" +
+	")X\xce\xacm\xc9\x1c\xcb\x01p\x08@b\xfd\x00r" +
+	"\x03\x8br+\x83\x89\x82i\xea&6\x01\x83M\x80!" +
+	"\x1bSa\x1b}\xb7\x90wlV7\xb3\x882\xc7\xf2" +
+	"\x00\xa13\x18\xa4\x81\x90~`\x08/&,C)j" +
+	"\x12f\x11\xeb\x0d\xa6j\x86cW)\xe0\xce\xf6\xd4\xcd" +
+	"n\x8f/9\xe1K\x00\x88\x8a\x18\xa9\x88\xf8\xc0\xf0\x89" +
+	"\x91Tb\x01\x88\x04\xeaNa\xd9\xba\x11\xdas\xae\x8f" +
+	"\xd9\xc4\xc3\xd36=\x8aP1\xedp\xd8\xa0\xb0\xd6\x02" +
+	"\xcf\xabC\x8b\x1a\xfe\x84gx\x90\x13\x0c.\x85lS" +
+	"\xc3K\"b\x18`\x0c.\x8f|\xd9\x05\x0cY\x11\x91" +
+	"\x09O\x0e\x83\xcf\x03Y\xa0\x98#\"\x1b~K0\xb8" +
+	"1\xa2R\xceI\x11\xb9\xf0\xfe1\x888\x91)6*" +
+	"\"\x1f\x86\x1a\x83\x9b\"\xaf\xa4\x81!)1\xe1\xe9\x97" +
+	"\xb0\x99\x1a+a3\xb5M\xc2\x84\xa7V\xc2\x84\xb7t" +
+	"\x093\xbac{?\xa2\x19\xe1\xaaM\xf2\xcb*\xab?" +
+	"w\x93g\x17T;N~\xeehz\x820=\x97\x06" +
+	"\x90\x93,\xca\xbd\x0c\x12\xc4V\xa4\x0fS&\x80\xfc\x02" +
+	"\x8b\xf2\xcb\x0cf\xa6TM1\xe70\x06\x0c\xc6\x00\xdd" +
+	"\x82f\x9bso:\x1a$\xf2\xb6\xaakU\xf7\xc3\xd5" +
+	"\x0a}\xa0\xa7\xd69Z\xf6\xb4\xaa!q\x0f\x87w\xae" +
+	"<u\xd2\xfc\xe1\xd9\x1c\xd7v\xeaqU\xd1\x87\xcf\xb2" +
+	"(\xbf\xc8`\xc6\xb2\xa7u\xc7\xaenG\x81\x82i\xd6" +
+	"\x99\x83\xad\x15\xff\xd3\xab~\x10\x00\x00\xff\xff\xea\xae\x08" +
+	"$"
 
 func init() {
 	schemas.Register(schema_9a51e53177277763,

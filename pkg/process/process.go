@@ -82,7 +82,7 @@ func (p *Process) Input(ctx context.Context, call api.Process_input) error {
 	if err != nil {
 		return err
 	}
-	err = results.SetStream(iostream_api.Stream(p.io.in))
+	err = results.SetStdin(iostream_api.Stream(p.io.in))
 	return err
 }
 
@@ -90,15 +90,17 @@ func (p *Process) Input(ctx context.Context, call api.Process_input) error {
 // contents of the process stderr after it finishes.
 func (p *Process) Output(ctx context.Context, call api.Process_output) error {
 	var err error
-	results, err := call.AllocResults()
-	if err != nil {
-		return err
-	}
 
 	call.Go()
-	stream := call.Args().Stream()
+	outputStream := call.Args().Stdout()
 	f, release := p.io.out.Provide(ctx, func(p iostream_api.Provider_provide_Params) error {
-		return p.SetStream(stream)
+		return p.SetStream(outputStream)
+	})
+	defer release()
+
+	errorStream := call.Args().Stderr()
+	f, release = p.io.err.Provide(ctx, func(p iostream_api.Provider_provide_Params) error {
+		return p.SetStream(errorStream)
 	})
 	defer release()
 
@@ -110,12 +112,6 @@ func (p *Process) Output(ctx context.Context, call api.Process_output) error {
 	case <-exit:
 	case <-f.Done():
 		break
-	}
-
-	if err != nil || p.io.errBuffer.Len() > 0 {
-		results.SetError(p.io.errBuffer.String())
-	} else {
-		results.SetError(proc_errors.Nil.Error())
 	}
 
 	return err
@@ -135,15 +131,10 @@ func (p *Process) run(ctx context.Context) {
 		}
 	}()
 
-	// close input and output pipes
-	defer func() {
-		// data can sometimes be lost if outW.Close() is called too early
-		// TODO mikel find cause
-		p.io.outW.Close()
-	}()
-	defer p.io.in.Close(p.runContext, nil)
+	defer p.io.closeWriters(ctx)
 
 	_, err = p.function.Call(p.runContext)
+	// TODO mikel handle this error
 }
 
 // release calls all pending release functions.

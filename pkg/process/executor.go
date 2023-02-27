@@ -73,7 +73,7 @@ func (e Executor) spawnProcess(ctx context.Context, binary []byte, entryFunction
 		WithName(modId).
 		WithStdin(procIo.inR).
 		WithStdout(procIo.outW).
-		WithStderr(procIo.errBuffer)
+		WithStderr(procIo.errW)
 
 	instance := e.runtime.Module(modId)
 	if instance == nil {

@@ -47,8 +47,8 @@ func run() *cli.Command {
 func runAction() cli.ActionFunc {
 	return func(c *cli.Context) error {
 
-		var input io.Reader = os.Stdin
-		var output io.Writer
+		var stdin io.Reader = os.Stdin
+		var stdout, stderr io.Writer
 
 		ctx := c.Context
 		// Load the name of the entry function and the WASM file containing the module to run
@@ -66,19 +66,21 @@ func runAction() cli.ActionFunc {
 
 		// Select the output
 		if c.Bool(_json) {
-			output = new(bytes.Buffer)
+			stdout = new(bytes.Buffer)
+			stderr = new(bytes.Buffer)
 		} else {
-			output = os.Stdout
+			stdout = os.Stdout
+			stderr = os.Stderr
 		}
 
 		// Run the process
-		outputErr, errs := proc.Run(ctx, input, output)
+		errs := proc.Run(ctx, stdin, stdout, stderr)
 
 		// Output the results
 		if c.Bool(_json) {
-			err = outputToJSON(output.(*bytes.Buffer), outputErr, errs)
+			err = outputToJSON(stdout.(*bytes.Buffer), stderr.(*bytes.Buffer), errs)
 		} else {
-			err = outputToLog(outputErr, errs)
+			err = outputToLog(errs)
 		}
 
 		return err
@@ -86,21 +88,21 @@ func runAction() cli.ActionFunc {
 }
 
 type results struct {
-	ProcessOutput string   `json:"stdout"`
-	ProcessError  string   `json:"stderr"`
-	Errs          []string `json:"errors"`
+	Stdout string   `json:"stdout"`
+	Stderr string   `json:"stderr"`
+	Errs   []string `json:"errors"`
 }
 
-func outputToJSON(output *bytes.Buffer, outputErr string, errs []error) error {
+func outputToJSON(output *bytes.Buffer, errorOutput *bytes.Buffer, errs []error) error {
 	var err error
 	errStrings := make([]string, len(errs))
 	for i, e := range errs {
 		errStrings[i] = e.Error()
 	}
 	results := results{
-		ProcessOutput: output.String(),
-		ProcessError:  outputErr,
-		Errs:          errStrings,
+		Stdout: output.String(),
+		Stderr: errorOutput.String(),
+		Errs:   errStrings,
 	}
 	content, err := json.Marshal(results)
 	if err != nil {
@@ -110,9 +112,8 @@ func outputToJSON(output *bytes.Buffer, outputErr string, errs []error) error {
 	return nil
 }
 
-func outputToLog(outputErr string, errs []error) error {
+func outputToLog(errs []error) error {
 	var err error
-	os.Stderr.WriteString(outputErr)
 	if errs != nil && len(errs) > 0 {
 		for _, err := range errs {
 			logger.Error(err)
