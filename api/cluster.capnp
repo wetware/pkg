@@ -37,4 +37,8 @@ interface Host {
     # hosts.  The debugger can potentially reveal sensitive data,
     # including cryptographic secrets and SHOULD NOT be provided
     # to untrusted parties.
+
+    executor @4 () -> (executor :import "process.capnp".Executor);
+    # Executor provides a way of spawning and running WASM-based
+    # processes.
 }

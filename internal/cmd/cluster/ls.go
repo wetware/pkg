@@ -16,11 +16,7 @@ func list() *cli.Command {
 		Name:  "ls",
 		Usage: "list anchor elements",
 		Flags: []cli.Flag{
-			&cli.BoolFlag{
-				Name:    "json",
-				Usage:   "print results as json",
-				EnvVars: []string{"WW_FMT_JSON"},
-			},
+			&boolFlag,
 		},
 		Before: setup(),
 		Action: ls(),
@@ -51,7 +47,7 @@ func render(it cluster.Iterator, consume func(routing.Record) error) error {
 }
 
 func formatter(c *cli.Context) func(routing.Record) error {
-	if c.Bool("json") {
+	if c.Bool(_json) {
 		return jsonFormatter(c)
 	}
 

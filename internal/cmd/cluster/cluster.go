@@ -22,6 +22,7 @@ var subcommands = []*cli.Command{
 	list(),
 	publish(),
 	subscribe(),
+	run(),
 	// Discover(),
 }
 

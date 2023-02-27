@@ -12,6 +12,7 @@ import (
 	"github.com/wetware/casm/pkg/debug"
 	anchor_api "github.com/wetware/ww/internal/api/anchor"
 	api "github.com/wetware/ww/internal/api/cluster"
+	process_api "github.com/wetware/ww/internal/api/process"
 	pubsub_api "github.com/wetware/ww/internal/api/pubsub"
 	"github.com/wetware/ww/pkg/anchor"
 	"github.com/wetware/ww/pkg/pubsub"
@@ -57,6 +58,11 @@ func (h Host) Debug(ctx context.Context) (debug.Debugger, capnp.ReleaseFunc) {
 	return debug.Debugger(f.Debugger()), release
 }
 
+func (h Host) Executor(ctx context.Context) (process_api.Executor, capnp.ReleaseFunc) {
+	f, release := api.Host(h).Executor(ctx, nil)
+	return f.Executor(), release
+}
+
 /*---------------------------*
 |                            |
 |    Server Implementation   |
@@ -79,12 +85,17 @@ type DebugProvider interface {
 	Debugger() debug.Debugger
 }
 
+type ExecutorProvider interface {
+	Executor() process_api.Executor
+}
+
 // Server provides the Host capability.
 type Server struct {
-	ViewProvider   ViewProvider
-	PubSubProvider PubSubProvider
-	AnchorProvider AnchorProvider
-	DebugProvider  DebugProvider
+	ViewProvider     ViewProvider
+	PubSubProvider   PubSubProvider
+	AnchorProvider   AnchorProvider
+	DebugProvider    DebugProvider
+	ExecutorProvider ExecutorProvider
 }
 
 func (s Server) Client() capnp.Client {
@@ -129,5 +140,14 @@ func (s Server) Debug(_ context.Context, call api.Host_debug) error {
 		err = res.SetDebugger(capnp.Client(debugger))
 	}
 
+	return err
+}
+
+func (s Server) Executor(_ context.Context, call api.Host_executor) error {
+	res, err := call.AllocResults()
+	if err == nil {
+		executor := s.ExecutorProvider.Executor()
+		err = res.SetExecutor(executor)
+	}
 	return err
 }
