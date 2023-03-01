@@ -138,7 +138,7 @@ func (f Future) Text() (string, error) {
 
 type Chan channel.Chan
 
-func New(s ChanServer) Chan {
+func NewChan(s ChanServer) Chan {
 	return Chan(channel.Chan_ServerToClient(s))
 }
 
