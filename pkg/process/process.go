@@ -134,7 +134,6 @@ func (p *Process) run(ctx context.Context) {
 	defer p.io.closeWriters(ctx)
 
 	_, err = p.function.Call(p.runContext)
-	// TODO mikel handle this error
 }
 
 // release calls all pending release functions.
