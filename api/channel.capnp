@@ -11,11 +11,11 @@ interface Closer {
 }
 
 interface Sender(T) {
-    send  @0 (value :T, async :Bool) -> ();
+    send  @0 (value :T) -> ();
 }
 
 interface Recver(T) {
-    recv  @0 (async :Bool) -> (value :T);
+    recv  @0 () -> (value :T);
 }
 
 interface SendCloser(T) extends(Sender(T), Closer) {

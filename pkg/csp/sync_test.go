@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/wetware/ww/pkg/csp"
 	"golang.org/x/sync/errgroup"
@@ -14,29 +13,11 @@ func TestSyncServer(t *testing.T) {
 	t.Parallel()
 	t.Helper()
 
-	t.Run("TypeEnforced", func(t *testing.T) {
-		t.Parallel()
-
-		ch := csp.NewChan(&csp.SyncServer{})
-		ach := csp.AsyncChan(ch.Client())
-
-		err := ach.Send(context.Background(), csp.Text("fail"))
-		assert.EqualError(t, err,
-			"channel.capnp:Sender.send: async call to sync channel")
-
-		f, release := ach.Recv(context.Background())
-		defer release()
-
-		_, err = f.Text()
-		assert.EqualError(t, err,
-			"channel.capnp:Recver.recv: async call to sync channel")
-	})
-
 	t.Run("SenderFirst", func(t *testing.T) {
 		t.Parallel()
 
 		const want = "hello, world!"
-		ch := csp.NewChan(&csp.SyncServer{})
+		ch := csp.NewChan(&csp.SyncChan{})
 
 		sync := make(chan struct{})
 		go func() {
@@ -61,7 +42,7 @@ func TestSyncServer(t *testing.T) {
 		t.Parallel()
 
 		const want = "hello, world!"
-		ch := csp.NewChan(&csp.SyncServer{})
+		ch := csp.NewChan(&csp.SyncChan{})
 
 		sync := make(chan struct{})
 		go func() {
@@ -87,7 +68,7 @@ func TestSyncServer(t *testing.T) {
 
 		var g errgroup.Group
 
-		ch := csp.NewChan(&csp.SyncServer{})
+		ch := csp.NewChan(&csp.SyncChan{})
 
 		want := []string{
 			"alpha",

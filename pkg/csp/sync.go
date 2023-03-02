@@ -3,34 +3,33 @@ package csp
 import (
 	"container/list"
 	"context"
-	"errors"
 	"sync"
 
 	"capnproto.org/go/capnp/v3"
 	api "github.com/wetware/ww/internal/api/channel"
 )
 
-var _ ChanServer = (*SyncServer)(nil)
+var _ ChanServer = (*SyncChan)(nil)
 
-// SyncServer is a synchronous channel server. Both senders
+// SyncChan is a synchronous channel server. Both senders
 // and receivers will block until a matching call arrives.
 //
-// The zero-value SyncServer is ready to use.
-type SyncServer struct {
+// The zero-value SyncChan is ready to use.
+type SyncChan struct {
 	mu      sync.Mutex
 	senders list.List
 	signal  chan struct{}
 }
 
-func (*SyncServer) Cap() uint {
+func (*SyncChan) Cap() uint {
 	return 0
 }
 
-func (ch *SyncServer) Close(ctx context.Context, call MethodClose) error {
+func (ch *SyncChan) Close(ctx context.Context, call MethodClose) error {
 	panic("not implemented yet")
 }
 
-func (ch *SyncServer) Send(ctx context.Context, call MethodSend) error {
+func (ch *SyncChan) Send(ctx context.Context, call MethodSend) error {
 	// Add the value to the send-queue, and wait for it to be picked up by
 	// a receiver.
 	pending, err := ch.pushSend(ctx, call)
@@ -68,11 +67,7 @@ func (ch *SyncServer) Send(ctx context.Context, call MethodSend) error {
 // is ready.
 //
 // Callers MUST NOT hold mu.
-func (ch *SyncServer) pushSend(ctx context.Context, call MethodSend) (pendingSend, error) {
-	if call.Args().Async() {
-		return pendingSend{}, errors.New("async call to sync channel")
-	}
-
+func (ch *SyncChan) pushSend(ctx context.Context, call MethodSend) (pendingSend, error) {
 	// Do this first.  If something goes wrong, we can still back out without
 	// affecting the queue's state.
 	val, err := call.Args().Value()
@@ -103,11 +98,7 @@ func (ch *SyncServer) pushSend(ctx context.Context, call MethodSend) (pendingSen
 	return pendingSend{Sender: elem, Done: recved}, nil
 }
 
-func (ch *SyncServer) Recv(ctx context.Context, call MethodRecv) error {
-	if call.Args().Async() {
-		return errors.New("async call to sync channel")
-	}
-
+func (ch *SyncChan) Recv(ctx context.Context, call MethodRecv) error {
 	// Do this first.  If something goes wrong, we can still back out
 	// without affecting the queue's state.
 	res, err := call.AllocResults()
@@ -143,7 +134,7 @@ func (ch *SyncServer) Recv(ctx context.Context, call MethodRecv) error {
 // wait for a sender to signal that it has added itself to the queue.
 //
 // Callers MUST hold mu.
-func (ch *SyncServer) wait(ctx context.Context) error {
+func (ch *SyncChan) wait(ctx context.Context) error {
 	if ch.signal == nil {
 		ch.signal = make(chan struct{}, 1)
 	}
@@ -177,7 +168,7 @@ func (s sender) Bind(res api.Recver_recv_Results) (err error) {
 	return
 }
 
-func (ch *SyncServer) AsSender(ctx context.Context, call MethodAsSender) error {
+func (ch *SyncChan) AsSender(ctx context.Context, call MethodAsSender) error {
 	res, err := call.AllocResults()
 	if err == nil {
 		err = res.SetSender(api.Sender_ServerToClient(ch))
@@ -185,7 +176,7 @@ func (ch *SyncServer) AsSender(ctx context.Context, call MethodAsSender) error {
 	return err
 }
 
-func (ch *SyncServer) AsRecver(ctx context.Context, call MethodAsRecver) error {
+func (ch *SyncChan) AsRecver(ctx context.Context, call MethodAsRecver) error {
 	res, err := call.AllocResults()
 	if err == nil {
 		err = res.SetRecver(api.Recver_ServerToClient(ch))
@@ -193,7 +184,7 @@ func (ch *SyncServer) AsRecver(ctx context.Context, call MethodAsRecver) error {
 	return err
 }
 
-func (ch *SyncServer) AsCloser(ctx context.Context, call MethodAsCloser) error {
+func (ch *SyncChan) AsCloser(ctx context.Context, call MethodAsCloser) error {
 	res, err := call.AllocResults()
 	if err == nil {
 		err = res.SetCloser(api.Closer_ServerToClient(ch))
@@ -201,7 +192,7 @@ func (ch *SyncServer) AsCloser(ctx context.Context, call MethodAsCloser) error {
 	return err
 }
 
-func (ch *SyncServer) AsSendCloser(ctx context.Context, call MethodAsSendCloser) error {
+func (ch *SyncChan) AsSendCloser(ctx context.Context, call MethodAsSendCloser) error {
 	res, err := call.AllocResults()
 	if err == nil {
 		err = res.SetSendCloser(api.SendCloser_ServerToClient(ch))

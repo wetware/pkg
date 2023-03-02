@@ -3,8 +3,6 @@ package csp
 import (
 	"context"
 	"errors"
-	"fmt"
-	"reflect"
 
 	"capnproto.org/go/capnp/v3"
 	casm "github.com/wetware/casm/pkg"
@@ -32,12 +30,10 @@ type ( // server interfaces
 	}
 
 	SendServer interface {
-		Cap() uint
 		Send(context.Context, MethodSend) error
 	}
 
 	RecvServer interface {
-		Cap() uint
 		Recv(context.Context, MethodRecv) error
 	}
 
@@ -56,93 +52,136 @@ type ( // server interfaces
 	}
 )
 
-/*
-	Client interfaces
-*/
-
-type Chan interface {
-	Client() capnp.Client
-
-	AddRef() Chan
-	Release()
-
-	Send(context.Context, Value) error
-	Recv(context.Context) (Future, capnp.ReleaseFunc)
-	Close(context.Context) error
-
-	AsSender(context.Context) (Sender, capnp.ReleaseFunc)
-	AsRecver(context.Context) (Recver, capnp.ReleaseFunc)
-	AsCloser(context.Context) (Closer, capnp.ReleaseFunc)
-	AsSendCloser(context.Context) (SendCloser, capnp.ReleaseFunc)
-}
+type Chan api.Chan
 
 func NewChan(s ChanServer) Chan {
-	if s.Cap() == 0 {
-		return SyncChan(api.Chan_ServerToClient(s))
-	}
-
-	panic("AsyncServer NOT IMPLEMENTED")
+	return Chan(api.Chan_ServerToClient(s))
 }
 
-type Sender interface {
-	Client() capnp.Client
-	Send(context.Context, Value) error
-	AddRef() Sender
-	Release()
+func (c Chan) Client() capnp.Client {
+	return capnp.Client(c)
 }
 
-func NewSender(s SendServer) SyncSender {
-	switch ss := s.(type) {
-	case *SyncServer:
-		return SyncSender(api.Sender_ServerToClient(s))
-	// case *AsyncServer:
-	// 	return AsyncChan(api.Chan_ServerToClient(s))
-
-	default:
-		panic(fmt.Sprintf("unrecognized chan type: %s", reflect.TypeOf(ss)))
-	}
+func (c Chan) Close(ctx context.Context) error {
+	return Closer(c).Close(ctx)
 }
 
-type Recver interface {
-	Client() capnp.Client
-	Recv(context.Context) (Future, capnp.ReleaseFunc)
-	AddRef() Recver
-	Release()
+func (c Chan) Send(ctx context.Context, v Value) error {
+	return Sender(c).Send(ctx, v)
 }
 
-func NewRecver(r RecvServer) SyncRecver {
-	switch rs := r.(type) {
-	case *SyncServer:
-		return SyncRecver(api.Recver_ServerToClient(r))
-	// case *AsyncServer:
-	// 	return AsyncChan(api.Chan_ServerToClient(s))
-
-	default:
-		panic(fmt.Sprintf("unrecognized chan type: %s", reflect.TypeOf(rs)))
-	}
+func (c Chan) Recv(ctx context.Context) (Future, capnp.ReleaseFunc) {
+	return Recver(c).Recv(ctx)
 }
 
-type SendCloser interface {
-	AddRef() SendCloser
-	Release()
-
-	Send(context.Context, Value) error
-	Close(context.Context) error
-
-	AsSender(context.Context) (Sender, capnp.ReleaseFunc)
-	AsCloser(context.Context) (Closer, capnp.ReleaseFunc)
+func (c Chan) AddRef() Chan {
+	return Chan(c.Client().AddRef())
 }
 
-func NewSendCloser(sc SendCloseServer) SyncSendCloser {
-	switch s := sc.(type) {
-	case *SyncServer:
-		return SyncSendCloser(api.SendCloser_ServerToClient(sc))
-	// case *AsyncServer:
-	// 	return AsyncChan(api.Chan_ServerToClient(s))
+func (c Chan) Release() {
+	c.Client().Release()
+}
 
-	default:
-		panic(fmt.Sprintf("unrecognized chan type: %s", reflect.TypeOf(s)))
-	}
+func (c Chan) AsCloser(ctx context.Context) (Closer, capnp.ReleaseFunc) {
+	return SendCloser(c).AsCloser(ctx)
+}
+
+func (c Chan) AsSender(ctx context.Context) (Sender, capnp.ReleaseFunc) {
+	return SendCloser(c).AsSender(ctx)
+}
+
+func (c Chan) AsRecver(ctx context.Context) (Recver, capnp.ReleaseFunc) {
+	f, release := api.Chan(c).AsRecver(ctx, nil)
+	return Recver(f.Recver()), release
+}
+
+func (c Chan) AsSendCloser(ctx context.Context) (SendCloser, capnp.ReleaseFunc) {
+	f, release := api.Chan(c).AsSendCloser(ctx, nil)
+	return SendCloser(f.SendCloser()), release
+}
+
+type Sender api.Sender
+
+func NewSender(s SendServer) Sender {
+	return Sender(api.Sender_ServerToClient(s))
+}
+
+func (s Sender) Client() capnp.Client {
+	return capnp.Client(s)
+}
+
+func (s Sender) Send(ctx context.Context, v Value) error {
+	f, release := api.Sender(s).Send(ctx, v)
+	defer release()
+
+	return casm.Future(f).Await(ctx)
+}
+
+func (s Sender) AddRef() Sender {
+	return Sender(s.Client().AddRef())
+}
+
+func (s Sender) Release() {
+	s.Client().Release()
+}
+
+type Recver api.Recver
+
+func NewRecver(r RecvServer) Recver {
+	return Recver(api.Recver_ServerToClient(r))
+}
+
+func (r Recver) Client() capnp.Client {
+	return capnp.Client(r)
+}
+
+func (r Recver) Recv(ctx context.Context) (Future, capnp.ReleaseFunc) {
+	f, release := api.Recver(r).Recv(ctx, nil)
+	return Future(f), release
+}
+
+func (r Recver) AddRef() Recver {
+	return Recver(r.Client().AddRef())
+}
+
+func (r Recver) Release() {
+	r.Client().Release()
+}
+
+type SendCloser api.SendCloser
+
+func NewSendCloser(sc SendCloseServer) SendCloser {
+	return SendCloser(api.SendCloser_ServerToClient(sc))
+}
+
+func (sc SendCloser) Client() capnp.Client {
+	return capnp.Client(sc)
+}
+
+func (sc SendCloser) Close(ctx context.Context) error {
+	return Closer(sc).Close(ctx)
+}
+
+func (sc SendCloser) Send(ctx context.Context, v Value) error {
+	return Sender(sc).Send(ctx, v)
+}
+
+func (sc SendCloser) AddRef() SendCloser {
+	return SendCloser(sc.Client().AddRef())
+}
+
+func (sc SendCloser) Release() {
+	sc.Client().Release()
+}
+
+func (sc SendCloser) AsSender(ctx context.Context) (Sender, capnp.ReleaseFunc) {
+	f, release := api.SendCloser(sc).AsSender(ctx, nil)
+	return Sender(f.Sender()), release
+}
+
+func (sc SendCloser) AsCloser(ctx context.Context) (Closer, capnp.ReleaseFunc) {
+	f, release := api.SendCloser(sc).AsCloser(ctx, nil)
+	return Closer(f.Closer()), release
 }
 
 type Closer api.Chan
