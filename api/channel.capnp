@@ -10,16 +10,20 @@ interface Closer {
     close @0 ();
 }
 
-
 interface Sender(T) {
-    send  @0 (value :T) -> stream;
+    send  @0 (value :T, async :Bool) -> ();
 }
-
 
 interface Recver(T) {
-    recv  @0 () -> (value :T);
+    recv  @0 (async :Bool) -> (value :T);
 }
 
+interface SendCloser(T) extends(Sender(T), Closer) {
+    asSender @0 () -> (sender :Sender(T));
+    asCloser @1 () -> (closer :Closer);
+}
 
-interface SendCloser(T) extends(Sender(T), Closer) {}
-interface Chan(T) extends(SendCloser(T), Recver(T)) {}
+interface Chan(T) extends(SendCloser(T), Recver(T)) {
+    asSendCloser @0 () -> (sendCloser :SendCloser(T));
+    asRecver     @1 () -> (recver :Recver(T));
+}
