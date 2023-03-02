@@ -11,7 +11,6 @@ import (
 	stream "capnproto.org/go/capnp/v3/std/capnp/stream"
 	context "context"
 	fmt "fmt"
-	channel "github.com/wetware/ww/internal/api/channel"
 )
 
 type Topic capnp.Client
@@ -260,6 +259,235 @@ func NewTopic_List(s *capnp.Segment, sz int32) (Topic_List, error) {
 	return capnp.CapList[Topic](l), err
 }
 
+type Topic_Consumer capnp.Client
+
+// Topic_Consumer_TypeID is the unique identifier for the type Topic_Consumer.
+const Topic_Consumer_TypeID = 0xd72d37c8b6fbef23
+
+func (c Topic_Consumer) Consume(ctx context.Context, params func(Topic_Consumer_consume_Params) error) (stream.StreamResult_Future, capnp.ReleaseFunc) {
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0xd72d37c8b6fbef23,
+			MethodID:      0,
+			InterfaceName: "pubsub.capnp:Topic.Consumer",
+			MethodName:    "consume",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Topic_Consumer_consume_Params(s)) }
+	}
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return stream.StreamResult_Future{Future: ans.Future()}, release
+}
+
+// String returns a string that identifies this capability for debugging
+// purposes.  Its format should not be depended on: in particular, it
+// should not be used to compare clients.  Use IsSame to compare clients
+// for equality.
+func (c Topic_Consumer) String() string {
+	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+}
+
+// AddRef creates a new Client that refers to the same capability as c.
+// If c is nil or has resolved to null, then AddRef returns nil.
+func (c Topic_Consumer) AddRef() Topic_Consumer {
+	return Topic_Consumer(capnp.Client(c).AddRef())
+}
+
+// Release releases a capability reference.  If this is the last
+// reference to the capability, then the underlying resources associated
+// with the capability will be released.
+//
+// Release will panic if c has already been released, but not if c is
+// nil or resolved to null.
+func (c Topic_Consumer) Release() {
+	capnp.Client(c).Release()
+}
+
+// Resolve blocks until the capability is fully resolved or the Context
+// expires.
+func (c Topic_Consumer) Resolve(ctx context.Context) error {
+	return capnp.Client(c).Resolve(ctx)
+}
+
+func (c Topic_Consumer) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Client(c).EncodeAsPtr(seg)
+}
+
+func (Topic_Consumer) DecodeFromPtr(p capnp.Ptr) Topic_Consumer {
+	return Topic_Consumer(capnp.Client{}.DecodeFromPtr(p))
+}
+
+// IsValid reports whether c is a valid reference to a capability.
+// A reference is invalid if it is nil, has resolved to null, or has
+// been released.
+func (c Topic_Consumer) IsValid() bool {
+	return capnp.Client(c).IsValid()
+}
+
+// IsSame reports whether c and other refer to a capability created by the
+// same call to NewClient.  This can return false negatives if c or other
+// are not fully resolved: use Resolve if this is an issue.  If either
+// c or other are released, then IsSame panics.
+func (c Topic_Consumer) IsSame(other Topic_Consumer) bool {
+	return capnp.Client(c).IsSame(capnp.Client(other))
+}
+
+// Update the flowcontrol.FlowLimiter used to manage flow control for
+// this client. This affects all future calls, but not calls already
+// waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
+// which is also the default.
+func (c Topic_Consumer) SetFlowLimiter(lim fc.FlowLimiter) {
+	capnp.Client(c).SetFlowLimiter(lim)
+}
+
+// Get the current flowcontrol.FlowLimiter used to manage flow control
+// for this client.
+func (c Topic_Consumer) GetFlowLimiter() fc.FlowLimiter {
+	return capnp.Client(c).GetFlowLimiter()
+} // A Topic_Consumer_Server is a Topic_Consumer with a local implementation.
+type Topic_Consumer_Server interface {
+	Consume(context.Context, Topic_Consumer_consume) error
+}
+
+// Topic_Consumer_NewServer creates a new Server from an implementation of Topic_Consumer_Server.
+func Topic_Consumer_NewServer(s Topic_Consumer_Server) *server.Server {
+	c, _ := s.(server.Shutdowner)
+	return server.New(Topic_Consumer_Methods(nil, s), s, c)
+}
+
+// Topic_Consumer_ServerToClient creates a new Client from an implementation of Topic_Consumer_Server.
+// The caller is responsible for calling Release on the returned Client.
+func Topic_Consumer_ServerToClient(s Topic_Consumer_Server) Topic_Consumer {
+	return Topic_Consumer(capnp.NewClient(Topic_Consumer_NewServer(s)))
+}
+
+// Topic_Consumer_Methods appends Methods to a slice that invoke the methods on s.
+// This can be used to create a more complicated Server.
+func Topic_Consumer_Methods(methods []server.Method, s Topic_Consumer_Server) []server.Method {
+	if cap(methods) == 0 {
+		methods = make([]server.Method, 0, 1)
+	}
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xd72d37c8b6fbef23,
+			MethodID:      0,
+			InterfaceName: "pubsub.capnp:Topic.Consumer",
+			MethodName:    "consume",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Consume(ctx, Topic_Consumer_consume{call})
+		},
+	})
+
+	return methods
+}
+
+// Topic_Consumer_consume holds the state for a server call to Topic_Consumer.consume.
+// See server.Call for documentation.
+type Topic_Consumer_consume struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c Topic_Consumer_consume) Args() Topic_Consumer_consume_Params {
+	return Topic_Consumer_consume_Params(c.Call.Args())
+}
+
+// AllocResults allocates the results struct.
+func (c Topic_Consumer_consume) AllocResults() (stream.StreamResult, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return stream.StreamResult(r), err
+}
+
+// Topic_Consumer_List is a list of Topic_Consumer.
+type Topic_Consumer_List = capnp.CapList[Topic_Consumer]
+
+// NewTopic_Consumer creates a new list of Topic_Consumer.
+func NewTopic_Consumer_List(s *capnp.Segment, sz int32) (Topic_Consumer_List, error) {
+	l, err := capnp.NewPointerList(s, sz)
+	return capnp.CapList[Topic_Consumer](l), err
+}
+
+type Topic_Consumer_consume_Params capnp.Struct
+
+// Topic_Consumer_consume_Params_TypeID is the unique identifier for the type Topic_Consumer_consume_Params.
+const Topic_Consumer_consume_Params_TypeID = 0xe7745ab0f47beb88
+
+func NewTopic_Consumer_consume_Params(s *capnp.Segment) (Topic_Consumer_consume_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Topic_Consumer_consume_Params(st), err
+}
+
+func NewRootTopic_Consumer_consume_Params(s *capnp.Segment) (Topic_Consumer_consume_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Topic_Consumer_consume_Params(st), err
+}
+
+func ReadRootTopic_Consumer_consume_Params(msg *capnp.Message) (Topic_Consumer_consume_Params, error) {
+	root, err := msg.Root()
+	return Topic_Consumer_consume_Params(root.Struct()), err
+}
+
+func (s Topic_Consumer_consume_Params) String() string {
+	str, _ := text.Marshal(0xe7745ab0f47beb88, capnp.Struct(s))
+	return str
+}
+
+func (s Topic_Consumer_consume_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Topic_Consumer_consume_Params) DecodeFromPtr(p capnp.Ptr) Topic_Consumer_consume_Params {
+	return Topic_Consumer_consume_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Topic_Consumer_consume_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Topic_Consumer_consume_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Topic_Consumer_consume_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Topic_Consumer_consume_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Topic_Consumer_consume_Params) Msg() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return []byte(p.Data()), err
+}
+
+func (s Topic_Consumer_consume_Params) HasMsg() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Topic_Consumer_consume_Params) SetMsg(v []byte) error {
+	return capnp.Struct(s).SetData(0, v)
+}
+
+// Topic_Consumer_consume_Params_List is a list of Topic_Consumer_consume_Params.
+type Topic_Consumer_consume_Params_List = capnp.StructList[Topic_Consumer_consume_Params]
+
+// NewTopic_Consumer_consume_Params creates a new list of Topic_Consumer_consume_Params.
+func NewTopic_Consumer_consume_Params_List(s *capnp.Segment, sz int32) (Topic_Consumer_consume_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[Topic_Consumer_consume_Params](l), err
+}
+
+// Topic_Consumer_consume_Params_Future is a wrapper for a Topic_Consumer_consume_Params promised by a client call.
+type Topic_Consumer_consume_Params_Future struct{ *capnp.Future }
+
+func (f Topic_Consumer_consume_Params_Future) Struct() (Topic_Consumer_consume_Params, error) {
+	p, err := f.Future.Ptr()
+	return Topic_Consumer_consume_Params(p.Struct()), err
+}
+
 type Topic_publish_Params capnp.Struct
 
 // Topic_publish_Params_TypeID is the unique identifier for the type Topic_publish_Params.
@@ -384,16 +612,16 @@ func (s Topic_subscribe_Params) Message() *capnp.Message {
 func (s Topic_subscribe_Params) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s Topic_subscribe_Params) Chan() channel.Sender {
+func (s Topic_subscribe_Params) Consumer() Topic_Consumer {
 	p, _ := capnp.Struct(s).Ptr(0)
-	return channel.Sender(p.Interface().Client())
+	return Topic_Consumer(p.Interface().Client())
 }
 
-func (s Topic_subscribe_Params) HasChan() bool {
+func (s Topic_subscribe_Params) HasConsumer() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s Topic_subscribe_Params) SetChan(v channel.Sender) error {
+func (s Topic_subscribe_Params) SetConsumer(v Topic_Consumer) error {
 	if !v.IsValid() {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
@@ -426,8 +654,8 @@ func (f Topic_subscribe_Params_Future) Struct() (Topic_subscribe_Params, error) 
 	p, err := f.Future.Ptr()
 	return Topic_subscribe_Params(p.Struct()), err
 }
-func (p Topic_subscribe_Params_Future) Chan() channel.Sender {
-	return channel.Sender(p.Future.Field(0, nil).Client())
+func (p Topic_subscribe_Params_Future) Consumer() Topic_Consumer {
+	return Topic_Consumer(p.Future.Field(0, nil).Client())
 }
 
 type Topic_subscribe_Results capnp.Struct
@@ -961,45 +1189,50 @@ func (p Router_join_Results_Future) Topic() Topic {
 	return Topic(p.Future.Field(0, nil).Client())
 }
 
-const schema_f9d8a0180405d9ed = "x\xda\x8c\x93Oh\x13M\x18\xc6\xdfgf\xd2-\x1f" +
-	"\x0d\xe9|\x1b\xbeOQ\xa8\x94V4\x87\xd6\xb6 \xda" +
-	"\x83\x89\x8a\x8a\xb7\x9dP\xc4?\x88n\xe2jW\x9bl" +
-	"\xccf[\xf4\xe2\xa5`=x\x10/Z(HA\xb1" +
-	"\x88`\x11O^\xbch\xf1\xcfAA\xc1^<j\x15" +
-	"\xaa\x08\x82T\x85\x95I\xcd&\xda\xa2\xde\x86\x9dw\x9e" +
-	"\xf7y~\xef\xbb\x1b&\x91\x11=\xf17M\xc4\x94\x15" +
-	"k\x0a{\x9f\xb4=\x1c\xdfX\x1a%i\x82H\x18D" +
-	"}\xfbx\x0a$\xc2\xed\xa3\x8fO\x8d]l\x1d[\xbc" +
-	"\x89A_m\xe5\xff\x82`\xee\xe6iBx\xebDk" +
-	"\xf7\xba\xa9\xe2%\x92q\x1e\xce\xcf\xc6\xc4\x8a+/\x17" +
-	"\x88`\xba|\xdc<\xc9\x0d\"\xb3\xc0g\xcc\xb7\xfa\x14" +
-	"^?\xf0\xc1\x0b\x1e\x94gH\x99\x88\xe4\x9e\xf1v-" +
-	"7\xcbG\x08az\xed\x9e\xd57\xf6\x0f\xbfh\xec\xe7" +
-	"\x08\xa6\x0b\\\xa1\xfb\xf5{\xc3\xab^\xdf\xb6^-\xe9" +
-	"wNL\x9a\x17\xb4u\xf3\xbc\xd8e\xde\xd1\xa7\xb0s" +
-	"\xe7\xc4\xd3G\xd3\xd7\xe6H&#\xb5\x09\xf1\x8fV\xbb" +
-	"ZU3\xb6<\xff\xb4\xe0}\xfbX\x0fn\xde\x17_" +
-	"H\x84\x03g?\x0bg\xbe\xfbk\xe3\xcb\xa9E\x1f7" +
-	"E\x9aN\x87\xa5 \xe7\x07\xb9\xae<\xb7K\xc5R\xff" +
-	"\x80Wr\xf3]~\x90\xf3\xf3e7\xe7td\x1d?" +
-	"\x11\x0cU\xfce\xcbJAn\xc8\xf5\x07;,\xbbl" +
-	"\x17\xe0+\xc1\x05\x91\x00\x91\x8c\xb7\x13\xa9f\x0e\x95d" +
-	"0\x0a\xfe1\xc4\x89!N\x88dP\x93\xe1n\xde\x02" +
-	"T\x0b\x8f\x11ECBq\xfa\xdeH\xdf\xf8\xa1\xcbR" +
-	"m#&w\x18@\x84\x1c\xb5\x19\xcb\xcdYb\xb2\xc7" +
-	"\x00\x8b\xd2\xa3F]v\xa6\x88\xc9\x95\xc6\x99\x1f\x163" +
-	"\x08k\x99\x08N\x06\x89\xa2]p2\xb0\x80?\xe4\xb7" +
-	"\xec\xb2a\x17|\xd5\x1cE[\x9f\"R\x1d\x1c\xea0" +
-	"\x03\x90\x04\x00yP\xc7\xdd\xcb\xa1\x8e0$\xf2\x83v" +
-	"\x112|\xff\xdf\xbbM\xc9\xf9\xbbsD\x94\x81D\x9b" +
-	"\x12\x0c\x8d\x1f%\xfeWB\xbf\xb68\xaax$\xc1\xc8" +
-	"\x05Ga\x10\x8b\x19khyg\xda\xb7\x1e\x8a\x9e\x09" +
-	"5\x02O\xd5\x81W\xc3\xa1\x85\x18Z\x96\x10\xcfz\x81" +
-	"Qq\xca\x1a\xb9\xa8\"\xaf\xed\x07j+&\xa5F\x17" +
-	"3\x12\xc7=\xb7\xb8\x1c\xa2\xac\x17T\x9cr\x97\xbe\x8e" +
-	"\x9c\xfcd\xa5\xb7n\xa5\xad\xa2]C\xd6\xff.\x82\x0e" +
-	"\x1aI\xb2_\xb3\xa5\xab\xcb\xe4\xff\xa6\xe7b\xc1_\x85" +
-	"\xff\x1e\x00\x00\xff\xffJ\x1a\x1e\xef"
+const schema_f9d8a0180405d9ed = "x\xda\x94\x93MHTQ\x14\xc7\xcfy\xf7\x8eO\xc2" +
+	"Ao\xd7\xa8H\xb1L\xc3\x86\x1cS\xa3\x0f\xa1fJ" +
+	"L\x92\x82\xb9\"\x81F\xc4\xcc\xf0\xaa)\xdf\xcc\xf4\xde" +
+	"<EZ\xb81r\xd7\xa2M\x0aA\x05E\xd2F\x89" +
+	"j\x15\xd4&\xfb\x84\x16E\xb5i\xd1\xa2\x82\x10\x09\x84" +
+	"0\x83\x17\xf7\x8d\xef\xc3\x92>v\x03\xf7\xcc\xff\xff?" +
+	"\xbf\xf3\x7f[\xefa\x9c6\x87/\x94\x80\"\x0e\x86J" +
+	"\xec\x96\xe75O\xc6\xb7\xe7G\x80q\x04\xa0*@k" +
+	"#\x89 P\xbb}\xe4\xd9\xd0\xe8\xc5\x8a\xd1\xe2K\x08" +
+	"\xe5\xd3*\xb2\x12\x01y5\x89\x01\xda\x93\xa7+\x9a\x1a" +
+	"&\xb2\x97\x80\x85\x89=\xf3.D\xd7\\y;\x0f\x80" +
+	"|7\x19\xe7\x1dd5\x00\x17d\x9a\xbf *\x80}" +
+	"\xf3\xc8l\xcezdL\x83\xe0\xe8\xc9\xdd!\xb5R\xee" +
+	">\x19\x04\xb4c\x9b\x0eW\xdd\xea\x1bx\x1d\xf4\xab\xa6" +
+	"\x8a\x1c\xd8@\xa5\xdf\xc6\xd9\x85\xbb\x8fw4\xbe\x01\xc6" +
+	"\x89o\x0e\xc8\xf7\xd2\x0f\xfc\x90\x8c\xce\x0f\xd0N~F" +
+	"\xfe\xb2\xdbr\x03\xeb>\xdeN\xbc\xff-\\/\xbd\xc6" +
+	"\x93\xce\xf0Q\xda\xc9\xcf9\xc3\xa3_\xce\xceM\xf6\x15" +
+	">\x01\xab\xf2\xacu\xda'\xad\x87\x1c\xeb\xfa\xfd\x97_" +
+	">\x9d\xba\xf1\x19X\xa570FW\xc8\x81\xab\xce\x80" +
+	"\xba\xe7\xd5\xdc|\xee\xc7W\x1f#\x7fH\xbf\x03\xb5{" +
+	"\xce\x7f\xa3\xdaL\xd3B\xf0\x9f\xd7\x8b[M\xd0\x18\xf4" +
+	"\xday+eZ\xa9h\x9a$\xf3\xd9|[O.\x9f" +
+	"IGM+e\xa6\x8dLJ\xab\xeb\xd6\xccr\xab\xbf" +
+	"`.;\x96\xb7R\xfd\x19\xf3d]\"i$u4" +
+	"\x05%\x14\x80\"\x00\x0b\xd7\x02\x88R\x82\xa2RAU" +
+	"7O`\x18\x14\x0c\x03z2\xe8\xca\x90LZP\x0c" +
+	"\xc2\xc5.\xbb=\x975-]3\x00@\x94\x91\x10\x80" +
+	"W\x06\xccN=\x18l\x1d?6\xc6\xc4>PX\x87" +
+	"\x8a\xe8\x9d\x16\xdd.\xb1]\xdd\xa0\xb0f\x15\x15\x8f\x0b" +
+	"\xba\xd7e\xf5\x11P\xd8Zux1|\x1cmw[" +
+	"@-\x8e\xe5\xd9\xa4\xae\xc51\x81\xf8\x172\x89\xa4\xa1" +
+	"&uS\x94zKo\xee\x02\x10\x0d\x04\xc56\x05\x11" +
+	"+\x11\x11Y\xb3\x04\xb1\x85\xa0\xd8\xa9\xa0\x9d\xf6\xd7B" +
+	"\xe6o\x0c\x88\x0cPMY\xc7Q\x05%\xa4\xae\x87\xe5" +
+	"\xbde2y\x10y\x0f\x08\xc2\x8e\xf8\xb0\x9d\xf8X\x06" +
+	"\x0a\x96\x05T\x94\x80\x8a\xc3V\xd55#\x81(\xa8\x03" +
+	"\xd7\xad\x9f\x0f\x97I\xb8!ux1\xf1R\x1e\xc5\xdb" +
+	"u\xe7,\xb5\x10Tq\x9b\x86nY\x19\x8b8*\xe5" +
+	"\xa7r\x99\xecR\x09\xfak ]3\xa2\x8bfN\x9d" +
+	"\x88\xfe_u\"n\xa4\x82fD\xa5\x9d\xc7i\x09\xa8" +
+	"\x16_\xa6\xa6 \xcd\x91\x05?dy\x86e\x999\xe4" +
+	"cN\xcd\xcd?x\x16\x07\xfe\xe94?\x03\x00\x00\xff" +
+	"\xff\xcf\xfce\x94"
 
 func init() {
 	schemas.Register(schema_f9d8a0180405d9ed,
@@ -1008,7 +1241,9 @@ func init() {
 		0x986ea9282f106bb0,
 		0xc772c6756fef5ba8,
 		0xd5765aab1c56263f,
+		0xd72d37c8b6fbef23,
 		0xde50b3e61b766f3a,
+		0xe7745ab0f47beb88,
 		0xe8a6b1cad09d4625,
 		0xf1fc6ff9f4d43e07,
 		0xfb2fed6504f78754)
