@@ -90,6 +90,8 @@ func (j Joiner) anchor() anchor.Server {
 	return anchor.Root()
 }
 
-func (j Joiner) executor(logger log.Logger) process.Executor {
-	return process.NewExecutor(context.TODO(), logger)
+func (j Joiner) executor(logger log.Logger) *process.WASMExecutor {
+	return &process.WASMExecutor{
+		Log: logger,
+	}
 }

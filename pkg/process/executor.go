@@ -12,36 +12,39 @@ import (
 	api "github.com/wetware/ww/internal/api/process"
 )
 
-const start = "_start" // start function called in every WASM module
+type Executor api.Executor
 
-// Executor contains a WASM runtime and can spawn processes in it.
-type Executor struct {
-	logger  log.Logger
-	runtime wazero.Runtime
+func (ex Executor) AddRef() Executor {
+	return Executor(capnp.Client(ex).AddRef())
+}
+
+func (ex Executor) Release() {
+	capnp.Client(ex).Release()
+}
+
+// WASMExecutor is a server type for the Executor capability that
+// spawns WebAssembly (WASM) processes.
+type WASMExecutor struct {
+	Log     log.Logger
+	Runtime wazero.Runtime
 }
 
 // Executor provides the Executor capability.
-func (e Executor) Executor() api.Executor {
-	return api.Executor_ServerToClient(e)
-}
-
-// NewExecutor is the default constructor for Executor.
-func NewExecutor(ctx context.Context, logger log.Logger) Executor {
-	r := wazero.NewRuntimeWithConfig(ctx, wazero.NewRuntimeConfig())
-	wasi_snapshot_preview1.MustInstantiate(ctx, r)
-
-	return Executor{logger: logger, runtime: r}
-}
-
-// Close the executor runtime. Spawned processes should be inidividually closed
-// calling Process.Close().
-func (e Executor) Close(ctx context.Context) error {
-	return e.runtime.Close(ctx)
+func (wx *WASMExecutor) Executor() api.Executor {
+	return api.Executor_ServerToClient(wx)
 }
 
 // Spawn a process by creating a process server and converting it into
 // a capability as a response to the call.
-func (e Executor) Spawn(ctx context.Context, call api.Executor_spawn) error {
+func (wx *WASMExecutor) Spawn(ctx context.Context, call api.Executor_spawn) error {
+	if wx.Log == nil {
+		wx.Log = log.New()
+	}
+
+	if wx.Runtime == nil {
+		wx.Runtime = defaultRuntime()
+	}
+
 	binary, err := call.Args().Binary()
 	if err != nil {
 		return err
@@ -50,7 +53,7 @@ func (e Executor) Spawn(ctx context.Context, call api.Executor_spawn) error {
 	if err != nil {
 		return err
 	}
-	proc, err := e.spawnProcess(ctx, binary, entryFunction)
+	proc, err := wx.spawnProcess(ctx, binary, entryFunction)
 	if err != nil {
 		return err
 	}
@@ -63,8 +66,16 @@ func (e Executor) Spawn(ctx context.Context, call api.Executor_spawn) error {
 	return err
 }
 
+func defaultRuntime() wazero.Runtime {
+	ctx := context.Background()
+	config := wazero.NewRuntimeConfig()
+	r := wazero.NewRuntimeWithConfig(ctx, config)
+	wasi_snapshot_preview1.MustInstantiate(ctx, r)
+	return r
+}
+
 // spawnProcess creates and returns a Process that will run in e.runtime.
-func (e Executor) spawnProcess(ctx context.Context, binary []byte, entryFunction string) (*Process, error) {
+func (wx *WASMExecutor) spawnProcess(ctx context.Context, binary []byte, entryFunction string) (*Process, error) {
 	modId := moduleId(binary) + randomId() // TODO mikel
 	procIo := newIo()
 
@@ -75,13 +86,13 @@ func (e Executor) spawnProcess(ctx context.Context, binary []byte, entryFunction
 		WithStdout(procIo.outW).
 		WithStderr(procIo.errW)
 
-	instance := e.runtime.Module(modId)
+	instance := wx.Runtime.Module(modId)
 	if instance == nil {
-		module, err := e.runtime.CompileModule(ctx, binary)
+		module, err := wx.Runtime.CompileModule(ctx, binary)
 		if err != nil {
 			return nil, err
 		}
-		instance, err = e.runtime.InstantiateModule(ctx, module, config)
+		instance, err = wx.Runtime.InstantiateModule(ctx, module, config)
 		if err != nil {
 			return nil, err
 		}
@@ -99,7 +110,7 @@ func (e Executor) spawnProcess(ctx context.Context, binary []byte, entryFunction
 		function:     function,
 		id:           processId(modId, entryFunction),
 		io:           procIo,
-		logger:       e.logger,
+		logger:       wx.Log,
 		releaseFuncs: make([]capnp.ReleaseFunc, 0),
 
 		exitWaiters: make([]chan struct{}, 0),
