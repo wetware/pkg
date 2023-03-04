@@ -41,6 +41,7 @@ require (
 	github.com/wetware/casm v0.0.0-20230224203443-f715090fc92c
 	golang.org/x/sync v0.1.0
 	gopkg.in/alexcesaro/statsd.v2 v2.0.0
+	lukechampine.com/blake3 v1.1.7
 )
 
 require (
@@ -150,6 +151,5 @@ require (
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.6.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	lukechampine.com/blake3 v1.1.7 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
 )

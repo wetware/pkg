@@ -7,7 +7,7 @@ $Go.import("github.com/wetware/ww/internal/api/process");
 
 
 interface Executor {
-    spawn @0 (binary :Data, entryfunction :Text) -> (process :Process);
+    spawn @0 (byteCode :Data, entryPoint :Text) -> (process :Process);
     # spawn a WASM based process from the binary module with the target
     # entry function 
 
@@ -15,15 +15,12 @@ interface Executor {
 }
 
 interface Process {
-    start @0 () -> ();  # start the process
-    stop @1 () -> (); # TODO: provide a signal such as SIGTERM, SIGKILL...
-    wait @2 () -> (error :Text);  # wait for an started process to finish
-    close @3 () -> ();  # close should always be called after running a process
+    start  @0 () -> ();             # start the process
+    stop   @1 () -> ();              # TODO: provide a signal such as SIGTERM, SIGKILL...
+    wait   @2 () -> (error :Text);   # wait for an started process to finish
     
-    input @4 () -> (stdin :IOStream.Stream);
-    # the resulting stream can be used to provide input to the process
-    output @5(stdout :IOStream.Stream, stderr :IOStream.Stream) -> ();
-    # receives an stream to provide stdout and stderr to
-
+    stdin  @3 () -> (stdin :IOStream.Stream);
+    stdout @4 (stdout :IOStream.Stream) ->  ();
+    stderr @5 (stderr :IOStream.Stream) -> ();
     using IOStream = import "iostream.capnp";
 }

@@ -9,7 +9,7 @@ import (
 	"os"
 
 	"github.com/urfave/cli/v2"
-	process "github.com/wetware/ww/pkg/process/client"
+	"github.com/wetware/ww/pkg/process"
 )
 
 const (
@@ -52,7 +52,6 @@ func runAction() cli.ActionFunc {
 
 		ctx := c.Context
 		// Load the name of the entry function and the WASM file containing the module to run
-		entryFunction := c.String(_func)
 		binary, err := os.ReadFile(c.String(_module))
 		if err != nil {
 			return err
@@ -61,7 +60,11 @@ func runAction() cli.ActionFunc {
 		// Obtain an executor and spawn a process
 		executor, release := node.Executor(ctx)
 		defer release()
-		proc := process.MakeProcess(ctx, logger, executor, binary, entryFunction)
+
+		proc, release := executor.Spawn(ctx, process.Config{
+			Executable: binary,
+			EntryPoint: c.String(_func),
+		})
 		defer proc.Close(ctx)
 
 		// Select the output
@@ -72,6 +75,11 @@ func runAction() cli.ActionFunc {
 			stdout = os.Stdout
 			stderr = os.Stderr
 		}
+
+		if err := proc.Start(ctx); err != nil {
+			return err
+		}
+		defer proc.Stop(ctx)
 
 		// Run the process
 		errs := proc.Run(ctx, stdin, stdout, stderr)

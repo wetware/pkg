@@ -2,206 +2,234 @@ package process
 
 import (
 	"context"
-	"crypto/md5"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"math/rand"
-	"time"
 
 	capnp "capnproto.org/go/capnp/v3"
-	"github.com/lthibault/log"
-	wazero_api "github.com/tetratelabs/wazero/api"
+	"github.com/tetratelabs/wazero"
+	wasm "github.com/tetratelabs/wazero/api"
 
-	iostream_api "github.com/wetware/ww/internal/api/iostream"
+	casm "github.com/wetware/casm/pkg"
 	api "github.com/wetware/ww/internal/api/process"
-	proc_errors "github.com/wetware/ww/pkg/process/errors"
 )
 
-// Process represents the execution of a function in a WASM module.
-type Process struct {
-	function wazero_api.Function // entry function
-	id       string              // process id
-	io       processIo
-	logger   log.Logger
+type Proc api.Process
 
-	exitWaiters  []chan struct{}     // list of channels waiting for process exit
-	releaseFuncs []capnp.ReleaseFunc // pending releases
-	runCancel    context.CancelFunc  // cancellation call for runContext
-	runContext   context.Context     // context for the process runtime
-	runDone      chan error          // channel containing result of run
+func (p Proc) AddRef() Proc {
+	return Proc(api.Process(p).AddRef())
 }
 
-// addExitWaiter returns a channel that will produce a value when
-// the proces exits.
-func (p *Process) addExitWaiter() chan struct{} {
-	exit := make(chan struct{}, 1)
-	p.exitWaiters = append(p.exitWaiters, exit)
-	return exit
+func (p Proc) Release() {
+	capnp.Client(p).Release()
+
 }
 
-// addRelease adds a release function to the pending releases.
-func (p *Process) addRelease(release capnp.ReleaseFunc) {
-	p.releaseFuncs = append(p.releaseFuncs, release)
+func (p Proc) Start(ctx context.Context) error {
+	f, release := api.Process(p).Start(ctx, nil)
+	defer release()
+
+	return casm.Future(f).Await(ctx)
 }
 
-// Close should always be called after the process is done.
-func (p *Process) Close(ctx context.Context, call api.Process_close) error {
-	return p.close(ctx)
+func (p Proc) Stop(ctx context.Context) error {
+	f, release := api.Process(p).Stop(ctx, nil)
+	defer release()
+
+	return casm.Future(f).Await(ctx)
 }
 
-// close performs any missing cleanup operation including potentially
-// cancelling a running process, notifying all exitWaiters and calling
-// pending release functions.
-func (p *Process) close(ctx context.Context) error {
-	defer p.release()
-	defer p.exit(ctx)
-	defer p.runCancel()
-	return nil
+func (p Proc) Wait(ctx context.Context) error {
+	f, release := api.Process(p).Wait(ctx, nil)
+	defer release()
+
+	return p.wait(f)
+
 }
 
-// exit will notify all exit waiters.
-func (p *Process) exit(ctx context.Context) {
-	for _, exit := range p.exitWaiters {
-		select {
-		case exit <- struct{}{}:
-			continue
-		case <-ctx.Done():
-			return
-		}
+func (p Proc) Close(ctx context.Context) error {
+	stop, release := api.Process(p).Stop(ctx, nil)
+	defer release()
+
+	wait, release := api.Process(p).Wait(ctx, nil)
+	defer release()
+
+	if err := casm.Future(stop).Await(ctx); err != nil {
+		return fmt.Errorf("stop: %w", err)
 	}
+
+	return p.wait(wait)
 }
 
-// Id of the process.
-func (p *Process) Id() string {
-	return p.id
-}
-
-// Input returns the input stream of the process.
-func (p *Process) Input(ctx context.Context, call api.Process_input) error {
-	results, err := call.AllocResults()
+func (p Proc) wait(f api.Process_wait_Results_Future) error {
+	res, err := f.Struct()
 	if err != nil {
 		return err
 	}
-	err = results.SetStdin(iostream_api.Stream(p.io.in))
-	return err
+
+	if !res.HasError() {
+		return nil
+	}
+
+	msg, err := res.Error()
+	if err != nil {
+		return err
+	}
+
+	return Error{Message: msg}
 }
 
-// Output provides an stream with the process output and returns the
-// contents of the process stderr after it finishes.
-func (p *Process) Output(ctx context.Context, call api.Process_output) error {
-	var err error
+// process is the main implementation of the Process capability.
+type process struct {
+	Runtime   wazero.Runtime
+	ByteCode  ByteCode
+	EntryFunc string
 
-	call.Go()
-	outputStream := call.Args().Stdout()
-	f, release := p.io.out.Provide(ctx, func(p iostream_api.Provider_provide_Params) error {
-		return p.SetStream(outputStream)
-	})
-	defer release()
+	io     processIO
+	cancel context.CancelFunc
+	done   chan struct{}
+	err    error
+}
 
-	errorStream := call.Args().Stderr()
-	f, release = p.io.err.Provide(ctx, func(p iostream_api.Provider_provide_Params) error {
-		return p.SetStream(errorStream)
-	})
-	defer release()
+func (p *process) Shutdown() {
+	p.io.Release()
+}
 
-	exit := p.addExitWaiter()
-	select {
-	case <-ctx.Done():
-		err = ctx.Err()
-		break
-	case <-exit:
-	case <-f.Done():
-		break
+// Stdin returns the input stream of the process.
+func (p *process) Stdin(ctx context.Context, call api.Process_stdin) error {
+	if p.cancel == nil {
+		return errors.New("not started")
+	}
+
+	res, err := call.AllocResults()
+	if err == nil {
+		stdin := p.io.Stdin()
+		err = res.SetStdin(stdin)
 	}
 
 	return err
 }
 
-// run the process and write to p.runDone after it is done.
-func (p *Process) run(ctx context.Context) {
-	var err error
+func (p *process) Stdout(ctx context.Context, call api.Process_stdout) error {
+	if p.cancel == nil {
+		return errors.New("not started")
+	}
 
-	// send the signal after the process finishes running
-	defer func() {
-		select {
-		case p.runDone <- err:
-			break
-		case <-ctx.Done():
-			p.runCancel()
-		}
-	}()
-
-	defer p.io.closeWriters(ctx)
-
-	_, err = p.function.Call(p.runContext)
+	return p.io.BindStdout(context.TODO(), call.Args().Stdout())
 }
 
-// release calls all pending release functions.
-func (p *Process) release() {
-	for _, releaseFunc := range p.releaseFuncs {
-		defer releaseFunc()
+func (p *process) Stderr(ctx context.Context, call api.Process_stderr) error {
+	if p.cancel == nil {
+		return errors.New("not started")
 	}
+
+	return p.io.BindStderr(context.TODO(), call.Args().Stderr())
 }
 
 // Stop calls the runtime cancellation function.
-func (p *Process) Stop(ctx context.Context, call api.Process_stop) error {
-	p.runCancel()
+func (p *process) Stop(ctx context.Context, _ api.Process_stop) error {
+	if p.cancel == nil {
+		return errors.New("not started")
+	}
+
+	p.cancel()
 	return nil
 }
 
 // Start the process in the background.
-func (p *Process) Start(ctx context.Context, call api.Process_start) error {
-	go p.run(ctx)
+func (p *process) Start(ctx context.Context, _ api.Process_start) error {
+	if p.cancel != nil {
+		return errors.New("running")
+	}
+
+	name := moduleName(p.ByteCode)
+	p.io = newIO()
+
+	config := wazero.
+		NewModuleConfig().
+		WithName(name).
+		WithStdin(p.io.inR).
+		WithStdout(p.io.outW).
+		WithStderr(p.io.errW)
+
+	mod, err := p.loadModule(ctx, name, config)
+	if err != nil {
+		return err
+	}
+
+	entrypoint := mod.ExportedFunction(p.EntryFunc)
+	if entrypoint == nil {
+		return fmt.Errorf("module %s: %s not found", name, p.EntryFunc)
+	}
+
+	p.run(entrypoint)
 	return nil
 }
 
-// Wait for the process to finish running.
-func (p *Process) Wait(ctx context.Context, call api.Process_wait) error {
-	results, err := call.AllocResults()
+func (p *process) loadModule(ctx context.Context, name string, config wazero.ModuleConfig) (wasm.Module, error) {
+	if mod := p.Runtime.Module(name); mod != nil {
+		return mod, nil
+	}
+
+	module, err := p.Runtime.CompileModule(ctx, p.ByteCode)
 	if err != nil {
-		err = p.wait(ctx)
-		if err == nil {
-			results.SetError(proc_errors.Nil.Error())
-		} else {
-			results.SetError(err.Error())
-		}
+		return nil, err
 	}
+
+	return p.Runtime.InstantiateModule(ctx, module, config)
+}
+
+// run the process and write to p.runDone after it is done.
+func (p *process) run(entrypoint wasm.Function) {
+	ctx, cancel := context.WithCancel(context.Background())
+	p.cancel = cancel
+	p.done = make(chan struct{})
+	go func() {
+		defer close(p.done)
+		defer p.io.Release()
+		defer cancel()
+
+		_, p.err = entrypoint.Call(ctx)
+	}()
+}
+
+// Wait for the process to finish running.
+func (p *process) Wait(ctx context.Context, call api.Process_wait) error {
+	results, err := call.AllocResults()
+	if err == nil {
+		call.Go()
+		return p.wait(ctx, results.SetError)
+	}
+
 	return err
 }
 
-// wait for the process to finish running.
-func (p *Process) wait(ctx context.Context) error {
-	var err error
+func (p *process) wait(ctx context.Context, setErr func(string) error) error {
+	if p.cancel == nil {
+		return errors.New("not started")
+	}
+
 	select {
-	case err = <-p.runDone:
-		break
+	case <-p.done:
 	case <-ctx.Done():
-		break
-	}
-	return err
-}
-
-// moduleId retuns a shortened md5hash of the module
-func moduleId(binary []byte) string {
-	hash := md5.Sum(binary)
-	return hex.EncodeToString(hash[:])[:6]
-}
-
-// processId returns a unique ID for a module
-func processId(moduleId string, funcName string) string {
-	return fmt.Sprintf("%s:%s", moduleId, funcName)
-}
-
-// randomId produces a 6 character random string
-func randomId() string {
-	rand.Seed(time.Now().Unix())
-	charset := "abcdefghijklmnopqrstuvwxyz"
-	length := 6
-
-	id := make([]byte, length)
-	for i := 0; i < length; i++ {
-		id[i] = charset[rand.Intn(len(charset))]
+		return ctx.Err()
 	}
 
-	return string(id)
+	if p.err != nil {
+		return setErr(p.err.Error())
+	}
+
+	return nil
+}
+
+// moduleName retuns a shortened md5hash of the module
+func moduleName(b ByteCode) string {
+	prefix := b.String()[:8]
+
+	var buf [4]byte
+	rand.Read(buf[:])
+	suffix := hex.EncodeToString(buf[:])
+
+	return prefix + "-" + suffix
 }
