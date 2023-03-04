@@ -21,10 +21,6 @@ type SyncChan struct {
 	signal  chan struct{}
 }
 
-func (*SyncChan) Cap() uint {
-	return 0
-}
-
 func (ch *SyncChan) Close(ctx context.Context, call MethodClose) error {
 	panic("not implemented yet")
 }
@@ -168,7 +164,7 @@ func (s sender) Bind(res api.Recver_recv_Results) (err error) {
 	return
 }
 
-func (ch *SyncChan) AsSender(ctx context.Context, call MethodAsSender) error {
+func (ch *SyncChan) NewSender(ctx context.Context, call MethodNewSender) error {
 	res, err := call.AllocResults()
 	if err == nil {
 		err = res.SetSender(api.Sender_ServerToClient(ch))
@@ -176,7 +172,7 @@ func (ch *SyncChan) AsSender(ctx context.Context, call MethodAsSender) error {
 	return err
 }
 
-func (ch *SyncChan) AsRecver(ctx context.Context, call MethodAsRecver) error {
+func (ch *SyncChan) NewRecver(ctx context.Context, call MethodNewRecver) error {
 	res, err := call.AllocResults()
 	if err == nil {
 		err = res.SetRecver(api.Recver_ServerToClient(ch))
@@ -184,7 +180,7 @@ func (ch *SyncChan) AsRecver(ctx context.Context, call MethodAsRecver) error {
 	return err
 }
 
-func (ch *SyncChan) AsCloser(ctx context.Context, call MethodAsCloser) error {
+func (ch *SyncChan) NewCloser(ctx context.Context, call MethodNewCloser) error {
 	res, err := call.AllocResults()
 	if err == nil {
 		err = res.SetCloser(api.Closer_ServerToClient(ch))
@@ -192,7 +188,7 @@ func (ch *SyncChan) AsCloser(ctx context.Context, call MethodAsCloser) error {
 	return err
 }
 
-func (ch *SyncChan) AsSendCloser(ctx context.Context, call MethodAsSendCloser) error {
+func (ch *SyncChan) NewSendCloser(ctx context.Context, call MethodNewSendCloser) error {
 	res, err := call.AllocResults()
 	if err == nil {
 		err = res.SetSendCloser(api.SendCloser_ServerToClient(ch))

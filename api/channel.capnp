@@ -19,11 +19,11 @@ interface Recver(T) {
 }
 
 interface SendCloser(T) extends(Sender(T), Closer) {
-    asSender @0 () -> (sender :Sender(T));
-    asCloser @1 () -> (closer :Closer);
+    newSender @0 () -> (sender :Sender(T));
+    newCloser @1 () -> (closer :Closer);
 }
 
 interface Chan(T) extends(SendCloser(T), Recver(T)) {
-    asSendCloser @0 () -> (sendCloser :SendCloser(T));
-    asRecver     @1 () -> (recver :Recver(T));
+    newSendCloser @0 () -> (sendCloser :SendCloser(T));
+    newRecver     @1 () -> (recver :Recver(T));
 }

@@ -891,37 +891,37 @@ type SendCloser capnp.Client
 // SendCloser_TypeID is the unique identifier for the type SendCloser.
 const SendCloser_TypeID = 0xe9a7d19a7d14e94e
 
-func (c SendCloser) AsSender(ctx context.Context, params func(SendCloser_asSender_Params) error) (SendCloser_asSender_Results_Future, capnp.ReleaseFunc) {
+func (c SendCloser) NewSender(ctx context.Context, params func(SendCloser_newSender_Params) error) (SendCloser_newSender_Results_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xe9a7d19a7d14e94e,
 			MethodID:      0,
 			InterfaceName: "channel.capnp:SendCloser",
-			MethodName:    "asSender",
+			MethodName:    "newSender",
 		},
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(SendCloser_asSender_Params(s)) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(SendCloser_newSender_Params(s)) }
 	}
 	ans, release := capnp.Client(c).SendCall(ctx, s)
-	return SendCloser_asSender_Results_Future{Future: ans.Future()}, release
+	return SendCloser_newSender_Results_Future{Future: ans.Future()}, release
 }
-func (c SendCloser) AsCloser(ctx context.Context, params func(SendCloser_asCloser_Params) error) (SendCloser_asCloser_Results_Future, capnp.ReleaseFunc) {
+func (c SendCloser) NewCloser(ctx context.Context, params func(SendCloser_newCloser_Params) error) (SendCloser_newCloser_Results_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xe9a7d19a7d14e94e,
 			MethodID:      1,
 			InterfaceName: "channel.capnp:SendCloser",
-			MethodName:    "asCloser",
+			MethodName:    "newCloser",
 		},
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(SendCloser_asCloser_Params(s)) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(SendCloser_newCloser_Params(s)) }
 	}
 	ans, release := capnp.Client(c).SendCall(ctx, s)
-	return SendCloser_asCloser_Results_Future{Future: ans.Future()}, release
+	return SendCloser_newCloser_Results_Future{Future: ans.Future()}, release
 }
 func (c SendCloser) Send(ctx context.Context, params func(Sender_send_Params) error) (Sender_send_Results_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
@@ -1023,9 +1023,9 @@ func (c SendCloser) GetFlowLimiter() fc.FlowLimiter {
 	return capnp.Client(c).GetFlowLimiter()
 } // A SendCloser_Server is a SendCloser with a local implementation.
 type SendCloser_Server interface {
-	AsSender(context.Context, SendCloser_asSender) error
+	NewSender(context.Context, SendCloser_newSender) error
 
-	AsCloser(context.Context, SendCloser_asCloser) error
+	NewCloser(context.Context, SendCloser_newCloser) error
 
 	Send(context.Context, Sender_send) error
 
@@ -1056,10 +1056,10 @@ func SendCloser_Methods(methods []server.Method, s SendCloser_Server) []server.M
 			InterfaceID:   0xe9a7d19a7d14e94e,
 			MethodID:      0,
 			InterfaceName: "channel.capnp:SendCloser",
-			MethodName:    "asSender",
+			MethodName:    "newSender",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.AsSender(ctx, SendCloser_asSender{call})
+			return s.NewSender(ctx, SendCloser_newSender{call})
 		},
 	})
 
@@ -1068,10 +1068,10 @@ func SendCloser_Methods(methods []server.Method, s SendCloser_Server) []server.M
 			InterfaceID:   0xe9a7d19a7d14e94e,
 			MethodID:      1,
 			InterfaceName: "channel.capnp:SendCloser",
-			MethodName:    "asCloser",
+			MethodName:    "newCloser",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.AsCloser(ctx, SendCloser_asCloser{call})
+			return s.NewCloser(ctx, SendCloser_newCloser{call})
 		},
 	})
 
@@ -1102,38 +1102,38 @@ func SendCloser_Methods(methods []server.Method, s SendCloser_Server) []server.M
 	return methods
 }
 
-// SendCloser_asSender holds the state for a server call to SendCloser.asSender.
+// SendCloser_newSender holds the state for a server call to SendCloser.newSender.
 // See server.Call for documentation.
-type SendCloser_asSender struct {
+type SendCloser_newSender struct {
 	*server.Call
 }
 
 // Args returns the call's arguments.
-func (c SendCloser_asSender) Args() SendCloser_asSender_Params {
-	return SendCloser_asSender_Params(c.Call.Args())
+func (c SendCloser_newSender) Args() SendCloser_newSender_Params {
+	return SendCloser_newSender_Params(c.Call.Args())
 }
 
 // AllocResults allocates the results struct.
-func (c SendCloser_asSender) AllocResults() (SendCloser_asSender_Results, error) {
+func (c SendCloser_newSender) AllocResults() (SendCloser_newSender_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return SendCloser_asSender_Results(r), err
+	return SendCloser_newSender_Results(r), err
 }
 
-// SendCloser_asCloser holds the state for a server call to SendCloser.asCloser.
+// SendCloser_newCloser holds the state for a server call to SendCloser.newCloser.
 // See server.Call for documentation.
-type SendCloser_asCloser struct {
+type SendCloser_newCloser struct {
 	*server.Call
 }
 
 // Args returns the call's arguments.
-func (c SendCloser_asCloser) Args() SendCloser_asCloser_Params {
-	return SendCloser_asCloser_Params(c.Call.Args())
+func (c SendCloser_newCloser) Args() SendCloser_newCloser_Params {
+	return SendCloser_newCloser_Params(c.Call.Args())
 }
 
 // AllocResults allocates the results struct.
-func (c SendCloser_asCloser) AllocResults() (SendCloser_asCloser_Results, error) {
+func (c SendCloser_newCloser) AllocResults() (SendCloser_newCloser_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return SendCloser_asCloser_Results(r), err
+	return SendCloser_newCloser_Results(r), err
 }
 
 // SendCloser_List is a list of SendCloser.
@@ -1145,128 +1145,128 @@ func NewSendCloser_List(s *capnp.Segment, sz int32) (SendCloser_List, error) {
 	return capnp.CapList[SendCloser](l), err
 }
 
-type SendCloser_asSender_Params capnp.Struct
+type SendCloser_newSender_Params capnp.Struct
 
-// SendCloser_asSender_Params_TypeID is the unique identifier for the type SendCloser_asSender_Params.
-const SendCloser_asSender_Params_TypeID = 0xbb370dcc71a43ba9
+// SendCloser_newSender_Params_TypeID is the unique identifier for the type SendCloser_newSender_Params.
+const SendCloser_newSender_Params_TypeID = 0xbb370dcc71a43ba9
 
-func NewSendCloser_asSender_Params(s *capnp.Segment) (SendCloser_asSender_Params, error) {
+func NewSendCloser_newSender_Params(s *capnp.Segment) (SendCloser_newSender_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return SendCloser_asSender_Params(st), err
+	return SendCloser_newSender_Params(st), err
 }
 
-func NewRootSendCloser_asSender_Params(s *capnp.Segment) (SendCloser_asSender_Params, error) {
+func NewRootSendCloser_newSender_Params(s *capnp.Segment) (SendCloser_newSender_Params, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return SendCloser_asSender_Params(st), err
+	return SendCloser_newSender_Params(st), err
 }
 
-func ReadRootSendCloser_asSender_Params(msg *capnp.Message) (SendCloser_asSender_Params, error) {
+func ReadRootSendCloser_newSender_Params(msg *capnp.Message) (SendCloser_newSender_Params, error) {
 	root, err := msg.Root()
-	return SendCloser_asSender_Params(root.Struct()), err
+	return SendCloser_newSender_Params(root.Struct()), err
 }
 
-func (s SendCloser_asSender_Params) String() string {
+func (s SendCloser_newSender_Params) String() string {
 	str, _ := text.Marshal(0xbb370dcc71a43ba9, capnp.Struct(s))
 	return str
 }
 
-func (s SendCloser_asSender_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (s SendCloser_newSender_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Struct(s).EncodeAsPtr(seg)
 }
 
-func (SendCloser_asSender_Params) DecodeFromPtr(p capnp.Ptr) SendCloser_asSender_Params {
-	return SendCloser_asSender_Params(capnp.Struct{}.DecodeFromPtr(p))
+func (SendCloser_newSender_Params) DecodeFromPtr(p capnp.Ptr) SendCloser_newSender_Params {
+	return SendCloser_newSender_Params(capnp.Struct{}.DecodeFromPtr(p))
 }
 
-func (s SendCloser_asSender_Params) ToPtr() capnp.Ptr {
+func (s SendCloser_newSender_Params) ToPtr() capnp.Ptr {
 	return capnp.Struct(s).ToPtr()
 }
-func (s SendCloser_asSender_Params) IsValid() bool {
+func (s SendCloser_newSender_Params) IsValid() bool {
 	return capnp.Struct(s).IsValid()
 }
 
-func (s SendCloser_asSender_Params) Message() *capnp.Message {
+func (s SendCloser_newSender_Params) Message() *capnp.Message {
 	return capnp.Struct(s).Message()
 }
 
-func (s SendCloser_asSender_Params) Segment() *capnp.Segment {
+func (s SendCloser_newSender_Params) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
 
-// SendCloser_asSender_Params_List is a list of SendCloser_asSender_Params.
-type SendCloser_asSender_Params_List = capnp.StructList[SendCloser_asSender_Params]
+// SendCloser_newSender_Params_List is a list of SendCloser_newSender_Params.
+type SendCloser_newSender_Params_List = capnp.StructList[SendCloser_newSender_Params]
 
-// NewSendCloser_asSender_Params creates a new list of SendCloser_asSender_Params.
-func NewSendCloser_asSender_Params_List(s *capnp.Segment, sz int32) (SendCloser_asSender_Params_List, error) {
+// NewSendCloser_newSender_Params creates a new list of SendCloser_newSender_Params.
+func NewSendCloser_newSender_Params_List(s *capnp.Segment, sz int32) (SendCloser_newSender_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[SendCloser_asSender_Params](l), err
+	return capnp.StructList[SendCloser_newSender_Params](l), err
 }
 
-// SendCloser_asSender_Params_Future is a wrapper for a SendCloser_asSender_Params promised by a client call.
-type SendCloser_asSender_Params_Future struct{ *capnp.Future }
+// SendCloser_newSender_Params_Future is a wrapper for a SendCloser_newSender_Params promised by a client call.
+type SendCloser_newSender_Params_Future struct{ *capnp.Future }
 
-func (f SendCloser_asSender_Params_Future) Struct() (SendCloser_asSender_Params, error) {
+func (f SendCloser_newSender_Params_Future) Struct() (SendCloser_newSender_Params, error) {
 	p, err := f.Future.Ptr()
-	return SendCloser_asSender_Params(p.Struct()), err
+	return SendCloser_newSender_Params(p.Struct()), err
 }
 
-type SendCloser_asSender_Results capnp.Struct
+type SendCloser_newSender_Results capnp.Struct
 
-// SendCloser_asSender_Results_TypeID is the unique identifier for the type SendCloser_asSender_Results.
-const SendCloser_asSender_Results_TypeID = 0xca7110014301ab81
+// SendCloser_newSender_Results_TypeID is the unique identifier for the type SendCloser_newSender_Results.
+const SendCloser_newSender_Results_TypeID = 0xca7110014301ab81
 
-func NewSendCloser_asSender_Results(s *capnp.Segment) (SendCloser_asSender_Results, error) {
+func NewSendCloser_newSender_Results(s *capnp.Segment) (SendCloser_newSender_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return SendCloser_asSender_Results(st), err
+	return SendCloser_newSender_Results(st), err
 }
 
-func NewRootSendCloser_asSender_Results(s *capnp.Segment) (SendCloser_asSender_Results, error) {
+func NewRootSendCloser_newSender_Results(s *capnp.Segment) (SendCloser_newSender_Results, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return SendCloser_asSender_Results(st), err
+	return SendCloser_newSender_Results(st), err
 }
 
-func ReadRootSendCloser_asSender_Results(msg *capnp.Message) (SendCloser_asSender_Results, error) {
+func ReadRootSendCloser_newSender_Results(msg *capnp.Message) (SendCloser_newSender_Results, error) {
 	root, err := msg.Root()
-	return SendCloser_asSender_Results(root.Struct()), err
+	return SendCloser_newSender_Results(root.Struct()), err
 }
 
-func (s SendCloser_asSender_Results) String() string {
+func (s SendCloser_newSender_Results) String() string {
 	str, _ := text.Marshal(0xca7110014301ab81, capnp.Struct(s))
 	return str
 }
 
-func (s SendCloser_asSender_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (s SendCloser_newSender_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Struct(s).EncodeAsPtr(seg)
 }
 
-func (SendCloser_asSender_Results) DecodeFromPtr(p capnp.Ptr) SendCloser_asSender_Results {
-	return SendCloser_asSender_Results(capnp.Struct{}.DecodeFromPtr(p))
+func (SendCloser_newSender_Results) DecodeFromPtr(p capnp.Ptr) SendCloser_newSender_Results {
+	return SendCloser_newSender_Results(capnp.Struct{}.DecodeFromPtr(p))
 }
 
-func (s SendCloser_asSender_Results) ToPtr() capnp.Ptr {
+func (s SendCloser_newSender_Results) ToPtr() capnp.Ptr {
 	return capnp.Struct(s).ToPtr()
 }
-func (s SendCloser_asSender_Results) IsValid() bool {
+func (s SendCloser_newSender_Results) IsValid() bool {
 	return capnp.Struct(s).IsValid()
 }
 
-func (s SendCloser_asSender_Results) Message() *capnp.Message {
+func (s SendCloser_newSender_Results) Message() *capnp.Message {
 	return capnp.Struct(s).Message()
 }
 
-func (s SendCloser_asSender_Results) Segment() *capnp.Segment {
+func (s SendCloser_newSender_Results) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s SendCloser_asSender_Results) Sender() Sender {
+func (s SendCloser_newSender_Results) Sender() Sender {
 	p, _ := capnp.Struct(s).Ptr(0)
 	return Sender(p.Interface().Client())
 }
 
-func (s SendCloser_asSender_Results) HasSender() bool {
+func (s SendCloser_newSender_Results) HasSender() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s SendCloser_asSender_Results) SetSender(v Sender) error {
+func (s SendCloser_newSender_Results) SetSender(v Sender) error {
 	if !v.IsValid() {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
@@ -1275,148 +1275,148 @@ func (s SendCloser_asSender_Results) SetSender(v Sender) error {
 	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
-// SendCloser_asSender_Results_List is a list of SendCloser_asSender_Results.
-type SendCloser_asSender_Results_List = capnp.StructList[SendCloser_asSender_Results]
+// SendCloser_newSender_Results_List is a list of SendCloser_newSender_Results.
+type SendCloser_newSender_Results_List = capnp.StructList[SendCloser_newSender_Results]
 
-// NewSendCloser_asSender_Results creates a new list of SendCloser_asSender_Results.
-func NewSendCloser_asSender_Results_List(s *capnp.Segment, sz int32) (SendCloser_asSender_Results_List, error) {
+// NewSendCloser_newSender_Results creates a new list of SendCloser_newSender_Results.
+func NewSendCloser_newSender_Results_List(s *capnp.Segment, sz int32) (SendCloser_newSender_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[SendCloser_asSender_Results](l), err
+	return capnp.StructList[SendCloser_newSender_Results](l), err
 }
 
-// SendCloser_asSender_Results_Future is a wrapper for a SendCloser_asSender_Results promised by a client call.
-type SendCloser_asSender_Results_Future struct{ *capnp.Future }
+// SendCloser_newSender_Results_Future is a wrapper for a SendCloser_newSender_Results promised by a client call.
+type SendCloser_newSender_Results_Future struct{ *capnp.Future }
 
-func (f SendCloser_asSender_Results_Future) Struct() (SendCloser_asSender_Results, error) {
+func (f SendCloser_newSender_Results_Future) Struct() (SendCloser_newSender_Results, error) {
 	p, err := f.Future.Ptr()
-	return SendCloser_asSender_Results(p.Struct()), err
+	return SendCloser_newSender_Results(p.Struct()), err
 }
-func (p SendCloser_asSender_Results_Future) Sender() Sender {
+func (p SendCloser_newSender_Results_Future) Sender() Sender {
 	return Sender(p.Future.Field(0, nil).Client())
 }
 
-type SendCloser_asCloser_Params capnp.Struct
+type SendCloser_newCloser_Params capnp.Struct
 
-// SendCloser_asCloser_Params_TypeID is the unique identifier for the type SendCloser_asCloser_Params.
-const SendCloser_asCloser_Params_TypeID = 0xe48d9443d96ba68d
+// SendCloser_newCloser_Params_TypeID is the unique identifier for the type SendCloser_newCloser_Params.
+const SendCloser_newCloser_Params_TypeID = 0xe48d9443d96ba68d
 
-func NewSendCloser_asCloser_Params(s *capnp.Segment) (SendCloser_asCloser_Params, error) {
+func NewSendCloser_newCloser_Params(s *capnp.Segment) (SendCloser_newCloser_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return SendCloser_asCloser_Params(st), err
+	return SendCloser_newCloser_Params(st), err
 }
 
-func NewRootSendCloser_asCloser_Params(s *capnp.Segment) (SendCloser_asCloser_Params, error) {
+func NewRootSendCloser_newCloser_Params(s *capnp.Segment) (SendCloser_newCloser_Params, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return SendCloser_asCloser_Params(st), err
+	return SendCloser_newCloser_Params(st), err
 }
 
-func ReadRootSendCloser_asCloser_Params(msg *capnp.Message) (SendCloser_asCloser_Params, error) {
+func ReadRootSendCloser_newCloser_Params(msg *capnp.Message) (SendCloser_newCloser_Params, error) {
 	root, err := msg.Root()
-	return SendCloser_asCloser_Params(root.Struct()), err
+	return SendCloser_newCloser_Params(root.Struct()), err
 }
 
-func (s SendCloser_asCloser_Params) String() string {
+func (s SendCloser_newCloser_Params) String() string {
 	str, _ := text.Marshal(0xe48d9443d96ba68d, capnp.Struct(s))
 	return str
 }
 
-func (s SendCloser_asCloser_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (s SendCloser_newCloser_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Struct(s).EncodeAsPtr(seg)
 }
 
-func (SendCloser_asCloser_Params) DecodeFromPtr(p capnp.Ptr) SendCloser_asCloser_Params {
-	return SendCloser_asCloser_Params(capnp.Struct{}.DecodeFromPtr(p))
+func (SendCloser_newCloser_Params) DecodeFromPtr(p capnp.Ptr) SendCloser_newCloser_Params {
+	return SendCloser_newCloser_Params(capnp.Struct{}.DecodeFromPtr(p))
 }
 
-func (s SendCloser_asCloser_Params) ToPtr() capnp.Ptr {
+func (s SendCloser_newCloser_Params) ToPtr() capnp.Ptr {
 	return capnp.Struct(s).ToPtr()
 }
-func (s SendCloser_asCloser_Params) IsValid() bool {
+func (s SendCloser_newCloser_Params) IsValid() bool {
 	return capnp.Struct(s).IsValid()
 }
 
-func (s SendCloser_asCloser_Params) Message() *capnp.Message {
+func (s SendCloser_newCloser_Params) Message() *capnp.Message {
 	return capnp.Struct(s).Message()
 }
 
-func (s SendCloser_asCloser_Params) Segment() *capnp.Segment {
+func (s SendCloser_newCloser_Params) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
 
-// SendCloser_asCloser_Params_List is a list of SendCloser_asCloser_Params.
-type SendCloser_asCloser_Params_List = capnp.StructList[SendCloser_asCloser_Params]
+// SendCloser_newCloser_Params_List is a list of SendCloser_newCloser_Params.
+type SendCloser_newCloser_Params_List = capnp.StructList[SendCloser_newCloser_Params]
 
-// NewSendCloser_asCloser_Params creates a new list of SendCloser_asCloser_Params.
-func NewSendCloser_asCloser_Params_List(s *capnp.Segment, sz int32) (SendCloser_asCloser_Params_List, error) {
+// NewSendCloser_newCloser_Params creates a new list of SendCloser_newCloser_Params.
+func NewSendCloser_newCloser_Params_List(s *capnp.Segment, sz int32) (SendCloser_newCloser_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[SendCloser_asCloser_Params](l), err
+	return capnp.StructList[SendCloser_newCloser_Params](l), err
 }
 
-// SendCloser_asCloser_Params_Future is a wrapper for a SendCloser_asCloser_Params promised by a client call.
-type SendCloser_asCloser_Params_Future struct{ *capnp.Future }
+// SendCloser_newCloser_Params_Future is a wrapper for a SendCloser_newCloser_Params promised by a client call.
+type SendCloser_newCloser_Params_Future struct{ *capnp.Future }
 
-func (f SendCloser_asCloser_Params_Future) Struct() (SendCloser_asCloser_Params, error) {
+func (f SendCloser_newCloser_Params_Future) Struct() (SendCloser_newCloser_Params, error) {
 	p, err := f.Future.Ptr()
-	return SendCloser_asCloser_Params(p.Struct()), err
+	return SendCloser_newCloser_Params(p.Struct()), err
 }
 
-type SendCloser_asCloser_Results capnp.Struct
+type SendCloser_newCloser_Results capnp.Struct
 
-// SendCloser_asCloser_Results_TypeID is the unique identifier for the type SendCloser_asCloser_Results.
-const SendCloser_asCloser_Results_TypeID = 0xf1dd4079b7c319f1
+// SendCloser_newCloser_Results_TypeID is the unique identifier for the type SendCloser_newCloser_Results.
+const SendCloser_newCloser_Results_TypeID = 0xf1dd4079b7c319f1
 
-func NewSendCloser_asCloser_Results(s *capnp.Segment) (SendCloser_asCloser_Results, error) {
+func NewSendCloser_newCloser_Results(s *capnp.Segment) (SendCloser_newCloser_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return SendCloser_asCloser_Results(st), err
+	return SendCloser_newCloser_Results(st), err
 }
 
-func NewRootSendCloser_asCloser_Results(s *capnp.Segment) (SendCloser_asCloser_Results, error) {
+func NewRootSendCloser_newCloser_Results(s *capnp.Segment) (SendCloser_newCloser_Results, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return SendCloser_asCloser_Results(st), err
+	return SendCloser_newCloser_Results(st), err
 }
 
-func ReadRootSendCloser_asCloser_Results(msg *capnp.Message) (SendCloser_asCloser_Results, error) {
+func ReadRootSendCloser_newCloser_Results(msg *capnp.Message) (SendCloser_newCloser_Results, error) {
 	root, err := msg.Root()
-	return SendCloser_asCloser_Results(root.Struct()), err
+	return SendCloser_newCloser_Results(root.Struct()), err
 }
 
-func (s SendCloser_asCloser_Results) String() string {
+func (s SendCloser_newCloser_Results) String() string {
 	str, _ := text.Marshal(0xf1dd4079b7c319f1, capnp.Struct(s))
 	return str
 }
 
-func (s SendCloser_asCloser_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (s SendCloser_newCloser_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Struct(s).EncodeAsPtr(seg)
 }
 
-func (SendCloser_asCloser_Results) DecodeFromPtr(p capnp.Ptr) SendCloser_asCloser_Results {
-	return SendCloser_asCloser_Results(capnp.Struct{}.DecodeFromPtr(p))
+func (SendCloser_newCloser_Results) DecodeFromPtr(p capnp.Ptr) SendCloser_newCloser_Results {
+	return SendCloser_newCloser_Results(capnp.Struct{}.DecodeFromPtr(p))
 }
 
-func (s SendCloser_asCloser_Results) ToPtr() capnp.Ptr {
+func (s SendCloser_newCloser_Results) ToPtr() capnp.Ptr {
 	return capnp.Struct(s).ToPtr()
 }
-func (s SendCloser_asCloser_Results) IsValid() bool {
+func (s SendCloser_newCloser_Results) IsValid() bool {
 	return capnp.Struct(s).IsValid()
 }
 
-func (s SendCloser_asCloser_Results) Message() *capnp.Message {
+func (s SendCloser_newCloser_Results) Message() *capnp.Message {
 	return capnp.Struct(s).Message()
 }
 
-func (s SendCloser_asCloser_Results) Segment() *capnp.Segment {
+func (s SendCloser_newCloser_Results) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s SendCloser_asCloser_Results) Closer() Closer {
+func (s SendCloser_newCloser_Results) Closer() Closer {
 	p, _ := capnp.Struct(s).Ptr(0)
 	return Closer(p.Interface().Client())
 }
 
-func (s SendCloser_asCloser_Results) HasCloser() bool {
+func (s SendCloser_newCloser_Results) HasCloser() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s SendCloser_asCloser_Results) SetCloser(v Closer) error {
+func (s SendCloser_newCloser_Results) SetCloser(v Closer) error {
 	if !v.IsValid() {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
@@ -1425,23 +1425,23 @@ func (s SendCloser_asCloser_Results) SetCloser(v Closer) error {
 	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
-// SendCloser_asCloser_Results_List is a list of SendCloser_asCloser_Results.
-type SendCloser_asCloser_Results_List = capnp.StructList[SendCloser_asCloser_Results]
+// SendCloser_newCloser_Results_List is a list of SendCloser_newCloser_Results.
+type SendCloser_newCloser_Results_List = capnp.StructList[SendCloser_newCloser_Results]
 
-// NewSendCloser_asCloser_Results creates a new list of SendCloser_asCloser_Results.
-func NewSendCloser_asCloser_Results_List(s *capnp.Segment, sz int32) (SendCloser_asCloser_Results_List, error) {
+// NewSendCloser_newCloser_Results creates a new list of SendCloser_newCloser_Results.
+func NewSendCloser_newCloser_Results_List(s *capnp.Segment, sz int32) (SendCloser_newCloser_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[SendCloser_asCloser_Results](l), err
+	return capnp.StructList[SendCloser_newCloser_Results](l), err
 }
 
-// SendCloser_asCloser_Results_Future is a wrapper for a SendCloser_asCloser_Results promised by a client call.
-type SendCloser_asCloser_Results_Future struct{ *capnp.Future }
+// SendCloser_newCloser_Results_Future is a wrapper for a SendCloser_newCloser_Results promised by a client call.
+type SendCloser_newCloser_Results_Future struct{ *capnp.Future }
 
-func (f SendCloser_asCloser_Results_Future) Struct() (SendCloser_asCloser_Results, error) {
+func (f SendCloser_newCloser_Results_Future) Struct() (SendCloser_newCloser_Results, error) {
 	p, err := f.Future.Ptr()
-	return SendCloser_asCloser_Results(p.Struct()), err
+	return SendCloser_newCloser_Results(p.Struct()), err
 }
-func (p SendCloser_asCloser_Results_Future) Closer() Closer {
+func (p SendCloser_newCloser_Results_Future) Closer() Closer {
 	return Closer(p.Future.Field(0, nil).Client())
 }
 
@@ -1450,69 +1450,69 @@ type Chan capnp.Client
 // Chan_TypeID is the unique identifier for the type Chan.
 const Chan_TypeID = 0x95c89fe7d966f751
 
-func (c Chan) AsSendCloser(ctx context.Context, params func(Chan_asSendCloser_Params) error) (Chan_asSendCloser_Results_Future, capnp.ReleaseFunc) {
+func (c Chan) NewSendCloser(ctx context.Context, params func(Chan_newSendCloser_Params) error) (Chan_newSendCloser_Results_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0x95c89fe7d966f751,
 			MethodID:      0,
 			InterfaceName: "channel.capnp:Chan",
-			MethodName:    "asSendCloser",
+			MethodName:    "newSendCloser",
 		},
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Chan_asSendCloser_Params(s)) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Chan_newSendCloser_Params(s)) }
 	}
 	ans, release := capnp.Client(c).SendCall(ctx, s)
-	return Chan_asSendCloser_Results_Future{Future: ans.Future()}, release
+	return Chan_newSendCloser_Results_Future{Future: ans.Future()}, release
 }
-func (c Chan) AsRecver(ctx context.Context, params func(Chan_asRecver_Params) error) (Chan_asRecver_Results_Future, capnp.ReleaseFunc) {
+func (c Chan) NewRecver(ctx context.Context, params func(Chan_newRecver_Params) error) (Chan_newRecver_Results_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0x95c89fe7d966f751,
 			MethodID:      1,
 			InterfaceName: "channel.capnp:Chan",
-			MethodName:    "asRecver",
+			MethodName:    "newRecver",
 		},
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Chan_asRecver_Params(s)) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Chan_newRecver_Params(s)) }
 	}
 	ans, release := capnp.Client(c).SendCall(ctx, s)
-	return Chan_asRecver_Results_Future{Future: ans.Future()}, release
+	return Chan_newRecver_Results_Future{Future: ans.Future()}, release
 }
-func (c Chan) AsSender(ctx context.Context, params func(SendCloser_asSender_Params) error) (SendCloser_asSender_Results_Future, capnp.ReleaseFunc) {
+func (c Chan) NewSender(ctx context.Context, params func(SendCloser_newSender_Params) error) (SendCloser_newSender_Results_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xe9a7d19a7d14e94e,
 			MethodID:      0,
 			InterfaceName: "channel.capnp:SendCloser",
-			MethodName:    "asSender",
+			MethodName:    "newSender",
 		},
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(SendCloser_asSender_Params(s)) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(SendCloser_newSender_Params(s)) }
 	}
 	ans, release := capnp.Client(c).SendCall(ctx, s)
-	return SendCloser_asSender_Results_Future{Future: ans.Future()}, release
+	return SendCloser_newSender_Results_Future{Future: ans.Future()}, release
 }
-func (c Chan) AsCloser(ctx context.Context, params func(SendCloser_asCloser_Params) error) (SendCloser_asCloser_Results_Future, capnp.ReleaseFunc) {
+func (c Chan) NewCloser(ctx context.Context, params func(SendCloser_newCloser_Params) error) (SendCloser_newCloser_Results_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xe9a7d19a7d14e94e,
 			MethodID:      1,
 			InterfaceName: "channel.capnp:SendCloser",
-			MethodName:    "asCloser",
+			MethodName:    "newCloser",
 		},
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(SendCloser_asCloser_Params(s)) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(SendCloser_newCloser_Params(s)) }
 	}
 	ans, release := capnp.Client(c).SendCall(ctx, s)
-	return SendCloser_asCloser_Results_Future{Future: ans.Future()}, release
+	return SendCloser_newCloser_Results_Future{Future: ans.Future()}, release
 }
 func (c Chan) Send(ctx context.Context, params func(Sender_send_Params) error) (Sender_send_Results_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
@@ -1630,13 +1630,13 @@ func (c Chan) GetFlowLimiter() fc.FlowLimiter {
 	return capnp.Client(c).GetFlowLimiter()
 } // A Chan_Server is a Chan with a local implementation.
 type Chan_Server interface {
-	AsSendCloser(context.Context, Chan_asSendCloser) error
+	NewSendCloser(context.Context, Chan_newSendCloser) error
 
-	AsRecver(context.Context, Chan_asRecver) error
+	NewRecver(context.Context, Chan_newRecver) error
 
-	AsSender(context.Context, SendCloser_asSender) error
+	NewSender(context.Context, SendCloser_newSender) error
 
-	AsCloser(context.Context, SendCloser_asCloser) error
+	NewCloser(context.Context, SendCloser_newCloser) error
 
 	Send(context.Context, Sender_send) error
 
@@ -1669,10 +1669,10 @@ func Chan_Methods(methods []server.Method, s Chan_Server) []server.Method {
 			InterfaceID:   0x95c89fe7d966f751,
 			MethodID:      0,
 			InterfaceName: "channel.capnp:Chan",
-			MethodName:    "asSendCloser",
+			MethodName:    "newSendCloser",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.AsSendCloser(ctx, Chan_asSendCloser{call})
+			return s.NewSendCloser(ctx, Chan_newSendCloser{call})
 		},
 	})
 
@@ -1681,10 +1681,10 @@ func Chan_Methods(methods []server.Method, s Chan_Server) []server.Method {
 			InterfaceID:   0x95c89fe7d966f751,
 			MethodID:      1,
 			InterfaceName: "channel.capnp:Chan",
-			MethodName:    "asRecver",
+			MethodName:    "newRecver",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.AsRecver(ctx, Chan_asRecver{call})
+			return s.NewRecver(ctx, Chan_newRecver{call})
 		},
 	})
 
@@ -1693,10 +1693,10 @@ func Chan_Methods(methods []server.Method, s Chan_Server) []server.Method {
 			InterfaceID:   0xe9a7d19a7d14e94e,
 			MethodID:      0,
 			InterfaceName: "channel.capnp:SendCloser",
-			MethodName:    "asSender",
+			MethodName:    "newSender",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.AsSender(ctx, SendCloser_asSender{call})
+			return s.NewSender(ctx, SendCloser_newSender{call})
 		},
 	})
 
@@ -1705,10 +1705,10 @@ func Chan_Methods(methods []server.Method, s Chan_Server) []server.Method {
 			InterfaceID:   0xe9a7d19a7d14e94e,
 			MethodID:      1,
 			InterfaceName: "channel.capnp:SendCloser",
-			MethodName:    "asCloser",
+			MethodName:    "newCloser",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.AsCloser(ctx, SendCloser_asCloser{call})
+			return s.NewCloser(ctx, SendCloser_newCloser{call})
 		},
 	})
 
@@ -1751,38 +1751,38 @@ func Chan_Methods(methods []server.Method, s Chan_Server) []server.Method {
 	return methods
 }
 
-// Chan_asSendCloser holds the state for a server call to Chan.asSendCloser.
+// Chan_newSendCloser holds the state for a server call to Chan.newSendCloser.
 // See server.Call for documentation.
-type Chan_asSendCloser struct {
+type Chan_newSendCloser struct {
 	*server.Call
 }
 
 // Args returns the call's arguments.
-func (c Chan_asSendCloser) Args() Chan_asSendCloser_Params {
-	return Chan_asSendCloser_Params(c.Call.Args())
+func (c Chan_newSendCloser) Args() Chan_newSendCloser_Params {
+	return Chan_newSendCloser_Params(c.Call.Args())
 }
 
 // AllocResults allocates the results struct.
-func (c Chan_asSendCloser) AllocResults() (Chan_asSendCloser_Results, error) {
+func (c Chan_newSendCloser) AllocResults() (Chan_newSendCloser_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Chan_asSendCloser_Results(r), err
+	return Chan_newSendCloser_Results(r), err
 }
 
-// Chan_asRecver holds the state for a server call to Chan.asRecver.
+// Chan_newRecver holds the state for a server call to Chan.newRecver.
 // See server.Call for documentation.
-type Chan_asRecver struct {
+type Chan_newRecver struct {
 	*server.Call
 }
 
 // Args returns the call's arguments.
-func (c Chan_asRecver) Args() Chan_asRecver_Params {
-	return Chan_asRecver_Params(c.Call.Args())
+func (c Chan_newRecver) Args() Chan_newRecver_Params {
+	return Chan_newRecver_Params(c.Call.Args())
 }
 
 // AllocResults allocates the results struct.
-func (c Chan_asRecver) AllocResults() (Chan_asRecver_Results, error) {
+func (c Chan_newRecver) AllocResults() (Chan_newRecver_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Chan_asRecver_Results(r), err
+	return Chan_newRecver_Results(r), err
 }
 
 // Chan_List is a list of Chan.
@@ -1794,128 +1794,128 @@ func NewChan_List(s *capnp.Segment, sz int32) (Chan_List, error) {
 	return capnp.CapList[Chan](l), err
 }
 
-type Chan_asSendCloser_Params capnp.Struct
+type Chan_newSendCloser_Params capnp.Struct
 
-// Chan_asSendCloser_Params_TypeID is the unique identifier for the type Chan_asSendCloser_Params.
-const Chan_asSendCloser_Params_TypeID = 0xe76adde17bd7c3df
+// Chan_newSendCloser_Params_TypeID is the unique identifier for the type Chan_newSendCloser_Params.
+const Chan_newSendCloser_Params_TypeID = 0xe76adde17bd7c3df
 
-func NewChan_asSendCloser_Params(s *capnp.Segment) (Chan_asSendCloser_Params, error) {
+func NewChan_newSendCloser_Params(s *capnp.Segment) (Chan_newSendCloser_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Chan_asSendCloser_Params(st), err
+	return Chan_newSendCloser_Params(st), err
 }
 
-func NewRootChan_asSendCloser_Params(s *capnp.Segment) (Chan_asSendCloser_Params, error) {
+func NewRootChan_newSendCloser_Params(s *capnp.Segment) (Chan_newSendCloser_Params, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Chan_asSendCloser_Params(st), err
+	return Chan_newSendCloser_Params(st), err
 }
 
-func ReadRootChan_asSendCloser_Params(msg *capnp.Message) (Chan_asSendCloser_Params, error) {
+func ReadRootChan_newSendCloser_Params(msg *capnp.Message) (Chan_newSendCloser_Params, error) {
 	root, err := msg.Root()
-	return Chan_asSendCloser_Params(root.Struct()), err
+	return Chan_newSendCloser_Params(root.Struct()), err
 }
 
-func (s Chan_asSendCloser_Params) String() string {
+func (s Chan_newSendCloser_Params) String() string {
 	str, _ := text.Marshal(0xe76adde17bd7c3df, capnp.Struct(s))
 	return str
 }
 
-func (s Chan_asSendCloser_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (s Chan_newSendCloser_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Struct(s).EncodeAsPtr(seg)
 }
 
-func (Chan_asSendCloser_Params) DecodeFromPtr(p capnp.Ptr) Chan_asSendCloser_Params {
-	return Chan_asSendCloser_Params(capnp.Struct{}.DecodeFromPtr(p))
+func (Chan_newSendCloser_Params) DecodeFromPtr(p capnp.Ptr) Chan_newSendCloser_Params {
+	return Chan_newSendCloser_Params(capnp.Struct{}.DecodeFromPtr(p))
 }
 
-func (s Chan_asSendCloser_Params) ToPtr() capnp.Ptr {
+func (s Chan_newSendCloser_Params) ToPtr() capnp.Ptr {
 	return capnp.Struct(s).ToPtr()
 }
-func (s Chan_asSendCloser_Params) IsValid() bool {
+func (s Chan_newSendCloser_Params) IsValid() bool {
 	return capnp.Struct(s).IsValid()
 }
 
-func (s Chan_asSendCloser_Params) Message() *capnp.Message {
+func (s Chan_newSendCloser_Params) Message() *capnp.Message {
 	return capnp.Struct(s).Message()
 }
 
-func (s Chan_asSendCloser_Params) Segment() *capnp.Segment {
+func (s Chan_newSendCloser_Params) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
 
-// Chan_asSendCloser_Params_List is a list of Chan_asSendCloser_Params.
-type Chan_asSendCloser_Params_List = capnp.StructList[Chan_asSendCloser_Params]
+// Chan_newSendCloser_Params_List is a list of Chan_newSendCloser_Params.
+type Chan_newSendCloser_Params_List = capnp.StructList[Chan_newSendCloser_Params]
 
-// NewChan_asSendCloser_Params creates a new list of Chan_asSendCloser_Params.
-func NewChan_asSendCloser_Params_List(s *capnp.Segment, sz int32) (Chan_asSendCloser_Params_List, error) {
+// NewChan_newSendCloser_Params creates a new list of Chan_newSendCloser_Params.
+func NewChan_newSendCloser_Params_List(s *capnp.Segment, sz int32) (Chan_newSendCloser_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Chan_asSendCloser_Params](l), err
+	return capnp.StructList[Chan_newSendCloser_Params](l), err
 }
 
-// Chan_asSendCloser_Params_Future is a wrapper for a Chan_asSendCloser_Params promised by a client call.
-type Chan_asSendCloser_Params_Future struct{ *capnp.Future }
+// Chan_newSendCloser_Params_Future is a wrapper for a Chan_newSendCloser_Params promised by a client call.
+type Chan_newSendCloser_Params_Future struct{ *capnp.Future }
 
-func (f Chan_asSendCloser_Params_Future) Struct() (Chan_asSendCloser_Params, error) {
+func (f Chan_newSendCloser_Params_Future) Struct() (Chan_newSendCloser_Params, error) {
 	p, err := f.Future.Ptr()
-	return Chan_asSendCloser_Params(p.Struct()), err
+	return Chan_newSendCloser_Params(p.Struct()), err
 }
 
-type Chan_asSendCloser_Results capnp.Struct
+type Chan_newSendCloser_Results capnp.Struct
 
-// Chan_asSendCloser_Results_TypeID is the unique identifier for the type Chan_asSendCloser_Results.
-const Chan_asSendCloser_Results_TypeID = 0xcbbc3fcd0d01a855
+// Chan_newSendCloser_Results_TypeID is the unique identifier for the type Chan_newSendCloser_Results.
+const Chan_newSendCloser_Results_TypeID = 0xcbbc3fcd0d01a855
 
-func NewChan_asSendCloser_Results(s *capnp.Segment) (Chan_asSendCloser_Results, error) {
+func NewChan_newSendCloser_Results(s *capnp.Segment) (Chan_newSendCloser_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Chan_asSendCloser_Results(st), err
+	return Chan_newSendCloser_Results(st), err
 }
 
-func NewRootChan_asSendCloser_Results(s *capnp.Segment) (Chan_asSendCloser_Results, error) {
+func NewRootChan_newSendCloser_Results(s *capnp.Segment) (Chan_newSendCloser_Results, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Chan_asSendCloser_Results(st), err
+	return Chan_newSendCloser_Results(st), err
 }
 
-func ReadRootChan_asSendCloser_Results(msg *capnp.Message) (Chan_asSendCloser_Results, error) {
+func ReadRootChan_newSendCloser_Results(msg *capnp.Message) (Chan_newSendCloser_Results, error) {
 	root, err := msg.Root()
-	return Chan_asSendCloser_Results(root.Struct()), err
+	return Chan_newSendCloser_Results(root.Struct()), err
 }
 
-func (s Chan_asSendCloser_Results) String() string {
+func (s Chan_newSendCloser_Results) String() string {
 	str, _ := text.Marshal(0xcbbc3fcd0d01a855, capnp.Struct(s))
 	return str
 }
 
-func (s Chan_asSendCloser_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (s Chan_newSendCloser_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Struct(s).EncodeAsPtr(seg)
 }
 
-func (Chan_asSendCloser_Results) DecodeFromPtr(p capnp.Ptr) Chan_asSendCloser_Results {
-	return Chan_asSendCloser_Results(capnp.Struct{}.DecodeFromPtr(p))
+func (Chan_newSendCloser_Results) DecodeFromPtr(p capnp.Ptr) Chan_newSendCloser_Results {
+	return Chan_newSendCloser_Results(capnp.Struct{}.DecodeFromPtr(p))
 }
 
-func (s Chan_asSendCloser_Results) ToPtr() capnp.Ptr {
+func (s Chan_newSendCloser_Results) ToPtr() capnp.Ptr {
 	return capnp.Struct(s).ToPtr()
 }
-func (s Chan_asSendCloser_Results) IsValid() bool {
+func (s Chan_newSendCloser_Results) IsValid() bool {
 	return capnp.Struct(s).IsValid()
 }
 
-func (s Chan_asSendCloser_Results) Message() *capnp.Message {
+func (s Chan_newSendCloser_Results) Message() *capnp.Message {
 	return capnp.Struct(s).Message()
 }
 
-func (s Chan_asSendCloser_Results) Segment() *capnp.Segment {
+func (s Chan_newSendCloser_Results) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s Chan_asSendCloser_Results) SendCloser() SendCloser {
+func (s Chan_newSendCloser_Results) SendCloser() SendCloser {
 	p, _ := capnp.Struct(s).Ptr(0)
 	return SendCloser(p.Interface().Client())
 }
 
-func (s Chan_asSendCloser_Results) HasSendCloser() bool {
+func (s Chan_newSendCloser_Results) HasSendCloser() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s Chan_asSendCloser_Results) SetSendCloser(v SendCloser) error {
+func (s Chan_newSendCloser_Results) SetSendCloser(v SendCloser) error {
 	if !v.IsValid() {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
@@ -1924,148 +1924,148 @@ func (s Chan_asSendCloser_Results) SetSendCloser(v SendCloser) error {
 	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
-// Chan_asSendCloser_Results_List is a list of Chan_asSendCloser_Results.
-type Chan_asSendCloser_Results_List = capnp.StructList[Chan_asSendCloser_Results]
+// Chan_newSendCloser_Results_List is a list of Chan_newSendCloser_Results.
+type Chan_newSendCloser_Results_List = capnp.StructList[Chan_newSendCloser_Results]
 
-// NewChan_asSendCloser_Results creates a new list of Chan_asSendCloser_Results.
-func NewChan_asSendCloser_Results_List(s *capnp.Segment, sz int32) (Chan_asSendCloser_Results_List, error) {
+// NewChan_newSendCloser_Results creates a new list of Chan_newSendCloser_Results.
+func NewChan_newSendCloser_Results_List(s *capnp.Segment, sz int32) (Chan_newSendCloser_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Chan_asSendCloser_Results](l), err
+	return capnp.StructList[Chan_newSendCloser_Results](l), err
 }
 
-// Chan_asSendCloser_Results_Future is a wrapper for a Chan_asSendCloser_Results promised by a client call.
-type Chan_asSendCloser_Results_Future struct{ *capnp.Future }
+// Chan_newSendCloser_Results_Future is a wrapper for a Chan_newSendCloser_Results promised by a client call.
+type Chan_newSendCloser_Results_Future struct{ *capnp.Future }
 
-func (f Chan_asSendCloser_Results_Future) Struct() (Chan_asSendCloser_Results, error) {
+func (f Chan_newSendCloser_Results_Future) Struct() (Chan_newSendCloser_Results, error) {
 	p, err := f.Future.Ptr()
-	return Chan_asSendCloser_Results(p.Struct()), err
+	return Chan_newSendCloser_Results(p.Struct()), err
 }
-func (p Chan_asSendCloser_Results_Future) SendCloser() SendCloser {
+func (p Chan_newSendCloser_Results_Future) SendCloser() SendCloser {
 	return SendCloser(p.Future.Field(0, nil).Client())
 }
 
-type Chan_asRecver_Params capnp.Struct
+type Chan_newRecver_Params capnp.Struct
 
-// Chan_asRecver_Params_TypeID is the unique identifier for the type Chan_asRecver_Params.
-const Chan_asRecver_Params_TypeID = 0x891b1d7a66ab36b5
+// Chan_newRecver_Params_TypeID is the unique identifier for the type Chan_newRecver_Params.
+const Chan_newRecver_Params_TypeID = 0x891b1d7a66ab36b5
 
-func NewChan_asRecver_Params(s *capnp.Segment) (Chan_asRecver_Params, error) {
+func NewChan_newRecver_Params(s *capnp.Segment) (Chan_newRecver_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Chan_asRecver_Params(st), err
+	return Chan_newRecver_Params(st), err
 }
 
-func NewRootChan_asRecver_Params(s *capnp.Segment) (Chan_asRecver_Params, error) {
+func NewRootChan_newRecver_Params(s *capnp.Segment) (Chan_newRecver_Params, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Chan_asRecver_Params(st), err
+	return Chan_newRecver_Params(st), err
 }
 
-func ReadRootChan_asRecver_Params(msg *capnp.Message) (Chan_asRecver_Params, error) {
+func ReadRootChan_newRecver_Params(msg *capnp.Message) (Chan_newRecver_Params, error) {
 	root, err := msg.Root()
-	return Chan_asRecver_Params(root.Struct()), err
+	return Chan_newRecver_Params(root.Struct()), err
 }
 
-func (s Chan_asRecver_Params) String() string {
+func (s Chan_newRecver_Params) String() string {
 	str, _ := text.Marshal(0x891b1d7a66ab36b5, capnp.Struct(s))
 	return str
 }
 
-func (s Chan_asRecver_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (s Chan_newRecver_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Struct(s).EncodeAsPtr(seg)
 }
 
-func (Chan_asRecver_Params) DecodeFromPtr(p capnp.Ptr) Chan_asRecver_Params {
-	return Chan_asRecver_Params(capnp.Struct{}.DecodeFromPtr(p))
+func (Chan_newRecver_Params) DecodeFromPtr(p capnp.Ptr) Chan_newRecver_Params {
+	return Chan_newRecver_Params(capnp.Struct{}.DecodeFromPtr(p))
 }
 
-func (s Chan_asRecver_Params) ToPtr() capnp.Ptr {
+func (s Chan_newRecver_Params) ToPtr() capnp.Ptr {
 	return capnp.Struct(s).ToPtr()
 }
-func (s Chan_asRecver_Params) IsValid() bool {
+func (s Chan_newRecver_Params) IsValid() bool {
 	return capnp.Struct(s).IsValid()
 }
 
-func (s Chan_asRecver_Params) Message() *capnp.Message {
+func (s Chan_newRecver_Params) Message() *capnp.Message {
 	return capnp.Struct(s).Message()
 }
 
-func (s Chan_asRecver_Params) Segment() *capnp.Segment {
+func (s Chan_newRecver_Params) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
 
-// Chan_asRecver_Params_List is a list of Chan_asRecver_Params.
-type Chan_asRecver_Params_List = capnp.StructList[Chan_asRecver_Params]
+// Chan_newRecver_Params_List is a list of Chan_newRecver_Params.
+type Chan_newRecver_Params_List = capnp.StructList[Chan_newRecver_Params]
 
-// NewChan_asRecver_Params creates a new list of Chan_asRecver_Params.
-func NewChan_asRecver_Params_List(s *capnp.Segment, sz int32) (Chan_asRecver_Params_List, error) {
+// NewChan_newRecver_Params creates a new list of Chan_newRecver_Params.
+func NewChan_newRecver_Params_List(s *capnp.Segment, sz int32) (Chan_newRecver_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Chan_asRecver_Params](l), err
+	return capnp.StructList[Chan_newRecver_Params](l), err
 }
 
-// Chan_asRecver_Params_Future is a wrapper for a Chan_asRecver_Params promised by a client call.
-type Chan_asRecver_Params_Future struct{ *capnp.Future }
+// Chan_newRecver_Params_Future is a wrapper for a Chan_newRecver_Params promised by a client call.
+type Chan_newRecver_Params_Future struct{ *capnp.Future }
 
-func (f Chan_asRecver_Params_Future) Struct() (Chan_asRecver_Params, error) {
+func (f Chan_newRecver_Params_Future) Struct() (Chan_newRecver_Params, error) {
 	p, err := f.Future.Ptr()
-	return Chan_asRecver_Params(p.Struct()), err
+	return Chan_newRecver_Params(p.Struct()), err
 }
 
-type Chan_asRecver_Results capnp.Struct
+type Chan_newRecver_Results capnp.Struct
 
-// Chan_asRecver_Results_TypeID is the unique identifier for the type Chan_asRecver_Results.
-const Chan_asRecver_Results_TypeID = 0x9f8a81c20d0e72c9
+// Chan_newRecver_Results_TypeID is the unique identifier for the type Chan_newRecver_Results.
+const Chan_newRecver_Results_TypeID = 0x9f8a81c20d0e72c9
 
-func NewChan_asRecver_Results(s *capnp.Segment) (Chan_asRecver_Results, error) {
+func NewChan_newRecver_Results(s *capnp.Segment) (Chan_newRecver_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Chan_asRecver_Results(st), err
+	return Chan_newRecver_Results(st), err
 }
 
-func NewRootChan_asRecver_Results(s *capnp.Segment) (Chan_asRecver_Results, error) {
+func NewRootChan_newRecver_Results(s *capnp.Segment) (Chan_newRecver_Results, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Chan_asRecver_Results(st), err
+	return Chan_newRecver_Results(st), err
 }
 
-func ReadRootChan_asRecver_Results(msg *capnp.Message) (Chan_asRecver_Results, error) {
+func ReadRootChan_newRecver_Results(msg *capnp.Message) (Chan_newRecver_Results, error) {
 	root, err := msg.Root()
-	return Chan_asRecver_Results(root.Struct()), err
+	return Chan_newRecver_Results(root.Struct()), err
 }
 
-func (s Chan_asRecver_Results) String() string {
+func (s Chan_newRecver_Results) String() string {
 	str, _ := text.Marshal(0x9f8a81c20d0e72c9, capnp.Struct(s))
 	return str
 }
 
-func (s Chan_asRecver_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (s Chan_newRecver_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Struct(s).EncodeAsPtr(seg)
 }
 
-func (Chan_asRecver_Results) DecodeFromPtr(p capnp.Ptr) Chan_asRecver_Results {
-	return Chan_asRecver_Results(capnp.Struct{}.DecodeFromPtr(p))
+func (Chan_newRecver_Results) DecodeFromPtr(p capnp.Ptr) Chan_newRecver_Results {
+	return Chan_newRecver_Results(capnp.Struct{}.DecodeFromPtr(p))
 }
 
-func (s Chan_asRecver_Results) ToPtr() capnp.Ptr {
+func (s Chan_newRecver_Results) ToPtr() capnp.Ptr {
 	return capnp.Struct(s).ToPtr()
 }
-func (s Chan_asRecver_Results) IsValid() bool {
+func (s Chan_newRecver_Results) IsValid() bool {
 	return capnp.Struct(s).IsValid()
 }
 
-func (s Chan_asRecver_Results) Message() *capnp.Message {
+func (s Chan_newRecver_Results) Message() *capnp.Message {
 	return capnp.Struct(s).Message()
 }
 
-func (s Chan_asRecver_Results) Segment() *capnp.Segment {
+func (s Chan_newRecver_Results) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s Chan_asRecver_Results) Recver() Recver {
+func (s Chan_newRecver_Results) Recver() Recver {
 	p, _ := capnp.Struct(s).Ptr(0)
 	return Recver(p.Interface().Client())
 }
 
-func (s Chan_asRecver_Results) HasRecver() bool {
+func (s Chan_newRecver_Results) HasRecver() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s Chan_asRecver_Results) SetRecver(v Recver) error {
+func (s Chan_newRecver_Results) SetRecver(v Recver) error {
 	if !v.IsValid() {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
@@ -2074,91 +2074,91 @@ func (s Chan_asRecver_Results) SetRecver(v Recver) error {
 	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
-// Chan_asRecver_Results_List is a list of Chan_asRecver_Results.
-type Chan_asRecver_Results_List = capnp.StructList[Chan_asRecver_Results]
+// Chan_newRecver_Results_List is a list of Chan_newRecver_Results.
+type Chan_newRecver_Results_List = capnp.StructList[Chan_newRecver_Results]
 
-// NewChan_asRecver_Results creates a new list of Chan_asRecver_Results.
-func NewChan_asRecver_Results_List(s *capnp.Segment, sz int32) (Chan_asRecver_Results_List, error) {
+// NewChan_newRecver_Results creates a new list of Chan_newRecver_Results.
+func NewChan_newRecver_Results_List(s *capnp.Segment, sz int32) (Chan_newRecver_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Chan_asRecver_Results](l), err
+	return capnp.StructList[Chan_newRecver_Results](l), err
 }
 
-// Chan_asRecver_Results_Future is a wrapper for a Chan_asRecver_Results promised by a client call.
-type Chan_asRecver_Results_Future struct{ *capnp.Future }
+// Chan_newRecver_Results_Future is a wrapper for a Chan_newRecver_Results promised by a client call.
+type Chan_newRecver_Results_Future struct{ *capnp.Future }
 
-func (f Chan_asRecver_Results_Future) Struct() (Chan_asRecver_Results, error) {
+func (f Chan_newRecver_Results_Future) Struct() (Chan_newRecver_Results, error) {
 	p, err := f.Future.Ptr()
-	return Chan_asRecver_Results(p.Struct()), err
+	return Chan_newRecver_Results(p.Struct()), err
 }
-func (p Chan_asRecver_Results_Future) Recver() Recver {
+func (p Chan_newRecver_Results_Future) Recver() Recver {
 	return Recver(p.Future.Field(0, nil).Client())
 }
 
-const schema_872a451f9aa74ebf = "x\xda\x94VQh\x1cU\x14\xbdwg\xde\xbc4d" +
-	"\xbby\xfbb\xa5Z\x89\x95b\xa1\xb0K\xd2B#\xd1" +
-	"\xb2\xbbnCl\xa0%\x936 R?\x86tb\xa9" +
-	"\xdb\xb5\xddI\x8b\xa9\xe4#_A\xa5\xf8S?\x0cB" +
-	"\x11\xc4\xda\x14\xa9\x1f\x16\x85\x14\x04\xf3\xa3i\x04\xfd\xd2" +
-	"\x80K)T\xdaFS\x09XD!\x8c\xbc\xb7\xfbf" +
-	"\xde\xecNV\xf3\x95\xf0\xde\x99{\xcf=\xf7\xdcw\xb7" +
-	"\xe7z\"o\xf6&\xff\xa0\x90\xb0\x8f\x13\xcb_|s" +
-	"\xf5\xc0\x877\xc7\xa7\x81=\x86\x00\x04i'\xee\xab\x1a" +
-	"\xed\x08\xc8\x7f5r\x80\xfe\x8d\xfd\xd7\xc6/<\xf5\xe4" +
-	"\xdb\xc08\x02\x98\xe2\x9e\x98O \x98\xbe\xfd\xd7\xf8\xf2" +
-	"\xbd\xcb\xdf\xbe\x0fl\xab\xe1\x7f}\xe4\xcal\xf7\xc0\x9e" +
-	"\x19\x00\xe8D\xbej\xcc\xf2G\x06\x05\xe0k\xc6\x0c\xff" +
-	"\xc0\xdc\xcd\xb7\x90\x94\xff]ek\xf2\x9b\xe9w.\xd7" +
-	"B\xd5r\xad\x9b\xcf\x88\\\x84\x88\\\x97\xb6\xf5\xb7\x1f" +
-	"~\xef\xfe\xe7:\x99Q\x92\x16\x80W%\xe0\xb7/\x9e" +
-	"^\xfa\x1d{\xe7k\x00IfJ\xdc\x9b\xfe\xd5\xe7?" +
-	">\xbb\x94\xec\x9b\x07\xb6]\xdd\xb8dH\xdcL_\xc3" +
-	"\"v\x9e]\xac\xdd\xd4\x82\xdad$\x0c:\xfa)&" +
-	"\xbf\xcf\xdd\xbc\xa5\xd3\xfa\x8c\xbc(\x007$`\xe5\xcf" +
-	"\x0b\xef^?\xfe\xf0\x96\xca\x0a\xb0o\x8b%%Xy" +
-	"vW\xf2\x97\xa9\xbe\xaa\xc6g\x8d\xb4\x8b\x1b\xda\xb1\xe3" +
-	"\xb5\xe4Ur;F\x9ce2\xc7\xef\x10!N\x95\x0c" +
-	"\xf2\x8cEy\xc6J\xf9\x17?y}\xb9x\xe9\xe2]" +
-	"\xad\x80\x9d\x96,\xe0\xf6\xc2Oo\xdd\xa9\x9e\xba\xa7u" +
-	" i\xf5\x8b\x9b\x87\xdbV\x9e\xebZ\x9d\xbf\x1f\x93\xe4" +
-	"\x11\x99\xe3\xeb2\xc9\xdfd\x90\x1f\xb2(?d\xa5\xfc" +
-	"#\x0f\xba\xa6f\x7f\xbc\xf2 \xe6\x83\x03\xd6\xa2\x80\x01" +
-	"\xf0\x01k\x86\xafZ\xbby\x86\xa6\xfc\xb5\xed\x0b_N" +
-	"\xe6\xabk\xbax;\xa9\x14/C\x856\x0b\x93}\xc9" +
-	"\xaf\xee\xfe\xf0OCD\xe4\x87\xe9\x1c\x1f\xa5\"\x9eM" +
-	"\x07\xf9\xa4\xf8\xcf\x7f\xe1\xe5\xfdK\x1f\xfdL\xd75!" +
-	"\x1d\x9aF\xe8\xf1\xc7N:\xe5\xb2[\xca\x1ac\xce\x99" +
-	"\xf2\x99\xfe\xa3n\xf9\x84[\xc9zn\xf9\xc4\xaea\xa7" +
-	"\xe2\x9c\xf6\x00l\xd30\x01L\x04`\xc9\xbd\x00v\x9b" +
-	"\x81vW\x02\xbb\xcf;\xa5s.\xa6\x11C9\x000" +
-	"\x0d\xd8\x18\xb4x\xd2)g\x1do\xc4\x1d;\xefVd" +
-	"X\xe3\xb4\x17\x80P\x81\x0c\xa7<\x8ch\xb7\x19\x04 " +
-	"\xd0\x1e\x95IX\xef)\x80B\x0f\x16\xf2\xc8l\x8a\xe1" +
-	"|\xa0r7\x1b\x18\x02(\x1c\xc4\xc21d.\xf5\x1d" +
-	"O\x14S,A\xea\x0d\xcf\xad0\xec\xb6\xcd\x04\x86\xb3" +
-	"\x83\xa2\x9e\xb8\xc3<\xfa\x8a+l\x00\xd9\xe0;\xbb\x0d" +
-	"1\xect\xa1\x0dC3\x16zP}\x14\x00D\x9c\xc7" +
-	"m\x13\x11q\xd8@)d\x100\xcc\x11\x84h\x0d/" +
-	"\x98\xc80\x8d\xc7Zk?\xe2z\xe7hi\xc2\xd3[" +
-	"\xda_o\xe9\xc1\x04\xe6*\x12\x86L\xcf\x9a\xc7MR" +
-	"A\xd6l\x81Z\xfe\xac\x88/I\x94&\xd0\xfbo_" +
-	"i\x09\xe3|\xa5\x9bU\x05\x0d0f\x88)\x96\x84\x03" +
-	"\xb25C\xd4\x1d(\x8c\xfd\x7f\xb0qdu\xc5<\x09" +
-	"C\xa6\xcf@\xa8\x98v\xd8\xa4\x98\xe6\x83\x88bf\xa4" +
-	"q!\xa7:\x15/2\x8f\xaf\x00\xd8\x1d\x06\xda/%" +
-	"\xd0\xf7\xeaP0$!-~~\xb3\xe6\x8bka]" +
-	"\x991\xf1\xa7\xc6\xc5\x98\xf0Z\xf5\xb9IfT\x98\x94" +
-	"\x00\x89Y7\xe5\xac\xab\xc7\x1c\xd5\x1abl\x0f@\xa1" +
-	"\x03\x0b;\x90ehJDk\xf2\xa0>\x87\x91\xc3<" +
-	"\x0e#6\x8dC\\\x8b\xeb\xba6\xf146\xea@\xae" +
-	"\x06m,\xe8\xa8\x9b\x12&\x08\x0bR\xbb\x1d\xd5\xdal" +
-	"(Ht\xaa\xc9\"zA\x91\xc3\xf8\x82\x12\x8d\x05\x01" +
-	"\x84\xaf\xa7Z\xca\xa8v0\xeb\x1d\x8a\xbe\x9ej\xeb\xa1" +
-	"Z4\xb1\xafg\xe4\x09\x0c\xbc\xa33\x8d\x1c\xca\xa7S" +
-	"\xb1\xd9\xd4w\xf2\xe9\x0c\xaa\x16Og\xb0\xdfbTi" +
-	"=M\x9b\xe9}\xab\xf1\xeeJ`N\xba]LSH" +
-	"\x07#\xc3\xa1\xb6WIn\x99\xd0\x02j\xe3\xa2\xfa\x0d" +
-	"\xc3\xd8^H0B\xbbeH\xd9\xd3\x96\x13&\xad\x86" +
-	"\xde\xbf\x01\x00\x00\xff\xffU\x8d\xf5\xfe"
+const schema_872a451f9aa74ebf = "x\xda\x94VQh\x1cU\x17>gg\xee\xdc\xfc!" +
+	"\xdb\xc9\xdd\x9b\xbfR\xad\xacHk!\xe0\x92m\xa1\x91" +
+	"\xa8d\xc7m\x89\x0a)\x99\xb5\x01-\xf5aH'\x16" +
+	"\xdd\x8c\xedN\xd3\xdaJ\x1e\xf2\x14T\x8a/\xf5\xc1 " +
+	"\x14A\xacM\x11\xfb\xa0\xa8\xa4 \x98\x17M#\xe8\x93" +
+	"\x16\\J\xa1\xa5m4\x95\x80E\x14\xc2\xc8\x9d\xdd;" +
+	"sww\xbau\x9f\x12\xee\xfd\xe6;\xe7|\xe7;\xf7" +
+	"\xec\xc0\xc5TA\xcf\xa7\xff\xa0\x90\xb2\x0f\x12#X~" +
+	"c\xed\xe9\x0f.M\xce\x02\xfb?\x02\x10\xa4\xbd\xb8\xab" +
+	"\xaau# \xbf\xa1\x0d\x03\x06_\xec\xbe0y\xea\xe1" +
+	"\x87\xde\x02\xc6\x11@\x17\xf7D\x7f\x14A\x0f\xec\xbf&" +
+	"\xaf\xdc<\xfb\xdd{\xc06i\xc17\xfb\xce\xcdg\xf7" +
+	"\xf6\xcf\x01@/\xf25m\x9e\xdf\xd5(\x00_\xd7\xe6" +
+	"\xf8\xfb\xfa\x0e\xfe?b\x06\xdfW6\xa5\xbf\x9d}\xfb" +
+	"l\x8d\xaa\x16kC\xef\x17\xb1\x08\x11\xb1\xcel\x1e\xea" +
+	"\x1e}\xf7\xd6E5\x99q\x92\x11\x80\x97C\xc0o\x9f" +
+	"?\xb2\xf2;\xe6\x17k\x800\x99\x19q\xaf\x07\xe7\x9f" +
+	"\xfc\xe8\xe8Jzp\x11\xd8\x16y\xe3\x92\x92\xb8\x99\xbd" +
+	"\x80E\xec=\xba\\\xbb\xa9\x91\xda\xe4@L:\xfe\x09" +
+	"\xa6\x7f\x18\xbetYM\xebS\xf2\xbc\x00|\x1d\x02V" +
+	"\xff<\xf5\xceg\x07\xef\\\x96Q\x01v\xa5\x8d\x07\x05" +
+	"\xf7\xeac\xdb\xd2\xbf\xce\x0cV\x95|\xee\x92nqC" +
+	"{\xb6\xbe\x92>O\xae&\x88S%\x0b\xfc\x06\x11\xe2" +
+	"\\##<oP\x9e7\xcc\xe0\xf4\xc7\xaf])\x9e" +
+	"9}])`\xbb\x11\x16pu\xe9\xe77\xafU_" +
+	"\xbd\xa9t\x80\x19\xcf\x88\x9b;\x9bW\x9f\xe8[[\xbc" +
+	"\x95\x10\xe4o\xb2\xc0\xd1\x10A6\xc8\x08\x1f5(\x1f" +
+	"5\xcc`\xdf\xed\xbe\x99\xf9\x9f\xce\xddN\xf8\xc02\x96" +
+	"\x05\x0c\x80?g\xcc\xf1uc\x07\xcfS3X\xdf\xb2" +
+	"\xf4\xe5\xc9Bu]\x15o;\x0d\xc5\xcbS\xa1\xcd\xd2" +
+	"\xc9\xc1\xf4W\xd7\x7f\xfc\xa7\x89\x11\xb9M\x17\xf8KT" +
+	"\xf0\x8d\xd3\x11>#\xfe\x0b\x9ezq\xf7\xca\x87\xbf\xd0" +
+	"\x0dEH\x97f\x10\x06\x82\x89\xc3\x8e\xe7\xb9\xe5\x9c6" +
+	"\xe1\x1c\xf1\x8e\x0c\xbd\xe0z\x87\xdcJ\xcew\xbdC\xdb" +
+	"\xc6\x9c\x8a3\xe5\x03\xd8\xba\xa6\x03\xe8\x08\xc0\xd2;\x01" +
+	"\xec.\x0d\xed\xbe\x14f\x8f;\xe5i\x173\x88\xb1\x1c" +
+	"\x00\x98\x01l&-\x1ev\xbc\x9c\xe7\x9e(\xb9\x13\xc7" +
+	"\xdd\x8a\xe0\xa5\xce\x94\x1f\xa1P\xa24\xc7\x1bC\xb4\xbb" +
+	"4\x02\x10\x89\x8f\xd2%,_\x01\xb0\x06\xd0* \xb3" +
+	")\xc6\x03\x82\xd2\xdelo\x09\xc0\xda\x83\xd6~d." +
+	"\x0d<\xf7\x84(\xa7\x08\xd9\xf2\xeb\xbe[a\x98\xb5\xf5" +
+	"\x14\xc6\xd3\x83\xa2\xa2\xa4\xc3\x02\x062[\xc0\x8e\xbe\xb3" +
+	"\xbb\x10\xe3^[]\x18\xdb\xd1\x1a@\xf9Q\x04\x10<" +
+	"\x0f\xd8:\"\xe2\x98\x86\xa1\x94\x11a\x1c#\xa2h\x0f" +
+	"\xb7td\x98\xc1\xfd\xf7Q\xbf\xe4\xfa\xe6t\xf9\x98\xaf" +
+	"vu\xa8\xde\xd5=)\x1c\xae\x840dj\xd8\x02v" +
+	"\x98\x0b\xb2V\x17\xd4\xe2\xe7\x04\xbfHb\xba|\x0c\xfd" +
+	"\xfb[K\x09\x98d-\xd5\xaf\x924\xc2\xe81\xa6\x18" +
+	"Z W\xb7D\xcd\x84\xce\xd4\x7f\xc4\x86\xc4\xda\xbd%" +
+	"\xf3C\x182u\x0eb\xc9\x94\xc3\x16\xc9\x14'4H" +
+	"\xa67\xb6.\xce\xaa^d\xd3T\x1e\x00\xb0{4\xb4" +
+	"\x9fMa\xe0\xd7\xb1\xa0\x85))\x11\x0a\x9d\x1a0\xa9" +
+	"\x8buq&\xc4\x9fH\x98v\xad\x96\xafH\xf3\xb8\x97" +
+	"\\S\x80\xc4\xc0\xeb\xe1\xc0\xcb'\x1d\xe52b\xac\x1f" +
+	"\xc0\xeaAk+\xb2\xc7\xa9)\xd8Zl\xa8\xceb\xc3" +
+	"a\x01\xc7\x10[F\"\xb1\xcbue\x9b\x1da\xdc\xb3" +
+	"\x07\xf5\x92$Pr\x9a\xc2\x05q=r\xc1\xa3\xdc\x9d" +
+	"M\xf5\x88F\xb5xD\xad\xa7\xe10\xb9\x9eTs=" +
+	"\x00\xf1\x0b*73\xcaE\xcc\xf2\xa5\xc6\x17T\xae>" +
+	"\x94\xdb&\xf9\x05U_\xc1\xc8:j\xa6\x0d\x87\xb5\xd7" +
+	"3L\xa7\xc3\xef\xc2\xd73\xaaZ\xbc\x9e\xd1\x92KP" +
+	"\xa5\xfd8u\xd4\xfav\x03\xde\x97\xc2\xe1\xd0\xedb\x9a" +
+	"\xe2|\xb0a8\xe4\x0a+\x9b\x02\x18{@\xee]\x94" +
+	"\xbfd\x18\xdb\x09)Fh6\xa4\x0c\x9b\xdav\xc2\xea" +
+	"\xa6\xfc7\x00\x00\xff\xff\xda\x9e\xfa="
 
 func init() {
 	schemas.Register(schema_872a451f9aa74ebf,

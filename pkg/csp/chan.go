@@ -15,13 +15,13 @@ var (
 )
 
 type ( // server methods
-	MethodClose        = api.Closer_close
-	MethodSend         = api.Sender_send
-	MethodRecv         = api.Recver_recv
-	MethodAsSender     = api.SendCloser_asSender
-	MethodAsCloser     = api.SendCloser_asCloser
-	MethodAsRecver     = api.Chan_asRecver
-	MethodAsSendCloser = api.Chan_asSendCloser
+	MethodClose         = api.Closer_close
+	MethodSend          = api.Sender_send
+	MethodRecv          = api.Recver_recv
+	MethodNewSender     = api.SendCloser_newSender
+	MethodNewCloser     = api.SendCloser_newCloser
+	MethodNewRecver     = api.Chan_newRecver
+	MethodNewSendCloser = api.Chan_newSendCloser
 )
 
 type ( // server interfaces
@@ -40,15 +40,15 @@ type ( // server interfaces
 	SendCloseServer interface {
 		SendServer
 		CloseServer
-		AsSender(context.Context, MethodAsSender) error
-		AsCloser(context.Context, MethodAsCloser) error
+		NewSender(context.Context, MethodNewSender) error
+		NewCloser(context.Context, MethodNewCloser) error
 	}
 
 	ChanServer interface {
 		RecvServer
 		SendCloseServer
-		AsRecver(context.Context, MethodAsRecver) error
-		AsSendCloser(context.Context, MethodAsSendCloser) error
+		NewRecver(context.Context, MethodNewRecver) error
+		NewSendCloser(context.Context, MethodNewSendCloser) error
 	}
 )
 
@@ -82,21 +82,21 @@ func (c Chan) Release() {
 	c.Client().Release()
 }
 
-func (c Chan) AsCloser(ctx context.Context) (Closer, capnp.ReleaseFunc) {
-	return SendCloser(c).AsCloser(ctx)
+func (c Chan) NewCloser(ctx context.Context) (Closer, capnp.ReleaseFunc) {
+	return SendCloser(c).NewCloser(ctx)
 }
 
-func (c Chan) AsSender(ctx context.Context) (Sender, capnp.ReleaseFunc) {
-	return SendCloser(c).AsSender(ctx)
+func (c Chan) NewSender(ctx context.Context) (Sender, capnp.ReleaseFunc) {
+	return SendCloser(c).NewSender(ctx)
 }
 
-func (c Chan) AsRecver(ctx context.Context) (Recver, capnp.ReleaseFunc) {
-	f, release := api.Chan(c).AsRecver(ctx, nil)
+func (c Chan) NewRecver(ctx context.Context) (Recver, capnp.ReleaseFunc) {
+	f, release := api.Chan(c).NewRecver(ctx, nil)
 	return Recver(f.Recver()), release
 }
 
-func (c Chan) AsSendCloser(ctx context.Context) (SendCloser, capnp.ReleaseFunc) {
-	f, release := api.Chan(c).AsSendCloser(ctx, nil)
+func (c Chan) NewSendCloser(ctx context.Context) (SendCloser, capnp.ReleaseFunc) {
+	f, release := api.Chan(c).NewSendCloser(ctx, nil)
 	return SendCloser(f.SendCloser()), release
 }
 
@@ -174,13 +174,13 @@ func (sc SendCloser) Release() {
 	sc.Client().Release()
 }
 
-func (sc SendCloser) AsSender(ctx context.Context) (Sender, capnp.ReleaseFunc) {
-	f, release := api.SendCloser(sc).AsSender(ctx, nil)
+func (sc SendCloser) NewSender(ctx context.Context) (Sender, capnp.ReleaseFunc) {
+	f, release := api.SendCloser(sc).NewSender(ctx, nil)
 	return Sender(f.Sender()), release
 }
 
-func (sc SendCloser) AsCloser(ctx context.Context) (Closer, capnp.ReleaseFunc) {
-	f, release := api.SendCloser(sc).AsCloser(ctx, nil)
+func (sc SendCloser) NewCloser(ctx context.Context) (Closer, capnp.ReleaseFunc) {
+	f, release := api.SendCloser(sc).NewCloser(ctx, nil)
 	return Closer(f.Closer()), release
 }
 
