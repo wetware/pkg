@@ -18,9 +18,4 @@ interface Process {
     start  @0 () -> ();             # start the process
     stop   @1 () -> ();              # TODO: provide a signal such as SIGTERM, SIGKILL...
     wait   @2 () -> (error :Text);   # wait for an started process to finish
-    
-    stdin  @3 () -> (stdin :IOStream.Stream);
-    stdout @4 (stdout :IOStream.Stream) ->  ();
-    stderr @5 (stderr :IOStream.Stream) -> ();
-    using IOStream = import "iostream.capnp";
 }

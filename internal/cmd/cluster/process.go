@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/urfave/cli/v2"
@@ -46,10 +45,6 @@ func run() *cli.Command {
 
 func runAction() cli.ActionFunc {
 	return func(c *cli.Context) error {
-
-		var stdin io.Reader = os.Stdin
-		var stdout, stderr io.Writer
-
 		ctx := c.Context
 		// Load the name of the entry function and the WASM file containing the module to run
 		binary, err := os.ReadFile(c.String(_module))
@@ -65,33 +60,15 @@ func runAction() cli.ActionFunc {
 			Executable: binary,
 			EntryPoint: c.String(_func),
 		})
+		defer release()
 		defer proc.Close(ctx)
-
-		// Select the output
-		if c.Bool(_json) {
-			stdout = new(bytes.Buffer)
-			stderr = new(bytes.Buffer)
-		} else {
-			stdout = os.Stdout
-			stderr = os.Stderr
-		}
 
 		if err := proc.Start(ctx); err != nil {
 			return err
 		}
 		defer proc.Stop(ctx)
 
-		// Run the process
-		errs := proc.Run(ctx, stdin, stdout, stderr)
-
-		// Output the results
-		if c.Bool(_json) {
-			err = outputToJSON(stdout.(*bytes.Buffer), stderr.(*bytes.Buffer), errs)
-		} else {
-			err = outputToLog(errs)
-		}
-
-		return err
+		return proc.Wait(ctx)
 	}
 }
 
@@ -118,15 +95,4 @@ func outputToJSON(output *bytes.Buffer, errorOutput *bytes.Buffer, errs []error)
 	}
 	fmt.Println(string(content))
 	return nil
-}
-
-func outputToLog(errs []error) error {
-	var err error
-	if errs != nil && len(errs) > 0 {
-		for _, err := range errs {
-			logger.Error(err)
-		}
-		err = runError
-	}
-	return err
 }

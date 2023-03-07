@@ -86,45 +86,9 @@ type process struct {
 	ByteCode  ByteCode
 	EntryFunc string
 
-	io     processIO
 	cancel context.CancelFunc
 	done   chan struct{}
 	err    error
-}
-
-func (p *process) Shutdown() {
-	p.io.Release()
-}
-
-// Stdin returns the input stream of the process.
-func (p *process) Stdin(ctx context.Context, call api.Process_stdin) error {
-	if p.cancel == nil {
-		return errors.New("not started")
-	}
-
-	res, err := call.AllocResults()
-	if err == nil {
-		stdin := p.io.Stdin()
-		err = res.SetStdin(stdin)
-	}
-
-	return err
-}
-
-func (p *process) Stdout(ctx context.Context, call api.Process_stdout) error {
-	if p.cancel == nil {
-		return errors.New("not started")
-	}
-
-	return p.io.BindStdout(context.TODO(), call.Args().Stdout())
-}
-
-func (p *process) Stderr(ctx context.Context, call api.Process_stderr) error {
-	if p.cancel == nil {
-		return errors.New("not started")
-	}
-
-	return p.io.BindStderr(context.TODO(), call.Args().Stderr())
 }
 
 // Stop calls the runtime cancellation function.
@@ -144,14 +108,9 @@ func (p *process) Start(ctx context.Context, _ api.Process_start) error {
 	}
 
 	name := moduleName(p.ByteCode)
-	p.io = newIO()
-
 	config := wazero.
 		NewModuleConfig().
-		WithName(name).
-		WithStdin(p.io.inR).
-		WithStdout(p.io.outW).
-		WithStderr(p.io.errW)
+		WithName(name)
 
 	mod, err := p.loadModule(ctx, name, config)
 	if err != nil {
@@ -187,7 +146,6 @@ func (p *process) run(entrypoint wasm.Function) {
 	p.done = make(chan struct{})
 	go func() {
 		defer close(p.done)
-		defer p.io.Release()
 		defer cancel()
 
 		_, p.err = entrypoint.Call(ctx)
