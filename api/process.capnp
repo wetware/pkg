@@ -10,8 +10,6 @@ interface Executor {
     spawn @0 (byteCode :Data, entryPoint :Text = "run") -> (process :Process);
     # spawn a WASM based process from the binary module with the target
     # entry function 
-
-    using IOStream = import "iostream.capnp";
 }
 
 interface Process {

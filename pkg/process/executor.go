@@ -28,7 +28,7 @@ type Config struct {
 }
 
 func (c Config) bind(ps api.Executor_spawn_Params) (err error) {
-	if err = ps.SetByteCode(c.Executable); err == nil {
+	if err = ps.SetByteCode(c.Executable); err == nil && c.EntryPoint != "" {
 		err = ps.SetEntryPoint(c.EntryPoint)
 	}
 
