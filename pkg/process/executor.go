@@ -8,6 +8,7 @@ import (
 	"github.com/tetratelabs/wazero"
 	"lukechampine.com/blake3"
 
+	wasm "github.com/tetratelabs/wazero/api"
 	api "github.com/wetware/ww/internal/api/process"
 )
 
@@ -69,15 +70,15 @@ func (wx Server) Spawn(ctx context.Context, call api.Executor_spawn) error {
 		return err
 	}
 
-	p, err := wx.mkproc(call.Args())
+	p, err := wx.mkproc(ctx, call.Args())
 	if err == nil {
-		res.SetProcess(api.Process_ServerToClient(p))
+		err = res.SetProcess(api.Process_ServerToClient(p))
 	}
 
 	return err
 }
 
-func (wx Server) mkproc(args api.Executor_spawn_Params) (*process, error) {
+func (wx Server) mkproc(ctx context.Context, args api.Executor_spawn_Params) (*process, error) {
 	bytecode, err := args.ByteCode()
 	if err != nil {
 		return nil, err
@@ -88,9 +89,31 @@ func (wx Server) mkproc(args api.Executor_spawn_Params) (*process, error) {
 		return nil, err
 	}
 
+	mod, err := wx.loadModule(ctx, bytecode)
+	if err != nil {
+		return nil, err
+	}
+
 	return &process{
-		Runtime:   wx.Runtime,
-		ByteCode:  bytecode,
+		Module:    mod,
 		EntryFunc: entrypoint,
 	}, nil
+}
+
+func (wx Server) loadModule(ctx context.Context, bc ByteCode) (wasm.Module, error) {
+	name := moduleName(bc)
+	config := wazero.
+		NewModuleConfig().
+		WithName(name)
+
+	if mod := wx.Runtime.Module(name); mod != nil {
+		return mod, nil
+	}
+
+	module, err := wx.Runtime.CompileModule(ctx, bc)
+	if err != nil {
+		return nil, err
+	}
+
+	return wx.Runtime.InstantiateModule(ctx, module, config)
 }

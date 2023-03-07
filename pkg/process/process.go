@@ -8,7 +8,6 @@ import (
 	"math/rand"
 
 	capnp "capnproto.org/go/capnp/v3"
-	"github.com/tetratelabs/wazero"
 	wasm "github.com/tetratelabs/wazero/api"
 
 	casm "github.com/wetware/casm/pkg"
@@ -82,8 +81,7 @@ func (p Proc) wait(f api.Process_wait_Results_Future) error {
 
 // process is the main implementation of the Process capability.
 type process struct {
-	Runtime   wazero.Runtime
-	ByteCode  ByteCode
+	Module    wasm.Module
 	EntryFunc string
 
 	cancel context.CancelFunc
@@ -107,40 +105,11 @@ func (p *process) Start(ctx context.Context, _ api.Process_start) error {
 		return errors.New("running")
 	}
 
-	name := moduleName(p.ByteCode)
-	config := wazero.
-		NewModuleConfig().
-		WithName(name)
-
-	mod, err := p.loadModule(ctx, name, config)
-	if err != nil {
-		return err
-	}
-
-	entrypoint := mod.ExportedFunction(p.EntryFunc)
+	entrypoint := p.Module.ExportedFunction(p.EntryFunc)
 	if entrypoint == nil {
-		return fmt.Errorf("module %s: %s not found", name, p.EntryFunc)
+		return fmt.Errorf("module %s: %s not found", p.Module.Name(), p.EntryFunc)
 	}
 
-	p.run(entrypoint)
-	return nil
-}
-
-func (p *process) loadModule(ctx context.Context, name string, config wazero.ModuleConfig) (wasm.Module, error) {
-	if mod := p.Runtime.Module(name); mod != nil {
-		return mod, nil
-	}
-
-	module, err := p.Runtime.CompileModule(ctx, p.ByteCode)
-	if err != nil {
-		return nil, err
-	}
-
-	return p.Runtime.InstantiateModule(ctx, module, config)
-}
-
-// run the process and write to p.runDone after it is done.
-func (p *process) run(entrypoint wasm.Function) {
 	ctx, cancel := context.WithCancel(context.Background())
 	p.cancel = cancel
 	p.done = make(chan struct{})
@@ -150,6 +119,8 @@ func (p *process) run(entrypoint wasm.Function) {
 
 		_, p.err = entrypoint.Call(ctx)
 	}()
+
+	return nil
 }
 
 // Wait for the process to finish running.
@@ -157,7 +128,7 @@ func (p *process) Wait(ctx context.Context, call api.Process_wait) error {
 	results, err := call.AllocResults()
 	if err == nil {
 		call.Go()
-		return p.wait(ctx, results.SetError)
+		err = p.wait(ctx, results.SetError)
 	}
 
 	return err
