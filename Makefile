@@ -10,7 +10,7 @@ all: capnp
 clean: clean-capnp clean-mocks
 
 
-capnp: capnp-anchor capnp-pubsub capnp-cluster capnp-channel capnp-process capnp-iostream capnp-wasm
+capnp: capnp-anchor capnp-pubsub capnp-cluster capnp-channel capnp-process capnp-iostream
 # N.B.:  compiling capnp schemas requires having capnproto.org/go/capnp/v3 installed
 #        on the GOPATH.
 
@@ -38,10 +38,6 @@ capnp-iostream:
 	@mkdir -p internal/api/iostream
 	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/std -ogo:internal/api/iostream --src-prefix=api api/iostream.capnp
 
-capnp-wasm:
-	@mkdir -p internal/api/wasm
-	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/std -ogo:internal/api/wasm --src-prefix=api api/wasm.capnp
-
 
 clean-capnp: clean-capnp-anchor clean-capnp-pubsub clean-capnp-cluster clean-capnp-channel clean-capnp-process clean-capnp-iostream clean-capnp-wasm
 
@@ -62,9 +58,6 @@ clean-capnp-process:
 
 clean-capnp-iostream:
 	@rm -rf internal/api/iostream
-
-clean-capnp-wasm:
-	@rm -rf internal/api/wasm
 
 
 mocks: clean-mocks
