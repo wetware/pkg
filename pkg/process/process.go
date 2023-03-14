@@ -2,13 +2,13 @@ package process
 
 import (
 	"context"
-	"encoding/hex"
 	"errors"
 	"fmt"
-	"math/rand"
+	"sync/atomic"
 
 	capnp "capnproto.org/go/capnp/v3"
 	wasm "github.com/tetratelabs/wazero/api"
+	"github.com/tetratelabs/wazero/sys"
 
 	casm "github.com/wetware/casm/pkg"
 	api "github.com/wetware/ww/internal/api/process"
@@ -43,122 +43,150 @@ func (p Proc) Wait(ctx context.Context) error {
 	f, release := api.Process(p).Wait(ctx, nil)
 	defer release()
 
-	return p.wait(f)
-
-}
-
-func (p Proc) Close(ctx context.Context) error {
-	stop, release := api.Process(p).Stop(ctx, nil)
-	defer release()
-
-	wait, release := api.Process(p).Wait(ctx, nil)
-	defer release()
-
-	if err := casm.Future(stop).Await(ctx); err != nil {
-		return fmt.Errorf("stop: %w", err)
-	}
-
-	return p.wait(wait)
-}
-
-func (p Proc) wait(f api.Process_wait_Results_Future) error {
 	res, err := f.Struct()
 	if err != nil {
 		return err
 	}
 
-	if !res.HasError() {
-		return nil
-	}
-
-	msg, err := res.Error()
+	e, err := res.Error()
 	if err != nil {
 		return err
 	}
 
-	return Error{Message: msg}
+	switch e.Which() {
+	case api.Error_Which_none:
+		return nil
+
+	case api.Error_Which_exitErr:
+		mod, err := e.ExitErr().Module()
+		if err != nil {
+			return err
+		}
+		return sys.NewExitError(mod, e.ExitErr().Code())
+	}
+
+	return fmt.Errorf("unknown error type: %d", e.Which())
 }
 
 // process is the main implementation of the Process capability.
 type process struct {
-	Module    wasm.Module
-	EntryFunc string
-
-	cancel context.CancelFunc
-	done   chan struct{}
-	err    error
+	fn     wasm.Function
+	handle procHandle
 }
 
 // Stop calls the runtime cancellation function.
-func (p *process) Stop(ctx context.Context, _ api.Process_stop) error {
-	if p.cancel == nil {
-		return errors.New("not started")
+func (p *process) Stop(context.Context, api.Process_stop) error {
+	state := p.handle.Load()
+	if state.Err == nil {
+		state.Cancel()
 	}
 
-	p.cancel()
-	return nil
+	return state.Err
 }
 
 // Start the process in the background.
-func (p *process) Start(ctx context.Context, _ api.Process_start) error {
-	if p.cancel != nil {
-		return errors.New("running")
+func (p *process) Start(_ context.Context, call api.Process_start) error {
+	state := p.handle.Load()
+	if state.Err != ErrNotStarted {
+		return state.Err
 	}
 
-	entrypoint := p.Module.ExportedFunction(p.EntryFunc)
-	if entrypoint == nil {
-		return fmt.Errorf("module %s: %s not found", p.Module.Name(), p.EntryFunc)
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	p.cancel = cancel
-	p.done = make(chan struct{})
-	go func() {
-		defer close(p.done)
-		defer cancel()
-
-		_, p.err = entrypoint.Call(ctx)
-	}()
-
+	p.handle.Exec(p.fn)
 	return nil
 }
 
 // Wait for the process to finish running.
 func (p *process) Wait(ctx context.Context, call api.Process_wait) error {
+	state := p.handle.Load()
+	if state.Err == ErrNotStarted {
+		return state.Err
+	}
+
 	results, err := call.AllocResults()
-	if err == nil {
-		call.Go()
-		err = p.wait(ctx, results.SetError)
+	if err != nil {
+		return err
 	}
 
-	return err
-}
-
-func (p *process) wait(ctx context.Context, setErr func(string) error) error {
-	if p.cancel == nil {
-		return errors.New("not started")
-	}
+	call.Go()
 
 	select {
-	case <-p.done:
 	case <-ctx.Done():
 		return ctx.Err()
+	case <-state.Ctx.Done():
+		return p.handle.Bind(results)
 	}
-
-	if p.err != nil {
-		return setErr(p.err.Error())
-	}
-
-	return nil
 }
 
-// moduleName retuns a shortened md5hash of the module
-func moduleName(b ByteCode) string {
-	prefix := b.String()[:8]
+// procHandle encapsulates all the runtime state of a process.  Its
+// methods are safe for concurrent access.
+type procHandle atomic.Pointer[state]
 
-	var buf [4]byte
-	rand.Read(buf[:])
-	suffix := hex.EncodeToString(buf[:])
+var (
+	ErrRunning    = errors.New("running")
+	ErrNotStarted = errors.New("not started")
+)
 
-	return prefix + "-" + suffix
+// Exec sets the current state to ErrRunning, calls the function, and
+// then sets the current state to the resulting error.
+func (as *procHandle) Exec(fn wasm.Function) {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// set "running" state
+	(*atomic.Pointer[state])(as).Store(&state{
+		Ctx:    ctx,
+		Cancel: cancel,
+		Err:    ErrRunning,
+	})
+
+	go func() {
+		defer cancel()
+
+		// block until function call completes
+		_, err := fn.Call(ctx)
+
+		// call entrypoint function & set "finished" state
+		(*atomic.Pointer[state])(as).Store(&state{
+			Ctx:    ctx,
+			Cancel: cancel,
+			Err:    err,
+		})
+	}()
+}
+
+// Bind the error from the entrypoint function to the results struct.
+// Callers MUST NOT call Bind until the function has returned.
+func (as *procHandle) Bind(res api.Process_wait_Results) error {
+	state := as.Load()
+	if state.Err == nil {
+		return nil
+	}
+
+	e, err := res.NewError()
+	if err != nil {
+		return err
+	}
+
+	ee := state.Err.(*sys.ExitError)
+	e.SetExitErr()
+	e.ExitErr().SetCode(ee.ExitCode())
+	return e.ExitErr().SetModule(ee.ModuleName())
+}
+
+// Load the current state atomically.  The resulting resulting state
+// defaults to ErrNotStarted.
+func (as *procHandle) Load() state {
+	if s := (*atomic.Pointer[state])(as).Load(); s != nil {
+		return *s
+	}
+
+	return state{
+		Cancel: func() {},
+		Err:    ErrNotStarted,
+	}
+}
+
+type state struct {
+	Ctx    context.Context
+	Cancel context.CancelFunc
+	Err    error
 }

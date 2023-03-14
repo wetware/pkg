@@ -13,7 +13,18 @@ interface Executor {
 }
 
 interface Process {
-    start  @0 () -> ();             # start the process
-    stop   @1 () -> ();              # TODO: provide a signal such as SIGTERM, SIGKILL...
-    wait   @2 () -> (error :Text);   # wait for an started process to finish
+    start  @0 () -> ();
+    stop   @1 () -> ();
+    wait   @2 () -> (error :Error);
+}
+
+struct Error {
+    union {
+        none       @0 :Void;
+        msg        @1 :Text;
+        exitErr       :group {
+            code   @2 :UInt32;
+            module @3 :Text;
+        }
+    }
 }

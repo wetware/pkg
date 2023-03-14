@@ -10,6 +10,7 @@ import (
 	server "capnproto.org/go/capnp/v3/server"
 	context "context"
 	fmt "fmt"
+	strconv "strconv"
 )
 
 type Executor capnp.Client
@@ -962,22 +963,28 @@ func (s Process_wait_Results) Message() *capnp.Message {
 func (s Process_wait_Results) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s Process_wait_Results) Error() (string, error) {
+func (s Process_wait_Results) Error() (Error, error) {
 	p, err := capnp.Struct(s).Ptr(0)
-	return p.Text(), err
+	return Error(p.Struct()), err
 }
 
 func (s Process_wait_Results) HasError() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s Process_wait_Results) ErrorBytes() ([]byte, error) {
-	p, err := capnp.Struct(s).Ptr(0)
-	return p.TextBytes(), err
+func (s Process_wait_Results) SetError(v Error) error {
+	return capnp.Struct(s).SetPtr(0, capnp.Struct(v).ToPtr())
 }
 
-func (s Process_wait_Results) SetError(v string) error {
-	return capnp.Struct(s).SetText(0, v)
+// NewError sets the error field to a newly
+// allocated Error struct, preferring placement in s's segment.
+func (s Process_wait_Results) NewError() (Error, error) {
+	ss, err := NewError(capnp.Struct(s).Segment())
+	if err != nil {
+		return Error{}, err
+	}
+	err = capnp.Struct(s).SetPtr(0, capnp.Struct(ss).ToPtr())
+	return ss, err
 }
 
 // Process_wait_Results_List is a list of Process_wait_Results.
@@ -996,52 +1003,241 @@ func (f Process_wait_Results_Future) Struct() (Process_wait_Results, error) {
 	p, err := f.Future.Ptr()
 	return Process_wait_Results(p.Struct()), err
 }
+func (p Process_wait_Results_Future) Error() Error_Future {
+	return Error_Future{Future: p.Future.Field(0, nil)}
+}
 
-const schema_9a51e53177277763 = "x\xda|\x92?h\x14A\x14\xc6\xdf7\xbb\x97\x0d\x98" +
-	"3L6FLs\x18#\x9a\x88\xc9]b\xa1\xa2\xe6" +
-	"P\x8e@\x1aw\xec\x14\x94\xac\xe7\x82\x81\xbb\xdbs\xff" +
-	"p\xb9B$\x85X\xd9(AP\x82iB,DC" +
-	"\xd4\xc2X\xa5\x10[=\x85\x80\x16\x82\"\xa8E\x10;" +
-	"\xab\x95\xd9\xbb\xdd\\\xa2\x97n\x86\xef\xcd\xf7~\xef\x9b" +
-	"\x97>\x85\xac\x9aI\xae\xa9\xc4\xc4\xd1D[phr" +
-	"\xfea\xce\x9b\x9c#\xde\x03\xa2\x044\xa2Q\xc1zA" +
-	"\xd0\xcf\xb31BP\xf3g\x16V.\x0d=%\xbeS" +
-	"\x09\xf2\x95\x03\x95\xcc7q\x9f\x08z\x95\xad\xe83L" +
-	"#\xd2\xaf\xb3q}A\x9e\x82\x07ok\x8bK=g" +
-	"_\x11\xdf\x1d\xbb\xddf\x83\xd2m6t[\xbf\xf7\xc1" +
-	"]\xbe\x9ay]o\xa7J\xfd\x85\xec\xa6\x06\xdfo\xad" +
-	"\xb6}\xf6\x87kM\xca\x1c\xeb\x92\xca\xe3\xf1t\xff\xfc" +
-	"\xf3\xc1\xb5&\xe5&\xeb\x93\xcah\xdb\xfeG\xef\x7f\xed" +
-	"\xfb\xf8\x0f[\x91-\xeb~\xc8v\x8d\xbd\xd1\x7f\x84l" +
-	"\xe3\x17\x87\x97\xf6<Y\\o\xb2yWo\xd0u\xf7" +
-	"\xce\xec\xcf\x93;~7\xa8e\xf5\xe8K\xd9\x01\xfa*" +
-	"\xab\x10\x82\xaf\xcf>\xb5\x7f\x99\x98\xfa\xd3\xf4t@\xe9" +
-	"\x05\xa5\x83\xb2c\xe7-\xd7\x1dR\xf2f\xb9T>n" +
-	"4\xae\x15s\xca\xeb?g\xb9~A\xf1\\\xa1**" +
-	"\x91\x0a\"\x9e\x1c!\x12\xed\x0aD7C\xcar\x1c\xdb" +
-	"A\x071t\x10b'\xd4\x9dr\xd3cV\xde\xf7l" +
-	"\xc7\x00\x84\xaa$\x88bLD)s>B\x8c'\xb4" +
-	"\x94[6+\xa5,\x0c`+Pn\xba\xee2\x14\x96" +
-	"H\xa4N\xbf\xb0\x19\xe9\xf4\x06\xd2\x8d\xc6k\xf0\x8dh" +
-	"\x09\xe0\x84V\x83\xba\x9e]\x8e\x07\xdd6\x0d\xc3t\xcc" +
-	"\"\xdc\xd6F\xa6S\x8fL+49!\xaaJ\x85w" +
-	"\x19FG\x18F\xf4%\x88\xb6\x83\x0b\x19FN\x03\xe2" +
-	"\x9fF\xb4m\xfc\xd8 1~X\x03\x8b\xd7\x0c\xd1\xe2" +
-	"\xf3\xbdR\xdb\xa5\xa5B\x82,:\xe5HYtJ\xe8" +
-	"\xffF\xbai\xf4\x16Sm\x89\xdd0\x1d\xcd,\xba\xa2" +
-	"=N}`\x82H\x1cT \x8e0p\xa0\x1b\x00x" +
-	"\xe6\x02\x91H+\x10'\x18\x82\xcbU\xcf:c_\xb1" +
-	"\x88\x08IbH\x12\x02\xab\xe49U\xc3\x9e\"\xa5\xe4" +
-	"5\x16\x878\xfa4\xc7/m\x9f\xab\xc4T\x8a\xee\xdf" +
-	"\x00\x00\x00\xff\xff\xb0\x17*\xd4"
+type Error capnp.Struct
+type Error_exitErr Error
+type Error_Which uint16
+
+const (
+	Error_Which_none    Error_Which = 0
+	Error_Which_msg     Error_Which = 1
+	Error_Which_exitErr Error_Which = 2
+)
+
+func (w Error_Which) String() string {
+	const s = "nonemsgexitErr"
+	switch w {
+	case Error_Which_none:
+		return s[0:4]
+	case Error_Which_msg:
+		return s[4:7]
+	case Error_Which_exitErr:
+		return s[7:14]
+
+	}
+	return "Error_Which(" + strconv.FormatUint(uint64(w), 10) + ")"
+}
+
+// Error_TypeID is the unique identifier for the type Error.
+const Error_TypeID = 0xd6be5a33d8c2c538
+
+func NewError(s *capnp.Segment) (Error, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
+	return Error(st), err
+}
+
+func NewRootError(s *capnp.Segment) (Error, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
+	return Error(st), err
+}
+
+func ReadRootError(msg *capnp.Message) (Error, error) {
+	root, err := msg.Root()
+	return Error(root.Struct()), err
+}
+
+func (s Error) String() string {
+	str, _ := text.Marshal(0xd6be5a33d8c2c538, capnp.Struct(s))
+	return str
+}
+
+func (s Error) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Error) DecodeFromPtr(p capnp.Ptr) Error {
+	return Error(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Error) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+
+func (s Error) Which() Error_Which {
+	return Error_Which(capnp.Struct(s).Uint16(0))
+}
+func (s Error) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Error) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Error) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Error) SetNone() {
+	capnp.Struct(s).SetUint16(0, 0)
+
+}
+
+func (s Error) Msg() (string, error) {
+	if capnp.Struct(s).Uint16(0) != 1 {
+		panic("Which() != msg")
+	}
+	p, err := capnp.Struct(s).Ptr(0)
+	return p.Text(), err
+}
+
+func (s Error) HasMsg() bool {
+	if capnp.Struct(s).Uint16(0) != 1 {
+		return false
+	}
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Error) MsgBytes() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return p.TextBytes(), err
+}
+
+func (s Error) SetMsg(v string) error {
+	capnp.Struct(s).SetUint16(0, 1)
+	return capnp.Struct(s).SetText(0, v)
+}
+
+func (s Error) ExitErr() Error_exitErr { return Error_exitErr(s) }
+
+func (s Error) SetExitErr() {
+	capnp.Struct(s).SetUint16(0, 2)
+}
+
+func (s Error_exitErr) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Error_exitErr) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Error_exitErr) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Error_exitErr) Code() uint32 {
+	return capnp.Struct(s).Uint32(4)
+}
+
+func (s Error_exitErr) SetCode(v uint32) {
+	capnp.Struct(s).SetUint32(4, v)
+}
+
+func (s Error_exitErr) Module() (string, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return p.Text(), err
+}
+
+func (s Error_exitErr) HasModule() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Error_exitErr) ModuleBytes() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return p.TextBytes(), err
+}
+
+func (s Error_exitErr) SetModule(v string) error {
+	return capnp.Struct(s).SetText(0, v)
+}
+
+// Error_List is a list of Error.
+type Error_List = capnp.StructList[Error]
+
+// NewError creates a new list of Error.
+func NewError_List(s *capnp.Segment, sz int32) (Error_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1}, sz)
+	return capnp.StructList[Error](l), err
+}
+
+// Error_Future is a wrapper for a Error promised by a client call.
+type Error_Future struct{ *capnp.Future }
+
+func (f Error_Future) Struct() (Error, error) {
+	p, err := f.Future.Ptr()
+	return Error(p.Struct()), err
+}
+func (p Error_Future) ExitErr() Error_exitErr_Future { return Error_exitErr_Future{p.Future} }
+
+// Error_exitErr_Future is a wrapper for a Error_exitErr promised by a client call.
+type Error_exitErr_Future struct{ *capnp.Future }
+
+func (f Error_exitErr_Future) Struct() (Error_exitErr, error) {
+	p, err := f.Future.Ptr()
+	return Error_exitErr(p.Struct()), err
+}
+
+const schema_9a51e53177277763 = "x\xda|\x94_\x88\x1bU\x14\xc6\xcfw\xef$\x93b" +
+	"\xd2\xec\xed\xa4\x15\xfb\x12\xba\xaeh#M\x93\xae\x82-" +
+	"\x96\x8d\xd5a\xb1X\x9c+\xf8R\xa8t\xcc\x0e\x1aH" +
+	"2\xe1\xce\x84l\x9f\x8a \xf4]\x11A\x11K\xa1\xd4" +
+	"\x82kK\xf5iEAa\xf1UVqE\x1f\x84\x15" +
+	"A|XT\xf0aA\xbdr'\x7f\xd7\xec\xee[n" +
+	"N\xeew~\xe7\xfb\xceM\xe5\x06jV5w-E" +
+	"L\xd6Ri\xbd\x91\xfa+\\\xf1\xff~\x9dd\x01\xd0" +
+	"O\xac}\xf9\xfd\xfc\xc5\xcf\xbf\xa3\xc3\xb0A\xe4\xdcf" +
+	"\x9b\x04g\x85\xf5\x08\xfa\xd1\xcb\xd7\xdfw\xe3\xcb\xef\x91" +
+	"8\x02\xa2\x14l\xa2\xf9\x03\xfc(\x08\x8e\xe0\x0b\x04\xbd" +
+	"\xde}\xed\xe6\xeaK\xe5;$\x0er]\xef=\xdc\xab" +
+	"\xfe\"\xdf!\x82S\xe5\xab\xcein\x139\x8f\xf3E" +
+	"\xe7\x92\xf9\xa4\xdf\xfdz\xfd\xd6\xdd#\xcf\x7fJ\xe2\xfe" +
+	"\x91\x9a\xcbKF\xedB\xa2\xb6\xf5\xf6\xb7\xd1\xbdW\xab" +
+	"k\xfdv\x96\xa9\xb7L7K\xffz\xed\x8b\xf4O\xdd" +
+	"\x93\xeb\x13\x95\x17\xf9!S\x19\xe1\xcb\x83\xc0\x18\xc1\x85" +
+	"\xcd\x89\x9c\xb3\xfc\x86\xe3&\x18O\xf1;\x04\xfd\xe1b" +
+	"e\xee\xfa'\xa5\x8d\x09\x9d\xcf\xf8\xac\xd1\x99O?\xf4" +
+	"\xc17\xbf?\xf8\xc3\xd4$7\xf9=g%\x91\xb8\xcd" +
+	"\xbfr\x8e\x99;z\xf1\xd2\xc9\xbb\x0f|tkkB" +
+	"\xe6\x80\x95\xe0\x1cz\xf3\x8d\xb7~;{\xdf\x9f\x83\x19" +
+	"\x99)\xfda:\xc0\xd9\xe6\xc6\xd2\x9f?\xfe1\xb3y" +
+	"\xbe\xb1=q\xd5\xb7\x8e\x82*\xba\xa3\xc2z\x10Ee" +
+	"V\xf7;\xed\xce\x19W\xa9P\x95\x83\xe5Fl\xbbJ" +
+	"\xc9\x0c\xb7fP\x00#\x12\xc7KDr\x8eCV\x18" +
+	"\x80\x028\x918q\x86H>\xc2!\x1fc\xc8\xd7\xc3" +
+	"\xa5\x00\x19b\xc8\x10\x16Z\xe1R\xb7\x19 K\x0cY" +
+	"\xc2\xa8\x0b\xefw\xf1\x06\xc7\x9e\xdf\x88\xe7^\x08\xa2n" +
+	"\x93\xc7\x91\xb4\xb8Ed\x81H\xe4N\x11\xc9\x0c\x87," +
+	"0\x14\x03\x83\x84\x99\xb1\xe7\x04\xccLhb@\xbe\xbc" +
+	"\x10\xd4\xbbq\xa8<@Z<E4\xb2\x05\xc3\x1d\x10" +
+	"\xe2\x141\x91\xb2\x8bQ\xc7\xef\xb5k\xf00\x85\xe6." +
+	"\xf7U\xca\xc9O\x0c\\\xbe\xdb\xdc\x09wn\x0cwu" +
+	"p\x1bb\x1c%\x01b\xef\x91\xa38\xec\x8cF\xde\xd7" +
+	"\x17\xcfW~\x0b\xd1\xd4\x9c\xcaV\xfd!\xb3\xdc\xcaj" +
+	"\x9d0\xb9&\x9c\x1a\x87|\x8e!\x87\x7fu\x01\xe6\xdb" +
+	"gg\x89\xe43\x1c\xd2c\xc8\xb1\x7f40~\x85\xe2" +
+	"\xc29b\xf9v\xd8\x0e(m\xb7\xa2W\x86Q]5" +
+	"\xd9\xbbJ\xed\xcd\xef\xab~fv3\x9e\x82\xf3T1" +
+	"9\xf7\xf1L\x06\xc3\xcd\xc3\xf0\x11\x08i2pm`" +
+	"\xb4\xd0\x18>Aq\xbaDL\x9c\xb0\xc1Fo\x0f\xc3" +
+	"\x7f\x03q\xcc\xd4\x0e\xdb\xc5\x84\xa0\x86\xbcq\xb2\x86\xbc" +
+	"\xf1j\xd7$w8\xfe\x7f3wO\xdb\xf3\x95\xed\xb7" +
+	"\"\xb3\xf6\x83\xb0\x8f\x9f\x1fo\xb80k\x0f@T/" +
+	"\x12\xc9\x0a\x87|\x92A\xbf|%\x0e\x9e\x0e\x97\x02\"" +
+	"B\x8e\x18r\x04\x1d\xb4cu\xc5\x0b\x1b\xc4\xdb\xf1\xc0" +
+	"X\x12\x98\xb5U\xb7\xbd\xbf\xaf\x06\x93\xb7\xa2\xff\x02\x00" +
+	"\x00\xff\xff\xa8.}\xb7"
 
 func init() {
 	schemas.Register(schema_9a51e53177277763,
+		0x84fc61ad6ff505d7,
 		0x9d6074459fa0602b,
 		0xaf2e5ebaa58175d2,
 		0xbb4f16b0a7d2d09b,
 		0xc53168b273d497ee,
 		0xd22f75df06c187e8,
+		0xd6be5a33d8c2c538,
 		0xd72ab4a0243047ac,
 		0xda23f0d3a8250633,
 		0xeea7ae19b02f5d47,

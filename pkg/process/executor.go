@@ -3,6 +3,7 @@ package process
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 
 	capnp "capnproto.org/go/capnp/v3"
 	"github.com/tetratelabs/wazero"
@@ -15,24 +16,10 @@ import (
 // ByteCode is a representation of arbitrary executable data.
 type ByteCode []byte
 
-// String prints the BLAKE3-256 hash of the byte code.  It is
-// suitable for use as a secure checksum.
-func (b ByteCode) String() string {
-	hash := blake3.Sum256(b)
-	return hex.EncodeToString(hash[:])
-}
-
-type Config struct {
-	Executable ByteCode
-	EntryPoint string
-}
-
-func (c Config) bind(ps api.Executor_spawn_Params) (err error) {
-	if err = ps.SetByteCode(c.Executable); err == nil && c.EntryPoint != "" {
-		err = ps.SetEntryPoint(c.EntryPoint)
-	}
-
-	return
+// Hash returns the BLAKE3-256 hash of the byte code.  It is
+// suitbale for use as a secure checksum.
+func (b ByteCode) Hash() [32]byte {
+	return blake3.Sum256(b)
 }
 
 // Executor is a capability that can spawn processes.
@@ -46,8 +33,10 @@ func (ex Executor) Release() {
 	capnp.Client(ex).Release()
 }
 
-func (ex Executor) Spawn(ctx context.Context, c Config) (Proc, capnp.ReleaseFunc) {
-	f, release := api.Executor(ex).Spawn(ctx, c.bind)
+func (ex Executor) Spawn(ctx context.Context, src []byte) (Proc, capnp.ReleaseFunc) {
+	f, release := api.Executor(ex).Spawn(ctx, func(ps api.Executor_spawn_Params) error {
+		return ps.SetByteCode(src)
+	})
 	return Proc(f.Process()), release
 }
 
@@ -70,7 +59,12 @@ func (wx Server) Spawn(ctx context.Context, call api.Executor_spawn) error {
 		return err
 	}
 
-	p, err := wx.mkproc(ctx, call.Args())
+	mod, err := wx.loadModule(ctx, call.Args())
+	if err != nil {
+		return err
+	}
+
+	p, err := wx.mkproc(ctx, mod, call.Args())
 	if err == nil {
 		err = res.SetProcess(api.Process_ServerToClient(p))
 	}
@@ -78,30 +72,29 @@ func (wx Server) Spawn(ctx context.Context, call api.Executor_spawn) error {
 	return err
 }
 
-func (wx Server) mkproc(ctx context.Context, args api.Executor_spawn_Params) (*process, error) {
-	bytecode, err := args.ByteCode()
+func (wx Server) mkproc(ctx context.Context, mod wasm.Module, args api.Executor_spawn_Params) (*process, error) {
+	name, err := args.EntryPoint()
 	if err != nil {
 		return nil, err
 	}
 
-	entrypoint, err := args.EntryPoint()
-	if err != nil {
-		return nil, err
+	var proc process
+	if proc.fn = mod.ExportedFunction(name); proc.fn == nil {
+		err = fmt.Errorf("module %s: %s not found", mod.Name(), name)
 	}
 
-	mod, err := wx.loadModule(ctx, bytecode)
-	if err != nil {
-		return nil, err
-	}
-
-	return &process{
-		Module:    mod,
-		EntryFunc: entrypoint,
-	}, nil
+	return &proc, err
 }
 
-func (wx Server) loadModule(ctx context.Context, bc ByteCode) (wasm.Module, error) {
-	name := moduleName(bc)
+func (wx Server) loadModule(ctx context.Context, args api.Executor_spawn_Params) (wasm.Module, error) {
+	bc, err := args.ByteCode()
+	if err != nil {
+		return nil, err
+	}
+
+	hash := ByteCode(bc).Hash()
+	name := hex.EncodeToString(hash[:])
+
 	config := wazero.
 		NewModuleConfig().
 		WithName(name)
