@@ -9,7 +9,7 @@ require (
 	github.com/huin/goupnp v1.1.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.4 // indirect
 	github.com/koron/go-ssdp v0.0.4 // indirect
-	github.com/libp2p/go-libp2p v0.26.2
+	github.com/libp2p/go-libp2p v0.26.3
 	github.com/libp2p/go-libp2p-kad-dht v0.21.1
 	github.com/libp2p/go-libp2p-pubsub v0.9.3
 	github.com/lthibault/log v1.2.3
@@ -25,7 +25,7 @@ require (
 	golang.org/x/crypto v0.7.0 // indirect
 	golang.org/x/net v0.8.0 // indirect
 	golang.org/x/sys v0.6.0 // indirect
-	google.golang.org/protobuf v1.29.1 // indirect
+	google.golang.org/protobuf v1.30.0 // indirect
 )
 
 require (
@@ -38,7 +38,7 @@ require (
 	github.com/stretchr/testify v1.8.2
 	github.com/tetratelabs/wazero v1.0.0-pre.4
 	github.com/thejerf/suture/v4 v4.0.2
-	github.com/wetware/casm v0.0.0-20230315223045-bb6ba151bcc3
+	github.com/wetware/casm v0.0.0-20230317011633-f01c809ce5b0
 	golang.org/x/sync v0.1.0
 	gopkg.in/alexcesaro/statsd.v2 v2.0.0
 )
