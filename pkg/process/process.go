@@ -14,6 +14,11 @@ import (
 	api "github.com/wetware/ww/internal/api/process"
 )
 
+var (
+	ErrRunning    = errors.New("running")
+	ErrNotStarted = errors.New("not started")
+)
+
 type Proc api.Process
 
 func (p Proc) AddRef() Proc {
@@ -120,11 +125,6 @@ func (p *process) Wait(ctx context.Context, call api.Process_wait) error {
 // procHandle encapsulates all the runtime state of a process.  Its
 // methods are safe for concurrent access.
 type procHandle atomic.Pointer[state]
-
-var (
-	ErrRunning    = errors.New("running")
-	ErrNotStarted = errors.New("not started")
-)
 
 // Exec sets the current state to ErrRunning, calls the function, and
 // then sets the current state to the resulting error.
