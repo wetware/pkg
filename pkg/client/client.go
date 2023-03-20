@@ -10,6 +10,7 @@ import (
 	"github.com/wetware/casm/pkg/cluster"
 	"github.com/wetware/casm/pkg/debug"
 	"github.com/wetware/ww/pkg/host"
+	"github.com/wetware/ww/pkg/process"
 	"github.com/wetware/ww/pkg/pubsub"
 )
 
@@ -51,6 +52,10 @@ func (n *Node) Join(ctx context.Context, topic string) (pubsub.Topic, capnp.Rele
 
 func (n *Node) Debug(ctx context.Context) (debug.Debugger, capnp.ReleaseFunc) {
 	return n.Host(ctx).Debug(ctx)
+}
+
+func (n *Node) Executor(ctx context.Context) (process.Executor, capnp.ReleaseFunc) {
+	return n.Host(ctx).Executor(ctx)
 }
 
 func (n *Node) Path() string { return "/" }

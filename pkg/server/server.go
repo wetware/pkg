@@ -12,6 +12,7 @@ import (
 	"github.com/wetware/casm/pkg/cluster"
 	"github.com/wetware/ww/pkg/anchor"
 	"github.com/wetware/ww/pkg/host"
+	"github.com/wetware/ww/pkg/process"
 	"github.com/wetware/ww/pkg/pubsub"
 )
 
@@ -53,6 +54,7 @@ type Joiner struct {
 	fx.In
 
 	Cluster  ClusterConfig `optional:"true"`
+	Runtime  RuntimeConfig `optional:"true"`
 	Debugger DebugConfig   `optional:"true"`
 }
 
@@ -65,10 +67,11 @@ func (j Joiner) Join(vat casm.Vat, r Router) (*Node, error) {
 	}
 
 	vat.Export(host.Capability, host.Server{
-		ViewProvider:   c,
-		PubSubProvider: j.pubsub(vat.Logger, r),
-		AnchorProvider: j.anchor(),
-		DebugProvider:  j.Debugger.New(),
+		ViewProvider:     c,
+		PubSubProvider:   j.pubsub(vat.Logger, r),
+		AnchorProvider:   j.anchor(),
+		DebugProvider:    j.Debugger.New(),
+		ExecutorProvider: j.executor(),
 	})
 
 	return &Node{
@@ -86,4 +89,10 @@ func (j Joiner) pubsub(log log.Logger, router pubsub.TopicJoiner) *pubsub.Server
 
 func (j Joiner) anchor() anchor.Server {
 	return anchor.Root()
+}
+
+func (j Joiner) executor() process.Server {
+	return process.Server{
+		Runtime: j.Runtime.New(),
+	}
 }
