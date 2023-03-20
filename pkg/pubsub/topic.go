@@ -10,9 +10,7 @@ import (
 
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/util/stream"
-	"github.com/wetware/ww/internal/api/channel"
 	api "github.com/wetware/ww/internal/api/pubsub"
-	"github.com/wetware/ww/pkg/csp"
 )
 
 // Topic is the handle for a pubsub topic.  It is used to publish to
@@ -111,13 +109,13 @@ func (t Topic) Subscribe(ctx context.Context) (Subscription, capnp.ReleaseFunc) 
 	ctx, cancel := context.WithCancel(ctx)
 
 	var (
-		h          = make(handler, 16)
-		f, release = api.Topic(t).Subscribe(ctx, h.Params)
+		c          = make(consumer, 16)
+		f, release = api.Topic(t).Subscribe(ctx, c.Params)
 	)
 
 	return Subscription{
 			Future: casm.Future(f),
-			Seq:    h,
+			Seq:    c,
 		}, func() {
 			cancel()
 			release()
@@ -234,14 +232,14 @@ func (t topicServer) Subscribe(ctx context.Context, call MethodSubscribe) error 
 	}
 	defer sub.Cancel()
 
-	sender := call.Args().Chan()
-	sender.SetFlowLimiter(flowcontrol.NewFixedLimiter(1e6)) // TODO:  use BBR once scheduler bug is fixed
+	consumer := call.Args().Consumer()
+	consumer.SetFlowLimiter(flowcontrol.NewFixedLimiter(1e6)) // TODO:  use BBR once scheduler bug is fixed
 
 	t.log.Debug("registered subscription handler")
 	defer t.log.Debug("unregistered subscription handler")
 
 	// forward messages to the callback channel
-	handler := stream.New(sender.Send)
+	handler := stream.New(consumer.Consume)
 	for call.Go(); handler.Open(); t.log.Trace("message received") {
 		handler.Call(ctx, bind(ctx, sub))
 	}
@@ -258,17 +256,19 @@ func (t topicServer) subscribe(call MethodSubscribe) (*pubsub.Subscription, erro
 // bind the libp2p subscription to the handler.  Note that
 // we MUST NOT call sub.Next() inside of the callback, or
 // capnp will deadlock.
-func bind(ctx context.Context, sub *pubsub.Subscription) csp.Value {
+func bind(ctx context.Context, sub *pubsub.Subscription) func(api.Topic_Consumer_consume_Params) error {
 	msg, err := sub.Next(ctx)
 	if err != nil {
 		return failure(err)
 	}
 
-	return csp.Data(msg.Data)
+	return func(ps api.Topic_Consumer_consume_Params) error {
+		return ps.SetMsg(msg.Data)
+	}
 }
 
-func failure(err error) csp.Value {
-	return func(channel.Sender_send_Params) error {
+func failure(err error) func(api.Topic_Consumer_consume_Params) error {
+	return func(api.Topic_Consumer_consume_Params) error {
 		return err
 	}
 }
