@@ -25,7 +25,7 @@ func (c Host) View(ctx context.Context, params func(Host_view_Params) error) (Ho
 		Method: capnp.Method{
 			InterfaceID:   0x957cbefc645fd307,
 			MethodID:      0,
-			InterfaceName: "api/cluster.capnp:Host",
+			InterfaceName: "cluster.capnp:Host",
 			MethodName:    "view",
 		},
 	}
@@ -41,7 +41,7 @@ func (c Host) PubSub(ctx context.Context, params func(Host_pubSub_Params) error)
 		Method: capnp.Method{
 			InterfaceID:   0x957cbefc645fd307,
 			MethodID:      1,
-			InterfaceName: "api/cluster.capnp:Host",
+			InterfaceName: "cluster.capnp:Host",
 			MethodName:    "pubSub",
 		},
 	}
@@ -57,7 +57,7 @@ func (c Host) Root(ctx context.Context, params func(Host_root_Params) error) (Ho
 		Method: capnp.Method{
 			InterfaceID:   0x957cbefc645fd307,
 			MethodID:      2,
-			InterfaceName: "api/cluster.capnp:Host",
+			InterfaceName: "cluster.capnp:Host",
 			MethodName:    "root",
 		},
 	}
@@ -73,7 +73,7 @@ func (c Host) Debug(ctx context.Context, params func(Host_debug_Params) error) (
 		Method: capnp.Method{
 			InterfaceID:   0x957cbefc645fd307,
 			MethodID:      3,
-			InterfaceName: "api/cluster.capnp:Host",
+			InterfaceName: "cluster.capnp:Host",
 			MethodName:    "debug",
 		},
 	}
@@ -89,7 +89,7 @@ func (c Host) Executor(ctx context.Context, params func(Host_executor_Params) er
 		Method: capnp.Method{
 			InterfaceID:   0x957cbefc645fd307,
 			MethodID:      4,
-			InterfaceName: "api/cluster.capnp:Host",
+			InterfaceName: "cluster.capnp:Host",
 			MethodName:    "executor",
 		},
 	}
@@ -202,7 +202,7 @@ func Host_Methods(methods []server.Method, s Host_Server) []server.Method {
 		Method: capnp.Method{
 			InterfaceID:   0x957cbefc645fd307,
 			MethodID:      0,
-			InterfaceName: "api/cluster.capnp:Host",
+			InterfaceName: "cluster.capnp:Host",
 			MethodName:    "view",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
@@ -214,7 +214,7 @@ func Host_Methods(methods []server.Method, s Host_Server) []server.Method {
 		Method: capnp.Method{
 			InterfaceID:   0x957cbefc645fd307,
 			MethodID:      1,
-			InterfaceName: "api/cluster.capnp:Host",
+			InterfaceName: "cluster.capnp:Host",
 			MethodName:    "pubSub",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
@@ -226,7 +226,7 @@ func Host_Methods(methods []server.Method, s Host_Server) []server.Method {
 		Method: capnp.Method{
 			InterfaceID:   0x957cbefc645fd307,
 			MethodID:      2,
-			InterfaceName: "api/cluster.capnp:Host",
+			InterfaceName: "cluster.capnp:Host",
 			MethodName:    "root",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
@@ -238,7 +238,7 @@ func Host_Methods(methods []server.Method, s Host_Server) []server.Method {
 		Method: capnp.Method{
 			InterfaceID:   0x957cbefc645fd307,
 			MethodID:      3,
-			InterfaceName: "api/cluster.capnp:Host",
+			InterfaceName: "cluster.capnp:Host",
 			MethodName:    "debug",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
@@ -250,7 +250,7 @@ func Host_Methods(methods []server.Method, s Host_Server) []server.Method {
 		Method: capnp.Method{
 			InterfaceID:   0x957cbefc645fd307,
 			MethodID:      4,
-			InterfaceName: "api/cluster.capnp:Host",
+			InterfaceName: "cluster.capnp:Host",
 			MethodName:    "executor",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
@@ -1105,45 +1105,45 @@ func (p Host_executor_Results_Future) Executor() process.Executor {
 	return process.Executor(p.Future.Field(0, nil).Client())
 }
 
-const schema_fcf6ac08e448a6ac = "x\xda\x8cRKh\x13Q\x14\xbdw\xde\x8c\xd3L\x8c" +
-	"\xe1%\x11\x8b\x82\x95\xda\x85\xcd\xa2\xda\x8a\x08\x01\xc9 " +
-	"\x88\xb5\x06\xcc$\x88.D\x9d\xa4C)\xa4&df" +
-	"\xaa\x82\x9b\x0a\x01E\x88((\xb8qU]H\xd1\x85" +
-	"\x88\xd8b\x16\x82\x1bw\xfe\xc0\x82\xbaJ\x04\xa1-\xa2" +
-	"D(D\x9e\xbc\x89\x93\x8c\xd1~v\x0f\xee9\xe7\xdd" +
-	"s\xce\xdd\x93 \xaa8\x188\x16\x01A[\x906\xb0" +
-	"\xca\xd3\xa5\xda\xce]\xd7.\x03\xdd\x82\x00\xa2\x0c\xb07" +
-	"\xa0lE\x10\xd9\x8f\xec\xf7o\xdb\xcb\x0bW=\x93\xba" +
-	"\xaf\x97O\xea\xef\x12\xa5\xf2\xcd\x93\xd7\x9b\x13\x09\xf9\xe8" +
-	"\x13\x1fa\xb8\xe6\x8b\x032\xf9\xed\x99\xd1F\xe5\xd2-" +
-	"\xa0!\xc2f\xee\x0fW\xbbf~6\x000,)\xb3" +
-	"\xe1\x80\xc2\xf1>\xe50\x86\xdf\xf3'\x13nKs\xcb" +
-	";\xa6\xeez\xe5\x9e+\x07\xb9\xdcK\x85\xcbU\x9f\xd9" +
-	"\xe9\xa3/\xc4i\xcf&_\x9b;\xf6\x8b\xc1\x87\xe4l" +
-	"w\xc5K}\xadD9u\xde\xa1\xa6\x12\x1f\xfa\x17#" +
-	"\xe9\x8a\x87\xfaK\x89q\xaa\xff\xd0\x89\xe9\xd2\xa9\xb9W" +
-	"^jMqL,:\xd4\xa5M\xbe\xba\xbd|\xe5\xa3" +
-	"\x17\x10\xf0\x0fq\xc0f?\x07\xdcy\xd0\x90\xec\xde'" +
-	"5\x8f\xf6>\x7f\x14\x81\x01\x83\x08\xd3\x0b\xe3\xbb\xb39" +
-	"\xdb$\x96Q\x1c\xc8\xea\x85s\x85\xd8p\xde\xb4\x06\x8a" +
-	"\xf9\xbc\xd5\x97\xd4\x8b:\x990W\x04\x8d\x1a\x19{\x8c" +
-	"\xa3d}\x15\xd4\xe4\xb8q\xbe/e\x98\xb6\x9c\xb3L" +
-	"M$\"\x80\x88\x004\x10\x05\xd0\xba\x08j\x11\x01\x83" +
-	"\x1c\x84!\x91\x00b\x08\xb0\xa5\x85\xaeV\xbc)\x96D" +
-	"\xd4\"D\x02h\xa5\x8dn\xcd\xf4F\x14\x04Z\x92\xb1" +
-	"m\x19\xddp\xe8\xc5\x18\x08tBF\xa1uI\xe8&" +
-	"Ku\xce;.#i\xdd\x12\xba\x85\xd1#C \xd0" +
-	"\x032\x8a\xad\x8a\xd0\xbd\x03:8\x02\x02\xed\x97\x9d\xd5" +
-	"U\x8c\x17\xecL\xda\xce\xa8\x18\xe4\xd1\xa9\xd8\xe3\x84\xa3" +
-	"\"3.\x18Y\xdb\xca\x17\x01@\xc5$\xb6\xbd\x89\x1d" +
-	"9\xb9@'\xab\x9ce\x827\xab\x11\x00m#A\xad" +
-	"[\xf8K\x11){cO\xdd\x9b==\xf0\x08\x00\x91" +
-	"z\xa2\xfbo\x0d\xebk4e\x98A\xbb\xa3,\xef\x02" +
-	"\x0ej\xccp\x16\xf8\xb73\xb2\x92\xaf8\xff}\x95\xcf" +
-	"\x9d\x9b[\xebP8\x08)\xeb\x9d/\xfb\xaa\xfbC\xd5" +
-	"\xb5\\7[\xe9K\x19=f\xa7\xa3X[\xf5Oy" +
-	"HY,?\xb9\xed\xcb\xe3\xe4\xe7u\xea&\xf5 \xb7" +
-	"\xf4;\x00\x00\xff\xff\xae1_h"
+const schema_fcf6ac08e448a6ac = "x\xda\x8cRKh\x13Q\x14\xbd\xf7\xbd\x893\xa3\xb6" +
+	"\xf5e\xba(\x8a\xbfZ\xc1vQ\xac\"b@:]" +
+	"\x14\xdb\xdaE\xa6\xa5\xe8B\xd4$\x1dJ!5!3" +
+	"S\x15\xdcT\x08(BDAA\x17\xaej\x17Rt" +
+	"!\"Z\xc8B\\\xb9T\x17\x16D7\xa9+-\xa2" +
+	"T\x88\x04\x9e\xbcIf\xf2\x92Zt}\xcf=\xe7\x9e" +
+	"s\xee\xc1eb*}-\x9f\xb7\x01\xb1^G6\xf1" +
+	"\xe2\xf3\xd5\x95}\x07n\\\x05f \x80\xa2\x02\x18\x13" +
+	"\xdaoP\xf8\xcf\xd4\x8f\xef\xbb\x0a_\xaf\xd7\x07\x87\x8f" +
+	"i\x04A\xe1k\xefG\xf3\x85\xdb\xa7oV'\x11\x14" +
+	"\xa3\x9db\x84\xc6^\xad\x1f\x90\xab\xef\xceMV\x8aW" +
+	"\xee\x00k\xa5|qa\xa8\xa4-\xfe\xaa\x00\xa01\xa0" +
+	"\xdd7\x865\x81\x1f\xd4N\xa0\xc1t\x15\x80\x93\xbb\x91" +
+	"\xa5\xf2\x9e\xb9\x072]Y\xeb\x14t\xa8\x0b\xba\xd2\x0b" +
+	"o\xfc\xe4+e^:q\xbf.N\xecV\xda\x1e\xd3" +
+	"\xf3\x1dEyS\xd77\x8bM\xe6o\x8e\x8d~\xe8\xfe" +
+	"\xd6>^\x94<\x1c\xd1\xb7\x0b\x0f[\x06O\xcd\xe7\xcf" +
+	",\xbdi\xf0\xa0W=\xf8\xab\xab\xad\xfa\x9aW\xbe\xf6" +
+	"Q\x06\x0c\xe8Q\x01\x18\xf6\x01\xf7\x1eU\"^\xe7\xb3" +
+	"\x15\x89{ZhsX\xe0\xa9\xb4\xe7\xb8v\xae\x97\xa4" +
+	"\x12\xd9\x0b\xd9\xd8P\xc6q{s\x99\x8c\xdb\xd5\x1fO" +
+	"\xe4\x123N\x08P%\xc0\xa4\x9d\xf4\xa6\xba\xaa\x00\x08" +
+	"\x00\xd2|v\xda\xbe\xd85f;^\xdau\xc0R\xa8" +
+	"\x02\xa0 \x00k\xe9\x01\xb04\x8aV;\xc16\x01\xc2" +
+	"\xa8B\x011\x0a\x18\xea`\xc0C\x1d7\x8eh\xb5\xd3" +
+	"\x08@\x18,\x06\x8d\xb2[=@X^\xc5\xba=\x0c" +
+	"\x82`\x97c@\xd8\x8c\x8a$\xfc\x19\x0cRd\x09\xb1" +
+	"7\xa1\"\x0d\xdf\x06\x83r\xd8\xf0! \xec\xb8\x8aJ" +
+	"X\x07\x06\x95\xb3\xbe\x11 \xac[\xf5\xcf6\xb1?\xeb" +
+	"%\xc7\xbd\xa4\x89m\",\x13w\xfb\x91\x98\xc8\xedK" +
+	"v\xcas39\x0001\x8eu_T\xca'\x00\xf9" +
+	"\x19\xa9i\xd7\x913\x1a\x01\xb0\xb6R\xb4:H\x03\x1b" +
+	"2\xfe\xd6\x9b{\xf8\xf2l\xef\x13\x00D&EF\x9a" +
+	"\xa3o\xee\x8e\xae\xeb.(\x076R\xf6aS\xb6\xaf" +
+	"\xbc\xbe\xa4\xbf\x9a\x11\xa2t\x03U\xff\xa5\xfe\xf5\x11\x02" +
+	"\x84\x8cw.\x17\xf4\xd2\xd1h\xa9\xd9\xa6\xccW\x8d\xbf" +
+	"\xc6\x88\x0d\xf9\xc5\xea\x8c\xb5\x96\x90\xf1Xfv\xc7\x97" +
+	"\xa7\xf1O\xff\xc1Y{k\xf8\x13\x00\x00\xff\xff}\xa0" +
+	"H\x90"
 
 func init() {
 	schemas.Register(schema_fcf6ac08e448a6ac,

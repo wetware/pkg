@@ -2,206 +2,191 @@ package process
 
 import (
 	"context"
-	"crypto/md5"
-	"encoding/hex"
+	"errors"
 	"fmt"
-	"math/rand"
-	"time"
+	"sync/atomic"
 
 	capnp "capnproto.org/go/capnp/v3"
-	"github.com/lthibault/log"
-	wazero_api "github.com/tetratelabs/wazero/api"
+	wasm "github.com/tetratelabs/wazero/api"
+	"github.com/tetratelabs/wazero/sys"
 
-	iostream_api "github.com/wetware/ww/internal/api/iostream"
+	casm "github.com/wetware/casm/pkg"
 	api "github.com/wetware/ww/internal/api/process"
-	proc_errors "github.com/wetware/ww/pkg/process/errors"
 )
 
-// Process represents the execution of a function in a WASM module.
-type Process struct {
-	function wazero_api.Function // entry function
-	id       string              // process id
-	io       processIo
-	logger   log.Logger
+var (
+	ErrRunning    = errors.New("running")
+	ErrNotStarted = errors.New("not started")
+)
 
-	exitWaiters  []chan struct{}     // list of channels waiting for process exit
-	releaseFuncs []capnp.ReleaseFunc // pending releases
-	runCancel    context.CancelFunc  // cancellation call for runContext
-	runContext   context.Context     // context for the process runtime
-	runDone      chan error          // channel containing result of run
+type Proc api.Process
+
+func (p Proc) AddRef() Proc {
+	return Proc(api.Process(p).AddRef())
 }
 
-// addExitWaiter returns a channel that will produce a value when
-// the proces exits.
-func (p *Process) addExitWaiter() chan struct{} {
-	exit := make(chan struct{}, 1)
-	p.exitWaiters = append(p.exitWaiters, exit)
-	return exit
+func (p Proc) Release() {
+	capnp.Client(p).Release()
+
 }
 
-// addRelease adds a release function to the pending releases.
-func (p *Process) addRelease(release capnp.ReleaseFunc) {
-	p.releaseFuncs = append(p.releaseFuncs, release)
+func (p Proc) Start(ctx context.Context) error {
+	f, release := api.Process(p).Start(ctx, nil)
+	defer release()
+
+	return casm.Future(f).Await(ctx)
 }
 
-// Close should always be called after the process is done.
-func (p *Process) Close(ctx context.Context, call api.Process_close) error {
-	return p.close(ctx)
+func (p Proc) Stop(ctx context.Context) error {
+	f, release := api.Process(p).Stop(ctx, nil)
+	defer release()
+
+	return casm.Future(f).Await(ctx)
 }
 
-// close performs any missing cleanup operation including potentially
-// cancelling a running process, notifying all exitWaiters and calling
-// pending release functions.
-func (p *Process) close(ctx context.Context) error {
-	defer p.release()
-	defer p.exit(ctx)
-	defer p.runCancel()
-	return nil
-}
+func (p Proc) Wait(ctx context.Context) error {
+	f, release := api.Process(p).Wait(ctx, nil)
+	defer release()
 
-// exit will notify all exit waiters.
-func (p *Process) exit(ctx context.Context) {
-	for _, exit := range p.exitWaiters {
-		select {
-		case exit <- struct{}{}:
-			continue
-		case <-ctx.Done():
-			return
-		}
-	}
-}
-
-// Id of the process.
-func (p *Process) Id() string {
-	return p.id
-}
-
-// Input returns the input stream of the process.
-func (p *Process) Input(ctx context.Context, call api.Process_input) error {
-	results, err := call.AllocResults()
+	res, err := f.Struct()
 	if err != nil {
 		return err
 	}
-	err = results.SetStdin(iostream_api.Stream(p.io.in))
-	return err
-}
 
-// Output provides an stream with the process output and returns the
-// contents of the process stderr after it finishes.
-func (p *Process) Output(ctx context.Context, call api.Process_output) error {
-	var err error
-
-	call.Go()
-	outputStream := call.Args().Stdout()
-	f, release := p.io.out.Provide(ctx, func(p iostream_api.Provider_provide_Params) error {
-		return p.SetStream(outputStream)
-	})
-	defer release()
-
-	errorStream := call.Args().Stderr()
-	f, release = p.io.err.Provide(ctx, func(p iostream_api.Provider_provide_Params) error {
-		return p.SetStream(errorStream)
-	})
-	defer release()
-
-	exit := p.addExitWaiter()
-	select {
-	case <-ctx.Done():
-		err = ctx.Err()
-		break
-	case <-exit:
-	case <-f.Done():
-		break
+	e, err := res.Error()
+	if err != nil {
+		return err
 	}
 
-	return err
-}
+	switch e.Which() {
+	case api.Error_Which_none:
+		return nil
 
-// run the process and write to p.runDone after it is done.
-func (p *Process) run(ctx context.Context) {
-	var err error
-
-	// send the signal after the process finishes running
-	defer func() {
-		select {
-		case p.runDone <- err:
-			break
-		case <-ctx.Done():
-			p.runCancel()
+	case api.Error_Which_exitErr:
+		mod, err := e.ExitErr().Module()
+		if err != nil {
+			return err
 		}
-	}()
+		return sys.NewExitError(mod, e.ExitErr().Code())
+	}
 
-	defer p.io.closeWriters(ctx)
-
-	_, err = p.function.Call(p.runContext)
+	return fmt.Errorf("unknown error type: %d", e.Which())
 }
 
-// release calls all pending release functions.
-func (p *Process) release() {
-	for _, releaseFunc := range p.releaseFuncs {
-		defer releaseFunc()
-	}
+// process is the main implementation of the Process capability.
+type process struct {
+	fn     wasm.Function
+	handle procHandle
 }
 
 // Stop calls the runtime cancellation function.
-func (p *Process) Stop(ctx context.Context, call api.Process_stop) error {
-	p.runCancel()
-	return nil
+func (p *process) Stop(context.Context, api.Process_stop) error {
+	state := p.handle.Load()
+	if state.Err == nil {
+		state.Cancel()
+	}
+
+	return state.Err
 }
 
 // Start the process in the background.
-func (p *Process) Start(ctx context.Context, call api.Process_start) error {
-	go p.run(ctx)
+func (p *process) Start(_ context.Context, call api.Process_start) error {
+	state := p.handle.Load()
+	if state.Err != ErrNotStarted {
+		return state.Err
+	}
+
+	p.handle.Exec(p.fn)
 	return nil
 }
 
 // Wait for the process to finish running.
-func (p *Process) Wait(ctx context.Context, call api.Process_wait) error {
+func (p *process) Wait(ctx context.Context, call api.Process_wait) error {
+	state := p.handle.Load()
+	if state.Err == ErrNotStarted {
+		return state.Err
+	}
+
 	results, err := call.AllocResults()
 	if err != nil {
-		err = p.wait(ctx)
-		if err == nil {
-			results.SetError(proc_errors.Nil.Error())
-		} else {
-			results.SetError(err.Error())
-		}
+		return err
 	}
-	return err
-}
 
-// wait for the process to finish running.
-func (p *Process) wait(ctx context.Context) error {
-	var err error
+	call.Go()
+
 	select {
-	case err = <-p.runDone:
-		break
 	case <-ctx.Done():
-		break
+		return ctx.Err()
+	case <-state.Ctx.Done():
+		return p.handle.Bind(results)
 	}
-	return err
 }
 
-// moduleId retuns a shortened md5hash of the module
-func moduleId(binary []byte) string {
-	hash := md5.Sum(binary)
-	return hex.EncodeToString(hash[:])[:6]
+// procHandle encapsulates all the runtime state of a process.  Its
+// methods are safe for concurrent access.
+type procHandle atomic.Pointer[state]
+
+// Exec sets the current state to ErrRunning, calls the function, and
+// then sets the current state to the resulting error.
+func (as *procHandle) Exec(fn wasm.Function) {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// set "running" state
+	(*atomic.Pointer[state])(as).Store(&state{
+		Ctx:    ctx,
+		Cancel: cancel,
+		Err:    ErrRunning,
+	})
+
+	go func() {
+		defer cancel()
+
+		// block until function call completes
+		_, err := fn.Call(ctx)
+
+		// call entrypoint function & set "finished" state
+		(*atomic.Pointer[state])(as).Store(&state{
+			Ctx:    ctx,
+			Cancel: cancel,
+			Err:    err,
+		})
+	}()
 }
 
-// processId returns a unique ID for a module
-func processId(moduleId string, funcName string) string {
-	return fmt.Sprintf("%s:%s", moduleId, funcName)
-}
-
-// randomId produces a 6 character random string
-func randomId() string {
-	rand.Seed(time.Now().Unix())
-	charset := "abcdefghijklmnopqrstuvwxyz"
-	length := 6
-
-	id := make([]byte, length)
-	for i := 0; i < length; i++ {
-		id[i] = charset[rand.Intn(len(charset))]
+// Bind the error from the entrypoint function to the results struct.
+// Callers MUST NOT call Bind until the function has returned.
+func (as *procHandle) Bind(res api.Process_wait_Results) error {
+	state := as.Load()
+	if state.Err == nil {
+		return nil
 	}
 
-	return string(id)
+	e, err := res.NewError()
+	if err != nil {
+		return err
+	}
+
+	ee := state.Err.(*sys.ExitError)
+	e.SetExitErr()
+	e.ExitErr().SetCode(ee.ExitCode())
+	return e.ExitErr().SetModule(ee.ModuleName())
+}
+
+// Load the current state atomically.  The resulting resulting state
+// defaults to ErrNotStarted.
+func (as *procHandle) Load() state {
+	if s := (*atomic.Pointer[state])(as).Load(); s != nil {
+		return *s
+	}
+
+	return state{
+		Cancel: func() {},
+		Err:    ErrNotStarted,
+	}
+}
+
+type state struct {
+	Ctx    context.Context
+	Cancel context.CancelFunc
+	Err    error
 }

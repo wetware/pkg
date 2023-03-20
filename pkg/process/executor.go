@@ -2,111 +2,111 @@ package process
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 
 	capnp "capnproto.org/go/capnp/v3"
-	"github.com/lthibault/log"
 	"github.com/tetratelabs/wazero"
-	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
+	"lukechampine.com/blake3"
 
+	wasm "github.com/tetratelabs/wazero/api"
 	api "github.com/wetware/ww/internal/api/process"
 )
 
-const start = "_start" // start function called in every WASM module
+// ByteCode is a representation of arbitrary executable data.
+type ByteCode []byte
 
-// Executor contains a WASM runtime and can spawn processes in it.
-type Executor struct {
-	logger  log.Logger
-	runtime wazero.Runtime
+// Hash returns the BLAKE3-256 hash of the byte code.  It is
+// suitbale for use as a secure checksum.
+func (b ByteCode) Hash() [32]byte {
+	return blake3.Sum256(b)
+}
+
+// Executor is a capability that can spawn processes.
+type Executor api.Executor
+
+func (ex Executor) AddRef() Executor {
+	return Executor(capnp.Client(ex).AddRef())
+}
+
+func (ex Executor) Release() {
+	capnp.Client(ex).Release()
+}
+
+func (ex Executor) Spawn(ctx context.Context, src []byte) (Proc, capnp.ReleaseFunc) {
+	f, release := api.Executor(ex).Spawn(ctx, func(ps api.Executor_spawn_Params) error {
+		return ps.SetByteCode(src)
+	})
+	return Proc(f.Process()), release
+}
+
+// Server is the main Executor implementation.  It spawns WebAssembly-
+// based processes.  The zero-value Server panics.
+type Server struct {
+	Runtime wazero.Runtime
 }
 
 // Executor provides the Executor capability.
-func (e Executor) Executor() api.Executor {
-	return api.Executor_ServerToClient(e)
-}
-
-// NewExecutor is the default constructor for Executor.
-func NewExecutor(ctx context.Context, logger log.Logger) Executor {
-	r := wazero.NewRuntimeWithConfig(ctx, wazero.NewRuntimeConfig())
-	wasi_snapshot_preview1.MustInstantiate(ctx, r)
-
-	return Executor{logger: logger, runtime: r}
-}
-
-// Close the executor runtime. Spawned processes should be inidividually closed
-// calling Process.Close().
-func (e Executor) Close(ctx context.Context) error {
-	return e.runtime.Close(ctx)
+func (wx Server) Executor() Executor {
+	return Executor(api.Executor_ServerToClient(wx))
 }
 
 // Spawn a process by creating a process server and converting it into
 // a capability as a response to the call.
-func (e Executor) Spawn(ctx context.Context, call api.Executor_spawn) error {
-	binary, err := call.Args().Binary()
-	if err != nil {
-		return err
-	}
-	entryFunction, err := call.Args().Entryfunction()
-	if err != nil {
-		return err
-	}
-	proc, err := e.spawnProcess(ctx, binary, entryFunction)
-	if err != nil {
-		return err
-	}
+func (wx Server) Spawn(ctx context.Context, call api.Executor_spawn) error {
 	res, err := call.AllocResults()
 	if err != nil {
 		return err
 	}
-	err = res.SetProcess(api.Process_ServerToClient(proc))
+
+	mod, err := wx.loadModule(ctx, call.Args())
+	if err != nil {
+		return err
+	}
+
+	p, err := wx.mkproc(ctx, mod, call.Args())
+	if err == nil {
+		err = res.SetProcess(api.Process_ServerToClient(p))
+	}
 
 	return err
 }
 
-// spawnProcess creates and returns a Process that will run in e.runtime.
-func (e Executor) spawnProcess(ctx context.Context, binary []byte, entryFunction string) (*Process, error) {
-	modId := moduleId(binary) + randomId() // TODO mikel
-	procIo := newIo()
+func (wx Server) mkproc(ctx context.Context, mod wasm.Module, args api.Executor_spawn_Params) (*process, error) {
+	name, err := args.EntryPoint()
+	if err != nil {
+		return nil, err
+	}
+
+	var proc process
+	if proc.fn = mod.ExportedFunction(name); proc.fn == nil {
+		err = fmt.Errorf("module %s: %s not found", mod.Name(), name)
+	}
+
+	return &proc, err
+}
+
+func (wx Server) loadModule(ctx context.Context, args api.Executor_spawn_Params) (wasm.Module, error) {
+	bc, err := args.ByteCode()
+	if err != nil {
+		return nil, err
+	}
+
+	hash := ByteCode(bc).Hash()
+	name := hex.EncodeToString(hash[:])
 
 	config := wazero.
 		NewModuleConfig().
-		WithName(modId).
-		WithStdin(procIo.inR).
-		WithStdout(procIo.outW).
-		WithStderr(procIo.errW)
+		WithName(name)
 
-	instance := e.runtime.Module(modId)
-	if instance == nil {
-		module, err := e.runtime.CompileModule(ctx, binary)
-		if err != nil {
-			return nil, err
-		}
-		instance, err = e.runtime.InstantiateModule(ctx, module, config)
-		if err != nil {
-			return nil, err
-		}
-		// instance.ExportedFunction(start).Call(ctx)
+	if mod := wx.Runtime.Module(name); mod != nil {
+		return mod, nil
 	}
 
-	function := instance.ExportedFunction(entryFunction)
-	if function == nil {
-		return nil, fmt.Errorf("function %s not found in module %s", entryFunction, modId)
+	module, err := wx.Runtime.CompileModule(ctx, bc)
+	if err != nil {
+		return nil, err
 	}
 
-	runContext, runCancel := context.WithCancel(context.TODO())
-
-	proc := Process{
-		function:     function,
-		id:           processId(modId, entryFunction),
-		io:           procIo,
-		logger:       e.logger,
-		releaseFuncs: make([]capnp.ReleaseFunc, 0),
-
-		exitWaiters: make([]chan struct{}, 0),
-		runDone:     make(chan error, 1),
-		runContext:  runContext,
-		runCancel:   runCancel,
-	}
-
-	return &proc, nil
+	return wx.Runtime.InstantiateModule(ctx, module, config)
 }

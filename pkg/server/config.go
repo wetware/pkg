@@ -6,6 +6,8 @@ import (
 
 	"go.uber.org/fx"
 
+	"github.com/tetratelabs/wazero"
+	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/cluster"
 	"github.com/wetware/casm/pkg/cluster/pulse"
@@ -54,6 +56,27 @@ func (rc ClusterConfig) routingTable() cluster.RoutingTable {
 	}
 
 	return rc.RoutingTable
+}
+
+type RuntimeConfig struct {
+	fx.In
+
+	Ctx    context.Context      `optional:"true"`
+	Config wazero.RuntimeConfig `optional:"true"`
+}
+
+func (rc RuntimeConfig) New() wazero.Runtime {
+	if rc.Ctx == nil {
+		rc.Ctx = context.Background()
+	}
+
+	if rc.Config == nil {
+		rc.Config = wazero.NewRuntimeConfig()
+	}
+
+	r := wazero.NewRuntimeWithConfig(rc.Ctx, rc.Config)
+	wasi_snapshot_preview1.MustInstantiate(rc.Ctx, r)
+	return r
 }
 
 type DebugConfig struct {

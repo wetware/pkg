@@ -9,8 +9,8 @@ import (
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/cluster"
 	"github.com/wetware/casm/pkg/debug"
-	"github.com/wetware/ww/internal/api/process"
 	"github.com/wetware/ww/pkg/host"
+	"github.com/wetware/ww/pkg/process"
 	"github.com/wetware/ww/pkg/pubsub"
 )
 

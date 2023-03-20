@@ -54,6 +54,7 @@ type Joiner struct {
 	fx.In
 
 	Cluster  ClusterConfig `optional:"true"`
+	Runtime  RuntimeConfig `optional:"true"`
 	Debugger DebugConfig   `optional:"true"`
 }
 
@@ -70,7 +71,7 @@ func (j Joiner) Join(vat casm.Vat, r Router) (*Node, error) {
 		PubSubProvider:   j.pubsub(vat.Logger, r),
 		AnchorProvider:   j.anchor(),
 		DebugProvider:    j.Debugger.New(),
-		ExecutorProvider: j.executor(vat.Logger),
+		ExecutorProvider: j.executor(),
 	})
 
 	return &Node{
@@ -90,6 +91,8 @@ func (j Joiner) anchor() anchor.Server {
 	return anchor.Root()
 }
 
-func (j Joiner) executor(logger log.Logger) process.Executor {
-	return process.NewExecutor(context.TODO(), logger)
+func (j Joiner) executor() process.Server {
+	return process.Server{
+		Runtime: j.Runtime.New(),
+	}
 }

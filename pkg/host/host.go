@@ -15,6 +15,7 @@ import (
 	process_api "github.com/wetware/ww/internal/api/process"
 	pubsub_api "github.com/wetware/ww/internal/api/pubsub"
 	"github.com/wetware/ww/pkg/anchor"
+	"github.com/wetware/ww/pkg/process"
 	"github.com/wetware/ww/pkg/pubsub"
 )
 
@@ -58,9 +59,9 @@ func (h Host) Debug(ctx context.Context) (debug.Debugger, capnp.ReleaseFunc) {
 	return debug.Debugger(f.Debugger()), release
 }
 
-func (h Host) Executor(ctx context.Context) (process_api.Executor, capnp.ReleaseFunc) {
+func (h Host) Executor(ctx context.Context) (process.Executor, capnp.ReleaseFunc) {
 	f, release := api.Host(h).Executor(ctx, nil)
-	return f.Executor(), release
+	return process.Executor(f.Executor()), release
 }
 
 /*---------------------------*
@@ -86,7 +87,7 @@ type DebugProvider interface {
 }
 
 type ExecutorProvider interface {
-	Executor() process_api.Executor
+	Executor() process.Executor
 }
 
 // Server provides the Host capability.
@@ -146,8 +147,8 @@ func (s Server) Debug(_ context.Context, call api.Host_debug) error {
 func (s Server) Executor(_ context.Context, call api.Host_executor) error {
 	res, err := call.AllocResults()
 	if err == nil {
-		executor := s.ExecutorProvider.Executor()
-		err = res.SetExecutor(executor)
+		e := s.ExecutorProvider.Executor()
+		err = res.SetExecutor(process_api.Executor(e))
 	}
 	return err
 }
