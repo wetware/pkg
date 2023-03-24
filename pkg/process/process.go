@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"sync/atomic"
 
 	capnp "capnproto.org/go/capnp/v3"
+	"capnproto.org/go/capnp/v3/rpc"
 	wasm "github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/sys"
 
@@ -76,6 +78,8 @@ func (p Proc) Wait(ctx context.Context) error {
 // process is the main implementation of the Process capability.
 type process struct {
 	fn     wasm.Function
+	t      rpc.Transport
+	boot   capnp.Client
 	handle procHandle
 }
 
@@ -96,7 +100,11 @@ func (p *process) Start(_ context.Context, call api.Process_start) error {
 		return state.Err
 	}
 
-	p.handle.Exec(p.fn)
+	conn := rpc.NewConn(p.t, &rpc.Options{
+		BootstrapClient: p.boot,
+	})
+
+	p.handle.Exec(p.fn, conn)
 	return nil
 }
 
@@ -128,7 +136,7 @@ type procHandle atomic.Pointer[state]
 
 // Exec sets the current state to ErrRunning, calls the function, and
 // then sets the current state to the resulting error.
-func (as *procHandle) Exec(fn wasm.Function) {
+func (as *procHandle) Exec(fn wasm.Function, conn io.Closer) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// set "running" state
@@ -139,6 +147,7 @@ func (as *procHandle) Exec(fn wasm.Function) {
 	})
 
 	go func() {
+		defer conn.Close()
 		defer cancel()
 
 		// block until function call completes

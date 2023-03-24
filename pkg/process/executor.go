@@ -11,6 +11,7 @@ import (
 
 	wasm "github.com/tetratelabs/wazero/api"
 	api "github.com/wetware/ww/internal/api/process"
+	"github.com/wetware/ww/pkg/host"
 )
 
 // ByteCode is a representation of arbitrary executable data.
@@ -43,7 +44,8 @@ func (ex Executor) Spawn(ctx context.Context, src []byte) (Proc, capnp.ReleaseFu
 // Server is the main Executor implementation.  It spawns WebAssembly-
 // based processes.  The zero-value Server panics.
 type Server struct {
-	Runtime wazero.Runtime
+	Runtime   wazero.Runtime
+	Bootstrap host.Host
 }
 
 // Executor provides the Executor capability.
@@ -78,12 +80,16 @@ func (wx Server) mkproc(ctx context.Context, mod wasm.Module, args api.Executor_
 		return nil, err
 	}
 
-	var proc process
+	proc := &process{
+		t:    newHostWASMTransport(mod),
+		boot: capnp.Client(wx.Bootstrap),
+	}
+
 	if proc.fn = mod.ExportedFunction(name); proc.fn == nil {
 		err = fmt.Errorf("module %s: %s not found", mod.Name(), name)
 	}
 
-	return &proc, err
+	return proc, err
 }
 
 func (wx Server) loadModule(ctx context.Context, args api.Executor_spawn_Params) (wasm.Module, error) {
