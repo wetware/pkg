@@ -11,7 +11,6 @@ import (
 
 	wasm "github.com/tetratelabs/wazero/api"
 	api "github.com/wetware/ww/internal/api/process"
-	"github.com/wetware/ww/pkg/host"
 )
 
 // ByteCode is a representation of arbitrary executable data.
@@ -45,7 +44,7 @@ func (ex Executor) Spawn(ctx context.Context, src []byte) (Proc, capnp.ReleaseFu
 // based processes.  The zero-value Server panics.
 type Server struct {
 	Runtime   wazero.Runtime
-	Bootstrap host.Host
+	Bootstrap capnp.Client // host.Host
 }
 
 // Executor provides the Executor capability.
