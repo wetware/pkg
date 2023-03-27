@@ -107,4 +107,25 @@ func TestSyncServer(t *testing.T) {
 		require.NoError(t, g.Wait())
 		require.ElementsMatch(t, want, got)
 	})
+
+	t.Run("CancelledSendRecv", func(t *testing.T) {
+		t.Parallel()
+
+		ch := csp.NewChan(&csp.SyncChan{})
+
+		// cancel the channel
+		err := ch.Close(context.Background())
+		require.NoError(t, err)
+
+		// try to send
+		err = ch.Send(context.Background(), csp.Text("hello"))
+		require.Error(t, err)
+
+		// try to receive
+		f, release := ch.Recv(context.Background())
+		defer release()
+
+		_, err = f.Text()
+		require.Error(t, err)
+	})
 }

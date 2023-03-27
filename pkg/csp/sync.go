@@ -3,6 +3,7 @@ package csp
 import (
 	"container/list"
 	"context"
+	"errors"
 	"sync"
 
 	"capnproto.org/go/capnp/v3"
@@ -16,13 +17,32 @@ var _ ChanServer = (*SyncChan)(nil)
 //
 // The zero-value SyncChan is ready to use.
 type SyncChan struct {
-	mu      sync.Mutex
-	senders list.List
-	signal  chan struct{}
+	mu           sync.Mutex
+	senders      list.List
+	signal, done chan struct{}
 }
 
 func (ch *SyncChan) Close(ctx context.Context, call MethodClose) error {
-	panic("not implemented yet")
+	ch.mu.Lock()
+	defer ch.mu.Unlock()
+
+	ch.initChannels()
+
+	select {
+	case <-ch.done:
+		return errors.New("already closed")
+
+	default:
+		close(ch.done)
+		return nil
+	}
+}
+
+func (ch *SyncChan) initChannels() {
+	if ch.signal == nil {
+		ch.signal = make(chan struct{}, 1)
+		ch.done = make(chan struct{})
+	}
 }
 
 func (ch *SyncChan) Send(ctx context.Context, call MethodSend) error {
@@ -36,6 +56,13 @@ func (ch *SyncChan) Send(ctx context.Context, call MethodSend) error {
 	call.Go()
 
 	select {
+	case <-ch.done:
+		ch.mu.Lock()
+		defer ch.mu.Unlock()
+
+		ch.senders.Remove(pending.Sender)
+		return errors.New("closed")
+
 	case <-pending.Done:
 		// We're done; value was received.
 
@@ -46,8 +73,15 @@ func (ch *SyncChan) Send(ctx context.Context, call MethodSend) error {
 		defer ch.mu.Unlock()
 
 		select {
+		case <-ch.done:
+			ch.senders.Remove(pending.Sender)
+			return errors.New("closed")
+		default:
+		}
+
+		select {
 		case <-pending.Done:
-			// Reveived after we were canceled.  Rather than trying to fix
+			// Received after we were canceled.  Rather than trying to fix
 			// up the queue, just pretend we didn't notice the cancelation.
 
 		default:
@@ -74,9 +108,7 @@ func (ch *SyncChan) pushSend(ctx context.Context, call MethodSend) (pendingSend,
 	ch.mu.Lock()
 	defer ch.mu.Unlock()
 
-	if ch.signal == nil {
-		ch.signal = make(chan struct{}, 1)
-	}
+	ch.initChannels()
 
 	// TODO(performance):  profile & determine whether to use sync.Pool
 	recved := make(chan struct{})
@@ -131,14 +163,14 @@ func (ch *SyncChan) Recv(ctx context.Context, call MethodRecv) error {
 //
 // Callers MUST hold mu.
 func (ch *SyncChan) wait(ctx context.Context) error {
-	if ch.signal == nil {
-		ch.signal = make(chan struct{}, 1)
-	}
+	ch.initChannels()
 
 	ch.mu.Unlock()
 	defer ch.mu.Lock()
 
 	select {
+	case <-ch.done:
+		return errors.New("closed")
 	case <-ch.signal:
 		return nil
 	case <-ctx.Done():
