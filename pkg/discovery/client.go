@@ -234,7 +234,15 @@ func (ch handler) Next() (b Location, ok bool) {
 func (ch handler) Send(ctx context.Context, call chan_api.Sender_send) error {
 	ptr, err := call.Args().Value()
 	if err == nil {
-		loc := api.Location(ptr.Struct())
+		msg, seg := capnp.NewMultiSegmentMessage(nil)
+		if err := msg.SetRoot(ptr); err != nil {
+			return err
+		}
+
+		loc, err := api.NewRootLocation(seg)
+		if err != nil {
+			return err
+		}
 
 		select {
 		case ch <- Location{Location: loc}:
