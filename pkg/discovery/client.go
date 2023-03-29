@@ -49,7 +49,7 @@ func (loc Location) Sign(pk crypto.PrivKey) error {
 	return nil
 }
 
-func (loc Location) Verify() (bool, error) {
+func (loc Location) VerifySinature() (bool, error) {
 	capLoc, err := loc.Location()
 	if err != nil {
 		return false, fmt.Errorf("failed to read location: %w", err)
