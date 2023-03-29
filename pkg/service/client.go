@@ -1,4 +1,4 @@
-package discovery
+package service
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	casm "github.com/wetware/casm/pkg"
 	chan_api "github.com/wetware/ww/internal/api/channel"
-	api "github.com/wetware/ww/internal/api/discovery"
+	api "github.com/wetware/ww/internal/api/service"
 )
 
 type Location struct {
@@ -153,18 +153,18 @@ func (loc Location) Maddrs() ([]ma.Multiaddr, error) {
 	return maddrs, nil
 }
 
-type DiscoveryService api.DiscoveryService
+type ServiceDiscovery api.ServiceDiscovery
 
-func (c DiscoveryService) Provider(ctx context.Context, name string) (Provider, capnp.ReleaseFunc) {
-	fut, release := api.DiscoveryService(c).Provider(ctx, func(ps api.DiscoveryService_provider_Params) error {
+func (c ServiceDiscovery) Provider(ctx context.Context, name string) (Provider, capnp.ReleaseFunc) {
+	fut, release := api.ServiceDiscovery(c).Provider(ctx, func(ps api.ServiceDiscovery_provider_Params) error {
 		return ps.SetName(name)
 	})
 
 	return Provider(fut.Provider()), release
 }
 
-func (c DiscoveryService) Release() {
-	api.DiscoveryService(c).Release()
+func (c ServiceDiscovery) Release() {
+	api.ServiceDiscovery(c).Release()
 }
 
 type Provider api.Provider
@@ -193,8 +193,8 @@ func (c Provider) Release() {
 	api.Provider(c).Release()
 }
 
-func (c DiscoveryService) Locator(ctx context.Context, name string) (Locator, capnp.ReleaseFunc) {
-	fut, release := api.DiscoveryService(c).Locator(ctx, func(ps api.DiscoveryService_locator_Params) error {
+func (c ServiceDiscovery) Locator(ctx context.Context, name string) (Locator, capnp.ReleaseFunc) {
+	fut, release := api.ServiceDiscovery(c).Locator(ctx, func(ps api.ServiceDiscovery_locator_Params) error {
 		return ps.SetName(name)
 	})
 

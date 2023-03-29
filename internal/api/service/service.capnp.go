@@ -14,56 +14,56 @@ import (
 	strconv "strconv"
 )
 
-type DiscoveryService capnp.Client
+type ServiceDiscovery capnp.Client
 
-// DiscoveryService_TypeID is the unique identifier for the type DiscoveryService.
-const DiscoveryService_TypeID = 0xe4a48c5d3f25d6d0
+// ServiceDiscovery_TypeID is the unique identifier for the type ServiceDiscovery.
+const ServiceDiscovery_TypeID = 0x9b3bf79b776887bc
 
-func (c DiscoveryService) Provider(ctx context.Context, params func(DiscoveryService_provider_Params) error) (DiscoveryService_provider_Results_Future, capnp.ReleaseFunc) {
+func (c ServiceDiscovery) Provider(ctx context.Context, params func(ServiceDiscovery_provider_Params) error) (ServiceDiscovery_provider_Results_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
 		Method: capnp.Method{
-			InterfaceID:   0xe4a48c5d3f25d6d0,
+			InterfaceID:   0x9b3bf79b776887bc,
 			MethodID:      0,
-			InterfaceName: "discovery.capnp:DiscoveryService",
+			InterfaceName: "service.capnp:ServiceDiscovery",
 			MethodName:    "provider",
 		},
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(DiscoveryService_provider_Params(s)) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(ServiceDiscovery_provider_Params(s)) }
 	}
 	ans, release := capnp.Client(c).SendCall(ctx, s)
-	return DiscoveryService_provider_Results_Future{Future: ans.Future()}, release
+	return ServiceDiscovery_provider_Results_Future{Future: ans.Future()}, release
 }
-func (c DiscoveryService) Locator(ctx context.Context, params func(DiscoveryService_locator_Params) error) (DiscoveryService_locator_Results_Future, capnp.ReleaseFunc) {
+func (c ServiceDiscovery) Locator(ctx context.Context, params func(ServiceDiscovery_locator_Params) error) (ServiceDiscovery_locator_Results_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
 		Method: capnp.Method{
-			InterfaceID:   0xe4a48c5d3f25d6d0,
+			InterfaceID:   0x9b3bf79b776887bc,
 			MethodID:      1,
-			InterfaceName: "discovery.capnp:DiscoveryService",
+			InterfaceName: "service.capnp:ServiceDiscovery",
 			MethodName:    "locator",
 		},
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(DiscoveryService_locator_Params(s)) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(ServiceDiscovery_locator_Params(s)) }
 	}
 	ans, release := capnp.Client(c).SendCall(ctx, s)
-	return DiscoveryService_locator_Results_Future{Future: ans.Future()}, release
+	return ServiceDiscovery_locator_Results_Future{Future: ans.Future()}, release
 }
 
 // String returns a string that identifies this capability for debugging
 // purposes.  Its format should not be depended on: in particular, it
 // should not be used to compare clients.  Use IsSame to compare clients
 // for equality.
-func (c DiscoveryService) String() string {
+func (c ServiceDiscovery) String() string {
 	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
 }
 
 // AddRef creates a new Client that refers to the same capability as c.
 // If c is nil or has resolved to null, then AddRef returns nil.
-func (c DiscoveryService) AddRef() DiscoveryService {
-	return DiscoveryService(capnp.Client(c).AddRef())
+func (c ServiceDiscovery) AddRef() ServiceDiscovery {
+	return ServiceDiscovery(capnp.Client(c).AddRef())
 }
 
 // Release releases a capability reference.  If this is the last
@@ -72,28 +72,28 @@ func (c DiscoveryService) AddRef() DiscoveryService {
 //
 // Release will panic if c has already been released, but not if c is
 // nil or resolved to null.
-func (c DiscoveryService) Release() {
+func (c ServiceDiscovery) Release() {
 	capnp.Client(c).Release()
 }
 
 // Resolve blocks until the capability is fully resolved or the Context
 // expires.
-func (c DiscoveryService) Resolve(ctx context.Context) error {
+func (c ServiceDiscovery) Resolve(ctx context.Context) error {
 	return capnp.Client(c).Resolve(ctx)
 }
 
-func (c DiscoveryService) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (c ServiceDiscovery) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Client(c).EncodeAsPtr(seg)
 }
 
-func (DiscoveryService) DecodeFromPtr(p capnp.Ptr) DiscoveryService {
-	return DiscoveryService(capnp.Client{}.DecodeFromPtr(p))
+func (ServiceDiscovery) DecodeFromPtr(p capnp.Ptr) ServiceDiscovery {
+	return ServiceDiscovery(capnp.Client{}.DecodeFromPtr(p))
 }
 
 // IsValid reports whether c is a valid reference to a capability.
 // A reference is invalid if it is nil, has resolved to null, or has
 // been released.
-func (c DiscoveryService) IsValid() bool {
+func (c ServiceDiscovery) IsValid() bool {
 	return capnp.Client(c).IsValid()
 }
 
@@ -101,7 +101,7 @@ func (c DiscoveryService) IsValid() bool {
 // same call to NewClient.  This can return false negatives if c or other
 // are not fully resolved: use Resolve if this is an issue.  If either
 // c or other are released, then IsSame panics.
-func (c DiscoveryService) IsSame(other DiscoveryService) bool {
+func (c ServiceDiscovery) IsSame(other ServiceDiscovery) bool {
 	return capnp.Client(c).IsSame(capnp.Client(other))
 }
 
@@ -109,249 +109,249 @@ func (c DiscoveryService) IsSame(other DiscoveryService) bool {
 // this client. This affects all future calls, but not calls already
 // waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
 // which is also the default.
-func (c DiscoveryService) SetFlowLimiter(lim fc.FlowLimiter) {
+func (c ServiceDiscovery) SetFlowLimiter(lim fc.FlowLimiter) {
 	capnp.Client(c).SetFlowLimiter(lim)
 }
 
 // Get the current flowcontrol.FlowLimiter used to manage flow control
 // for this client.
-func (c DiscoveryService) GetFlowLimiter() fc.FlowLimiter {
+func (c ServiceDiscovery) GetFlowLimiter() fc.FlowLimiter {
 	return capnp.Client(c).GetFlowLimiter()
-} // A DiscoveryService_Server is a DiscoveryService with a local implementation.
-type DiscoveryService_Server interface {
-	Provider(context.Context, DiscoveryService_provider) error
+} // A ServiceDiscovery_Server is a ServiceDiscovery with a local implementation.
+type ServiceDiscovery_Server interface {
+	Provider(context.Context, ServiceDiscovery_provider) error
 
-	Locator(context.Context, DiscoveryService_locator) error
+	Locator(context.Context, ServiceDiscovery_locator) error
 }
 
-// DiscoveryService_NewServer creates a new Server from an implementation of DiscoveryService_Server.
-func DiscoveryService_NewServer(s DiscoveryService_Server) *server.Server {
+// ServiceDiscovery_NewServer creates a new Server from an implementation of ServiceDiscovery_Server.
+func ServiceDiscovery_NewServer(s ServiceDiscovery_Server) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(DiscoveryService_Methods(nil, s), s, c)
+	return server.New(ServiceDiscovery_Methods(nil, s), s, c)
 }
 
-// DiscoveryService_ServerToClient creates a new Client from an implementation of DiscoveryService_Server.
+// ServiceDiscovery_ServerToClient creates a new Client from an implementation of ServiceDiscovery_Server.
 // The caller is responsible for calling Release on the returned Client.
-func DiscoveryService_ServerToClient(s DiscoveryService_Server) DiscoveryService {
-	return DiscoveryService(capnp.NewClient(DiscoveryService_NewServer(s)))
+func ServiceDiscovery_ServerToClient(s ServiceDiscovery_Server) ServiceDiscovery {
+	return ServiceDiscovery(capnp.NewClient(ServiceDiscovery_NewServer(s)))
 }
 
-// DiscoveryService_Methods appends Methods to a slice that invoke the methods on s.
+// ServiceDiscovery_Methods appends Methods to a slice that invoke the methods on s.
 // This can be used to create a more complicated Server.
-func DiscoveryService_Methods(methods []server.Method, s DiscoveryService_Server) []server.Method {
+func ServiceDiscovery_Methods(methods []server.Method, s ServiceDiscovery_Server) []server.Method {
 	if cap(methods) == 0 {
 		methods = make([]server.Method, 0, 2)
 	}
 
 	methods = append(methods, server.Method{
 		Method: capnp.Method{
-			InterfaceID:   0xe4a48c5d3f25d6d0,
+			InterfaceID:   0x9b3bf79b776887bc,
 			MethodID:      0,
-			InterfaceName: "discovery.capnp:DiscoveryService",
+			InterfaceName: "service.capnp:ServiceDiscovery",
 			MethodName:    "provider",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.Provider(ctx, DiscoveryService_provider{call})
+			return s.Provider(ctx, ServiceDiscovery_provider{call})
 		},
 	})
 
 	methods = append(methods, server.Method{
 		Method: capnp.Method{
-			InterfaceID:   0xe4a48c5d3f25d6d0,
+			InterfaceID:   0x9b3bf79b776887bc,
 			MethodID:      1,
-			InterfaceName: "discovery.capnp:DiscoveryService",
+			InterfaceName: "service.capnp:ServiceDiscovery",
 			MethodName:    "locator",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.Locator(ctx, DiscoveryService_locator{call})
+			return s.Locator(ctx, ServiceDiscovery_locator{call})
 		},
 	})
 
 	return methods
 }
 
-// DiscoveryService_provider holds the state for a server call to DiscoveryService.provider.
+// ServiceDiscovery_provider holds the state for a server call to ServiceDiscovery.provider.
 // See server.Call for documentation.
-type DiscoveryService_provider struct {
+type ServiceDiscovery_provider struct {
 	*server.Call
 }
 
 // Args returns the call's arguments.
-func (c DiscoveryService_provider) Args() DiscoveryService_provider_Params {
-	return DiscoveryService_provider_Params(c.Call.Args())
+func (c ServiceDiscovery_provider) Args() ServiceDiscovery_provider_Params {
+	return ServiceDiscovery_provider_Params(c.Call.Args())
 }
 
 // AllocResults allocates the results struct.
-func (c DiscoveryService_provider) AllocResults() (DiscoveryService_provider_Results, error) {
+func (c ServiceDiscovery_provider) AllocResults() (ServiceDiscovery_provider_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return DiscoveryService_provider_Results(r), err
+	return ServiceDiscovery_provider_Results(r), err
 }
 
-// DiscoveryService_locator holds the state for a server call to DiscoveryService.locator.
+// ServiceDiscovery_locator holds the state for a server call to ServiceDiscovery.locator.
 // See server.Call for documentation.
-type DiscoveryService_locator struct {
+type ServiceDiscovery_locator struct {
 	*server.Call
 }
 
 // Args returns the call's arguments.
-func (c DiscoveryService_locator) Args() DiscoveryService_locator_Params {
-	return DiscoveryService_locator_Params(c.Call.Args())
+func (c ServiceDiscovery_locator) Args() ServiceDiscovery_locator_Params {
+	return ServiceDiscovery_locator_Params(c.Call.Args())
 }
 
 // AllocResults allocates the results struct.
-func (c DiscoveryService_locator) AllocResults() (DiscoveryService_locator_Results, error) {
+func (c ServiceDiscovery_locator) AllocResults() (ServiceDiscovery_locator_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return DiscoveryService_locator_Results(r), err
+	return ServiceDiscovery_locator_Results(r), err
 }
 
-// DiscoveryService_List is a list of DiscoveryService.
-type DiscoveryService_List = capnp.CapList[DiscoveryService]
+// ServiceDiscovery_List is a list of ServiceDiscovery.
+type ServiceDiscovery_List = capnp.CapList[ServiceDiscovery]
 
-// NewDiscoveryService creates a new list of DiscoveryService.
-func NewDiscoveryService_List(s *capnp.Segment, sz int32) (DiscoveryService_List, error) {
+// NewServiceDiscovery creates a new list of ServiceDiscovery.
+func NewServiceDiscovery_List(s *capnp.Segment, sz int32) (ServiceDiscovery_List, error) {
 	l, err := capnp.NewPointerList(s, sz)
-	return capnp.CapList[DiscoveryService](l), err
+	return capnp.CapList[ServiceDiscovery](l), err
 }
 
-type DiscoveryService_provider_Params capnp.Struct
+type ServiceDiscovery_provider_Params capnp.Struct
 
-// DiscoveryService_provider_Params_TypeID is the unique identifier for the type DiscoveryService_provider_Params.
-const DiscoveryService_provider_Params_TypeID = 0xf8e8ab21195eede9
+// ServiceDiscovery_provider_Params_TypeID is the unique identifier for the type ServiceDiscovery_provider_Params.
+const ServiceDiscovery_provider_Params_TypeID = 0x9de065d2fff0345d
 
-func NewDiscoveryService_provider_Params(s *capnp.Segment) (DiscoveryService_provider_Params, error) {
+func NewServiceDiscovery_provider_Params(s *capnp.Segment) (ServiceDiscovery_provider_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return DiscoveryService_provider_Params(st), err
+	return ServiceDiscovery_provider_Params(st), err
 }
 
-func NewRootDiscoveryService_provider_Params(s *capnp.Segment) (DiscoveryService_provider_Params, error) {
+func NewRootServiceDiscovery_provider_Params(s *capnp.Segment) (ServiceDiscovery_provider_Params, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return DiscoveryService_provider_Params(st), err
+	return ServiceDiscovery_provider_Params(st), err
 }
 
-func ReadRootDiscoveryService_provider_Params(msg *capnp.Message) (DiscoveryService_provider_Params, error) {
+func ReadRootServiceDiscovery_provider_Params(msg *capnp.Message) (ServiceDiscovery_provider_Params, error) {
 	root, err := msg.Root()
-	return DiscoveryService_provider_Params(root.Struct()), err
+	return ServiceDiscovery_provider_Params(root.Struct()), err
 }
 
-func (s DiscoveryService_provider_Params) String() string {
-	str, _ := text.Marshal(0xf8e8ab21195eede9, capnp.Struct(s))
+func (s ServiceDiscovery_provider_Params) String() string {
+	str, _ := text.Marshal(0x9de065d2fff0345d, capnp.Struct(s))
 	return str
 }
 
-func (s DiscoveryService_provider_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (s ServiceDiscovery_provider_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Struct(s).EncodeAsPtr(seg)
 }
 
-func (DiscoveryService_provider_Params) DecodeFromPtr(p capnp.Ptr) DiscoveryService_provider_Params {
-	return DiscoveryService_provider_Params(capnp.Struct{}.DecodeFromPtr(p))
+func (ServiceDiscovery_provider_Params) DecodeFromPtr(p capnp.Ptr) ServiceDiscovery_provider_Params {
+	return ServiceDiscovery_provider_Params(capnp.Struct{}.DecodeFromPtr(p))
 }
 
-func (s DiscoveryService_provider_Params) ToPtr() capnp.Ptr {
+func (s ServiceDiscovery_provider_Params) ToPtr() capnp.Ptr {
 	return capnp.Struct(s).ToPtr()
 }
-func (s DiscoveryService_provider_Params) IsValid() bool {
+func (s ServiceDiscovery_provider_Params) IsValid() bool {
 	return capnp.Struct(s).IsValid()
 }
 
-func (s DiscoveryService_provider_Params) Message() *capnp.Message {
+func (s ServiceDiscovery_provider_Params) Message() *capnp.Message {
 	return capnp.Struct(s).Message()
 }
 
-func (s DiscoveryService_provider_Params) Segment() *capnp.Segment {
+func (s ServiceDiscovery_provider_Params) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s DiscoveryService_provider_Params) Name() (string, error) {
+func (s ServiceDiscovery_provider_Params) Name() (string, error) {
 	p, err := capnp.Struct(s).Ptr(0)
 	return p.Text(), err
 }
 
-func (s DiscoveryService_provider_Params) HasName() bool {
+func (s ServiceDiscovery_provider_Params) HasName() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s DiscoveryService_provider_Params) NameBytes() ([]byte, error) {
+func (s ServiceDiscovery_provider_Params) NameBytes() ([]byte, error) {
 	p, err := capnp.Struct(s).Ptr(0)
 	return p.TextBytes(), err
 }
 
-func (s DiscoveryService_provider_Params) SetName(v string) error {
+func (s ServiceDiscovery_provider_Params) SetName(v string) error {
 	return capnp.Struct(s).SetText(0, v)
 }
 
-// DiscoveryService_provider_Params_List is a list of DiscoveryService_provider_Params.
-type DiscoveryService_provider_Params_List = capnp.StructList[DiscoveryService_provider_Params]
+// ServiceDiscovery_provider_Params_List is a list of ServiceDiscovery_provider_Params.
+type ServiceDiscovery_provider_Params_List = capnp.StructList[ServiceDiscovery_provider_Params]
 
-// NewDiscoveryService_provider_Params creates a new list of DiscoveryService_provider_Params.
-func NewDiscoveryService_provider_Params_List(s *capnp.Segment, sz int32) (DiscoveryService_provider_Params_List, error) {
+// NewServiceDiscovery_provider_Params creates a new list of ServiceDiscovery_provider_Params.
+func NewServiceDiscovery_provider_Params_List(s *capnp.Segment, sz int32) (ServiceDiscovery_provider_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[DiscoveryService_provider_Params](l), err
+	return capnp.StructList[ServiceDiscovery_provider_Params](l), err
 }
 
-// DiscoveryService_provider_Params_Future is a wrapper for a DiscoveryService_provider_Params promised by a client call.
-type DiscoveryService_provider_Params_Future struct{ *capnp.Future }
+// ServiceDiscovery_provider_Params_Future is a wrapper for a ServiceDiscovery_provider_Params promised by a client call.
+type ServiceDiscovery_provider_Params_Future struct{ *capnp.Future }
 
-func (f DiscoveryService_provider_Params_Future) Struct() (DiscoveryService_provider_Params, error) {
+func (f ServiceDiscovery_provider_Params_Future) Struct() (ServiceDiscovery_provider_Params, error) {
 	p, err := f.Future.Ptr()
-	return DiscoveryService_provider_Params(p.Struct()), err
+	return ServiceDiscovery_provider_Params(p.Struct()), err
 }
 
-type DiscoveryService_provider_Results capnp.Struct
+type ServiceDiscovery_provider_Results capnp.Struct
 
-// DiscoveryService_provider_Results_TypeID is the unique identifier for the type DiscoveryService_provider_Results.
-const DiscoveryService_provider_Results_TypeID = 0xb14b5203df9fa7c8
+// ServiceDiscovery_provider_Results_TypeID is the unique identifier for the type ServiceDiscovery_provider_Results.
+const ServiceDiscovery_provider_Results_TypeID = 0xe77e8c1d6491055d
 
-func NewDiscoveryService_provider_Results(s *capnp.Segment) (DiscoveryService_provider_Results, error) {
+func NewServiceDiscovery_provider_Results(s *capnp.Segment) (ServiceDiscovery_provider_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return DiscoveryService_provider_Results(st), err
+	return ServiceDiscovery_provider_Results(st), err
 }
 
-func NewRootDiscoveryService_provider_Results(s *capnp.Segment) (DiscoveryService_provider_Results, error) {
+func NewRootServiceDiscovery_provider_Results(s *capnp.Segment) (ServiceDiscovery_provider_Results, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return DiscoveryService_provider_Results(st), err
+	return ServiceDiscovery_provider_Results(st), err
 }
 
-func ReadRootDiscoveryService_provider_Results(msg *capnp.Message) (DiscoveryService_provider_Results, error) {
+func ReadRootServiceDiscovery_provider_Results(msg *capnp.Message) (ServiceDiscovery_provider_Results, error) {
 	root, err := msg.Root()
-	return DiscoveryService_provider_Results(root.Struct()), err
+	return ServiceDiscovery_provider_Results(root.Struct()), err
 }
 
-func (s DiscoveryService_provider_Results) String() string {
-	str, _ := text.Marshal(0xb14b5203df9fa7c8, capnp.Struct(s))
+func (s ServiceDiscovery_provider_Results) String() string {
+	str, _ := text.Marshal(0xe77e8c1d6491055d, capnp.Struct(s))
 	return str
 }
 
-func (s DiscoveryService_provider_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (s ServiceDiscovery_provider_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Struct(s).EncodeAsPtr(seg)
 }
 
-func (DiscoveryService_provider_Results) DecodeFromPtr(p capnp.Ptr) DiscoveryService_provider_Results {
-	return DiscoveryService_provider_Results(capnp.Struct{}.DecodeFromPtr(p))
+func (ServiceDiscovery_provider_Results) DecodeFromPtr(p capnp.Ptr) ServiceDiscovery_provider_Results {
+	return ServiceDiscovery_provider_Results(capnp.Struct{}.DecodeFromPtr(p))
 }
 
-func (s DiscoveryService_provider_Results) ToPtr() capnp.Ptr {
+func (s ServiceDiscovery_provider_Results) ToPtr() capnp.Ptr {
 	return capnp.Struct(s).ToPtr()
 }
-func (s DiscoveryService_provider_Results) IsValid() bool {
+func (s ServiceDiscovery_provider_Results) IsValid() bool {
 	return capnp.Struct(s).IsValid()
 }
 
-func (s DiscoveryService_provider_Results) Message() *capnp.Message {
+func (s ServiceDiscovery_provider_Results) Message() *capnp.Message {
 	return capnp.Struct(s).Message()
 }
 
-func (s DiscoveryService_provider_Results) Segment() *capnp.Segment {
+func (s ServiceDiscovery_provider_Results) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s DiscoveryService_provider_Results) Provider() Provider {
+func (s ServiceDiscovery_provider_Results) Provider() Provider {
 	p, _ := capnp.Struct(s).Ptr(0)
 	return Provider(p.Interface().Client())
 }
 
-func (s DiscoveryService_provider_Results) HasProvider() bool {
+func (s ServiceDiscovery_provider_Results) HasProvider() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s DiscoveryService_provider_Results) SetProvider(v Provider) error {
+func (s ServiceDiscovery_provider_Results) SetProvider(v Provider) error {
 	if !v.IsValid() {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
@@ -360,165 +360,165 @@ func (s DiscoveryService_provider_Results) SetProvider(v Provider) error {
 	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
-// DiscoveryService_provider_Results_List is a list of DiscoveryService_provider_Results.
-type DiscoveryService_provider_Results_List = capnp.StructList[DiscoveryService_provider_Results]
+// ServiceDiscovery_provider_Results_List is a list of ServiceDiscovery_provider_Results.
+type ServiceDiscovery_provider_Results_List = capnp.StructList[ServiceDiscovery_provider_Results]
 
-// NewDiscoveryService_provider_Results creates a new list of DiscoveryService_provider_Results.
-func NewDiscoveryService_provider_Results_List(s *capnp.Segment, sz int32) (DiscoveryService_provider_Results_List, error) {
+// NewServiceDiscovery_provider_Results creates a new list of ServiceDiscovery_provider_Results.
+func NewServiceDiscovery_provider_Results_List(s *capnp.Segment, sz int32) (ServiceDiscovery_provider_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[DiscoveryService_provider_Results](l), err
+	return capnp.StructList[ServiceDiscovery_provider_Results](l), err
 }
 
-// DiscoveryService_provider_Results_Future is a wrapper for a DiscoveryService_provider_Results promised by a client call.
-type DiscoveryService_provider_Results_Future struct{ *capnp.Future }
+// ServiceDiscovery_provider_Results_Future is a wrapper for a ServiceDiscovery_provider_Results promised by a client call.
+type ServiceDiscovery_provider_Results_Future struct{ *capnp.Future }
 
-func (f DiscoveryService_provider_Results_Future) Struct() (DiscoveryService_provider_Results, error) {
+func (f ServiceDiscovery_provider_Results_Future) Struct() (ServiceDiscovery_provider_Results, error) {
 	p, err := f.Future.Ptr()
-	return DiscoveryService_provider_Results(p.Struct()), err
+	return ServiceDiscovery_provider_Results(p.Struct()), err
 }
-func (p DiscoveryService_provider_Results_Future) Provider() Provider {
+func (p ServiceDiscovery_provider_Results_Future) Provider() Provider {
 	return Provider(p.Future.Field(0, nil).Client())
 }
 
-type DiscoveryService_locator_Params capnp.Struct
+type ServiceDiscovery_locator_Params capnp.Struct
 
-// DiscoveryService_locator_Params_TypeID is the unique identifier for the type DiscoveryService_locator_Params.
-const DiscoveryService_locator_Params_TypeID = 0xd40e2f0673af616c
+// ServiceDiscovery_locator_Params_TypeID is the unique identifier for the type ServiceDiscovery_locator_Params.
+const ServiceDiscovery_locator_Params_TypeID = 0xce508202049cd284
 
-func NewDiscoveryService_locator_Params(s *capnp.Segment) (DiscoveryService_locator_Params, error) {
+func NewServiceDiscovery_locator_Params(s *capnp.Segment) (ServiceDiscovery_locator_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return DiscoveryService_locator_Params(st), err
+	return ServiceDiscovery_locator_Params(st), err
 }
 
-func NewRootDiscoveryService_locator_Params(s *capnp.Segment) (DiscoveryService_locator_Params, error) {
+func NewRootServiceDiscovery_locator_Params(s *capnp.Segment) (ServiceDiscovery_locator_Params, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return DiscoveryService_locator_Params(st), err
+	return ServiceDiscovery_locator_Params(st), err
 }
 
-func ReadRootDiscoveryService_locator_Params(msg *capnp.Message) (DiscoveryService_locator_Params, error) {
+func ReadRootServiceDiscovery_locator_Params(msg *capnp.Message) (ServiceDiscovery_locator_Params, error) {
 	root, err := msg.Root()
-	return DiscoveryService_locator_Params(root.Struct()), err
+	return ServiceDiscovery_locator_Params(root.Struct()), err
 }
 
-func (s DiscoveryService_locator_Params) String() string {
-	str, _ := text.Marshal(0xd40e2f0673af616c, capnp.Struct(s))
+func (s ServiceDiscovery_locator_Params) String() string {
+	str, _ := text.Marshal(0xce508202049cd284, capnp.Struct(s))
 	return str
 }
 
-func (s DiscoveryService_locator_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (s ServiceDiscovery_locator_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Struct(s).EncodeAsPtr(seg)
 }
 
-func (DiscoveryService_locator_Params) DecodeFromPtr(p capnp.Ptr) DiscoveryService_locator_Params {
-	return DiscoveryService_locator_Params(capnp.Struct{}.DecodeFromPtr(p))
+func (ServiceDiscovery_locator_Params) DecodeFromPtr(p capnp.Ptr) ServiceDiscovery_locator_Params {
+	return ServiceDiscovery_locator_Params(capnp.Struct{}.DecodeFromPtr(p))
 }
 
-func (s DiscoveryService_locator_Params) ToPtr() capnp.Ptr {
+func (s ServiceDiscovery_locator_Params) ToPtr() capnp.Ptr {
 	return capnp.Struct(s).ToPtr()
 }
-func (s DiscoveryService_locator_Params) IsValid() bool {
+func (s ServiceDiscovery_locator_Params) IsValid() bool {
 	return capnp.Struct(s).IsValid()
 }
 
-func (s DiscoveryService_locator_Params) Message() *capnp.Message {
+func (s ServiceDiscovery_locator_Params) Message() *capnp.Message {
 	return capnp.Struct(s).Message()
 }
 
-func (s DiscoveryService_locator_Params) Segment() *capnp.Segment {
+func (s ServiceDiscovery_locator_Params) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s DiscoveryService_locator_Params) Name() (string, error) {
+func (s ServiceDiscovery_locator_Params) Name() (string, error) {
 	p, err := capnp.Struct(s).Ptr(0)
 	return p.Text(), err
 }
 
-func (s DiscoveryService_locator_Params) HasName() bool {
+func (s ServiceDiscovery_locator_Params) HasName() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s DiscoveryService_locator_Params) NameBytes() ([]byte, error) {
+func (s ServiceDiscovery_locator_Params) NameBytes() ([]byte, error) {
 	p, err := capnp.Struct(s).Ptr(0)
 	return p.TextBytes(), err
 }
 
-func (s DiscoveryService_locator_Params) SetName(v string) error {
+func (s ServiceDiscovery_locator_Params) SetName(v string) error {
 	return capnp.Struct(s).SetText(0, v)
 }
 
-// DiscoveryService_locator_Params_List is a list of DiscoveryService_locator_Params.
-type DiscoveryService_locator_Params_List = capnp.StructList[DiscoveryService_locator_Params]
+// ServiceDiscovery_locator_Params_List is a list of ServiceDiscovery_locator_Params.
+type ServiceDiscovery_locator_Params_List = capnp.StructList[ServiceDiscovery_locator_Params]
 
-// NewDiscoveryService_locator_Params creates a new list of DiscoveryService_locator_Params.
-func NewDiscoveryService_locator_Params_List(s *capnp.Segment, sz int32) (DiscoveryService_locator_Params_List, error) {
+// NewServiceDiscovery_locator_Params creates a new list of ServiceDiscovery_locator_Params.
+func NewServiceDiscovery_locator_Params_List(s *capnp.Segment, sz int32) (ServiceDiscovery_locator_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[DiscoveryService_locator_Params](l), err
+	return capnp.StructList[ServiceDiscovery_locator_Params](l), err
 }
 
-// DiscoveryService_locator_Params_Future is a wrapper for a DiscoveryService_locator_Params promised by a client call.
-type DiscoveryService_locator_Params_Future struct{ *capnp.Future }
+// ServiceDiscovery_locator_Params_Future is a wrapper for a ServiceDiscovery_locator_Params promised by a client call.
+type ServiceDiscovery_locator_Params_Future struct{ *capnp.Future }
 
-func (f DiscoveryService_locator_Params_Future) Struct() (DiscoveryService_locator_Params, error) {
+func (f ServiceDiscovery_locator_Params_Future) Struct() (ServiceDiscovery_locator_Params, error) {
 	p, err := f.Future.Ptr()
-	return DiscoveryService_locator_Params(p.Struct()), err
+	return ServiceDiscovery_locator_Params(p.Struct()), err
 }
 
-type DiscoveryService_locator_Results capnp.Struct
+type ServiceDiscovery_locator_Results capnp.Struct
 
-// DiscoveryService_locator_Results_TypeID is the unique identifier for the type DiscoveryService_locator_Results.
-const DiscoveryService_locator_Results_TypeID = 0xda5a597d0c3a72a4
+// ServiceDiscovery_locator_Results_TypeID is the unique identifier for the type ServiceDiscovery_locator_Results.
+const ServiceDiscovery_locator_Results_TypeID = 0xca877ab1b7ab9f57
 
-func NewDiscoveryService_locator_Results(s *capnp.Segment) (DiscoveryService_locator_Results, error) {
+func NewServiceDiscovery_locator_Results(s *capnp.Segment) (ServiceDiscovery_locator_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return DiscoveryService_locator_Results(st), err
+	return ServiceDiscovery_locator_Results(st), err
 }
 
-func NewRootDiscoveryService_locator_Results(s *capnp.Segment) (DiscoveryService_locator_Results, error) {
+func NewRootServiceDiscovery_locator_Results(s *capnp.Segment) (ServiceDiscovery_locator_Results, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return DiscoveryService_locator_Results(st), err
+	return ServiceDiscovery_locator_Results(st), err
 }
 
-func ReadRootDiscoveryService_locator_Results(msg *capnp.Message) (DiscoveryService_locator_Results, error) {
+func ReadRootServiceDiscovery_locator_Results(msg *capnp.Message) (ServiceDiscovery_locator_Results, error) {
 	root, err := msg.Root()
-	return DiscoveryService_locator_Results(root.Struct()), err
+	return ServiceDiscovery_locator_Results(root.Struct()), err
 }
 
-func (s DiscoveryService_locator_Results) String() string {
-	str, _ := text.Marshal(0xda5a597d0c3a72a4, capnp.Struct(s))
+func (s ServiceDiscovery_locator_Results) String() string {
+	str, _ := text.Marshal(0xca877ab1b7ab9f57, capnp.Struct(s))
 	return str
 }
 
-func (s DiscoveryService_locator_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (s ServiceDiscovery_locator_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Struct(s).EncodeAsPtr(seg)
 }
 
-func (DiscoveryService_locator_Results) DecodeFromPtr(p capnp.Ptr) DiscoveryService_locator_Results {
-	return DiscoveryService_locator_Results(capnp.Struct{}.DecodeFromPtr(p))
+func (ServiceDiscovery_locator_Results) DecodeFromPtr(p capnp.Ptr) ServiceDiscovery_locator_Results {
+	return ServiceDiscovery_locator_Results(capnp.Struct{}.DecodeFromPtr(p))
 }
 
-func (s DiscoveryService_locator_Results) ToPtr() capnp.Ptr {
+func (s ServiceDiscovery_locator_Results) ToPtr() capnp.Ptr {
 	return capnp.Struct(s).ToPtr()
 }
-func (s DiscoveryService_locator_Results) IsValid() bool {
+func (s ServiceDiscovery_locator_Results) IsValid() bool {
 	return capnp.Struct(s).IsValid()
 }
 
-func (s DiscoveryService_locator_Results) Message() *capnp.Message {
+func (s ServiceDiscovery_locator_Results) Message() *capnp.Message {
 	return capnp.Struct(s).Message()
 }
 
-func (s DiscoveryService_locator_Results) Segment() *capnp.Segment {
+func (s ServiceDiscovery_locator_Results) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s DiscoveryService_locator_Results) Locator() Locator {
+func (s ServiceDiscovery_locator_Results) Locator() Locator {
 	p, _ := capnp.Struct(s).Ptr(0)
 	return Locator(p.Interface().Client())
 }
 
-func (s DiscoveryService_locator_Results) HasLocator() bool {
+func (s ServiceDiscovery_locator_Results) HasLocator() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s DiscoveryService_locator_Results) SetLocator(v Locator) error {
+func (s ServiceDiscovery_locator_Results) SetLocator(v Locator) error {
 	if !v.IsValid() {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
@@ -527,23 +527,23 @@ func (s DiscoveryService_locator_Results) SetLocator(v Locator) error {
 	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
-// DiscoveryService_locator_Results_List is a list of DiscoveryService_locator_Results.
-type DiscoveryService_locator_Results_List = capnp.StructList[DiscoveryService_locator_Results]
+// ServiceDiscovery_locator_Results_List is a list of ServiceDiscovery_locator_Results.
+type ServiceDiscovery_locator_Results_List = capnp.StructList[ServiceDiscovery_locator_Results]
 
-// NewDiscoveryService_locator_Results creates a new list of DiscoveryService_locator_Results.
-func NewDiscoveryService_locator_Results_List(s *capnp.Segment, sz int32) (DiscoveryService_locator_Results_List, error) {
+// NewServiceDiscovery_locator_Results creates a new list of ServiceDiscovery_locator_Results.
+func NewServiceDiscovery_locator_Results_List(s *capnp.Segment, sz int32) (ServiceDiscovery_locator_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[DiscoveryService_locator_Results](l), err
+	return capnp.StructList[ServiceDiscovery_locator_Results](l), err
 }
 
-// DiscoveryService_locator_Results_Future is a wrapper for a DiscoveryService_locator_Results promised by a client call.
-type DiscoveryService_locator_Results_Future struct{ *capnp.Future }
+// ServiceDiscovery_locator_Results_Future is a wrapper for a ServiceDiscovery_locator_Results promised by a client call.
+type ServiceDiscovery_locator_Results_Future struct{ *capnp.Future }
 
-func (f DiscoveryService_locator_Results_Future) Struct() (DiscoveryService_locator_Results, error) {
+func (f ServiceDiscovery_locator_Results_Future) Struct() (ServiceDiscovery_locator_Results, error) {
 	p, err := f.Future.Ptr()
-	return DiscoveryService_locator_Results(p.Struct()), err
+	return ServiceDiscovery_locator_Results(p.Struct()), err
 }
-func (p DiscoveryService_locator_Results_Future) Locator() Locator {
+func (p ServiceDiscovery_locator_Results_Future) Locator() Locator {
 	return Locator(p.Future.Field(0, nil).Client())
 }
 
@@ -557,7 +557,7 @@ func (c Provider) Provide(ctx context.Context, params func(Provider_provide_Para
 		Method: capnp.Method{
 			InterfaceID:   0xcdc156a3faea6ebf,
 			MethodID:      0,
-			InterfaceName: "discovery.capnp:Provider",
+			InterfaceName: "service.capnp:Provider",
 			MethodName:    "provide",
 		},
 	}
@@ -662,7 +662,7 @@ func Provider_Methods(methods []server.Method, s Provider_Server) []server.Metho
 		Method: capnp.Method{
 			InterfaceID:   0xcdc156a3faea6ebf,
 			MethodID:      0,
-			InterfaceName: "discovery.capnp:Provider",
+			InterfaceName: "service.capnp:Provider",
 			MethodName:    "provide",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
@@ -865,7 +865,7 @@ func (c Locator) FindProviders(ctx context.Context, params func(Locator_findProv
 		Method: capnp.Method{
 			InterfaceID:   0xd8eba41bb8f5845d,
 			MethodID:      0,
-			InterfaceName: "discovery.capnp:Locator",
+			InterfaceName: "service.capnp:Locator",
 			MethodName:    "findProviders",
 		},
 	}
@@ -970,7 +970,7 @@ func Locator_Methods(methods []server.Method, s Locator_Server) []server.Method 
 		Method: capnp.Method{
 			InterfaceID:   0xd8eba41bb8f5845d,
 			MethodID:      0,
-			InterfaceName: "discovery.capnp:Locator",
+			InterfaceName: "service.capnp:Locator",
 			MethodName:    "findProviders",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
@@ -1781,93 +1781,93 @@ func (p Message_Response_Future) Location() SignedLocation_Future {
 	return SignedLocation_Future{Future: p.Future.Field(0, nil)}
 }
 
-const schema_fcba4f486a351ac3 = "x\xda\xa4Ukh\x1cU\x14>\xe7\xde;;\xdb\xba" +
-	"\x9b\xec\xed\xa4\xda\x07a)\xa4h}\xc4\xd6\x1a-\xa1" +
-	"\xb8kh\x89MR\xdc\xbb\xf5A\x0b\x11\x87\xdd1\xdd" +
-	"\x92\xdd\x8d3\x9b\xd8RC\xa8\x16\xa4\xa2\xd2\xaa\x85\x0a" +
-	"J\x94\x04DD\x82\xf8\xa0VJ\xb1*h!\xf8@" +
-	"J5\x06\xff\xd8RS\xea\x1f-J1\xbdrgv" +
-	"v&k\xa2\x01\xff]\xee|\xf7<\xbe\xf3\x9do\xd6" +
-	"\xbfG\xd2lC\xbc3\x0aD<\xaaE\xe4\x8f\xc7\xf7" +
-	"\xbepv\xff\xf7G\x81'P~\xba\xaam\xcf}\xf7" +
-	"\x9f\xf8\x0b4\xa2\x03\x18K\xd8Uc9S'\xce\x9e" +
-	"\x00\x94\xdd=\xd1\xfd\x0fO\xbd4\x0a|%\x02\xa8\x0f" +
-	"\x1b\x07Y\x17\x02\x93O?x\xa2\x9c\xdeua\x14\xf8" +
-	"\x0a\x94\xc9/\x07\xfa\x7f\x9b\x99\xf8\xd6C\x98\x8c\xa0Q" +
-	"d:Pyj\xec\xf0\xd8\x1fwo\x1eS\xa8\xea\xfb" +
-	"m\xccV\xef\xd7Nm{\xe0\xba\xe9\xee\xb7\xbc/\x1a" +
-	"\xaaOml\x0f\x02\x1a\xf7\xb2\x14\xa0\xfc\xe2\xcd\xd1\x9f" +
-	"h\xb6\xfb]\xe0kj\x80#\xecE\x05x\xc3\x05\x9c" +
-	"*\xcd\\\x1d{\xe8\x93I\xe0\x09\x1a\xf4\x01h|\xce" +
-	"\xce\x18\xdf\xb8ML\xb2N\xe3\x8a:\x05\x15\x8a\x04\x86" +
-	"\xba\xde\x8a:\x010\xa6\xd9i\xe3<\xbb\x11\xc0\x98u" +
-	"\xdb\xee7'\x9c\xc8\xed\x0d\xdf\x85s\xf7jO\xa9\xdc" +
-	"\x05M\xe5\x8e'W\x7f6\xd5\xd2p\xce\xe3\xc5\x03\x1c" +
-	"\xd2:\x14\xe0\x88\x0b\xe8=x\xe5\xf8\xea\xf1K\xe7\xfe" +
-	"Q\xdc\x07\xdai\xe3\xa4\xa6\x8a\xfbH\xeb4\xce\xab\x93" +
-	"\x1c\xb7\xdbc\xc3;w\xfd\x10N7\xa9=\xab\xa2M" +
-	"\xbb\xd1\xbe>\xbb6\xd5\xfb\xdc\xf8\xcf\xf5\xd16\xcej" +
-	"K\xd1\x88G\xdc\xd1E\x9e1z\xd5I~x\xe0\xab" +
-	";&\xd2\xcb/\xd4\xf7Ju\x0a`l\x8d\x9c1\x84" +
-	"\xc2m\xdc\x1eI\"\xa0l\xbb\xc7\x9e\xbc\xeb\xd2-\xbf" +
-	"\xcf\x9d\xa4W\xc5\xb0\xbe\x14\x8d\xe7u\x15\xff\x90\xae*" +
-	"\xf9\xe5\xf2#+\xd7\xbc}\xf1\xcfp\xa9\xef\xe8n\xa9" +
-	"'\xf5\x14\xec\x94\xf9\x82\x93+\x0fY6\xd9\xd7\x9a3" +
-	"\x07J\x03\xed;\x0a}%+\xdfSN\xe5\xccJ\xa1" +
-	"\\\xca \x8a(e\x00\x0c\x01\xf8\xba,\x80\xb8\x89\xa2" +
-	"\xb8\x93 GlBu\xb9\xa1\x0b@\xac\xa7(6\x13" +
-	"\x94N\xa1\xafdV\x06m@\x0b\xe3@0\xae\xc6S" +
-	"\xf6b\x01\x00&\x82v\x011\x01X\xab\x80\xf9\x15d" +
-	"\xec\xf2P!o\xd9\xad\x03\xde\xa1%k9\x83\xfd\x15" +
-	"\x07\xa0\x86\xa5>v\xbb\xe58f\x9f\xd5\x9a\xb5\x1e\x1f" +
-	"\xb4\x9c\x0adp\x9e\x80=*\x7f\xd9n}\xacP\xca" +
-	"\xfb\xc1\x9d\x96\xac\x95t\xc3.\x16\x9f1\x1bm\xb3\xe8" +
-	"\x08Vc#~3\x80\x88R\x14[\x086\xe6v\x9b" +
-	"%\xe4\xf2\xd7\xebg65]\xfe\xf8\"\x00\xa4\x91c" +
-	"R0\x82\xe1K\x8e7\x08\x86\x88\x98\xa1\x88\x89`\xb9" +
-	"\x01\x91\x87\xc8\xd0\xfcZ\xb6T/\xf6\xed\xb0\xec\xa1B" +
-	"\xce\xf2I\xb1\xab\xac\xe0\x9c\x82\xd4$b\x14\xc5\x0a\x82" +
-	"\xd2\x07*\xd6y\xb0}u\x89H=\xeb\xa08\x14\x8c" +
-	"j\x00\xb5\xb5A\xdfW8\xef\x00\xc25}\xa4\x1a<" +
-	"\x8da\xc2I\xddT@D\x11C\xce\xb3\xa4#$^" +
-	"\xadk\xa4:4\x99\xb5\x9c\x81r\xc9\xb1\xc0\xa5\x93\xc5" +
-	"\xa4\xf4\xc4\xd6\x01 Z(\x8a\xf5\x04\xe3xMzj" +
-	"\xbbM\xf5x+E\xb1\x89\xe0\x88\xedE\xc0D\x90\xa5" +
-	"\xaa*;\x88\x89\x89 m\x9d\xe6\x16\xa6\xb9\xdf\xd3@" +
-	"K\xc6TC\x87\xf9\xa6\xdeD\xb0\xb1d\x16-\x8c\x01" +
-	"\xc1\xd8\xa2\x94<O\xb4\xf0\xc8\xe6.JX\x1b\x89\xf9" +
-	"FV\xd5ih`\xbeK\xa3o\xe4\x9c\xdb@\xf8\x12" +
-	"]\xfaZ\x86\xa4\xab\xe6\xb9\x83\xfbo\x1aj+\x18." +
-	"\xbd# b\xa4\x0aD\x1eXi\x9d\xd2\xe8BI<" +
-	"\xc5E\xdd\x06|\xbfB\xffw\xa2\xdc\x85\xf0u:\x06" +
-	".\x8f\xbe\xff\xf2f\xa5F\xae\x87\xa5\x9e\xae\x95\xb2\x80" +
-	"6{j\x1c\xab\xacM\xb5n\x86W\x01\x88\xbd\x14\xc5" +
-	"A\x82\xcd(e\xd5\xdc\x0e\xb4\x03\x88')\x8ac\x04" +
-	"\x9b\xc95uM\x00\xf8Qu}\x98\xa2x\x95`3" +
-	"\x9dU\xd7\x14\x80\xbf\xa2\xae_\xa6(^'\xc8\x19i" +
-	"B\x06\xc0_S\x829FQ\xbcO\x90\x16\xf2\xbe\\" +
-	"RE3\x9f\xb7\x1dl\x00\xd7\x0b\x94Y6\x00\xa6\xcc" +
-	"Rnw\xd9\xae\x81r\x83N\xa5\\\xc4e@p\x19" +
-	"`c\xd1\xaa\x98\xfe\x8b\x98\xf7\xe2\xdfL\xd1\xdf\x01O" +
-	"!\xffCs\x8b\xf0\xa3\xaa\xb6\x17\xb5*\x7f\x07\x00\x00" +
-	"\xff\xff>y\x8a\x83"
+const schema_fcba4f486a351ac3 = "x\xda\x94U]h\x1cU\x14>\xe7\xde;;\x09f" +
+	"7{;i\xab-\xcb\xbeD\xb4jC\xd34Zb" +
+	"uCh\x89m#\xee]\xad\xc5B\xc1qwLV" +
+	"\xb2\xbb\xe9\xccnZ[kH\x0d\x04A\xa4E\x0b-" +
+	"m\x88\x12_\xa4H\xb1\xf8S\xa3PD}P\x88b" +
+	"\x1e\xa4%\x0a\xbeX5E\xf1\x97B\xb0\xbdrgv" +
+	"v\xa6\x9b\xd4\xda\xb7\xbbw\xcf\xfd\xbe\xf3\x9d\xef\x9c3" +
+	"\xebN\x91n\xd6\x1e\xedm\x00\"\x9e\xd4\"\xf2\xdb\xb3" +
+	"\xfb^\xfe\xe6\xc0\x85\xa3\xc0c(?Y\xd5\xf9\xccC" +
+	"\x8fL\xff\x03\x1a\xd1\x01\x8cF6o,g\xea\xc4\xd9" +
+	"^@\xf9\xd1\xf8\xc0\xde\x13\x97\xef?\x01<F\x83X" +
+	"@\xa3\xc2\x16\x8cQ7\xf0 \x1b7\xbeV'\xb9{" +
+	"\xc3or\xd6\xfa~\x02x\x12\x014\xd4\x01:>`" +
+	"\xfb\x11\xd0\xf8\x8c\xa5\x00\xe5\xf6\xbe\x86\x03;\xe7^\x99" +
+	"\x04\xbe\x12\x01\xd4\x9b\x8e\x1fX\x17\x02\x93/\xec\x98." +
+	"u\xef\xba8\x09|\x05\xca\xe4\xe7C\x83\x7f\xce\x9f\x9e" +
+	"u#\x8c\x19\xf6\x87q\x81\xe9@\xe5\xb9\xa9\xc3S\x97" +
+	"\xef\xdb4\xa5\x82\xaa\xcf\xdfeO\xa9\xe7\xb7\xcfm}" +
+	"\xec\x96\xef\xb6\xbf\xe9\xfd\xe31\xbf\xcev)\xe6\xb7\\" +
+	"\xe6\x9d\x93\xa7\xde\x7f{\xff\xf8\x17\xe1\xd4\xaex\xa95" +
+	"j*\xe0\\q~a\xea\xf1\x8fg\x16\x09]\xa3M" +
+	"\x1b\xed\x9aJd\xad\xd6k\xecP'96{\x92\x91" +
+	"C\xe9/\xc3h\x0fh\xb6B\xdb\xea\xa2\xd5\x14\x88\x18" +
+	"\x86j\xbc\x05u\x02`\xe4\xb53\xc6\x1e\xed\x0e\x00\xe3" +
+	"EM\x159\x9a\\\xfd\xe9\\k\xec\xbcW\x16\x0f\xee" +
+	"gm\xbd\x82\xfb\xdd\x85\xdb=\xf6\xf7\xd9\xd5o\\:" +
+	"\xbf(\xb9\xe5\x913F\"\xa2\x92\xbb-\xd2klQ" +
+	"'\xf9\xde\xe8W\xebOw/\xbfX\xcfMu\xaaD" +
+	"D\xa6\x8dN\x15\xd7\xd1\x1eI\xa2\xc2\xd6\x8e\xe4\x12/" +
+	"=\xffcX\x8b\xa9\x1fR\xe4\x05]\x91w>h\xcf" +
+	"\xdc{\xe9\xee\xbf\xae\xb5\xc6\x0d4\x8e\xe8\x0b\xc6\x84\xae" +
+	"N\xc7\xf5\x14<!\x1d\xcb\x1e\xceg\xad6\x925\x87" +
+	"\x8aC]\x8f\xe6\xfb\x8bV\xae\xaf\x945\x9b\xcb\xf9R" +
+	"1\x8d(\x1a(\x03`\x08\xc0\xd7d\x00\xc4\x9d\x14\xc5" +
+	"\x06\x82\x1c\xb1\x05\xd5e\xfb6\x00\xb1\x8e\xa2\xd8DP" +
+	":\xf9\xfe\xa2Y\xae\xd8\x80\x16F\x81`\x14P\x0e\x96" +
+	"\xb2\xa6\xc2\x02\x00\x8c\x07Z\x011\x0e\xb8\x88\xdf\xfb\xb9" +
+	"9\xef\xa4\xb2\xa5a\xcb~\xd6\xcb@\x0b\xf5*\xfa\xfa" +
+	"\x155\xe1kt\xc4\x9a\xbd\xe8w\x0dO\xf4\x00\xe1\\" +
+	"\x97Cvi8\x9f\xb3l\x00\xe8\xc6\x117\x97\x92\xdd" +
+	"\x8di\x0c\xa8Y=\xb5\xc7\xdc\xe6?mM\xa5M\xdb" +
+	",8\x82\xd5*\x11\xbd\x0b@4P\x14-\x04\x9b\x8b" +
+	"f\xc1\xc2& \xd8\x14\xd2C=\xd0t\x15\xc3\x07k" +
+	"\xcd\xa4,\xa72Xv\xea\x85?l9\x8e\xd9o\xb5" +
+	"e\xac\xe4\x9e\x8a\xe5\x94\x97H\xb0\xcfK\xbe\xed\xe9|" +
+	"1\xe7\xe3:\xad\x19\xcb\xa9\xe8a\xc0\xff\x8cVJ\xe8" +
+	"\xd2R6\x13l\xce\x0e\x98E\xe4\xf2\xd7\x15\xf3\x1b[" +
+	"~\xf9\xf0'\xb7h\x1c\x93\x82\x11\x0c_r\\)\x18" +
+	"\"b\x9a\"\xc6\x83\xf5\x04\x88\x1cn\\\xd8\xaa\x0b\xb5" +
+	"Z\x84\xb3\xe9\x09\x0a\xeb\xbb\x85<\x18\xa7:\x06\xf4\xab" +
+	"\x9c\xf2\x04\xaanan\xb7\xf8\x13\x8a\xfe\x06\xe3\\u" +
+	"\x84\xa6\x8fT\x9d\xf8\x7f=\xe0\xa7\x9aN\xde|\x0b\xa0" +
+	"\xefl\xd2\xb5V4 \x86\xb6fcOhN\xb5m" +
+	"#\x19\xcb\xf5]f,g\xa8Tt,p\xe1Y\x93" +
+	"\x94\xde\xec\xa9\xc2\xb4R\x14\xeb\x08F\xf1\xaa\xf4\x86o" +
+	"\xad\x1a\xbe{(\x8a\x8d\x04Gl\x0f\x01\xe3\x01Ku" +
+	"\xc8\xec\x00\x13\xe3\x01m\xdd\x08^\xafe\x97\xd0\xaeh" +
+	"\x9b(\x8a[I\xfd|\x87{!\xbe\xb8\x18}\xa5\xa4" +
+	"[\xd0\xc0(\xffC\x80\xfe\xb7\x82s\x1b\x08o\xd4\xa5" +
+	"\xdf\xb9\x90t{\xf7Z\xc3jx)\x8f]\x01\xb6\xd4" +
+	"\x12<\xb8\x0a@\xec\xa3(\xc6\x08&P\xca\xea\xae\x1a" +
+	"\xed\x02\x10\xcfQ\x14\xc7\x08&\xc8UuM\x00\xf8Q" +
+	"u}\x98\xa28I0A\xaf\xa8k\x0a\xc0\x8f\xab\xeb" +
+	"W)\x8a\xd7\x08rFZ\x90\x01\xf0\x09e\xfb1\x8a" +
+	"\xe2\x1d\x824\x9f\xf3MO\x15\xcc\\\xcev0\x06\xee" +
+	"L\xa8\xdd\x17\x03L\x99\xc5\xec@\xc9\xae\x05e+N" +
+	"\xb9T\xc0e@p\x19`s\xc1*\x9b\xfe\x8b&\xef" +
+	"EM\x9fv\xa3\xa5\x94\xf1f\x07\xaegKh\xf1!" +
+	"\x0f>\x96u\x03\xb4h\xfb\xa4\xbcN\xf1\xfc\xb9y\xbf" +
+	"\xff\x0d\x00\x00\xff\xff\xfe\xfd~\xc9"
 
 func init() {
 	schemas.Register(schema_fcba4f486a351ac3,
 		0x95d97bd68e78b8dc,
+		0x9b3bf79b776887bc,
+		0x9de065d2fff0345d,
 		0x9f93db577b084c4b,
 		0x9fe65a406fba5583,
 		0xa33c37f7a390a3bf,
 		0xa94bdd0b5449db25,
-		0xb14b5203df9fa7c8,
+		0xca877ab1b7ab9f57,
 		0xcdc156a3faea6ebf,
+		0xce508202049cd284,
 		0xd2afeaf36c70c91f,
-		0xd40e2f0673af616c,
 		0xd80e24dbc41b1f0d,
 		0xd8eba41bb8f5845d,
-		0xda5a597d0c3a72a4,
-		0xe4a48c5d3f25d6d0,
 		0xe61540af32cf81b6,
-		0xf42beb36cd723e35,
-		0xf8e8ab21195eede9)
+		0xe77e8c1d6491055d,
+		0xf42beb36cd723e35)
 }

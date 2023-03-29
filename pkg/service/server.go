@@ -1,4 +1,4 @@
-package discovery
+package service
 
 import (
 	"context"
@@ -6,23 +6,23 @@ import (
 
 	"capnproto.org/go/capnp/v3"
 	"github.com/wetware/ww/internal/api/channel"
-	api "github.com/wetware/ww/internal/api/discovery"
+	api "github.com/wetware/ww/internal/api/service"
 	"github.com/wetware/ww/pkg/pubsub"
 )
 
-type DiscoveryServiceServer struct {
+type ServiceDiscoveryServer struct {
 	pubsub.Router
 }
 
-func (s *DiscoveryServiceServer) Client() capnp.Client {
-	return capnp.Client(api.DiscoveryService_ServerToClient(s))
+func (s *ServiceDiscoveryServer) Client() capnp.Client {
+	return capnp.Client(api.ServiceDiscovery_ServerToClient(s))
 }
 
-func (s *DiscoveryServiceServer) Discovery() DiscoveryService {
-	return DiscoveryService(s.Client())
+func (s *ServiceDiscoveryServer) Discovery() ServiceDiscovery {
+	return ServiceDiscovery(s.Client())
 }
 
-func (s *DiscoveryServiceServer) Provider(_ context.Context, call api.DiscoveryService_provider) error {
+func (s *ServiceDiscoveryServer) Provider(_ context.Context, call api.ServiceDiscovery_provider) error {
 	name, err := call.Args().Name()
 	if err != nil {
 		return err
@@ -48,7 +48,7 @@ func (s *DiscoveryServiceServer) Provider(_ context.Context, call api.DiscoveryS
 	return res.SetProvider(api.Provider_ServerToClient(&provider))
 }
 
-func (s *DiscoveryServiceServer) Locator(_ context.Context, call api.DiscoveryService_locator) error {
+func (s *ServiceDiscoveryServer) Locator(_ context.Context, call api.ServiceDiscovery_locator) error {
 	name, err := call.Args().Name()
 	if err != nil {
 		return err

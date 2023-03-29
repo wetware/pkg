@@ -5,7 +5,7 @@ import (
 
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
-	"github.com/wetware/ww/pkg/discovery"
+	"github.com/wetware/ww/pkg/service"
 )
 
 func discover() *cli.Command {
@@ -53,26 +53,26 @@ func provide() *cli.Command {
 
 func discAction() cli.ActionFunc {
 	return func(c *cli.Context) error {
-		disc, release := node.Discovery(c.Context)
+		disc, release := node.Service(c.Context)
 		defer release()
 
 		locator, release := disc.Locator(c.Context, c.String("name"))
 		defer release()
 
-		addrs, release := locator.FindProviders(c.Context)
+		locs, release := locator.FindProviders(c.Context)
 		defer release()
 
-		for addr, ok := addrs.Next(); ok; addr, ok = addrs.Next() {
-			fmt.Println(addr.String())
+		for loc, ok := locs.Next(); ok; loc, ok = locs.Next() {
+			fmt.Println(loc.String())
 		}
 
-		return addrs.Err()
+		return locs.Err()
 	}
 }
 
 func provAction() cli.ActionFunc {
 	return func(c *cli.Context) error {
-		disc, release := node.Discovery(c.Context)
+		disc, release := node.Service(c.Context)
 		defer release()
 
 		serviceId := c.String("name")
@@ -90,7 +90,7 @@ func provAction() cli.ActionFunc {
 			maddrs = append(maddrs, maddr)
 		}
 
-		loc, err := discovery.NewLocation()
+		loc, err := service.NewLocation()
 		if err != nil {
 			return fmt.Errorf("failed to create location: %w", err)
 		}

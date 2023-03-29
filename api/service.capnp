@@ -3,10 +3,10 @@ using Go = import "/go.capnp";
 @0xfcba4f486a351ac3;
 
 $Go.package("discovery");
-$Go.import("github.com/wetware/ww/internal/api/discovery");
+$Go.import("github.com/wetware/ww/internal/api/service");
 
 
-interface DiscoveryService {
+interface ServiceDiscovery {
     provider @0 (name :Text) -> (provider :Provider);
     locator @1 (name :Text) -> (locator :Locator);
 }

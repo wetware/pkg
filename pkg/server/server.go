@@ -11,7 +11,7 @@ import (
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/cluster"
 	"github.com/wetware/ww/pkg/anchor"
-	"github.com/wetware/ww/pkg/discovery"
+	"github.com/wetware/ww/pkg/service"
 	"github.com/wetware/ww/pkg/host"
 	"github.com/wetware/ww/pkg/process"
 	"github.com/wetware/ww/pkg/pubsub"
@@ -74,7 +74,7 @@ func (j Joiner) Join(vat casm.Vat, r Router) (*Node, error) {
 		PubSubProvider:    router,
 		AnchorProvider:    j.anchor(),
 		DebugProvider:     j.Debugger.New(),
-		DiscoveryProvider: j.discovery(router.PubSub()),
+		DiscoveryProvider: j.service(router.PubSub()),
 		ExecutorProvider: j.executor(),
 	})
 
@@ -91,8 +91,8 @@ func (j Joiner) pubsub(log log.Logger, router pubsub.TopicJoiner) *pubsub.Server
 	}
 }
 
-func (j Joiner) discovery(rt pubsub.Router) *discovery.DiscoveryServiceServer {
-	return &discovery.DiscoveryServiceServer{
+func (j Joiner) service(rt pubsub.Router) *service.ServiceDiscoveryServer {
+	return &service.ServiceDiscoveryServer{
 		Router: rt,
 	}
 }

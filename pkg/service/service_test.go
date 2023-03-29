@@ -1,4 +1,4 @@
-package discovery_test
+package service_test
 
 import (
 	"context"
@@ -12,8 +12,8 @@ import (
 	inproc "github.com/lthibault/go-libp2p-inproc-transport"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/require"
-	api "github.com/wetware/ww/internal/api/discovery"
-	"github.com/wetware/ww/pkg/discovery"
+	api "github.com/wetware/ww/internal/api/service"
+	"github.com/wetware/ww/pkg/service"
 	pscap "github.com/wetware/ww/pkg/pubsub"
 )
 
@@ -30,11 +30,11 @@ func TestDiscover(t *testing.T) {
 	defer ps.Release()
 
 	// create server
-	server := discovery.DiscoveryServiceServer{
+	server := service.ServiceDiscoveryServer{
 		Router: ps,
 	}
 	// create 1 client
-	client := discovery.DiscoveryService(api.DiscoveryService_ServerToClient(&server))
+	client := service.ServiceDiscovery(api.ServiceDiscovery_ServerToClient(&server))
 	defer client.Release()
 	// advertise service in 1 client
 
@@ -73,8 +73,8 @@ func TestDiscover(t *testing.T) {
 	require.EqualValues(t, expected, got)
 }
 
-func generateLocation(n int) (discovery.Location, error) {
-	loc, err := discovery.NewLocation()
+func generateLocation(n int) (service.Location, error) {
+	loc, err := service.NewLocation()
 	if err != nil {
 		return loc, fmt.Errorf("failed to create location: %w", err)
 	}

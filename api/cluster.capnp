@@ -38,7 +38,7 @@ interface Host {
     # including cryptographic secrets and SHOULD NOT be provided
     # to untrusted parties.
 
-    discovery @4 () -> (discovery :import "discovery.capnp".DiscoveryService);
+    service @4 () -> (service :import "service.capnp".ServiceDiscovery);
     # Discovery returns a Discovery Service capability, which is used for 
     # discovering and providing service. This way, applications can find each other.
 

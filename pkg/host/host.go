@@ -12,11 +12,11 @@ import (
 	"github.com/wetware/casm/pkg/debug"
 	anchor_api "github.com/wetware/ww/internal/api/anchor"
 	api "github.com/wetware/ww/internal/api/cluster"
-	disc_api "github.com/wetware/ww/internal/api/discovery"
+	serv_api "github.com/wetware/ww/internal/api/service"
 	process_api "github.com/wetware/ww/internal/api/process"
 	pubsub_api "github.com/wetware/ww/internal/api/pubsub"
 	"github.com/wetware/ww/pkg/anchor"
-	"github.com/wetware/ww/pkg/discovery"
+	"github.com/wetware/ww/pkg/service"
 	"github.com/wetware/ww/pkg/process"
 	"github.com/wetware/ww/pkg/pubsub"
 )
@@ -61,9 +61,9 @@ func (h Host) Debug(ctx context.Context) (debug.Debugger, capnp.ReleaseFunc) {
 	return debug.Debugger(f.Debugger()), release
 }
 
-func (h Host) Discovery(ctx context.Context) (discovery.DiscoveryService, capnp.ReleaseFunc) {
-	f, release := api.Host(h).Discovery(ctx, nil)
-	return discovery.DiscoveryService(f.Discovery()), release
+func (h Host) Service(ctx context.Context) (service.ServiceDiscovery, capnp.ReleaseFunc) {
+	f, release := api.Host(h).Service(ctx, nil)
+	return service.ServiceDiscovery(f.Service()), release
 }
 
 func (h Host) Executor(ctx context.Context) (process.Executor, capnp.ReleaseFunc) {
@@ -94,7 +94,7 @@ type DebugProvider interface {
 }
 
 type DiscoveryProvider interface {
-	Discovery() discovery.DiscoveryService
+	Discovery() service.ServiceDiscovery
 }
 
 type ExecutorProvider interface {
@@ -156,11 +156,11 @@ func (s Server) Debug(_ context.Context, call api.Host_debug) error {
 	return err
 }
 
-func (s Server) Discovery(_ context.Context, call api.Host_discovery) error {
+func (s Server) Service(_ context.Context, call api.Host_service) error {
 	res, err := call.AllocResults()
 	if err == nil {
 		discovery := s.DiscoveryProvider.Discovery()
-		err = res.SetDiscovery(disc_api.DiscoveryService(discovery))
+		err = res.SetService(serv_api.ServiceDiscovery(discovery))
 	}
 
 	return err
