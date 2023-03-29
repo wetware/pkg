@@ -6,6 +6,7 @@ import (
 
 	"capnproto.org/go/capnp/v3"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/crypto"
 	ma "github.com/multiformats/go-multiaddr"
 	casm "github.com/wetware/casm/pkg"
 	chan_api "github.com/wetware/ww/internal/api/channel"
@@ -13,20 +14,77 @@ import (
 )
 
 type Location struct {
-	api.Location
+	api.SignedLocation
 }
 
 func NewLocation() (Location, error) {
 	_, seg := capnp.NewSingleSegmentMessage(nil)
-	loc, err := api.NewLocation(seg)
+	loc, err := api.NewSignedLocation(seg)
 	if err != nil {
 		return Location{}, fmt.Errorf("failed to create location: %w", err)
 	}
-	return Location{Location: loc}, nil
+	return Location{SignedLocation: loc}, nil
+}
+
+func (loc Location) Sign(pk crypto.PrivKey) error {
+	capLoc, err := loc.Location()
+	if err != nil {
+		return fmt.Errorf("failed to read location: %w", err)
+	}
+
+	b, err := capLoc.Message().Marshal()
+	if err != nil {
+		return fmt.Errorf("failed to marshal location: %w", err)
+	}
+
+	signature, err := pk.Sign(b)
+	if err != nil {
+		return fmt.Errorf("failed to sign location: %w", err)
+	}
+
+	if err := loc.SetSignature(signature); err != nil {
+		return fmt.Errorf("failed to set signature: %w", err)
+	}
+
+	return nil
+}
+
+func (loc Location) Verify() (bool, error) {
+	capLoc, err := loc.Location()
+	if err != nil {
+		return false, fmt.Errorf("failed to read location: %w", err)
+	}
+
+	b, err := capLoc.Message().Marshal()
+	if err != nil {
+		return false, fmt.Errorf("failed to marshal location: %w", err)
+	}
+
+	idBytes, err := capLoc.Id()
+	if err != nil {
+		return false, fmt.Errorf("failed to extract peer ID: %w", err)
+	}
+	peerID := peer.ID(idBytes)
+	pubKey, err := peerID.ExtractPublicKey()
+	if err != nil {
+		return false, fmt.Errorf("failed to extract public key: %w", err)
+	}
+
+	sig, err := loc.Signature()
+	if err != nil {
+		return false, fmt.Errorf("failed to extract signature: %w", err)
+	}
+
+	return pubKey.Verify(b, sig)
 }
 
 func (loc Location) SetMaddrs(maddrs []ma.Multiaddr) error {
-	capMaddrs, err := loc.NewMaddrs(int32(len(maddrs)))
+	capLoc, err := loc.NewLocation()
+	if err != nil {
+		return fmt.Errorf("fail to create location: %w", err)
+	}
+
+	capMaddrs, err := capLoc.NewMaddrs(int32(len(maddrs)))
 	if err != nil {
 		return fmt.Errorf("fail to create capnp Multiaddr: %w", err)
 	}
@@ -41,21 +99,36 @@ func (loc Location) SetMaddrs(maddrs []ma.Multiaddr) error {
 }
 
 func (loc Location) SetAnchor(anchor string) error {
-	if err := loc.Location.SetAnchor(anchor); err != nil {
+	capLoc, err := loc.NewLocation()
+	if err != nil {
+		return fmt.Errorf("fail to create location: %w", err)
+	}
+
+	if err := capLoc.SetAnchor(anchor); err != nil {
 		return fmt.Errorf("fail to set anchor in capnp Location: %w", err)
 	}
 	return nil
 }
 
 func (loc Location) SetCustom(custom capnp.Ptr) error {
-	if err := loc.Location.SetCustom(custom); err != nil {
+	capLoc, err := loc.NewLocation()
+	if err != nil {
+		return fmt.Errorf("fail to create location: %w", err)
+	}
+
+	if err := capLoc.SetCustom(custom); err != nil {
 		return fmt.Errorf("fail to set custom in capnp Location: %w", err)
 	}
 	return nil
 }
 
 func (loc Location) Maddrs() ([]ma.Multiaddr, error) {
-	capMaddrs, err := loc.Location.Maddrs()
+	capLoc, err := loc.Location()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read location: %w", err)
+	}
+
+	capMaddrs, err := capLoc.Maddrs()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Multiaddresses: %w", err)
 	}
@@ -107,75 +180,7 @@ func (c Provider) Provide(ctx context.Context, loc Location) (casm.Future, capnp
 	ctx, cancel := context.WithCancel(ctx)
 
 	fut, release := api.Provider(c).Provide(ctx, func(ps api.Provider_provide_Params) error {
-		capLoc, err := ps.NewLocation()
-		if err != nil {
-			return fmt.Errorf("failed to create SignedLocation: %w", err)
-		}
-
-		if err := capLoc.SetLocation(loc.Location); err != nil {
-			return fmt.Errorf("fail to set location: %w", err)
-		}
-
-		b, err := capLoc.Message().Marshal()
-		if err != nil {
-			return fmt.Errorf("fail to sign the location: %w", err)
-		}
-
-		siganture := sign(b)
-
-		if err := capLoc.SetSignature(siganture); err != nil {
-			return fmt.Errorf("failed to set signature: %w", err)
-		}
-
-		return nil
-	})
-
-	return casm.Future(fut), func() {
-		cancel()
-		release()
-	}
-}
-
-func sign(b []byte) []byte {
-	return []byte{} // TODO
-}
-
-func verifySignature(b []byte) (bool, error) {
-	return true, nil // TODO
-}
-
-type AnchorLocation struct {
-	ID   peer.ID
-	Meta []string
-
-	Anchor string
-}
-
-func (c Provider) ProvideAnchor(ctx context.Context, anchor AnchorLocation) (casm.Future, capnp.ReleaseFunc) {
-	ctx, cancel := context.WithCancel(ctx)
-
-	fut, release := api.Provider(c).Provide(ctx, func(ps api.Provider_provide_Params) error {
-		return nil // TODO
-	})
-
-	return casm.Future(fut), func() {
-		cancel()
-		release()
-	}
-}
-
-type CustomLocation struct {
-	ID   peer.ID
-	Meta []string
-
-	Custom []byte
-}
-
-func (c Provider) ProvideCustom(ctx context.Context, custom CustomLocation) (casm.Future, capnp.ReleaseFunc) {
-	ctx, cancel := context.WithCancel(ctx)
-
-	fut, release := api.Provider(c).Provide(ctx, func(ps api.Provider_provide_Params) error {
-		return nil // TODO
+		return ps.SetLocation(loc.SignedLocation)
 	})
 
 	return casm.Future(fut), func() {
@@ -239,13 +244,13 @@ func (ch handler) Send(ctx context.Context, call chan_api.Sender_send) error {
 			return err
 		}
 
-		loc, err := api.NewRootLocation(seg)
+		sloc, err := api.NewRootSignedLocation(seg)
 		if err != nil {
 			return err
 		}
 
 		select {
-		case ch <- Location{Location: loc}:
+		case ch <- Location{SignedLocation: sloc}:
 			return nil
 		case <-ctx.Done():
 			return ctx.Err()
