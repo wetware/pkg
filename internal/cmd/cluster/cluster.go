@@ -24,6 +24,7 @@ var subcommands = []*cli.Command{
 	subscribe(),
 	discover(),
 	provide(),
+	run(),
 }
 
 var flags = []cli.Flag{

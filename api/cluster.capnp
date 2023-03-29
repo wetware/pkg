@@ -41,4 +41,8 @@ interface Host {
     discovery @4 () -> (discovery :import "discovery.capnp".DiscoveryService);
     # Discovery returns a Discovery Service capability, which is used for 
     # discovering and providing service. This way, applications can find each other.
+
+    executor @5 () -> (executor :import "process.capnp".Executor);
+    # Executor provides a way of spawning and running WASM-based
+    # processes.
 }

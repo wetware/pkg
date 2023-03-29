@@ -8,6 +8,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/discovery"
 	p2p_host "github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/libp2p/go-libp2p/p2p/net/swarm"
 	inproc "github.com/lthibault/go-libp2p-inproc-transport"
 	ma "github.com/multiformats/go-multiaddr"
@@ -123,8 +124,12 @@ func TestDialer(t *testing.T) {
 			Boot: boot.StaticAddrs{*p2p_host.InfoFromHost(h)},
 		}.Dial(ctx)
 
-		assert.ErrorIs(t, err, multistream.ErrNotSupported)
-		assert.EqualError(t, err, "protocol not supported")
+		var want multistream.ErrNotSupported[protocol.ID]
+		assert.ErrorAs(t, err, &want)
+		assert.Contains(t, want.Protos, protocol.ID("/casm/0.0.0/test/host/packed"),
+			"packed protocol missing")
+		assert.Contains(t, want.Protos, protocol.ID("/casm/0.0.0/test/host"),
+			"standard protocol missing")
 		assert.Nil(t, n, "should return nil client node")
 	})
 

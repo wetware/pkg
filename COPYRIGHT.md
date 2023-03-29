@@ -80,3 +80,8 @@ this agreement shall remain valid and enforceable.
 10. You understand that we may, at our sole discretion, waive waive any of the above rights, but that this does not imply a waiver of any remaining rights.
 
 # Contributors
+
+- Ayaz Abbas
+- Evan Schott
+- Mikel Solabarrieta
+- Aratz Manterola Lasa

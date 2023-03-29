@@ -8,7 +8,6 @@ import (
 	fc "capnproto.org/go/capnp/v3/flowcontrol"
 	schemas "capnproto.org/go/capnp/v3/schemas"
 	server "capnproto.org/go/capnp/v3/server"
-	stream "capnproto.org/go/capnp/v3/std/capnp/stream"
 	context "context"
 	fmt "fmt"
 	channel "github.com/wetware/ww/internal/api/channel"
@@ -19,7 +18,39 @@ type Stream capnp.Client
 // Stream_TypeID is the unique identifier for the type Stream.
 const Stream_TypeID = 0x800fee1ed6b441e2
 
-func (c Stream) Send(ctx context.Context, params func(channel.Sender_send_Params) error) (stream.StreamResult_Future, capnp.ReleaseFunc) {
+func (c Stream) NewSender(ctx context.Context, params func(channel.SendCloser_newSender_Params) error) (channel.SendCloser_newSender_Results_Future, capnp.ReleaseFunc) {
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0xe9a7d19a7d14e94e,
+			MethodID:      0,
+			InterfaceName: "channel.capnp:SendCloser",
+			MethodName:    "newSender",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(channel.SendCloser_newSender_Params(s)) }
+	}
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return channel.SendCloser_newSender_Results_Future{Future: ans.Future()}, release
+}
+func (c Stream) NewCloser(ctx context.Context, params func(channel.SendCloser_newCloser_Params) error) (channel.SendCloser_newCloser_Results_Future, capnp.ReleaseFunc) {
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0xe9a7d19a7d14e94e,
+			MethodID:      1,
+			InterfaceName: "channel.capnp:SendCloser",
+			MethodName:    "newCloser",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(channel.SendCloser_newCloser_Params(s)) }
+	}
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return channel.SendCloser_newCloser_Results_Future{Future: ans.Future()}, release
+}
+func (c Stream) Send(ctx context.Context, params func(channel.Sender_send_Params) error) (channel.Sender_send_Results_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xe8bbed1438ea16ee,
@@ -33,7 +64,7 @@ func (c Stream) Send(ctx context.Context, params func(channel.Sender_send_Params
 		s.PlaceArgs = func(s capnp.Struct) error { return params(channel.Sender_send_Params(s)) }
 	}
 	ans, release := capnp.Client(c).SendCall(ctx, s)
-	return stream.StreamResult_Future{Future: ans.Future()}, release
+	return channel.Sender_send_Results_Future{Future: ans.Future()}, release
 }
 func (c Stream) Close(ctx context.Context, params func(channel.Closer_close_Params) error) (channel.Closer_close_Results_Future, capnp.ReleaseFunc) {
 	s := capnp.Send{
@@ -119,6 +150,10 @@ func (c Stream) GetFlowLimiter() fc.FlowLimiter {
 	return capnp.Client(c).GetFlowLimiter()
 } // A Stream_Server is a Stream with a local implementation.
 type Stream_Server interface {
+	NewSender(context.Context, channel.SendCloser_newSender) error
+
+	NewCloser(context.Context, channel.SendCloser_newCloser) error
+
 	Send(context.Context, channel.Sender_send) error
 
 	Close(context.Context, channel.Closer_close) error
@@ -140,8 +175,32 @@ func Stream_ServerToClient(s Stream_Server) Stream {
 // This can be used to create a more complicated Server.
 func Stream_Methods(methods []server.Method, s Stream_Server) []server.Method {
 	if cap(methods) == 0 {
-		methods = make([]server.Method, 0, 2)
+		methods = make([]server.Method, 0, 4)
 	}
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xe9a7d19a7d14e94e,
+			MethodID:      0,
+			InterfaceName: "channel.capnp:SendCloser",
+			MethodName:    "newSender",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.NewSender(ctx, channel.SendCloser_newSender{call})
+		},
+	})
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xe9a7d19a7d14e94e,
+			MethodID:      1,
+			InterfaceName: "channel.capnp:SendCloser",
+			MethodName:    "newCloser",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.NewCloser(ctx, channel.SendCloser_newCloser{call})
+		},
+	})
 
 	methods = append(methods, server.Method{
 		Method: capnp.Method{
@@ -481,27 +540,27 @@ func (f Provider_provide_Results_Future) Struct() (Provider_provide_Results, err
 	return Provider_provide_Results(p.Struct()), err
 }
 
-const schema_89c985e63e991441 = "x\xdat\xd0?HBQ\x14\x06\xf0\xef\xbcs\x9f\xaf" +
-	"E\xe4r\x0d\x9b\x12\xa25I\xa2\xc5 \xff,\x11D" +
-	"\xbc[\x04\xd5\x10\xbc\xcaA\xc8\x94\xf7,(\x10kh" +
-	"\x08\x89\xe6\x9aZ\"Z\xa3\xb1\xa9\xad\xb1%\x08\x9a\x1a" +
-	"\"!\x8a\xa6\x96\xe8\xc53Q\x11\xda\xce\xbd\x1c~\xf7" +
-	"\xbb\xdfh?eD2|\x1c\x82\xa1g\xcc\x90\xff\x9c" +
-	"\xbd~\x18|\x8f\xecAF\xd8\xcfFO&_\x0e\xee" +
-	"\x0e\x01R#|\xa5\xc6\xd9\x02T\x92-\x95\xe4\x18\xf0" +
-	"\xb3\xf88}\xb6[\xbf\x91\x03\x04\x98d\x01c\x9aS" +
-	"\x04RK\x9c\x06}-L|\xd4V\x86\xdez\xa5\x1d" +
-	"\xbeU\xfbM\xa9\xcaS\xea<\x98\xfc\xd5\xd7\xe5\xfa\x93" +
-	"\xf9\xf9\x8d\xa6%\x02\xea\x88s\x84K\xbfP\xf2*n" +
-	"\xde)Rb\xcd)o\x96S\xf3\xf1\xe6\xd1&\xb2\xd9" +
-	"\xd4\x82\xc8\x9fmD\xab\xa7\xf7\x17\x0ddHR\\\x0b" +
-	"\xa3\xeb\x0a\x90\x14\x0b\xb6\x82u\xa20\x8c6\xc8-\xd0" +
-	"vK\xdb\x85\xf5\xbc\x9b(\xff\x0d\xc3i\xdbq\x9d\xa2" +
-	"\xa7\x05\x0b@\x10 \xc3)@\xf71\xe9\xa8A\xe9V" +
-	"\x1c\xd9\xa9\x0aD\x12\xd4\x86\x8d\x1e\x186\x91\x16lv" +
-	"\x0a\xeb\xfa\xae\xcc\xc1\x90\xa6Uk=\x9e!\x9b:\x92" +
-	"\xf8/\xe2\\\xde\xdb\xda\xa8x\xf8\x0d\x00\x00\xff\xff\xb0" +
-	"=\x85\xba"
+const schema_89c985e63e991441 = "x\xdat\xd0\xbfKBQ\x14\x07\xf0\xefy\xe7>_" +
+	"\x8b\xc8\xe5\x096eD\xb3\x14m\x06\xf9c\x89\x96\xb8" +
+	"\xb7\x08*0x\x95\x83\x90)\xefYC \xb68\x84" +
+	"\x7fAM-\x11\x0d-\xe1\x124\xb55\xba\x04AS" +
+	"C%D\xd1\xd4\x12\xbdx&*B\xdb\xb9\x97\xc3\xe7" +
+	"~\xefwj\x9c\xd2b:\xfc\x12\x82\xa1\x95\x19\xf2\x9f" +
+	"2\xcd\xfb\xb1\xf7\xc8!d\x84\xfdL\xf4x\xee\xb9~" +
+	"w\x04\x90\xbd\xc6W\xb6\xc3\x16`\xe7\xd8\xb2s\x1c\x03" +
+	"~V\x1f\x16N\x0f\x1a7r\x94\x00\x93,`\xa6\xca" +
+	"I\x02\xd9uN\x81\xbeVf?j\x1b\x13o\xc3\xd2" +
+	"\x19\xdf\xda\x97\x1d\xe9\x82\xe7\xedV0\xf9\x9b\xaf\xeb\x8d" +
+	"G\xf3\xf3\x1b\x1dK\x04\xd45g\x09M\xbfP\xf2*" +
+	"n\xde)Rb\xcb)\xef\x96\x93\xcb\xf1\xceQ\x11)" +
+	"6\xb5 \xf2\x17\xdb\xd1\xeaI\xeb\xbc\x8d4I\x8ak" +
+	"a\x0c\\\x01\x92b\xc1V\xb0N\x14\x86\xd1\x03\xb9\x0b" +
+	"*\xb7\xb4_\xd8\xce\xbb\x89\xf2\xdf0\x99R\x8e\xeb\x14" +
+	"=-X\x00\x82\x00\x19N\x02z\x84IG\x0dJu" +
+	"\xe3\xc8~U \x92\xa0\x1el\x0c\xc1PDZ\xb0\xd9" +
+	"/l\xe0\xbb2\x0bC\x9aV\xad\xfbx\x9a\x14\xf5%" +
+	"\xf1_\xc4\xa5\xbc\xb7\xb7S\xf1\xf0\x1b\x00\x00\xff\xff\x0d" +
+	"!\x88\x10"
 
 func init() {
 	schemas.Register(schema_89c985e63e991441,

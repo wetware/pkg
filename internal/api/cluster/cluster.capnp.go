@@ -12,6 +12,7 @@ import (
 	fmt "fmt"
 	anchor "github.com/wetware/ww/internal/api/anchor"
 	discovery "github.com/wetware/ww/internal/api/discovery"
+	process "github.com/wetware/ww/internal/api/process"
 	pubsub "github.com/wetware/ww/internal/api/pubsub"
 )
 
@@ -100,6 +101,22 @@ func (c Host) Discovery(ctx context.Context, params func(Host_discovery_Params) 
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Host_discovery_Results_Future{Future: ans.Future()}, release
 }
+func (c Host) Executor(ctx context.Context, params func(Host_executor_Params) error) (Host_executor_Results_Future, capnp.ReleaseFunc) {
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0x957cbefc645fd307,
+			MethodID:      5,
+			InterfaceName: "cluster.capnp:Host",
+			MethodName:    "executor",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Host_executor_Params(s)) }
+	}
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return Host_executor_Results_Future{Future: ans.Future()}, release
+}
 
 // String returns a string that identifies this capability for debugging
 // purposes.  Its format should not be depended on: in particular, it
@@ -177,6 +194,8 @@ type Host_Server interface {
 	Debug(context.Context, Host_debug) error
 
 	Discovery(context.Context, Host_discovery) error
+
+	Executor(context.Context, Host_executor) error
 }
 
 // Host_NewServer creates a new Server from an implementation of Host_Server.
@@ -195,7 +214,7 @@ func Host_ServerToClient(s Host_Server) Host {
 // This can be used to create a more complicated Server.
 func Host_Methods(methods []server.Method, s Host_Server) []server.Method {
 	if cap(methods) == 0 {
-		methods = make([]server.Method, 0, 5)
+		methods = make([]server.Method, 0, 6)
 	}
 
 	methods = append(methods, server.Method{
@@ -255,6 +274,18 @@ func Host_Methods(methods []server.Method, s Host_Server) []server.Method {
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
 			return s.Discovery(ctx, Host_discovery{call})
+		},
+	})
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0x957cbefc645fd307,
+			MethodID:      5,
+			InterfaceName: "cluster.capnp:Host",
+			MethodName:    "executor",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Executor(ctx, Host_executor{call})
 		},
 	})
 
@@ -344,6 +375,23 @@ func (c Host_discovery) Args() Host_discovery_Params {
 func (c Host_discovery) AllocResults() (Host_discovery_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
 	return Host_discovery_Results(r), err
+}
+
+// Host_executor holds the state for a server call to Host.executor.
+// See server.Call for documentation.
+type Host_executor struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c Host_executor) Args() Host_executor_Params {
+	return Host_executor_Params(c.Call.Args())
+}
+
+// AllocResults allocates the results struct.
+func (c Host_executor) AllocResults() (Host_executor_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Host_executor_Results(r), err
 }
 
 // Host_List is a list of Host.
@@ -1105,45 +1153,201 @@ func (p Host_discovery_Results_Future) Discovery() discovery.DiscoveryService {
 	return discovery.DiscoveryService(p.Future.Field(0, nil).Client())
 }
 
-const schema_fcf6ac08e448a6ac = "x\xda\x8c\x92Ah\x13O\x14\xc6\xdf\x9b\xdd\xfcw\xf7" +
-	"\xafm\x98l\x0f\x05A\xa5V\xb0=\x14\xab\x07! " +
-	"\xd9\x8bX\xb5\x87l\x8a\xe8A\xd14YJ\xa15a" +
-	"7\x1b\x09\xe8A!\xa0\xa8\x11\x85\x08z\x10\x84((" +
-	"\xc5\x8b\x88\x94b\x0eB\x11\x85BA\x11\x0b\xe2)\xd5" +
-	"\x8b-\xa2Th\x09\x8c\xcc&\xbb\x99\xb4\x15=\xbf\xef" +
-	"}3\xdf\xef{{\xd7\x88!\x0fv|\xa5@\xcc\xf9" +
-	"\xd0\x7f\xac\xfabyq\xd7\x9ek\x97\x81\xea\x08 +" +
-	"\x00\xfa\x82\xba\x062\xfb\x99\xfa\xf1}{\xe9\xdb\xd5\xd6" +
-	"`\xffK\x95 \xc8l\xe5\xfdp\xb1t\xfb\xe4\xcd\xc6" +
-	"$\x84|\xf4\x80\x8fP\x7f\xa8\xc6\x00\x99\xf2\xeeL\xba" +
-	"^\xbdP\x06\xda)\xb1\xa9GC5u\xeaW\x1d\x00" +
-	"\xf5Y\xf5\x9e>\xa7r\xfd\x1b\xf50\xeaeM\x01`" +
-	"\xe4Nhfu\xe7\xa5\xfb\xa2\xddE\xad\x9f\xdb\x155" +
-	"nW\x9bvG\x8e\xbd\x92+\xc2\x17\x1fk\xfc\x8b}" +
-	"r\xf8\xa9t\xb6\xbb*n\xde\xd0\xfe\xe7\x9beo3" +
-	"1\xfc\xb1o\xa9k\xa4*d\x98\xd6zx\x86-\x87" +
-	"NT\x8a\xa7f\xde\xb6e\xd0\x1a\x19\xbc\xd5\xe5Nm" +
-	"\xc5]\xbd\xf2I\x14\xccj\x11.\x98\xf3\x04w\x9f\xd4" +
-	"Cn\xcf\xf3E\xc1{\x89\xbf\xcd\xe05KM\xb8N" +
-	"\xce\xb2\x07H*\x99=\x97\x8d\x0ee\x9c\xdc\x80\x9d\xc9" +
-	"\xe4zc\xf1\xa4\x9d\x9ct\x02\x81\"\x08\xd2\xd6\xa8;" +
-	"\xd6\xdb\x10\x80/\x10\xe6\xf9q\xeb|o\xc2r\xdc\x89" +
-	"\x9c\x03\xa6,\xc9\x002\x02\xd0\x8e~\x00S\x95\xd0\xec" +
-	"\"\x18\xe6\"\x8c\xc8\x12 F\x00\x83w\xd0\xf7\x91\x9c" +
-	"\\\x1c\xd1\xec\x92B\x00\x01X\xf4\x1b\xa5\xb7\xfa\x81\xd0" +
-	"\xa2\x82\xadx\xe8\x83\xa0\x85(\x10:\xa9 \x09n\x06" +
-	"}\x8a4\xc9\xf7\x8e+(\x05g\x83~9\xf4\xc8>" +
-	" \xf4\xa0\x82rP\x07\xfa\x95\xd3\xc1\x04\x10\xda\xa7x" +
-	"\xdf60\x96uGG\xdcQ\x03\xc3\x1c\x96\x81;<" +
-	"$\x06\xb2\xf4\xb8\x93\xca\xe4-\x1b\xb0``\x1c[\xb9" +
-	"$\x91_ST\xe0\x90\xc2\x9c\x92\x08)\x01`n\x95" +
-	"\xd0\xec&mvH\xd9\xfc\x87\xdd\xb1\xd3\xd7+5\x00" +
-	"D*0#\xeb\xd9\xaf/O\xdaP\x9e\xdfN[=" +
-	"G\xc5\x97\xb9l\xcc\xb2\x01`\x93\x966O\x13O\xda" +
-	"\xca\x9f\x9e\xf5\x8e\xeao7\xc1EHY\xcfBI\xab" +
-	"\x1d\x88l\xc8)\xfa5\x0ah:b\x1b\xc0h\xcb\xb1" +
-	"\xd9\x13R\x16\xcd\xe4\xb7}y\x16\xff\xfc\x0f\x9e\xcd\xc3" +
-	"\x86\xdf\x01\x00\x00\xff\xff\x92\xfdS\x9f"
+type Host_executor_Params capnp.Struct
+
+// Host_executor_Params_TypeID is the unique identifier for the type Host_executor_Params.
+const Host_executor_Params_TypeID = 0x9eaa92308c59a588
+
+func NewHost_executor_Params(s *capnp.Segment) (Host_executor_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Host_executor_Params(st), err
+}
+
+func NewRootHost_executor_Params(s *capnp.Segment) (Host_executor_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Host_executor_Params(st), err
+}
+
+func ReadRootHost_executor_Params(msg *capnp.Message) (Host_executor_Params, error) {
+	root, err := msg.Root()
+	return Host_executor_Params(root.Struct()), err
+}
+
+func (s Host_executor_Params) String() string {
+	str, _ := text.Marshal(0x9eaa92308c59a588, capnp.Struct(s))
+	return str
+}
+
+func (s Host_executor_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Host_executor_Params) DecodeFromPtr(p capnp.Ptr) Host_executor_Params {
+	return Host_executor_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Host_executor_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Host_executor_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Host_executor_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Host_executor_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+
+// Host_executor_Params_List is a list of Host_executor_Params.
+type Host_executor_Params_List = capnp.StructList[Host_executor_Params]
+
+// NewHost_executor_Params creates a new list of Host_executor_Params.
+func NewHost_executor_Params_List(s *capnp.Segment, sz int32) (Host_executor_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	return capnp.StructList[Host_executor_Params](l), err
+}
+
+// Host_executor_Params_Future is a wrapper for a Host_executor_Params promised by a client call.
+type Host_executor_Params_Future struct{ *capnp.Future }
+
+func (f Host_executor_Params_Future) Struct() (Host_executor_Params, error) {
+	p, err := f.Future.Ptr()
+	return Host_executor_Params(p.Struct()), err
+}
+
+type Host_executor_Results capnp.Struct
+
+// Host_executor_Results_TypeID is the unique identifier for the type Host_executor_Results.
+const Host_executor_Results_TypeID = 0x99b232a18288d3d8
+
+func NewHost_executor_Results(s *capnp.Segment) (Host_executor_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Host_executor_Results(st), err
+}
+
+func NewRootHost_executor_Results(s *capnp.Segment) (Host_executor_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Host_executor_Results(st), err
+}
+
+func ReadRootHost_executor_Results(msg *capnp.Message) (Host_executor_Results, error) {
+	root, err := msg.Root()
+	return Host_executor_Results(root.Struct()), err
+}
+
+func (s Host_executor_Results) String() string {
+	str, _ := text.Marshal(0x99b232a18288d3d8, capnp.Struct(s))
+	return str
+}
+
+func (s Host_executor_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Host_executor_Results) DecodeFromPtr(p capnp.Ptr) Host_executor_Results {
+	return Host_executor_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Host_executor_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Host_executor_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Host_executor_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Host_executor_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Host_executor_Results) Executor() process.Executor {
+	p, _ := capnp.Struct(s).Ptr(0)
+	return process.Executor(p.Interface().Client())
+}
+
+func (s Host_executor_Results) HasExecutor() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Host_executor_Results) SetExecutor(v process.Executor) error {
+	if !v.IsValid() {
+		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
+	}
+	seg := s.Segment()
+	in := capnp.NewInterface(seg, seg.Message().AddCap(capnp.Client(v)))
+	return capnp.Struct(s).SetPtr(0, in.ToPtr())
+}
+
+// Host_executor_Results_List is a list of Host_executor_Results.
+type Host_executor_Results_List = capnp.StructList[Host_executor_Results]
+
+// NewHost_executor_Results creates a new list of Host_executor_Results.
+func NewHost_executor_Results_List(s *capnp.Segment, sz int32) (Host_executor_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[Host_executor_Results](l), err
+}
+
+// Host_executor_Results_Future is a wrapper for a Host_executor_Results promised by a client call.
+type Host_executor_Results_Future struct{ *capnp.Future }
+
+func (f Host_executor_Results_Future) Struct() (Host_executor_Results, error) {
+	p, err := f.Future.Ptr()
+	return Host_executor_Results(p.Struct()), err
+}
+func (p Host_executor_Results_Future) Executor() process.Executor {
+	return process.Executor(p.Future.Field(0, nil).Client())
+}
+
+const schema_fcf6ac08e448a6ac = "x\xda\x8c\x93MH\x14a\x18\xc7\x9fgf\xb6Qw" +
+	"\xc7\xe5\xdd\x15\xda\x8a>\xd8\x14\xd2\x83\x98\x11\xc1B\xec" +
+	"\\\x043\x0f;\xbb\x87\x0a\xb2Z\xd7A\x04keg" +
+	"F\x13\xba(HFf \x14\xd8A\x08\xb4\x83HQ" +
+	"\x11a\xd2B\xdd\xea\x14Y\xa1PA\xb0\xeb)\xa5\x0f" +
+	"\x0c\x0c\xe3\x8dwtf_?\xeb\xfc\xfc\xdf\xdf>\xcf" +
+	"\x7f~[3'\xaa\xd2aeg\x08\x84D\x08=;" +
+	"h\xf6\xe9B\xfe\xe0\xa1\xeb\xbd@\x82\x08 \xc9\x00\xc1" +
+	"\xef\xde\xdf \xd1\x9f\xa9\x1f\xdf\xf6\x0d~\xbdV\x18\x1c" +
+	"y\xef\x15\x10$\xba\xf8\xae\xb1op\xe8\xf4\xcd\x95\x89" +
+	"\x07\xd9h\x92\x8d0\xf8\xdc\x1b\x05\xa4\xf2\xf4\xf9\x96\xe5" +
+	"\xec\x95[@JE:q\xaf>W4\xf1k\x19\x00" +
+	"\x83\x9f\xbcw\x82y/\xcb\x7f\xf1^\xc5\xe0\xacO\x06" +
+	"\xa03\xd3\xfd\xbdwk\x1f\x0d\xf3\xb8\x17\xbe0\xc3\xbd" +
+	"\xf21\x9cp\xdb3\xb5t\xa0g\x84\x0f\xcc\xfb\xaaX" +
+	"`\xd1\x0e\xf4\x8f\x9d\x19\xa8\x19\x1a\x1f\xe1V\xdd\xa5\xec" +
+	"f\xab\xe6&\xad\xc4\xc9\x97\xd2(w\x1d*\xec\xbaJ" +
+	"\xc9\x7f_\xbc\x10\xca\xf2\xcc\xbc\xaf\x841\xe7mf\xbc" +
+	"q\xa6r\xbe,\x91\xe5\x98D\x093\xa6\xb7\xee\xd4h" +
+	"\xdf\xd9\xa9\xd7\xfc\xd3%\x9f}\xfe\x1f\xfb\xe9Bi\xf1" +
+	"\xa2\xb5\xd4\xff\x91\x0f\xecU\x02,P\xa1\xb0\xc0\xf0\xf8" +
+	"\xb2\xc7\x0a?\xc9s\xec:\xa5\x04\x81\x02\x85.\x9aj" +
+	"\xb7\x0cS\xcfT\x0b\xa9d\xc7\xa5\x8eH}\xda0\xab" +
+	"3\xe9\xb4Y\x1e\x8d%3\xc9\x8b\x86\x1b\x90\xb9@\x8b" +
+	"\xdel\xb5\x96\xaf\x04\xc0\x09p\xf3\xce6\xbd\xab<\xae" +
+	"\x1bV\xbbi\x80&\x89\x12\x80\x84\x00D\xa9\x02\xd0\x8a" +
+	"D\xd4\xca\x04\xf4\xb3\x10\x06$\x11\x10\x03\x80\xee\xef\xa0" +
+	"\xc3\x11\x0d3\x86\xa8\x85D\x0f\x80[-::\x90\x87" +
+	"U \x901\x19\x0b\x07\xa2S\x05\x19\x8e\x80@n\xc8" +
+	"(\xb8\xc2\xa1\xd3#\xe9a\xef,\x19E\xd79t>" +
+	"\x0fi\xab\x05\x814\xc9(\xb9\x1f\x04\x1d\x1d\x88\x16\x07" +
+	"\x81\x9c\x90\xd1\xe3\x0a\x80\x8eK\xe4x\x03\x08\xe4\xa8l" +
+	"\x9f\xa4b\xb4\xc3jNX\xcd*\xfaY\x91*\xee\xb7" +
+	"\xebR\x91\xb6\xb4\x19\xa9t\xa7\x9e\x01\xecV\x91\xea\x97" +
+	"\xf5\x94e\xa63\x00\xa0b\x0c\x0b\x0d\x88\\\x93N\xc8" +
+	"nSn7\x0d\xbe\xcd\x06\x00\xcd'\xa2\x16\x12\xd6\xd0" +
+	"\x90\xd0\xb7V\xcf\xd8\xb3s\xd5\x0f\x00\x10\x09l\x8ev" +
+	"\xb6\xe9fl\xbf\xb5\x8e\x1d\xe7\xd8\xdc\xdeH\xe8\x9b\x0f" +
+	"\x15\xd1\xa6\x81\xd1\xdcvlwm\xe6\x88\xc8Y$\xac" +
+	"\xb7d\xbdf\xe2\x06\xcd\x1c\x8f`\xab\xd3\xedX\xabn" +
+	"\x9f\xbe\xd1\xa7\xcdO\x8e%3\xf2V?k\xeb\xff/" +
+	"{Y\x08\x09\x0d\xcf\x0e\x16\xe7\x8e\x05\xb6-cE\x87" +
+	"U\"\xaei9R \xaeZ\x83\x84F\xd2\x9d{\xe6" +
+	"\x1e\xc7>\xff\x07s\xf5/\x08\x7f\x03\x00\x00\xff\xffR" +
+	"{\x9a\xa6"
 
 func init() {
 	schemas.Register(schema_fcf6ac08e448a6ac,
@@ -1151,7 +1355,9 @@ func init() {
 		0x89ec8e1ef0f263f3,
 		0x8f58928e854cd4f5,
 		0x957cbefc645fd307,
+		0x99b232a18288d3d8,
 		0x9e8120f9bb059602,
+		0x9eaa92308c59a588,
 		0xa404c24b5375b9e4,
 		0xbe186003ae0f0429,
 		0xbe5314ed29d84c52,

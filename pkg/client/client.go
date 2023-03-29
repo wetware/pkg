@@ -11,6 +11,7 @@ import (
 	"github.com/wetware/casm/pkg/debug"
 	"github.com/wetware/ww/pkg/discovery"
 	"github.com/wetware/ww/pkg/host"
+	"github.com/wetware/ww/pkg/process"
 	"github.com/wetware/ww/pkg/pubsub"
 )
 
@@ -56,6 +57,10 @@ func (n *Node) Debug(ctx context.Context) (debug.Debugger, capnp.ReleaseFunc) {
 
 func (n *Node) Discovery(ctx context.Context) (discovery.DiscoveryService, capnp.ReleaseFunc) {
 	return n.Host(ctx).Discovery(ctx)
+}
+
+func (n *Node) Executor(ctx context.Context) (process.Executor, capnp.ReleaseFunc) {
+	return n.Host(ctx).Executor(ctx)
 }
 
 func (n *Node) Path() string { return "/" }

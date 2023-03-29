@@ -1,5 +1,3 @@
-//go:generate mockgen -source=chan.go -destination=../../internal/mock/pkg/csp/chan.go -package=mock_csp
-
 package csp
 
 import (
@@ -7,10 +5,8 @@ import (
 	"errors"
 
 	"capnproto.org/go/capnp/v3"
-	"capnproto.org/go/capnp/v3/flowcontrol"
 	casm "github.com/wetware/casm/pkg"
-	"github.com/wetware/casm/pkg/util/stream"
-	"github.com/wetware/ww/internal/api/channel"
+	api "github.com/wetware/ww/internal/api/channel"
 )
 
 var (
@@ -18,258 +14,184 @@ var (
 	ErrClosed = errors.New("closed")
 )
 
-type (
-	MethodClose = channel.Closer_close
-	MethodSend  = channel.Sender_send
-	MethodRecv  = channel.Recver_recv
-	MethodPeek  = channel.Peeker_peek
+type ( // server methods
+	MethodClose         = api.Closer_close
+	MethodSend          = api.Sender_send
+	MethodRecv          = api.Recver_recv
+	MethodNewSender     = api.SendCloser_newSender
+	MethodNewCloser     = api.SendCloser_newCloser
+	MethodNewRecver     = api.Chan_newRecver
+	MethodNewSendCloser = api.Chan_newSendCloser
 )
 
-type CloseServer interface {
-	Close(context.Context, MethodClose) error
-}
-
-type SendServer interface {
-	Send(context.Context, MethodSend) error
-}
-
-type RecvServer interface {
-	Recv(context.Context, MethodRecv) error
-}
-
-type PeekServer interface {
-	Peek(context.Context, MethodPeek) error
-}
-
-type SendCloseServer interface {
-	SendServer
-	CloseServer
-}
-
-type PeekRecvServer interface {
-	PeekServer
-	RecvServer
-}
-
-type ChanServer interface {
-	CloseServer
-	SendServer
-	RecvServer
-}
-
-type PeekableServer interface {
-	ChanServer
-	PeekServer
-}
-
-type Value func(channel.Sender_send_Params) error
-
-func Ptr(ptr capnp.Ptr) Value {
-	return func(ps channel.Sender_send_Params) error {
-		return ps.SetValue(ptr)
+type ( // server interfaces
+	CloseServer interface {
+		Close(context.Context, MethodClose) error
 	}
-}
 
-func Data(b []byte) Value {
-	return func(ps channel.Sender_send_Params) error {
-		return capnp.Struct(ps).SetData(0, b)
+	SendServer interface {
+		Send(context.Context, MethodSend) error
 	}
-}
 
-func Text(s string) Value {
-	return func(ps channel.Sender_send_Params) error {
-		return capnp.Struct(ps).SetText(0, s)
+	RecvServer interface {
+		Recv(context.Context, MethodRecv) error
 	}
+
+	SendCloseServer interface {
+		SendServer
+		CloseServer
+		NewSender(context.Context, MethodNewSender) error
+		NewCloser(context.Context, MethodNewCloser) error
+	}
+
+	ChanServer interface {
+		RecvServer
+		SendCloseServer
+		NewRecver(context.Context, MethodNewRecver) error
+		NewSendCloser(context.Context, MethodNewSendCloser) error
+	}
+)
+
+type Chan api.Chan
+
+func NewChan(s ChanServer) Chan {
+	return Chan(api.Chan_ServerToClient(s))
 }
 
-type Chan channel.Chan
-
-func New(s ChanServer) Chan {
-	return Chan(channel.Chan_ServerToClient(s))
+func (c Chan) Client() capnp.Client {
+	return capnp.Client(c)
 }
 
 func (c Chan) Close(ctx context.Context) error {
 	return Closer(c).Close(ctx)
 }
 
-func (c Chan) Send(ctx context.Context, v Value) (casm.Future, capnp.ReleaseFunc) {
+func (c Chan) Send(ctx context.Context, v Value) error {
 	return Sender(c).Send(ctx, v)
 }
 
-func (c Chan) Recv(ctx context.Context) (casm.FuturePtr, capnp.ReleaseFunc) {
+func (c Chan) Recv(ctx context.Context) (Future, capnp.ReleaseFunc) {
 	return Recver(c).Recv(ctx)
-}
-
-// NewStream for the sender.   This will overwrite the existing
-// flow limiter. Callers SHOULD NOT create more than one stream
-// for a given sender.
-func (c Chan) NewStream(ctx context.Context) SendStream {
-	return Sender(c).NewStream(ctx)
 }
 
 func (c Chan) AddRef() Chan {
-	return Chan(capnp.Client(c).AddRef())
+	return Chan(c.Client().AddRef())
 }
 
 func (c Chan) Release() {
-	capnp.Client(c).Release()
+	c.Client().Release()
 }
 
-type PeekableChan channel.Chan
-
-func (c PeekableChan) Close(ctx context.Context) error {
-	return Closer(c).Close(ctx)
+func (c Chan) NewCloser(ctx context.Context) (Closer, capnp.ReleaseFunc) {
+	return SendCloser(c).NewCloser(ctx)
 }
 
-func NewPeekableChan(s PeekableServer) PeekableChan {
-	return PeekableChan(channel.PeekableChan_ServerToClient(s))
+func (c Chan) NewSender(ctx context.Context) (Sender, capnp.ReleaseFunc) {
+	return SendCloser(c).NewSender(ctx)
 }
 
-func (c PeekableChan) Send(ctx context.Context, v Value) (casm.Future, capnp.ReleaseFunc) {
-	return Sender(c).Send(ctx, v)
+func (c Chan) NewRecver(ctx context.Context) (Recver, capnp.ReleaseFunc) {
+	f, release := api.Chan(c).NewRecver(ctx, nil)
+	return Recver(f.Recver()), release
 }
 
-func (c PeekableChan) Recv(ctx context.Context) (casm.FuturePtr, capnp.ReleaseFunc) {
-	return Recver(c).Recv(ctx)
+func (c Chan) NewSendCloser(ctx context.Context) (SendCloser, capnp.ReleaseFunc) {
+	f, release := api.Chan(c).NewSendCloser(ctx, nil)
+	return SendCloser(f.SendCloser()), release
 }
 
-func (c PeekableChan) AddRef() PeekableChan {
-	return PeekableChan(capnp.Client(c).AddRef())
+type Sender api.Sender
+
+func NewSender(s SendServer) Sender {
+	return Sender(api.Sender_ServerToClient(s))
 }
 
-func (c PeekableChan) Release() {
-	capnp.Client(c).Release()
+func (s Sender) Client() capnp.Client {
+	return capnp.Client(s)
 }
 
-type SendCloser Chan
+func (s Sender) Send(ctx context.Context, v Value) error {
+	f, release := api.Sender(s).Send(ctx, v)
+	defer release()
+
+	return casm.Future(f).Await(ctx)
+}
+
+func (s Sender) AddRef() Sender {
+	return Sender(s.Client().AddRef())
+}
+
+func (s Sender) Release() {
+	s.Client().Release()
+}
+
+type Recver api.Recver
+
+func NewRecver(r RecvServer) Recver {
+	return Recver(api.Recver_ServerToClient(r))
+}
+
+func (r Recver) Client() capnp.Client {
+	return capnp.Client(r)
+}
+
+func (r Recver) Recv(ctx context.Context) (Future, capnp.ReleaseFunc) {
+	f, release := api.Recver(r).Recv(ctx, nil)
+	return Future(f), release
+}
+
+func (r Recver) AddRef() Recver {
+	return Recver(r.Client().AddRef())
+}
+
+func (r Recver) Release() {
+	r.Client().Release()
+}
+
+type SendCloser api.SendCloser
 
 func NewSendCloser(sc SendCloseServer) SendCloser {
-	return SendCloser(channel.SendCloser_ServerToClient(sc))
+	return SendCloser(api.SendCloser_ServerToClient(sc))
+}
+
+func (sc SendCloser) Client() capnp.Client {
+	return capnp.Client(sc)
 }
 
 func (sc SendCloser) Close(ctx context.Context) error {
 	return Closer(sc).Close(ctx)
 }
 
-func (sc SendCloser) Send(ctx context.Context, v Value) (casm.Future, capnp.ReleaseFunc) {
+func (sc SendCloser) Send(ctx context.Context, v Value) error {
 	return Sender(sc).Send(ctx, v)
 }
 
-// NewStream for the sender.   This will overwrite the existing
-// flow limiter. Callers SHOULD NOT create more than one stream
-// for a given sender.
-func (sc SendCloser) NewStream(ctx context.Context) SendStream {
-	return Sender(sc).NewStream(ctx)
-}
-
 func (sc SendCloser) AddRef() SendCloser {
-	return SendCloser(capnp.Client(sc).AddRef())
+	return SendCloser(sc.Client().AddRef())
 }
 
 func (sc SendCloser) Release() {
-	capnp.Client(sc).Release()
+	sc.Client().Release()
 }
 
-type PeekRecver Chan
-
-func NewPeekRecver(pr PeekRecvServer) PeekRecver {
-	return PeekRecver(channel.PeekRecver_ServerToClient(pr))
+func (sc SendCloser) NewSender(ctx context.Context) (Sender, capnp.ReleaseFunc) {
+	f, release := api.SendCloser(sc).NewSender(ctx, nil)
+	return Sender(f.Sender()), release
 }
 
-func (pr PeekRecver) Peek(ctx context.Context) (casm.FuturePtr, capnp.ReleaseFunc) {
-	return Peeker(pr).Peek(ctx)
+func (sc SendCloser) NewCloser(ctx context.Context) (Closer, capnp.ReleaseFunc) {
+	f, release := api.SendCloser(sc).NewCloser(ctx, nil)
+	return Closer(f.Closer()), release
 }
 
-func (pr PeekRecver) Recv(ctx context.Context) (casm.FuturePtr, capnp.ReleaseFunc) {
-	return Recver(pr).Recv(ctx)
-}
-
-func (pr PeekRecver) AddRef() PeekRecver {
-	return PeekRecver(capnp.Client(pr).AddRef())
-}
-
-func (pr PeekRecver) Release() {
-	capnp.Client(pr).Release()
-}
-
-type Sender Chan
-
-func NewSender(s SendServer) Sender {
-	return Sender(channel.Sender_ServerToClient(s))
-}
-
-func (s Sender) Send(ctx context.Context, v Value) (casm.Future, capnp.ReleaseFunc) {
-	f, release := channel.Sender(s).Send(ctx, v)
-	return casm.Future(f), release
-}
-
-// NewStream for the sender.   This will overwrite the existing
-// flow limiter. Callers SHOULD NOT create more than one stream
-// for a given sender.
-func (s Sender) NewStream(ctx context.Context) SendStream {
-	sender := channel.Sender(s)
-	sender.SetFlowLimiter(flowcontrol.NewFixedLimiter(1e6)) // TODO:  use BBR once scheduler bug is fixed
-
-	return SendStream{
-		ctx:    ctx,
-		stream: stream.New(sender.Send),
-	}
-}
-
-func (s Sender) AddRef() Sender {
-	return Sender(capnp.Client(s).AddRef())
-}
-
-func (s Sender) Release() {
-	capnp.Client(s).Release()
-}
-
-type Peeker Chan
-
-func NewPeeker(p PeekServer) Peeker {
-	return Peeker(channel.Peeker_ServerToClient(p))
-}
-
-func (p Peeker) Peek(ctx context.Context) (casm.FuturePtr, capnp.ReleaseFunc) {
-	f, release := channel.Peeker(p).Peek(ctx, nil)
-	return casm.FuturePtr(f), release
-}
-
-func (p Peeker) AddRef() Peeker {
-	return Peeker(capnp.Client(p).AddRef())
-}
-
-func (p Peeker) Release() {
-	capnp.Client(p).Release()
-}
-
-type Recver Chan
-
-func NewRecver(r RecvServer) Recver {
-	return Recver(channel.Recver_ServerToClient(r))
-}
-
-func (r Recver) Recv(ctx context.Context) (casm.FuturePtr, capnp.ReleaseFunc) {
-	f, release := channel.Recver(r).Recv(ctx, nil)
-	return casm.FuturePtr(f), release
-}
-
-func (r Recver) AddRef() Recver {
-	return Recver(capnp.Client(r).AddRef())
-}
-
-func (r Recver) Release() {
-	capnp.Client(r).Release()
-}
-
-type Closer Chan
+type Closer api.Chan
 
 func NewCloser(c CloseServer) Closer {
-	return Closer(channel.Closer_ServerToClient(c))
+	return Closer(api.Closer_ServerToClient(c))
 }
 
 func (c Closer) Close(ctx context.Context) error {
-	f, release := channel.Closer(c).Close(ctx, nil)
+	f, release := api.Closer(c).Close(ctx, nil)
 	defer release()
 
 	_, err := f.Struct()
@@ -282,4 +204,79 @@ func (c Closer) AddRef() Closer {
 
 func (c Closer) Release() {
 	capnp.Client(c).Release()
+}
+
+type Value func(api.Sender_send_Params) error
+
+// Ptr takes any capnp pointer and converts it into a value
+// capable of being sent through a channel.
+func Ptr(ptr capnp.Ptr) Value {
+	return func(ps api.Sender_send_Params) error {
+		return ps.SetValue(ptr)
+	}
+}
+
+// Struct takes any capnp struct and converts it into a value
+// capable of being sent through a channel.
+func Struct[T ~capnp.StructKind](t T) Value {
+	return Ptr(capnp.Struct(t).ToPtr())
+}
+
+// List takes any capnp list and converts it into a value capable
+// of being sent through a channel.
+func List[T ~capnp.ListKind](t T) Value {
+	return Ptr(capnp.List(t).ToPtr())
+}
+
+// Data takes any []byte-like type and converts it into a value
+// capable of being sent through a channel.
+func Data[T ~[]byte](t T) Value {
+	return func(ps api.Sender_send_Params) error {
+		return capnp.Struct(ps).SetData(0, []byte(t))
+	}
+}
+
+// Text takes any string-like type and converts it into a value
+// capable of being sent through a channel.
+func Text[T ~string](t T) Value {
+	return func(ps api.Sender_send_Params) error {
+		return capnp.Struct(ps).SetText(0, string(t))
+	}
+}
+
+// Future result from a Chan operation. It is a specialized instance
+// of a casm.Future that provides typed methods for common capnp.Ptr
+// types.
+type Future casm.Future
+
+func (f Future) Value() *capnp.Future {
+	return f.Field(0, nil)
+}
+
+func (f Future) Client() capnp.Client {
+	return f.Value().Client()
+}
+
+func (f Future) Ptr() (capnp.Ptr, error) {
+	return f.Value().Ptr()
+}
+
+func (f Future) Struct() (capnp.Struct, error) {
+	ptr, err := f.Ptr()
+	return ptr.Struct(), err
+}
+
+func (f Future) List() (capnp.List, error) {
+	ptr, err := f.Ptr()
+	return ptr.List(), err
+}
+
+func (f Future) Bytes() ([]byte, error) {
+	ptr, err := f.Ptr()
+	return ptr.Data(), err
+}
+
+func (f Future) Text() (string, error) {
+	ptr, err := f.Ptr()
+	return ptr.Text(), err
 }

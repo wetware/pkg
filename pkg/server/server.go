@@ -13,6 +13,7 @@ import (
 	"github.com/wetware/ww/pkg/anchor"
 	"github.com/wetware/ww/pkg/discovery"
 	"github.com/wetware/ww/pkg/host"
+	"github.com/wetware/ww/pkg/process"
 	"github.com/wetware/ww/pkg/pubsub"
 )
 
@@ -54,6 +55,7 @@ type Joiner struct {
 	fx.In
 
 	Cluster  ClusterConfig `optional:"true"`
+	Runtime  RuntimeConfig `optional:"true"`
 	Debugger DebugConfig   `optional:"true"`
 }
 
@@ -73,6 +75,7 @@ func (j Joiner) Join(vat casm.Vat, r Router) (*Node, error) {
 		AnchorProvider:    j.anchor(),
 		DebugProvider:     j.Debugger.New(),
 		DiscoveryProvider: j.discovery(router.PubSub()),
+		ExecutorProvider: j.executor(),
 	})
 
 	return &Node{
@@ -96,4 +99,10 @@ func (j Joiner) discovery(rt pubsub.Router) *discovery.DiscoveryServiceServer {
 
 func (j Joiner) anchor() anchor.Server {
 	return anchor.Root()
+}
+
+func (j Joiner) executor() process.Server {
+	return process.Server{
+		Runtime: j.Runtime.New(),
+	}
 }
