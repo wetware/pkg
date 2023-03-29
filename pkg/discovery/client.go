@@ -237,20 +237,22 @@ func (ch handler) Next() (b Location, ok bool) {
 }
 
 func (ch handler) Send(ctx context.Context, call chan_api.Sender_send) error {
-	ptr, err := call.Args().Value()
+	// copy send arguments - TODO: use capnp message reference api
+	b, err := call.Args().Message().Marshal()
+	msg, err := capnp.Unmarshal(b)
+	if err != nil {
+		return fmt.Errorf("failed to copy message: %w", err)
+	}
+	args, err := chan_api.ReadRootSender_send_Params(msg)
+	if err != nil {
+		return fmt.Errorf("failed to read copied message: %w", err)
+	}
+
+	// extract location and send to user channel
+	ptr, err := args.Value()
 	if err == nil {
-		msg, seg := capnp.NewMultiSegmentMessage(nil)
-		if err := msg.SetRoot(ptr); err != nil {
-			return err
-		}
-
-		sloc, err := api.NewRootSignedLocation(seg)
-		if err != nil {
-			return err
-		}
-
 		select {
-		case ch <- Location{SignedLocation: sloc}:
+		case ch <- Location{SignedLocation: api.SignedLocation(ptr.Struct())}:
 			return nil
 		case <-ctx.Done():
 			return ctx.Err()

@@ -149,6 +149,7 @@ func (s *LocatorServer) FindProviders(ctx context.Context, call api.Locator_find
 			if err != nil {
 				return err
 			}
+
 			loc, err := response.Location()
 			if err != nil {
 				return err
