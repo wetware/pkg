@@ -90,11 +90,23 @@ func provAction() cli.ActionFunc {
 			maddrs = append(maddrs, maddr)
 		}
 
-		addr := discovery.Addr{Maddrs: maddrs}
-		fut, release := provider.Provide(c.Context, addr)
+		loc, err := discovery.NewLocation()
+		if err != nil {
+			return fmt.Errorf("failed to create location: %w", err)
+		}
+
+		if err := loc.SetMaddrs(maddrs); err != nil {
+			return fmt.Errorf("failed to set maddrs: %w", err)
+		}
+
+		fut, release := provider.Provide(c.Context, loc)
 		defer release()
 
-		fmt.Printf("providing |%s| at %s...\n", serviceId, addr.String())
+		fmt.Printf("providing |%s| at", serviceId)
+		for _, maddr := range maddrs {
+			fmt.Printf(" %s", maddr.String())
+		}
+		fmt.Println()
 
 		return fut.Await(c.Context)
 	}
