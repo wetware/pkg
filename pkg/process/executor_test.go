@@ -34,7 +34,6 @@ func TestExecutor(t *testing.T) {
 	ee, ok := err.(*sys.ExitError)
 	require.True(t, ok, "should return sys.ExitError")
 	assert.Equal(t, uint32(99), ee.ExitCode())
-	assert.NotEmpty(t, ee.ModuleName())
 }
 
 func testdata() []byte {

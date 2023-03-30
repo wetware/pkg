@@ -36,7 +36,7 @@ require (
 	github.com/lthibault/go-libp2p-inproc-transport v0.4.0
 	github.com/multiformats/go-multistream v0.4.1
 	github.com/stretchr/testify v1.8.2
-	github.com/tetratelabs/wazero v1.0.0-rc.1
+	github.com/tetratelabs/wazero v1.0.1
 	github.com/thejerf/suture/v4 v4.0.2
 	github.com/wetware/casm v0.0.0-20230328202356-84a9cb53de27
 	golang.org/x/sync v0.1.0

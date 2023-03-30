@@ -63,11 +63,7 @@ func (p Proc) Wait(ctx context.Context) error {
 		return nil
 
 	case api.Error_Which_exitErr:
-		mod, err := e.ExitErr().Module()
-		if err != nil {
-			return err
-		}
-		return sys.NewExitError(mod, e.ExitErr().Code())
+		return sys.NewExitError(e.ExitErr().Code())
 	}
 
 	return fmt.Errorf("unknown error type: %d", e.Which())
@@ -169,7 +165,7 @@ func (as *procHandle) Bind(res api.Process_wait_Results) error {
 	ee := state.Err.(*sys.ExitError)
 	e.SetExitErr()
 	e.ExitErr().SetCode(ee.ExitCode())
-	return e.ExitErr().SetModule(ee.ModuleName())
+	return nil
 }
 
 // Load the current state atomically.  The resulting resulting state
