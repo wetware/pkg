@@ -13,8 +13,8 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/require"
 	api "github.com/wetware/ww/internal/api/service"
-	"github.com/wetware/ww/pkg/service"
 	pscap "github.com/wetware/ww/pkg/pubsub"
+	"github.com/wetware/ww/pkg/service"
 )
 
 func TestDiscover(t *testing.T) {
@@ -30,11 +30,9 @@ func TestDiscover(t *testing.T) {
 	defer ps.Release()
 
 	// create server
-	server := service.ServiceDiscoveryServer{
-		Router: ps,
-	}
+	server := service.RegistryServer{}
 	// create 1 client
-	client := service.ServiceDiscovery(api.ServiceDiscovery_ServerToClient(&server))
+	client := service.Registry(api.Registry_ServerToClient(&server))
 	defer client.Release()
 	// advertise service in 1 client
 
@@ -44,21 +42,18 @@ func TestDiscover(t *testing.T) {
 	)
 
 	// advertise and find
-	provider, release := client.Provider(ctx, serviceName)
-	defer release()
-
 	loc, err := generateLocation(maddrN)
 	require.NoError(t, err)
 
-	_, release = provider.Provide(ctx, loc)
+	topic, release := ps.Join(ctx, serviceName)
+	defer release()
+
+	_, release = client.Provide(ctx, topic, loc)
 	defer release()
 
 	time.Sleep(time.Second) // give time for the provider to set
 
-	finder, release := client.Locator(ctx, serviceName)
-	defer release()
-
-	providers, release := finder.FindProviders(ctx)
+	providers, release := client.FindProviders(ctx, topic)
 	defer release()
 
 	gotLocation, ok := providers.Next()

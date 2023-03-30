@@ -12,13 +12,13 @@ import (
 	"github.com/wetware/casm/pkg/debug"
 	anchor_api "github.com/wetware/ww/internal/api/anchor"
 	api "github.com/wetware/ww/internal/api/cluster"
-	serv_api "github.com/wetware/ww/internal/api/service"
 	process_api "github.com/wetware/ww/internal/api/process"
 	pubsub_api "github.com/wetware/ww/internal/api/pubsub"
+	serv_api "github.com/wetware/ww/internal/api/service"
 	"github.com/wetware/ww/pkg/anchor"
-	"github.com/wetware/ww/pkg/service"
 	"github.com/wetware/ww/pkg/process"
 	"github.com/wetware/ww/pkg/pubsub"
+	"github.com/wetware/ww/pkg/service"
 )
 
 var Capability = casm.BasicCap{
@@ -61,9 +61,9 @@ func (h Host) Debug(ctx context.Context) (debug.Debugger, capnp.ReleaseFunc) {
 	return debug.Debugger(f.Debugger()), release
 }
 
-func (h Host) Service(ctx context.Context) (service.ServiceDiscovery, capnp.ReleaseFunc) {
-	f, release := api.Host(h).Service(ctx, nil)
-	return service.ServiceDiscovery(f.Service()), release
+func (h Host) Registry(ctx context.Context) (service.Registry, capnp.ReleaseFunc) {
+	f, release := api.Host(h).Registry(ctx, nil)
+	return service.Registry(f.Registry()), release
 }
 
 func (h Host) Executor(ctx context.Context) (process.Executor, capnp.ReleaseFunc) {
@@ -93,8 +93,8 @@ type DebugProvider interface {
 	Debugger() debug.Debugger
 }
 
-type DiscoveryProvider interface {
-	Discovery() service.ServiceDiscovery
+type RegistryProvider interface {
+	Registry() service.Registry
 }
 
 type ExecutorProvider interface {
@@ -103,12 +103,12 @@ type ExecutorProvider interface {
 
 // Server provides the Host capability.
 type Server struct {
-	ViewProvider      ViewProvider
-	PubSubProvider    PubSubProvider
-	AnchorProvider    AnchorProvider
-	DebugProvider     DebugProvider
-	DiscoveryProvider DiscoveryProvider
-	ExecutorProvider  ExecutorProvider
+	ViewProvider     ViewProvider
+	PubSubProvider   PubSubProvider
+	AnchorProvider   AnchorProvider
+	DebugProvider    DebugProvider
+	RegistryProvider RegistryProvider
+	ExecutorProvider ExecutorProvider
 }
 
 func (s Server) Client() capnp.Client {
@@ -156,11 +156,11 @@ func (s Server) Debug(_ context.Context, call api.Host_debug) error {
 	return err
 }
 
-func (s Server) Service(_ context.Context, call api.Host_service) error {
+func (s Server) Registry(_ context.Context, call api.Host_registry) error {
 	res, err := call.AllocResults()
 	if err == nil {
-		discovery := s.DiscoveryProvider.Discovery()
-		err = res.SetService(serv_api.ServiceDiscovery(discovery))
+		registry := s.RegistryProvider.Registry()
+		err = res.SetRegistry(serv_api.Registry(registry))
 	}
 
 	return err

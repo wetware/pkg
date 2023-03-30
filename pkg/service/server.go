@@ -10,87 +10,28 @@ import (
 	"github.com/wetware/ww/pkg/pubsub"
 )
 
-type ServiceDiscoveryServer struct {
-	pubsub.Router
+type Server struct{}
+
+func (s Server) Registry() Registry {
+	sds := RegistryServer{}
+	return Registry(sds.Client())
 }
 
-func (s *ServiceDiscoveryServer) Client() capnp.Client {
-	return capnp.Client(api.ServiceDiscovery_ServerToClient(s))
+type RegistryServer struct{}
+
+func (s *RegistryServer) Client() capnp.Client {
+	return capnp.Client(api.Registry_ServerToClient(s))
 }
 
-func (s *ServiceDiscoveryServer) Discovery() ServiceDiscovery {
-	return ServiceDiscovery(s.Client())
-}
-
-func (s *ServiceDiscoveryServer) Provider(_ context.Context, call api.ServiceDiscovery_provider) error {
-	name, err := call.Args().Name()
-	if err != nil {
-		return err
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	topic, release := s.Join(ctx, name)
-
-	provider := ProviderServer{
-		name:  name,
-		Topic: topic,
-		release: func() {
-			cancel()
-			release()
-		},
-	}
-
-	res, err := call.AllocResults()
-	if err != nil {
-		return err
-	}
-
-	return res.SetProvider(api.Provider_ServerToClient(&provider))
-}
-
-func (s *ServiceDiscoveryServer) Locator(_ context.Context, call api.ServiceDiscovery_locator) error {
-	name, err := call.Args().Name()
-	if err != nil {
-		return err
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	topic, release := s.Join(ctx, name)
-	provider := LocatorServer{
-		name:  name,
-		Topic: &topic,
-		release: func() {
-			cancel()
-			release()
-		},
-	}
-
-	res, err := call.AllocResults()
-	if err != nil {
-		return err
-	}
-
-	return res.SetLocator(api.Locator_ServerToClient(&provider))
-}
-
-type ProviderServer struct {
-	pubsub.Topic
-	name    string
-	release capnp.ReleaseFunc
-}
-
-func (s *ProviderServer) Shutdown() {
-	s.release()
-}
-
-func (s *ProviderServer) Provide(ctx context.Context, call api.Provider_provide) error {
+func (s *RegistryServer) Provide(ctx context.Context, call api.Registry_provide) error {
 	response, err := encodeResponse(call)
 	if err != nil {
 		return err
 	}
 
 	// subscribe to topic
-	sub, release := s.Topic.Subscribe(ctx)
+	topic := pubsub.Topic(call.Args().Topic())
+	sub, release := topic.Subscribe(ctx)
 	defer release()
 
 	call.Go()
@@ -101,7 +42,7 @@ func (s *ProviderServer) Provide(ctx context.Context, call api.Provider_provide)
 		}
 
 		if msg.Which() == api.Message_Which_request {
-			if err := s.Topic.Publish(ctx, response); err != nil {
+			if err := topic.Publish(ctx, response); err != nil {
 				return err
 			}
 		}
@@ -110,29 +51,21 @@ func (s *ProviderServer) Provide(ctx context.Context, call api.Provider_provide)
 	return sub.Err()
 }
 
-type LocatorServer struct {
-	*pubsub.Topic
-	name    string
-	release capnp.ReleaseFunc
-}
-
-func (s *LocatorServer) Shutdown() {
-	s.release()
-}
-
-func (s *LocatorServer) FindProviders(ctx context.Context, call api.Locator_findProviders) error {
+func (s *RegistryServer) FindProviders(ctx context.Context, call api.Registry_findProviders) error {
 	request, err := encodeRequest(call)
 	if err != nil {
 		return err
 	}
-	sub, release := s.Topic.Subscribe(ctx)
+
+	topic := pubsub.Topic(call.Args().Topic())
+	sub, release := topic.Subscribe(ctx)
 	defer release()
 
 	time.Sleep(time.Second)
 
 	// publish a request
 	call.Go()
-	if err := s.Topic.Publish(ctx, request); err != nil {
+	if err := topic.Publish(ctx, request); err != nil {
 		return err
 	}
 
@@ -170,22 +103,17 @@ func (s *LocatorServer) FindProviders(ctx context.Context, call api.Locator_find
 	return nil
 }
 
-func encodeRequest(call api.Locator_findProviders) ([]byte, error) {
+func encodeRequest(call api.Registry_findProviders) ([]byte, error) {
 	_, seg := capnp.NewSingleSegmentMessage(nil)
 	msg, err := api.NewRootMessage(seg)
 	if err != nil {
 		return nil, err
 	}
 
-	request, err := msg.NewRequest()
-	if err != nil {
-		return nil, err
-	}
-
-	return request.Message().MarshalPacked()
+	return msg.Message().MarshalPacked()
 }
 
-func encodeResponse(call api.Provider_provide) ([]byte, error) {
+func encodeResponse(call api.Registry_provide) ([]byte, error) {
 	loc, err := call.Args().Location()
 	if err != nil {
 		return nil, err
@@ -197,16 +125,11 @@ func encodeResponse(call api.Provider_provide) ([]byte, error) {
 		return nil, err
 	}
 
-	response, err := msg.NewResponse()
-	if err != nil {
+	if err := msg.SetResponse(loc); err != nil {
 		return nil, err
 	}
 
-	if err := response.SetLocation(loc); err != nil {
-		return nil, err
-	}
-
-	return response.Message().MarshalPacked()
+	return msg.Message().MarshalPacked()
 
 }
 

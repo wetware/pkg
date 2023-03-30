@@ -9,10 +9,10 @@ import (
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/cluster"
 	"github.com/wetware/casm/pkg/debug"
-	"github.com/wetware/ww/pkg/service"
 	"github.com/wetware/ww/pkg/host"
 	"github.com/wetware/ww/pkg/process"
 	"github.com/wetware/ww/pkg/pubsub"
+	"github.com/wetware/ww/pkg/service"
 )
 
 type Node struct {
@@ -43,6 +43,10 @@ func (n *Node) View(ctx context.Context) (cluster.View, capnp.ReleaseFunc) {
 	return n.Host(ctx).View(ctx)
 }
 
+func (n *Node) PubsSub(ctx context.Context) (pubsub.Router, capnp.ReleaseFunc) {
+	return n.Host(ctx).PubSub(ctx)
+}
+
 // Join a pubsub topic.
 func (n *Node) Join(ctx context.Context, topic string) (pubsub.Topic, capnp.ReleaseFunc) {
 	router, release := n.Host(ctx).PubSub(ctx)
@@ -55,8 +59,8 @@ func (n *Node) Debug(ctx context.Context) (debug.Debugger, capnp.ReleaseFunc) {
 	return n.Host(ctx).Debug(ctx)
 }
 
-func (n *Node) Service(ctx context.Context) (service.ServiceDiscovery, capnp.ReleaseFunc) {
-	return n.Host(ctx).Service(ctx)
+func (n *Node) Registry(ctx context.Context) (service.Registry, capnp.ReleaseFunc) {
+	return n.Host(ctx).Registry(ctx)
 }
 
 func (n *Node) Executor(ctx context.Context) (process.Executor, capnp.ReleaseFunc) {

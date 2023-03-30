@@ -5,13 +5,95 @@ import (
 	"fmt"
 
 	"capnproto.org/go/capnp/v3"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	casm "github.com/wetware/casm/pkg"
 	chan_api "github.com/wetware/ww/internal/api/channel"
+	ps_api "github.com/wetware/ww/internal/api/pubsub"
 	api "github.com/wetware/ww/internal/api/service"
+	"github.com/wetware/ww/pkg/pubsub"
 )
+
+type Registry api.Registry
+
+func (c Registry) Release() {
+	api.Registry(c).Release()
+}
+
+func (c Registry) Provide(ctx context.Context, topic pubsub.Topic, loc Location) (casm.Future, capnp.ReleaseFunc) {
+	ctx, cancel := context.WithCancel(ctx)
+
+	fut, release := api.Registry(c).Provide(ctx, func(ps api.Registry_provide_Params) error {
+		if err := ps.SetTopic(ps_api.Topic(topic)); err != nil {
+			return err
+		}
+		return ps.SetLocation(loc.SignedLocation)
+	})
+
+	return casm.Future(fut), func() {
+		cancel()
+		release()
+	}
+}
+
+func (c Registry) FindProviders(ctx context.Context, topic pubsub.Topic) (casm.Iterator[Location], capnp.ReleaseFunc) {
+	ctx, cancel := context.WithCancel(ctx)
+
+	handler := make(handler, 32)
+
+	fut, release := api.Registry(c).FindProviders(ctx, func(ps api.Registry_findProviders_Params) error {
+		if err := ps.SetTopic(ps_api.Topic(topic)); err != nil {
+			return err
+		}
+		return ps.SetChan(chan_api.Sender_ServerToClient(handler))
+	})
+
+	iterator := casm.Iterator[Location]{
+		Future: casm.Future(fut),
+		Seq:    handler, // TODO: decide buffer size
+	}
+
+	return iterator, func() {
+		cancel()
+		release()
+	}
+}
+
+type handler chan Location
+
+func (ch handler) Shutdown() { close(ch) }
+
+func (ch handler) Next() (b Location, ok bool) {
+	b, ok = <-ch
+	return
+}
+
+func (ch handler) Send(ctx context.Context, call chan_api.Sender_send) error {
+	// copy send arguments - TODO: use capnp message reference api
+	b, err := call.Args().Message().Marshal()
+	msg, err := capnp.Unmarshal(b)
+	if err != nil {
+		return fmt.Errorf("failed to copy message: %w", err)
+	}
+	args, err := chan_api.ReadRootSender_send_Params(msg)
+	if err != nil {
+		return fmt.Errorf("failed to read copied message: %w", err)
+	}
+
+	// extract location and send to user channel
+	ptr, err := args.Value()
+	if err == nil {
+		select {
+		case ch <- Location{SignedLocation: api.SignedLocation(ptr.Struct())}:
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+
+	return err
+}
 
 type Location struct {
 	api.SignedLocation
@@ -151,113 +233,4 @@ func (loc Location) Maddrs() ([]ma.Multiaddr, error) {
 	}
 
 	return maddrs, nil
-}
-
-type ServiceDiscovery api.ServiceDiscovery
-
-func (c ServiceDiscovery) Provider(ctx context.Context, name string) (Provider, capnp.ReleaseFunc) {
-	fut, release := api.ServiceDiscovery(c).Provider(ctx, func(ps api.ServiceDiscovery_provider_Params) error {
-		return ps.SetName(name)
-	})
-
-	return Provider(fut.Provider()), release
-}
-
-func (c ServiceDiscovery) Release() {
-	api.ServiceDiscovery(c).Release()
-}
-
-type Provider api.Provider
-
-type MaddrLocation struct {
-	ID   peer.ID
-	Meta []string
-
-	Maddrs []ma.Multiaddr
-}
-
-func (c Provider) Provide(ctx context.Context, loc Location) (casm.Future, capnp.ReleaseFunc) {
-	ctx, cancel := context.WithCancel(ctx)
-
-	fut, release := api.Provider(c).Provide(ctx, func(ps api.Provider_provide_Params) error {
-		return ps.SetLocation(loc.SignedLocation)
-	})
-
-	return casm.Future(fut), func() {
-		cancel()
-		release()
-	}
-}
-
-func (c Provider) Release() {
-	api.Provider(c).Release()
-}
-
-func (c ServiceDiscovery) Locator(ctx context.Context, name string) (Locator, capnp.ReleaseFunc) {
-	fut, release := api.ServiceDiscovery(c).Locator(ctx, func(ps api.ServiceDiscovery_locator_Params) error {
-		return ps.SetName(name)
-	})
-
-	return Locator(fut.Locator()), release
-}
-
-type Locator api.Locator
-
-func (c Locator) Release() {
-	api.Locator(c).Release()
-}
-
-func (c Locator) FindProviders(ctx context.Context) (casm.Iterator[Location], capnp.ReleaseFunc) {
-	ctx, cancel := context.WithCancel(ctx)
-
-	handler := make(handler, 32)
-
-	fut, release := api.Locator(c).FindProviders(ctx, func(ps api.Locator_findProviders_Params) error {
-		return ps.SetChan(chan_api.Sender_ServerToClient(handler))
-	})
-
-	iterator := casm.Iterator[Location]{
-		Future: casm.Future(fut),
-		Seq:    handler, // TODO: decide buffer size
-	}
-
-	return iterator, func() {
-		cancel()
-		release()
-	}
-}
-
-type handler chan Location
-
-func (ch handler) Shutdown() { close(ch) }
-
-func (ch handler) Next() (b Location, ok bool) {
-	b, ok = <-ch
-	return
-}
-
-func (ch handler) Send(ctx context.Context, call chan_api.Sender_send) error {
-	// copy send arguments - TODO: use capnp message reference api
-	b, err := call.Args().Message().Marshal()
-	msg, err := capnp.Unmarshal(b)
-	if err != nil {
-		return fmt.Errorf("failed to copy message: %w", err)
-	}
-	args, err := chan_api.ReadRootSender_send_Params(msg)
-	if err != nil {
-		return fmt.Errorf("failed to read copied message: %w", err)
-	}
-
-	// extract location and send to user channel
-	ptr, err := args.Value()
-	if err == nil {
-		select {
-		case ch <- Location{SignedLocation: api.SignedLocation(ptr.Struct())}:
-			return nil
-		case <-ctx.Done():
-			return ctx.Err()
-		}
-	}
-
-	return err
 }

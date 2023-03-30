@@ -53,13 +53,13 @@ func provide() *cli.Command {
 
 func discAction() cli.ActionFunc {
 	return func(c *cli.Context) error {
-		disc, release := node.Service(c.Context)
+		registry, release := node.Registry(c.Context)
 		defer release()
 
-		locator, release := disc.Locator(c.Context, c.String("name"))
+		topic, release := node.Join(c.Context, c.String("name"))
 		defer release()
 
-		locs, release := locator.FindProviders(c.Context)
+		locs, release := registry.FindProviders(c.Context, topic)
 		defer release()
 
 		for loc, ok := locs.Next(); ok; loc, ok = locs.Next() {
@@ -72,14 +72,7 @@ func discAction() cli.ActionFunc {
 
 func provAction() cli.ActionFunc {
 	return func(c *cli.Context) error {
-		disc, release := node.Service(c.Context)
-		defer release()
-
-		serviceId := c.String("name")
-
-		provider, release := disc.Provider(c.Context, serviceId)
-		defer release()
-
+		// parse multiaddr location
 		maddrsStr := c.StringSlice("maddr")
 		maddrs := make([]ma.Multiaddr, 0, len(maddrsStr))
 		for _, maddrStr := range maddrsStr {
@@ -99,10 +92,17 @@ func provAction() cli.ActionFunc {
 			return fmt.Errorf("failed to set maddrs: %w", err)
 		}
 
-		fut, release := provider.Provide(c.Context, loc)
+		// provide service
+		registry, release := node.Registry(c.Context)
 		defer release()
 
-		fmt.Printf("providing |%s| at", serviceId)
+		topic, release := node.Join(c.Context, c.String("name"))
+		defer release()
+
+		fut, release := registry.Provide(c.Context, topic, loc)
+		defer release()
+
+		fmt.Printf("providing |%s| at", c.String("name"))
 		for _, maddr := range maddrs {
 			fmt.Printf(" %s", maddr.String())
 		}

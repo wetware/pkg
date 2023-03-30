@@ -11,10 +11,10 @@ import (
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/cluster"
 	"github.com/wetware/ww/pkg/anchor"
-	"github.com/wetware/ww/pkg/service"
 	"github.com/wetware/ww/pkg/host"
 	"github.com/wetware/ww/pkg/process"
 	"github.com/wetware/ww/pkg/pubsub"
+	"github.com/wetware/ww/pkg/service"
 )
 
 // Router provides an interface for routing messages by topic, and supports
@@ -70,11 +70,11 @@ func (j Joiner) Join(vat casm.Vat, r Router) (*Node, error) {
 	router := j.pubsub(vat.Logger, r)
 
 	vat.Export(host.Capability, host.Server{
-		ViewProvider:      c,
-		PubSubProvider:    router,
-		AnchorProvider:    j.anchor(),
-		DebugProvider:     j.Debugger.New(),
-		DiscoveryProvider: j.service(router.PubSub()),
+		ViewProvider:     c,
+		PubSubProvider:   router,
+		AnchorProvider:   j.anchor(),
+		DebugProvider:    j.Debugger.New(),
+		RegistryProvider: j.service(),
 		ExecutorProvider: j.executor(),
 	})
 
@@ -91,10 +91,8 @@ func (j Joiner) pubsub(log log.Logger, router pubsub.TopicJoiner) *pubsub.Server
 	}
 }
 
-func (j Joiner) service(rt pubsub.Router) *service.ServiceDiscoveryServer {
-	return &service.ServiceDiscoveryServer{
-		Router: rt,
-	}
+func (j Joiner) service() service.Server {
+	return service.Server{}
 }
 
 func (j Joiner) anchor() anchor.Server {
