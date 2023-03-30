@@ -78,12 +78,7 @@ func (s *RegistryServer) FindProviders(ctx context.Context, call api.Registry_fi
 			return err
 		}
 		if msg.Which() == api.Message_Which_response {
-			response, err := msg.Response()
-			if err != nil {
-				return err
-			}
-
-			loc, err := response.Location()
+			loc, err := msg.Response()
 			if err != nil {
 				return err
 			}

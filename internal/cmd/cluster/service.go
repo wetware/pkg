@@ -10,9 +10,9 @@ import (
 
 func discover() *cli.Command {
 	return &cli.Command{
-		Name:    "discover",
-		Aliases: []string{"disc"},
-		Usage:   "discover a service",
+		Name:    "locate",
+		Aliases: []string{"loc"},
+		Usage:   "locate a service",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:     "name",
@@ -23,7 +23,7 @@ func discover() *cli.Command {
 		},
 		Before: setup(),
 		After:  teardown(),
-		Action: discAction(),
+		Action: locAction(),
 	}
 }
 
@@ -51,7 +51,7 @@ func provide() *cli.Command {
 	}
 }
 
-func discAction() cli.ActionFunc {
+func locAction() cli.ActionFunc {
 	return func(c *cli.Context) error {
 		registry, release := node.Registry(c.Context)
 		defer release()

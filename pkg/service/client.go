@@ -82,7 +82,7 @@ func (ch handler) Send(ctx context.Context, call chan_api.Sender_send) error {
 	}
 
 	// extract location and send to user channel
-	ptr, err := args.Value()
+	ptr, err = args.Value()
 	if err == nil {
 		select {
 		case ch <- Location{SignedLocation: api.SignedLocation(ptr.Struct())}:
