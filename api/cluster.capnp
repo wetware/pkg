@@ -41,4 +41,36 @@ interface Host {
     executor @4 () -> (executor :import "process.capnp".Executor);
     # Executor provides a way of spawning and running WASM-based
     # processes.
+
+    resolve  @5 (sturdyRef :SturdyRef) -> (capability :Capability);
+    # Resolve a SturdyRef into an arbitrary capability.
+}
+
+
+struct SturdyRef {
+    # SturdyRef is a persistent pointer to a capability a located
+    # in a specific vat.  It can be seeb as the association of an
+    # AddrInfo struct with a set of protocol.IDs, allowing a host
+    # to locate and connect to the vat exporting the capability.
+    
+    id           @0 :PeerID;
+    protos       @1 :List(ProtocolID);
+
+    union {
+        routed    @2 :Void;
+        # Routed refs are resolved by using the id field to find
+        # a host routing record in the DHT.
+
+        addressed @3 :List(Multiaddr);
+        # Addressed refs are resolved using the supplied addrs.
+        # Note that the addresses MAY contain addresses of hosts
+        # in separate clusters, or in non-Wetware libp2p apps.
+        #
+        # All addrs MUST be in AddrInfo format, i.e. without the
+        # p2p component.
+    }
+
+    using PeerID = Text;
+    using ProtocolID = Text;
+    using Multiaddr = Data;
 }
