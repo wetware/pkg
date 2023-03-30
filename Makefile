@@ -34,8 +34,6 @@ capnp-process:
 	@mkdir -p internal/api/process
 	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/std -ogo:internal/api/process --src-prefix=api api/process.capnp
 
-
-
 capnp-service:
 	@mkdir -p internal/api/service
 	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/std -ogo:internal/api/service --src-prefix=api api/service.capnp
