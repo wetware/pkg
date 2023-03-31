@@ -148,5 +148,6 @@ require (
 	golang.org/x/tools v0.7.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
+	pgregory.net/rand v1.0.2 // indirect
 	zenhack.net/go/util v0.0.0-20230327231740-da8cb323921c // indirect
 )
