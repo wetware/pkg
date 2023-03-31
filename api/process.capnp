@@ -15,16 +15,5 @@ interface Executor {
 interface Process {
     start  @0 () -> ();
     stop   @1 () -> ();
-    wait   @2 () -> (error :Error);
-}
-
-struct Error {
-    union {
-        none       @0 :Void;
-        msg        @1 :Text;
-        exitErr       :group {
-            code   @2 :UInt32;
-            module @3 :Text;
-        }
-    }
+    wait   @2 () -> (exitCode :UInt32);
 }
