@@ -3,7 +3,6 @@ package process
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync/atomic"
 
 	capnp "capnproto.org/go/capnp/v3"
@@ -53,20 +52,11 @@ func (p Proc) Wait(ctx context.Context) error {
 		return err
 	}
 
-	e, err := res.Error()
-	if err != nil {
-		return err
+	if code := res.ExitCode(); code != 0 {
+		err = sys.NewExitError(code)
 	}
 
-	switch e.Which() {
-	case api.Error_Which_none:
-		return nil
-
-	case api.Error_Which_exitErr:
-		return sys.NewExitError(e.ExitErr().Code())
-	}
-
-	return fmt.Errorf("unknown error type: %d", e.Which())
+	return err
 }
 
 // process is the main implementation of the Process capability.
@@ -152,19 +142,11 @@ func (as *procHandle) Exec(fn wasm.Function) {
 // Bind the error from the entrypoint function to the results struct.
 // Callers MUST NOT call Bind until the function has returned.
 func (as *procHandle) Bind(res api.Process_wait_Results) error {
-	state := as.Load()
-	if state.Err == nil {
-		return nil
+	if state := as.Load(); state.Err != nil {
+		code := state.Err.(*sys.ExitError).ExitCode()
+		res.SetExitCode(code)
 	}
 
-	e, err := res.NewError()
-	if err != nil {
-		return err
-	}
-
-	ee := state.Err.(*sys.ExitError)
-	e.SetExitErr()
-	e.ExitErr().SetCode(ee.ExitCode())
 	return nil
 }
 
