@@ -45,6 +45,10 @@ func NewPath(path string) Path {
 	return Path{value: value}.bind(identity) // force validation
 }
 
+func FailPath(err error) Path {
+	return Path{value: bounded.Failure[string](err)}
+}
+
 // PathFromParts joins each element of 'parts' into a single path,
 // with each element separated by '/'.  Each element of 'parts' is
 // validated before being joined.   An element is valid if it is a
@@ -57,6 +61,10 @@ func PathFromParts(parts []string) Path {
 	}
 
 	return NewPath(path.Join(parts...))
+}
+
+func (p Path) Unwrap() (string, error) {
+	return p.value.Maybe()
 }
 
 // Err returns a non-nil error if the path is malformed.

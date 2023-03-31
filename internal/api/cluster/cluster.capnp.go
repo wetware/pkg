@@ -101,22 +101,6 @@ func (c Host) Executor(ctx context.Context, params func(Host_executor_Params) er
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Host_executor_Results_Future{Future: ans.Future()}, release
 }
-func (c Host) Resolve(ctx context.Context, params func(Host_resolve_Params) error) (Host_resolve_Results_Future, capnp.ReleaseFunc) {
-	s := capnp.Send{
-		Method: capnp.Method{
-			InterfaceID:   0x957cbefc645fd307,
-			MethodID:      5,
-			InterfaceName: "cluster.capnp:Host",
-			MethodName:    "resolve",
-		},
-	}
-	if params != nil {
-		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Host_resolve_Params(s)) }
-	}
-	ans, release := capnp.Client(c).SendCall(ctx, s)
-	return Host_resolve_Results_Future{Future: ans.Future()}, release
-}
 
 // String returns a string that identifies this capability for debugging
 // purposes.  Its format should not be depended on: in particular, it
@@ -194,8 +178,6 @@ type Host_Server interface {
 	Debug(context.Context, Host_debug) error
 
 	Executor(context.Context, Host_executor) error
-
-	Resolve(context.Context, Host_resolve) error
 }
 
 // Host_NewServer creates a new Server from an implementation of Host_Server.
@@ -214,7 +196,7 @@ func Host_ServerToClient(s Host_Server) Host {
 // This can be used to create a more complicated Server.
 func Host_Methods(methods []server.Method, s Host_Server) []server.Method {
 	if cap(methods) == 0 {
-		methods = make([]server.Method, 0, 6)
+		methods = make([]server.Method, 0, 5)
 	}
 
 	methods = append(methods, server.Method{
@@ -274,18 +256,6 @@ func Host_Methods(methods []server.Method, s Host_Server) []server.Method {
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
 			return s.Executor(ctx, Host_executor{call})
-		},
-	})
-
-	methods = append(methods, server.Method{
-		Method: capnp.Method{
-			InterfaceID:   0x957cbefc645fd307,
-			MethodID:      5,
-			InterfaceName: "cluster.capnp:Host",
-			MethodName:    "resolve",
-		},
-		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.Resolve(ctx, Host_resolve{call})
 		},
 	})
 
@@ -375,23 +345,6 @@ func (c Host_executor) Args() Host_executor_Params {
 func (c Host_executor) AllocResults() (Host_executor_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
 	return Host_executor_Results(r), err
-}
-
-// Host_resolve holds the state for a server call to Host.resolve.
-// See server.Call for documentation.
-type Host_resolve struct {
-	*server.Call
-}
-
-// Args returns the call's arguments.
-func (c Host_resolve) Args() Host_resolve_Params {
-	return Host_resolve_Params(c.Call.Args())
-}
-
-// AllocResults allocates the results struct.
-func (c Host_resolve) AllocResults() (Host_resolve_Results, error) {
-	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Host_resolve_Results(r), err
 }
 
 // Host_List is a list of Host.
@@ -1153,182 +1106,6 @@ func (p Host_executor_Results_Future) Executor() process.Executor {
 	return process.Executor(p.Future.Field(0, nil).Client())
 }
 
-type Host_resolve_Params capnp.Struct
-
-// Host_resolve_Params_TypeID is the unique identifier for the type Host_resolve_Params.
-const Host_resolve_Params_TypeID = 0x9eaa92308c59a588
-
-func NewHost_resolve_Params(s *capnp.Segment) (Host_resolve_Params, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Host_resolve_Params(st), err
-}
-
-func NewRootHost_resolve_Params(s *capnp.Segment) (Host_resolve_Params, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Host_resolve_Params(st), err
-}
-
-func ReadRootHost_resolve_Params(msg *capnp.Message) (Host_resolve_Params, error) {
-	root, err := msg.Root()
-	return Host_resolve_Params(root.Struct()), err
-}
-
-func (s Host_resolve_Params) String() string {
-	str, _ := text.Marshal(0x9eaa92308c59a588, capnp.Struct(s))
-	return str
-}
-
-func (s Host_resolve_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
-	return capnp.Struct(s).EncodeAsPtr(seg)
-}
-
-func (Host_resolve_Params) DecodeFromPtr(p capnp.Ptr) Host_resolve_Params {
-	return Host_resolve_Params(capnp.Struct{}.DecodeFromPtr(p))
-}
-
-func (s Host_resolve_Params) ToPtr() capnp.Ptr {
-	return capnp.Struct(s).ToPtr()
-}
-func (s Host_resolve_Params) IsValid() bool {
-	return capnp.Struct(s).IsValid()
-}
-
-func (s Host_resolve_Params) Message() *capnp.Message {
-	return capnp.Struct(s).Message()
-}
-
-func (s Host_resolve_Params) Segment() *capnp.Segment {
-	return capnp.Struct(s).Segment()
-}
-func (s Host_resolve_Params) SturdyRef() (SturdyRef, error) {
-	p, err := capnp.Struct(s).Ptr(0)
-	return SturdyRef(p.Struct()), err
-}
-
-func (s Host_resolve_Params) HasSturdyRef() bool {
-	return capnp.Struct(s).HasPtr(0)
-}
-
-func (s Host_resolve_Params) SetSturdyRef(v SturdyRef) error {
-	return capnp.Struct(s).SetPtr(0, capnp.Struct(v).ToPtr())
-}
-
-// NewSturdyRef sets the sturdyRef field to a newly
-// allocated SturdyRef struct, preferring placement in s's segment.
-func (s Host_resolve_Params) NewSturdyRef() (SturdyRef, error) {
-	ss, err := NewSturdyRef(capnp.Struct(s).Segment())
-	if err != nil {
-		return SturdyRef{}, err
-	}
-	err = capnp.Struct(s).SetPtr(0, capnp.Struct(ss).ToPtr())
-	return ss, err
-}
-
-// Host_resolve_Params_List is a list of Host_resolve_Params.
-type Host_resolve_Params_List = capnp.StructList[Host_resolve_Params]
-
-// NewHost_resolve_Params creates a new list of Host_resolve_Params.
-func NewHost_resolve_Params_List(s *capnp.Segment, sz int32) (Host_resolve_Params_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Host_resolve_Params](l), err
-}
-
-// Host_resolve_Params_Future is a wrapper for a Host_resolve_Params promised by a client call.
-type Host_resolve_Params_Future struct{ *capnp.Future }
-
-func (f Host_resolve_Params_Future) Struct() (Host_resolve_Params, error) {
-	p, err := f.Future.Ptr()
-	return Host_resolve_Params(p.Struct()), err
-}
-func (p Host_resolve_Params_Future) SturdyRef() SturdyRef_Future {
-	return SturdyRef_Future{Future: p.Future.Field(0, nil)}
-}
-
-type Host_resolve_Results capnp.Struct
-
-// Host_resolve_Results_TypeID is the unique identifier for the type Host_resolve_Results.
-const Host_resolve_Results_TypeID = 0x99b232a18288d3d8
-
-func NewHost_resolve_Results(s *capnp.Segment) (Host_resolve_Results, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Host_resolve_Results(st), err
-}
-
-func NewRootHost_resolve_Results(s *capnp.Segment) (Host_resolve_Results, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Host_resolve_Results(st), err
-}
-
-func ReadRootHost_resolve_Results(msg *capnp.Message) (Host_resolve_Results, error) {
-	root, err := msg.Root()
-	return Host_resolve_Results(root.Struct()), err
-}
-
-func (s Host_resolve_Results) String() string {
-	str, _ := text.Marshal(0x99b232a18288d3d8, capnp.Struct(s))
-	return str
-}
-
-func (s Host_resolve_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
-	return capnp.Struct(s).EncodeAsPtr(seg)
-}
-
-func (Host_resolve_Results) DecodeFromPtr(p capnp.Ptr) Host_resolve_Results {
-	return Host_resolve_Results(capnp.Struct{}.DecodeFromPtr(p))
-}
-
-func (s Host_resolve_Results) ToPtr() capnp.Ptr {
-	return capnp.Struct(s).ToPtr()
-}
-func (s Host_resolve_Results) IsValid() bool {
-	return capnp.Struct(s).IsValid()
-}
-
-func (s Host_resolve_Results) Message() *capnp.Message {
-	return capnp.Struct(s).Message()
-}
-
-func (s Host_resolve_Results) Segment() *capnp.Segment {
-	return capnp.Struct(s).Segment()
-}
-func (s Host_resolve_Results) Capability() capnp.Client {
-	p, _ := capnp.Struct(s).Ptr(0)
-	return p.Interface().Client()
-}
-
-func (s Host_resolve_Results) HasCapability() bool {
-	return capnp.Struct(s).HasPtr(0)
-}
-
-func (s Host_resolve_Results) SetCapability(c capnp.Client) error {
-	if !c.IsValid() {
-		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
-	}
-	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(c))
-	return capnp.Struct(s).SetPtr(0, in.ToPtr())
-}
-
-// Host_resolve_Results_List is a list of Host_resolve_Results.
-type Host_resolve_Results_List = capnp.StructList[Host_resolve_Results]
-
-// NewHost_resolve_Results creates a new list of Host_resolve_Results.
-func NewHost_resolve_Results_List(s *capnp.Segment, sz int32) (Host_resolve_Results_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Host_resolve_Results](l), err
-}
-
-// Host_resolve_Results_Future is a wrapper for a Host_resolve_Results promised by a client call.
-type Host_resolve_Results_Future struct{ *capnp.Future }
-
-func (f Host_resolve_Results_Future) Struct() (Host_resolve_Results, error) {
-	p, err := f.Future.Ptr()
-	return Host_resolve_Results(p.Struct()), err
-}
-func (p Host_resolve_Results_Future) Capability() capnp.Client {
-	return p.Future.Field(0, nil).Client()
-}
-
 type SturdyRef capnp.Struct
 type SturdyRef_Which uint16
 
@@ -1493,61 +1270,55 @@ func (f SturdyRef_Future) Struct() (SturdyRef, error) {
 	return SturdyRef(p.Struct()), err
 }
 
-const schema_fcf6ac08e448a6ac = "x\xda\x8c\x94Mh\\U\x14\xc7\xcf\xff\xde7}\xf3" +
-	"\x91Lrgf\x11\"~\x10\xb30]\x84\xa6\"\xe2" +
-	"@\x98Q(\xb4\xb5\xc2\xbc\x041J\xd5Nf^\xeb" +
-	"\xc0\xd47\xbc\x8fh \xa2)\x04#j\x84B\xc5\xb8" +
-	"\x10\x84\xc6E(J\x14\x11-d\xd1\xa5\xe0\xa2\xb6\x8b" +
-	"\x16\xc4U\xaa\x14\xb4\xf8A\x84H\xf4\xca}3\xef\xcd" +
-	"M\xa8m\xb6\xef\xfe\xee\xff\xdc\xf3?\xff\xf3\x0e,\xf0" +
-	"\xb21\xd6[\xca\x11\xb3\xae&\xf6\xc9\xf5\xafn\xddx" +
-	"\xf0\xa1\xb7\xcf\x90\xc8\x83\xc80\x89\xf2\x89\xd4\xdfd\xc8" +
-	"?k\x7f\xfcv\xdf\xd2/ou\x0f\x1e\xbe\x99d " +
-	"Cn^=\xb6\xb0tv\xea\xbd\xf6I\x02\xea\xe8;" +
-	"u\x84\xfc\xe5d\x89 \xcd+/\xd6\xb7\xd7\xe7\xce\x91" +
-	"\xc8ry\xe1\x93\xc3\x1b\xc9\x0b\x7fm\x13!\xff{\xf2" +
-	"\xc3\xfcVR\xf1\x9b\xc97\x91\xbf\x992\x89\xe4\xb5+" +
-	"\x8bg>>\xf8\xf9\xb2.w95\xa8\xe4\xae\xa7\x94" +
-	"\x1c{?qq\xeb\x81\xf9\x8ft\xe0\x9f\xd4\x90\x02\x12" +
-	"i\x05,\xae<\xfb\xce\x81\xb3\xab;\x80\x91tN\x01" +
-	"c!\xb0\xf1u0\xf9\xe4%\xe3\xbc\xd6\xe4\xd3i\xd5" +
-	"\xe4\xf2\x94S^\x9d2\xd6\xc8\xca\x02\xdd\xa7\x1e\xe2&" +
-	"#\xca?\x96\xbe\x94\x7f<\xad\xe8\xf1\xf4\xcf\x049b" +
-	"\xf4}\xcaO\x0c\xac\xebu\x1e\xc9\xa4U\x9d\xf1\x8c\xaa" +
-	"3q\xec\xda\xc8\xaf\x85\xc9u\xcd\xb3jfPy\x96" +
-	"9\xf4\xcc\xf9\x85\xe3\x17\xbf\xd5\xaf\x1e\xc9\x84\x9e=\x15" +
-	"^\xbd\x95Mm\x06[\x8b?\xe8\xc0\xe9L\xd8C\x10" +
-	"\x02\xcb\xab\xdb\x89`\xe8\xcb\x1b\x9a\xf69U[\xd2\x9a" +
-	"\xac5\x03\xcf\xb7\xddQV\xab\xb6^n\x15\x0f;\x9e" +
-	"?\xea:\x8e?\\\xaaT\xdd\xeai/\x06L\x0d\xa8" +
-	"\xdb\xd3\xc1\xa9\xe16@\x11\xa0\x9d\xcf4\xecW\x86'" +
-	"l/h\xfa\x1eY\x067\x88\x0c\x10\x89\xde\xfdDV" +
-	"\x92\xc3*0\xf4)\x089\x83\x13\x90#\xc4u\x10\xe9" +
-	"p\xcf\xaf\x00\xd6\x00O\x10\xc5c@\x94 \xb1\xb6\x9f" +
-	"\x98X1\xd1m\x0f\x91\x11b\xb9HL\xbck\x82\xc5" +
-	"\x19E\xe4\xa2\x98W\xf7\x02\x13<\x8e)\xa2\xe1\x88\xc6" +
-	"Ab\xe2y\x13F<\x0eD\x09\x12\xd6Qb\xe2\x88" +
-	"\x89D\x9c\x19D\xf1\x13\xe3O\x10\x13cf\xd8R\x19" +
-	"\xa5V0=\x19L\x97\xd1\xa7\x8c,\xe3\xfe\xd0\xae2" +
-	"\xa4\xfd\xaa]\x0b|\xc7%\xa22^wm\xcfi\xce" +
-	"\xd8eT\xd0\xed\x9e\xebch\x03m#\xb9\xef\xe9F" +
-	">Gd\xf5pX\x03\x0c\xb2VmU\xa7\x1b\xcd\x06" +
-	"q\x7f\xf66\x86\xea\x92\xd1\x0bBM\xb3\xb9S\xf3\xa8" +
-	"\xa6\xa9=\x15B~\x1f\xcc\xaf|\xf3\xc2\xe8gD\x80" +
-	"\xa0;\xbf6L\x05v\x08Oh\xc2\x9e\x1f\xb8\xf5\xd9" +
-	"\x09\x9bp\x12\xfd\xdd%\"\xa0_\x13f\xbb\xc3\xb4;" +
-	"\x8d\x1d`\xb2\xa3v\x92TT\xfa\xe3\x92\xd5A\"\xeb" +
-	"8\x87\xf5\x12\x83\x00\x0aP\x1f\xed\"\x91u\x82\xc3\x9a" +
-	"c\xe8eR\x16\xc0\x88\xc4\xac\xfa\xeasXo0\xdc" +
-	"\xcb\xff\x95\xac\x00N$^S\x8f\x9e\xe3\xb0>`\xe0" +
-	"\x8d:z\x88\xa1\x87Pj\xb9\x8e\xefx\xc8\x12*\x1c" +
-	"\xe1\xd7,\xa1\xe4:\x81o\xd7i\x9f\xac\xd6\xeb\xae\xed" +
-	"y6\xa1\x1e1\xbdm\xe6\xb6\xa6\xb5\x17)\xda\x14\xfa" +
-	"\xbfi\x84\xd8);\x9c\xc6\x1e\x07\xac\xfc\xe2\x9aa|" +
-	"\xf7~\xdfm=\x15\x04!\x87\xae/\xa56\x1e\xcdm" +
-	"\xdci\xf4\xed\xbcw\x14w\x8e\xbe\xd8U\xec\xac\x05\x84" +
-	",:3\xf7\xfc\xf4E\xe5\xc7=hv\xfe1\xf4_" +
-	"\x00\x00\x00\xff\xff_\xbb\xcd\xc7"
+const schema_fcf6ac08e448a6ac = "x\xda\x8c\x93OhcU\x14\xc6\xcf\xb9\xf7\xa5\xef\xbd" +
+	"\xd8\xa4\xde\xbc,J\xc5?\xd4.l\x17\xc5\xeaB\x0c" +
+	"H\xb2)\xd6\xdaEn\x82X\xa1j\xd3\xbcg-\xb4" +
+	"\xbe\xf8\xfeT\x0b-X\xa1`\x11Z*T\xacPA" +
+	"\xa8.JU\x8a\x88h1\x8b.\xc5\x95\xbaP\x18f" +
+	"\x95\xcelf\xca0C\x07:\x94\xb9\xc3}\xc9K^" +
+	"3\x1df\xb6\xf7|\xf7;\xf7\xfc\xcew\x9f\x7f\x99\xe6" +
+	"\x94\xa1\xc4:\x03\xc2\xff\x8au\x88\xea\xaf\xc7G\xcf>" +
+	"\xf7\xf9\xa7\xc0\x0c\x04PT\x00\xe3\x07\xed\x0e(\xe2V" +
+	"\xf9\xe6\x8d\xa7\xd6\xae\xad\xb6\x0a/nh\x04A\x11'" +
+	"\xff\x8e\xad\xac}1\xbe^\xaf\xc4P\x96|YBc" +
+	"A\xcb\x02\x0a\xf5\x9fw\xcd\xb3\xea\xe2&\xb0$\x15{" +
+	"\xdf\x8f\xd4\xb4\xbd\xdbg\x00hli_\x1b\xdfjR" +
+	"\xbf\xad\xbd\x8a\xc6\x8c\xae\x02\x08\xf2e\xec\xe0\xf4\x99\xe5" +
+	"o\xa2v\\\xef\x95vo\xe9\xd2\xae\xf6\x9b_|\xfd" +
+	"P\xd9\x89<qI\x97O\xdc\x1a\xb7s\xbb\xe3\xca>" +
+	"\xf0$b\xab\xd10U\x09\x80Q\xd2\x0f\xeb\x1d\x0cK" +
+	"\xbf\x0a(\xfa\x95\xae\x1f\xe9dw5\xda\xe7\xedx\\" +
+	"\xf6\xb1\xe2\xb2Oa\xec\xbf\xfe\xeb\xe9b52\xf1j" +
+	"\xbcGN\xfc\xd8\xf0\x9b;+\x13\x07\x7fF\xaf~\x18" +
+	"\x0f&\xf6\x83\xab\xc7I\xfd\xc4?\xfd\xecRT\xb0\x19" +
+	"OI\xc1v \xd8\xda=\x8b\xf9\xbd\xbf\x1cE\xbc\xff" +
+	"\x90\xbd\x05\xec\x8b\xf2\xac\xefz\x963H\xca\xa5\xca\x07" +
+	"\x95\xcc\x88\xedz\x83\x8em{}\xd9|\xc9)\xcd\xb9" +
+	"M\x81\x1a\x11\x98\xd6\x94?\xddW\x17@(\x88\xd4\xe7" +
+	"g\xac\x8f\xfa\x0a\x96\xeb\xcfz.p\x85*\x00\x0a\x02" +
+	"\xb0\xc4\x00\x00\xd7(\xf24\xc1.)\xc2\x94B\x011" +
+	"\x05\xd8\xec\x83\xa1\x0fu\xbd<\"O\xd3\x18@s\x0d" +
+	"\x18\xee\x9fm\x0c\x00a+*\xb6\xc6\xc3\x10\x04[\xc8" +
+	"\x00as*\x92f\xc20\xa4\xc8J\xf2\xde\x1b*\xd2" +
+	"f\xc80\\\x0e{\xed\x05 \xec\x15\x15\x95\xe6:0" +
+	"\x0c\x08\x1b\x1a\x05\xc2\xfa\xd5\xe0\xd99\xccV\xfc\xa9\xa2" +
+	"?\x95\xc3.\x09+\x87O\x07Hr(\xac\x8f\xad\xb2" +
+	"\xef\xd9\x0e\x00\xe40\x8f\xad\xb9h\x84O(\x0a\x18\xa9" +
+	"\xb3\x9e\x1be4\x0a\xc0;)\xf2nr\xce\x0d\x99\xf8" +
+	"\xdb_\xfe\xee\xf7w\x06\x7f\x02@d\x11d\xa4\x1d}" +
+	"\xfb\xee\x1a\x82\xa2\xe7;\xe6B\xc1z\x0f$\xd8\xc7\x9b" +
+	"-K=\x00|\x82\"\x7f\x9f CL\xa3<\xb42" +
+	"\x00|\x92\"_$\x98 B\xa4\x91\x00H\xb2\xc0=" +
+	"\x8a\xfc\x13\x82O\xd2\xbb\x82\xa4\x91\x02\xb0\xa5\x02\x00_" +
+	"\xa4\xc8\xbf\"HgL\xec\x04\x82\x9d\x80\xd9\x8ac{" +
+	"\xb6\x8bI\xc0<\xc5\xe04\x09\x98ul\xdf\xb3L\xe8" +
+	"\x10%\xd3t,\xd7\xb5\x00\xcdP\x93\xa8k.\xc4V" +
+	"\x8f]\x98+x\x10\xb4@6m\x05\xd0\xee\xcf\xd7\x85" +
+	"{\x90\xbch\x04\x18m\xff\x0d\x0f\x0b\xb3\x14!\x13\xbd" +
+	"\xff\xaf\xe9\xb5\x97R\xb5\xf6\x0dE\xfd\xea\xc9i8\xe2" +
+	"\xb9\xd5gZ\x8e\x8d\x80!\x13\x19{\xfe\x89+?\xe7" +
+	"/?\x82g\xe3G\xc2\xbd\x00\x00\x00\xff\xffIW\x80" +
+	"z"
 
 func init() {
 	schemas.Register(schema_fcf6ac08e448a6ac,
@@ -1555,9 +1326,7 @@ func init() {
 		0x89ec8e1ef0f263f3,
 		0x8f58928e854cd4f5,
 		0x957cbefc645fd307,
-		0x99b232a18288d3d8,
 		0x9e8120f9bb059602,
-		0x9eaa92308c59a588,
 		0xa404c24b5375b9e4,
 		0xb10458aa406f5899,
 		0xbe186003ae0f0429,
