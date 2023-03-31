@@ -13,6 +13,7 @@ import (
 
 	"github.com/wetware/ww/internal/cmd/cluster"
 	"github.com/wetware/ww/internal/cmd/debug"
+	"github.com/wetware/ww/internal/cmd/run"
 	"github.com/wetware/ww/internal/cmd/start"
 	ww "github.com/wetware/ww/pkg"
 )
@@ -58,11 +59,12 @@ var flags = []cli.Flag{
 var commands = []*cli.Command{
 	start.Command(),
 	cluster.Command(),
+	run.Command(),
 	debug.Command(),
 }
 
 func main() {
-	run(&cli.App{
+	app := &cli.App{
 		Name:                 "wetware",
 		HelpName:             "ww",
 		Usage:                "simple, secure clusters",
@@ -75,10 +77,8 @@ func main() {
 		Metadata: map[string]interface{}{
 			"version": ww.Version,
 		},
-	})
-}
+	}
 
-func run(app *cli.App) {
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
 	}

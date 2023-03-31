@@ -35,6 +35,7 @@ require (
 	github.com/ipfs/go-ds-badger2 v0.1.3
 	github.com/lthibault/go-libp2p-inproc-transport v0.4.0
 	github.com/multiformats/go-multistream v0.4.1
+	github.com/stealthrocket/wazergo v0.11.0
 	github.com/stretchr/testify v1.8.2
 	github.com/tetratelabs/wazero v1.0.1
 	github.com/thejerf/suture/v4 v4.0.2

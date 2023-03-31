@@ -7,13 +7,11 @@ $Go.import("github.com/wetware/ww/internal/api/process");
 
 
 interface Executor {
-    spawn @0 (byteCode :Data, entryPoint :Text = "run") -> (process :Process);
-    # spawn a WASM based process from the binary module with the target
-    # entry function 
+    exec @0 (bytecode :Data) -> (process :Process);
+    # exec a WASM based process
 }
 
 interface Process {
-    start  @0 () -> ();
-    stop   @1 () -> ();
-    wait   @2 () -> (exitCode :UInt32);
+    wait   @0 () -> (exitCode :UInt32);
+    kill   @1 () -> ();
 }
