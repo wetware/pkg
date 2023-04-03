@@ -102,7 +102,6 @@ func (wx Server) loadModule(ctx context.Context, args api.Executor_spawn_Params)
 	config := wazero.
 		NewModuleConfig().
 		WithName(name).
-		WithEnv("WW_MODULE_CHECKSUM", name).
 		WithRandSource(rand.New())
 
 	if mod := wx.Runtime.Module(name); mod != nil {
