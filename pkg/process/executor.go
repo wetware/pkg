@@ -8,6 +8,7 @@ import (
 	capnp "capnproto.org/go/capnp/v3"
 	"github.com/tetratelabs/wazero"
 	"lukechampine.com/blake3"
+	"pgregory.net/rand"
 
 	wasm "github.com/tetratelabs/wazero/api"
 	api "github.com/wetware/ww/internal/api/process"
@@ -15,6 +16,11 @@ import (
 
 // ByteCode is a representation of arbitrary executable data.
 type ByteCode []byte
+
+func (b ByteCode) String() string {
+	hash := b.Hash()
+	return hex.EncodeToString(hash[:])
+}
 
 // Hash returns the BLAKE3-256 hash of the byte code.  It is
 // suitbale for use as a secure checksum.
@@ -92,12 +98,11 @@ func (wx Server) loadModule(ctx context.Context, args api.Executor_spawn_Params)
 		return nil, err
 	}
 
-	hash := ByteCode(bc).Hash()
-	name := hex.EncodeToString(hash[:])
-
+	name := ByteCode(bc).String()
 	config := wazero.
 		NewModuleConfig().
-		WithName(name)
+		WithName(name).
+		WithRandSource(rand.New())
 
 	if mod := wx.Runtime.Module(name); mod != nil {
 		return mod, nil
