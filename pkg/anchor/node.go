@@ -55,6 +55,11 @@ func (n node) Ls(ctx context.Context, call api.Anchor_ls) error {
 	panic("NOT IMPLEMENTED")
 }
 
+// FIXME:  there is currently a vector for resource-exhaustion attacks.
+// We don't enforce a maximum depth on anchors, nor do we enforce a max
+// number of children per node. An attacker can exploit this by walking
+// an arbitrarily long path and/or by creating arbitrarily many anchors,
+// ultimately exhausting the attacker's memory.
 func (n node) Walk(ctx context.Context, call api.Anchor_walk) error {
 	path := newPath(call)
 	if path.Err() != nil {
