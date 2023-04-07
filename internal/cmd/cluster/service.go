@@ -92,6 +92,10 @@ func provAction() cli.ActionFunc {
 			return fmt.Errorf("failed to set maddrs: %w", err)
 		}
 
+		if err := loc.SetService(c.String("name")); err != nil {
+			return fmt.Errorf("failed to set service name: %w", err)
+		}
+
 		// provide service
 		registry, release := node.Registry(c.Context)
 		defer release()

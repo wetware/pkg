@@ -695,12 +695,12 @@ func (w Location_Which) String() string {
 const Location_TypeID = 0xe61540af32cf81b6
 
 func NewLocation(s *capnp.Segment) (Location, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 3})
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 4})
 	return Location(st), err
 }
 
 func NewRootLocation(s *capnp.Segment) (Location, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 3})
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 4})
 	return Location(st), err
 }
 
@@ -740,29 +740,47 @@ func (s Location) Message() *capnp.Message {
 func (s Location) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s Location) Id() (string, error) {
+func (s Location) Service() (string, error) {
 	p, err := capnp.Struct(s).Ptr(0)
 	return p.Text(), err
 }
 
-func (s Location) HasId() bool {
+func (s Location) HasService() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s Location) IdBytes() ([]byte, error) {
+func (s Location) ServiceBytes() ([]byte, error) {
 	p, err := capnp.Struct(s).Ptr(0)
 	return p.TextBytes(), err
 }
 
-func (s Location) SetId(v string) error {
+func (s Location) SetService(v string) error {
 	return capnp.Struct(s).SetText(0, v)
+}
+
+func (s Location) Id() (string, error) {
+	p, err := capnp.Struct(s).Ptr(1)
+	return p.Text(), err
+}
+
+func (s Location) HasId() bool {
+	return capnp.Struct(s).HasPtr(1)
+}
+
+func (s Location) IdBytes() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(1)
+	return p.TextBytes(), err
+}
+
+func (s Location) SetId(v string) error {
+	return capnp.Struct(s).SetText(1, v)
 }
 
 func (s Location) Maddrs() (capnp.DataList, error) {
 	if capnp.Struct(s).Uint16(0) != 0 {
 		panic("Which() != maddrs")
 	}
-	p, err := capnp.Struct(s).Ptr(1)
+	p, err := capnp.Struct(s).Ptr(2)
 	return capnp.DataList(p.List()), err
 }
 
@@ -770,12 +788,12 @@ func (s Location) HasMaddrs() bool {
 	if capnp.Struct(s).Uint16(0) != 0 {
 		return false
 	}
-	return capnp.Struct(s).HasPtr(1)
+	return capnp.Struct(s).HasPtr(2)
 }
 
 func (s Location) SetMaddrs(v capnp.DataList) error {
 	capnp.Struct(s).SetUint16(0, 0)
-	return capnp.Struct(s).SetPtr(1, v.ToPtr())
+	return capnp.Struct(s).SetPtr(2, v.ToPtr())
 }
 
 // NewMaddrs sets the maddrs field to a newly
@@ -786,14 +804,14 @@ func (s Location) NewMaddrs(n int32) (capnp.DataList, error) {
 	if err != nil {
 		return capnp.DataList{}, err
 	}
-	err = capnp.Struct(s).SetPtr(1, l.ToPtr())
+	err = capnp.Struct(s).SetPtr(2, l.ToPtr())
 	return l, err
 }
 func (s Location) Anchor() (string, error) {
 	if capnp.Struct(s).Uint16(0) != 1 {
 		panic("Which() != anchor")
 	}
-	p, err := capnp.Struct(s).Ptr(1)
+	p, err := capnp.Struct(s).Ptr(2)
 	return p.Text(), err
 }
 
@@ -801,48 +819,48 @@ func (s Location) HasAnchor() bool {
 	if capnp.Struct(s).Uint16(0) != 1 {
 		return false
 	}
-	return capnp.Struct(s).HasPtr(1)
+	return capnp.Struct(s).HasPtr(2)
 }
 
 func (s Location) AnchorBytes() ([]byte, error) {
-	p, err := capnp.Struct(s).Ptr(1)
+	p, err := capnp.Struct(s).Ptr(2)
 	return p.TextBytes(), err
 }
 
 func (s Location) SetAnchor(v string) error {
 	capnp.Struct(s).SetUint16(0, 1)
-	return capnp.Struct(s).SetText(1, v)
+	return capnp.Struct(s).SetText(2, v)
 }
 
 func (s Location) Custom() (capnp.Ptr, error) {
 	if capnp.Struct(s).Uint16(0) != 2 {
 		panic("Which() != custom")
 	}
-	return capnp.Struct(s).Ptr(1)
+	return capnp.Struct(s).Ptr(2)
 }
 
 func (s Location) HasCustom() bool {
 	if capnp.Struct(s).Uint16(0) != 2 {
 		return false
 	}
-	return capnp.Struct(s).HasPtr(1)
+	return capnp.Struct(s).HasPtr(2)
 }
 
 func (s Location) SetCustom(v capnp.Ptr) error {
 	capnp.Struct(s).SetUint16(0, 2)
-	return capnp.Struct(s).SetPtr(1, v)
+	return capnp.Struct(s).SetPtr(2, v)
 }
 func (s Location) Meta() (capnp.TextList, error) {
-	p, err := capnp.Struct(s).Ptr(2)
+	p, err := capnp.Struct(s).Ptr(3)
 	return capnp.TextList(p.List()), err
 }
 
 func (s Location) HasMeta() bool {
-	return capnp.Struct(s).HasPtr(2)
+	return capnp.Struct(s).HasPtr(3)
 }
 
 func (s Location) SetMeta(v capnp.TextList) error {
-	return capnp.Struct(s).SetPtr(2, v.ToPtr())
+	return capnp.Struct(s).SetPtr(3, v.ToPtr())
 }
 
 // NewMeta sets the meta field to a newly
@@ -852,7 +870,7 @@ func (s Location) NewMeta(n int32) (capnp.TextList, error) {
 	if err != nil {
 		return capnp.TextList{}, err
 	}
-	err = capnp.Struct(s).SetPtr(2, l.ToPtr())
+	err = capnp.Struct(s).SetPtr(3, l.ToPtr())
 	return l, err
 }
 
@@ -861,7 +879,7 @@ type Location_List = capnp.StructList[Location]
 
 // NewLocation creates a new list of Location.
 func NewLocation_List(s *capnp.Segment, sz int32) (Location_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 3}, sz)
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 4}, sz)
 	return capnp.StructList[Location](l), err
 }
 
@@ -873,7 +891,7 @@ func (f Location_Future) Struct() (Location, error) {
 	return Location(p.Struct()), err
 }
 func (p Location_Future) Custom() *capnp.Future {
-	return p.Future.Field(1, nil)
+	return p.Future.Field(2, nil)
 }
 
 type Message capnp.Struct
@@ -1002,54 +1020,55 @@ func (p Message_Future) Response() SignedLocation_Future {
 	return SignedLocation_Future{Future: p.Future.Field(0, nil)}
 }
 
-const schema_fcba4f486a351ac3 = "x\xda\x8cTK\x88\x1cU\x14\xbd\xe7\xbd\xea\xaa\x08\xfd" +
-	"\x99\x97\xea\x18\x0c4\xbd\x19!\x11\x13g&\x8aaP" +
-	"\xba\x89\x1fD\"\xf6k\x17\xe2F(\xab_zj2" +
-	"]\xd5VU\xc7\x04\x95\x10\x10$\x0b%\x82\x81\x11T" +
-	"t\xa9\x0b#\xa2\xa2#A\x82d!.\x04\x7f\x18\x10" +
-	"\\\xf9a`FD\x98\x953O\xdeT\xff\xecA3" +
-	"\xbb\xe2\xd6y\xf7\x9c{\xce\xe5\xce\xf8\xacn\xcd\x16\xf4" +
-	"M\xc4d\x9a\xb3\xf5O\x9f\x9cy\xf9\x87g\xaf_\"" +
-	"Q\x84\xfe\xe2\xc0]\x8b\x0f=\xba\xf27\xe5\x98C\xe4" +
-	"\xfeb\xad\xba\x7fZ\xe6k\xcdz\x86\xa07\xee\xbeo" +
-	"\xe1\xbb\x9f\xdf\xfc\x9c\xc4~P\x869*ss \xb8" +
-	"O\xe4\x0c\xa0\xfaew\xe9\xaf\xd5\xcb\xdf\x90,b\xac" +
-	"\xdb\x03p\x18\x91\xfbi\xee\x03\xf7j\xce\xb4\xbb\xb2\x8d" +
-	"~\xf2\xfe\xc5{\xa3k\x17\xbe\x1foW\xb1\x9f2\xed" +
-	"\x0e\xd9\x06pq\xe3\xbd\xc3\xfe\xbb\xa7~\xcc\x00F\xc8" +
-	"\xd1\x8f\xecE\x90\xa5\xbf}\\\x14\xed\x93\x7f\\\x1f\xfb" +
-	"\xf3\xb6=o\xfe||\xfe\xeb\xb9\xcb\xf5}\xbfNJ" +
-	"\xe0\x0e'r/\xd8+\xee+\xb6\x81\xbfdWA\xd0" +
-	"\x0f~u\xd6\x8f\x9c\xf5M\x12E>B\x13\xdc+\xce" +
-	"\x8a{\xcd1b\xaf:/\xba\xfb\xf68\xf4\x9bNT" +
-	"|:\xf0\xd5\x11\xe6{\xdd\xb0;\xffX\xd0\x0eU\xeb" +
-	"D\xe4{\xa54\x88\xc2\x06 \xf7p\x8b\xc8\x02\x918" +
-	"\xd4$\x92\x079\xe4\x9d\x0c\x02(\xc3\x14g\x1f&\x92" +
-	"3\x1c\xf2\x1e\x06\x9d\x04\xed\xd0K{1A\xa1@\x0c" +
-	"\x05\x82^\x8a|\xcf\xf4\"\"L\x8df!`\x8a0" +
-	"\xe4\xe7\x19\x7fS\xb5\x83$\x8d\xcf\x1e\xe9\xc6\xd1\xe9\xa0" +
-	"\xa5\xa6\x1bU/\xf6:\xc9\xb8\x8a9\"9\xcd!g" +
-	"\xc6T\x1c6*n\xe7\x90\xc7\x18\xaai\xd4\x0d|\x08" +
-	"\xfd\xfe\xa9\xa9;\x0e\xbe\x13.\x1b.\xb1C\xc9pK" +
-	"&\x94 S\xf2\x88\xaa&\x89\xd7V}\x0b\xf2Zg" +
-	"\xec\xc7G\xec\x05l\xe9\x9d\xf4\xe7b\xf5tO%)" +
-	"\xd9:VI7\x0a\x13\xf5\xff\x84\xd6\xc4\xe8'\x83\xb0" +
-	"\xd5\xc8\xc6\x8f\x93\xe9\x86\x17;\xbb1\xe0\xb6~6\xad" +
-	"\xff6\xa0\xe4/x!\x84^\xbfy\xf5Xy\xed\xb3" +
-	"\xdf\x89\xa8\x0e\x81\xaa\xb4\x18\xc6\x8b\x02\xfb\xa5\x05\x00\x0d" +
-	"\x8e\x09\xddb\xd7\xba\x9b*)\xf5\x96\xd2\xe4\x86\x097" +
-	"k*\xf9\x17\xb0\x1f\xc0\x89\xa8\x96\xc5e\x12(\x0f\xa7" +
-	"\x7f\xfe\x00\x91<\xc3!_`\xa8@\xeb\xfe\xfc\xe7\xe7" +
-	"\x89\xe4s\x1cr\x99\xa1\xc2\xb6L\x99\x11\x89K\xa6|" +
-	"\x91C\xbe\xceP\xe1\x9b\xa6\xcc\x89\xc4k\xa6\xfc*\x87" +
-	"|\x8bAX\xac\x0c\x8bH\xbca,\\\xe6\x90\x1f2" +
-	"\xf0\xa0\x85<1\xe4\x09\xb5\x8e\xd7j\xc5\x09\x8a\xb4\xed" +
-	"\x87Y\xeb\"\xa1\xe6\x85\xfeB\x14\x0fA~/I\xa3" +
-	"\x0e\xf6\x12\xc3^B\xa9\xa3Ro\xf0\"\x9f\xbd\x98\x9c" +
-	"\xaf\xa9j\x99\x13\xd9\x86\xe5\x88\x86\xc7\x08\x83[ f" +
-	"\x8f\x13\x13\xb7:\x18]\x16\x0c.\x88\xb8%&&\x84" +
-	"s\xaeod\x1dz\x90\x00U\xb73\xa8\xa3\x01\xfc\x13" +
-	"\x00\x00\xff\xff\x14\xd1e\xfd"
+const schema_fcba4f486a351ac3 = "x\xda\x8cTM\x88\x1cE\x18\xfd^U\xff\xac\xb03" +
+	"\xb3\x95\x1e\x8d\x06\x86\xb9\xac\x90\x88\x89\xbb\x1b\xc5\xb0(" +
+	"3\xc4\x1fD\"N\x8d\x87\xe0Eh{*\xb3\xbd\xd9" +
+	"\xe9\x1e\xbb{\xa2\xc1\xc3\xe2IrP\x14\x14\"\xa8\x18" +
+	"\xf0\xa2\x07\x13\xc4\xc8f5\xa8\x88\x07\xf1 h\x14\x03" +
+	"\x82'\x7fXHD\x84\x80\xe0\xa6\xa4\xb6\xe7\xcf\x09\x9a" +
+	"\xbd\x15_\xbd\xfa\xde\xfb\xde+\xbe\xb9\x84\xd5\xad\xf9\x82" +
+	"\xbe\x81\x98\xcclG\xff\xb8\xf6\xcc\x8b\xdf?{\xf1U" +
+	"\x12E\xe8\xcfw\xdd\xb5\xfc\xd0\xa3\xeb\x7f\x93\xcd\\\"" +
+	"\xefgk\xc3\xfb\xc32\xa7K\xd6\xd3\x04}\xe5\xee\xfb" +
+	"\x96.\xfc\xf4\xe6'$v\x82r\xcc~i/\x80\xe0" +
+	"=n\x1b@\xf5\xcb\xee\xca\x9f\x1b\xa7\xbf!Y\xc4X" +
+	"\xb7\x07\xe02\"\xef\x9c\xfd\xbe\xf7\x99m\xda\x9d\xdfB" +
+	"?q\xff\xf2\xbd\xf1\x17'\xbe\x1boWq\x9e4\xed" +
+	"\xf68\x06\xf0\xd2\x95\xf7\xf6\x06\xef\x1e\xfd!\x07\x18!" +
+	"\xfb\xcf:\xcb K\x7f{X\x14\x9d#\xbf_\x1c\xbb" +
+	"9\xe5,\x9a\x9b\x0f\x9f\xfbz\xe1t\xfd\xc6_&%" +
+	"X.'\xf2N8\xeb\xde\xcb\x8e\x81\xbf\xe0\x1c\x06A" +
+	"?\xf8\xd5\xf1 v/o\x92(\xf2\x11\x9a\xe0\xfd\xe5" +
+	"\xae{\x982b7\xdd\xe7=9\xe5\xd2\xaf:U\xc9" +
+	"\xb10P\xfbX\xe0w\xa3\xee\xe2ca;R\xadC" +
+	"q\xe0\x97\xb20\x8e\x1a\x80\x9c\xe2\x16\x91\x05\"\xb1\xa7" +
+	"I$ws\xc8;\x19\x04P\x86)\xce?L$\xe7" +
+	"8\xe4=\x0c:\x0d\xdb\x91\x9f\xf5\x12\x82B\x81\x18\x0a" +
+	"\x04\xbd\x12\x07\xbe\xe9ED\x98\x19\xcdB\xc0\x0ca\xc8" +
+	"\xcfs\xfe\xa6j\x87i\x96\x1c\xdf\xd7M\xe2caK" +
+	"\xcd6\xaa~\xe2w\xd2q\x15\x0bDr\x96C\xce\x8d" +
+	"\xa9\xd8kT\xdc\xce!\x0f0T\xb3\xb8\x1b\x06\x10\xfa" +
+	"\xcc\xd1\x99;v\xbf\x13\x9d4\\\xe2\x1a%\xc3_2" +
+	"\xa1\x04\xb9\x92GT5M\xfd\xb6\xea[0\xadu\xce" +
+	"~p\xc4^\xc0U}-\xfdj\xa2\x9e\xea\xa94#" +
+	"G'*\xed\xc6Q\xaa\xfe\x9f\xd0\x9a\x18\xfdH\x18\xb5" +
+	"\x1a\xf9\xf8I:\xdb\xf0\x13w;\x06\xdc\xd6\xcf\xa6\xf5" +
+	"\xdf\x06\x94\x82%?\x82\xd0\x97o\xda8P\xbe\xf4\xd1" +
+	"oDT\x87@UZ\x0c\xe3E\x81\x9d\xd2\x02\x80\x06" +
+	"\xc7\x84n\xb1m\xddM\x95\x96z+Yz\xdd\x84\x9b" +
+	"5\x95\xfe\x0b\xd8\x0f\xe0P\\\xcb\xe32\x09\xdc<\x9c" +
+	"\xfe5\x13\xc0+\x1c\xf2\xad\xb1\xe9\xdf\xd8E$Or" +
+	"\xc8\xb7\x19*LkV\x06#\x12\xa7\x16\x89\xe4\xeb\x1c" +
+	"r\x8d\xa1\xc2\xaf\x9a2'\x12gM\xf9\x0c\x87\xfc\x98" +
+	"\xa1bm\x9a\xb2E$\xce\x99\xf2\x07\x1c\xf2S\x06a" +
+	"\xf32l\"q\xde\xf8\xba\xc6!/0\xac\xf6\x15b" +
+	"\x9a\x18\xa6\x09<l\x0d\x8e\xb5\x8e\xdfj%)\x8a\xb4" +
+	"e\x9a\xf9\xfbEB\xcd\x8f\x82\xa58\x19\x82\x82^\x9a" +
+	"\xc5\x1d\xec \x86\x1d\x84RGe\xfe\xe0\xc5t\xfeb" +
+	"\xd2\x84\xa6\xaa\xe5v\xe5\xdf\xd0&\x1an,\x0c\x16\x86" +
+	"\x98?HL\xdc\xeab\xb4~0X3\xe2\x96\x84\x98" +
+	"\x10\xeej\xdf\xed:\xf4 &\xaan\x05UG\x03\xf8" +
+	"'\x00\x00\xff\xff<\xe9n\xa5"
 
 func init() {
 	schemas.Register(schema_fcba4f486a351ac3,

@@ -19,13 +19,14 @@ struct SignedLocation {
 }
 
 struct Location {
-    id @0 :PeerID;
+    service @0 :Text;
+    id @1 :PeerID;
     union{
-        maddrs @1 :List(Multiaddr);
-        anchor @2 :AnchorPath;
-        custom @3 :AnyPointer;
+        maddrs @2 :List(Multiaddr);
+        anchor @3 :AnchorPath;
+        custom @4 :AnyPointer;
     }
-    meta     @4 :List(Text);
+    meta     @5 :List(Text);
 
     using PeerID = Text;
     using Multiaddr = Data;
