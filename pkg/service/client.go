@@ -19,14 +19,6 @@ func (c Registry) Release() {
 }
 
 func (c Registry) Provide(ctx context.Context, topic pubsub.Topic, loc Location) (casm.Future, capnp.ReleaseFunc) {
-	topicName, err := topic.Name(ctx)
-	if err != nil {
-		// TODO: return error
-	}
-	if err := loc.Validate(topicName); err != nil {
-		// TODO: return error
-	} 
-
 	ctx, cancel := context.WithCancel(ctx)
 
 	fut, release := api.Registry(c).Provide(ctx, func(ps api.Registry_provide_Params) error {
@@ -45,7 +37,17 @@ func (c Registry) Provide(ctx context.Context, topic pubsub.Topic, loc Location)
 func (c Registry) FindProviders(ctx context.Context, topic pubsub.Topic) (casm.Iterator[Location], capnp.ReleaseFunc) {
 	ctx, cancel := context.WithCancel(ctx)
 
-	handler := make(handler, 32)
+	topicName, err := topic.Name(ctx)
+	if err != nil {
+		fut := capnp.ErrorAnswer(capnp.Method{}, fmt.Errorf("failed to read topic name: %w", err)).Future()
+		iterator := casm.Iterator[Location]{
+			Future: casm.Future{Future: fut},
+		}
+		cancel()
+		return iterator, func() {}
+	}
+
+	handler := handler{ch: make(chan Location, 32), topic: topicName}
 
 	fut, release := api.Registry(c).FindProviders(ctx, func(ps api.Registry_findProviders_Params) error {
 		if err := ps.SetTopic(ps_api.Topic(topic)); err != nil {
@@ -65,16 +67,19 @@ func (c Registry) FindProviders(ctx context.Context, topic pubsub.Topic) (casm.I
 	}
 }
 
-type handler chan Location
+type handler struct {
+	ch    chan Location
+	topic string
+}
 
-func (ch handler) Shutdown() { close(ch) }
+func (h handler) Shutdown() { close(h.ch) }
 
-func (ch handler) Next() (b Location, ok bool) {
-	b, ok = <-ch
+func (h handler) Next() (b Location, ok bool) {
+	b, ok = <-h.ch
 	return
 }
 
-func (ch handler) Send(ctx context.Context, call chan_api.Sender_send) error {
+func (h handler) Send(ctx context.Context, call chan_api.Sender_send) error {
 	// copy send arguments - TODO: use capnp message reference api
 	ptr, err := call.Args().Value()
 	if err != nil {
@@ -82,17 +87,23 @@ func (ch handler) Send(ctx context.Context, call chan_api.Sender_send) error {
 	}
 
 	_, seg := capnp.NewSingleSegmentMessage(nil)
-	sloc, err := api.NewSignedLocation(seg)
+	capSloc, err := api.NewSignedLocation(seg)
 	if err != nil {
 		return fmt.Errorf("failed to create a signed location: %w", err)
 	}
 
-	if err := sloc.ToPtr().Struct().CopyFrom(ptr.Struct()); err != nil {
+	if err := capSloc.ToPtr().Struct().CopyFrom(ptr.Struct()); err != nil {
 		return fmt.Errorf("failed to copy/marshal signed location: %w", err)
 	}
 
+	// validate
+	sloc := Location{SignedLocation: capSloc}
+	if err := sloc.Validate(h.topic); err != nil {
+		return fmt.Errorf("failed to validate location: %w", err)
+	}
+
 	select {
-	case ch <- Location{SignedLocation: sloc}:
+	case h.ch <- Location{SignedLocation: capSloc}:
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()

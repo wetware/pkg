@@ -37,16 +37,6 @@ func (s *RegistryServer) Provide(ctx context.Context, call api.Registry_provide)
 
 	topic := pubsub.Topic(call.Args().Topic())
 
-	// validate location
-	topicName, err := topic.Name(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to read topic name: %w", err)
-	}
-	sloc := Location{SignedLocation: loc}
-	if err := sloc.Validate(topicName); err != nil {
-		return fmt.Errorf("failed to verify location: %w", err)
-	}
-
 	// subscribe to topic
 	sub, release := topic.Subscribe(ctx)
 	defer release()
@@ -75,10 +65,6 @@ func (s *RegistryServer) FindProviders(ctx context.Context, call api.Registry_fi
 	}
 
 	topic := pubsub.Topic(call.Args().Topic())
-	topicName, err := topic.Name(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to read topic name: %w", err)
-	}
 
 	sub, release := topic.Subscribe(ctx)
 	defer release()
@@ -103,13 +89,6 @@ func (s *RegistryServer) FindProviders(ctx context.Context, call api.Registry_fi
 			loc, err := msg.Response()
 			if err != nil {
 				return err
-			}
-
-			// validate location
-			sloc := Location{SignedLocation: loc}
-			if err := sloc.Validate(topicName); err != nil {
-				continue
-				// TODO: log error: fmt.Errorf("failed to verify location: %w", err)
 			}
 
 			fut, release := sender.Send(ctx, func(ps channel.Sender_send_Params) error {
