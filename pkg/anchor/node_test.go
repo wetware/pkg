@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	api "github.com/wetware/ww/internal/api/anchor"
-	"zenhack.net/go/util/rc"
 )
 
 func TestWeakClient(t *testing.T) {
@@ -23,7 +22,7 @@ func TestWeakClient(t *testing.T) {
 	var released bool
 	client := capnp.ErrorClient(errors.New("test")) // non-null client
 	wc.WeakClient = client.WeakRef()
-	wc.releaser = rc.NewRef(nodestate{}, func() { released = true })
+	wc.releaser = mknode(func() { released = true })
 	assert.True(t, wc.Exists(), "*capnp.WeakClient should exist")
 	assert.True(t, client.IsSame(wc.AddRef()),
 		"should return strong reference to underlying *WeakClient")
@@ -41,9 +40,7 @@ func TestWalk(t *testing.T) {
 		t.Parallel()
 
 		var released atomic.Bool
-		n := node{
-			rc: rc.NewRef(nodestate{}, func() { released.Store(true) }),
-		}
+		n := mknode(func() { released.Store(true) })
 
 		root := n.Anchor()
 		defer root.Release()
@@ -69,9 +66,7 @@ func TestWalk(t *testing.T) {
 		t.Parallel()
 
 		var released atomic.Bool
-		n := node{
-			rc: rc.NewRef(nodestate{}, func() { released.Store(true) }),
-		}
+		n := mknode(func() { released.Store(true) })
 
 		root := n.Anchor()
 		defer root.Release()

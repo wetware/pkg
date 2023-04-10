@@ -8,28 +8,32 @@ import (
 	"zenhack.net/go/util/rc"
 )
 
-type node struct {
-	rc *rc.Ref[nodestate]
+type node rc.Ref[nodestate]
+
+func mknode(f capnp.ReleaseFunc) *node {
+	return (*node)(rc.NewRef(nodestate{}, f))
+}
+func (n *node) AddRef() *node {
+	return (*node)((*rc.Ref[nodestate])(n).AddRef())
 }
 
-func (n node) AddRef() node {
-	return n.Bind(func(ref *rc.Ref[nodestate]) node {
-		return node{rc: ref}
-	})
+func (n *node) Release() {
+	(*rc.Ref[nodestate])(n).Release()
 }
 
-func (n node) state() *nodestate {
-	return n.rc.Value()
+func (n *node) Value() *nodestate {
+	return (*rc.Ref[nodestate])(n).Value()
 }
 
-// Locking invariants are tricky, and using a functional style helps
-// make them explicit. In essence, we must ensure that nodes are not
-// removed during a traversal. To do so, we increase the refcount of
-// each node along the traversal path. Because concurrent traversals
-// may occur, we MUST hold the lock when incrementing the during the
-// AddRef() operation. On the other hand, releasing a node may cause
-// it to be removed from its parent's child-map, which in turn means
-// that the parent may acquire its own lock when Release() is called.
+// Child returns the named child of the current node, creating it if
+// it does not exist.
+//
+// We must ensure that nodes are not removed during a traversal.  To
+// do so, we increase the ref-count of each node along the traversal
+// path. Because concurrent traversals may occur, we always hold the
+// lock during the AddRef() operation.  On the other hand, releasing
+// a node may cause it to be removed from the parent's child-map, in
+// case the parent may acquire its own lock.
 //
 // Thus, the tree exhibits bidirectional lock cascades; one starting
 // at the root and flowing towards a leaf, and the other starting at
@@ -43,62 +47,62 @@ func (n node) state() *nodestate {
 //  2. A node's lock MUST be held when incrementing its refcount.
 //  3. A node's lock MUST NOT be held when releasing its parent.
 //
-// Bind enforces these invariants during traversals. Release() logic
-// is responsible for enforcing invariant #3.
-func (n node) Bind(f func(*rc.Ref[nodestate]) node) node {
-	n.state().Lock()
-	defer n.state().Unlock()
+// Child maintains all three invariants during a traversal.
+func (n *node) Child(name string) *node {
+	n.Value().Lock()
+	defer n.Value().Unlock()
 
-	return f(n.rc.AddRef())
-}
+	var (
+		parent = n.AddRef()
+		state  = parent.Value()
+	)
 
-func child(name string) func(*rc.Ref[nodestate]) node {
-	return func(parent *rc.Ref[nodestate]) node {
-		state := parent.Value()
+	// Fast path;  child exists.
+	if child, ok := state.children[name]; ok {
+		// The child holds a reference to the parent, so we are
+		// certain that releasing the parent will not acquire a
+		// lock.  This is safe.
+		defer parent.Release()
 
-		// Fast path;  child exists.
-		if child, ok := state.children[name]; ok {
-			// The child holds a reference to the parent, so we are
-			// certain that releasing the parent will not acquire a
-			// lock.  This is safe.
-			defer parent.Release()
-
-			// A parent MUST NOT be released until its children are
-			// all released; increment the child's refcount.
-			return node{rc: child.AddRef()}
-		}
-
-		// Slow path; create new child.
-
-		if state.children == nil {
-			state.children = make(map[string]*rc.Ref[nodestate])
-		}
-
-		// The child holds the parent reference, releasing it when
-		// its own refcount hit zero.
-		state.children[name] = rc.NewRef(nodestate{}, func() {
-			defer parent.Release()
-
-			state.Lock()
-			delete(state.children, name)
-			state.Unlock()
-		})
-
-		return node{rc: state.children[name]}
+		// A parent MUST NOT be released until its children are
+		// all released; increment the child's refcount.
+		return child.AddRef()
 	}
+
+	// Slow path; create new child.
+
+	if state.children == nil {
+		state.children = make(map[string]*node)
+	}
+
+	// The child holds the parent reference, releasing it when
+	// its own refcount hit zero.
+	state.children[name] = mknode(func() {
+		defer parent.Release()
+
+		state.Lock()
+		delete(state.children, name)
+		state.Unlock()
+	})
+
+	return state.children[name]
 }
 
-func (n node) Anchor() api.Anchor {
-	n.state().Lock()
-	defer n.state().Unlock()
+// Anchor produces an anchor capability for the node, stealing
+// n's reference and releasing it when the Anchor's underlying
+// client is released.  For this reason, callers MUST NOT call
+// anchor on an existing node without first creating a new ref.
+func (n *node) Anchor() api.Anchor {
+	n.Value().Lock()
+	defer n.Value().Unlock()
 
 	// Fast path; a server is already running for this node.
 	// Node is guaranteed to have r > 1 refs.  This means we
 	// can release the refchain after client.AddRef returns.
-	if n.state().client.Exists() {
-		defer n.rc.Release()
+	if n.Value().client.Exists() {
+		defer n.Release()
 
-		client := n.state().client.AddRef()
+		client := n.Value().client.AddRef()
 		return api.Anchor(client)
 	}
 
@@ -109,16 +113,16 @@ func (n node) Anchor() api.Anchor {
 	// be released after the last client ref has been released.
 	// This happens in the Shutdown() method, which is invoked
 	// when the last client ref has been released.
-	client := capnp.NewClient(&nodeRef{
-		nodestate:  n.state(),
+	client := capnp.NewClient(&nodeHook{
+		nodestate:  n.Value(),
 		ClientHook: api.Anchor_NewServer(server{n}),
 	})
 
 	// Set the weak reference; subsequent calls to Anchor() will
 	// derive clients from the weakref, incrementing the refcount.
-	n.state().client = weakClient{
+	n.Value().client = weakClient{
 		WeakClient: client.WeakRef(),
-		releaser:   n.rc.AddRef(),
+		releaser:   n.AddRef(),
 	}
 
 	// Return first reference to caller;  The RPC connection will
@@ -144,14 +148,14 @@ func newPath(call api.Anchor_walk) Path {
 
 type nodestate struct {
 	sync.Mutex
-	children map[string]*rc.Ref[nodestate]
+	children map[string]*node
 	client   weakClient
 	// value api.Value
 }
 
 type weakClient struct {
 	*capnp.WeakClient
-	releaser *rc.Ref[nodestate]
+	releaser *node
 }
 
 func (wc weakClient) AddRef() capnp.Client {
@@ -175,16 +179,16 @@ func (wc weakClient) Exists() bool {
 	return wc.WeakClient != nil
 }
 
-type nodeRef struct {
+type nodeHook struct {
 	*nodestate
 	capnp.ClientHook
 }
 
-func (s *nodeRef) Shutdown() {
-	s.Lock()
-	defer s.Unlock()
+func (h *nodeHook) Shutdown() {
+	h.Lock()
+	defer h.Unlock()
 
-	s.ClientHook.Shutdown()
+	h.ClientHook.Shutdown()
 }
 
 // type Anchor api.Anchor
