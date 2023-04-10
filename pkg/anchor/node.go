@@ -1,7 +1,6 @@
 package anchor
 
 import (
-	"context"
 	"sync"
 
 	"capnproto.org/go/capnp/v3"
@@ -9,121 +8,83 @@ import (
 	"zenhack.net/go/util/rc"
 )
 
-// node is an element in the anchor tree. Anchor nodes are
-// created dynamically upon traversal, such that all calls
-// walk must succeed. Nodes are likewise deallocated based
-// on the following rules:
-//
-//  1. The node has no children
-//  2. The node has no client references
-//  3. The node has no value
-//
-// To enforce these invariants, a hierarchical refcounting
-// scheme is employed:
-//
-//  1. A node is created with an initial refcount of 1.
-//  2. Each time a node is traversed, add 1 to its refcount.
-//  3. When releasing a ref on node n, also release a ref on
-//     n's parent.
-//  4. When creating an Anchor capability or a value, endow
-//     it with the ref produced by the preceeding traversal,
-//     and ensure that this ref is released when the object
-//     reaches the end of its lifetime.
-//  5. After acquiring a ref to an existing Anchor or value,
-//     release the ref produced by the preceeding traversal.
-//
-// These five rules ensure that the lifetime invariants and
-// ordering invariants are maintained.
 type node struct {
 	rc *rc.Ref[nodestate]
+}
+
+func (n node) AddRef() node {
+	return n.Bind(func(ref *rc.Ref[nodestate]) node {
+		return node{rc: ref}
+	})
 }
 
 func (n node) state() *nodestate {
 	return n.rc.Value()
 }
 
-func (n node) Shutdown() {
-	// anchorRef holds the lock when shutting down.  Note that
-	// the Release() method calls an rc.Ref.Release(), meaning
-	// that the parent is released iff the client had the last
-	// remaining reference.
-	n.state().client.Release() // rule 4 (Anchor)
-	n.rc.Release()
-}
-
-func (n node) Ls(ctx context.Context, call api.Anchor_ls) error {
-	panic("NOT IMPLEMENTED")
-}
-
-// FIXME:  there is currently a vector for resource-exhaustion attacks.
-// We don't enforce a maximum depth on anchors, nor do we enforce a max
-// number of children per node. An attacker can exploit this by walking
-// an arbitrarily long path and/or by creating arbitrarily many anchors,
-// ultimately exhausting the attacker's memory.
-func (n node) Walk(ctx context.Context, call api.Anchor_walk) error {
-	path := newPath(call)
-	if path.Err() != nil {
-		return path.Err()
-	}
-
-	res, err := call.AllocResults()
-	if err != nil {
-		return err
-	}
-
-	// Do we skip the iteration loop?  If so, we need to make sure that
-	// we increment the refcount on n, since it will be released by the
-	// call to n.Anchor()
-	if path.IsRoot() {
-		n.state().Lock()
-		n = node{rc: n.rc.AddRef()}
-		n.state().Unlock()
-	}
-
-	// Iteratively "walk" to designated path.  It's important to avoid
-	// recursion, so that RPCs can't blow up the stack.
-	//
-	// Each iteration of the loop shadows the n symbol, including its
-	// embedded node, such that we are holding the final node when we
-	// exit the loop.
-	for path, name := path.Next(); name != ""; path, name = path.Next() {
-		n = n.getOrCreateChild(name) // shallow copy
-	}
-
-	// Calling s.Anchor() transparently increments the reference count.
-	return res.SetAnchor(n.Anchor())
-}
-
-func (n node) getOrCreateChild(name string) node {
+// Locking invariants are tricky, and using a functional style helps
+// make them explicit. In essence, we must ensure that nodes are not
+// removed during a traversal. To do so, we increase the refcount of
+// each node along the traversal path. Because concurrent traversals
+// may occur, we MUST hold the lock when incrementing the during the
+// AddRef() operation. On the other hand, releasing a node may cause
+// it to be removed from its parent's child-map, which in turn means
+// that the parent may acquire its own lock when Release() is called.
+//
+// Thus, the tree exhibits bidirectional lock cascades; one starting
+// at the root and flowing towards a leaf, and the other starting at
+// an arbitrary node and flowing up towards the root.  When opposite
+// cascades collide, it is essential that each hold only one lock at
+// a time, else a deadlock will inevitably occur. Thus, we arrive at
+// our three traversal invariants:
+//
+//  1. Traversals MUST increment the refcount of each node along
+//     their paths.
+//  2. A node's lock MUST be held when incrementing its refcount.
+//  3. A node's lock MUST NOT be held when releasing its parent.
+//
+// Bind enforces these invariants during traversals. Release() logic
+// is responsible for enforcing invariant #3.
+func (n node) Bind(f func(*rc.Ref[nodestate]) node) node {
 	n.state().Lock()
 	defer n.state().Unlock()
 
-	state := n.state()
+	return f(n.rc.AddRef())
+}
 
-	if state.children == nil {
-		state.children = make(map[string]*rc.Ref[nodestate])
-	}
+func child(name string) func(*rc.Ref[nodestate]) node {
+	return func(parent *rc.Ref[nodestate]) node {
+		state := parent.Value()
 
-	// Fast path;  child exists
-	if rc, ok := state.children[name]; ok {
-		return node{
-			rc: rc.AddRef(), // rule 2
+		// Fast path;  child exists.
+		if child, ok := state.children[name]; ok {
+			// The child holds a reference to the parent, so we are
+			// certain that releasing the parent will not acquire a
+			// lock.  This is safe.
+			defer parent.Release()
+
+			// A parent MUST NOT be released until its children are
+			// all released; increment the child's refcount.
+			return node{rc: child.AddRef()}
 		}
-	}
 
-	// Slow path; create new child.
-	parent := n.rc.AddRef()
-	state.children[name] = rc.NewRef(nodestate{}, func() { // rule 1
-		defer parent.Release() // rule 3
-		// defer n.rc.Release() // rule 3
+		// Slow path; create new child.
 
-		state.Lock()
-		delete(state.children, name)
-		state.Unlock()
-	})
+		if state.children == nil {
+			state.children = make(map[string]*rc.Ref[nodestate])
+		}
 
-	return node{
-		rc: state.children[name],
+		// The child holds the parent reference, releasing it when
+		// its own refcount hit zero.
+		state.children[name] = rc.NewRef(nodestate{}, func() {
+			defer parent.Release()
+
+			state.Lock()
+			delete(state.children, name)
+			state.Unlock()
+		})
+
+		return node{rc: state.children[name]}
 	}
 }
 
@@ -135,7 +96,7 @@ func (n node) Anchor() api.Anchor {
 	// Node is guaranteed to have r > 1 refs.  This means we
 	// can release the refchain after client.AddRef returns.
 	if n.state().client.Exists() {
-		defer n.rc.Release() // rule 5 (Anchor)
+		defer n.rc.Release()
 
 		client := n.state().client.AddRef()
 		return api.Anchor(client)
@@ -150,7 +111,7 @@ func (n node) Anchor() api.Anchor {
 	// when the last client ref has been released.
 	client := capnp.NewClient(&nodeRef{
 		nodestate:  n.state(),
-		ClientHook: api.Anchor_NewServer(n),
+		ClientHook: api.Anchor_NewServer(server{n}),
 	})
 
 	// Set the weak reference; subsequent calls to Anchor() will
