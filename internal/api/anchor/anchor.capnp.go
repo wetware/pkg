@@ -9,7 +9,6 @@ import (
 	schemas "capnproto.org/go/capnp/v3/schemas"
 	server "capnproto.org/go/capnp/v3/server"
 	context "context"
-	fmt "fmt"
 )
 
 type Anchor capnp.Client
@@ -18,6 +17,7 @@ type Anchor capnp.Client
 const Anchor_TypeID = 0xe41237e4098ed922
 
 func (c Anchor) Ls(ctx context.Context, params func(Anchor_ls_Params) error) (Anchor_ls_Results_Future, capnp.ReleaseFunc) {
+
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xe41237e4098ed922,
@@ -30,10 +30,14 @@ func (c Anchor) Ls(ctx context.Context, params func(Anchor_ls_Params) error) (An
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Anchor_ls_Params(s)) }
 	}
+
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Anchor_ls_Results_Future{Future: ans.Future()}, release
+
 }
+
 func (c Anchor) Walk(ctx context.Context, params func(Anchor_walk_Params) error) (Anchor_walk_Results_Future, capnp.ReleaseFunc) {
+
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xe41237e4098ed922,
@@ -46,8 +50,14 @@ func (c Anchor) Walk(ctx context.Context, params func(Anchor_walk_Params) error)
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Anchor_walk_Params(s)) }
 	}
+
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Anchor_walk_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c Anchor) WaitStreaming() error {
+	return capnp.Client(c).WaitStreaming()
 }
 
 // String returns a string that identifies this capability for debugging
@@ -55,7 +65,7 @@ func (c Anchor) Walk(ctx context.Context, params func(Anchor_walk_Params) error)
 // should not be used to compare clients.  Use IsSame to compare clients
 // for equality.
 func (c Anchor) String() string {
-	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+	return "Anchor(" + capnp.Client(c).String() + ")"
 }
 
 // AddRef creates a new Client that refers to the same capability as c.
@@ -115,7 +125,9 @@ func (c Anchor) SetFlowLimiter(lim fc.FlowLimiter) {
 // for this client.
 func (c Anchor) GetFlowLimiter() fc.FlowLimiter {
 	return capnp.Client(c).GetFlowLimiter()
-} // A Anchor_Server is a Anchor with a local implementation.
+}
+
+// A Anchor_Server is a Anchor with a local implementation.
 type Anchor_Server interface {
 	Ls(context.Context, Anchor_ls) error
 
@@ -530,7 +542,7 @@ func (s Anchor_walk_Results) SetAnchor(v Anchor) error {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
 	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(capnp.Client(v)))
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
 	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
@@ -580,11 +592,16 @@ const schema_efb5a91f96d44de3 = "x\xda|\x921h\xd4P\x1c\xc6\xbf\xef\xbd\x9c9\xa5"
 	"Y\xd4\x855\x08\xe5\xd82\xc9\x03\x0e\xab\x1f\x0b\x18\x92" +
 	"\x7f\x03\x00\x00\xff\xff\x8fH\x99\x1a"
 
-func init() {
-	schemas.Register(schema_efb5a91f96d44de3,
-		0xaec21d58779cc86c,
-		0xb90ffa2761585171,
-		0xc105d085735711e1,
-		0xe325af947f127758,
-		0xe41237e4098ed922)
+func RegisterSchema(reg *schemas.Registry) {
+	reg.Register(&schemas.Schema{
+		String: schema_efb5a91f96d44de3,
+		Nodes: []uint64{
+			0xaec21d58779cc86c,
+			0xb90ffa2761585171,
+			0xc105d085735711e1,
+			0xe325af947f127758,
+			0xe41237e4098ed922,
+		},
+		Compressed: true,
+	})
 }

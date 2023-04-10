@@ -9,7 +9,6 @@ import (
 	schemas "capnproto.org/go/capnp/v3/schemas"
 	server "capnproto.org/go/capnp/v3/server"
 	context "context"
-	fmt "fmt"
 )
 
 type Executor capnp.Client
@@ -18,6 +17,7 @@ type Executor capnp.Client
 const Executor_TypeID = 0xaf2e5ebaa58175d2
 
 func (c Executor) Spawn(ctx context.Context, params func(Executor_spawn_Params) error) (Executor_spawn_Results_Future, capnp.ReleaseFunc) {
+
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xaf2e5ebaa58175d2,
@@ -30,8 +30,14 @@ func (c Executor) Spawn(ctx context.Context, params func(Executor_spawn_Params) 
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 2}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Executor_spawn_Params(s)) }
 	}
+
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Executor_spawn_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c Executor) WaitStreaming() error {
+	return capnp.Client(c).WaitStreaming()
 }
 
 // String returns a string that identifies this capability for debugging
@@ -39,7 +45,7 @@ func (c Executor) Spawn(ctx context.Context, params func(Executor_spawn_Params) 
 // should not be used to compare clients.  Use IsSame to compare clients
 // for equality.
 func (c Executor) String() string {
-	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+	return "Executor(" + capnp.Client(c).String() + ")"
 }
 
 // AddRef creates a new Client that refers to the same capability as c.
@@ -99,7 +105,9 @@ func (c Executor) SetFlowLimiter(lim fc.FlowLimiter) {
 // for this client.
 func (c Executor) GetFlowLimiter() fc.FlowLimiter {
 	return capnp.Client(c).GetFlowLimiter()
-} // A Executor_Server is a Executor with a local implementation.
+}
+
+// A Executor_Server is a Executor with a local implementation.
 type Executor_Server interface {
 	Spawn(context.Context, Executor_spawn) error
 }
@@ -320,7 +328,7 @@ func (s Executor_spawn_Results) SetProcess(v Process) error {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
 	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(capnp.Client(v)))
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
 	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
@@ -350,6 +358,7 @@ type Process capnp.Client
 const Process_TypeID = 0xda23f0d3a8250633
 
 func (c Process) Start(ctx context.Context, params func(Process_start_Params) error) (Process_start_Results_Future, capnp.ReleaseFunc) {
+
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xda23f0d3a8250633,
@@ -362,10 +371,14 @@ func (c Process) Start(ctx context.Context, params func(Process_start_Params) er
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Process_start_Params(s)) }
 	}
+
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Process_start_Results_Future{Future: ans.Future()}, release
+
 }
+
 func (c Process) Stop(ctx context.Context, params func(Process_stop_Params) error) (Process_stop_Results_Future, capnp.ReleaseFunc) {
+
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xda23f0d3a8250633,
@@ -378,10 +391,14 @@ func (c Process) Stop(ctx context.Context, params func(Process_stop_Params) erro
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Process_stop_Params(s)) }
 	}
+
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Process_stop_Results_Future{Future: ans.Future()}, release
+
 }
+
 func (c Process) Wait(ctx context.Context, params func(Process_wait_Params) error) (Process_wait_Results_Future, capnp.ReleaseFunc) {
+
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xda23f0d3a8250633,
@@ -394,8 +411,14 @@ func (c Process) Wait(ctx context.Context, params func(Process_wait_Params) erro
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Process_wait_Params(s)) }
 	}
+
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Process_wait_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c Process) WaitStreaming() error {
+	return capnp.Client(c).WaitStreaming()
 }
 
 // String returns a string that identifies this capability for debugging
@@ -403,7 +426,7 @@ func (c Process) Wait(ctx context.Context, params func(Process_wait_Params) erro
 // should not be used to compare clients.  Use IsSame to compare clients
 // for equality.
 func (c Process) String() string {
-	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+	return "Process(" + capnp.Client(c).String() + ")"
 }
 
 // AddRef creates a new Client that refers to the same capability as c.
@@ -463,7 +486,9 @@ func (c Process) SetFlowLimiter(lim fc.FlowLimiter) {
 // for this client.
 func (c Process) GetFlowLimiter() fc.FlowLimiter {
 	return capnp.Client(c).GetFlowLimiter()
-} // A Process_Server is a Process with a local implementation.
+}
+
+// A Process_Server is a Process with a local implementation.
 type Process_Server interface {
 	Start(context.Context, Process_start) error
 
@@ -1026,16 +1051,21 @@ const schema_9a51e53177277763 = "x\xda|\x92Oh\x13M\x18\xc6\xdfgf\xd3\x0d|" +
 	"\xdd\xf1K\xebsU6\xf9\xa4\xfb;\x00\x00\xff\xff\xdc" +
 	"a-["
 
-func init() {
-	schemas.Register(schema_9a51e53177277763,
-		0x9d6074459fa0602b,
-		0xaf2e5ebaa58175d2,
-		0xbb4f16b0a7d2d09b,
-		0xc53168b273d497ee,
-		0xd22f75df06c187e8,
-		0xd72ab4a0243047ac,
-		0xda23f0d3a8250633,
-		0xeea7ae19b02f5d47,
-		0xf20b3dea95929312,
-		0xf9694ae208dbb3e3)
+func RegisterSchema(reg *schemas.Registry) {
+	reg.Register(&schemas.Schema{
+		String: schema_9a51e53177277763,
+		Nodes: []uint64{
+			0x9d6074459fa0602b,
+			0xaf2e5ebaa58175d2,
+			0xbb4f16b0a7d2d09b,
+			0xc53168b273d497ee,
+			0xd22f75df06c187e8,
+			0xd72ab4a0243047ac,
+			0xda23f0d3a8250633,
+			0xeea7ae19b02f5d47,
+			0xf20b3dea95929312,
+			0xf9694ae208dbb3e3,
+		},
+		Compressed: true,
+	})
 }

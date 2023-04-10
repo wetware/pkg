@@ -4,7 +4,7 @@ ifeq ($(origin GOPATH), undefined)
     GOPATH := $(HOME)/Go
 endif
 
-all: capnp
+all: capnp mocks
 
 
 clean: clean-capnp clean-mocks

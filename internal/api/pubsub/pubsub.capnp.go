@@ -10,7 +10,6 @@ import (
 	server "capnproto.org/go/capnp/v3/server"
 	stream "capnproto.org/go/capnp/v3/std/capnp/stream"
 	context "context"
-	fmt "fmt"
 )
 
 type Topic capnp.Client
@@ -18,7 +17,7 @@ type Topic capnp.Client
 // Topic_TypeID is the unique identifier for the type Topic.
 const Topic_TypeID = 0x986ea9282f106bb0
 
-func (c Topic) Publish(ctx context.Context, params func(Topic_publish_Params) error) (stream.StreamResult_Future, capnp.ReleaseFunc) {
+func (c Topic) Publish(ctx context.Context, params func(Topic_publish_Params) error) error {
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0x986ea9282f106bb0,
@@ -31,10 +30,13 @@ func (c Topic) Publish(ctx context.Context, params func(Topic_publish_Params) er
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Topic_publish_Params(s)) }
 	}
-	ans, release := capnp.Client(c).SendCall(ctx, s)
-	return stream.StreamResult_Future{Future: ans.Future()}, release
+
+	return capnp.Client(c).SendStreamCall(ctx, s)
+
 }
+
 func (c Topic) Subscribe(ctx context.Context, params func(Topic_subscribe_Params) error) (Topic_subscribe_Results_Future, capnp.ReleaseFunc) {
+
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0x986ea9282f106bb0,
@@ -47,10 +49,14 @@ func (c Topic) Subscribe(ctx context.Context, params func(Topic_subscribe_Params
 		s.ArgsSize = capnp.ObjectSize{DataSize: 8, PointerCount: 1}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Topic_subscribe_Params(s)) }
 	}
+
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Topic_subscribe_Results_Future{Future: ans.Future()}, release
+
 }
+
 func (c Topic) Name(ctx context.Context, params func(Topic_name_Params) error) (Topic_name_Results_Future, capnp.ReleaseFunc) {
+
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0x986ea9282f106bb0,
@@ -63,8 +69,14 @@ func (c Topic) Name(ctx context.Context, params func(Topic_name_Params) error) (
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Topic_name_Params(s)) }
 	}
+
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Topic_name_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c Topic) WaitStreaming() error {
+	return capnp.Client(c).WaitStreaming()
 }
 
 // String returns a string that identifies this capability for debugging
@@ -72,7 +84,7 @@ func (c Topic) Name(ctx context.Context, params func(Topic_name_Params) error) (
 // should not be used to compare clients.  Use IsSame to compare clients
 // for equality.
 func (c Topic) String() string {
-	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+	return "Topic(" + capnp.Client(c).String() + ")"
 }
 
 // AddRef creates a new Client that refers to the same capability as c.
@@ -132,7 +144,9 @@ func (c Topic) SetFlowLimiter(lim fc.FlowLimiter) {
 // for this client.
 func (c Topic) GetFlowLimiter() fc.FlowLimiter {
 	return capnp.Client(c).GetFlowLimiter()
-} // A Topic_Server is a Topic with a local implementation.
+}
+
+// A Topic_Server is a Topic with a local implementation.
 type Topic_Server interface {
 	Publish(context.Context, Topic_publish) error
 
@@ -264,7 +278,7 @@ type Topic_Consumer capnp.Client
 // Topic_Consumer_TypeID is the unique identifier for the type Topic_Consumer.
 const Topic_Consumer_TypeID = 0xd72d37c8b6fbef23
 
-func (c Topic_Consumer) Consume(ctx context.Context, params func(Topic_Consumer_consume_Params) error) (stream.StreamResult_Future, capnp.ReleaseFunc) {
+func (c Topic_Consumer) Consume(ctx context.Context, params func(Topic_Consumer_consume_Params) error) error {
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xd72d37c8b6fbef23,
@@ -277,8 +291,13 @@ func (c Topic_Consumer) Consume(ctx context.Context, params func(Topic_Consumer_
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Topic_Consumer_consume_Params(s)) }
 	}
-	ans, release := capnp.Client(c).SendCall(ctx, s)
-	return stream.StreamResult_Future{Future: ans.Future()}, release
+
+	return capnp.Client(c).SendStreamCall(ctx, s)
+
+}
+
+func (c Topic_Consumer) WaitStreaming() error {
+	return capnp.Client(c).WaitStreaming()
 }
 
 // String returns a string that identifies this capability for debugging
@@ -286,7 +305,7 @@ func (c Topic_Consumer) Consume(ctx context.Context, params func(Topic_Consumer_
 // should not be used to compare clients.  Use IsSame to compare clients
 // for equality.
 func (c Topic_Consumer) String() string {
-	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+	return "Topic_Consumer(" + capnp.Client(c).String() + ")"
 }
 
 // AddRef creates a new Client that refers to the same capability as c.
@@ -346,7 +365,9 @@ func (c Topic_Consumer) SetFlowLimiter(lim fc.FlowLimiter) {
 // for this client.
 func (c Topic_Consumer) GetFlowLimiter() fc.FlowLimiter {
 	return capnp.Client(c).GetFlowLimiter()
-} // A Topic_Consumer_Server is a Topic_Consumer with a local implementation.
+}
+
+// A Topic_Consumer_Server is a Topic_Consumer with a local implementation.
 type Topic_Consumer_Server interface {
 	Consume(context.Context, Topic_Consumer_consume) error
 }
@@ -626,7 +647,7 @@ func (s Topic_subscribe_Params) SetConsumer(v Topic_Consumer) error {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
 	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(capnp.Client(v)))
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
 	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
@@ -876,6 +897,7 @@ type Router capnp.Client
 const Router_TypeID = 0xde50b3e61b766f3a
 
 func (c Router) Join(ctx context.Context, params func(Router_join_Params) error) (Router_join_Results_Future, capnp.ReleaseFunc) {
+
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xde50b3e61b766f3a,
@@ -888,8 +910,14 @@ func (c Router) Join(ctx context.Context, params func(Router_join_Params) error)
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Router_join_Params(s)) }
 	}
+
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Router_join_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c Router) WaitStreaming() error {
+	return capnp.Client(c).WaitStreaming()
 }
 
 // String returns a string that identifies this capability for debugging
@@ -897,7 +925,7 @@ func (c Router) Join(ctx context.Context, params func(Router_join_Params) error)
 // should not be used to compare clients.  Use IsSame to compare clients
 // for equality.
 func (c Router) String() string {
-	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+	return "Router(" + capnp.Client(c).String() + ")"
 }
 
 // AddRef creates a new Client that refers to the same capability as c.
@@ -957,7 +985,9 @@ func (c Router) SetFlowLimiter(lim fc.FlowLimiter) {
 // for this client.
 func (c Router) GetFlowLimiter() fc.FlowLimiter {
 	return capnp.Client(c).GetFlowLimiter()
-} // A Router_Server is a Router with a local implementation.
+}
+
+// A Router_Server is a Router with a local implementation.
 type Router_Server interface {
 	Join(context.Context, Router_join) error
 }
@@ -1165,7 +1195,7 @@ func (s Router_join_Results) SetTopic(v Topic) error {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
 	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(capnp.Client(v)))
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
 	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
@@ -1234,17 +1264,22 @@ const schema_f9d8a0180405d9ed = "x\xda\x94\x93MHTQ\x14\xc7\xcfy\xf7\x8eO\xc2" +
 	"cN\xcd\xcd?x\x16\x07\xfe\xe94?\x03\x00\x00\xff" +
 	"\xff\xcf\xfce\x94"
 
-func init() {
-	schemas.Register(schema_f9d8a0180405d9ed,
-		0x8470369ac91fcc32,
-		0x8810938879cb8443,
-		0x986ea9282f106bb0,
-		0xc772c6756fef5ba8,
-		0xd5765aab1c56263f,
-		0xd72d37c8b6fbef23,
-		0xde50b3e61b766f3a,
-		0xe7745ab0f47beb88,
-		0xe8a6b1cad09d4625,
-		0xf1fc6ff9f4d43e07,
-		0xfb2fed6504f78754)
+func RegisterSchema(reg *schemas.Registry) {
+	reg.Register(&schemas.Schema{
+		String: schema_f9d8a0180405d9ed,
+		Nodes: []uint64{
+			0x8470369ac91fcc32,
+			0x8810938879cb8443,
+			0x986ea9282f106bb0,
+			0xc772c6756fef5ba8,
+			0xd5765aab1c56263f,
+			0xd72d37c8b6fbef23,
+			0xde50b3e61b766f3a,
+			0xe7745ab0f47beb88,
+			0xe8a6b1cad09d4625,
+			0xf1fc6ff9f4d43e07,
+			0xfb2fed6504f78754,
+		},
+		Compressed: true,
+	})
 }

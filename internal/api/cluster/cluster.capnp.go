@@ -9,7 +9,6 @@ import (
 	schemas "capnproto.org/go/capnp/v3/schemas"
 	server "capnproto.org/go/capnp/v3/server"
 	context "context"
-	fmt "fmt"
 	anchor "github.com/wetware/ww/internal/api/anchor"
 	process "github.com/wetware/ww/internal/api/process"
 	pubsub "github.com/wetware/ww/internal/api/pubsub"
@@ -21,6 +20,7 @@ type Host capnp.Client
 const Host_TypeID = 0x957cbefc645fd307
 
 func (c Host) View(ctx context.Context, params func(Host_view_Params) error) (Host_view_Results_Future, capnp.ReleaseFunc) {
+
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0x957cbefc645fd307,
@@ -33,10 +33,14 @@ func (c Host) View(ctx context.Context, params func(Host_view_Params) error) (Ho
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Host_view_Params(s)) }
 	}
+
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Host_view_Results_Future{Future: ans.Future()}, release
+
 }
+
 func (c Host) PubSub(ctx context.Context, params func(Host_pubSub_Params) error) (Host_pubSub_Results_Future, capnp.ReleaseFunc) {
+
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0x957cbefc645fd307,
@@ -49,10 +53,14 @@ func (c Host) PubSub(ctx context.Context, params func(Host_pubSub_Params) error)
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Host_pubSub_Params(s)) }
 	}
+
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Host_pubSub_Results_Future{Future: ans.Future()}, release
+
 }
+
 func (c Host) Root(ctx context.Context, params func(Host_root_Params) error) (Host_root_Results_Future, capnp.ReleaseFunc) {
+
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0x957cbefc645fd307,
@@ -65,10 +73,14 @@ func (c Host) Root(ctx context.Context, params func(Host_root_Params) error) (Ho
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Host_root_Params(s)) }
 	}
+
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Host_root_Results_Future{Future: ans.Future()}, release
+
 }
+
 func (c Host) Debug(ctx context.Context, params func(Host_debug_Params) error) (Host_debug_Results_Future, capnp.ReleaseFunc) {
+
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0x957cbefc645fd307,
@@ -81,10 +93,14 @@ func (c Host) Debug(ctx context.Context, params func(Host_debug_Params) error) (
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Host_debug_Params(s)) }
 	}
+
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Host_debug_Results_Future{Future: ans.Future()}, release
+
 }
+
 func (c Host) Executor(ctx context.Context, params func(Host_executor_Params) error) (Host_executor_Results_Future, capnp.ReleaseFunc) {
+
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0x957cbefc645fd307,
@@ -97,8 +113,14 @@ func (c Host) Executor(ctx context.Context, params func(Host_executor_Params) er
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Host_executor_Params(s)) }
 	}
+
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Host_executor_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c Host) WaitStreaming() error {
+	return capnp.Client(c).WaitStreaming()
 }
 
 // String returns a string that identifies this capability for debugging
@@ -106,7 +128,7 @@ func (c Host) Executor(ctx context.Context, params func(Host_executor_Params) er
 // should not be used to compare clients.  Use IsSame to compare clients
 // for equality.
 func (c Host) String() string {
-	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+	return "Host(" + capnp.Client(c).String() + ")"
 }
 
 // AddRef creates a new Client that refers to the same capability as c.
@@ -166,7 +188,9 @@ func (c Host) SetFlowLimiter(lim fc.FlowLimiter) {
 // for this client.
 func (c Host) GetFlowLimiter() fc.FlowLimiter {
 	return capnp.Client(c).GetFlowLimiter()
-} // A Host_Server is a Host with a local implementation.
+}
+
+// A Host_Server is a Host with a local implementation.
 type Host_Server interface {
 	View(context.Context, Host_view) error
 
@@ -481,7 +505,7 @@ func (s Host_view_Results) SetView(c capnp.Client) error {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
 	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(c))
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(c))
 	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
@@ -631,7 +655,7 @@ func (s Host_pubSub_Results) SetPubSub(v pubsub.Router) error {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
 	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(capnp.Client(v)))
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
 	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
@@ -781,7 +805,7 @@ func (s Host_root_Results) SetRoot(v anchor.Anchor) error {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
 	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(capnp.Client(v)))
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
 	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
@@ -931,7 +955,7 @@ func (s Host_debug_Results) SetDebugger(c capnp.Client) error {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
 	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(c))
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(c))
 	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
@@ -1081,7 +1105,7 @@ func (s Host_executor_Results) SetExecutor(v process.Executor) error {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
 	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(capnp.Client(v)))
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
 	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
@@ -1105,57 +1129,62 @@ func (p Host_executor_Results_Future) Executor() process.Executor {
 	return process.Executor(p.Future.Field(0, nil).Client())
 }
 
-const schema_fcf6ac08e448a6ac = "x\xda\x8cRKh\x13Q\x14\xbd\xf7\xbd\x893\xa3\xb6" +
-	"\xf5e\xba(\x8a\xbfZ\xc1vQ\xac\"b@:]" +
-	"\x14\xdb\xdaE\xa6\xa5\xe8B\xd4$\x1dJ!5!3" +
-	"S\x15\xdcT\x08(BDAA\x17\xaej\x17Rt" +
-	"!\"Z\xc8B\\\xb9T\x17\x16D7\xa9+-\xa2" +
-	"T\x88\x04\x9e\xbcIf\xf2\x92Zt}\xcf=\xe7\x9e" +
-	"s\xee\xc1eb*}-\x9f\xb7\x01\xb1^G6\xf1" +
-	"\xe2\xf3\xd5\x95}\x07n\\\x05f \x80\xa2\x02\x18\x13" +
-	"\xdaoP\xf8\xcf\xd4\x8f\xef\xbb\x0a_\xaf\xd7\x07\x87\x8f" +
-	"i\x04A\xe1k\xefG\xf3\x85\xdb\xa7oV'\x11\x14" +
-	"\xa3\x9db\x84\xc6^\xad\x1f\x90\xab\xef\xceMV\x8aW" +
-	"\xee\x00k\xa5|qa\xa8\xa4-\xfe\xaa\x00\xa01\xa0" +
-	"\xdd7\x865\x81\x1f\xd4N\xa0\xc1t\x15\x80\x93\xbb\x91" +
-	"\xa5\xf2\x9e\xb9\x072]Y\xeb\x14t\xa8\x0b\xba\xd2\x0b" +
-	"o\xfc\xe4+e^:q\xbf.N\xecV\xda\x1e\xd3" +
-	"\xf3\x1dEyS\xd77\x8bM\xe6o\x8e\x8d~\xe8\xfe" +
-	"\xd6>^\x94<\x1c\xd1\xb7\x0b\x0f[\x06O\xcd\xe7\xcf" +
-	",\xbdi\xf0\xa0W=\xf8\xab\xab\xad\xfa\x9aW\xbe\xf6" +
-	"Q\x06\x0c\xe8Q\x01\x18\xf6\x01\xf7\x1eU\"^\xe7\xb3" +
-	"\x15\x89{ZhsX\xe0\xa9\xb4\xe7\xb8v\xae\x97\xa4" +
-	"\x12\xd9\x0b\xd9\xd8P\xc6q{s\x99\x8c\xdb\xd5\x1fO" +
-	"\xe4\x123N\x08P%\xc0\xa4\x9d\xf4\xa6\xba\xaa\x00\x08" +
-	"\x00\xd2|v\xda\xbe\xd85f;^\xdau\xc0R\xa8" +
-	"\x02\xa0 \x00k\xe9\x01\xb04\x8aV;\xc16\x01\xc2" +
-	"\xa8B\x011\x0a\x18\xea`\xc0C\x1d7\x8eh\xb5\xd3" +
-	"\x08@\x18,\x06\x8d\xb2[=@X^\xc5\xba=\x0c" +
-	"\x82`\x97c@\xd8\x8c\x8a$\xfc\x19\x0cRd\x09\xb1" +
-	"7\xa1\"\x0d\xdf\x06\x83r\xd8\xf0! \xec\xb8\x8aJ" +
-	"X\x07\x06\x95\xb3\xbe\x11 \xac[\xf5\xcf6\xb1?\xeb" +
-	"%\xc7\xbd\xa4\x89m\",\x13w\xfb\x91\x98\xc8\xedK" +
-	"v\xcas39\x0001\x8eu_T\xca'\x00\xf9" +
-	"\x19\xa9i\xd7\x913\x1a\x01\xb0\xb6R\xb4:H\x03\x1b" +
-	"2\xfe\xd6\x9b{\xf8\xf2l\xef\x13\x00D&EF\x9a" +
-	"\xa3o\xee\x8e\xae\xeb.(\x076R\xf6aS\xb6\xaf" +
-	"\xbc\xbe\xa4\xbf\x9a\x11\xa2t\x03U\xff\xa5\xfe\xf5\x11\x02" +
-	"\x84\x8cw.\x17\xf4\xd2\xd1h\xa9\xd9\xa6\xccW\x8d\xbf" +
-	"\xc6\x88\x0d\xf9\xc5\xea\x8c\xb5\x96\x90\xf1Xfv\xc7\x97" +
-	"\xa7\xf1O\xff\xc1Y{k\xf8\x13\x00\x00\xff\xff}\xa0" +
-	"H\x90"
+const schema_fcf6ac08e448a6ac = "x\xda\x8cRMh\x13A\x14~of\xe3\xeeV\xdb" +
+	":\xd9\x16\xaaR\x95\xda\x83\xe9\xa1X=\x08\x81\xd2\xbd" +
+	"\x88\xb5\xf6\x90m\x11=\x88\x9a\xa6K\x11ZS\xb2\xbb" +
+	"U\xc1K\x85\xa0\"D\x14\x14T\xf0T=H\xd1\x83" +
+	"\x88h!\x88GA\x0f\xfe\x80\x82zJ<i\xf1\x87" +
+	"\x08\x91\xc0\xc8l\xb2\x9bIj\xd1\xdb\xc0\xfb\xde\xf7\xe6" +
+	"\xfb\xd9\xf1\x92\x98\xca@\xeb\xb9\xf5@\xac\xa7\x915<" +
+	"\xffh\xb9\xb8m\xfb\xc5\xb3\xc0\x0c\x04PT\x00#\xa6" +
+	"\xfd\x06\x85\xffL\xfd\xf8\xb69\xf7\xe5B}\xb0\xabU" +
+	"#\x08\x0a/\xbd\x19\xcd\xe6\xae\x1c\xbaT\x9dDP\x8c" +
+	"\xbe\xab\x04\x01\x8d\x92:\x04\xc8\xd5\xd7G'+\xf93" +
+	"W\x81\xb5Q\xbexg\xb8\xa0-\xfe\xaa\x00\xa0\xd1\xa9" +
+	"\xdd0\xba5\x81\xdf\xa0\xedE\xa3(\x9e\x9c\\\x8b," +
+	"\x95\xb7\xce\xdf\x92\xe9^h=\x82\xee\xad&\xe8\x0a\x8f" +
+	"\xbd\xf1\xfd\xcf\x94\x05\xe9\x8be\xff\x8b1\xa5\xfd\x1e=" +
+	"\xd6\x95\x977?j-b\xb3\xe8o\x8e\x8d\xbe\x8b}" +
+	"\xed\x18\xcfK\x1at}\xa3\xd0\xb0v\xcf\xc1\x85\xec\xe1" +
+	"\xa5\xe7\x0d\x1a\xb4\xaa\x06\x7fu\xb9M/y\xe5\xf3\x1f" +
+	"d@\xa7\x1e\x15\x80n]\x00\xae\xdf\xadD\xbc\x9e\x87" +
+	"E\x89{PoA\xe0p\x93\xa7\xa6=\xc7\xb53\xfd" +
+	"$\x95\x9c=1\x1b\x1fN;n\x7f&\x9dv{\x87" +
+	"\x12\xc9Lr\xc6\x09\x01\xaa\x04\x98\xb4'\xbc\xa9\xde*" +
+	"\x00\x02\x804\x9f;n\x9f\xec\x1d\xb3\x1do\xdau\xc0" +
+	"R\xa8\x02\xa0 \x00k\xed\x03\xb04\x8aV\x07\xc1v" +
+	"\x01\xc2\xa8B\x011\x0a\x18\xde\xc1\x80\x87:n\x02\xd1" +
+	"\xea\xa0\x11\x80\xd0X\x0c\x12e\x97\xfb\x80\xb0\xac\x8au" +
+	"y\x18\x18\xc1N\xc7\x81\xb0\x19\x15I\xd8\x19\x0c\\d" +
+	"I\xb1w@E\x1a\xd6\x06\x83p\xd8\xbe\x9d@\xd8\xa0" +
+	"\x8aJ\x18\x07\x06\x91\xb3\x81\x11 ,\xa6\xfa\xdf6q" +
+	"h\xd6\x9b\x18\xf7&Ll\x17f\x99\xb8\xc5\xb7\xc4D" +
+	"n\x9f\xb2S\x9e\x9b\xce\x00\x80\x89\x09\xac\xeb\xa2\x92?" +
+	"\x01\xc8\xf7H\x9dv\x1d\xd9\xa3\x11\x00k\x1dE\xab\x8b" +
+	"4\xb0!\xe3\xaf\xbc\xf9\xdbO\x8e\xf4\xdf\x07@d\x92" +
+	"e\xa4\xd9\xfa\xe6\xec\xe8\x8a\xec\x82p`\xb5\xcb>l" +
+	"\xca\xf6/\xaf\x0c\xe9\xafb\xc4Q\xba\xcaU\xbfR\xff" +
+	"j\x84\x00!\xe3=\xefszaw\xb4\xd0,S\xe6" +
+	"\xab\xda_c\xc4\x06\xff\xe2u\xc6ZJ\xc8x<=" +
+	"\xb7\xe9\xf3\x83\xc4\xa7\xff\xe0\xac\xd5\x1a\xfe\x04\x00\x00\xff" +
+	"\xff\xeb\x9dM\xd1"
 
-func init() {
-	schemas.Register(schema_fcf6ac08e448a6ac,
-		0x828b2823e5eeb7be,
-		0x89ec8e1ef0f263f3,
-		0x8f58928e854cd4f5,
-		0x957cbefc645fd307,
-		0x9e8120f9bb059602,
-		0xa404c24b5375b9e4,
-		0xbe186003ae0f0429,
-		0xbe5314ed29d84c52,
-		0xcabb5c85a457450b,
-		0xdc88f975f5090eee,
-		0xe5b5227505fcaa99)
+func RegisterSchema(reg *schemas.Registry) {
+	reg.Register(&schemas.Schema{
+		String: schema_fcf6ac08e448a6ac,
+		Nodes: []uint64{
+			0x828b2823e5eeb7be,
+			0x89ec8e1ef0f263f3,
+			0x8f58928e854cd4f5,
+			0x957cbefc645fd307,
+			0x9e8120f9bb059602,
+			0xa404c24b5375b9e4,
+			0xbe186003ae0f0429,
+			0xbe5314ed29d84c52,
+			0xcabb5c85a457450b,
+			0xdc88f975f5090eee,
+			0xe5b5227505fcaa99,
+		},
+		Compressed: true,
+	})
 }
