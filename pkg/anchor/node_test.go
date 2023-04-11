@@ -36,12 +36,11 @@ func TestNode_UseAfterFree(t *testing.T) {
 	var released bool
 	n := mknode(func() { released = true })
 
-	n.Release()
+	n.DecrRef()
 	assert.True(t, released)
 
-	assert.Nil(t, n.nodestate, "should nil out nodestate after free")
-	assert.Panics(t, func() { n.AddRef() }, "should panic if AddRef() is called after free")
-	assert.Panics(t, n.Release, "should panic if Release() is called after free")
+	assert.Panics(t, func() { n.IncrRef() }, "should panic if AddRef() is called after free")
+	assert.Panics(t, n.DecrRef, "should panic if Release() is called after free")
 }
 
 func TestChild(t *testing.T) {
@@ -57,10 +56,10 @@ func TestChild(t *testing.T) {
 		u := n.Child("child")
 		require.NotEqual(t, n, u, "child should not be root anchor")
 
-		n.Release()
+		n.DecrRef()
 		assert.False(t, released, "child should keep parent alive")
 
-		u.Release()
+		u.DecrRef()
 		assert.True(t, released, "should release parent after releasing child")
 	})
 
@@ -71,19 +70,19 @@ func TestChild(t *testing.T) {
 		n := mknode(func() { released = true })
 
 		u := n.Child("child")
-		require.NotEqual(t, n.nodestate, u.nodestate, "child should not be root anchor")
+		require.NotEqual(t, n, u, "child should not be root anchor")
 
 		u2 := n.Child("child")
-		require.NotEqual(t, n.nodestate, u2.nodestate, "child should not be root anchor")
-		require.Equal(t, u.nodestate, u2.nodestate, "should be the same child")
+		require.NotEqual(t, n, u2, "child should not be root anchor")
+		require.Equal(t, u, u2, "should be the same child")
 
-		n.Release()
+		n.DecrRef()
 		assert.False(t, released, "child should keep parent alive")
 
-		u.Release()
+		u.DecrRef()
 		assert.False(t, released, "additional child reference should keep parent alive")
 
-		u2.Release()
+		u2.DecrRef()
 		assert.True(t, released, "should release parent after second child reference is released")
 	})
 
@@ -94,21 +93,21 @@ func TestChild(t *testing.T) {
 		n := mknode(func() { released = true })
 
 		u := n.Child("child")
-		require.NotEqual(t, n.nodestate, u.nodestate, "child should not be root anchor")
+		require.NotEqual(t, n, u, "child should not be root anchor")
 
-		n.Release()
+		n.DecrRef()
 		assert.False(t, released, "child should keep parent alive")
 
 		// traverse the released node; we want to make sure that we're able to
 		// increment refs after they have been released.
 		u2 := n.Child("child")
 		require.NotEqual(t, n, u, "child should not be root anchor")
-		require.Equal(t, u.nodestate, u2.nodestate, "should be the same child")
+		require.Equal(t, u, u2, "should be the same child")
 
-		u.Release()
+		u.DecrRef()
 		assert.False(t, released, "child should keep parent alive")
 
-		u2.Release()
+		u2.DecrRef()
 		assert.True(t, released, "should release parent after releasing child")
 	})
 }
@@ -122,14 +121,36 @@ func TestAnchor(t *testing.T) {
 
 		var released bool
 		n := mknode(func() { released = true })
-		assert.Equal(t, uint32(1), n.refs.Load())
 
 		a := n.Anchor()
-
 		require.NotZero(t, a, "should return non-nil client")
 		require.False(t, released, "should not release before client")
 
 		a.Release()
+		assert.Eventually(t, func() bool {
+			return released
+		}, time.Second, time.Millisecond*10, "should release after client")
+	})
+
+	t.Run("Exists", func(t *testing.T) {
+		t.Parallel()
+
+		var released bool
+		n := mknode(func() { released = true })
+
+		a := n.Anchor()
+		require.NotZero(t, a, "should return non-nil client")
+		require.False(t, released, "should not release before client")
+
+		// a already stole n's ref, so we need to increment the refcount.
+		b := n.IncrRef().Anchor()
+		require.NotZero(t, b, "should return non-nil client")
+		require.False(t, released, "should not release before client")
+
+		a.Release()
+		require.False(t, released, "should not release before client")
+
+		b.Release()
 		assert.Eventually(t, func() bool {
 			return released
 		}, time.Second, time.Millisecond*10, "should release after client")
