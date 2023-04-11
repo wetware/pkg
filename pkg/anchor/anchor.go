@@ -103,8 +103,7 @@ func destination(path Path) func(api.Anchor_walk_Params) error {
 type server struct{ *node }
 
 func (s server) Shutdown() {
-	// anchorRef holds the lock when shutting down.
-	s.DecrRef()
+	s.Release() // nodeHook holds the lock when shutting down.
 }
 
 func (s server) Ls(ctx context.Context, call api.Anchor_ls) error {
@@ -162,7 +161,7 @@ func (s server) Walk(ctx context.Context, call api.Anchor_walk) error {
 	// If path is root, just increment the refcount for n and return a
 	// new anchor client.
 	if path.IsRoot() {
-		return res.SetAnchor(s.IncrRef().Anchor())
+		return res.SetAnchor(s.AddRef().Anchor())
 	}
 
 	// Iteratively "walk" to designated path.  It's important to avoid

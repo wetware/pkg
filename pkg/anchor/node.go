@@ -1,6 +1,7 @@
 package anchor
 
 import (
+	"runtime"
 	"sync"
 	"sync/atomic"
 
@@ -9,35 +10,37 @@ import (
 )
 
 type node struct {
-	sync.Mutex
-	refs     atomic.Uint32
-	release  capnp.ReleaseFunc
-	children map[string]*node
-	client   weakClient
-	// value api.Value
+	*nodestate
+	release capnp.ReleaseFunc
+	parent  *node
 }
 
-func mknode(release capnp.ReleaseFunc) *node {
-	return (&node{release: release}).IncrRef()
+func mknode(parent *node, release capnp.ReleaseFunc) *node {
+	return node{
+		nodestate: &nodestate{},
+		release:   release,
+		parent:    parent,
+	}.AddRef()
 }
 
-func (n *node) IncrRef() *node {
-	if n.release == nil {
-		panic("AddRef(): use after free")
-	}
-
+func (n node) AddRef() *node {
 	n.refs.Add(1)
-	return n
+	return &node{
+		nodestate: n.nodestate,
+		release:   n.release,
+		parent:    n.parent,
+	}
 }
 
-func (n *node) DecrRef() {
-	if n.release == nil {
-		panic("Release(): use after free")
+func (n *node) Release() {
+	if n.parent != nil {
+		defer n.parent.Release()
 	}
 
-	if n.refs.Add(^uint32(0)) == 0 {
+	if n.refs.Add(-1) == 0 {
 		n.release()
-		n.release = nil
+		*n = node{}
+		runtime.SetFinalizer(n, nil)
 	}
 }
 
@@ -49,9 +52,7 @@ func (n *node) Child(name string) *node {
 
 	// Fast path;  child exists.
 	if child, ok := n.children[name]; ok {
-		// A parent MUST NOT be released until its children are
-		// all released; increment the child's refcount.
-		return child.IncrRef()
+		return child.AddRef()
 	}
 
 	// Slow path; create new child.
@@ -62,9 +63,8 @@ func (n *node) Child(name string) *node {
 
 	// The child holds the parent reference, releasing it when
 	// its own refcount hit zero.
-	parent := n.IncrRef()
-	n.children[name] = mknode(func() {
-		defer parent.DecrRef()
+	n.children[name] = mknode(n.AddRef(), func() {
+		defer n.Release()
 
 		n.Lock()
 		delete(n.children, name)
@@ -74,10 +74,6 @@ func (n *node) Child(name string) *node {
 	return n.children[name]
 }
 
-// Anchor produces an anchor capability for the node, stealing
-// n's reference and releasing it when the Anchor's underlying
-// client is released.  For this reason, callers MUST NOT call
-// anchor on an existing node without first creating a new ref.
 func (n *node) Anchor() api.Anchor {
 	n.Lock()
 	defer n.Unlock()
@@ -86,7 +82,7 @@ func (n *node) Anchor() api.Anchor {
 	// Node is guaranteed to have r > 1 refs.  This means we
 	// can release the refchain after client.AddRef returns.
 	if n.client.Exists() {
-		defer n.DecrRef()
+		defer n.Release()
 
 		client := n.client.AddRef()
 		return api.Anchor(client)
@@ -100,7 +96,7 @@ func (n *node) Anchor() api.Anchor {
 	// This happens in the Shutdown() method, which is invoked
 	// when the last client ref has been released.
 	client := capnp.NewClient(&nodeHook{
-		node:       n,
+		Locker:     n,
 		ClientHook: api.Anchor_NewServer(server{n}),
 	})
 
@@ -108,7 +104,6 @@ func (n *node) Anchor() api.Anchor {
 	// derive clients from the weakref, incrementing the refcount.
 	n.client = weakClient{
 		WeakClient: client.WeakRef(),
-		release:    n.DecrRef,
 	}
 
 	// Return first reference to caller;  The RPC connection will
@@ -125,7 +120,6 @@ func (n *node) Anchor() api.Anchor {
 
 type weakClient struct {
 	*capnp.WeakClient
-	release capnp.ReleaseFunc
 }
 
 func (wc weakClient) AddRef() capnp.Client {
@@ -139,17 +133,20 @@ func (wc weakClient) AddRef() capnp.Client {
 	return c
 }
 
-func (wc *weakClient) Release() {
-	wc.release()
-	*wc = weakClient{}
-}
-
 func (wc weakClient) Exists() bool {
 	return wc.WeakClient != nil
 }
 
+type nodestate struct {
+	sync.Mutex
+	refs     atomic.Int32
+	children map[string]*node
+	client   weakClient
+	// value api.Value
+}
+
 type nodeHook struct {
-	*node
+	sync.Locker
 	capnp.ClientHook
 }
 

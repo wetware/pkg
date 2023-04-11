@@ -2,6 +2,7 @@ package anchor
 
 import (
 	"errors"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -17,33 +18,27 @@ func TestWeakClient(t *testing.T) {
 	assert.False(t, wc.Exists(), "zero-value weakClient should be null")
 	assert.Panics(t, func() { wc.AddRef() }, "should panic on nil *capnp.WeakClient")
 
-	var released bool
 	client := capnp.ErrorClient(errors.New("test")) // non-null client
 	wc.WeakClient = client.WeakRef()
-	wc.release = func() { released = true }
 	assert.True(t, wc.Exists(), "*capnp.WeakClient should exist")
 	assert.True(t, client.IsSame(wc.AddRef()),
 		"should return strong reference to underlying *WeakClient")
-
-	wc.Release()
-	assert.True(t, released, "should release refcounter")
-	assert.False(t, wc.Exists(), "client should not exist after reset")
 }
 
 func TestNode_UseAfterFree(t *testing.T) {
 	t.Parallel()
 
 	var released bool
-	n := mknode(func() { released = true })
+	n := mknode(nil, func() { released = true })
 
-	n.DecrRef()
+	n.Release()
 	assert.True(t, released)
 
-	assert.Panics(t, func() { n.IncrRef() }, "should panic if AddRef() is called after free")
-	assert.Panics(t, n.DecrRef, "should panic if Release() is called after free")
+	assert.Panics(t, func() { n.AddRef() }, "should panic if AddRef() is called after free")
+	assert.Panics(t, n.Release, "should panic if Release() is called after free")
 }
 
-func TestChild(t *testing.T) {
+func TestNode_Child(t *testing.T) {
 	t.Parallel()
 	t.Helper()
 
@@ -51,15 +46,12 @@ func TestChild(t *testing.T) {
 		t.Parallel()
 
 		var released bool
-		n := mknode(func() { released = true })
+		n := mknode(nil, func() { released = true })
 
 		u := n.Child("child")
-		require.NotEqual(t, n, u, "child should not be root anchor")
+		require.NotEqual(t, n.nodestate, u.nodestate, "child should not be root anchor")
 
-		n.DecrRef()
-		assert.False(t, released, "child should keep parent alive")
-
-		u.DecrRef()
+		u.Release()
 		assert.True(t, released, "should release parent after releasing child")
 	})
 
@@ -67,92 +59,87 @@ func TestChild(t *testing.T) {
 		t.Parallel()
 
 		var released bool
-		n := mknode(func() { released = true })
+		n := mknode(nil, func() { released = true })
 
 		u := n.Child("child")
-		require.NotEqual(t, n, u, "child should not be root anchor")
+		require.NotEqual(t, n.nodestate, u.nodestate,
+			"child should not be root anchor")
 
 		u2 := n.Child("child")
-		require.NotEqual(t, n, u2, "child should not be root anchor")
-		require.Equal(t, u, u2, "should be the same child")
+		require.NotEqual(t, n.nodestate, u2.nodestate,
+			"child should not be root anchor")
 
-		n.DecrRef()
-		assert.False(t, released, "child should keep parent alive")
+		u.Release()
+		require.False(t, released,
+			"second child should keep root alive")
 
-		u.DecrRef()
-		assert.False(t, released, "additional child reference should keep parent alive")
-
-		u2.DecrRef()
-		assert.True(t, released, "should release parent after second child reference is released")
+		u2.Release()
+		assert.True(t, released,
+			"should release parent after second child reference is released")
 	})
 
-	t.Run("FreeBeforeChild", func(t *testing.T) {
+	t.Run("Chain", func(t *testing.T) {
 		t.Parallel()
 
 		var released bool
-		n := mknode(func() { released = true })
+		n := mknode(nil, func() { released = true })
 
-		u := n.Child("child")
-		require.NotEqual(t, n, u, "child should not be root anchor")
+		u := n.Child("foo").Child("bar").Child("baz")
+		require.False(t, released, "should not release root")
 
-		n.DecrRef()
-		assert.False(t, released, "child should keep parent alive")
-
-		// traverse the released node; we want to make sure that we're able to
-		// increment refs after they have been released.
-		u2 := n.Child("child")
-		require.NotEqual(t, n, u, "child should not be root anchor")
-		require.Equal(t, u, u2, "should be the same child")
-
-		u.DecrRef()
-		assert.False(t, released, "child should keep parent alive")
-
-		u2.DecrRef()
-		assert.True(t, released, "should release parent after releasing child")
+		u.Release()
+		assert.True(t, released, "should release full path")
 	})
 }
 
-func TestAnchor(t *testing.T) {
+func TestNode_Anchor(t *testing.T) {
 	t.Parallel()
 	t.Helper()
 
 	t.Run("Create", func(t *testing.T) {
 		t.Parallel()
 
-		var released bool
-		n := mknode(func() { released = true })
+		var released atomic.Bool
+		n := mknode(nil, func() { released.Store(true) })
 
 		a := n.Anchor()
 		require.NotZero(t, a, "should return non-nil client")
-		require.False(t, released, "should not release before client")
+		require.False(t, released.Load(),
+			"should not release before client")
 
 		a.Release()
-		assert.Eventually(t, func() bool {
-			return released
-		}, time.Second, time.Millisecond*10, "should release after client")
+		assert.Eventually(t, released.Load, time.Second, time.Millisecond*10,
+			"should release after client")
 	})
 
 	t.Run("Exists", func(t *testing.T) {
 		t.Parallel()
 
-		var released bool
-		n := mknode(func() { released = true })
+		var released atomic.Bool
+		n := mknode(nil, func() { released.Store(true) })
+
+		t.Log(n.refs.Load())
 
 		a := n.Anchor()
 		require.NotZero(t, a, "should return non-nil client")
-		require.False(t, released, "should not release before client")
+		require.False(t, released.Load(),
+			"should not release before client")
 
-		// a already stole n's ref, so we need to increment the refcount.
-		b := n.IncrRef().Anchor()
+		t.Log(n.refs.Load())
+
+		// NOTE: The first call to Anchor() has already captured n's
+		// reference, so we must create a new one.
+		b := n.AddRef().Anchor()
 		require.NotZero(t, b, "should return non-nil client")
-		require.False(t, released, "should not release before client")
+		require.False(t, released.Load(),
+			"should not release before client")
 
 		a.Release()
-		require.False(t, released, "should not release before client")
+		require.False(t, released.Load(),
+			"should not release before client")
 
 		b.Release()
-		assert.Eventually(t, func() bool {
-			return released
-		}, time.Second, time.Millisecond*10, "should release after client")
+		assert.Eventually(t, released.Load, time.Second, time.Millisecond*10,
+			"should release after client")
 	})
 }
