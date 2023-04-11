@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"capnproto.org/go/capnp/v3"
-	casm "github.com/wetware/casm/pkg"
 	api "github.com/wetware/ww/internal/api/anchor"
 	"github.com/wetware/ww/pkg/internal/bounded"
 )
@@ -19,18 +18,9 @@ func (a Anchor) Release() {
 	capnp.Client(a).Release()
 }
 
-func (a Anchor) Ls(ctx context.Context) (Iterator, capnp.ReleaseFunc) {
+func (a Anchor) Ls(ctx context.Context) (*Iterator, capnp.ReleaseFunc) {
 	f, release := api.Anchor(a).Ls(ctx, nil)
-
-	h := &sequence{
-		fut: f,
-		pos: -1,
-	}
-
-	return Iterator{
-		Seq:    h,
-		Future: h,
-	}, release
+	return &Iterator{fut: f, index: -1}, release
 }
 
 // Walk to the register located at path.
@@ -45,68 +35,54 @@ func (a Anchor) Walk(ctx context.Context, path string) (Anchor, capnp.ReleaseFun
 	return Anchor(f.Anchor()), release
 }
 
-type Child struct {
-	index int
-	res   api.Anchor_ls_Results
-}
-
-func (c Child) Name() (string, error) {
-	names, err := c.res.Names()
-	if err != nil {
-		return "", err
-	}
-
-	return names.At(c.index)
-}
-
-func (c Child) Anchor() (Anchor, error) {
-	children, err := c.res.Children()
-	if err != nil {
-		return Anchor{}, err
-	}
-
-	a, err := children.At(c.index)
-	return Anchor(a), err
-}
-
-type Iterator casm.Iterator[Child]
-
-func (it Iterator) Next() Child {
-	c, _ := it.Seq.Next()
-	return c
-}
-
-type sequence struct {
+type Iterator struct {
 	fut api.Anchor_ls_Results_Future
 	err error
-	pos int
+
+	// cache
+	children api.Anchor_Child_List
+	index    int
 }
 
-func (seq sequence) Done() <-chan struct{} {
-	return seq.fut.Done()
-}
-
-func (seq *sequence) Err() error {
-	if seq.err == nil {
+func (it *Iterator) Err() error {
+	if it.err == nil {
 		select {
-		case <-seq.fut.Done():
-			_, seq.err = seq.fut.Struct()
+		case <-it.fut.Done():
+			var res api.Anchor_ls_Results
+			if res, it.err = it.fut.Struct(); it.err != nil {
+				break
+			}
+
+			if it.children, it.err = res.Children(); it.err != nil {
+				break
+			}
+
 		default:
 		}
 	}
 
-	return seq.err
+	return it.err
 }
 
-func (seq *sequence) Next() (c Child, ok bool) {
-	if ok = seq.Err() == nil; ok {
-		seq.pos++
-
-		c.index = seq.pos
-		c.res, _ = seq.fut.Struct() // error was checked by seq.Err()
+// Next returns the name of the next subanchor in the stream. It
+// returns an empty string when the iterator has been exhausted.
+func (it *Iterator) Next() (name string) {
+	if it.Err() == nil {
+		it.index++
+		name, it.err = it.children.At(it.index).Name()
 	}
 
 	return
+}
+
+func (it Iterator) Anchor() Anchor {
+	// it.Err() was called by Next(), so there's no point in
+	// doing all the checks again.
+	if it.err == nil {
+		return Anchor(it.children.At(it.index).Anchor())
+	}
+
+	return Anchor{}
 }
 
 func destination(path Path) func(api.Anchor_walk_Params) error {
@@ -126,13 +102,45 @@ func destination(path Path) func(api.Anchor_walk_Params) error {
 
 type server struct{ *node }
 
-func (n node) Shutdown() {
+func (s server) Shutdown() {
 	// anchorRef holds the lock when shutting down.
-	n.Value().client.Release()
+	s.Release()
 }
 
-func (server) Ls(ctx context.Context, call api.Anchor_ls) error {
-	panic("NOT IMPLEMENTED")
+func (s server) Ls(ctx context.Context, call api.Anchor_ls) error {
+	s.Lock()
+	defer s.Unlock()
+
+	children := s.children
+
+	if len(children) == 0 {
+		return nil
+	}
+
+	res, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	cs, err := res.NewChildren(int32(len(children)))
+	if err != nil {
+		return err
+	}
+
+	var index int
+	for name, child := range children {
+		if err = cs.At(index).SetName(name); err != nil {
+			break
+		}
+
+		if err = cs.At(index).SetAnchor(child.Anchor()); err != nil {
+			break
+		}
+
+		index++
+	}
+
+	return err
 }
 
 // FIXME:  there is currently a vector for resource-exhaustion attacks.
@@ -170,6 +178,11 @@ func (s server) Walk(ctx context.Context, call api.Anchor_walk) error {
 	return res.SetAnchor(s.Anchor())
 }
 
-/*
-	...
-*/
+func newPath(call api.Anchor_walk) Path {
+	path, err := call.Args().Path()
+	if err != nil {
+		return failure(err)
+	}
+
+	return NewPath(path)
+}
