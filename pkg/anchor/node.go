@@ -11,16 +11,14 @@ import (
 type node struct {
 	sync.Mutex
 
-	refs    atomic.Int32
-	release capnp.ReleaseFunc
+	refs atomic.Int32
+
+	parent *node
+	name   string
 
 	children map[string]*node
 	client   *weakClient
 	// value api.Value
-}
-
-func mknode(release capnp.ReleaseFunc) *node {
-	return &node{release: release}
 }
 
 func (n *node) AddRef() *node {
@@ -29,8 +27,13 @@ func (n *node) AddRef() *node {
 }
 
 func (n *node) Release() {
-	if refs := n.refs.Add(-1); refs == 0 {
-		n.release()
+	if refs := n.refs.Add(-1); refs == 0 && n.parent != nil {
+		defer n.parent.Release()
+
+		n.Lock()
+		delete(n.parent.children, n.name)
+		n.Unlock()
+
 	} else if refs < 0 {
 		panic("no references to release")
 	}
@@ -55,14 +58,10 @@ func (n *node) Child(name string) *node {
 
 	// The child holds the parent reference, releasing it when
 	// its own refcount hit zero.
-	n.AddRef()
-	n.children[name] = mknode(func() {
-		defer n.Release()
-
-		n.Lock()
-		delete(n.children, name)
-		n.Unlock()
-	})
+	n.children[name] = &node{
+		parent: n.AddRef(),
+		name:   name,
+	}
 
 	return n.children[name]
 }
