@@ -28,11 +28,21 @@ func (a Anchor) Walk(ctx context.Context, path string) (Anchor, capnp.ReleaseFun
 	p := NewPath(path)
 
 	if p.IsRoot() {
-		return Anchor(a), a.AddRef().Release
+		anchor := a.AddRef()
+		return anchor, anchor.Release
 	}
 
 	f, release := api.Anchor(a).Walk(ctx, destination(p))
 	return Anchor(f.Anchor()), release
+}
+
+func destination(path Path) func(api.Anchor_walk_Params) error {
+	return func(ps api.Anchor_walk_Params) error {
+		return path.bind(func(s string) bounded.Type[string] {
+			err := ps.SetPath(trimmed(s))
+			return bounded.Failure[string](err) // can be nil
+		}).Err()
+	}
 }
 
 type Iterator struct {
@@ -83,15 +93,6 @@ func (it Iterator) Anchor() Anchor {
 	}
 
 	return Anchor{}
-}
-
-func destination(path Path) func(api.Anchor_walk_Params) error {
-	return func(ps api.Anchor_walk_Params) error {
-		return path.bind(func(s string) bounded.Type[string] {
-			err := ps.SetPath(trimmed(s))
-			return bounded.Failure[string](err) // can be nil
-		}).Err()
-	}
 }
 
 /*---------------------------*
@@ -156,12 +157,6 @@ func (s server) Walk(ctx context.Context, call api.Anchor_walk) error {
 	res, err := call.AllocResults()
 	if err != nil {
 		return err
-	}
-
-	// If path is root, just increment the refcount for n and return a
-	// new anchor client.
-	if path.IsRoot() {
-		return res.SetAnchor(s.AddRef().Anchor())
 	}
 
 	// Iteratively "walk" to designated path.  It's important to avoid

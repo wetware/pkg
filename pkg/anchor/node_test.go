@@ -14,81 +14,135 @@ import (
 func TestWeakClient(t *testing.T) {
 	t.Parallel()
 
-	var wc weakClient
-	assert.False(t, wc.Exists(), "zero-value weakClient should be null")
-	assert.Panics(t, func() { wc.AddRef() }, "should panic on nil *capnp.WeakClient")
-
 	client := capnp.ErrorClient(errors.New("test")) // non-null client
-	wc.WeakClient = client.WeakRef()
-	assert.True(t, wc.Exists(), "*capnp.WeakClient should exist")
+	wc := (*weakClient)(client.WeakRef())
 	assert.True(t, client.IsSame(wc.AddRef()),
 		"should return strong reference to underlying *WeakClient")
+
+	wc = (*weakClient)(capnp.Client{}.WeakRef())
+	assert.Panics(t, func() { wc.AddRef() },
+		"should panic when creating reference to null *WeakClient")
 }
 
-func TestNode_UseAfterFree(t *testing.T) {
+func TestNodeRelease(t *testing.T) {
 	t.Parallel()
 
-	var released bool
-	n := mknode(nil, func() { released = true })
-
+	n := mknode(func() {}).AddRef()
 	n.Release()
-	assert.True(t, released)
-
-	assert.Panics(t, func() { n.AddRef() }, "should panic if AddRef() is called after free")
-	assert.Panics(t, n.Release, "should panic if Release() is called after free")
+	assert.Panics(t, n.Release, "should panic when refcount < 0")
 }
 
 func TestNode_Child(t *testing.T) {
 	t.Parallel()
 	t.Helper()
 
-	t.Run("Create", func(t *testing.T) {
+	t.Run("CreateOne", func(t *testing.T) {
 		t.Parallel()
 
 		var released bool
-		n := mknode(nil, func() { released = true })
+		n := mknode(func() { released = true })
 
-		u := n.Child("child")
-		require.NotEqual(t, n.nodestate, u.nodestate, "child should not be root anchor")
+		// note the call to AddRef, nodes initially have a ref-
+		// count of zero.
+		u := n.Child("child").AddRef()
+		require.NotEqual(t, n, u,
+			"child should not be root anchor")
+		assert.Equal(t, int32(1), n.refs.Load(),
+			"child should create a reference to root node")
 
 		u.Release()
-		assert.True(t, released, "should release parent after releasing child")
+		assert.True(t, released, "child should steal parent's reference")
+		assert.Empty(t, n.children, "should prune children")
 	})
 
-	t.Run("Exists", func(t *testing.T) {
+	t.Run("CreateMany", func(t *testing.T) {
 		t.Parallel()
 
 		var released bool
-		n := mknode(nil, func() { released = true })
+		n := mknode(func() { released = true })
 
-		u := n.Child("child")
-		require.NotEqual(t, n.nodestate, u.nodestate,
+		// note the call to AddRef, nodes initially have a ref-
+		// count of zero.
+		u := n.Child("foo").AddRef()
+		require.NotEqual(t, n, u,
 			"child should not be root anchor")
+		require.Contains(t, n.children, "foo",
+			"root should contain child 'foo'")
 
-		u2 := n.Child("child")
-		require.NotEqual(t, n.nodestate, u2.nodestate,
+		// note the call to AddRef, nodes initially have a ref-
+		// count of zero.
+		u2 := n.Child("bar").AddRef()
+		require.NotEqual(t, n, u2,
 			"child should not be root anchor")
+		require.Contains(t, n.children, "bar",
+			"root should contain child 'bar'")
 
 		u.Release()
 		require.False(t, released,
-			"second child should keep root alive")
+			"second child should keep parent alive")
+		assert.NotContains(t, n.children, "foo",
+			"should remove child 'foo' from parent when releasing")
 
 		u2.Release()
 		assert.True(t, released,
 			"should release parent after second child reference is released")
+		assert.NotContains(t, n.children, "bar",
+			"should remove child 'bar' from parent when releasing")
+
+		assert.Empty(t, n.children, "should prune children")
 	})
 
 	t.Run("Chain", func(t *testing.T) {
 		t.Parallel()
 
 		var released bool
-		n := mknode(nil, func() { released = true })
+		n := mknode(func() { released = true })
 
-		u := n.Child("foo").Child("bar").Child("baz")
+		// note the call to AddRef, nodes initially have a ref-
+		// count of zero.
+		u := n.Child("foo").Child("bar").AddRef()
 		require.False(t, released, "should not release root")
+		require.Contains(t, n.children, "foo",
+			"should contain child 'foo'")
 
 		u.Release()
 		assert.True(t, released, "should release full path")
+		assert.NotContains(t, n.children, "foo",
+			"should remove child 'foo' from parent when releasing")
+
+		assert.Empty(t, n.children, "should prune children")
+	})
+
+	t.Run("Tree", func(t *testing.T) {
+		t.Parallel()
+
+		var released bool
+		n := mknode(func() { released = true })
+
+		// note the call to AddRef, nodes initially have a ref-
+		// count of zero.
+		u := n.Child("foo").Child("bar").Child("baz").AddRef()
+		require.False(t, released, "should not release root")
+		require.Contains(t, n.children, "foo",
+			"should contain child 'foo'")
+
+		// note the call to AddRef, nodes initially have a ref-
+		// count of zero.
+		u2 := n.Child("foo").Child("quxx").AddRef()
+		require.False(t, released, "should not release root")
+
+		u.Release()
+		require.False(t, released,
+			"second path should keep root alive")
+		require.Contains(t, n.children, "foo",
+			"node 'quxx' should keep node 'foo' alive")
+
+		u2.Release()
+		assert.True(t, released, "should release full path")
+		assert.NotContains(t, n.children, "bar",
+			"should remove child 'bar' from parent when releasing")
+
+		assert.Empty(t, n.children, "should prune children")
 	})
 }
 
@@ -100,7 +154,7 @@ func TestNode_Anchor(t *testing.T) {
 		t.Parallel()
 
 		var released atomic.Bool
-		n := mknode(nil, func() { released.Store(true) })
+		n := mknode(func() { released.Store(true) })
 
 		a := n.Anchor()
 		require.NotZero(t, a, "should return non-nil client")
@@ -116,7 +170,7 @@ func TestNode_Anchor(t *testing.T) {
 		t.Parallel()
 
 		var released atomic.Bool
-		n := mknode(nil, func() { released.Store(true) })
+		n := mknode(func() { released.Store(true) })
 
 		t.Log(n.refs.Load())
 
@@ -127,9 +181,7 @@ func TestNode_Anchor(t *testing.T) {
 
 		t.Log(n.refs.Load())
 
-		// NOTE: The first call to Anchor() has already captured n's
-		// reference, so we must create a new one.
-		b := n.AddRef().Anchor()
+		b := n.Anchor()
 		require.NotZero(t, b, "should return non-nil client")
 		require.False(t, released.Load(),
 			"should not release before client")

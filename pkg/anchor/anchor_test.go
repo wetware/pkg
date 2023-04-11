@@ -21,7 +21,7 @@ func TestWalk(t *testing.T) {
 		t.Parallel()
 
 		var released atomic.Bool
-		s := server{node: mknode(nil, func() { released.Store(true) })}
+		s := server{node: mknode(func() { released.Store(true) })}
 
 		root := Anchor(s.Anchor())
 
@@ -46,7 +46,7 @@ func TestWalk(t *testing.T) {
 		t.Parallel()
 
 		var released atomic.Bool
-		s := server{node: mknode(nil, func() { released.Store(true) })}
+		s := server{node: mknode(func() { released.Store(true) })}
 
 		root := Anchor(s.Anchor())
 
@@ -71,7 +71,7 @@ func TestWalk(t *testing.T) {
 		t.Parallel()
 
 		var released atomic.Bool
-		s := server{node: mknode(nil, func() { released.Store(true) })}
+		s := server{node: mknode(func() { released.Store(true) })}
 
 		root := Anchor(s.Anchor())
 
@@ -85,9 +85,6 @@ func TestWalk(t *testing.T) {
 
 		root.Release()
 		assert.False(t, released.Load())
-
-		// child.Release()
-		// assert.False(t, released.Load())
 
 		release()
 		assert.Eventually(t, released.Load, time.Second, time.Millisecond*100,
