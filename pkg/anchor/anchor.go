@@ -20,7 +20,7 @@ func (a Anchor) Release() {
 
 func (a Anchor) Ls(ctx context.Context) (*Iterator, capnp.ReleaseFunc) {
 	f, release := api.Anchor(a).Ls(ctx, nil)
-	return &Iterator{fut: f, index: -1}, release
+	return &Iterator{fut: f}, release
 }
 
 // Walk to the register located at path.
@@ -54,21 +54,21 @@ type Iterator struct {
 	index    int
 }
 
-func (it *Iterator) Err() error {
-	if it.err == nil {
-		select {
-		case <-it.fut.Done():
-			var res api.Anchor_ls_Results
-			if res, it.err = it.fut.Struct(); it.err != nil {
-				break
-			}
-
-			if it.children, it.err = res.Children(); it.err != nil {
-				break
-			}
-
-		default:
+func (it *Iterator) resolve() {
+	if it.err == nil && it.children == (api.Anchor_Child_List{}) {
+		var res api.Anchor_ls_Results
+		if res, it.err = it.fut.Struct(); it.err == nil {
+			it.children, it.err = res.Children()
 		}
+	}
+}
+
+func (it *Iterator) Err() error {
+	select {
+	case <-it.fut.Done():
+		it.resolve()
+
+	default:
 	}
 
 	return it.err
@@ -77,18 +77,26 @@ func (it *Iterator) Err() error {
 // Next returns the name of the next subanchor in the stream. It
 // returns an empty string when the iterator has been exhausted.
 func (it *Iterator) Next() (name string) {
-	if it.Err() == nil {
+	if it.children == (api.Anchor_Child_List{}) {
+		it.resolve()
+	} else {
 		it.index++
+	}
+
+	if it.more() {
 		name, it.err = it.children.At(it.index).Name()
 	}
 
 	return
 }
 
-func (it Iterator) Anchor() Anchor {
-	// it.Err() was called by Next(), so there's no point in
-	// doing all the checks again.
-	if it.err == nil {
+func (it *Iterator) more() bool {
+	size := it.children.Len()
+	return it.err == nil && it.index < size
+}
+
+func (it *Iterator) Anchor() Anchor {
+	if it.more() {
 		return Anchor(it.children.At(it.index).Anchor())
 	}
 

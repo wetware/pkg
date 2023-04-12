@@ -30,9 +30,9 @@ func (n *node) Release() {
 	if refs := n.refs.Add(-1); refs == 0 && n.parent != nil {
 		defer n.parent.Release()
 
-		n.Lock()
+		n.parent.Lock()
 		delete(n.parent.children, n.name)
-		n.Unlock()
+		n.parent.Unlock()
 
 	} else if refs < 0 {
 		panic("no references to release")

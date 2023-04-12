@@ -10,6 +10,55 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestLs(t *testing.T) {
+	t.Parallel()
+	t.Helper()
+
+	t.Run("Empty", func(t *testing.T) {
+		t.Parallel()
+
+		s := server{node: new(node)}
+
+		it, release := Anchor(s.Anchor()).Ls(context.Background())
+		defer release()
+
+		for name := it.Next(); name != ""; name = it.Next() {
+			t.Error("iterator should be empty")
+		}
+
+		assert.Zero(t, it.Anchor(), "should return null Anchor")
+		assert.NoError(t, it.Err(), "iterator should succeed")
+	})
+
+	t.Run("NotEmpty", func(t *testing.T) {
+		t.Parallel()
+
+		// Create a few children of the root node.
+		// These will be cleaned up when the test
+		// finishes.
+		s := server{node: new(node)}
+		defer s.Child("foo").AddRef().Release()
+		defer s.Child("bar").AddRef().Release()
+		defer s.Child("baz").AddRef().Release()
+
+		it, release := Anchor(s.Anchor()).Ls(context.Background())
+		defer release()
+
+		var names []string
+		var anchors []Anchor
+		for name := it.Next(); name != ""; name = it.Next() {
+			names = append(names, name)
+			anchors = append(anchors, it.Anchor())
+		}
+
+		assert.ElementsMatch(t, []string{"foo", "bar", "baz"}, names)
+		assert.Len(t, anchors, 3, "should have three anchors")
+		for _, anchor := range anchors {
+			assert.NotZero(t, anchor, "should return non-null anchor")
+		}
+	})
+}
+
 func TestWalk(t *testing.T) {
 	t.Parallel()
 	t.Helper()
