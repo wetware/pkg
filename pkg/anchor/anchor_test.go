@@ -17,7 +17,7 @@ func TestLs(t *testing.T) {
 	t.Run("Empty", func(t *testing.T) {
 		t.Parallel()
 
-		s := server{node: new(node)}
+		s := server{Node: new(Node)}
 
 		it, release := Anchor(s.Anchor()).Ls(context.Background())
 		defer release()
@@ -36,7 +36,7 @@ func TestLs(t *testing.T) {
 		// Create a few children of the root node.
 		// These will be cleaned up when the test
 		// finishes.
-		s := server{node: new(node)}
+		s := server{Node: new(Node)}
 		defer s.Child("foo").AddRef().Release()
 		defer s.Child("bar").AddRef().Release()
 		defer s.Child("baz").AddRef().Release()
@@ -68,7 +68,7 @@ func TestWalk(t *testing.T) {
 	t.Run("Root", func(t *testing.T) {
 		t.Parallel()
 
-		s := server{node: new(node)}
+		s := server{Node: new(Node)}
 
 		root := Anchor(s.Anchor())
 
@@ -94,7 +94,7 @@ func TestWalk(t *testing.T) {
 	t.Run("Child", func(t *testing.T) {
 		t.Parallel()
 
-		s := server{node: new(node)}
+		s := server{Node: new(Node)}
 
 		root := Anchor(s.Anchor())
 
@@ -120,7 +120,7 @@ func TestWalk(t *testing.T) {
 	t.Run("Path", func(t *testing.T) {
 		t.Parallel()
 
-		s := server{node: new(node)}
+		s := server{Node: new(Node)}
 
 		root := Anchor(s.Anchor())
 

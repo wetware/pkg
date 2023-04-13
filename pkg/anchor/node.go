@@ -8,25 +8,25 @@ import (
 	api "github.com/wetware/ww/internal/api/anchor"
 )
 
-type node struct {
+type Node struct {
 	sync.Mutex
 
 	refs atomic.Int32
 
-	parent *node
+	parent *Node
 	name   string
 
-	children map[string]*node
+	children map[string]*Node
 	client   *weakClient
 	// value api.Value
 }
 
-func (n *node) AddRef() *node {
+func (n *Node) AddRef() *Node {
 	n.refs.Add(1)
 	return n
 }
 
-func (n *node) Release() {
+func (n *Node) Release() {
 	if refs := n.refs.Add(-1); refs == 0 && n.parent != nil {
 		defer n.parent.Release()
 
@@ -41,7 +41,7 @@ func (n *node) Release() {
 
 // Child returns the named child of the current node, creating it if
 // it does not exist.
-func (n *node) Child(name string) *node {
+func (n *Node) Child(name string) *Node {
 	n.Lock()
 	defer n.Unlock()
 
@@ -53,12 +53,12 @@ func (n *node) Child(name string) *node {
 	// Slow path; create new child.
 
 	if n.children == nil {
-		n.children = make(map[string]*node)
+		n.children = make(map[string]*Node)
 	}
 
 	// The child holds the parent reference, releasing it when
 	// its own refcount hit zero.
-	n.children[name] = &node{
+	n.children[name] = &Node{
 		parent: n.AddRef(),
 		name:   name,
 	}
@@ -66,7 +66,7 @@ func (n *node) Child(name string) *node {
 	return n.children[name]
 }
 
-func (n *node) Anchor() api.Anchor {
+func (n *Node) Anchor() Anchor {
 	n.Lock()
 	defer n.Unlock()
 
@@ -75,7 +75,7 @@ func (n *node) Anchor() api.Anchor {
 	// can release the refchain after client.AddRef returns.
 	if n.client != nil {
 		client := n.client.AddRef()
-		return api.Anchor(client)
+		return Anchor(client)
 	}
 
 	// Slow path; spin up a new server, assign the weak client,
@@ -85,10 +85,11 @@ func (n *node) Anchor() api.Anchor {
 	// be released after the last client ref has been released.
 	// This happens in the Shutdown() method, which is invoked
 	// when the last client ref has been released.
-	n.AddRef()
+
+	server := server{n.AddRef()}
 	client := capnp.NewClient(&nodeHook{
 		Locker:     n,
-		ClientHook: api.Anchor_NewServer(server{n}),
+		ClientHook: api.Anchor_NewServer(server),
 	})
 
 	// Set the weak reference; subsequent calls to Anchor() will
@@ -104,7 +105,7 @@ func (n *node) Anchor() api.Anchor {
 	// parent's children map.  This is handled by the n's rc.Ref
 	// field, and only occurs when the node *also* has no children
 	// and holds no value.
-	return api.Anchor(client)
+	return Anchor(client)
 }
 
 type weakClient capnp.WeakClient

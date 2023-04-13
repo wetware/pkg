@@ -109,7 +109,7 @@ func (it *Iterator) Anchor() Anchor {
 |                            |
 *----------------------------*/
 
-type server struct{ *node }
+type server struct{ *Node }
 
 func (s server) Shutdown() {
 	s.Release() // nodeHook holds the lock when shutting down.
@@ -141,7 +141,7 @@ func (s server) Ls(ctx context.Context, call api.Anchor_ls) error {
 			break
 		}
 
-		if err = cs.At(index).SetAnchor(child.Anchor()); err != nil {
+		if err = cs.At(index).SetAnchor(anchor(child)); err != nil {
 			break
 		}
 
@@ -174,10 +174,14 @@ func (s server) Walk(ctx context.Context, call api.Anchor_walk) error {
 	// embedded node, such that we are holding the final node when we
 	// exit the loop.
 	for path, name := path.Next(); name != ""; path, name = path.Next() {
-		s.node = s.Child(name) // shallow copy; TODO(soon):  check for this in a unit test
+		s.Node = s.Child(name) // shallow copy
 	}
 
-	return res.SetAnchor(s.Anchor())
+	return res.SetAnchor(anchor(s))
+}
+
+func anchor(n interface{ Anchor() Anchor }) api.Anchor {
+	return api.Anchor(n.Anchor())
 }
 
 func newPath(call api.Anchor_walk) Path {

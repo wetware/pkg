@@ -26,7 +26,7 @@ func TestWeakClient(t *testing.T) {
 func TestNodeRelease(t *testing.T) {
 	t.Parallel()
 
-	n := new(node).AddRef()
+	n := new(Node).AddRef()
 	n.Release()
 	assert.Panics(t, n.Release, "should panic when refcount < 0")
 }
@@ -38,7 +38,7 @@ func TestNode_Child(t *testing.T) {
 	t.Run("CreateOne", func(t *testing.T) {
 		t.Parallel()
 
-		n := new(node)
+		n := new(Node)
 
 		// note the call to AddRef, nodes initially have a ref-
 		// count of zero.
@@ -56,7 +56,7 @@ func TestNode_Child(t *testing.T) {
 	t.Run("CreateMany", func(t *testing.T) {
 		t.Parallel()
 
-		n := new(node)
+		n := new(Node)
 
 		// note the call to AddRef, nodes initially have a ref-
 		// count of zero.
@@ -92,7 +92,7 @@ func TestNode_Child(t *testing.T) {
 	t.Run("Chain", func(t *testing.T) {
 		t.Parallel()
 
-		n := new(node)
+		n := new(Node)
 
 		// note the call to AddRef, nodes initially have a ref-
 		// count of zero.
@@ -112,7 +112,7 @@ func TestNode_Child(t *testing.T) {
 	t.Run("Tree", func(t *testing.T) {
 		t.Parallel()
 
-		n := new(node)
+		n := new(Node)
 
 		// note the call to AddRef, nodes initially have a ref-
 		// count of zero.
@@ -148,7 +148,7 @@ func TestNode_Anchor(t *testing.T) {
 	t.Run("Create", func(t *testing.T) {
 		t.Parallel()
 
-		n := new(node)
+		n := new(Node)
 
 		a := n.Anchor()
 		require.NotZero(t, a, "should return non-nil client")
@@ -165,7 +165,7 @@ func TestNode_Anchor(t *testing.T) {
 	t.Run("Exists", func(t *testing.T) {
 		t.Parallel()
 
-		n := new(node)
+		n := new(Node)
 
 		t.Log(n.refs.Load())
 

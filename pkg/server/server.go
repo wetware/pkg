@@ -87,8 +87,9 @@ func (j Joiner) pubsub(log log.Logger, router pubsub.TopicJoiner) *pubsub.Server
 	}
 }
 
-func (j Joiner) anchor() anchor.Server {
-	return anchor.Root()
+// TODO(soon):  return a host anchor instead of a generic anchor.
+func (j Joiner) anchor() *anchor.Node {
+	return new(anchor.Node) // root node
 }
 
 func (j Joiner) executor() csp.Server {
