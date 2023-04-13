@@ -1,4 +1,4 @@
-package process_test
+package csp_test
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"github.com/tetratelabs/wazero/sys"
-	"github.com/wetware/ww/pkg/process"
+	"github.com/wetware/ww/pkg/csp"
 )
 
 func TestExecutor(t *testing.T) {
@@ -19,7 +19,7 @@ func TestExecutor(t *testing.T) {
 	r := wazero.NewRuntime(context.Background())
 	wasi_snapshot_preview1.MustInstantiate(context.Background(), r)
 
-	exec := process.Server{Runtime: r}.Executor()
+	exec := csp.Server{Runtime: r}.Executor()
 	defer exec.Release()
 
 	proc, release := exec.Spawn(context.Background(), testdata())
