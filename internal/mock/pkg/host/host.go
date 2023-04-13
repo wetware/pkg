@@ -11,7 +11,7 @@ import (
 	cluster "github.com/wetware/casm/pkg/cluster"
 	debug "github.com/wetware/casm/pkg/debug"
 	anchor "github.com/wetware/ww/pkg/anchor"
-	process "github.com/wetware/ww/pkg/process"
+	csp "github.com/wetware/ww/pkg/csp"
 	pubsub "github.com/wetware/ww/pkg/pubsub"
 )
 
@@ -187,10 +187,10 @@ func (m *MockExecutorProvider) EXPECT() *MockExecutorProviderMockRecorder {
 }
 
 // Executor mocks base method.
-func (m *MockExecutorProvider) Executor() process.Executor {
+func (m *MockExecutorProvider) Executor() csp.Executor {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Executor")
-	ret0, _ := ret[0].(process.Executor)
+	ret0, _ := ret[0].(csp.Executor)
 	return ret0
 }
 

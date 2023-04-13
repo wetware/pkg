@@ -11,8 +11,8 @@ import (
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/cluster"
 	"github.com/wetware/ww/pkg/anchor"
+	"github.com/wetware/ww/pkg/csp"
 	"github.com/wetware/ww/pkg/host"
-	"github.com/wetware/ww/pkg/process"
 	"github.com/wetware/ww/pkg/pubsub"
 )
 
@@ -59,7 +59,7 @@ type Joiner struct {
 }
 
 // Join the cluster.  Note that callers MUST call Bootstrap() on
-// the returned *Node to complete the bootstrap process.
+// the returned *Node to complete the bootstrap csp.
 func (j Joiner) Join(vat casm.Vat, r Router) (*Node, error) {
 	c, err := j.Cluster.New(vat, r)
 	if err != nil {
@@ -91,8 +91,8 @@ func (j Joiner) anchor() anchor.Server {
 	return anchor.Root()
 }
 
-func (j Joiner) executor() process.Server {
-	return process.Server{
+func (j Joiner) executor() csp.Server {
+	return csp.Server{
 		Runtime: j.Runtime.New(),
 	}
 }
