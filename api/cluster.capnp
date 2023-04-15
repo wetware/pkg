@@ -39,7 +39,7 @@ interface Host {
     # to untrusted parties.
 
     registry @4 () -> (registry :import "service.capnp".Registry);
-    # Service returns a Service Discovery capability, which is used for 
+    # Registry returns a Service Registry capability, which is used for 
     # discovering and providing service. This way, applications can find each other.
 
     executor @5 () -> (executor :import "process.capnp".Executor);

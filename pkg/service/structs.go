@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 
 	"capnproto.org/go/capnp/v3"
@@ -9,6 +10,8 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	api "github.com/wetware/ww/internal/api/service"
 )
+
+var ErrInvalidSignature = errors.New("invalid signature")
 
 type Location struct {
 	api.SignedLocation
@@ -47,10 +50,8 @@ func (loc Location) Validate(topic string) error {
 		return fmt.Errorf("the topic and the service name are different, topic: %s - service: %s", topic, service)
 	}
 
-	if ok, err := loc.VerifySinature(); err != nil {
+	if err := loc.VerifySignature(); err != nil {
 		return fmt.Errorf("failed to verify signature: %w", err)
-	} else if !ok {
-		return fmt.Errorf("invalid signature", err)
 	}
 
 	return nil
@@ -79,37 +80,48 @@ func (loc Location) Sign(pk crypto.PrivKey) error {
 	return nil
 }
 
-func (loc Location) VerifySinature() (bool, error) {
+func (loc Location) VerifySignature() error {
 	capLoc, err := loc.Location()
 	if err != nil {
-		return false, fmt.Errorf("failed to read location: %w", err)
+		return fmt.Errorf("failed to read location: %w", err)
 	}
 
 	b, err := capLoc.Message().Marshal()
 	if err != nil {
-		return false, fmt.Errorf("failed to marshal location: %w", err)
+		return fmt.Errorf("failed to marshal location: %w", err)
 	}
 
 	idBytes, err := capLoc.Id()
 	if err != nil {
-		return false, fmt.Errorf("failed to extract peer ID: %w", err)
+		return fmt.Errorf("failed to extract peer ID: %w", err)
 	}
 	peerID := peer.ID(idBytes)
 	pubKey, err := peerID.ExtractPublicKey()
 	if err != nil {
-		return false, fmt.Errorf("failed to extract public key: %w", err)
+		return fmt.Errorf("failed to extract public key: %w", err)
 	}
 
 	sig, err := loc.Signature()
 	if err != nil {
-		return false, fmt.Errorf("failed to extract signature: %w", err)
+		return fmt.Errorf("failed to extract signature: %w", err)
 	}
 
-	return pubKey.Verify(b, sig)
+	if ok, err := pubKey.Verify(b, sig); err != nil {
+		return fmt.Errorf("failed to verify signature: %w", err)
+	} else if !ok {
+		return ErrInvalidSignature
+	}
+
+	return nil
 }
 
 func (loc Location) SetService(name string) error {
-	return nil // TODO
+	capLoc, err := loc.Location()
+	if err != nil {
+		return fmt.Errorf("fail to create location: %w", err)
+	}
+
+	return capLoc.SetService(name)
 }
 
 func (loc Location) SetMaddrs(maddrs []ma.Multiaddr) error {
