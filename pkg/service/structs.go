@@ -124,6 +124,15 @@ func (loc Location) SetService(name string) error {
 	return capLoc.SetService(name)
 }
 
+func (loc Location) SetID(id peer.ID) error {
+	capLoc, err := loc.Location()
+	if err != nil {
+		return fmt.Errorf("fail to set peer ID: %w", err)
+	}
+
+	return capLoc.SetId(id.String())
+}
+
 func (loc Location) SetMaddrs(maddrs []ma.Multiaddr) error {
 	capLoc, err := loc.Location()
 	if err != nil {

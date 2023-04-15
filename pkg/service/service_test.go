@@ -2,13 +2,16 @@ package service_test
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"testing"
 	"time"
 
 	"github.com/libp2p/go-libp2p"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
 	inproc "github.com/lthibault/go-libp2p-inproc-transport"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/require"
@@ -80,7 +83,30 @@ func generateLocation(n int) (service.Location, error) {
 		maddrs = append(maddrs, maddr)
 	}
 
-	return loc, loc.SetMaddrs(maddrs)
+	if err := loc.SetMaddrs(maddrs); err != nil {
+		return loc, fmt.Errorf("failed to set maddrs: %w", err)
+	}
+
+	privKey, _, err := crypto.GenerateKeyPairWithReader(crypto.Ed25519, 2048, rand.Reader)
+	if err != nil {
+		return loc, fmt.Errorf("failed to generate privkey: %w", err)
+	}
+
+	pubKey := privKey.GetPublic()
+	peerID, err := peer.IDFromPublicKey(pubKey)
+	if err != nil {
+		return loc, fmt.Errorf("failed to generate ID from pubkey: %w", err)
+	}
+
+	if err := loc.SetID(peerID); err != nil {
+		return loc, fmt.Errorf("failed to set peer ID: %w", err)
+	}
+
+	if err := loc.Sign(privKey); err != nil {
+		return loc, fmt.Errorf("failed to sign the message: %w", err)
+	}
+
+	return loc, nil
 }
 
 func newGossipSub(ctx context.Context) (*pubsub.PubSub, func()) {
