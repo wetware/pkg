@@ -42,7 +42,7 @@ func provide() *cli.Command {
 			&cli.StringSliceFlag{
 				Name:    "multiaddr",
 				Aliases: []string{"maddr"},
-				Usage:   "multiaddress of the service provdier",
+				Usage:   "multiaddress of the service provider",
 			},
 		},
 		Before: setup(),

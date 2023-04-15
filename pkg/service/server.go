@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"capnproto.org/go/capnp/v3"
 	"github.com/wetware/ww/internal/api/channel"
@@ -68,8 +67,6 @@ func (s *RegistryServer) FindProviders(ctx context.Context, call api.Registry_fi
 
 	sub, release := topic.Subscribe(ctx)
 	defer release()
-
-	time.Sleep(time.Second)
 
 	// publish a request
 	call.Go()

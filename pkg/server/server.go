@@ -67,11 +67,9 @@ func (j Joiner) Join(vat casm.Vat, r Router) (*Node, error) {
 		return nil, err
 	}
 
-	router := j.pubsub(vat.Logger, r)
-
 	vat.Export(host.Capability, host.Server{
 		ViewProvider:     c,
-		PubSubProvider:   router,
+		PubSubProvider:   j.pubsub(vat.Logger, r),
 		AnchorProvider:   j.anchor(),
 		DebugProvider:    j.Debugger.New(),
 		RegistryProvider: j.service(),
