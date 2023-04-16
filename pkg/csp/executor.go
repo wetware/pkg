@@ -104,6 +104,7 @@ func (wx Server) loadModule(ctx context.Context, args api.Executor_spawn_Params)
 		WithName(name).
 		WithRandSource(rand.Reader)
 
+
 	if mod := wx.Runtime.Module(name); mod != nil {
 		return mod, nil
 	}
