@@ -42,7 +42,6 @@ require (
 	golang.org/x/sync v0.1.0
 	gopkg.in/alexcesaro/statsd.v2 v2.0.0
 	lukechampine.com/blake3 v1.1.7
-	pgregory.net/rand v1.0.2
 )
 
 require (

@@ -2,13 +2,13 @@ package csp
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/hex"
 	"fmt"
 
 	capnp "capnproto.org/go/capnp/v3"
 	"github.com/tetratelabs/wazero"
 	"lukechampine.com/blake3"
-	"pgregory.net/rand"
 
 	wasm "github.com/tetratelabs/wazero/api"
 	api "github.com/wetware/ww/internal/api/process"
@@ -102,7 +102,8 @@ func (wx Server) loadModule(ctx context.Context, args api.Executor_spawn_Params)
 	config := wazero.
 		NewModuleConfig().
 		WithName(name).
-		WithRandSource(rand.New())
+		WithRandSource(rand.Reader)
+
 
 	if mod := wx.Runtime.Module(name); mod != nil {
 		return mod, nil
