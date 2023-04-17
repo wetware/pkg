@@ -2,6 +2,7 @@ package csp_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -127,5 +128,68 @@ func TestSyncServer(t *testing.T) {
 
 		_, err = f.Text()
 		require.Error(t, err)
+	})
+
+	t.Run("RecvFromCancelledChan", func(t *testing.T) {
+		t.Parallel()
+
+		const want = "hello, world!"
+		ch := csp.NewChan(&csp.SyncChan{})
+
+		syncSend := make(chan struct{})
+		go func() {
+			close(syncSend)
+
+			err := ch.Send(context.Background(), csp.Text(want))
+			require.NoError(t, err)
+		}()
+
+		// wait for the send call to be in flight
+		<-syncSend
+
+		syncClose := make(chan struct{})
+		go func() {
+			close(syncClose)
+
+			err := ch.Close(context.Background())
+			require.NoError(t, err)
+		}()
+
+		// wait for the close call to be in flight
+		<-syncClose
+
+		f, release := ch.Recv(context.Background())
+		defer release()
+
+		got, err := f.Text()
+		require.NoError(t, err)
+		require.Equal(t, want, got)
+	})
+
+	t.Run("Scratch", func(t *testing.T) {
+		t.Parallel()
+
+		syncMain := make(chan struct{}, 1)
+		syncBad := make(chan struct{})
+		syncSend := make(chan struct{})
+
+		go func() {
+			close(syncSend)
+			syncMain <- struct{}{}
+		}()
+
+		// wait for the send call to be in flight
+		<-syncSend
+		msg := "ok"
+		select {
+		case syncBad <- struct{}{}:
+			msg = "Bad"
+			fmt.Println("Bad")
+		case <-syncMain:
+			msg = "Good"
+			fmt.Println("Good")
+		}
+
+		require.Equal(t, msg, "Good")
 	})
 }

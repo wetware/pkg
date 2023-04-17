@@ -120,7 +120,7 @@ func (ch *SyncChan) pushSend(ctx context.Context, call MethodSend) (pendingSend,
 	// signal that a sender is ready.
 	select {
 	case ch.signal <- struct{}{}:
-	default:
+	default: // TODO: Why do we need a select statement here?
 	}
 
 	return pendingSend{Sender: elem, Done: recved}, nil
@@ -144,7 +144,7 @@ func (ch *SyncChan) Recv(ctx context.Context, call MethodRecv) error {
 
 		// wait for sender; temporarily unlocks mu
 		if err := ch.wait(ctx); err != nil {
-			return err // always a context error
+			return err
 		}
 	}
 
