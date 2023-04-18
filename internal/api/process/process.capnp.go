@@ -16,23 +16,23 @@ type Executor capnp.Client
 // Executor_TypeID is the unique identifier for the type Executor.
 const Executor_TypeID = 0xaf2e5ebaa58175d2
 
-func (c Executor) Spawn(ctx context.Context, params func(Executor_spawn_Params) error) (Executor_spawn_Results_Future, capnp.ReleaseFunc) {
+func (c Executor) Exec(ctx context.Context, params func(Executor_exec_Params) error) (Executor_exec_Results_Future, capnp.ReleaseFunc) {
 
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xaf2e5ebaa58175d2,
 			MethodID:      0,
 			InterfaceName: "process.capnp:Executor",
-			MethodName:    "spawn",
+			MethodName:    "exec",
 		},
 	}
 	if params != nil {
-		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 2}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Executor_spawn_Params(s)) }
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Executor_exec_Params(s)) }
 	}
 
 	ans, release := capnp.Client(c).SendCall(ctx, s)
-	return Executor_spawn_Results_Future{Future: ans.Future()}, release
+	return Executor_exec_Results_Future{Future: ans.Future()}, release
 
 }
 
@@ -109,7 +109,7 @@ func (c Executor) GetFlowLimiter() fc.FlowLimiter {
 
 // A Executor_Server is a Executor with a local implementation.
 type Executor_Server interface {
-	Spawn(context.Context, Executor_spawn) error
+	Exec(context.Context, Executor_exec) error
 }
 
 // Executor_NewServer creates a new Server from an implementation of Executor_Server.
@@ -136,31 +136,31 @@ func Executor_Methods(methods []server.Method, s Executor_Server) []server.Metho
 			InterfaceID:   0xaf2e5ebaa58175d2,
 			MethodID:      0,
 			InterfaceName: "process.capnp:Executor",
-			MethodName:    "spawn",
+			MethodName:    "exec",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.Spawn(ctx, Executor_spawn{call})
+			return s.Exec(ctx, Executor_exec{call})
 		},
 	})
 
 	return methods
 }
 
-// Executor_spawn holds the state for a server call to Executor.spawn.
+// Executor_exec holds the state for a server call to Executor.exec.
 // See server.Call for documentation.
-type Executor_spawn struct {
+type Executor_exec struct {
 	*server.Call
 }
 
 // Args returns the call's arguments.
-func (c Executor_spawn) Args() Executor_spawn_Params {
-	return Executor_spawn_Params(c.Call.Args())
+func (c Executor_exec) Args() Executor_exec_Params {
+	return Executor_exec_Params(c.Call.Args())
 }
 
 // AllocResults allocates the results struct.
-func (c Executor_spawn) AllocResults() (Executor_spawn_Results, error) {
+func (c Executor_exec) AllocResults() (Executor_exec_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Executor_spawn_Results(r), err
+	return Executor_exec_Results(r), err
 }
 
 // Executor_List is a list of Executor.
@@ -172,158 +172,140 @@ func NewExecutor_List(s *capnp.Segment, sz int32) (Executor_List, error) {
 	return capnp.CapList[Executor](l), err
 }
 
-type Executor_spawn_Params capnp.Struct
+type Executor_exec_Params capnp.Struct
 
-// Executor_spawn_Params_TypeID is the unique identifier for the type Executor_spawn_Params.
-const Executor_spawn_Params_TypeID = 0xf20b3dea95929312
+// Executor_exec_Params_TypeID is the unique identifier for the type Executor_exec_Params.
+const Executor_exec_Params_TypeID = 0xf20b3dea95929312
 
-func NewExecutor_spawn_Params(s *capnp.Segment) (Executor_spawn_Params, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
-	return Executor_spawn_Params(st), err
+func NewExecutor_exec_Params(s *capnp.Segment) (Executor_exec_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Executor_exec_Params(st), err
 }
 
-func NewRootExecutor_spawn_Params(s *capnp.Segment) (Executor_spawn_Params, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
-	return Executor_spawn_Params(st), err
+func NewRootExecutor_exec_Params(s *capnp.Segment) (Executor_exec_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Executor_exec_Params(st), err
 }
 
-func ReadRootExecutor_spawn_Params(msg *capnp.Message) (Executor_spawn_Params, error) {
+func ReadRootExecutor_exec_Params(msg *capnp.Message) (Executor_exec_Params, error) {
 	root, err := msg.Root()
-	return Executor_spawn_Params(root.Struct()), err
+	return Executor_exec_Params(root.Struct()), err
 }
 
-func (s Executor_spawn_Params) String() string {
+func (s Executor_exec_Params) String() string {
 	str, _ := text.Marshal(0xf20b3dea95929312, capnp.Struct(s))
 	return str
 }
 
-func (s Executor_spawn_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (s Executor_exec_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Struct(s).EncodeAsPtr(seg)
 }
 
-func (Executor_spawn_Params) DecodeFromPtr(p capnp.Ptr) Executor_spawn_Params {
-	return Executor_spawn_Params(capnp.Struct{}.DecodeFromPtr(p))
+func (Executor_exec_Params) DecodeFromPtr(p capnp.Ptr) Executor_exec_Params {
+	return Executor_exec_Params(capnp.Struct{}.DecodeFromPtr(p))
 }
 
-func (s Executor_spawn_Params) ToPtr() capnp.Ptr {
+func (s Executor_exec_Params) ToPtr() capnp.Ptr {
 	return capnp.Struct(s).ToPtr()
 }
-func (s Executor_spawn_Params) IsValid() bool {
+func (s Executor_exec_Params) IsValid() bool {
 	return capnp.Struct(s).IsValid()
 }
 
-func (s Executor_spawn_Params) Message() *capnp.Message {
+func (s Executor_exec_Params) Message() *capnp.Message {
 	return capnp.Struct(s).Message()
 }
 
-func (s Executor_spawn_Params) Segment() *capnp.Segment {
+func (s Executor_exec_Params) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s Executor_spawn_Params) ByteCode() ([]byte, error) {
+func (s Executor_exec_Params) Bytecode() ([]byte, error) {
 	p, err := capnp.Struct(s).Ptr(0)
 	return []byte(p.Data()), err
 }
 
-func (s Executor_spawn_Params) HasByteCode() bool {
+func (s Executor_exec_Params) HasBytecode() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s Executor_spawn_Params) SetByteCode(v []byte) error {
+func (s Executor_exec_Params) SetBytecode(v []byte) error {
 	return capnp.Struct(s).SetData(0, v)
 }
 
-func (s Executor_spawn_Params) EntryPoint() (string, error) {
-	p, err := capnp.Struct(s).Ptr(1)
-	return p.TextDefault("run"), err
+// Executor_exec_Params_List is a list of Executor_exec_Params.
+type Executor_exec_Params_List = capnp.StructList[Executor_exec_Params]
+
+// NewExecutor_exec_Params creates a new list of Executor_exec_Params.
+func NewExecutor_exec_Params_List(s *capnp.Segment, sz int32) (Executor_exec_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[Executor_exec_Params](l), err
 }
 
-func (s Executor_spawn_Params) HasEntryPoint() bool {
-	return capnp.Struct(s).HasPtr(1)
-}
+// Executor_exec_Params_Future is a wrapper for a Executor_exec_Params promised by a client call.
+type Executor_exec_Params_Future struct{ *capnp.Future }
 
-func (s Executor_spawn_Params) EntryPointBytes() ([]byte, error) {
-	p, err := capnp.Struct(s).Ptr(1)
-	return p.TextBytesDefault("run"), err
-}
-
-func (s Executor_spawn_Params) SetEntryPoint(v string) error {
-	return capnp.Struct(s).SetNewText(1, v)
-}
-
-// Executor_spawn_Params_List is a list of Executor_spawn_Params.
-type Executor_spawn_Params_List = capnp.StructList[Executor_spawn_Params]
-
-// NewExecutor_spawn_Params creates a new list of Executor_spawn_Params.
-func NewExecutor_spawn_Params_List(s *capnp.Segment, sz int32) (Executor_spawn_Params_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2}, sz)
-	return capnp.StructList[Executor_spawn_Params](l), err
-}
-
-// Executor_spawn_Params_Future is a wrapper for a Executor_spawn_Params promised by a client call.
-type Executor_spawn_Params_Future struct{ *capnp.Future }
-
-func (f Executor_spawn_Params_Future) Struct() (Executor_spawn_Params, error) {
+func (f Executor_exec_Params_Future) Struct() (Executor_exec_Params, error) {
 	p, err := f.Future.Ptr()
-	return Executor_spawn_Params(p.Struct()), err
+	return Executor_exec_Params(p.Struct()), err
 }
 
-type Executor_spawn_Results capnp.Struct
+type Executor_exec_Results capnp.Struct
 
-// Executor_spawn_Results_TypeID is the unique identifier for the type Executor_spawn_Results.
-const Executor_spawn_Results_TypeID = 0xbb4f16b0a7d2d09b
+// Executor_exec_Results_TypeID is the unique identifier for the type Executor_exec_Results.
+const Executor_exec_Results_TypeID = 0xbb4f16b0a7d2d09b
 
-func NewExecutor_spawn_Results(s *capnp.Segment) (Executor_spawn_Results, error) {
+func NewExecutor_exec_Results(s *capnp.Segment) (Executor_exec_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Executor_spawn_Results(st), err
+	return Executor_exec_Results(st), err
 }
 
-func NewRootExecutor_spawn_Results(s *capnp.Segment) (Executor_spawn_Results, error) {
+func NewRootExecutor_exec_Results(s *capnp.Segment) (Executor_exec_Results, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Executor_spawn_Results(st), err
+	return Executor_exec_Results(st), err
 }
 
-func ReadRootExecutor_spawn_Results(msg *capnp.Message) (Executor_spawn_Results, error) {
+func ReadRootExecutor_exec_Results(msg *capnp.Message) (Executor_exec_Results, error) {
 	root, err := msg.Root()
-	return Executor_spawn_Results(root.Struct()), err
+	return Executor_exec_Results(root.Struct()), err
 }
 
-func (s Executor_spawn_Results) String() string {
+func (s Executor_exec_Results) String() string {
 	str, _ := text.Marshal(0xbb4f16b0a7d2d09b, capnp.Struct(s))
 	return str
 }
 
-func (s Executor_spawn_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (s Executor_exec_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Struct(s).EncodeAsPtr(seg)
 }
 
-func (Executor_spawn_Results) DecodeFromPtr(p capnp.Ptr) Executor_spawn_Results {
-	return Executor_spawn_Results(capnp.Struct{}.DecodeFromPtr(p))
+func (Executor_exec_Results) DecodeFromPtr(p capnp.Ptr) Executor_exec_Results {
+	return Executor_exec_Results(capnp.Struct{}.DecodeFromPtr(p))
 }
 
-func (s Executor_spawn_Results) ToPtr() capnp.Ptr {
+func (s Executor_exec_Results) ToPtr() capnp.Ptr {
 	return capnp.Struct(s).ToPtr()
 }
-func (s Executor_spawn_Results) IsValid() bool {
+func (s Executor_exec_Results) IsValid() bool {
 	return capnp.Struct(s).IsValid()
 }
 
-func (s Executor_spawn_Results) Message() *capnp.Message {
+func (s Executor_exec_Results) Message() *capnp.Message {
 	return capnp.Struct(s).Message()
 }
 
-func (s Executor_spawn_Results) Segment() *capnp.Segment {
+func (s Executor_exec_Results) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s Executor_spawn_Results) Process() Process {
+func (s Executor_exec_Results) Process() Process {
 	p, _ := capnp.Struct(s).Ptr(0)
 	return Process(p.Interface().Client())
 }
 
-func (s Executor_spawn_Results) HasProcess() bool {
+func (s Executor_exec_Results) HasProcess() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s Executor_spawn_Results) SetProcess(v Process) error {
+func (s Executor_exec_Results) SetProcess(v Process) error {
 	if !v.IsValid() {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
@@ -332,23 +314,23 @@ func (s Executor_spawn_Results) SetProcess(v Process) error {
 	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
-// Executor_spawn_Results_List is a list of Executor_spawn_Results.
-type Executor_spawn_Results_List = capnp.StructList[Executor_spawn_Results]
+// Executor_exec_Results_List is a list of Executor_exec_Results.
+type Executor_exec_Results_List = capnp.StructList[Executor_exec_Results]
 
-// NewExecutor_spawn_Results creates a new list of Executor_spawn_Results.
-func NewExecutor_spawn_Results_List(s *capnp.Segment, sz int32) (Executor_spawn_Results_List, error) {
+// NewExecutor_exec_Results creates a new list of Executor_exec_Results.
+func NewExecutor_exec_Results_List(s *capnp.Segment, sz int32) (Executor_exec_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Executor_spawn_Results](l), err
+	return capnp.StructList[Executor_exec_Results](l), err
 }
 
-// Executor_spawn_Results_Future is a wrapper for a Executor_spawn_Results promised by a client call.
-type Executor_spawn_Results_Future struct{ *capnp.Future }
+// Executor_exec_Results_Future is a wrapper for a Executor_exec_Results promised by a client call.
+type Executor_exec_Results_Future struct{ *capnp.Future }
 
-func (f Executor_spawn_Results_Future) Struct() (Executor_spawn_Results, error) {
+func (f Executor_exec_Results_Future) Struct() (Executor_exec_Results, error) {
 	p, err := f.Future.Ptr()
-	return Executor_spawn_Results(p.Struct()), err
+	return Executor_exec_Results(p.Struct()), err
 }
-func (p Executor_spawn_Results_Future) Process() Process {
+func (p Executor_exec_Results_Future) Process() Process {
 	return Process(p.Future.Field(0, nil).Client())
 }
 
@@ -357,52 +339,12 @@ type Process capnp.Client
 // Process_TypeID is the unique identifier for the type Process.
 const Process_TypeID = 0xda23f0d3a8250633
 
-func (c Process) Start(ctx context.Context, params func(Process_start_Params) error) (Process_start_Results_Future, capnp.ReleaseFunc) {
-
-	s := capnp.Send{
-		Method: capnp.Method{
-			InterfaceID:   0xda23f0d3a8250633,
-			MethodID:      0,
-			InterfaceName: "process.capnp:Process",
-			MethodName:    "start",
-		},
-	}
-	if params != nil {
-		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Process_start_Params(s)) }
-	}
-
-	ans, release := capnp.Client(c).SendCall(ctx, s)
-	return Process_start_Results_Future{Future: ans.Future()}, release
-
-}
-
-func (c Process) Stop(ctx context.Context, params func(Process_stop_Params) error) (Process_stop_Results_Future, capnp.ReleaseFunc) {
-
-	s := capnp.Send{
-		Method: capnp.Method{
-			InterfaceID:   0xda23f0d3a8250633,
-			MethodID:      1,
-			InterfaceName: "process.capnp:Process",
-			MethodName:    "stop",
-		},
-	}
-	if params != nil {
-		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Process_stop_Params(s)) }
-	}
-
-	ans, release := capnp.Client(c).SendCall(ctx, s)
-	return Process_stop_Results_Future{Future: ans.Future()}, release
-
-}
-
 func (c Process) Wait(ctx context.Context, params func(Process_wait_Params) error) (Process_wait_Results_Future, capnp.ReleaseFunc) {
 
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xda23f0d3a8250633,
-			MethodID:      2,
+			MethodID:      0,
 			InterfaceName: "process.capnp:Process",
 			MethodName:    "wait",
 		},
@@ -414,6 +356,26 @@ func (c Process) Wait(ctx context.Context, params func(Process_wait_Params) erro
 
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Process_wait_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c Process) Kill(ctx context.Context, params func(Process_kill_Params) error) (Process_kill_Results_Future, capnp.ReleaseFunc) {
+
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0xda23f0d3a8250633,
+			MethodID:      1,
+			InterfaceName: "process.capnp:Process",
+			MethodName:    "kill",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Process_kill_Params(s)) }
+	}
+
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return Process_kill_Results_Future{Future: ans.Future()}, release
 
 }
 
@@ -490,11 +452,9 @@ func (c Process) GetFlowLimiter() fc.FlowLimiter {
 
 // A Process_Server is a Process with a local implementation.
 type Process_Server interface {
-	Start(context.Context, Process_start) error
-
-	Stop(context.Context, Process_stop) error
-
 	Wait(context.Context, Process_wait) error
+
+	Kill(context.Context, Process_kill) error
 }
 
 // Process_NewServer creates a new Server from an implementation of Process_Server.
@@ -513,37 +473,13 @@ func Process_ServerToClient(s Process_Server) Process {
 // This can be used to create a more complicated Server.
 func Process_Methods(methods []server.Method, s Process_Server) []server.Method {
 	if cap(methods) == 0 {
-		methods = make([]server.Method, 0, 3)
+		methods = make([]server.Method, 0, 2)
 	}
 
 	methods = append(methods, server.Method{
 		Method: capnp.Method{
 			InterfaceID:   0xda23f0d3a8250633,
 			MethodID:      0,
-			InterfaceName: "process.capnp:Process",
-			MethodName:    "start",
-		},
-		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.Start(ctx, Process_start{call})
-		},
-	})
-
-	methods = append(methods, server.Method{
-		Method: capnp.Method{
-			InterfaceID:   0xda23f0d3a8250633,
-			MethodID:      1,
-			InterfaceName: "process.capnp:Process",
-			MethodName:    "stop",
-		},
-		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.Stop(ctx, Process_stop{call})
-		},
-	})
-
-	methods = append(methods, server.Method{
-		Method: capnp.Method{
-			InterfaceID:   0xda23f0d3a8250633,
-			MethodID:      2,
 			InterfaceName: "process.capnp:Process",
 			MethodName:    "wait",
 		},
@@ -552,41 +488,19 @@ func Process_Methods(methods []server.Method, s Process_Server) []server.Method 
 		},
 	})
 
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xda23f0d3a8250633,
+			MethodID:      1,
+			InterfaceName: "process.capnp:Process",
+			MethodName:    "kill",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Kill(ctx, Process_kill{call})
+		},
+	})
+
 	return methods
-}
-
-// Process_start holds the state for a server call to Process.start.
-// See server.Call for documentation.
-type Process_start struct {
-	*server.Call
-}
-
-// Args returns the call's arguments.
-func (c Process_start) Args() Process_start_Params {
-	return Process_start_Params(c.Call.Args())
-}
-
-// AllocResults allocates the results struct.
-func (c Process_start) AllocResults() (Process_start_Results, error) {
-	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Process_start_Results(r), err
-}
-
-// Process_stop holds the state for a server call to Process.stop.
-// See server.Call for documentation.
-type Process_stop struct {
-	*server.Call
-}
-
-// Args returns the call's arguments.
-func (c Process_stop) Args() Process_stop_Params {
-	return Process_stop_Params(c.Call.Args())
-}
-
-// AllocResults allocates the results struct.
-func (c Process_stop) AllocResults() (Process_stop_Results, error) {
-	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Process_stop_Results(r), err
 }
 
 // Process_wait holds the state for a server call to Process.wait.
@@ -606,6 +520,23 @@ func (c Process_wait) AllocResults() (Process_wait_Results, error) {
 	return Process_wait_Results(r), err
 }
 
+// Process_kill holds the state for a server call to Process.kill.
+// See server.Call for documentation.
+type Process_kill struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c Process_kill) Args() Process_kill_Params {
+	return Process_kill_Params(c.Call.Args())
+}
+
+// AllocResults allocates the results struct.
+func (c Process_kill) AllocResults() (Process_kill_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Process_kill_Results(r), err
+}
+
 // Process_List is a list of Process.
 type Process_List = capnp.CapList[Process]
 
@@ -615,270 +546,10 @@ func NewProcess_List(s *capnp.Segment, sz int32) (Process_List, error) {
 	return capnp.CapList[Process](l), err
 }
 
-type Process_start_Params capnp.Struct
-
-// Process_start_Params_TypeID is the unique identifier for the type Process_start_Params.
-const Process_start_Params_TypeID = 0xf9694ae208dbb3e3
-
-func NewProcess_start_Params(s *capnp.Segment) (Process_start_Params, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Process_start_Params(st), err
-}
-
-func NewRootProcess_start_Params(s *capnp.Segment) (Process_start_Params, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Process_start_Params(st), err
-}
-
-func ReadRootProcess_start_Params(msg *capnp.Message) (Process_start_Params, error) {
-	root, err := msg.Root()
-	return Process_start_Params(root.Struct()), err
-}
-
-func (s Process_start_Params) String() string {
-	str, _ := text.Marshal(0xf9694ae208dbb3e3, capnp.Struct(s))
-	return str
-}
-
-func (s Process_start_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
-	return capnp.Struct(s).EncodeAsPtr(seg)
-}
-
-func (Process_start_Params) DecodeFromPtr(p capnp.Ptr) Process_start_Params {
-	return Process_start_Params(capnp.Struct{}.DecodeFromPtr(p))
-}
-
-func (s Process_start_Params) ToPtr() capnp.Ptr {
-	return capnp.Struct(s).ToPtr()
-}
-func (s Process_start_Params) IsValid() bool {
-	return capnp.Struct(s).IsValid()
-}
-
-func (s Process_start_Params) Message() *capnp.Message {
-	return capnp.Struct(s).Message()
-}
-
-func (s Process_start_Params) Segment() *capnp.Segment {
-	return capnp.Struct(s).Segment()
-}
-
-// Process_start_Params_List is a list of Process_start_Params.
-type Process_start_Params_List = capnp.StructList[Process_start_Params]
-
-// NewProcess_start_Params creates a new list of Process_start_Params.
-func NewProcess_start_Params_List(s *capnp.Segment, sz int32) (Process_start_Params_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Process_start_Params](l), err
-}
-
-// Process_start_Params_Future is a wrapper for a Process_start_Params promised by a client call.
-type Process_start_Params_Future struct{ *capnp.Future }
-
-func (f Process_start_Params_Future) Struct() (Process_start_Params, error) {
-	p, err := f.Future.Ptr()
-	return Process_start_Params(p.Struct()), err
-}
-
-type Process_start_Results capnp.Struct
-
-// Process_start_Results_TypeID is the unique identifier for the type Process_start_Results.
-const Process_start_Results_TypeID = 0xd72ab4a0243047ac
-
-func NewProcess_start_Results(s *capnp.Segment) (Process_start_Results, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Process_start_Results(st), err
-}
-
-func NewRootProcess_start_Results(s *capnp.Segment) (Process_start_Results, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Process_start_Results(st), err
-}
-
-func ReadRootProcess_start_Results(msg *capnp.Message) (Process_start_Results, error) {
-	root, err := msg.Root()
-	return Process_start_Results(root.Struct()), err
-}
-
-func (s Process_start_Results) String() string {
-	str, _ := text.Marshal(0xd72ab4a0243047ac, capnp.Struct(s))
-	return str
-}
-
-func (s Process_start_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
-	return capnp.Struct(s).EncodeAsPtr(seg)
-}
-
-func (Process_start_Results) DecodeFromPtr(p capnp.Ptr) Process_start_Results {
-	return Process_start_Results(capnp.Struct{}.DecodeFromPtr(p))
-}
-
-func (s Process_start_Results) ToPtr() capnp.Ptr {
-	return capnp.Struct(s).ToPtr()
-}
-func (s Process_start_Results) IsValid() bool {
-	return capnp.Struct(s).IsValid()
-}
-
-func (s Process_start_Results) Message() *capnp.Message {
-	return capnp.Struct(s).Message()
-}
-
-func (s Process_start_Results) Segment() *capnp.Segment {
-	return capnp.Struct(s).Segment()
-}
-
-// Process_start_Results_List is a list of Process_start_Results.
-type Process_start_Results_List = capnp.StructList[Process_start_Results]
-
-// NewProcess_start_Results creates a new list of Process_start_Results.
-func NewProcess_start_Results_List(s *capnp.Segment, sz int32) (Process_start_Results_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Process_start_Results](l), err
-}
-
-// Process_start_Results_Future is a wrapper for a Process_start_Results promised by a client call.
-type Process_start_Results_Future struct{ *capnp.Future }
-
-func (f Process_start_Results_Future) Struct() (Process_start_Results, error) {
-	p, err := f.Future.Ptr()
-	return Process_start_Results(p.Struct()), err
-}
-
-type Process_stop_Params capnp.Struct
-
-// Process_stop_Params_TypeID is the unique identifier for the type Process_stop_Params.
-const Process_stop_Params_TypeID = 0xeea7ae19b02f5d47
-
-func NewProcess_stop_Params(s *capnp.Segment) (Process_stop_Params, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Process_stop_Params(st), err
-}
-
-func NewRootProcess_stop_Params(s *capnp.Segment) (Process_stop_Params, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Process_stop_Params(st), err
-}
-
-func ReadRootProcess_stop_Params(msg *capnp.Message) (Process_stop_Params, error) {
-	root, err := msg.Root()
-	return Process_stop_Params(root.Struct()), err
-}
-
-func (s Process_stop_Params) String() string {
-	str, _ := text.Marshal(0xeea7ae19b02f5d47, capnp.Struct(s))
-	return str
-}
-
-func (s Process_stop_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
-	return capnp.Struct(s).EncodeAsPtr(seg)
-}
-
-func (Process_stop_Params) DecodeFromPtr(p capnp.Ptr) Process_stop_Params {
-	return Process_stop_Params(capnp.Struct{}.DecodeFromPtr(p))
-}
-
-func (s Process_stop_Params) ToPtr() capnp.Ptr {
-	return capnp.Struct(s).ToPtr()
-}
-func (s Process_stop_Params) IsValid() bool {
-	return capnp.Struct(s).IsValid()
-}
-
-func (s Process_stop_Params) Message() *capnp.Message {
-	return capnp.Struct(s).Message()
-}
-
-func (s Process_stop_Params) Segment() *capnp.Segment {
-	return capnp.Struct(s).Segment()
-}
-
-// Process_stop_Params_List is a list of Process_stop_Params.
-type Process_stop_Params_List = capnp.StructList[Process_stop_Params]
-
-// NewProcess_stop_Params creates a new list of Process_stop_Params.
-func NewProcess_stop_Params_List(s *capnp.Segment, sz int32) (Process_stop_Params_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Process_stop_Params](l), err
-}
-
-// Process_stop_Params_Future is a wrapper for a Process_stop_Params promised by a client call.
-type Process_stop_Params_Future struct{ *capnp.Future }
-
-func (f Process_stop_Params_Future) Struct() (Process_stop_Params, error) {
-	p, err := f.Future.Ptr()
-	return Process_stop_Params(p.Struct()), err
-}
-
-type Process_stop_Results capnp.Struct
-
-// Process_stop_Results_TypeID is the unique identifier for the type Process_stop_Results.
-const Process_stop_Results_TypeID = 0xc53168b273d497ee
-
-func NewProcess_stop_Results(s *capnp.Segment) (Process_stop_Results, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Process_stop_Results(st), err
-}
-
-func NewRootProcess_stop_Results(s *capnp.Segment) (Process_stop_Results, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Process_stop_Results(st), err
-}
-
-func ReadRootProcess_stop_Results(msg *capnp.Message) (Process_stop_Results, error) {
-	root, err := msg.Root()
-	return Process_stop_Results(root.Struct()), err
-}
-
-func (s Process_stop_Results) String() string {
-	str, _ := text.Marshal(0xc53168b273d497ee, capnp.Struct(s))
-	return str
-}
-
-func (s Process_stop_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
-	return capnp.Struct(s).EncodeAsPtr(seg)
-}
-
-func (Process_stop_Results) DecodeFromPtr(p capnp.Ptr) Process_stop_Results {
-	return Process_stop_Results(capnp.Struct{}.DecodeFromPtr(p))
-}
-
-func (s Process_stop_Results) ToPtr() capnp.Ptr {
-	return capnp.Struct(s).ToPtr()
-}
-func (s Process_stop_Results) IsValid() bool {
-	return capnp.Struct(s).IsValid()
-}
-
-func (s Process_stop_Results) Message() *capnp.Message {
-	return capnp.Struct(s).Message()
-}
-
-func (s Process_stop_Results) Segment() *capnp.Segment {
-	return capnp.Struct(s).Segment()
-}
-
-// Process_stop_Results_List is a list of Process_stop_Results.
-type Process_stop_Results_List = capnp.StructList[Process_stop_Results]
-
-// NewProcess_stop_Results creates a new list of Process_stop_Results.
-func NewProcess_stop_Results_List(s *capnp.Segment, sz int32) (Process_stop_Results_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Process_stop_Results](l), err
-}
-
-// Process_stop_Results_Future is a wrapper for a Process_stop_Results promised by a client call.
-type Process_stop_Results_Future struct{ *capnp.Future }
-
-func (f Process_stop_Results_Future) Struct() (Process_stop_Results, error) {
-	p, err := f.Future.Ptr()
-	return Process_stop_Results(p.Struct()), err
-}
-
 type Process_wait_Params capnp.Struct
 
 // Process_wait_Params_TypeID is the unique identifier for the type Process_wait_Params.
-const Process_wait_Params_TypeID = 0xd22f75df06c187e8
+const Process_wait_Params_TypeID = 0xf9694ae208dbb3e3
 
 func NewProcess_wait_Params(s *capnp.Segment) (Process_wait_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
@@ -896,7 +567,7 @@ func ReadRootProcess_wait_Params(msg *capnp.Message) (Process_wait_Params, error
 }
 
 func (s Process_wait_Params) String() string {
-	str, _ := text.Marshal(0xd22f75df06c187e8, capnp.Struct(s))
+	str, _ := text.Marshal(0xf9694ae208dbb3e3, capnp.Struct(s))
 	return str
 }
 
@@ -943,7 +614,7 @@ func (f Process_wait_Params_Future) Struct() (Process_wait_Params, error) {
 type Process_wait_Results capnp.Struct
 
 // Process_wait_Results_TypeID is the unique identifier for the type Process_wait_Results.
-const Process_wait_Results_TypeID = 0x9d6074459fa0602b
+const Process_wait_Results_TypeID = 0xd72ab4a0243047ac
 
 func NewProcess_wait_Results(s *capnp.Segment) (Process_wait_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 0})
@@ -961,7 +632,7 @@ func ReadRootProcess_wait_Results(msg *capnp.Message) (Process_wait_Results, err
 }
 
 func (s Process_wait_Results) String() string {
-	str, _ := text.Marshal(0x9d6074459fa0602b, capnp.Struct(s))
+	str, _ := text.Marshal(0xd72ab4a0243047ac, capnp.Struct(s))
 	return str
 }
 
@@ -1012,54 +683,174 @@ func (f Process_wait_Results_Future) Struct() (Process_wait_Results, error) {
 	return Process_wait_Results(p.Struct()), err
 }
 
-const schema_9a51e53177277763 = "x\xda|\x92Oh\x13M\x18\xc6\xdfgf\xd3\x0d|" +
-	"\xc9W\xa6[\xab\xf6R\xac\x15\xb5\xd26\xb1\x1eT\x94" +
-	"\x06%\x14zq\xc7\x9b\x82\xd25.\x18h\x93\xb8\x7f" +
-	"H{\x10\xe9A\xc4\xa3\x8a\x88\x8aX\x0fR\x05\xd1R" +
-	"\xbdX\xf1\xe0\xa1x\x95\xa8\x14\xf4 (\x82\x08\x16\xf1" +
-	"\xe6ie6\xd95\xad\xa6\xb7\x19\xdew\x9e\xf7y\x7f" +
-	"\xf3dF\x90\xd3\xb2\xe9e\x8d\x98\xdc\x9bh\x0bv\x8d" +
-	"\xcf\xde\xc9{\xe3\xb7Iv\x01D\x9aN4,Y7" +
-	"\x08\xc616B\x08j\xfe\xcc\xbd\xc5\x93\x83\x8fI\xfc" +
-	"\xcf\x83Bu{5\xfbE\xde$\x82q\x8e-\x1a\x17" +
-	"\x98Nd\xcc\xb0Q\xe3\x81:\x05\xb7^\xd7\xe6\xe6\xbb" +
-	"\x8e<'\xb1\x11D\x09(\xb5\xcb\xac_\xa9\xdd\x08\xd5" +
-	"V\xae\xbfu\x17\xced\x97HtE\xd3\x9e\xa9iZ" +
-	"\xf0\xf5\xe2\xcb\xb6\x8f\xfeP\xad\xa9r\x97u\xa8\xca\xc3" +
-	"\xd1L\xdf\xec\xd3\xfe\xe5\xa6\xca%\xd6\xab*\xc3m\xdb" +
-	"\xee\xbf\xf9\xb1\xf5\xfd_\xde\xce\xb2\x05c:\xf4\xe6\xb3" +
-	"W\xc6\xf7\xd0\xdb\xe8\x89\xa1\xf9\xcd\x8f\xe6V\x9ad\xde" +
-	"\xd5\x07t\\\xbdr\xed\xdb\xc1\xff~6\\\xab\xee\xe1" +
-	"\x17j\x02\x8c%V%\x04\x9f\x9f|H~\x1a+\xfe" +
-	"jz:\xc0\xbbA\x99\xa0\xe2\x94\x0b\xb6\xeb\x0e\xf2\x82" +
-	"U)U\xf6\x9b\x8dk\xd5*z}Gm\xd7\x9f\xe0" +
-	"\x9e+5\xae\x11i \x12\xe91\"\x99\xe2\x90\x9b\x18" +
-	"\x02{\xaa\xe8\x1d.\x9f\xb6\x89\x08IbH\x12b=" +
-	"\xd4\xf5\xf2S#v\xc1\xf7\xca\x8e\x09H\x8d'\x88b" +
-	"\xb3\x88X\x0b\xb1\x9b\x98H\xe8=n\xc5\xaa\x96r0" +
-	"\x81\xb5\xb6\xf2Su\x95\xc1\xb0E\x19k\xf7'V\x1b" +
-	";D$\x93\x1c\xb2\x93\xe1|\xe35\xc4\x1f\xc0\x04\x08" +
-	"B\xabu]\xaf\\\x89\xd7]\x97\x89i9\xd6$\xdc" +
-	"\xd6B\x96S\x07\xa7O4)!\xea\xea\x09\xef\x0aF" +
-	"*\x84\x11}\x0c\xa2\x8c\x08\xa9`\xe4u \xfeoD" +
-	"\x99\x13\xfb\xfa\x89\x89\x01\x1d,\x0e\x1b\xa2\xf8\x8b-\xaa" +
-	"\xb6A\xef\x09\x1d\xe4\xd0\xaeV\xca\xa1]\x99\xfe'\xd2" +
-	"U\xab\xb7\xd8j\x0dv\xd3rtk\xd2\x95\xc9\x98\xfa" +
-	"N\x15\x87\x1d\x1cr\x0f\x83\x00:\x01@d\x8f\x13\xc9" +
-	"\x0c\x87<\xc0\x10\x9c\x9a\xf6\xec(#ibH\x13\x02" +
-	"\xbb\xe49\xd3f\xb9H\xbc\xe4!E\x0c)\"\x81^" +
-	"\xdd\xf1K\xebsU6\xf9\xa4\xfb;\x00\x00\xff\xff\xdc" +
-	"a-["
+type Process_kill_Params capnp.Struct
+
+// Process_kill_Params_TypeID is the unique identifier for the type Process_kill_Params.
+const Process_kill_Params_TypeID = 0xeea7ae19b02f5d47
+
+func NewProcess_kill_Params(s *capnp.Segment) (Process_kill_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Process_kill_Params(st), err
+}
+
+func NewRootProcess_kill_Params(s *capnp.Segment) (Process_kill_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Process_kill_Params(st), err
+}
+
+func ReadRootProcess_kill_Params(msg *capnp.Message) (Process_kill_Params, error) {
+	root, err := msg.Root()
+	return Process_kill_Params(root.Struct()), err
+}
+
+func (s Process_kill_Params) String() string {
+	str, _ := text.Marshal(0xeea7ae19b02f5d47, capnp.Struct(s))
+	return str
+}
+
+func (s Process_kill_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Process_kill_Params) DecodeFromPtr(p capnp.Ptr) Process_kill_Params {
+	return Process_kill_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Process_kill_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Process_kill_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Process_kill_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Process_kill_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+
+// Process_kill_Params_List is a list of Process_kill_Params.
+type Process_kill_Params_List = capnp.StructList[Process_kill_Params]
+
+// NewProcess_kill_Params creates a new list of Process_kill_Params.
+func NewProcess_kill_Params_List(s *capnp.Segment, sz int32) (Process_kill_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	return capnp.StructList[Process_kill_Params](l), err
+}
+
+// Process_kill_Params_Future is a wrapper for a Process_kill_Params promised by a client call.
+type Process_kill_Params_Future struct{ *capnp.Future }
+
+func (f Process_kill_Params_Future) Struct() (Process_kill_Params, error) {
+	p, err := f.Future.Ptr()
+	return Process_kill_Params(p.Struct()), err
+}
+
+type Process_kill_Results capnp.Struct
+
+// Process_kill_Results_TypeID is the unique identifier for the type Process_kill_Results.
+const Process_kill_Results_TypeID = 0xc53168b273d497ee
+
+func NewProcess_kill_Results(s *capnp.Segment) (Process_kill_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Process_kill_Results(st), err
+}
+
+func NewRootProcess_kill_Results(s *capnp.Segment) (Process_kill_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Process_kill_Results(st), err
+}
+
+func ReadRootProcess_kill_Results(msg *capnp.Message) (Process_kill_Results, error) {
+	root, err := msg.Root()
+	return Process_kill_Results(root.Struct()), err
+}
+
+func (s Process_kill_Results) String() string {
+	str, _ := text.Marshal(0xc53168b273d497ee, capnp.Struct(s))
+	return str
+}
+
+func (s Process_kill_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Process_kill_Results) DecodeFromPtr(p capnp.Ptr) Process_kill_Results {
+	return Process_kill_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Process_kill_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Process_kill_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Process_kill_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Process_kill_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+
+// Process_kill_Results_List is a list of Process_kill_Results.
+type Process_kill_Results_List = capnp.StructList[Process_kill_Results]
+
+// NewProcess_kill_Results creates a new list of Process_kill_Results.
+func NewProcess_kill_Results_List(s *capnp.Segment, sz int32) (Process_kill_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	return capnp.StructList[Process_kill_Results](l), err
+}
+
+// Process_kill_Results_Future is a wrapper for a Process_kill_Results promised by a client call.
+type Process_kill_Results_Future struct{ *capnp.Future }
+
+func (f Process_kill_Results_Future) Struct() (Process_kill_Results, error) {
+	p, err := f.Future.Ptr()
+	return Process_kill_Results(p.Struct()), err
+}
+
+const schema_9a51e53177277763 = "x\xda|\x921h\x13Q\x18\xc7\xff\xffw/\xbd\x03" +
+	"=\xc3\xebi\xb4\x82\x08\xdaP\xe8\x10\x13\x8a\x8b \x0d" +
+	"\x8a\x04\x0bb\x9e\xbbB<\x0f\x0c&&\xe4.$N" +
+	"\xe2 \xee\x8a\x88\x8a\xe0\"u\x10-\xd5\xa9\xce\xeeR" +
+	"\x05A7\xc5\xc5\xa1\x88[\x079y\xd7\\<\xa9\xe9" +
+	"v\x8f\xef\xfb\xfe\xff\xff\xf7\xfb\xae,Y\x95\x15wN" +
+	"B\xe8rn*^\xef\xdfz\xb6v\xa9\xf4\x0aj\x8f" +
+	"\x15\xfb\x83\xb9A\xe5\xbb~\x04\xd0\xdb\xe4\x9aGa\x03" +
+	"\xdeo\xd6\xbc\xa2\xf9\x8a\x1f\xbf__^)\x9c\x7f\x0b" +
+	"\xb5\x9f@\x8e6\xb0\xe0\x8a#\x04\xbd}b\x11\x8c7" +
+	"\x1e|\x0cW\xafV\xdeA\x15\x08HS?.\x0e\x12" +
+	"2~Q+\xcf>}3\xff\x09\xba\xc0\xb4t\xc8\x94" +
+	"\xe8\x15\x93\xd1\x85\xa9\xe2\xf3\x0f?\x8f~\xde\x16\xe4\xac" +
+	"X\xf5t\x12\xe4\x9c\xb8\xe3=I\x82\xd4.\x1e[\x99" +
+	"y\xb9\xbc\x91\xf1\xb9-\xa6\x8d\xcf\xf4\xbd\xbb\xf7\x7f\x9c" +
+	"\xdc\xf5+\x1b\xb1\xbd\xe5\xd3O|\xbe\xbd\xfe\xe2|]" +
+	"jnfF\x1f\x9a\xd1r\xdc\xedu\xfc \x0cK\xf4" +
+	"\x1b\xdd\xeb\xdd\x13g\x86\x8b\x81\xdf\x8f:\xbd:\xa9\xa5" +
+	"\x95\x03\xc6\xe2LA(5\x0f\xa1rv>\x18\x06~" +
+	"\x95ur\xacb\xa5*[\"%\xd31{!\x08\xfb" +
+	"v+\x0a\xb5\xb4$ \x09(\xf7\x14\xa0\x1d\x8bz\xaf" +
+	"\xe0\xcd\xd10\xd5_\x1c \x15\xb6\xc9\xd6G\xcfk\xcd" +
+	"V+QmYQ8\xa9i\xd0hF\xe3\xa6\xac\xf5" +
+	"\x12\xa0w[\xd4\x07\x04\xe3`\xd8\x8cNw\xae\x04\x00" +
+	"\xe8@\xd0\xc9\x982\xd5;\x9c\xbc\x0d\x10'\x01\x92\xc2" +
+	"dz^U1@\x8a69\xbe\x11\xd3\x9fB\xcd\x98" +
+	"\x9ak\xe7M\x9e*\xf3&\xfb\x7f\x99\xfd\xb3\\\xbd\xd1" +
+	"k\xb4\x19\xee\xcc\xd54Y\xed\x89\xbb]\xbe\x11\x05\xfe" +
+	"h7\x17\x82\xeed\xa0\x09\xab\x91\xe7\x9f\x00\x00\x00\xff" +
+	"\xff8\xaa\xe7q"
 
 func RegisterSchema(reg *schemas.Registry) {
 	reg.Register(&schemas.Schema{
 		String: schema_9a51e53177277763,
 		Nodes: []uint64{
-			0x9d6074459fa0602b,
 			0xaf2e5ebaa58175d2,
 			0xbb4f16b0a7d2d09b,
 			0xc53168b273d497ee,
-			0xd22f75df06c187e8,
 			0xd72ab4a0243047ac,
 			0xda23f0d3a8250633,
 			0xeea7ae19b02f5d47,
