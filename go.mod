@@ -30,7 +30,6 @@ require (
 
 require (
 	github.com/golang/mock v1.6.0
-	github.com/hashicorp/go-memdb v1.3.4
 	github.com/ipfs/go-datastore v0.6.0
 	github.com/ipfs/go-ds-badger2 v0.1.3
 	github.com/lthibault/go-libp2p-inproc-transport v0.4.0
@@ -42,6 +41,7 @@ require (
 	golang.org/x/sync v0.1.0
 	gopkg.in/alexcesaro/statsd.v2 v2.0.0
 	lukechampine.com/blake3 v1.1.7
+	zenhack.net/go/util v0.0.0-20230407221818-ef608d25cf61
 )
 
 require (
@@ -75,6 +75,7 @@ require (
 	github.com/google/pprof v0.0.0-20230406165453-00490a63f317 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
+	github.com/hashicorp/go-memdb v1.3.4 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.2 // indirect
@@ -152,5 +153,4 @@ require (
 	gonum.org/v1/gonum v0.11.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
-	zenhack.net/go/util v0.0.0-20230407221818-ef608d25cf61 // indirect
 )

@@ -12,7 +12,7 @@ interface Anchor {
     # any given path can only access their children.  They cannot access
     # their parents.  This provides strong isolation properties.
 
-    ls   @0 () -> (names :List(Text), children :List(Anchor));
+    ls   @0 () -> (children :List(Child));
     # ls returns the Anchor's children along with their names.
     # The path to the i'th child is given by:
     #
@@ -23,4 +23,9 @@ interface Anchor {
     # Walk traverses the anchor hierarchy along the specified path. Any
     # anchors in the path that do not currently exist are created along
     # the way.
+
+    struct Child {
+        anchor @0 :Anchor;
+        name   @1 :Text;
+    }
 }
