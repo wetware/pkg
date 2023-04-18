@@ -11,7 +11,6 @@ import (
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/cluster"
 	"github.com/wetware/ww/pkg/anchor"
-	"github.com/wetware/ww/pkg/csp"
 	"github.com/wetware/ww/pkg/host"
 	"github.com/wetware/ww/pkg/pubsub"
 )
@@ -71,7 +70,7 @@ func (j Joiner) Join(vat casm.Vat, r Router) (*Node, error) {
 		PubSubProvider:   j.pubsub(vat.Logger, r),
 		AnchorProvider:   j.anchor(),
 		DebugProvider:    j.Debugger.New(),
-		ExecutorProvider: j.executor(),
+		ExecutorProvider: j.Runtime.New(),
 	})
 
 	return &Node{
@@ -90,10 +89,4 @@ func (j Joiner) pubsub(log log.Logger, router pubsub.TopicJoiner) *pubsub.Server
 // TODO(soon):  return a host anchor instead of a generic anchor.
 func (j Joiner) anchor() *anchor.Node {
 	return new(anchor.Node) // root node
-}
-
-func (j Joiner) executor() csp.Server {
-	return csp.Server{
-		Runtime: j.Runtime.New(),
-	}
 }
