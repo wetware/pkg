@@ -41,7 +41,6 @@ require (
 	golang.org/x/sync v0.1.0
 	gopkg.in/alexcesaro/statsd.v2 v2.0.0
 	lukechampine.com/blake3 v1.1.7
-	zenhack.net/go/util v0.0.0-20230407221818-ef608d25cf61
 )
 
 require (
@@ -153,4 +152,5 @@ require (
 	gonum.org/v1/gonum v0.11.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
+	zenhack.net/go/util v0.0.0-20230407221818-ef608d25cf61 // indirect
 )
