@@ -4,10 +4,12 @@ import (
 	"context"
 	"time"
 
-	"go.uber.org/fx"
-
+	"capnproto.org/go/capnp/v3"
+	"github.com/lthibault/log"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
+	"go.uber.org/fx"
+
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/cluster"
 	"github.com/wetware/casm/pkg/cluster/pulse"
@@ -64,6 +66,7 @@ type RuntimeConfig struct {
 	fx.In
 
 	Ctx    context.Context      `optional:"true"`
+	Logger log.Logger           `optional:"true"`
 	Config wazero.RuntimeConfig `optional:"true"`
 }
 
@@ -79,9 +82,13 @@ func (rc RuntimeConfig) New() csp.Runtime {
 	r := wazero.NewRuntimeWithConfig(rc.Ctx, rc.Config)
 	wasi_snapshot_preview1.MustInstantiate(rc.Ctx, r)
 
+	m := proc.BindModule(rc.Ctx, r,
+		proc.WithLogger(rc.Logger),
+		proc.WithClient(capnp.Client{})) // XXX
+
 	return csp.Runtime{
 		Runtime:    r,
-		HostModule: proc.BindModule(rc.Ctx, r),
+		HostModule: m,
 	}
 }
 

@@ -9,6 +9,14 @@ package ww
 
 */
 
-func test(a, b uint32) uint32 {
-	return a + b
+func hostRead(offset, length uint32, n *uint32) int32 {
+	return 0
+}
+
+func hostWrite(offset, length uint32, n *uint32) int32 {
+	return 0
+}
+
+func hostClose() int32 {
+	return 0
 }

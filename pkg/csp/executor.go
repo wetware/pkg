@@ -117,7 +117,7 @@ func (r Runtime) mkmod(ctx context.Context, args api.Executor_exec_Params) (wasm
 func (r Runtime) spawn(fn wasm.Function) (<-chan execResult, context.CancelFunc) {
 	out := make(chan execResult, 1)
 
-	// NOTE:  we use the runtime context rather than the context passed into the
+	// NOTE:  we use context.Background instead of the context obtained from the
 	//        rpc handler. This ensures that a process can continue to run after
 	//        the rpc handler has returned. Note also that this context is bound
 	//        to the application lifetime, so processes cannot block a shutdown.

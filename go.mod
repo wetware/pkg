@@ -1,6 +1,6 @@
 module github.com/wetware/ww
 
-go 1.19
+go 1.20
 
 require (
 	capnproto.org/go/capnp/v3 v3.0.0-alpha.27
@@ -35,7 +35,7 @@ require (
 	github.com/ipfs/go-ds-badger2 v0.1.3
 	github.com/lthibault/go-libp2p-inproc-transport v0.4.0
 	github.com/multiformats/go-multistream v0.4.1
-	github.com/stealthrocket/wazergo v0.11.0
+	github.com/stealthrocket/wazergo v0.12.0
 	github.com/stretchr/testify v1.8.2
 	github.com/tetratelabs/wazero v1.0.1
 	github.com/thejerf/suture/v4 v4.0.2
@@ -127,7 +127,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/polydawn/refmt v0.89.0 // indirect
-	github.com/prometheus/client_golang v1.14.0 // indirect
+	github.com/prometheus/client_golang v1.15.0 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/quic-go/qpack v0.4.0 // indirect
 	github.com/quic-go/qtls-go1-19 v0.3.2 // indirect
