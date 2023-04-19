@@ -95,7 +95,12 @@ func (loc Location) VerifySignature() error {
 	if err != nil {
 		return fmt.Errorf("failed to extract peer ID: %w", err)
 	}
-	peerID := peer.ID(idBytes)
+
+	peerID, err := peer.Decode(idBytes)
+	if err != nil {
+		return fmt.Errorf("failed to decode peer ID: %w", err)
+	}
+
 	pubKey, err := peerID.ExtractPublicKey()
 	if err != nil {
 		return fmt.Errorf("failed to extract public key: %w", err)

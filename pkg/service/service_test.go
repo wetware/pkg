@@ -45,7 +45,7 @@ func TestDiscover(t *testing.T) {
 	)
 
 	// advertise and find
-	loc, err := generateLocation(maddrN)
+	loc, err := generateLocation(maddrN, serviceName)
 	require.NoError(t, err)
 
 	topic, release := ps.Join(ctx, serviceName)
@@ -71,7 +71,7 @@ func TestDiscover(t *testing.T) {
 	require.EqualValues(t, expected, got)
 }
 
-func generateLocation(n int) (service.Location, error) {
+func generateLocation(n int, serviceName string) (service.Location, error) {
 	loc, err := service.NewLocation()
 	if err != nil {
 		return loc, fmt.Errorf("failed to create location: %w", err)
@@ -98,8 +98,17 @@ func generateLocation(n int) (service.Location, error) {
 		return loc, fmt.Errorf("failed to generate ID from pubkey: %w", err)
 	}
 
+	pubKey, err = peerID.ExtractPublicKey()
+	if err != nil {
+		return loc, fmt.Errorf("failed to extract public key: %w", err)
+	}
+
 	if err := loc.SetID(peerID); err != nil {
 		return loc, fmt.Errorf("failed to set peer ID: %w", err)
+	}
+
+	if err := loc.SetService(serviceName); err != nil {
+		return loc, fmt.Errorf("failed to set service name: %w", err)
 	}
 
 	if err := loc.Sign(privKey); err != nil {
