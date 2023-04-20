@@ -5,7 +5,6 @@ import (
 
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
-	"github.com/libp2p/go-libp2p/core/host"
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	casm "github.com/wetware/casm/pkg"
 	ww "github.com/wetware/ww/pkg"
@@ -15,7 +14,7 @@ import (
 func (c Config) Routing() fx.Option {
 	return fx.Options(
 		fx.Provide(c.newDHT),
-		fx.Decorate(routedHost))
+		fx.Decorate(routedVat))
 }
 
 type routingConfig struct {
@@ -51,8 +50,10 @@ func (c Config) newDHT(config routingConfig, lx fx.Lifecycle) (*dual.DHT, error)
 	return d, err
 }
 
-func routedHost(h host.Host, dht *dual.DHT) host.Host {
-	return routedhost.Wrap(h, dht)
+// NOTE:  we cannot pass host.Host as an argument, as it isn't registered with Fx.
+func routedVat(vat casm.Vat, dht *dual.DHT) casm.Vat {
+	vat.Host = routedhost.Wrap(vat.Host, dht)
+	return vat
 }
 
 func lanOpt(flag Flags) []dht.Option {
