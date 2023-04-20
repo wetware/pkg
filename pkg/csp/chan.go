@@ -216,6 +216,16 @@ func Ptr(ptr capnp.Ptr) Value {
 	}
 }
 
+// Client takes any client-like type and converts it into a value
+// capable of being sent through a channel.
+func Client[T ~capnp.ClientKind](t T) Value {
+	return func(ps api.Sender_send_Params) error {
+		id := ps.Message().CapTable().Add(capnp.Client(t))
+		ifc := capnp.NewInterface(ps.Segment(), id)
+		return ps.SetValue(ifc.ToPtr())
+	}
+}
+
 // Struct takes any capnp struct and converts it into a value
 // capable of being sent through a channel.
 func Struct[T ~capnp.StructKind](t T) Value {
