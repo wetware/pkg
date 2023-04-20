@@ -7,11 +7,13 @@ import (
 	"errors"
 
 	capnp "capnproto.org/go/capnp/v3"
+	"github.com/stealthrocket/wazergo"
 	"github.com/tetratelabs/wazero"
 	"lukechampine.com/blake3"
 
 	wasm "github.com/tetratelabs/wazero/api"
 	api "github.com/wetware/ww/internal/api/process"
+	"github.com/wetware/ww/pkg/csp/proc"
 )
 
 // ByteCode is a representation of arbitrary executable data.
@@ -49,7 +51,8 @@ func (ex Executor) Exec(ctx context.Context, src []byte) (Proc, capnp.ReleaseFun
 // Runtime is the main Executor implementation.  It spawns WebAssembly-
 // based processes.  The zero-value Runtime panics.
 type Runtime struct {
-	Runtime wazero.Runtime
+	Runtime    wazero.Runtime
+	HostModule *wazergo.ModuleInstance[*proc.Module]
 }
 
 // Executor provides the Executor capability.
@@ -124,8 +127,7 @@ func (r Runtime) spawn(fn wasm.Function) (<-chan execResult, context.CancelFunc)
 		defer close(out)
 		defer cancel()
 
-		// vs, err := fn.Call(wazergo.WithModuleInstance(ctx, r.HostModule))
-		vs, err := fn.Call(ctx)
+		vs, err := fn.Call(wazergo.WithModuleInstance(ctx, r.HostModule))
 		out <- execResult{
 			Values: vs,
 			Err:    err,

@@ -6,11 +6,11 @@ import (
 	"io"
 	"os"
 
-	// "github.com/stealthrocket/wazergo"
+	"github.com/stealthrocket/wazergo"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"github.com/urfave/cli/v2"
-	// "github.com/wetware/ww/pkg/csp/proc"
+	"github.com/wetware/ww/pkg/csp/proc"
 )
 
 func Command() *cli.Command {
@@ -25,13 +25,13 @@ func Command() *cli.Command {
 
 var (
 	r wazero.Runtime
-	// h *wazergo.ModuleInstance[*proc.Module]
+	h *wazergo.ModuleInstance[*proc.Module]
 )
 
 func setup() cli.BeforeFunc {
 	return func(c *cli.Context) error {
 		r = wazero.NewRuntime(c.Context)
-		// h = proc.BindModule(c.Context, r)
+		h = proc.BindModule(c.Context, r)
 		wasi_snapshot_preview1.MustInstantiate(c.Context, r)
 		return nil
 	}
@@ -64,8 +64,7 @@ func run() cli.ActionFunc {
 			return errors.New("ww: missing export: _start")
 		}
 
-		// _, err = fn.Call(wazergo.WithModuleInstance(c.Context, h))
-		_, err = fn.Call(c.Context)
+		_, err = fn.Call(wazergo.WithModuleInstance(c.Context, h))
 		return err
 	}
 }
