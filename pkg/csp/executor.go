@@ -7,11 +7,13 @@ import (
 	"errors"
 
 	capnp "capnproto.org/go/capnp/v3"
+	"github.com/lthibault/log"
 	"github.com/stealthrocket/wazergo"
 	"github.com/tetratelabs/wazero"
 	"lukechampine.com/blake3"
 
 	wasm "github.com/tetratelabs/wazero/api"
+	cluster_api "github.com/wetware/ww/internal/api/cluster"
 	api "github.com/wetware/ww/internal/api/process"
 	"github.com/wetware/ww/pkg/csp/proc"
 )
@@ -52,11 +54,19 @@ func (ex Executor) Exec(ctx context.Context, src []byte) (Proc, capnp.ReleaseFun
 // based processes.  The zero-value Runtime panics.
 type Runtime struct {
 	Runtime    wazero.Runtime
+	Logger     log.Logger
 	HostModule *wazergo.ModuleInstance[*proc.Module]
 }
 
 // Executor provides the Executor capability.
-func (r Runtime) Executor() Executor {
+func (r Runtime) Executor(host cluster_api.Host) Executor {
+	// TODO keep track of multiple HostModules somehow and choose which one to use
+	// depending on the caller (in mkproc?)
+	r.HostModule = proc.BindModule(context.TODO(),
+		r.Runtime,
+		proc.WithLogger(r.Logger),
+		proc.WithClient(host),
+	)
 	return Executor(api.Executor_ServerToClient(r))
 }
 

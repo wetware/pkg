@@ -25,7 +25,7 @@ func (c Host) View(ctx context.Context, params func(Host_view_Params) error) (Ho
 		Method: capnp.Method{
 			InterfaceID:   0x957cbefc645fd307,
 			MethodID:      0,
-			InterfaceName: "cluster.capnp:Host",
+			InterfaceName: "api/cluster.capnp:Host",
 			MethodName:    "view",
 		},
 	}
@@ -45,7 +45,7 @@ func (c Host) PubSub(ctx context.Context, params func(Host_pubSub_Params) error)
 		Method: capnp.Method{
 			InterfaceID:   0x957cbefc645fd307,
 			MethodID:      1,
-			InterfaceName: "cluster.capnp:Host",
+			InterfaceName: "api/cluster.capnp:Host",
 			MethodName:    "pubSub",
 		},
 	}
@@ -65,7 +65,7 @@ func (c Host) Root(ctx context.Context, params func(Host_root_Params) error) (Ho
 		Method: capnp.Method{
 			InterfaceID:   0x957cbefc645fd307,
 			MethodID:      2,
-			InterfaceName: "cluster.capnp:Host",
+			InterfaceName: "api/cluster.capnp:Host",
 			MethodName:    "root",
 		},
 	}
@@ -85,7 +85,7 @@ func (c Host) Debug(ctx context.Context, params func(Host_debug_Params) error) (
 		Method: capnp.Method{
 			InterfaceID:   0x957cbefc645fd307,
 			MethodID:      3,
-			InterfaceName: "cluster.capnp:Host",
+			InterfaceName: "api/cluster.capnp:Host",
 			MethodName:    "debug",
 		},
 	}
@@ -105,12 +105,12 @@ func (c Host) Executor(ctx context.Context, params func(Host_executor_Params) er
 		Method: capnp.Method{
 			InterfaceID:   0x957cbefc645fd307,
 			MethodID:      4,
-			InterfaceName: "cluster.capnp:Host",
+			InterfaceName: "api/cluster.capnp:Host",
 			MethodName:    "executor",
 		},
 	}
 	if params != nil {
-		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Host_executor_Params(s)) }
 	}
 
@@ -226,7 +226,7 @@ func Host_Methods(methods []server.Method, s Host_Server) []server.Method {
 		Method: capnp.Method{
 			InterfaceID:   0x957cbefc645fd307,
 			MethodID:      0,
-			InterfaceName: "cluster.capnp:Host",
+			InterfaceName: "api/cluster.capnp:Host",
 			MethodName:    "view",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
@@ -238,7 +238,7 @@ func Host_Methods(methods []server.Method, s Host_Server) []server.Method {
 		Method: capnp.Method{
 			InterfaceID:   0x957cbefc645fd307,
 			MethodID:      1,
-			InterfaceName: "cluster.capnp:Host",
+			InterfaceName: "api/cluster.capnp:Host",
 			MethodName:    "pubSub",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
@@ -250,7 +250,7 @@ func Host_Methods(methods []server.Method, s Host_Server) []server.Method {
 		Method: capnp.Method{
 			InterfaceID:   0x957cbefc645fd307,
 			MethodID:      2,
-			InterfaceName: "cluster.capnp:Host",
+			InterfaceName: "api/cluster.capnp:Host",
 			MethodName:    "root",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
@@ -262,7 +262,7 @@ func Host_Methods(methods []server.Method, s Host_Server) []server.Method {
 		Method: capnp.Method{
 			InterfaceID:   0x957cbefc645fd307,
 			MethodID:      3,
-			InterfaceName: "cluster.capnp:Host",
+			InterfaceName: "api/cluster.capnp:Host",
 			MethodName:    "debug",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
@@ -274,7 +274,7 @@ func Host_Methods(methods []server.Method, s Host_Server) []server.Method {
 		Method: capnp.Method{
 			InterfaceID:   0x957cbefc645fd307,
 			MethodID:      4,
-			InterfaceName: "cluster.capnp:Host",
+			InterfaceName: "api/cluster.capnp:Host",
 			MethodName:    "executor",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
@@ -985,12 +985,12 @@ type Host_executor_Params capnp.Struct
 const Host_executor_Params_TypeID = 0xbe5314ed29d84c52
 
 func NewHost_executor_Params(s *capnp.Segment) (Host_executor_Params, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
 	return Host_executor_Params(st), err
 }
 
 func NewRootHost_executor_Params(s *capnp.Segment) (Host_executor_Params, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
 	return Host_executor_Params(st), err
 }
 
@@ -1026,13 +1026,30 @@ func (s Host_executor_Params) Message() *capnp.Message {
 func (s Host_executor_Params) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
+func (s Host_executor_Params) Host() Host {
+	p, _ := capnp.Struct(s).Ptr(0)
+	return Host(p.Interface().Client())
+}
+
+func (s Host_executor_Params) HasHost() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Host_executor_Params) SetHost(v Host) error {
+	if !v.IsValid() {
+		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
+	}
+	seg := s.Segment()
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
+	return capnp.Struct(s).SetPtr(0, in.ToPtr())
+}
 
 // Host_executor_Params_List is a list of Host_executor_Params.
 type Host_executor_Params_List = capnp.StructList[Host_executor_Params]
 
 // NewHost_executor_Params creates a new list of Host_executor_Params.
 func NewHost_executor_Params_List(s *capnp.Segment, sz int32) (Host_executor_Params_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
 	return capnp.StructList[Host_executor_Params](l), err
 }
 
@@ -1042,6 +1059,9 @@ type Host_executor_Params_Future struct{ *capnp.Future }
 func (f Host_executor_Params_Future) Struct() (Host_executor_Params, error) {
 	p, err := f.Future.Ptr()
 	return Host_executor_Params(p.Struct()), err
+}
+func (p Host_executor_Params_Future) Host() Host {
+	return Host(p.Future.Field(0, nil).Client())
 }
 
 type Host_executor_Results capnp.Struct
@@ -1129,45 +1149,46 @@ func (p Host_executor_Results_Future) Executor() process.Executor {
 	return process.Executor(p.Future.Field(0, nil).Client())
 }
 
-const schema_fcf6ac08e448a6ac = "x\xda\x8cRKh\x13Q\x14\xbd\xf7\xbd\x893\xa3\xb6" +
-	"\xf5e\xba(\x8a\xbfZ\xc1vQ\xac\"b@:]" +
-	"\x14\xdb\xdaE\xa6\xa5\xe8B\xd4$\x1dJ!5!3" +
-	"S\x15\xdcT\x08(BDAA\x17\xaej\x17Rt" +
-	"!\"Z\xc8B\\\xb9T\x17\x16D7\xa9+-\xa2" +
-	"T\x88\x04\x9e\xbcIf\xf2\x92Zt}\xcf=\xe7\x9e" +
-	"s\xee\xc1eb*}-\x9f\xb7\x01\xb1^G6\xf1" +
-	"\xe2\xf3\xd5\x95}\x07n\\\x05f \x80\xa2\x02\x18\x13" +
-	"\xdaoP\xf8\xcf\xd4\x8f\xef\xbb\x0a_\xaf\xd7\x07\x87\x8f" +
-	"i\x04A\xe1k\xefG\xf3\x85\xdb\xa7oV'\x11\x14" +
-	"\xa3\x9db\x84\xc6^\xad\x1f\x90\xab\xef\xceMV\x8aW" +
-	"\xee\x00k\xa5|qa\xa8\xa4-\xfe\xaa\x00\xa01\xa0" +
-	"\xdd7\x865\x81\x1f\xd4N\xa0\xc1t\x15\x80\x93\xbb\x91" +
-	"\xa5\xf2\x9e\xb9\x072]Y\xeb\x14t\xa8\x0b\xba\xd2\x0b" +
-	"o\xfc\xe4+e^:q\xbf.N\xecV\xda\x1e\xd3" +
-	"\xf3\x1dEyS\xd77\x8bM\xe6o\x8e\x8d~\xe8\xfe" +
-	"\xd6>^\x94<\x1c\xd1\xb7\x0b\x0f[\x06O\xcd\xe7\xcf" +
-	",\xbdi\xf0\xa0W=\xf8\xab\xab\xad\xfa\x9aW\xbe\xf6" +
-	"Q\x06\x0c\xe8Q\x01\x18\xf6\x01\xf7\x1eU\"^\xe7\xb3" +
-	"\x15\x89{ZhsX\xe0\xa9\xb4\xe7\xb8v\xae\x97\xa4" +
-	"\x12\xd9\x0b\xd9\xd8P\xc6q{s\x99\x8c\xdb\xd5\x1fO" +
-	"\xe4\x123N\x08P%\xc0\xa4\x9d\xf4\xa6\xba\xaa\x00\x08" +
-	"\x00\xd2|v\xda\xbe\xd85f;^\xdau\xc0R\xa8" +
-	"\x02\xa0 \x00k\xe9\x01\xb04\x8aV;\xc16\x01\xc2" +
-	"\xa8B\x011\x0a\x18\xea`\xc0C\x1d7\x8eh\xb5\xd3" +
-	"\x08@\x18,\x06\x8d\xb2[=@X^\xc5\xba=\x0c" +
-	"\x82`\x97c@\xd8\x8c\x8a$\xfc\x19\x0cRd\x09\xb1" +
-	"7\xa1\"\x0d\xdf\x06\x83r\xd8\xf0! \xec\xb8\x8aJ" +
-	"X\x07\x06\x95\xb3\xbe\x11 \xac[\xf5\xcf6\xb1?\xeb" +
-	"%\xc7\xbd\xa4\x89m\",\x13w\xfb\x91\x98\xc8\xedK" +
-	"v\xcas39\x0001\x8eu_T\xca'\x00\xf9" +
-	"\x19\xa9i\xd7\x913\x1a\x01\xb0\xb6R\xb4:H\x03\x1b" +
-	"2\xfe\xd6\x9b{\xf8\xf2l\xef\x13\x00D&EF\x9a" +
-	"\xa3o\xee\x8e\xae\xeb.(\x076R\xf6aS\xb6\xaf" +
-	"\xbc\xbe\xa4\xbf\x9a\x11\xa2t\x03U\xff\xa5\xfe\xf5\x11\x02" +
-	"\x84\x8cw.\x17\xf4\xd2\xd1h\xa9\xd9\xa6\xccW\x8d\xbf" +
-	"\xc6\x88\x0d\xf9\xc5\xea\x8c\xb5\x96\x90\xf1Xfv\xc7\x97" +
-	"\xa7\xf1O\xff\xc1Y{k\xf8\x13\x00\x00\xff\xff}\xa0" +
-	"H\x90"
+const schema_fcf6ac08e448a6ac = "x\xda\x8c\x93Oh\xd3n\x18\xc7\x9f'I\x7fo\xc2" +
+	"\xcfY\xdfv\xe2Pt2wp=ln\x1e\x84\xc2" +
+	"h\x10\x86s\xee\xd0\xb4\x88\x1eDM\xbb0\x07\xad)" +
+	"M2\x15\xbcL((B\xfd\x03\x0a^<M\x0f2" +
+	"\xf5 C\xdc\xa4\xa0\xe0A\xc1\x8b\x7f`\x03\xf1\xd4z" +
+	"rC\x94\x0a\x85\x8e\xc8\x9b\x9a6\xab\xd6\xee\xfc|\xde" +
+	"o\x9e\xe7\xfb\xfdf\xdf\x12'\x0b\x83\x1d\x03[\x80S" +
+	"\x9e\xfb\xfe\xb3\x0bOWK{\xf6^\xbd\x04t\x1b\x02" +
+	"\x08\x04`\xff\x1a\xd9\x8e \xd8?\x92\xdf\xbf\xed\xca\x7f" +
+	"\xbd\xe2\x99\x94H\x0f\x9b\x94?\x8c\xe7\xf27\x8f_\xab" +
+	"M|\xc8Fo\xd9\x08\x83\x1fI\x04\xd0&\xefOM" +
+	"T\x0b\x17o\x01\x0d\xf0\xf6\xdc\xfd\xd1\xa28\xf7\xb3\x0a" +
+	"\x80\xc12Y\x08\xae\x11\xc6W\xc8!\x0c\xbe\x12\x09\x80" +
+	"\xcd\xdd\xf6-Vv\xcf\xdc\xf5\xca=\x14\x0f2\xb9y" +
+	"\x91\xc9\x15\x9fY\xf1#/\x85Y\xcf&\xcb\xa2\xb3c" +
+	"\x9f\xe0\x7f\xc4\x9f\xee*x\x9f\xbe\x10C\xec\xe9k\xe7" +
+	"il|\xa9o\xa53\xbe\x0eX\x11\xc3\x0c(;\xc0" +
+	"\xff#\xc7fs'\x16\xdfx\x81\xad\x92s\xcbN\x89" +
+	"\x01\xab\x9b\xa5\xb2U\xb9\xfc\xc9\x0b\x0cKC\x0c\x18q" +
+	"\x80;\x0f\xaa>\xabg\xbe\xe4\xd9N\x93B\x086\\" +
+	"\xb7\xd5\xcc\xd4@2e\x19\xbc\xa9e\xfb\x93j\xe6l" +
+	"&<\xaa\x1bf\x7fV\xd7\xcd\xde\xa8\x9aU\xf9\xb4\xd1" +
+	"\x12\x9a\xd0\x12\xd6$\xa3\x88\xfa\x0fjzJ;\xd7\x1b" +
+	"\xd3\x0c\x8b\xa4LC\x11x\x01@@\x00\xda\x11\x02P" +
+	"D\x1e\x95N\x0e\xfd\x0c\xc2\x80\xc0\x03b\x00\xb0\xae\x85" +
+	"\xaeV\xa4&\x16ET:y\x1f@\xddrt\xb3\xa6" +
+	"7B\xc0\xd1\x1c\xc1\xc6\xc1\xe8ZC/\x84\x81\xa3i" +
+	"\x82\\\xbdN\xe8\xfaJU\xf6\xee(A\xbe^(t" +
+	"S\xa3\x87\x87\x80\xa3\xc3\x04\x85zN\xe8\x96\x81\x0e\x8e" +
+	"\x01G\xfb\x88\xb3\xba\x8c\x91\x8c\x95\x88[\x09\x19\xfd\xcc" +
+	":\x19\xbb\x1dsd\xb4\xb5\xf3Z\xd22\xf5,\x00\xc8" +
+	"\x18\xc5\xc6mB\x93O.\xe8x\x952\x0d\xf0z5" +
+	"\x06\xa0l\xe2Q\xe9\xe2\xd6)\"\xb5\xdfY3\xf7\x16" +
+	"N\xf6?\x06@\xa4\x1e\xeb\xfe\x1a\xc3\xc6\x12\x8di\x86" +
+	"\xdfj\x0a\xcb\xbb\x80CMj\xce\x02\x7ff\xc6\xb7\xba" +
+	"+\xc2\xbe\x9enY\x813\xbaa\"m\xfc\x9am\xee" +
+	"q\x1a\xda\xaeV\x0cBj\xf7,\xe7\xa5\xe2\x81@\xb1" +
+	"\x9df-\xc3\xde\x98\xd6m4\xdf\x1fn\xa8\xfe\x8e\x1a" +
+	"\xa9\x1d\xd6\xa7w|y\x12\xfd\xbcA\xdd\xa8\xeag\x06" +
+	"\xfc\x0a\x00\x00\xff\xffP\xbdk\x1b"
 
 func RegisterSchema(reg *schemas.Registry) {
 	reg.Register(&schemas.Schema{

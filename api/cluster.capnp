@@ -38,7 +38,7 @@ interface Host {
     # including cryptographic secrets and SHOULD NOT be provided
     # to untrusted parties.
 
-    executor @4 () -> (executor :import "process.capnp".Executor);
+    executor @4 (host :Host) -> (executor :import "process.capnp".Executor);
     # Executor provides a way of spawning and running WASM-based
     # processes.
 }

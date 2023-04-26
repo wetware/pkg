@@ -87,7 +87,7 @@ type DebugProvider interface {
 }
 
 type ExecutorProvider interface {
-	Executor() csp.Executor
+	Executor(host api.Host) csp.Executor
 }
 
 // Server provides the Host capability.
@@ -145,9 +145,10 @@ func (s Server) Debug(_ context.Context, call api.Host_debug) error {
 }
 
 func (s Server) Executor(_ context.Context, call api.Host_executor) error {
+	host := call.Args().Host()
 	res, err := call.AllocResults()
 	if err == nil {
-		e := s.ExecutorProvider.Executor()
+		e := s.ExecutorProvider.Executor(host)
 		err = res.SetExecutor(process_api.Executor(e))
 	}
 	return err
