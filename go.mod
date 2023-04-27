@@ -36,7 +36,7 @@ require (
 	github.com/multiformats/go-multistream v0.4.1
 	github.com/stealthrocket/wazergo v0.14.0
 	github.com/stretchr/testify v1.8.2
-	github.com/tetratelabs/wazero v1.0.1
+	github.com/tetratelabs/wazero v1.0.3
 	github.com/thejerf/suture/v4 v4.0.2
 	github.com/wetware/casm v0.0.0-20230410223030-669726c25fe7
 	golang.org/x/sync v0.1.0
