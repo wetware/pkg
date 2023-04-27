@@ -11,14 +11,14 @@ import (
 	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/lthibault/log"
 	"github.com/stealthrocket/wazergo"
-	. "github.com/stealthrocket/wazergo/types"
+	t "github.com/stealthrocket/wazergo/types"
 	wasm "github.com/tetratelabs/wazero"
 )
 
 var fs wazergo.HostModule[*Module] = functions{
-	"__host_write": wazergo.F2((*Module).Write),
-	"__host_read":  wazergo.F2((*Module).Read),
-	"__host_close": wazergo.F0((*Module).ClosePipe),
+	"__host_write": wazergo.F2((*Module).write),
+	"__host_read":  wazergo.F2((*Module).read),
+	"__host_close": wazergo.F0((*Module).close),
 }
 
 // BindModule instantiates a host module instance and binds it to the supplied
@@ -87,7 +87,7 @@ func (m Module) Close(context.Context) error {
 	return m.conn.Close() // close the host side of the connection
 }
 
-func (m Module) Write(ctx context.Context, b Bytes, n Pointer[Uint32]) Error {
+func (m Module) write(ctx context.Context, b t.Bytes, n t.Pointer[t.Uint32]) t.Error {
 	// b is only valid until Write returns.
 	//
 	// TODO(perf):  can the guest somehow "pin" b to a global map, and
@@ -102,19 +102,28 @@ func (m Module) Write(ctx context.Context, b Bytes, n Pointer[Uint32]) Error {
 	//
 	// TODO:  revert to Optional[Uint32] when possible.
 	u, err := m.pipe.Write(p)
-	n.Store(Uint32(u))
+	n.Store(t.Uint32(u))
 
-	return Err[None](err)
+	if err != nil {
+		return t.Err[t.None](err)
+	}
+
+	return t.OK
 }
 
-func (m Module) Read(ctx context.Context, b Bytes, n Pointer[Uint32]) Error {
+func (m Module) read(ctx context.Context, b t.Bytes, n t.Pointer[t.Uint32]) t.Error {
 	u, err := m.pipe.Read(b)
-	n.Store(Uint32(u)) // See Write()
-	return Err[None](err)
+	n.Store(t.Uint32(u)) // See Write()
+
+	if err != nil {
+		return t.Err[t.None](err)
+	}
+
+	return t.OK
 }
 
-func (m Module) ClosePipe(ctx context.Context) Error {
-	return Err[None](m.pipe.Close())
+func (m Module) close(ctx context.Context) t.Error {
+	return t.Err[t.None](m.pipe.Close())
 }
 
 func (m Module) errReporter() errReporter {
