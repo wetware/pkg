@@ -6,8 +6,9 @@ import (
 
 	"github.com/lthibault/log"
 	"github.com/urfave/cli/v2"
+	"github.com/wetware/ww/internal/cmd"
 	"github.com/wetware/ww/pkg/client"
-	"github.com/wetware/ww/pkg/runtime"
+	ww_runtime "github.com/wetware/ww/pkg/runtime"
 	"go.uber.org/fx"
 )
 
@@ -37,7 +38,7 @@ var flags = []cli.Flag{
 		Name:    "discover",
 		Aliases: []string{"d"},
 		Usage:   "bootstrap discovery `ADDR`",
-		Value:   "/ip4/228.8.8.8/udp/8822/multicast/lo0",
+		Value:   cmd.BootstrapAddr(),
 		EnvVars: []string{"WW_DISCOVER"},
 	},
 	&cli.StringFlag{
@@ -67,7 +68,7 @@ func Command() *cli.Command {
 func setup() cli.BeforeFunc {
 	return func(c *cli.Context) (err error) {
 		app = fx.New(
-			runtime.NewClient(c.Context, c),
+			ww_runtime.NewClient(c.Context, c),
 			fx.StartTimeout(c.Duration("timeout")),
 			fx.Populate(&logger, &dialer))
 

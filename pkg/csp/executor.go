@@ -59,8 +59,8 @@ type Runtime struct {
 }
 
 // Executor provides the Executor capability.
-func (r Runtime) Executor(host cluster_api.Host) Executor {
-	// TODO keep track of multiple HostModules somehow and choose which one to use
+func (r *Runtime) Executor(host cluster_api.Host) Executor {
+	// TODO mikel keep track of multiple HostModules somehow and choose which one to use
 	// depending on the caller (in mkproc?)
 	r.HostModule = proc.BindModule(context.TODO(),
 		r.Runtime,
@@ -70,7 +70,7 @@ func (r Runtime) Executor(host cluster_api.Host) Executor {
 	return Executor(api.Executor_ServerToClient(r))
 }
 
-func (r Runtime) Exec(ctx context.Context, call api.Executor_exec) error {
+func (r *Runtime) Exec(ctx context.Context, call api.Executor_exec) error {
 	res, err := call.AllocResults()
 	if err != nil {
 		return err
@@ -84,7 +84,7 @@ func (r Runtime) Exec(ctx context.Context, call api.Executor_exec) error {
 	return res.SetProcess(api.Process_ServerToClient(p))
 }
 
-func (r Runtime) mkproc(ctx context.Context, args api.Executor_exec_Params) (*process, error) {
+func (r *Runtime) mkproc(ctx context.Context, args api.Executor_exec_Params) (*process, error) {
 	mod, err := r.mkmod(ctx, args)
 	if err != nil {
 		return nil, err
@@ -102,7 +102,7 @@ func (r Runtime) mkproc(ctx context.Context, args api.Executor_exec_Params) (*pr
 	}, nil
 }
 
-func (r Runtime) mkmod(ctx context.Context, args api.Executor_exec_Params) (wasm.Module, error) {
+func (r *Runtime) mkmod(ctx context.Context, args api.Executor_exec_Params) (wasm.Module, error) {
 	bc, err := args.Bytecode()
 	if err != nil {
 		return nil, err
@@ -124,7 +124,7 @@ func (r Runtime) mkmod(ctx context.Context, args api.Executor_exec_Params) (wasm
 		WithRandSource(rand.Reader))
 }
 
-func (r Runtime) spawn(fn wasm.Function) (<-chan execResult, context.CancelFunc) {
+func (r *Runtime) spawn(fn wasm.Function) (<-chan execResult, context.CancelFunc) {
 	out := make(chan execResult, 1)
 
 	// NOTE:  we use context.Background instead of the context obtained from the

@@ -2,14 +2,13 @@ package start
 
 import (
 	"context"
-	"path"
-	"runtime"
 
 	"github.com/lthibault/log"
 
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
 
+	"github.com/wetware/ww/internal/cmd"
 	ww_runtime "github.com/wetware/ww/pkg/runtime"
 	"github.com/wetware/ww/pkg/server"
 )
@@ -46,7 +45,7 @@ var flags = []cli.Flag{
 		Name:    "discover",
 		Aliases: []string{"d"},
 		Usage:   "bootstrap discovery multiaddr",
-		Value:   bootstrapAddr(),
+		Value:   cmd.BootstrapAddr(),
 		EnvVars: []string{"WW_DISCOVER"},
 	},
 	&cli.StringSliceFlag{
@@ -106,18 +105,5 @@ func teardown() cli.AfterFunc {
 		defer cancel()
 
 		return app.Stop(ctx)
-	}
-}
-
-func bootstrapAddr() string {
-	return path.Join("/ip4/228.8.8.8/udp/8822/multicast", loopback())
-}
-
-func loopback() string {
-	switch runtime.GOOS {
-	case "darwin":
-		return "lo0"
-	default:
-		return "lo"
 	}
 }

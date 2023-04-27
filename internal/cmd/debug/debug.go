@@ -9,6 +9,7 @@ import (
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
 
+	"github.com/wetware/ww/internal/cmd"
 	"github.com/wetware/ww/pkg/client"
 	"github.com/wetware/ww/pkg/runtime"
 )
@@ -41,7 +42,7 @@ func Command() *cli.Command {
 				Name:    "discover",
 				Aliases: []string{"d"},
 				Usage:   "bootstrap discovery `ADDR`",
-				Value:   "/ip4/228.8.8.8/udp/8822/multicast/lo0",
+				Value:   cmd.BootstrapAddr(),
 				EnvVars: []string{"WW_DISCOVER"},
 			},
 			&cli.StringFlag{

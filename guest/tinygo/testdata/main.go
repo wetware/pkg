@@ -10,9 +10,13 @@ import (
 
 func main() {
 	ctx := context.Background()
-	err := ww.Bootstrap(ctx).Resolve(ctx)
+	host := ww.Bootstrap(ctx)
+	err := host.Resolve(ctx)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+	future, release := host.SayHi(ctx, nil)
+	defer release()
+	<-future.Done()
 }

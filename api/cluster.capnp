@@ -41,4 +41,6 @@ interface Host {
     executor @4 (host :Host) -> (executor :import "process.capnp".Executor);
     # Executor provides a way of spawning and running WASM-based
     # processes.
+
+    sayHi @5 () -> ();
 }

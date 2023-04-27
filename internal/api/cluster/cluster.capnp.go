@@ -119,6 +119,26 @@ func (c Host) Executor(ctx context.Context, params func(Host_executor_Params) er
 
 }
 
+func (c Host) SayHi(ctx context.Context, params func(Host_sayHi_Params) error) (Host_sayHi_Results_Future, capnp.ReleaseFunc) {
+
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0x957cbefc645fd307,
+			MethodID:      5,
+			InterfaceName: "api/cluster.capnp:Host",
+			MethodName:    "sayHi",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Host_sayHi_Params(s)) }
+	}
+
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return Host_sayHi_Results_Future{Future: ans.Future()}, release
+
+}
+
 func (c Host) WaitStreaming() error {
 	return capnp.Client(c).WaitStreaming()
 }
@@ -201,6 +221,8 @@ type Host_Server interface {
 	Debug(context.Context, Host_debug) error
 
 	Executor(context.Context, Host_executor) error
+
+	SayHi(context.Context, Host_sayHi) error
 }
 
 // Host_NewServer creates a new Server from an implementation of Host_Server.
@@ -219,7 +241,7 @@ func Host_ServerToClient(s Host_Server) Host {
 // This can be used to create a more complicated Server.
 func Host_Methods(methods []server.Method, s Host_Server) []server.Method {
 	if cap(methods) == 0 {
-		methods = make([]server.Method, 0, 5)
+		methods = make([]server.Method, 0, 6)
 	}
 
 	methods = append(methods, server.Method{
@@ -279,6 +301,18 @@ func Host_Methods(methods []server.Method, s Host_Server) []server.Method {
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
 			return s.Executor(ctx, Host_executor{call})
+		},
+	})
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0x957cbefc645fd307,
+			MethodID:      5,
+			InterfaceName: "api/cluster.capnp:Host",
+			MethodName:    "sayHi",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.SayHi(ctx, Host_sayHi{call})
 		},
 	})
 
@@ -368,6 +402,23 @@ func (c Host_executor) Args() Host_executor_Params {
 func (c Host_executor) AllocResults() (Host_executor_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
 	return Host_executor_Results(r), err
+}
+
+// Host_sayHi holds the state for a server call to Host.sayHi.
+// See server.Call for documentation.
+type Host_sayHi struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c Host_sayHi) Args() Host_sayHi_Params {
+	return Host_sayHi_Params(c.Call.Args())
+}
+
+// AllocResults allocates the results struct.
+func (c Host_sayHi) AllocResults() (Host_sayHi_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Host_sayHi_Results(r), err
 }
 
 // Host_List is a list of Host.
@@ -1149,46 +1200,179 @@ func (p Host_executor_Results_Future) Executor() process.Executor {
 	return process.Executor(p.Future.Field(0, nil).Client())
 }
 
-const schema_fcf6ac08e448a6ac = "x\xda\x8c\x93Oh\xd3n\x18\xc7\x9f'I\x7fo\xc2" +
-	"\xcfY\xdfv\xe2Pt2wp=ln\x1e\x84\xc2" +
-	"h\x10\x86s\xee\xd0\xb4\x88\x1eDM\xbb0\x07\xad)" +
-	"M2\x15\xbcL((B\xfd\x03\x0a^<M\x0f2" +
-	"\xf5 C\xdc\xa4\xa0\xe0A\xc1\x8b\x7f`\x03\xf1\xd4z" +
-	"rC\x94\x0a\x85\x8e\xc8\x9b\x9a6\xab\xd6\xee\xfc|\xde" +
-	"o\x9e\xe7\xfb\xfdf\xdf\x12'\x0b\x83\x1d\x03[\x80S" +
-	"\x9e\xfb\xfe\xb3\x0bOWK{\xf6^\xbd\x04t\x1b\x02" +
-	"\x08\x04`\xff\x1a\xd9\x8e \xd8?\x92\xdf\xbf\xed\xca\x7f" +
-	"\xbd\xe2\x99\x94H\x0f\x9b\x94?\x8c\xe7\xf27\x8f_\xab" +
-	"M|\xc8Fo\xd9\x08\x83\x1fI\x04\xd0&\xefOM" +
-	"T\x0b\x17o\x01\x0d\xf0\xf6\xdc\xfd\xd1\xa28\xf7\xb3\x0a" +
-	"\x80\xc12Y\x08\xae\x11\xc6W\xc8!\x0c\xbe\x12\x09\x80" +
-	"\xcd\xdd\xf6-Vv\xcf\xdc\xf5\xca=\x14\x0f2\xb9y" +
-	"\x91\xc9\x15\x9fY\xf1#/\x85Y\xcf&\xcb\xa2\xb3c" +
-	"\x9f\xe0\x7f\xc4\x9f\xee*x\x9f\xbe\x10C\xec\xe9k\xe7" +
-	"il|\xa9o\xa53\xbe\x0eX\x11\xc3\x0c(;\xc0" +
-	"\xff#\xc7fs'\x16\xdfx\x81\xad\x92s\xcbN\x89" +
-	"\x01\xab\x9b\xa5\xb2U\xb9\xfc\xc9\x0b\x0cKC\x0c\x18q" +
-	"\x80;\x0f\xaa>\xabg\xbe\xe4\xd9N\x93B\x086\\" +
-	"\xb7\xd5\xcc\xd4@2e\x19\xbc\xa9e\xfb\x93j\xe6l" +
-	"&<\xaa\x1bf\x7fV\xd7\xcd\xde\xa8\x9aU\xf9\xb4\xd1" +
-	"\x12\x9a\xd0\x12\xd6$\xa3\x88\xfa\x0fjzJ;\xd7\x1b" +
-	"\xd3\x0c\x8b\xa4LC\x11x\x01@@\x00\xda\x11\x02P" +
-	"D\x1e\x95N\x0e\xfd\x0c\xc2\x80\xc0\x03b\x00\xb0\xae\x85" +
-	"\xaeV\xa4&\x16ET:y\x1f@\xddrt\xb3\xa6" +
-	"7B\xc0\xd1\x1c\xc1\xc6\xc1\xe8ZC/\x84\x81\xa3i" +
-	"\x82\\\xbdN\xe8\xfaJU\xf6\xee(A\xbe^(t" +
-	"S\xa3\x87\x87\x80\xa3\xc3\x04\x85zN\xe8\x96\x81\x0e\x8e" +
-	"\x01G\xfb\x88\xb3\xba\x8c\x91\x8c\x95\x88[\x09\x19\xfd\xcc" +
-	":\x19\xbb\x1dsd\xb4\xb5\xf3Z\xd22\xf5,\x00\xc8" +
-	"\x18\xc5\xc6mB\x93O.\xe8x\x952\x0d\xf0z5" +
-	"\x06\xa0l\xe2Q\xe9\xe2\xd6)\"\xb5\xdfY3\xf7\x16" +
-	"N\xf6?\x06@\xa4\x1e\xeb\xfe\x1a\xc3\xc6\x12\x8di\x86" +
-	"\xdfj\x0a\xcb\xbb\x80CMj\xce\x02\x7ff\xc6\xb7\xba" +
-	"+\xc2\xbe\x9enY\x813\xbaa\"m\xfc\x9am\xee" +
-	"q\x1a\xda\xaeV\x0cBj\xf7,\xe7\xa5\xe2\x81@\xb1" +
-	"\x9df-\xc3\xde\x98\xd6m4\xdf\x1fn\xa8\xfe\x8e\x1a" +
-	"\xa9\x1d\xd6\xa7w|y\x12\xfd\xbcA\xdd\xa8\xeag\x06" +
-	"\xfc\x0a\x00\x00\xff\xffP\xbdk\x1b"
+type Host_sayHi_Params capnp.Struct
+
+// Host_sayHi_Params_TypeID is the unique identifier for the type Host_sayHi_Params.
+const Host_sayHi_Params_TypeID = 0x9eaa92308c59a588
+
+func NewHost_sayHi_Params(s *capnp.Segment) (Host_sayHi_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Host_sayHi_Params(st), err
+}
+
+func NewRootHost_sayHi_Params(s *capnp.Segment) (Host_sayHi_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Host_sayHi_Params(st), err
+}
+
+func ReadRootHost_sayHi_Params(msg *capnp.Message) (Host_sayHi_Params, error) {
+	root, err := msg.Root()
+	return Host_sayHi_Params(root.Struct()), err
+}
+
+func (s Host_sayHi_Params) String() string {
+	str, _ := text.Marshal(0x9eaa92308c59a588, capnp.Struct(s))
+	return str
+}
+
+func (s Host_sayHi_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Host_sayHi_Params) DecodeFromPtr(p capnp.Ptr) Host_sayHi_Params {
+	return Host_sayHi_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Host_sayHi_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Host_sayHi_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Host_sayHi_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Host_sayHi_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+
+// Host_sayHi_Params_List is a list of Host_sayHi_Params.
+type Host_sayHi_Params_List = capnp.StructList[Host_sayHi_Params]
+
+// NewHost_sayHi_Params creates a new list of Host_sayHi_Params.
+func NewHost_sayHi_Params_List(s *capnp.Segment, sz int32) (Host_sayHi_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	return capnp.StructList[Host_sayHi_Params](l), err
+}
+
+// Host_sayHi_Params_Future is a wrapper for a Host_sayHi_Params promised by a client call.
+type Host_sayHi_Params_Future struct{ *capnp.Future }
+
+func (f Host_sayHi_Params_Future) Struct() (Host_sayHi_Params, error) {
+	p, err := f.Future.Ptr()
+	return Host_sayHi_Params(p.Struct()), err
+}
+
+type Host_sayHi_Results capnp.Struct
+
+// Host_sayHi_Results_TypeID is the unique identifier for the type Host_sayHi_Results.
+const Host_sayHi_Results_TypeID = 0x99b232a18288d3d8
+
+func NewHost_sayHi_Results(s *capnp.Segment) (Host_sayHi_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Host_sayHi_Results(st), err
+}
+
+func NewRootHost_sayHi_Results(s *capnp.Segment) (Host_sayHi_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Host_sayHi_Results(st), err
+}
+
+func ReadRootHost_sayHi_Results(msg *capnp.Message) (Host_sayHi_Results, error) {
+	root, err := msg.Root()
+	return Host_sayHi_Results(root.Struct()), err
+}
+
+func (s Host_sayHi_Results) String() string {
+	str, _ := text.Marshal(0x99b232a18288d3d8, capnp.Struct(s))
+	return str
+}
+
+func (s Host_sayHi_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Host_sayHi_Results) DecodeFromPtr(p capnp.Ptr) Host_sayHi_Results {
+	return Host_sayHi_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Host_sayHi_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Host_sayHi_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Host_sayHi_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Host_sayHi_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+
+// Host_sayHi_Results_List is a list of Host_sayHi_Results.
+type Host_sayHi_Results_List = capnp.StructList[Host_sayHi_Results]
+
+// NewHost_sayHi_Results creates a new list of Host_sayHi_Results.
+func NewHost_sayHi_Results_List(s *capnp.Segment, sz int32) (Host_sayHi_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	return capnp.StructList[Host_sayHi_Results](l), err
+}
+
+// Host_sayHi_Results_Future is a wrapper for a Host_sayHi_Results promised by a client call.
+type Host_sayHi_Results_Future struct{ *capnp.Future }
+
+func (f Host_sayHi_Results_Future) Struct() (Host_sayHi_Results, error) {
+	p, err := f.Future.Ptr()
+	return Host_sayHi_Results(p.Struct()), err
+}
+
+const schema_fcf6ac08e448a6ac = "x\xda\x8c\x94OH\x14a\x18\xc6\xdfw\xbe\xd9f\x86" +
+	"\xb2\xed\xdb5\xb2\xa2\x0c3HAS;\x04\x0b\xb2S" +
+	" \x98\x19\xec(RA\xff\xc6u\xb0\x85\xb5]v\xe6" +
+	"\xb3\x82.\x0a\x92QZ\x08\x06^\x84@;\x88\x14\x15" +
+	"\x12)x\x88N\x1d\xb3\x83A\xd4e\xedT\x12\x85\x81" +
+	" L|\x9f\xcd\xeehl\xeb\xf9\xfd\xcd\xf3\xbe\xcf\xf3" +
+	"=\xbbu\x12\xd1\xe5\xfa\x92/\xbb@2\xde\x06\xb6\xb9" +
+	"\xf3\xaf\x96\x97\x0e\x1f\xbd\xd7\x0ft\x0f\x02\xc8\x0a\xc0\xf1" +
+	"\x0eu\x1f\x82\xec\xfe\x8a\xff\xfcqp\xf8\xdb]\xdf\xa4" +
+	"Q\xad\xe0\x93\x95\x0f\xad\x03\xc3#\xe7\x1f\xacO\x02\xc8" +
+	"GG\xf8\x08\xc35j\x14\xd0U\x16\xaet\xad\xcd\xdf" +
+	"\x1e\x05\x1a\"\xee\xf4\x93\xe6\xac:\xfd{\x0d\x00\xc3g" +
+	"\xd5\xd9p\x87\xcayC\xbd\x83\xe1&M\x01p\x17\x17" +
+	"\x06\xfb\x1f7\xbc\x18\xf3-\xaa\xd1\xaa\xf9\"\xe9Q`" +
+	"n\xf5P\xdf\xb8\x7f\xd1n\xed\x14_t@\xe3\x8b\x06" +
+	"'/\xdc\xaf\x1b\x99\x1a\xf7}zR\x137f_\xb3" +
+	"\xf63o\xe4\x09\xdf\xa4J\x13\xbe\xaa\xe4\xe0Sr\xb5" +
+	"l\xde/J\xf9>\x0c\xef\x15\xa2m\xad\x8bU\xdfK" +
+	"\xdb7\x00\x8dZ\x84\x03M\x02\xd8\xdetnb\xe0\xe2" +
+	"\xdc;?`i\xc2\x7f\x8f\x00\x96wj+lu\xf0" +
+	"\x93\x1f\x18\xd2\x1a80*\x80\xb1\xa9\xb5\x00\xab\x98Y" +
+	"\xf2]7\xc3Op\xe1\xa1k\xa6\x13\xc7\xe2If\x13" +
+	"\xc7\xca\xd4\xc6\xcd\xf4\xf5t\xa49e;\xb5\x99T\xca" +
+	"\xa9\x8c\x99\x19\x93\xf4\xd8\x05\xa1.\xab\x93usJ1" +
+	"\xffC\xf5&\xac\x1b\x95m\x96\xcd\x94\xa4c\x1b2\x91" +
+	"\x01d\x04\xa0%\xd5\x00\x86J\xd0(\x950\xc8!\x0c" +
+	"\xc9\x04\x10C\x809-\xf4\xb4\xa2\xebb1D\xa3\x8c" +
+	"\x04\x00r\x91\xa3\xd7\x0f\xfa\xbc\x1a$:\xa9`\xde0" +
+	"z\xd1\xd0\xb1\x08HtHA)WA\xf4r\xa5}" +
+	"\xfc;\xa6 \xc9\x95\x10\xbdW\xa3\x89\x06\x90\xe8%\x05" +
+	"\xe5\xdc;\xa1W\x13j\xb4\x80DO+\x18\xc8\x15\x03" +
+	"\xbdr\xd1F\xfe]\xbd\"l\xe9\x18M\xb3\xcev\xd6" +
+	"\xa9c\x90\xc7\xaac\xb9\x08NG\xd7\xbai\xc5\x99\x93" +
+	"\xca\x00\x80\x8e\xe5\xb6y\xab9\xa1c\x0c\xb1`\x96\x02" +
+	"\xe1a\x06Y\xd2\xc9G.o\xc2<]\x11{\xd2\xb1" +
+	"\xc1\x1f{\x0b\x80\xb1\x83\xa0Q&m8\x00\xa9\xfb\x9e" +
+	"\xf5M\xce^\xae}\x06\x80H\xa1\xd8\x15[z\xf7\xad" +
+	"U\xc83T\xe8LAu[\xe2\xcc\x7fKB\x0a\xb9" +
+	"\x8f\xf2\xed=\x05;w-e;H\xf3\xff\x1fE\\" +
+	"\x8b\x9fD\xb1\x1es\x08\xa9[\xf1qX\xcb\x9e\x08e" +
+	"\x8bi\xae\x17\xa3\xb2\xcd*\xb77\xfb\x8f\xe4U\xff\xf6" +
+	"\x07\xa9\x1bI\xf5\xee\xff\xfa2\xf6y\x8b\xba13\xc8" +
+	"\x03\xf8\x13\x00\x00\xff\xffY\xdb\x9b."
 
 func RegisterSchema(reg *schemas.Registry) {
 	reg.Register(&schemas.Schema{
@@ -1198,7 +1382,9 @@ func RegisterSchema(reg *schemas.Registry) {
 			0x89ec8e1ef0f263f3,
 			0x8f58928e854cd4f5,
 			0x957cbefc645fd307,
+			0x99b232a18288d3d8,
 			0x9e8120f9bb059602,
+			0x9eaa92308c59a588,
 			0xa404c24b5375b9e4,
 			0xbe186003ae0f0429,
 			0xbe5314ed29d84c52,
