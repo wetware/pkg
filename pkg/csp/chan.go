@@ -257,13 +257,16 @@ func Text[T ~string](t T) Value {
 // Future result from a Chan operation. It is a specialized instance
 // of a casm.Future that provides typed methods for common capnp.Ptr
 // types.
-type Future casm.Future
+type Future struct{ casm.Future }
 
+// Value returns a *Future that asynchronously resolves to the  next
+// value produced by the channel.
 func (f Future) Value() *capnp.Future {
 	return f.Field(0, nil)
 }
 
 func (f Future) Client() capnp.Client {
+	<-f.Done() // avoids returning *promised* client
 	return f.Value().Client()
 }
 
