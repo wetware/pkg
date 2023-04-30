@@ -137,7 +137,7 @@ func (r Recver) Client() capnp.Client {
 
 func (r Recver) Recv(ctx context.Context) (Future, capnp.ReleaseFunc) {
 	f, release := api.Recver(r).Recv(ctx, nil)
-	return Future(f), release
+	return Future{Future: casm.Future(f)}, release
 }
 
 func (r Recver) AddRef() Recver {
