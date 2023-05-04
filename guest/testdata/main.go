@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	ww "github.com/wetware/ww/guest/tinygo"
+	ww "github.com/wetware/ww/guest"
 )
 
 func main() {

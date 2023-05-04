@@ -15,6 +15,7 @@ import (
 	wasm "github.com/tetratelabs/wazero/api"
 	cluster_api "github.com/wetware/ww/internal/api/cluster"
 	api "github.com/wetware/ww/internal/api/process"
+	"github.com/wetware/ww/pkg/csp/fs"
 )
 
 // ByteCode is a representation of arbitrary executable data.
@@ -119,7 +120,7 @@ func (r *Runtime) mkmod(ctx context.Context, args api.Executor_exec_Params) (was
 		WithName(name).
 		WithStartFunctions(). // disable automatic calling of _start (main)
 		WithRandSource(rand.Reader).
-		WithFS(FS{conn: guest}))
+		WithFS(fs.FS{Conn: guest}))
 }
 
 func (r *Runtime) spawn(fn wasm.Function) (<-chan execResult, context.CancelFunc) {

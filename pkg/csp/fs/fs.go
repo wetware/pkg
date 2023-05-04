@@ -1,4 +1,4 @@
-package csp
+package fs
 
 import (
 	"errors"
@@ -9,15 +9,15 @@ import (
 )
 
 type FS struct {
-	conn net.Conn
+	Conn net.Conn
 }
 
 func (fs FS) Open(name string) (fs.File, error) {
-	if fs.conn == nil {
+	if fs.Conn == nil {
 		return File{}, errors.New("TODO")
 	}
 	return File{
-		conn: fs.conn,
+		conn: fs.Conn,
 		name: name,
 	}, nil
 }
@@ -39,6 +39,10 @@ func (f File) Read(b []byte) (int, error) {
 
 func (f File) Close() error {
 	return f.conn.Close()
+}
+
+func (f File) Conn() net.Conn {
+	return f.conn
 }
 
 type FileInfo struct {
