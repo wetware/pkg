@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 
+	"capnproto.org/go/capnp/v3"
 	"github.com/stealthrocket/wazergo"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
@@ -31,7 +32,11 @@ var (
 func setup() cli.BeforeFunc {
 	return func(c *cli.Context) error {
 		r = wazero.NewRuntime(c.Context)
-		h = proc.BindModule(c.Context, r)
+		h = proc.BindModule(
+			c.Context,
+			r,
+			proc.WithClient(capnp.Client{}),
+		)
 		wasi_snapshot_preview1.MustInstantiate(c.Context, r)
 		return nil
 	}

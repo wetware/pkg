@@ -4,7 +4,6 @@ package proc
 import (
 	"context"
 	"io"
-	"net"
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/exp/bufferpool"
@@ -43,18 +42,36 @@ func (f functions) Instantiate(ctx context.Context, opts ...Option) (*Module, er
 	module := &Module{}
 	wazergo.Configure(module, opts...)
 
-	var rwc io.ReadWriteCloser
-	rwc, module.pipe = net.Pipe()
+	// var rwc io.ReadWriteCloser
+	// rwc, module.pipe = net.Pipe()
 
-	module.conn = rpc.NewConn(rpc.NewStreamTransport(rwc), &rpc.Options{
-		BootstrapClient: module.bootstrap,
-		ErrorReporter:   module.errReporter(),
-	})
+	// var guestEnd, hostEnd net.Conn
+	// module.guestEnd = guestEnd
+
+	// module.hostEnd = rpc.NewConn(rpc.NewStreamTransport(hostEnd), &rpc.Options{
+	// 	BootstrapClient: module.bootstrap,
+	// 	ErrorReporter:   module.errReporter(),
+	// })
 
 	return module, nil
 }
 
 type Option = wazergo.Option[*Module]
+
+func WithHostEnd(hostEnd io.ReadWriteCloser) Option {
+	return wazergo.OptionFunc(func(m *Module) {
+		m.hostEnd = rpc.NewConn(rpc.NewStreamTransport(hostEnd), &rpc.Options{
+			BootstrapClient: m.bootstrap,
+			ErrorReporter:   m.errReporter(),
+		})
+	})
+}
+
+func WithGuestEnd(guestEnd io.ReadWriteCloser) Option {
+	return wazergo.OptionFunc(func(m *Module) {
+		m.guestEnd = guestEnd
+	})
+}
 
 // WithClient sets the bootstrap client provided to the guest code.
 func WithClient[Client ~capnp.ClientKind](c Client) Option {
@@ -76,32 +93,36 @@ func WithLogger(l log.Logger) Option {
 }
 
 type Module struct {
-	pipe io.ReadWriteCloser
-	conn io.Closer
+	guestEnd io.ReadWriteCloser
+	hostEnd  io.Closer
 
 	logger    log.Logger
 	bootstrap capnp.Client
 }
 
 func (m Module) Close(context.Context) error {
-	return m.conn.Close() // close the host side of the connection
+	return m.hostEnd.Close() // close the host side of the connection
 }
 
-func (m Module) write(ctx context.Context, b t.Bytes, n t.Pointer[t.Uint32]) t.Error {
+func (m Module) write(
+	ctx context.Context,
+	b t.Bytes, // linear segment of guest module memory
+	n t.Pointer[t.Uint32],
+) t.Error {
 	// b is only valid until Write returns.
 	//
 	// TODO(perf):  can the guest somehow "pin" b to a global map, and
 	//              expect the transport to call free(b)?  This would
 	//              give us a truly zero-copy transport, though we would
 	//              likely have to operate at the Arena level for this.
-	p := bufferpool.Default.Get(len(b))
+	p := bufferpool.Default.Get(len(b)) // TODO mikel replace with make for dbg
 	copy(p, b)
 
 	// Due to a bug in wazergo, we need to use Pointer[Uint32] to extract
 	// the number of bytes written.
 	//
 	// TODO:  revert to Optional[Uint32] when possible.
-	u, err := m.pipe.Write(p)
+	u, err := m.guestEnd.Write(p)
 	n.Store(t.Uint32(u))
 
 	if err != nil {
@@ -112,7 +133,7 @@ func (m Module) write(ctx context.Context, b t.Bytes, n t.Pointer[t.Uint32]) t.E
 }
 
 func (m Module) read(ctx context.Context, b t.Bytes, n t.Pointer[t.Uint32]) t.Error {
-	u, err := m.pipe.Read(b)
+	u, err := m.guestEnd.Read(b)
 	n.Store(t.Uint32(u)) // See Write()
 
 	if err != nil {
@@ -123,7 +144,7 @@ func (m Module) read(ctx context.Context, b t.Bytes, n t.Pointer[t.Uint32]) t.Er
 }
 
 func (m Module) close(ctx context.Context) t.Error {
-	return t.Err[t.None](m.pipe.Close())
+	return t.Err[t.None](m.guestEnd.Close())
 }
 
 func (m Module) errReporter() errReporter {

@@ -4,9 +4,7 @@ package host
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"time"
 
 	"capnproto.org/go/capnp/v3"
 
@@ -150,11 +148,11 @@ func (s Server) Debug(_ context.Context, call api.Host_debug) error {
 func (s Server) Executor(ctx context.Context, call api.Host_executor) error {
 	// TODO mikel do we need call.Go? The capability will be passed down, so I'd assume yes
 	// See comment above select statement later in this function
-	call.Go()
+	// call.Go()
 	host := call.Args().Host()
 	res, err := call.AllocResults()
 	if err == nil {
-		e := s.ExecutorProvider.Executor(host)
+		e := s.ExecutorProvider.Executor(host.AddRef())
 		err = res.SetExecutor(process_api.Executor(e))
 	}
 
@@ -164,12 +162,12 @@ func (s Server) Executor(ctx context.Context, call api.Host_executor) error {
 
 	// TODO mikel commenting the select statement will cause a read error in the
 	// wasm process RPC
-	select {
-	case <-ctx.Done():
-		err = ctx.Err()
-	case <-time.After(1 * time.Minute):
-		err = errors.New("executor timeout")
-	}
+	// select {
+	// case <-ctx.Done():
+	// 	err = ctx.Err()
+	// case <-time.After(1 * time.Minute):
+	// 	err = errors.New("executor timeout")
+	// }
 
 	return err
 }

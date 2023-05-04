@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"net"
 
 	capnp "capnproto.org/go/capnp/v3"
 	"github.com/lthibault/log"
@@ -117,11 +118,18 @@ func (r *Runtime) mkmod(ctx context.Context, args api.Executor_exec_Params) (was
 		return nil, err
 	}
 
+	host, guest := net.Pipe()
+
+	// TODO wrap guest in host in File, provided by a FS
+	// TODO wrap host in RPC.NewStreamTransport(?) and provide the bootstrap capability
+	// in separate goroutine
+
 	return r.Runtime.InstantiateModule(ctx, module, wazero.
 		NewModuleConfig().
 		WithName(name).
 		WithStartFunctions(). // disable automatic calling of _start (main)
-		WithRandSource(rand.Reader))
+		WithRandSource(rand.Reader).
+		WithFS(FS{conn: guest}))
 }
 
 func (r *Runtime) spawn(fn wasm.Function) (<-chan execResult, context.CancelFunc) {

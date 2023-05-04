@@ -29,6 +29,7 @@ func (hostPipe) Read(b []byte) (int, error) {
 }
 
 func (hostPipe) Write(b []byte) (int, error) {
+	// panic(b)
 	var n uint32
 	err := hostWrite(bytesToPointer(b), uint32(len(b)), &n)
 	return int(n), types.Errno(err)

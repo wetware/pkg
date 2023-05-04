@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"fmt"
 	"io"
 	"os"
 
@@ -32,9 +33,10 @@ func runAction() cli.ActionFunc {
 		executor, release := node.Executor(ctx)
 		defer release()
 
+		fmt.Println("Run Exec")
 		proc, release := executor.Exec(ctx, src)
 		defer release()
-
+		fmt.Println("Wait for Exec")
 		return proc.Wait(ctx)
 	}
 }
