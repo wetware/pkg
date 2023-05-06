@@ -6,18 +6,31 @@ import (
 	"math"
 	"net"
 	"time"
+
+	"capnproto.org/go/capnp/v3"
+	"capnproto.org/go/capnp/v3/rpc"
 )
 
 type FS struct {
-	Conn net.Conn
+	Guest, Host     net.Conn
+	BootstrapClient capnp.Client
 }
 
 func (fs FS) Open(name string) (fs.File, error) {
-	if fs.Conn == nil {
+	if fs.Guest == nil || fs.Host == nil {
 		return File{}, errors.New("TODO")
 	}
+
+	go func() {
+		conn := rpc.NewConn(
+			rpc.NewStreamTransport(fs.Host),
+			&rpc.Options{BootstrapClient: fs.BootstrapClient},
+		)
+		<-conn.Done()
+	}()
+
 	return File{
-		conn: fs.Conn,
+		conn: fs.Guest,
 		name: name,
 	}, nil
 }

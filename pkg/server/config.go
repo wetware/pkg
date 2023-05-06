@@ -15,7 +15,6 @@ import (
 	"github.com/wetware/casm/pkg/cluster/routing"
 	"github.com/wetware/casm/pkg/debug"
 	"github.com/wetware/ww/pkg/csp"
-	"github.com/wetware/ww/pkg/csp/proc"
 )
 
 type ClusterConfig struct {
@@ -81,16 +80,9 @@ func (rc RuntimeConfig) New() *csp.Runtime {
 	r := wazero.NewRuntimeWithConfig(rc.Ctx, rc.Config)
 	wasi_snapshot_preview1.MustInstantiate(rc.Ctx, r)
 
-	m := proc.BindModule(context.TODO(),
-		r,
-		proc.WithLogger(rc.Logger),
-		// proc.WithClient(host),
-	)
-
 	return &csp.Runtime{
-		Runtime:    r,
-		HostModule: m,
-		Logger:     rc.Logger,
+		Runtime: r,
+		Logger:  rc.Logger,
 	}
 }
 

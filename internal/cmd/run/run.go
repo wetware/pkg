@@ -4,11 +4,14 @@ import (
 	"crypto/rand"
 	"errors"
 	"io"
+	"net"
 	"os"
 
+	"capnproto.org/go/capnp/v3"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"github.com/urfave/cli/v2"
+	"github.com/wetware/ww/pkg/csp/fs"
 )
 
 func Command() *cli.Command {
@@ -46,11 +49,14 @@ func run() cli.ActionFunc {
 			return err
 		}
 
+		host, guest := net.Pipe()
+
 		module, err := r.InstantiateWithConfig(c.Context, b, wazero.NewModuleConfig().
 			WithRandSource(rand.Reader).
 			WithStartFunctions(). // disable auto-calling of _start
 			WithStdout(c.App.Writer).
-			WithStderr(c.App.ErrWriter))
+			WithStderr(c.App.ErrWriter).
+			WithFS(fs.FS{Host: host, Guest: guest, BootstrapClient: capnp.Client{}}))
 		if err != nil {
 			return err
 		}

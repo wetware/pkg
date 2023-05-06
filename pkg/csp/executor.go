@@ -120,7 +120,7 @@ func (r *Runtime) mkmod(ctx context.Context, args api.Executor_exec_Params) (was
 		WithName(name).
 		WithStartFunctions(). // disable automatic calling of _start (main)
 		WithRandSource(rand.Reader).
-		WithFS(fs.FS{Conn: guest}))
+		WithFS(fs.FS{Host: host, Guest: guest, BootstrapClient: capnp.Client{}}))
 }
 
 func (r *Runtime) spawn(fn wasm.Function) (<-chan execResult, context.CancelFunc) {
