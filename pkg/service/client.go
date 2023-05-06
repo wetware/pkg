@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"capnproto.org/go/capnp/v3"
+	"github.com/libp2p/go-libp2p/core/record"
 	casm "github.com/wetware/casm/pkg"
 	chan_api "github.com/wetware/ww/internal/api/channel"
 	ps_api "github.com/wetware/ww/internal/api/pubsub"
@@ -18,14 +19,15 @@ func (c Registry) Release() {
 	api.Registry(c).Release()
 }
 
-func (c Registry) Provide(ctx context.Context, topic pubsub.Topic, loc Location) (casm.Future, capnp.ReleaseFunc) {
+func (c Registry) Provide(ctx context.Context, topic pubsub.Topic, e record.Envelope) (casm.Future, capnp.ReleaseFunc) {
 	ctx, cancel := context.WithCancel(ctx)
 
 	fut, release := api.Registry(c).Provide(ctx, func(ps api.Registry_provide_Params) error {
-		if err := ps.SetTopic(ps_api.Topic(topic)); err != nil {
+		b, err := e.Marshal()
+		if err != nil {
 			return err
 		}
-		return ps.SetLocation(loc.SignedLocation)
+		return ps.SetEnvelope(b)
 	})
 
 	return casm.Future(fut), func() {
@@ -86,24 +88,23 @@ func (h handler) Send(ctx context.Context, call chan_api.Sender_send) error {
 		return fmt.Errorf("failed to extract value: %w", err)
 	}
 
-	_, seg := capnp.NewSingleSegmentMessage(nil)
-	capSloc, err := api.NewSignedLocation(seg)
+	_, rec, err := record.ConsumeEnvelope(ptr.Data(), EnvelopeDomain)
 	if err != nil {
-		return fmt.Errorf("failed to create a signed location: %w", err)
+		return fmt.Errorf("failed to consume envelope: %w", err)
 	}
 
-	if err := capSloc.ToPtr().Struct().CopyFrom(ptr.Struct()); err != nil {
-		return fmt.Errorf("failed to copy/marshal signed location: %w", err)
+	loc, ok := rec.(*Location)
+	if !ok {
+		return ErrInavlidType
 	}
 
 	// validate
-	sloc := Location{SignedLocation: capSloc}
-	if err := sloc.Validate(h.topic); err != nil {
+	if err := loc.Validate(h.topic); err != nil {
 		return fmt.Errorf("failed to validate location: %w", err)
 	}
 
 	select {
-	case h.ch <- Location{SignedLocation: capSloc}:
+	case h.ch <- *loc:
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()

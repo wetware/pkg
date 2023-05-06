@@ -5,44 +5,42 @@ import (
 	"fmt"
 
 	"capnproto.org/go/capnp/v3"
-	"github.com/libp2p/go-libp2p/core/crypto"
-	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p-core/record"
 	ma "github.com/multiformats/go-multiaddr"
 	api "github.com/wetware/ww/internal/api/service"
 )
 
+// TODO:  register this once stable.
+// https://github.com/multiformats/multicodec/blob/master/table.csv
+
+var (
+	EnvelopeDomain      = "ww/registry/location"
+	EnvelopePayloadType = []byte{0x1f, 0x01}
+	ErrInavlidType      = errors.New("invalid type")
+)
+
+func init() {
+	record.RegisterType(&Location{})
+}
+
 var ErrInvalidSignature = errors.New("invalid signature")
 
 type Location struct {
-	api.SignedLocation
+	api.Location
 }
 
 func NewLocation() (Location, error) {
 	_, seg := capnp.NewSingleSegmentMessage(nil)
-	sloc, err := api.NewSignedLocation(seg)
-	if err != nil {
-		return Location{}, fmt.Errorf("failed to create location: %w", err)
-	}
-
-	_, seg = capnp.NewSingleSegmentMessage(nil)
 	loc, err := api.NewLocation(seg)
 	if err != nil {
 		return Location{}, fmt.Errorf("failed to create location: %w", err)
 	}
 
-	if err := sloc.SetLocation(loc); err != nil {
-		return Location{}, fmt.Errorf("failed to set location: %w", err)
-	}
-
-	return Location{SignedLocation: sloc}, nil
+	return Location{Location: loc}, nil
 }
 
 func (loc Location) Validate(topic string) error {
-	capLoc, err := loc.Location()
-	if err != nil {
-		return fmt.Errorf("failed to read location: %w", err)
-	}
-	service, err := capLoc.Service()
+	service, err := loc.Service()
 	if err != nil {
 		return fmt.Errorf("failed to read service name: %w", err)
 	}
@@ -50,101 +48,11 @@ func (loc Location) Validate(topic string) error {
 		return fmt.Errorf("the topic and the service name are different, topic: %s - service: %s", topic, service)
 	}
 
-	if err := loc.VerifySignature(); err != nil {
-		return fmt.Errorf("failed to verify signature: %w", err)
-	}
-
 	return nil
-}
-
-func (loc Location) Sign(pk crypto.PrivKey) error {
-	capLoc, err := loc.Location()
-	if err != nil {
-		return fmt.Errorf("failed to read location: %w", err)
-	}
-
-	b, err := capLoc.Message().Marshal()
-	if err != nil {
-		return fmt.Errorf("failed to marshal location: %w", err)
-	}
-
-	signature, err := pk.Sign(b)
-	if err != nil {
-		return fmt.Errorf("failed to sign location: %w", err)
-	}
-
-	if err := loc.SetSignature(signature); err != nil {
-		return fmt.Errorf("failed to set signature: %w", err)
-	}
-
-	return nil
-}
-
-func (loc Location) VerifySignature() error {
-	capLoc, err := loc.Location()
-	if err != nil {
-		return fmt.Errorf("failed to read location: %w", err)
-	}
-
-	b, err := capLoc.Message().Marshal()
-	if err != nil {
-		return fmt.Errorf("failed to marshal location: %w", err)
-	}
-
-	idBytes, err := capLoc.Id()
-	if err != nil {
-		return fmt.Errorf("failed to extract peer ID: %w", err)
-	}
-
-	peerID, err := peer.Decode(idBytes)
-	if err != nil {
-		return fmt.Errorf("failed to decode peer ID: %w", err)
-	}
-
-	pubKey, err := peerID.ExtractPublicKey()
-	if err != nil {
-		return fmt.Errorf("failed to extract public key: %w", err)
-	}
-
-	sig, err := loc.Signature()
-	if err != nil {
-		return fmt.Errorf("failed to extract signature: %w", err)
-	}
-
-	if ok, err := pubKey.Verify(b, sig); err != nil {
-		return fmt.Errorf("failed to verify signature: %w", err)
-	} else if !ok {
-		return ErrInvalidSignature
-	}
-
-	return nil
-}
-
-func (loc Location) SetService(name string) error {
-	capLoc, err := loc.Location()
-	if err != nil {
-		return fmt.Errorf("fail to create location: %w", err)
-	}
-
-	return capLoc.SetService(name)
-}
-
-func (loc Location) SetID(id peer.ID) error {
-	capLoc, err := loc.Location()
-	if err != nil {
-		return fmt.Errorf("fail to set peer ID: %w", err)
-	}
-
-	return capLoc.SetId(id.String())
 }
 
 func (loc Location) SetMaddrs(maddrs []ma.Multiaddr) error {
-	capLoc, err := loc.Location()
-	if err != nil {
-		return fmt.Errorf("fail to create location: %w", err)
-	}
-
-	capMaddrs, err := capLoc.NewMaddrs(int32(len(maddrs)))
+	capMaddrs, err := loc.NewMaddrs(int32(len(maddrs)))
 	if err != nil {
 		return fmt.Errorf("fail to create capnp Multiaddr: %w", err)
 	}
@@ -159,36 +67,21 @@ func (loc Location) SetMaddrs(maddrs []ma.Multiaddr) error {
 }
 
 func (loc Location) SetAnchor(anchor string) error {
-	capLoc, err := loc.Location()
-	if err != nil {
-		return fmt.Errorf("fail to create location: %w", err)
-	}
-
-	if err := capLoc.SetAnchor(anchor); err != nil {
+	if err := loc.SetAnchor(anchor); err != nil {
 		return fmt.Errorf("fail to set anchor in capnp Location: %w", err)
 	}
 	return nil
 }
 
 func (loc Location) SetCustom(custom capnp.Ptr) error {
-	capLoc, err := loc.Location()
-	if err != nil {
-		return fmt.Errorf("fail to create location: %w", err)
-	}
-
-	if err := capLoc.SetCustom(custom); err != nil {
+	if err := loc.SetCustom(custom); err != nil {
 		return fmt.Errorf("fail to set custom in capnp Location: %w", err)
 	}
 	return nil
 }
 
 func (loc Location) Maddrs() ([]ma.Multiaddr, error) {
-	capLoc, err := loc.Location()
-	if err != nil {
-		return nil, fmt.Errorf("failed to read location: %w", err)
-	}
-
-	capMaddrs, err := capLoc.Maddrs()
+	capMaddrs, err := loc.Location.Maddrs()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Multiaddresses: %w", err)
 	}
@@ -209,6 +102,44 @@ func (loc Location) Maddrs() ([]ma.Multiaddr, error) {
 		}
 		maddrs = append(maddrs, maddr)
 	}
-
 	return maddrs, nil
+}
+
+// Domain is the "signature domain" used when signing and verifying a particular
+// Record type. The Domain string should be unique to your Record type, and all
+// instances of the Record type must have the same Domain string.
+func (loc Location) Domain() string {
+	return EnvelopeDomain
+}
+
+// Codec is a binary identifier for this type of record, ideally a registered multicodec
+// (see https://github.com/multiformats/multicodec).
+// When a Record is put into an Envelope (see record.Seal), the Codec value will be used
+// as the Envelope's PayloadType. When the Envelope is later unsealed, the PayloadType
+// will be used to lookup the correct Record type to unmarshal the Envelope payload into.
+func (loc Location) Codec() []byte {
+	return EnvelopePayloadType
+}
+
+// MarshalRecord converts a Record instance to a []byte, so that it can be used as an
+// Envelope payload.
+func (loc Location) MarshalRecord() ([]byte, error) {
+	return loc.Message().MarshalPacked()
+}
+
+// UnmarshalRecord unmarshals a []byte payload into an instance of a particular Record type.
+func (loc *Location) UnmarshalRecord(b []byte) error {
+	m, err := capnp.UnmarshalPacked(b)
+	if err != nil {
+		return err
+	}
+
+	capLoc, err := api.ReadRootLocation(m)
+	if err != nil {
+		return err
+	}
+
+	loc.Location = capLoc
+
+	return nil
 }

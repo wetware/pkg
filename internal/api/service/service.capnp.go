@@ -279,28 +279,17 @@ func (s Registry_provide_Params) SetTopic(v pubsub.Topic) error {
 	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
-func (s Registry_provide_Params) Location() (SignedLocation, error) {
+func (s Registry_provide_Params) Envelope() ([]byte, error) {
 	p, err := capnp.Struct(s).Ptr(1)
-	return SignedLocation(p.Struct()), err
+	return []byte(p.Data()), err
 }
 
-func (s Registry_provide_Params) HasLocation() bool {
+func (s Registry_provide_Params) HasEnvelope() bool {
 	return capnp.Struct(s).HasPtr(1)
 }
 
-func (s Registry_provide_Params) SetLocation(v SignedLocation) error {
-	return capnp.Struct(s).SetPtr(1, capnp.Struct(v).ToPtr())
-}
-
-// NewLocation sets the location field to a newly
-// allocated SignedLocation struct, preferring placement in s's segment.
-func (s Registry_provide_Params) NewLocation() (SignedLocation, error) {
-	ss, err := NewSignedLocation(capnp.Struct(s).Segment())
-	if err != nil {
-		return SignedLocation{}, err
-	}
-	err = capnp.Struct(s).SetPtr(1, capnp.Struct(ss).ToPtr())
-	return ss, err
+func (s Registry_provide_Params) SetEnvelope(v []byte) error {
+	return capnp.Struct(s).SetData(1, v)
 }
 
 // Registry_provide_Params_List is a list of Registry_provide_Params.
@@ -321,10 +310,6 @@ func (f Registry_provide_Params_Future) Struct() (Registry_provide_Params, error
 }
 func (p Registry_provide_Params_Future) Topic() pubsub.Topic {
 	return pubsub.Topic(p.Future.Field(0, nil).Client())
-}
-
-func (p Registry_provide_Params_Future) Location() SignedLocation_Future {
-	return SignedLocation_Future{Future: p.Future.Field(1, nil)}
 }
 
 type Registry_provide_Results capnp.Struct
@@ -564,336 +549,6 @@ func (f Registry_findProviders_Results_Future) Struct() (Registry_findProviders_
 	return Registry_findProviders_Results(p.Struct()), err
 }
 
-type SignedLocation capnp.Struct
-
-// SignedLocation_TypeID is the unique identifier for the type SignedLocation.
-const SignedLocation_TypeID = 0x95d97bd68e78b8dc
-
-func NewSignedLocation(s *capnp.Segment) (SignedLocation, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
-	return SignedLocation(st), err
-}
-
-func NewRootSignedLocation(s *capnp.Segment) (SignedLocation, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
-	return SignedLocation(st), err
-}
-
-func ReadRootSignedLocation(msg *capnp.Message) (SignedLocation, error) {
-	root, err := msg.Root()
-	return SignedLocation(root.Struct()), err
-}
-
-func (s SignedLocation) String() string {
-	str, _ := text.Marshal(0x95d97bd68e78b8dc, capnp.Struct(s))
-	return str
-}
-
-func (s SignedLocation) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
-	return capnp.Struct(s).EncodeAsPtr(seg)
-}
-
-func (SignedLocation) DecodeFromPtr(p capnp.Ptr) SignedLocation {
-	return SignedLocation(capnp.Struct{}.DecodeFromPtr(p))
-}
-
-func (s SignedLocation) ToPtr() capnp.Ptr {
-	return capnp.Struct(s).ToPtr()
-}
-func (s SignedLocation) IsValid() bool {
-	return capnp.Struct(s).IsValid()
-}
-
-func (s SignedLocation) Message() *capnp.Message {
-	return capnp.Struct(s).Message()
-}
-
-func (s SignedLocation) Segment() *capnp.Segment {
-	return capnp.Struct(s).Segment()
-}
-func (s SignedLocation) Signature() ([]byte, error) {
-	p, err := capnp.Struct(s).Ptr(0)
-	return []byte(p.Data()), err
-}
-
-func (s SignedLocation) HasSignature() bool {
-	return capnp.Struct(s).HasPtr(0)
-}
-
-func (s SignedLocation) SetSignature(v []byte) error {
-	return capnp.Struct(s).SetData(0, v)
-}
-
-func (s SignedLocation) Location() (Location, error) {
-	p, err := capnp.Struct(s).Ptr(1)
-	return Location(p.Struct()), err
-}
-
-func (s SignedLocation) HasLocation() bool {
-	return capnp.Struct(s).HasPtr(1)
-}
-
-func (s SignedLocation) SetLocation(v Location) error {
-	return capnp.Struct(s).SetPtr(1, capnp.Struct(v).ToPtr())
-}
-
-// NewLocation sets the location field to a newly
-// allocated Location struct, preferring placement in s's segment.
-func (s SignedLocation) NewLocation() (Location, error) {
-	ss, err := NewLocation(capnp.Struct(s).Segment())
-	if err != nil {
-		return Location{}, err
-	}
-	err = capnp.Struct(s).SetPtr(1, capnp.Struct(ss).ToPtr())
-	return ss, err
-}
-
-// SignedLocation_List is a list of SignedLocation.
-type SignedLocation_List = capnp.StructList[SignedLocation]
-
-// NewSignedLocation creates a new list of SignedLocation.
-func NewSignedLocation_List(s *capnp.Segment, sz int32) (SignedLocation_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2}, sz)
-	return capnp.StructList[SignedLocation](l), err
-}
-
-// SignedLocation_Future is a wrapper for a SignedLocation promised by a client call.
-type SignedLocation_Future struct{ *capnp.Future }
-
-func (f SignedLocation_Future) Struct() (SignedLocation, error) {
-	p, err := f.Future.Ptr()
-	return SignedLocation(p.Struct()), err
-}
-func (p SignedLocation_Future) Location() Location_Future {
-	return Location_Future{Future: p.Future.Field(1, nil)}
-}
-
-type Location capnp.Struct
-type Location_Which uint16
-
-const (
-	Location_Which_maddrs Location_Which = 0
-	Location_Which_anchor Location_Which = 1
-	Location_Which_custom Location_Which = 2
-)
-
-func (w Location_Which) String() string {
-	const s = "maddrsanchorcustom"
-	switch w {
-	case Location_Which_maddrs:
-		return s[0:6]
-	case Location_Which_anchor:
-		return s[6:12]
-	case Location_Which_custom:
-		return s[12:18]
-
-	}
-	return "Location_Which(" + strconv.FormatUint(uint64(w), 10) + ")"
-}
-
-// Location_TypeID is the unique identifier for the type Location.
-const Location_TypeID = 0xe61540af32cf81b6
-
-func NewLocation(s *capnp.Segment) (Location, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 4})
-	return Location(st), err
-}
-
-func NewRootLocation(s *capnp.Segment) (Location, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 4})
-	return Location(st), err
-}
-
-func ReadRootLocation(msg *capnp.Message) (Location, error) {
-	root, err := msg.Root()
-	return Location(root.Struct()), err
-}
-
-func (s Location) String() string {
-	str, _ := text.Marshal(0xe61540af32cf81b6, capnp.Struct(s))
-	return str
-}
-
-func (s Location) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
-	return capnp.Struct(s).EncodeAsPtr(seg)
-}
-
-func (Location) DecodeFromPtr(p capnp.Ptr) Location {
-	return Location(capnp.Struct{}.DecodeFromPtr(p))
-}
-
-func (s Location) ToPtr() capnp.Ptr {
-	return capnp.Struct(s).ToPtr()
-}
-
-func (s Location) Which() Location_Which {
-	return Location_Which(capnp.Struct(s).Uint16(0))
-}
-func (s Location) IsValid() bool {
-	return capnp.Struct(s).IsValid()
-}
-
-func (s Location) Message() *capnp.Message {
-	return capnp.Struct(s).Message()
-}
-
-func (s Location) Segment() *capnp.Segment {
-	return capnp.Struct(s).Segment()
-}
-func (s Location) Service() (string, error) {
-	p, err := capnp.Struct(s).Ptr(0)
-	return p.Text(), err
-}
-
-func (s Location) HasService() bool {
-	return capnp.Struct(s).HasPtr(0)
-}
-
-func (s Location) ServiceBytes() ([]byte, error) {
-	p, err := capnp.Struct(s).Ptr(0)
-	return p.TextBytes(), err
-}
-
-func (s Location) SetService(v string) error {
-	return capnp.Struct(s).SetText(0, v)
-}
-
-func (s Location) Id() (string, error) {
-	p, err := capnp.Struct(s).Ptr(1)
-	return p.Text(), err
-}
-
-func (s Location) HasId() bool {
-	return capnp.Struct(s).HasPtr(1)
-}
-
-func (s Location) IdBytes() ([]byte, error) {
-	p, err := capnp.Struct(s).Ptr(1)
-	return p.TextBytes(), err
-}
-
-func (s Location) SetId(v string) error {
-	return capnp.Struct(s).SetText(1, v)
-}
-
-func (s Location) Maddrs() (capnp.DataList, error) {
-	if capnp.Struct(s).Uint16(0) != 0 {
-		panic("Which() != maddrs")
-	}
-	p, err := capnp.Struct(s).Ptr(2)
-	return capnp.DataList(p.List()), err
-}
-
-func (s Location) HasMaddrs() bool {
-	if capnp.Struct(s).Uint16(0) != 0 {
-		return false
-	}
-	return capnp.Struct(s).HasPtr(2)
-}
-
-func (s Location) SetMaddrs(v capnp.DataList) error {
-	capnp.Struct(s).SetUint16(0, 0)
-	return capnp.Struct(s).SetPtr(2, v.ToPtr())
-}
-
-// NewMaddrs sets the maddrs field to a newly
-// allocated capnp.DataList, preferring placement in s's segment.
-func (s Location) NewMaddrs(n int32) (capnp.DataList, error) {
-	capnp.Struct(s).SetUint16(0, 0)
-	l, err := capnp.NewDataList(capnp.Struct(s).Segment(), n)
-	if err != nil {
-		return capnp.DataList{}, err
-	}
-	err = capnp.Struct(s).SetPtr(2, l.ToPtr())
-	return l, err
-}
-func (s Location) Anchor() (string, error) {
-	if capnp.Struct(s).Uint16(0) != 1 {
-		panic("Which() != anchor")
-	}
-	p, err := capnp.Struct(s).Ptr(2)
-	return p.Text(), err
-}
-
-func (s Location) HasAnchor() bool {
-	if capnp.Struct(s).Uint16(0) != 1 {
-		return false
-	}
-	return capnp.Struct(s).HasPtr(2)
-}
-
-func (s Location) AnchorBytes() ([]byte, error) {
-	p, err := capnp.Struct(s).Ptr(2)
-	return p.TextBytes(), err
-}
-
-func (s Location) SetAnchor(v string) error {
-	capnp.Struct(s).SetUint16(0, 1)
-	return capnp.Struct(s).SetText(2, v)
-}
-
-func (s Location) Custom() (capnp.Ptr, error) {
-	if capnp.Struct(s).Uint16(0) != 2 {
-		panic("Which() != custom")
-	}
-	return capnp.Struct(s).Ptr(2)
-}
-
-func (s Location) HasCustom() bool {
-	if capnp.Struct(s).Uint16(0) != 2 {
-		return false
-	}
-	return capnp.Struct(s).HasPtr(2)
-}
-
-func (s Location) SetCustom(v capnp.Ptr) error {
-	capnp.Struct(s).SetUint16(0, 2)
-	return capnp.Struct(s).SetPtr(2, v)
-}
-func (s Location) Meta() (capnp.TextList, error) {
-	p, err := capnp.Struct(s).Ptr(3)
-	return capnp.TextList(p.List()), err
-}
-
-func (s Location) HasMeta() bool {
-	return capnp.Struct(s).HasPtr(3)
-}
-
-func (s Location) SetMeta(v capnp.TextList) error {
-	return capnp.Struct(s).SetPtr(3, v.ToPtr())
-}
-
-// NewMeta sets the meta field to a newly
-// allocated capnp.TextList, preferring placement in s's segment.
-func (s Location) NewMeta(n int32) (capnp.TextList, error) {
-	l, err := capnp.NewTextList(capnp.Struct(s).Segment(), n)
-	if err != nil {
-		return capnp.TextList{}, err
-	}
-	err = capnp.Struct(s).SetPtr(3, l.ToPtr())
-	return l, err
-}
-
-// Location_List is a list of Location.
-type Location_List = capnp.StructList[Location]
-
-// NewLocation creates a new list of Location.
-func NewLocation_List(s *capnp.Segment, sz int32) (Location_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 4}, sz)
-	return capnp.StructList[Location](l), err
-}
-
-// Location_Future is a wrapper for a Location promised by a client call.
-type Location_Future struct{ *capnp.Future }
-
-func (f Location_Future) Struct() (Location, error) {
-	p, err := f.Future.Ptr()
-	return Location(p.Struct()), err
-}
-func (p Location_Future) Custom() *capnp.Future {
-	return p.Future.Field(2, nil)
-}
-
 type Message capnp.Struct
 type Message_Which uint16
 
@@ -968,12 +623,12 @@ func (s Message) SetRequest() {
 
 }
 
-func (s Message) Response() (SignedLocation, error) {
+func (s Message) Response() ([]byte, error) {
 	if capnp.Struct(s).Uint16(0) != 1 {
 		panic("Which() != response")
 	}
 	p, err := capnp.Struct(s).Ptr(0)
-	return SignedLocation(p.Struct()), err
+	return []byte(p.Data()), err
 }
 
 func (s Message) HasResponse() bool {
@@ -983,21 +638,9 @@ func (s Message) HasResponse() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s Message) SetResponse(v SignedLocation) error {
+func (s Message) SetResponse(v []byte) error {
 	capnp.Struct(s).SetUint16(0, 1)
-	return capnp.Struct(s).SetPtr(0, capnp.Struct(v).ToPtr())
-}
-
-// NewResponse sets the response field to a newly
-// allocated SignedLocation struct, preferring placement in s's segment.
-func (s Message) NewResponse() (SignedLocation, error) {
-	capnp.Struct(s).SetUint16(0, 1)
-	ss, err := NewSignedLocation(capnp.Struct(s).Segment())
-	if err != nil {
-		return SignedLocation{}, err
-	}
-	err = capnp.Struct(s).SetPtr(0, capnp.Struct(ss).ToPtr())
-	return ss, err
+	return capnp.Struct(s).SetData(0, v)
 }
 
 // Message_List is a list of Message.
@@ -1016,63 +659,261 @@ func (f Message_Future) Struct() (Message, error) {
 	p, err := f.Future.Ptr()
 	return Message(p.Struct()), err
 }
-func (p Message_Future) Response() SignedLocation_Future {
-	return SignedLocation_Future{Future: p.Future.Field(0, nil)}
+
+type Location capnp.Struct
+type Location_Which uint16
+
+const (
+	Location_Which_maddrs Location_Which = 0
+	Location_Which_anchor Location_Which = 1
+	Location_Which_custom Location_Which = 2
+)
+
+func (w Location_Which) String() string {
+	const s = "maddrsanchorcustom"
+	switch w {
+	case Location_Which_maddrs:
+		return s[0:6]
+	case Location_Which_anchor:
+		return s[6:12]
+	case Location_Which_custom:
+		return s[12:18]
+
+	}
+	return "Location_Which(" + strconv.FormatUint(uint64(w), 10) + ")"
 }
 
-const schema_fcba4f486a351ac3 = "x\xda\x8cTM\x88\x1cE\x18\xfd^U\xff\xac\xb03" +
-	"\xb3\x95\x1e\x8d\x06\x86\xb9\xac\x90\x88\x89\xbb\x1b\xc5\xb0(" +
-	"3\xc4\x1fD\"N\x8d\x87\xe0Eh{*\xb3\xbd\xd9" +
-	"\xe9\x1e\xbb{\xa2\xc1\xc3\xe2IrP\x14\x14\"\xa8\x18" +
-	"\xf0\xa2\x07\x13\xc4\xc8f5\xa8\x88\x07\xf1 h\x14\x03" +
-	"\x82'\x7fXHD\x84\x80\xe0\xa6\xa4\xb6\xe7\xcf\x09\x9a" +
-	"\xbd\x15_\xbd\xfa\xde\xfb\xde+\xbe\xb9\x84\xd5\xad\xf9\x82" +
-	"\xbe\x81\x98\xcclG\xff\xb8\xf6\xcc\x8b\xdf?{\xf1U" +
-	"\x12E\xe8\xcfw\xdd\xb5\xfc\xd0\xa3\xeb\x7f\x93\xcd\\\"" +
-	"\xefgk\xc3\xfb\xc32\xa7K\xd6\xd3\x04}\xe5\xee\xfb" +
-	"\x96.\xfc\xf4\xe6'$v\x82r\xcc~i/\x80\xe0" +
-	"=n\x1b@\xf5\xcb\xee\xca\x9f\x1b\xa7\xbf!Y\xc4X" +
-	"\xb7\x07\xe02\"\xef\x9c\xfd\xbe\xf7\x99m\xda\x9d\xdfB" +
-	"?q\xff\xf2\xbd\xf1\x17'\xbe\x1boWq\x9e4\xed" +
-	"\xf68\x06\xf0\xd2\x95\xf7\xf6\x06\xef\x1e\xfd!\x07\x18!" +
-	"\xfb\xcf:\xcb K\x7f{X\x14\x9d#\xbf_\x1c\xbb" +
-	"9\xe5,\x9a\x9b\x0f\x9f\xfbz\xe1t\xfd\xc6_&%" +
-	"X.'\xf2N8\xeb\xde\xcb\x8e\x81\xbf\xe0\x1c\x06A" +
-	"?\xf8\xd5\xf1 v/o\x92(\xf2\x11\x9a\xe0\xfd\xe5" +
-	"\xae{\x982b7\xdd\xe7=9\xe5\xd2\xaf:U\xc9" +
-	"\xb10P\xfbX\xe0w\xa3\xee\xe2ca;R\xadC" +
-	"q\xe0\x97\xb20\x8e\x1a\x80\x9c\xe2\x16\x91\x05\"\xb1\xa7" +
-	"I$ws\xc8;\x19\x04P\x86)\xce?L$\xe7" +
-	"8\xe4=\x0c:\x0d\xdb\x91\x9f\xf5\x12\x82B\x81\x18\x0a" +
-	"\x04\xbd\x12\x07\xbe\xe9ED\x98\x19\xcdB\xc0\x0ca\xc8" +
-	"\xcfs\xfe\xa6j\x87i\x96\x1c\xdf\xd7M\xe2caK" +
-	"\xcd6\xaa~\xe2w\xd2q\x15\x0bDr\x96C\xce\x8d" +
-	"\xa9\xd8kT\xdc\xce!\x0f0T\xb3\xb8\x1b\x06\x10\xfa" +
-	"\xcc\xd1\x99;v\xbf\x13\x9d4\\\xe2\x1a%\xc3_2" +
-	"\xa1\x04\xb9\x92GT5M\xfd\xb6\xea[0\xadu\xce" +
-	"~p\xc4^\xc0U}-\xfdj\xa2\x9e\xea\xa94#" +
-	"G'*\xed\xc6Q\xaa\xfe\x9f\xd0\x9a\x18\xfdH\x18\xb5" +
-	"\x1a\xf9\xf8I:\xdb\xf0\x13w;\x06\xdc\xd6\xcf\xa6\xf5" +
-	"\xdf\x06\x94\x82%?\x82\xd0\x97o\xda8P\xbe\xf4\xd1" +
-	"oDT\x87@UZ\x0c\xe3E\x81\x9d\xd2\x02\x80\x06" +
-	"\xc7\x84n\xb1m\xddM\x95\x96z+Yz\xdd\x84\x9b" +
-	"5\x95\xfe\x0b\xd8\x0f\xe0P\\\xcb\xe32\x09\xdc<\x9c" +
-	"\xfe5\x13\xc0+\x1c\xf2\xad\xb1\xe9\xdf\xd8E$Or" +
-	"\xc8\xb7\x19*LkV\x06#\x12\xa7\x16\x89\xe4\xeb\x1c" +
-	"r\x8d\xa1\xc2\xaf\x9a2'\x12gM\xf9\x0c\x87\xfc\x98" +
-	"\xa1bm\x9a\xb2E$\xce\x99\xf2\x07\x1c\xf2S\x06a" +
-	"\xf32l\"q\xde\xf8\xba\xc6!/0\xac\xf6\x15b" +
-	"\x9a\x18\xa6\x09<l\x0d\x8e\xb5\x8e\xdfj%)\x8a\xb4" +
-	"e\x9a\xf9\xfbEB\xcd\x8f\x82\xa58\x19\x82\x82^\x9a" +
-	"\xc5\x1d\xec \x86\x1d\x84RGe\xfe\xe0\xc5t\xfeb" +
-	"\xd2\x84\xa6\xaa\xe5v\xe5\xdf\xd0&\x1an,\x0c\x16\x86" +
-	"\x98?HL\xdc\xeab\xb4~0X3\xe2\x96\x84\x98" +
-	"\x10\xeej\xdf\xed:\xf4 &\xaan\x05UG\x03\xf8" +
-	"'\x00\x00\xff\xff<\xe9n\xa5"
+// Location_TypeID is the unique identifier for the type Location.
+const Location_TypeID = 0xe61540af32cf81b6
+
+func NewLocation(s *capnp.Segment) (Location, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 3})
+	return Location(st), err
+}
+
+func NewRootLocation(s *capnp.Segment) (Location, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 3})
+	return Location(st), err
+}
+
+func ReadRootLocation(msg *capnp.Message) (Location, error) {
+	root, err := msg.Root()
+	return Location(root.Struct()), err
+}
+
+func (s Location) String() string {
+	str, _ := text.Marshal(0xe61540af32cf81b6, capnp.Struct(s))
+	return str
+}
+
+func (s Location) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Location) DecodeFromPtr(p capnp.Ptr) Location {
+	return Location(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Location) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+
+func (s Location) Which() Location_Which {
+	return Location_Which(capnp.Struct(s).Uint16(0))
+}
+func (s Location) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Location) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Location) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Location) Service() (string, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return p.Text(), err
+}
+
+func (s Location) HasService() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Location) ServiceBytes() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return p.TextBytes(), err
+}
+
+func (s Location) SetService(v string) error {
+	return capnp.Struct(s).SetText(0, v)
+}
+
+func (s Location) Meta() (capnp.TextList, error) {
+	p, err := capnp.Struct(s).Ptr(1)
+	return capnp.TextList(p.List()), err
+}
+
+func (s Location) HasMeta() bool {
+	return capnp.Struct(s).HasPtr(1)
+}
+
+func (s Location) SetMeta(v capnp.TextList) error {
+	return capnp.Struct(s).SetPtr(1, v.ToPtr())
+}
+
+// NewMeta sets the meta field to a newly
+// allocated capnp.TextList, preferring placement in s's segment.
+func (s Location) NewMeta(n int32) (capnp.TextList, error) {
+	l, err := capnp.NewTextList(capnp.Struct(s).Segment(), n)
+	if err != nil {
+		return capnp.TextList{}, err
+	}
+	err = capnp.Struct(s).SetPtr(1, l.ToPtr())
+	return l, err
+}
+func (s Location) Maddrs() (capnp.DataList, error) {
+	if capnp.Struct(s).Uint16(0) != 0 {
+		panic("Which() != maddrs")
+	}
+	p, err := capnp.Struct(s).Ptr(2)
+	return capnp.DataList(p.List()), err
+}
+
+func (s Location) HasMaddrs() bool {
+	if capnp.Struct(s).Uint16(0) != 0 {
+		return false
+	}
+	return capnp.Struct(s).HasPtr(2)
+}
+
+func (s Location) SetMaddrs(v capnp.DataList) error {
+	capnp.Struct(s).SetUint16(0, 0)
+	return capnp.Struct(s).SetPtr(2, v.ToPtr())
+}
+
+// NewMaddrs sets the maddrs field to a newly
+// allocated capnp.DataList, preferring placement in s's segment.
+func (s Location) NewMaddrs(n int32) (capnp.DataList, error) {
+	capnp.Struct(s).SetUint16(0, 0)
+	l, err := capnp.NewDataList(capnp.Struct(s).Segment(), n)
+	if err != nil {
+		return capnp.DataList{}, err
+	}
+	err = capnp.Struct(s).SetPtr(2, l.ToPtr())
+	return l, err
+}
+func (s Location) Anchor() (string, error) {
+	if capnp.Struct(s).Uint16(0) != 1 {
+		panic("Which() != anchor")
+	}
+	p, err := capnp.Struct(s).Ptr(2)
+	return p.Text(), err
+}
+
+func (s Location) HasAnchor() bool {
+	if capnp.Struct(s).Uint16(0) != 1 {
+		return false
+	}
+	return capnp.Struct(s).HasPtr(2)
+}
+
+func (s Location) AnchorBytes() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(2)
+	return p.TextBytes(), err
+}
+
+func (s Location) SetAnchor(v string) error {
+	capnp.Struct(s).SetUint16(0, 1)
+	return capnp.Struct(s).SetText(2, v)
+}
+
+func (s Location) Custom() (capnp.Ptr, error) {
+	if capnp.Struct(s).Uint16(0) != 2 {
+		panic("Which() != custom")
+	}
+	return capnp.Struct(s).Ptr(2)
+}
+
+func (s Location) HasCustom() bool {
+	if capnp.Struct(s).Uint16(0) != 2 {
+		return false
+	}
+	return capnp.Struct(s).HasPtr(2)
+}
+
+func (s Location) SetCustom(v capnp.Ptr) error {
+	capnp.Struct(s).SetUint16(0, 2)
+	return capnp.Struct(s).SetPtr(2, v)
+}
+
+// Location_List is a list of Location.
+type Location_List = capnp.StructList[Location]
+
+// NewLocation creates a new list of Location.
+func NewLocation_List(s *capnp.Segment, sz int32) (Location_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 3}, sz)
+	return capnp.StructList[Location](l), err
+}
+
+// Location_Future is a wrapper for a Location promised by a client call.
+type Location_Future struct{ *capnp.Future }
+
+func (f Location_Future) Struct() (Location, error) {
+	p, err := f.Future.Ptr()
+	return Location(p.Struct()), err
+}
+func (p Location_Future) Custom() *capnp.Future {
+	return p.Future.Field(2, nil)
+}
+
+const schema_fcba4f486a351ac3 = "x\xda\x8cS]HdU\x1c\xff\xff\xce\xb9wn\x82" +
+	"3v\xbcSR0\x0c\x81\x82F\x9a\x8eD\"\xc4\x0c" +
+	"\xf6AD\xd1\x9cy\xe9-\xb8\xdd9\xea\xa8s\xef\xed" +
+	"\xde\xd1\x12\x12\x11\x8a\xe8\xcd\x1e\x02\x9fz\x0a\xca\xa8\x94" +
+	"\x88 {\x88\x88\x1e\xa2\x87\xa0\x0f\xa8\xa7\xdev\x17a" +
+	"]\x96e\x85\x85\xd5\xb3\x9c\xf9\xd0Y\xdde}\xfd\xfd" +
+	"\x7f\xf7\xfe>\xfe\xe7?^`%k\"\xfdy\x0f1" +
+	"\x19\xd9)}\xf8\xec\xf3\xf3\x7f\xff\xff\xe9O$\x06@" +
+	"d3\x87h\xf2\x07\xab\x00\x82\xfb\xb3\xf5\x0eA\xe7\x7f" +
+	"\x8b\x96n\xec\xef\xfcI2\x03\xe8_\x1e\x7ff\xe1\xe5" +
+	"\xd7\xf7n\xd3\x8bp\x18\x91\xfb\x84\xfd\xad;b;D" +
+	"\xee\x90m\xd8o\xbe\xb0\xf0\\\xf8\xebG\xfft\xff\xee" +
+	"\x03\xfb-\xf3\xbb\x8f\x9b\x84\xcd\xc3oF\xfd/\x17\xff" +
+	"m\x11,3\xcf\xa5\x16@\x96\xfe\xeb\x0d\x91I\xcd^" +
+	"\xfb\xafk\xd2\x93\x9a6\x93\xef7\xfe(\xec\x94\x1e\xb9" +
+	"t\xd6\x02w8\x91{\xdd\xdeso\x19\x0b\x937\xed" +
+	"<\x08\xfa\xa5\xdfW\xfd\xd098\"\x91\xe1\xa7l\x82" +
+	";\xe4\xec\xb9\xa3\x8e1;\xe2|\xe8\xae9\x0e]\xd6" +
+	"\x89\x8aWj\xbe\x1a\xe3\xbe\x17\x05\xd1tE\xcd\xd5\x92" +
+	"F\xbc:\x16\xc5\xe1J\xad\xaa\x06\xcby/\xf6\xea\x89" +
+	"|\x88[D\x16\x88\xc4H\x81H\x0er\xc8q\x06\x01" +
+	"da\xc0\xd1W\x88\xe4S\x1cr\x8a!\xdf\x08\xa3\x9a" +
+	"\x0f\xa1w\x17\x1f~zx;\xd8\"\x02\x04A\xab`" +
+	"E-\x85\x91\"\"\xa4\x89!M8\xd1GK\xff5" +
+	"\x95O\x12oN\x95\x01#\xd9\xabuKs\xe6T3" +
+	"\x8dc}^t=Vo/\xab\xa4A)\x1d\xab$" +
+	"\x0a\x83\xe4\x9e2\xd6\x99\x98\xb3\xb5\xa0ZnE\x8d\x93" +
+	"\xc1\xb2\x17;\x17\x09\xfb$\x91\x1c\xe6\x90\xd5\xfb\x87\xed" +
+	"\xf3\xe7\xbd\x00B\x1f<\xba?\x95\xbd\xfa\xe3\x15\"*" +
+	"A /-\x86nP`@Z\x00P\xe6h\xba\x15" +
+	"\x17v[QI\xdf\xf2R#y\xe0\x0e+E\x95\xdc" +
+	"El\x97\xfdjX\xf4\xbdF-\x0cL\xdb\xd9\x93\xcc" +
+	"k\xa6\xecw9\xe4\xfb]\x997L\xe6\xf78\xe4\x16" +
+	"C\x8ei\xcd\xb2`D\xe2\x93i\"\xb9\xc9!\xbfb" +
+	"\xc8\xf1c\x03s\"\xb1m\xe0\xcf8\xe4.C\xce:" +
+	"2\xb0E$\xbe6\xf0\x17\x1c\xf2;\x86\xf5\xb6\x19\xf4" +
+	"\x12C/\xa1\xaf\xae\x1a\x1e2\xd4,\xc2`\x19B\xb1" +
+	"\xeeU\xabq\xd2A\xd3m\xd4\x0b\xfc\xf90\xee|X" +
+	"\xf4\x97\x93FXG?1\xf4\x9f\x7fQ\x15Ul\xd5" +
+	"\xd1zR6\xd1\xc9\xcd\xa3srbb\x86\x98\x18r" +
+	"pz\xc0\xe8\x1c\xaax,&&\x84\xb3\xden\xb3\x04" +
+	"\xddY\x03\xe5\x9b\x8b(\xa1\x0c\xdc\x09\x00\x00\xff\xff\xc9" +
+	"\x04%\x96"
 
 func init() {
 	schemas.Register(schema_fcba4f486a351ac3,
-		0x95d97bd68e78b8dc,
 		0xbf9edfd4684337f6,
 		0xd2afeaf36c70c91f,
 		0xd589c56f3d6a445e,

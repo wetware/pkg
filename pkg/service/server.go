@@ -24,12 +24,12 @@ func (s *RegistryServer) Client() capnp.Client {
 }
 
 func (s *RegistryServer) Provide(ctx context.Context, call api.Registry_provide) error {
-	loc, err := call.Args().Location()
+	e, err := call.Args().Envelope()
 	if err != nil {
 		return fmt.Errorf("failed to read location: %w", err)
 	}
 
-	response, err := encodeResponse(loc)
+	response, err := encodeResponse(e)
 	if err != nil {
 		return err
 	}
@@ -89,7 +89,13 @@ func (s *RegistryServer) FindProviders(ctx context.Context, call api.Registry_fi
 			}
 
 			fut, release := sender.Send(ctx, func(ps channel.Sender_send_Params) error {
-				return ps.SetValue(loc.ToPtr())
+				m, _ := capnp.Unmarshal(loc)
+				ptr, err := m.Root()
+				if err != nil {
+					return err
+				}
+
+				return ps.SetValue(ptr)
 			})
 			defer release()
 
@@ -113,14 +119,14 @@ func encodeRequest(call api.Registry_findProviders) ([]byte, error) {
 	return msg.Message().MarshalPacked()
 }
 
-func encodeResponse(loc api.SignedLocation) ([]byte, error) {
+func encodeResponse(e []byte) ([]byte, error) {
 	_, seg := capnp.NewSingleSegmentMessage(nil)
 	msg, err := api.NewRootMessage(seg)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := msg.SetResponse(loc); err != nil {
+	if err := msg.SetResponse(e); err != nil {
 		return nil, err
 	}
 
