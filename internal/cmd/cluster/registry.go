@@ -5,7 +5,7 @@ import (
 
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
-	"github.com/wetware/ww/pkg/service"
+	service "github.com/wetware/ww/pkg/registry"
 )
 
 func discover() *cli.Command {

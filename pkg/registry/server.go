@@ -6,7 +6,7 @@ import (
 
 	"capnproto.org/go/capnp/v3"
 	"github.com/wetware/ww/internal/api/channel"
-	api "github.com/wetware/ww/internal/api/service"
+	api "github.com/wetware/ww/internal/api/registry"
 	"github.com/wetware/ww/pkg/pubsub"
 )
 
@@ -89,13 +89,13 @@ func (s *RegistryServer) FindProviders(ctx context.Context, call api.Registry_fi
 			}
 
 			fut, release := sender.Send(ctx, func(ps channel.Sender_send_Params) error {
-				m, _ := capnp.Unmarshal(loc)
-				ptr, err := m.Root()
+				_, seg := capnp.NewSingleSegmentMessage(nil)
+				data, err := capnp.NewData(seg, loc)
 				if err != nil {
 					return err
 				}
 
-				return ps.SetValue(ptr)
+				return ps.SetValue(data.ToPtr())
 			})
 			defer release()
 

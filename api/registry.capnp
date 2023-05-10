@@ -2,8 +2,8 @@ using Go = import "/go.capnp";
 
 @0xfcba4f486a351ac3;
 
-$Go.package("service");
-$Go.import("github.com/wetware/ww/internal/api/service");
+$Go.package("registry");
+$Go.import("github.com/wetware/ww/internal/api/registry");
 
 
 using Envelope = Data;

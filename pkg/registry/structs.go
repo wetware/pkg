@@ -7,7 +7,7 @@ import (
 	"capnproto.org/go/capnp/v3"
 	"github.com/libp2p/go-libp2p-core/record"
 	ma "github.com/multiformats/go-multiaddr"
-	api "github.com/wetware/ww/internal/api/service"
+	api "github.com/wetware/ww/internal/api/registry"
 )
 
 // TODO:  register this once stable.
@@ -31,7 +31,7 @@ type Location struct {
 
 func NewLocation() (Location, error) {
 	_, seg := capnp.NewSingleSegmentMessage(nil)
-	loc, err := api.NewLocation(seg)
+	loc, err := api.NewRootLocation(seg)
 	if err != nil {
 		return Location{}, fmt.Errorf("failed to create location: %w", err)
 	}

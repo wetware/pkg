@@ -9,7 +9,7 @@ import (
 	casm "github.com/wetware/casm/pkg"
 	chan_api "github.com/wetware/ww/internal/api/channel"
 	ps_api "github.com/wetware/ww/internal/api/pubsub"
-	api "github.com/wetware/ww/internal/api/service"
+	api "github.com/wetware/ww/internal/api/registry"
 	"github.com/wetware/ww/pkg/pubsub"
 )
 
@@ -19,10 +19,14 @@ func (c Registry) Release() {
 	api.Registry(c).Release()
 }
 
-func (c Registry) Provide(ctx context.Context, topic pubsub.Topic, e record.Envelope) (casm.Future, capnp.ReleaseFunc) {
+func (c Registry) Provide(ctx context.Context, topic pubsub.Topic, e *record.Envelope) (casm.Future, capnp.ReleaseFunc) {
 	ctx, cancel := context.WithCancel(ctx)
 
 	fut, release := api.Registry(c).Provide(ctx, func(ps api.Registry_provide_Params) error {
+		if err := ps.SetTopic(ps_api.Topic(topic)); err != nil {
+			return err
+		}
+
 		b, err := e.Marshal()
 		if err != nil {
 			return err
@@ -88,7 +92,12 @@ func (h handler) Send(ctx context.Context, call chan_api.Sender_send) error {
 		return fmt.Errorf("failed to extract value: %w", err)
 	}
 
-	_, rec, err := record.ConsumeEnvelope(ptr.Data(), EnvelopeDomain)
+	// copy
+	data := ptr.Data()
+	b := make([]byte, len(data))
+	copy(b, data)
+	// decode
+	_, rec, err := record.ConsumeEnvelope(b, EnvelopeDomain)
 	if err != nil {
 		return fmt.Errorf("failed to consume envelope: %w", err)
 	}

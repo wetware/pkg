@@ -8,16 +8,16 @@ import (
 	"time"
 
 	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p-core/record"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/libp2p/go-libp2p/core/peer"
 	inproc "github.com/lthibault/go-libp2p-inproc-transport"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/require"
-	api "github.com/wetware/ww/internal/api/service"
+	api "github.com/wetware/ww/internal/api/registry"
 	pscap "github.com/wetware/ww/pkg/pubsub"
-	"github.com/wetware/ww/pkg/service"
+	service "github.com/wetware/ww/pkg/registry"
 )
 
 func TestDiscover(t *testing.T) {
@@ -48,10 +48,16 @@ func TestDiscover(t *testing.T) {
 	loc, err := generateLocation(maddrN, serviceName)
 	require.NoError(t, err)
 
+	privKey, _, err := crypto.GenerateKeyPairWithReader(crypto.Ed25519, 2048, rand.Reader)
+	require.NoError(t, err)
+
+	e, err := record.Seal(&loc, privKey)
+	require.NoError(t, err)
+
 	topic, release := ps.Join(ctx, serviceName)
 	defer release()
 
-	_, release = client.Provide(ctx, topic, loc)
+	_, release = client.Provide(ctx, topic, e)
 	defer release()
 
 	time.Sleep(time.Second) // give time for the provider to set
@@ -87,32 +93,8 @@ func generateLocation(n int, serviceName string) (service.Location, error) {
 		return loc, fmt.Errorf("failed to set maddrs: %w", err)
 	}
 
-	privKey, _, err := crypto.GenerateKeyPairWithReader(crypto.Ed25519, 2048, rand.Reader)
-	if err != nil {
-		return loc, fmt.Errorf("failed to generate privkey: %w", err)
-	}
-
-	pubKey := privKey.GetPublic()
-	peerID, err := peer.IDFromPublicKey(pubKey)
-	if err != nil {
-		return loc, fmt.Errorf("failed to generate ID from pubkey: %w", err)
-	}
-
-	pubKey, err = peerID.ExtractPublicKey()
-	if err != nil {
-		return loc, fmt.Errorf("failed to extract public key: %w", err)
-	}
-
-	if err := loc.SetID(peerID); err != nil {
-		return loc, fmt.Errorf("failed to set peer ID: %w", err)
-	}
-
 	if err := loc.SetService(serviceName); err != nil {
 		return loc, fmt.Errorf("failed to set service name: %w", err)
-	}
-
-	if err := loc.Sign(privKey); err != nil {
-		return loc, fmt.Errorf("failed to sign the message: %w", err)
 	}
 
 	return loc, nil

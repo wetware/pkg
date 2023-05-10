@@ -12,7 +12,7 @@ import (
 	"github.com/wetware/ww/pkg/host"
 	"github.com/wetware/ww/pkg/process"
 	"github.com/wetware/ww/pkg/pubsub"
-	"github.com/wetware/ww/pkg/service"
+	service "github.com/wetware/ww/pkg/registry"
 )
 
 type Node struct {

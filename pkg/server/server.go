@@ -14,7 +14,7 @@ import (
 	"github.com/wetware/ww/pkg/host"
 	"github.com/wetware/ww/pkg/process"
 	"github.com/wetware/ww/pkg/pubsub"
-	"github.com/wetware/ww/pkg/service"
+	service "github.com/wetware/ww/pkg/registry"
 )
 
 // Router provides an interface for routing messages by topic, and supports

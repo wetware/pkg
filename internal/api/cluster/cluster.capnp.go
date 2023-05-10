@@ -13,7 +13,7 @@ import (
 	anchor "github.com/wetware/ww/internal/api/anchor"
 	process "github.com/wetware/ww/internal/api/process"
 	pubsub "github.com/wetware/ww/internal/api/pubsub"
-	service "github.com/wetware/ww/internal/api/service"
+	registry "github.com/wetware/ww/internal/api/registry"
 )
 
 type Host capnp.Client
@@ -1115,16 +1115,16 @@ func (s Host_registry_Results) Message() *capnp.Message {
 func (s Host_registry_Results) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s Host_registry_Results) Registry() service.Registry {
+func (s Host_registry_Results) Registry() registry.Registry {
 	p, _ := capnp.Struct(s).Ptr(0)
-	return service.Registry(p.Interface().Client())
+	return registry.Registry(p.Interface().Client())
 }
 
 func (s Host_registry_Results) HasRegistry() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s Host_registry_Results) SetRegistry(v service.Registry) error {
+func (s Host_registry_Results) SetRegistry(v registry.Registry) error {
 	if !v.IsValid() {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
@@ -1149,8 +1149,8 @@ func (f Host_registry_Results_Future) Struct() (Host_registry_Results, error) {
 	p, err := f.Future.Ptr()
 	return Host_registry_Results(p.Struct()), err
 }
-func (p Host_registry_Results_Future) Registry() service.Registry {
-	return service.Registry(p.Future.Field(0, nil).Client())
+func (p Host_registry_Results_Future) Registry() registry.Registry {
+	return registry.Registry(p.Future.Field(0, nil).Client())
 }
 
 type Host_executor_Params capnp.Struct

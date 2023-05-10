@@ -38,7 +38,7 @@ interface Host {
     # including cryptographic secrets and SHOULD NOT be provided
     # to untrusted parties.
 
-    registry @4 () -> (registry :import "service.capnp".Registry);
+    registry @4 () -> (registry :import "registry.capnp".Registry);
     # Registry returns a Service Registry capability, which is used for 
     # discovering and providing service. This way, applications can find each other.
 
