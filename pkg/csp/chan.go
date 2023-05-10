@@ -137,7 +137,7 @@ func (r Recver) Client() capnp.Client {
 
 func (r Recver) Recv(ctx context.Context) (Future, capnp.ReleaseFunc) {
 	f, release := api.Recver(r).Recv(ctx, nil)
-	return Future(f), release
+	return Future{Future: casm.Future(f)}, release
 }
 
 func (r Recver) AddRef() Recver {
@@ -216,6 +216,16 @@ func Ptr(ptr capnp.Ptr) Value {
 	}
 }
 
+// Client takes any client-like type and converts it into a value
+// capable of being sent through a channel.
+func Client[T ~capnp.ClientKind](t T) Value {
+	return func(ps api.Sender_send_Params) error {
+		id := ps.Message().CapTable().Add(capnp.Client(t))
+		ifc := capnp.NewInterface(ps.Segment(), id)
+		return ps.SetValue(ifc.ToPtr())
+	}
+}
+
 // Struct takes any capnp struct and converts it into a value
 // capable of being sent through a channel.
 func Struct[T ~capnp.StructKind](t T) Value {
@@ -247,13 +257,16 @@ func Text[T ~string](t T) Value {
 // Future result from a Chan operation. It is a specialized instance
 // of a casm.Future that provides typed methods for common capnp.Ptr
 // types.
-type Future casm.Future
+type Future struct{ casm.Future }
 
+// Value returns a *Future that asynchronously resolves to the  next
+// value produced by the channel.
 func (f Future) Value() *capnp.Future {
 	return f.Field(0, nil)
 }
 
 func (f Future) Client() capnp.Client {
+	<-f.Done() // avoids returning *promised* client
 	return f.Value().Client()
 }
 

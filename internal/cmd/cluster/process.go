@@ -32,13 +32,8 @@ func runAction() cli.ActionFunc {
 		executor, release := node.Executor(ctx)
 		defer release()
 
-		proc, release := executor.Spawn(ctx, src)
+		proc, release := executor.Exec(ctx, src)
 		defer release()
-
-		if err := proc.Start(ctx); err != nil {
-			return err
-		}
-		defer proc.Stop(ctx)
 
 		return proc.Wait(ctx)
 	}

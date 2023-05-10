@@ -16,7 +16,7 @@ import (
 	pubsub_api "github.com/wetware/ww/internal/api/pubsub"
 	reg_api "github.com/wetware/ww/internal/api/registry"
 	"github.com/wetware/ww/pkg/anchor"
-	"github.com/wetware/ww/pkg/process"
+	"github.com/wetware/ww/pkg/csp"
 	"github.com/wetware/ww/pkg/pubsub"
 	service "github.com/wetware/ww/pkg/registry"
 )
@@ -66,9 +66,9 @@ func (h Host) Registry(ctx context.Context) (service.Registry, capnp.ReleaseFunc
 	return service.Registry(f.Registry()), release
 }
 
-func (h Host) Executor(ctx context.Context) (process.Executor, capnp.ReleaseFunc) {
+func (h Host) Executor(ctx context.Context) (csp.Executor, capnp.ReleaseFunc) {
 	f, release := api.Host(h).Executor(ctx, nil)
-	return process.Executor(f.Executor()), release
+	return csp.Executor(f.Executor()), release
 }
 
 /*---------------------------*
@@ -98,7 +98,7 @@ type RegistryProvider interface {
 }
 
 type ExecutorProvider interface {
-	Executor() process.Executor
+	Executor() csp.Executor
 }
 
 // Server provides the Host capability.

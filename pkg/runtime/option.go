@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"github.com/libp2p/go-libp2p"
+	"github.com/tetratelabs/wazero"
 	"go.uber.org/fx"
 
 	casm "github.com/wetware/casm/pkg"
@@ -14,9 +15,10 @@ import (
 // to override defaults, while keeping interacton with Fx to
 // a minimum.
 type Config struct {
-	newHost HostConfig
-	hostOpt []libp2p.Option
-	pexOpt  []pex.Option
+	newHost    HostConfig
+	hostOpt    []libp2p.Option
+	pexOpt     []pex.Option
+	wasmConfig wazero.RuntimeConfig
 }
 
 // With returns a new Config populated by the supplied options.
@@ -39,6 +41,7 @@ func (c Config) Client() fx.Option {
 func (c Config) Server() fx.Option {
 	return fx.Module("server",
 		c.Vat(),
+		c.WASM(),
 		c.System(),
 		c.PubSub(),
 		c.Routing(),
@@ -93,5 +96,23 @@ func WithPeXOpt(opt ...pex.Option) Option {
 func WithPeXDisabled() Option {
 	return func(c *Config) {
 		c.pexOpt = nil
+	}
+}
+
+// WithWASMConfig sets the WASM runtime configuration used by the
+// process executor.   If rc == nil, a default configuration with
+// a global, shared compilation cache is used.  This default also
+// causes execution of WASM modules to abort when the context has
+// expired.
+func WithWASMConfig(rc wazero.RuntimeConfig) Option {
+	if rc == nil {
+		cache := wazero.NewCompilationCache()
+		rc = wazero.NewRuntimeConfig().
+			WithCompilationCache(cache).
+			WithCloseOnContextDone(true)
+	}
+
+	return func(c *Config) {
+		c.wasmConfig = rc
 	}
 }

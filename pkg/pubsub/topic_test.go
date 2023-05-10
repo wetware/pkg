@@ -2,10 +2,9 @@ package pubsub_test
 
 import (
 	"context"
-	"errors"
 	"testing"
-	"time"
 
+	capnp "capnproto.org/go/capnp/v3"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -38,82 +37,5 @@ func TestPublish(t *testing.T) {
 
 	err := topic.Publish(context.Background(), []byte("hello, world!"))
 	require.NoError(t, err, "should succeed")
-}
-
-func TestStream(t *testing.T) {
-	t.Parallel()
-
-	t.Skip("skipping test until stream workaround is removed") // FIXME
-
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	server := mock_pubsub.NewMockTopicServer(ctrl)
-	server.EXPECT().
-		Publish(gomock.Any(), gomock.Any()).
-		Return(nil).
-		MaxTimes(128)
-
-	topic := pubsub.NewTopic(server)
-	defer topic.Release()
-
-	stream := topic.NewStream(context.Background())
-	for i := 0; i < 128; i++ {
-		err := stream.Publish([]byte("hello, world!"))
-		require.NoError(t, err, "should send text")
-	}
-
-	err := stream.Close()
-	assert.NoError(t, err, "should close gracefully")
-}
-
-func TestSendStream_Error(t *testing.T) {
-	t.Parallel()
-
-	t.Skip("skipping test until stream workaround is removed") // FIXME
-
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	want := errors.New("test")
-
-	server := mock_pubsub.NewMockTopicServer(ctrl)
-	server.EXPECT().
-		Publish(gomock.Any(), gomock.Any()).
-		Return(nil).
-		Times(64)
-	server.EXPECT().
-		Publish(gomock.Any(), gomock.Any()).
-		Return(want).
-		Times(1)
-	server.EXPECT().
-		Publish(gomock.Any(), gomock.Any()).
-		Return(nil).
-		MaxTimes(64)
-
-	topic := pubsub.NewTopic(server)
-	defer topic.Release()
-
-	stream := topic.NewStream(context.Background())
-	for i := 0; i < 64; i++ {
-		err := stream.Publish([]byte("hello, world!"))
-		require.NoError(t, err, "should send text")
-	}
-
-	// The next call will trigger the error, but it might
-	// not be detected synchronously.   We have no way of
-	// knowing which of these calls will detect the error.
-	for i := 0; i < 64; i++ {
-		// Maximize the chance that of detecting the error
-		// in-flight.  This helps with code coverage.
-		time.Sleep(time.Millisecond)
-
-		err := stream.Publish([]byte("hello, world!"))
-		if err != nil {
-			require.ErrorIs(t, err, want, "should return error")
-		}
-	}
-
-	err := stream.Close()
-	require.ErrorIs(t, err, want, "should return error")
+	require.NoError(t, capnp.Client(topic).WaitStreaming())
 }

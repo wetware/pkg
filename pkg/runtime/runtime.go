@@ -52,6 +52,7 @@ func clientDefaults(opt []Option) []Option {
 func serverDefaults(opt []Option) []Option {
 	return append([]Option{
 		WithHostConfig(casm.Server),
+		WithWASMConfig(nil),
 	}, opt...)
 }
 

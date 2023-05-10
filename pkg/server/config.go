@@ -4,15 +4,18 @@ import (
 	"context"
 	"time"
 
-	"go.uber.org/fx"
-
+	"github.com/lthibault/log"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
+	"go.uber.org/fx"
+
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/cluster"
 	"github.com/wetware/casm/pkg/cluster/pulse"
 	"github.com/wetware/casm/pkg/cluster/routing"
 	"github.com/wetware/casm/pkg/debug"
+	"github.com/wetware/ww/pkg/csp"
+	"github.com/wetware/ww/pkg/csp/proc"
 )
 
 type ClusterConfig struct {
@@ -62,10 +65,11 @@ type RuntimeConfig struct {
 	fx.In
 
 	Ctx    context.Context      `optional:"true"`
+	Logger log.Logger           `optional:"true"`
 	Config wazero.RuntimeConfig `optional:"true"`
 }
 
-func (rc RuntimeConfig) New() wazero.Runtime {
+func (rc RuntimeConfig) New() csp.Runtime {
 	if rc.Ctx == nil {
 		rc.Ctx = context.Background()
 	}
@@ -76,7 +80,15 @@ func (rc RuntimeConfig) New() wazero.Runtime {
 
 	r := wazero.NewRuntimeWithConfig(rc.Ctx, rc.Config)
 	wasi_snapshot_preview1.MustInstantiate(rc.Ctx, r)
-	return r
+
+	m := proc.BindModule(rc.Ctx, r,
+		proc.WithLogger(rc.Logger),
+		/* proc.WithClient(capnp.Client{}) */)
+
+	return csp.Runtime{
+		Runtime:    r,
+		HostModule: m,
+	}
 }
 
 type DebugConfig struct {

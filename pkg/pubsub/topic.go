@@ -9,7 +9,6 @@ import (
 	"github.com/lthibault/log"
 
 	casm "github.com/wetware/casm/pkg"
-	"github.com/wetware/casm/pkg/util/stream"
 	api "github.com/wetware/ww/internal/api/pubsub"
 )
 
@@ -39,58 +38,10 @@ func (t Topic) Name(ctx context.Context) (string, error) {
 	return res.Name()
 }
 
-// Publish a message synchronously.  This is a convenience function that
-// is equivalent to calling PublishAsync() and blocking on the future it
-// returns. The drawback is that each call will block until it completes
-// a round-trip.  It is safe to call Publish concurrently.
+// Publish a message asynchronously.  The first error encountered will
+// be returned by all subsequent calls to Publish().
 func (t Topic) Publish(ctx context.Context, b []byte) error {
-	f, release := t.PublishAsync(ctx, b)
-	defer release()
-
-	return f.Err()
-}
-
-// NewStream provides an interface for publishing large volumes of data
-// through a flow-controlled channel.   This will override the existing
-// FlowLimiter.
-func (t Topic) NewStream(ctx context.Context) Stream {
-	// TODO:  use BBR once scheduler bug is fixed
-	api.Topic(t).SetFlowLimiter(flowcontrol.NewFixedLimiter(1e6))
-
-	cherr := make(chan error, 1)
-	done := make(chan struct{})
-
-	ctx, cancel := context.WithCancel(ctx)
-
-	s := Stream{
-		ctx:    ctx,
-		cancel: cancel,
-		cherr:  cherr,
-		done:   done,
-		topic:  t,
-	}
-
-	go func() {
-		defer cancel()
-		defer close(done)
-
-		select {
-		case s.err = <-cherr:
-		case <-ctx.Done():
-			s.err = ctx.Err()
-		}
-	}()
-
-	return s
-}
-
-// PublishAsync submits a message for broadcast over the topic.  Unlike
-// Publish, it returns a future.  This is useful when applications must
-// publish a large volume of messages, and callers do not wish to spawn
-// a goroutine for each call.  PublishAsync is nevertheless thread-safe.
-func (t Topic) PublishAsync(ctx context.Context, b []byte) (casm.Future, capnp.ReleaseFunc) {
-	f, release := api.Topic(t).Publish(ctx, message(b))
-	return casm.Future(f), release
+	return api.Topic(t).Publish(ctx, message(b))
 }
 
 // Subscribe to the topic.  Callers MUST call the provided ReleaseFunc
@@ -120,56 +71,6 @@ func (t Topic) Subscribe(ctx context.Context) (Subscription, capnp.ReleaseFunc) 
 			cancel()
 			release()
 		}
-}
-
-type Stream struct {
-	ctx    context.Context
-	cancel context.CancelFunc
-	topic  Topic
-	cherr  chan<- error
-	done   <-chan struct{}
-	err    error
-}
-
-func (s Stream) Publish(msg []byte) error {
-	if err := s.ctx.Err(); err != nil {
-		return err
-	}
-
-	f, release := s.topic.PublishAsync(s.ctx, msg)
-	go func() {
-		defer release()
-
-		select {
-		case <-f.Done():
-			if err := f.Err(); err != nil {
-				select {
-				case s.cherr <- f.Err():
-				default:
-				}
-			}
-
-		case <-s.ctx.Done():
-		}
-	}()
-
-	select {
-	case <-s.done:
-		return s.err
-	default:
-		return nil
-	}
-}
-
-func (s Stream) Close() error {
-	s.cancel()
-
-	select {
-	case <-s.done:
-		return s.err
-	default:
-		return nil
-	}
 }
 
 func message(b []byte) func(api.Topic_publish_Params) error {
@@ -239,13 +140,13 @@ func (t topicServer) Subscribe(ctx context.Context, call MethodSubscribe) error 
 	defer t.log.Debug("unregistered subscription handler")
 
 	// forward messages to the callback channel
-	handler := stream.New(consumer.Consume)
-	for call.Go(); handler.Open(); t.log.Trace("message received") {
-		handler.Call(ctx, bind(ctx, sub))
+	for call.Go(); ctx.Err() == nil; t.log.Trace("message received") {
+		if err = consumer.Consume(ctx, bind(ctx, sub)); err != nil {
+			break
+		}
 	}
 
-	return nil
-	// return handler.Wait()  // FIXME
+	return consumer.WaitStreaming()
 }
 
 func (t topicServer) subscribe(call MethodSubscribe) (*pubsub.Subscription, error) {

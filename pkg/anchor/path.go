@@ -122,10 +122,10 @@ func (p Path) Next() (Path, string) {
 	return p.bind(tail), trimmed(name)
 }
 
-func (p Path) index() []byte {
-	path := p.String()
-	return []byte(path) // TODO(performance):  unsafe.Pointer
-}
+// func (p Path) index() []byte {
+// 	path := p.String()
+// 	return []byte(path) // TODO(performance):  unsafe.Pointer
+// }
 
 func (p Path) bind(f func(string) bounded.Type[string]) Path {
 	value := p.value.
@@ -140,16 +140,16 @@ func (p Path) bind(f func(string) bounded.Type[string]) Path {
 
 // Bindable path functions.
 
-func subpath(path Path) func(string) bounded.Type[string] {
-	return suffix(path.String())
-}
+// func subpath(path Path) func(string) bounded.Type[string] {
+// 	return suffix(path.String())
+// }
 
-func trimPrefix(path Path) func(string) bounded.Type[string] {
-	return func(s string) bounded.Type[string] {
-		suffix := strings.TrimPrefix(path.String(), s)
-		return bounded.Value(suffix).Bind(clean)
-	}
-}
+// func trimPrefix(path Path) func(string) bounded.Type[string] {
+// 	return func(s string) bounded.Type[string] {
+// 		suffix := strings.TrimPrefix(path.String(), s)
+// 		return bounded.Value(suffix).Bind(clean)
+// 	}
+// }
 
 func identity(path string) bounded.Type[string] {
 	return bounded.Value(path)
@@ -165,15 +165,15 @@ func tail(path string) bounded.Type[string] {
 	return bounded.Value(path)
 }
 
-func last(path string) bounded.Type[string] {
-	_, path = popright(path)
-	return bounded.Value(path)
-}
+// func last(path string) bounded.Type[string] {
+// 	_, path = popright(path)
+// 	return bounded.Value(path)
+// }
 
-func parent(path string) bounded.Type[string] {
-	path, _ = popright(path)
-	return bounded.Value(path)
-}
+// func parent(path string) bounded.Type[string] {
+// 	path, _ = popright(path)
+// 	return bounded.Value(path)
+// }
 
 func suffix(s string) func(string) bounded.Type[string] {
 	return func(prefix string) bounded.Type[string] {

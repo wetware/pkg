@@ -9,7 +9,6 @@ import (
 	schemas "capnproto.org/go/capnp/v3/schemas"
 	server "capnproto.org/go/capnp/v3/server"
 	context "context"
-	fmt "fmt"
 )
 
 type Anchor capnp.Client
@@ -18,6 +17,7 @@ type Anchor capnp.Client
 const Anchor_TypeID = 0xe41237e4098ed922
 
 func (c Anchor) Ls(ctx context.Context, params func(Anchor_ls_Params) error) (Anchor_ls_Results_Future, capnp.ReleaseFunc) {
+
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xe41237e4098ed922,
@@ -30,10 +30,14 @@ func (c Anchor) Ls(ctx context.Context, params func(Anchor_ls_Params) error) (An
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Anchor_ls_Params(s)) }
 	}
+
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Anchor_ls_Results_Future{Future: ans.Future()}, release
+
 }
+
 func (c Anchor) Walk(ctx context.Context, params func(Anchor_walk_Params) error) (Anchor_walk_Results_Future, capnp.ReleaseFunc) {
+
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xe41237e4098ed922,
@@ -46,8 +50,14 @@ func (c Anchor) Walk(ctx context.Context, params func(Anchor_walk_Params) error)
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Anchor_walk_Params(s)) }
 	}
+
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Anchor_walk_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c Anchor) WaitStreaming() error {
+	return capnp.Client(c).WaitStreaming()
 }
 
 // String returns a string that identifies this capability for debugging
@@ -55,7 +65,7 @@ func (c Anchor) Walk(ctx context.Context, params func(Anchor_walk_Params) error)
 // should not be used to compare clients.  Use IsSame to compare clients
 // for equality.
 func (c Anchor) String() string {
-	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+	return "Anchor(" + capnp.Client(c).String() + ")"
 }
 
 // AddRef creates a new Client that refers to the same capability as c.
@@ -115,7 +125,9 @@ func (c Anchor) SetFlowLimiter(lim fc.FlowLimiter) {
 // for this client.
 func (c Anchor) GetFlowLimiter() fc.FlowLimiter {
 	return capnp.Client(c).GetFlowLimiter()
-} // A Anchor_Server is a Anchor with a local implementation.
+}
+
+// A Anchor_Server is a Anchor with a local implementation.
 type Anchor_Server interface {
 	Ls(context.Context, Anchor_ls) error
 
@@ -181,7 +193,7 @@ func (c Anchor_ls) Args() Anchor_ls_Params {
 
 // AllocResults allocates the results struct.
 func (c Anchor_ls) AllocResults() (Anchor_ls_Results, error) {
-	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 2})
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
 	return Anchor_ls_Results(r), err
 }
 
@@ -209,6 +221,109 @@ type Anchor_List = capnp.CapList[Anchor]
 func NewAnchor_List(s *capnp.Segment, sz int32) (Anchor_List, error) {
 	l, err := capnp.NewPointerList(s, sz)
 	return capnp.CapList[Anchor](l), err
+}
+
+type Anchor_Child capnp.Struct
+
+// Anchor_Child_TypeID is the unique identifier for the type Anchor_Child.
+const Anchor_Child_TypeID = 0xc718781cb2553199
+
+func NewAnchor_Child(s *capnp.Segment) (Anchor_Child, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
+	return Anchor_Child(st), err
+}
+
+func NewRootAnchor_Child(s *capnp.Segment) (Anchor_Child, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
+	return Anchor_Child(st), err
+}
+
+func ReadRootAnchor_Child(msg *capnp.Message) (Anchor_Child, error) {
+	root, err := msg.Root()
+	return Anchor_Child(root.Struct()), err
+}
+
+func (s Anchor_Child) String() string {
+	str, _ := text.Marshal(0xc718781cb2553199, capnp.Struct(s))
+	return str
+}
+
+func (s Anchor_Child) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Anchor_Child) DecodeFromPtr(p capnp.Ptr) Anchor_Child {
+	return Anchor_Child(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Anchor_Child) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Anchor_Child) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Anchor_Child) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Anchor_Child) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Anchor_Child) Anchor() Anchor {
+	p, _ := capnp.Struct(s).Ptr(0)
+	return Anchor(p.Interface().Client())
+}
+
+func (s Anchor_Child) HasAnchor() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Anchor_Child) SetAnchor(v Anchor) error {
+	if !v.IsValid() {
+		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
+	}
+	seg := s.Segment()
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
+	return capnp.Struct(s).SetPtr(0, in.ToPtr())
+}
+
+func (s Anchor_Child) Name() (string, error) {
+	p, err := capnp.Struct(s).Ptr(1)
+	return p.Text(), err
+}
+
+func (s Anchor_Child) HasName() bool {
+	return capnp.Struct(s).HasPtr(1)
+}
+
+func (s Anchor_Child) NameBytes() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(1)
+	return p.TextBytes(), err
+}
+
+func (s Anchor_Child) SetName(v string) error {
+	return capnp.Struct(s).SetText(1, v)
+}
+
+// Anchor_Child_List is a list of Anchor_Child.
+type Anchor_Child_List = capnp.StructList[Anchor_Child]
+
+// NewAnchor_Child creates a new list of Anchor_Child.
+func NewAnchor_Child_List(s *capnp.Segment, sz int32) (Anchor_Child_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2}, sz)
+	return capnp.StructList[Anchor_Child](l), err
+}
+
+// Anchor_Child_Future is a wrapper for a Anchor_Child promised by a client call.
+type Anchor_Child_Future struct{ *capnp.Future }
+
+func (f Anchor_Child_Future) Struct() (Anchor_Child, error) {
+	p, err := f.Future.Ptr()
+	return Anchor_Child(p.Struct()), err
+}
+func (p Anchor_Child_Future) Anchor() Anchor {
+	return Anchor(p.Future.Field(0, nil).Client())
 }
 
 type Anchor_ls_Params capnp.Struct
@@ -282,12 +397,12 @@ type Anchor_ls_Results capnp.Struct
 const Anchor_ls_Results_TypeID = 0xe325af947f127758
 
 func NewAnchor_ls_Results(s *capnp.Segment) (Anchor_ls_Results, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
 	return Anchor_ls_Results(st), err
 }
 
 func NewRootAnchor_ls_Results(s *capnp.Segment) (Anchor_ls_Results, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
 	return Anchor_ls_Results(st), err
 }
 
@@ -323,50 +438,27 @@ func (s Anchor_ls_Results) Message() *capnp.Message {
 func (s Anchor_ls_Results) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s Anchor_ls_Results) Names() (capnp.TextList, error) {
+func (s Anchor_ls_Results) Children() (Anchor_Child_List, error) {
 	p, err := capnp.Struct(s).Ptr(0)
-	return capnp.TextList(p.List()), err
-}
-
-func (s Anchor_ls_Results) HasNames() bool {
-	return capnp.Struct(s).HasPtr(0)
-}
-
-func (s Anchor_ls_Results) SetNames(v capnp.TextList) error {
-	return capnp.Struct(s).SetPtr(0, v.ToPtr())
-}
-
-// NewNames sets the names field to a newly
-// allocated capnp.TextList, preferring placement in s's segment.
-func (s Anchor_ls_Results) NewNames(n int32) (capnp.TextList, error) {
-	l, err := capnp.NewTextList(capnp.Struct(s).Segment(), n)
-	if err != nil {
-		return capnp.TextList{}, err
-	}
-	err = capnp.Struct(s).SetPtr(0, l.ToPtr())
-	return l, err
-}
-func (s Anchor_ls_Results) Children() (Anchor_List, error) {
-	p, err := capnp.Struct(s).Ptr(1)
-	return Anchor_List(p.List()), err
+	return Anchor_Child_List(p.List()), err
 }
 
 func (s Anchor_ls_Results) HasChildren() bool {
-	return capnp.Struct(s).HasPtr(1)
+	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s Anchor_ls_Results) SetChildren(v Anchor_List) error {
-	return capnp.Struct(s).SetPtr(1, v.ToPtr())
+func (s Anchor_ls_Results) SetChildren(v Anchor_Child_List) error {
+	return capnp.Struct(s).SetPtr(0, v.ToPtr())
 }
 
 // NewChildren sets the children field to a newly
-// allocated Anchor_List, preferring placement in s's segment.
-func (s Anchor_ls_Results) NewChildren(n int32) (Anchor_List, error) {
-	l, err := NewAnchor_List(capnp.Struct(s).Segment(), n)
+// allocated Anchor_Child_List, preferring placement in s's segment.
+func (s Anchor_ls_Results) NewChildren(n int32) (Anchor_Child_List, error) {
+	l, err := NewAnchor_Child_List(capnp.Struct(s).Segment(), n)
 	if err != nil {
-		return Anchor_List{}, err
+		return Anchor_Child_List{}, err
 	}
-	err = capnp.Struct(s).SetPtr(1, l.ToPtr())
+	err = capnp.Struct(s).SetPtr(0, l.ToPtr())
 	return l, err
 }
 
@@ -375,7 +467,7 @@ type Anchor_ls_Results_List = capnp.StructList[Anchor_ls_Results]
 
 // NewAnchor_ls_Results creates a new list of Anchor_ls_Results.
 func NewAnchor_ls_Results_List(s *capnp.Segment, sz int32) (Anchor_ls_Results_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2}, sz)
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
 	return capnp.StructList[Anchor_ls_Results](l), err
 }
 
@@ -530,7 +622,7 @@ func (s Anchor_walk_Results) SetAnchor(v Anchor) error {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
 	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(capnp.Client(v)))
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
 	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
@@ -554,37 +646,47 @@ func (p Anchor_walk_Results_Future) Anchor() Anchor {
 	return Anchor(p.Future.Field(0, nil).Client())
 }
 
-const schema_efb5a91f96d44de3 = "x\xda|\x921h\xd4P\x1c\xc6\xbf\xef\xbd\x9c9\xa5" +
-	"\xb9\xf35\xb7(H@R\xa4E\x85\xd3A(\xca\xc5" +
-	"U\x10\xf2\xba\x98\xf5q\x1eDL\xd33i\xc9T\x9c" +
-	"\xc4\xcdI\x9ctPp\xe8\xa2\x93\x83c\x9d\x1c\x1d\\" +
-	"\x04\x17iw\xc1\xb1K$\x89\xe9\xa5\x83\x1d\xdf\xfb\xbe" +
-	"\xff\xef\xff\xbd\xf7\xff\x9f\xff\x19Xc\xc7\x93\x10\xda\xef" +
-	"\x9d)\x93\xaf\xaf\x8b\xe8\xd2\x97\x0fP#\x02=\xda\xc0" +
-	"\xcd\x1d\x9e#\xe8\xeer\x02\x96Otd\xae\x1c\x0d?" +
-	"w\x0do(*\xc3\xdb\xda\xf0K=\xc8\x9f}\xeb\xed" +
-	"7\x06\xcb\x06\xdc}\xfe\x81UF\xc5\xf2\xd3\x97\x1fW" +
-	"\x0e\xfeU\x8aJy\xcf#\xd0\xddc\x01\x96\x97\x7f\xbc" +
-	"8{xk\xf9\x10\xca\x91\xe5\xc1\xfd\xef\xaf\xbc\xbdO" +
-	"\xbf\x01\xba\xab\xe2\x9d;\xae\xed\xd7\xc4swW\xd8\xb8" +
-	"Z\x9at\x1aoe\xd7\xa7\xd2\xcc\xd3\xf9\xfa\xdd\xe6T" +
-	"\x98\xe4\xb1\xbf1\xcbw\x92\xed\x1c\xd0\x96\xb4\x00\x8b\x80" +
-	"r\xd6\x01\xdd\x97\xd4#\xc1ISJ\xb5h\x08R\x81" +
-	"\xa70C\x93\x99\xcd\xfc\x04qmA\x1c\xce\xcdv\xcc" +
-	"%\x08.u(\xa2KIr?\xf4j\xc8\x7f\xf5\x8d" +
-	"I\x13\\\xf7\x8f\x9b\xac\xde\x00\xb4/\xa9\x03AE\x8e" +
-	"X]\xde\xb9\x07\xe8\xdb\x92:\x12\xf4R\xb39\xcb9" +
-	"\x00C\xc9:\xc1\x00,\xa7\xf1\xa3\xe4a6K\x01\xb4" +
-	"\xd2\xc9\xc7\x0e:1\xd9\xc6\xb0\xe3\xad,$u_\xf6" +
-	"\x80\xe3)\xb2\x9d\x9a\x1a_\x84P+6\x17+\xc0v" +
-	"Y\xd4\x855\x08\xe5\xd82\xc9\x03\x0e\xab\x1f\x0b\x18\x92" +
-	"\x7f\x03\x00\x00\xff\xff\x8fH\x99\x1a"
+const schema_efb5a91f96d44de3 = "x\xda\x84\x92=\x88\x13Q\x14\x85\xcfyo\xc6\x89\x92" +
+	"\x98}\xfb\x02\xfe\xa0\x04$\x8bqQ1\xfe n\x93" +
+	"\x88\x9d \xcc[\x10\xd3\x0eI`\x16'\xd9\x98\xd9e" +
+	"l\xc4J\xec\xacD\x10l\xb4\xdbFA\xb0\xb0\xd4F" +
+	"-\x16Tl\xb6\xb0\x90\xddV\x04\xcb\xb5\x18y\x1b\x92" +
+	"\x19Av\xcby\xf7\xdc\xef\xdc;\xf7\xcc\xfci9\x8d" +
+	"R\"!L\xdd\xdd\x97F\x1f\x9f%\xed\xe3\xef_B" +
+	"U\x08\xb8\xf4\x80\x0b\xcfy\x80\xa0^c\x13L\xef\x98" +
+	"vpr\xbb\xfc6/\xf8Da\x05\xeb;\x82\x1f\xea" +
+	"V\xfc\xe0\xb3\xfbn,p<@\xff\xe4o8\xe9\xd3" +
+	"\xc6\xcd\xd7\xc7\xee\x1e\xfe`\x0b\xe9\x89\x8dG\xfb\xb7." +
+	"\xcfn\xc1\x15V\xf1\x85_\xf5w\xcb\xd2\x1bL\xc0\xb4" +
+	"\x9d\xcc\xde\x7f\xfcjn3\xe7\xa2/\x89mP_\x11" +
+	"\xd6d\xda\xaeJ2\xdd\xbc\xf1\xedIu\xed\xcd/\x80" +
+	"\xba/^\xe8Uq\x08\xd0\xf7\xc4C\xbd.<\x9cN" +
+	"\x83A'\\\x1e\x9d\xed\xc8`8\x18.\\\x1d\x7f%" +
+	"At\xbb\xb6\xd8\x8bW\xa3\x95\x180\x8et\x00\x87\x80" +
+	"*-\x00\xa6 i*\x82\xcdq+Uf\x08R\x81" +
+	"\xbb0\xfd`\x14\xf4\xe3\x7f\x88\xf3\x19\xb1<\x0cVB" +
+	"\x16!X\xccQD\x9e\x12\xc55\xbf\xba\x03\xf9\x7f\xfd" +
+	"Z\xb8\x14\xb1\xeb\x93\xa60\xb58e\x87\xaeI\x9as" +
+	"\x82\x8a\xac\xd0>\x9e\xb1\xbeuIsq\x97M\xca\x83" +
+	"\xa0\xdf\xdbs\xa0\xc5\xe6\xf8O\xe5\xb7\xba\x0e\x98\xa2\xa4" +
+	"\xa9\x0b\xa6\x9dp)\xea\x8ez\x03\x00<\x08\xfa\x92\x9c" +
+	"\xc9\x0e\x0e\xda\xc7)\x9c\x13\xb8\x17.\x8f\x8cC\xe6\xa2" +
+	"\xc1\xf3U\xbb_\xd7\x14\xa4\x0bL\xc3\xc4I T\xe3" +
+	"(\x84\x9a\xf3\x98%\x91\x93\xcc\xaa#\xf3\x10\xaa\xe4\xc9" +
+	"(n\xb1l\x8f\xd1\xa2O\xfe\x0d\x00\x00\xff\xff\xa1G" +
+	"\xc0s"
 
-func init() {
-	schemas.Register(schema_efb5a91f96d44de3,
-		0xaec21d58779cc86c,
-		0xb90ffa2761585171,
-		0xc105d085735711e1,
-		0xe325af947f127758,
-		0xe41237e4098ed922)
+func RegisterSchema(reg *schemas.Registry) {
+	reg.Register(&schemas.Schema{
+		String: schema_efb5a91f96d44de3,
+		Nodes: []uint64{
+			0xaec21d58779cc86c,
+			0xb90ffa2761585171,
+			0xc105d085735711e1,
+			0xc718781cb2553199,
+			0xe325af947f127758,
+			0xe41237e4098ed922,
+		},
+		Compressed: true,
+	})
 }

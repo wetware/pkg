@@ -9,7 +9,6 @@ import (
 	schemas "capnproto.org/go/capnp/v3/schemas"
 	server "capnproto.org/go/capnp/v3/server"
 	context "context"
-	fmt "fmt"
 )
 
 type Closer capnp.Client
@@ -18,6 +17,7 @@ type Closer capnp.Client
 const Closer_TypeID = 0xfad0e4b80d3779c3
 
 func (c Closer) Close(ctx context.Context, params func(Closer_close_Params) error) (Closer_close_Results_Future, capnp.ReleaseFunc) {
+
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xfad0e4b80d3779c3,
@@ -30,8 +30,14 @@ func (c Closer) Close(ctx context.Context, params func(Closer_close_Params) erro
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Closer_close_Params(s)) }
 	}
+
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Closer_close_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c Closer) WaitStreaming() error {
+	return capnp.Client(c).WaitStreaming()
 }
 
 // String returns a string that identifies this capability for debugging
@@ -39,7 +45,7 @@ func (c Closer) Close(ctx context.Context, params func(Closer_close_Params) erro
 // should not be used to compare clients.  Use IsSame to compare clients
 // for equality.
 func (c Closer) String() string {
-	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+	return "Closer(" + capnp.Client(c).String() + ")"
 }
 
 // AddRef creates a new Client that refers to the same capability as c.
@@ -99,7 +105,9 @@ func (c Closer) SetFlowLimiter(lim fc.FlowLimiter) {
 // for this client.
 func (c Closer) GetFlowLimiter() fc.FlowLimiter {
 	return capnp.Client(c).GetFlowLimiter()
-} // A Closer_Server is a Closer with a local implementation.
+}
+
+// A Closer_Server is a Closer with a local implementation.
 type Closer_Server interface {
 	Close(context.Context, Closer_close) error
 }
@@ -300,6 +308,7 @@ type Sender capnp.Client
 const Sender_TypeID = 0xe8bbed1438ea16ee
 
 func (c Sender) Send(ctx context.Context, params func(Sender_send_Params) error) (Sender_send_Results_Future, capnp.ReleaseFunc) {
+
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xe8bbed1438ea16ee,
@@ -312,8 +321,14 @@ func (c Sender) Send(ctx context.Context, params func(Sender_send_Params) error)
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Sender_send_Params(s)) }
 	}
+
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Sender_send_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c Sender) WaitStreaming() error {
+	return capnp.Client(c).WaitStreaming()
 }
 
 // String returns a string that identifies this capability for debugging
@@ -321,7 +336,7 @@ func (c Sender) Send(ctx context.Context, params func(Sender_send_Params) error)
 // should not be used to compare clients.  Use IsSame to compare clients
 // for equality.
 func (c Sender) String() string {
-	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+	return "Sender(" + capnp.Client(c).String() + ")"
 }
 
 // AddRef creates a new Client that refers to the same capability as c.
@@ -381,7 +396,9 @@ func (c Sender) SetFlowLimiter(lim fc.FlowLimiter) {
 // for this client.
 func (c Sender) GetFlowLimiter() fc.FlowLimiter {
 	return capnp.Client(c).GetFlowLimiter()
-} // A Sender_Server is a Sender with a local implementation.
+}
+
+// A Sender_Server is a Sender with a local implementation.
 type Sender_Server interface {
 	Send(context.Context, Sender_send) error
 }
@@ -596,6 +613,7 @@ type Recver capnp.Client
 const Recver_TypeID = 0xdf05a90d671c0c07
 
 func (c Recver) Recv(ctx context.Context, params func(Recver_recv_Params) error) (Recver_recv_Results_Future, capnp.ReleaseFunc) {
+
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xdf05a90d671c0c07,
@@ -608,8 +626,14 @@ func (c Recver) Recv(ctx context.Context, params func(Recver_recv_Params) error)
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Recver_recv_Params(s)) }
 	}
+
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Recver_recv_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c Recver) WaitStreaming() error {
+	return capnp.Client(c).WaitStreaming()
 }
 
 // String returns a string that identifies this capability for debugging
@@ -617,7 +641,7 @@ func (c Recver) Recv(ctx context.Context, params func(Recver_recv_Params) error)
 // should not be used to compare clients.  Use IsSame to compare clients
 // for equality.
 func (c Recver) String() string {
-	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+	return "Recver(" + capnp.Client(c).String() + ")"
 }
 
 // AddRef creates a new Client that refers to the same capability as c.
@@ -677,7 +701,9 @@ func (c Recver) SetFlowLimiter(lim fc.FlowLimiter) {
 // for this client.
 func (c Recver) GetFlowLimiter() fc.FlowLimiter {
 	return capnp.Client(c).GetFlowLimiter()
-} // A Recver_Server is a Recver with a local implementation.
+}
+
+// A Recver_Server is a Recver with a local implementation.
 type Recver_Server interface {
 	Recv(context.Context, Recver_recv) error
 }
@@ -892,6 +918,7 @@ type SendCloser capnp.Client
 const SendCloser_TypeID = 0xe9a7d19a7d14e94e
 
 func (c SendCloser) NewSender(ctx context.Context, params func(SendCloser_newSender_Params) error) (SendCloser_newSender_Results_Future, capnp.ReleaseFunc) {
+
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xe9a7d19a7d14e94e,
@@ -904,10 +931,14 @@ func (c SendCloser) NewSender(ctx context.Context, params func(SendCloser_newSen
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(SendCloser_newSender_Params(s)) }
 	}
+
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return SendCloser_newSender_Results_Future{Future: ans.Future()}, release
+
 }
+
 func (c SendCloser) NewCloser(ctx context.Context, params func(SendCloser_newCloser_Params) error) (SendCloser_newCloser_Results_Future, capnp.ReleaseFunc) {
+
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xe9a7d19a7d14e94e,
@@ -920,10 +951,14 @@ func (c SendCloser) NewCloser(ctx context.Context, params func(SendCloser_newClo
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(SendCloser_newCloser_Params(s)) }
 	}
+
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return SendCloser_newCloser_Results_Future{Future: ans.Future()}, release
+
 }
+
 func (c SendCloser) Send(ctx context.Context, params func(Sender_send_Params) error) (Sender_send_Results_Future, capnp.ReleaseFunc) {
+
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xe8bbed1438ea16ee,
@@ -936,10 +971,14 @@ func (c SendCloser) Send(ctx context.Context, params func(Sender_send_Params) er
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Sender_send_Params(s)) }
 	}
+
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Sender_send_Results_Future{Future: ans.Future()}, release
+
 }
+
 func (c SendCloser) Close(ctx context.Context, params func(Closer_close_Params) error) (Closer_close_Results_Future, capnp.ReleaseFunc) {
+
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xfad0e4b80d3779c3,
@@ -952,8 +991,14 @@ func (c SendCloser) Close(ctx context.Context, params func(Closer_close_Params) 
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Closer_close_Params(s)) }
 	}
+
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Closer_close_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c SendCloser) WaitStreaming() error {
+	return capnp.Client(c).WaitStreaming()
 }
 
 // String returns a string that identifies this capability for debugging
@@ -961,7 +1006,7 @@ func (c SendCloser) Close(ctx context.Context, params func(Closer_close_Params) 
 // should not be used to compare clients.  Use IsSame to compare clients
 // for equality.
 func (c SendCloser) String() string {
-	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+	return "SendCloser(" + capnp.Client(c).String() + ")"
 }
 
 // AddRef creates a new Client that refers to the same capability as c.
@@ -1021,7 +1066,9 @@ func (c SendCloser) SetFlowLimiter(lim fc.FlowLimiter) {
 // for this client.
 func (c SendCloser) GetFlowLimiter() fc.FlowLimiter {
 	return capnp.Client(c).GetFlowLimiter()
-} // A SendCloser_Server is a SendCloser with a local implementation.
+}
+
+// A SendCloser_Server is a SendCloser with a local implementation.
 type SendCloser_Server interface {
 	NewSender(context.Context, SendCloser_newSender) error
 
@@ -1271,7 +1318,7 @@ func (s SendCloser_newSender_Results) SetSender(v Sender) error {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
 	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(capnp.Client(v)))
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
 	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
@@ -1421,7 +1468,7 @@ func (s SendCloser_newCloser_Results) SetCloser(v Closer) error {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
 	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(capnp.Client(v)))
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
 	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
@@ -1451,6 +1498,7 @@ type Chan capnp.Client
 const Chan_TypeID = 0x95c89fe7d966f751
 
 func (c Chan) NewSendCloser(ctx context.Context, params func(Chan_newSendCloser_Params) error) (Chan_newSendCloser_Results_Future, capnp.ReleaseFunc) {
+
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0x95c89fe7d966f751,
@@ -1463,10 +1511,14 @@ func (c Chan) NewSendCloser(ctx context.Context, params func(Chan_newSendCloser_
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Chan_newSendCloser_Params(s)) }
 	}
+
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Chan_newSendCloser_Results_Future{Future: ans.Future()}, release
+
 }
+
 func (c Chan) NewRecver(ctx context.Context, params func(Chan_newRecver_Params) error) (Chan_newRecver_Results_Future, capnp.ReleaseFunc) {
+
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0x95c89fe7d966f751,
@@ -1479,10 +1531,14 @@ func (c Chan) NewRecver(ctx context.Context, params func(Chan_newRecver_Params) 
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Chan_newRecver_Params(s)) }
 	}
+
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Chan_newRecver_Results_Future{Future: ans.Future()}, release
+
 }
+
 func (c Chan) NewSender(ctx context.Context, params func(SendCloser_newSender_Params) error) (SendCloser_newSender_Results_Future, capnp.ReleaseFunc) {
+
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xe9a7d19a7d14e94e,
@@ -1495,10 +1551,14 @@ func (c Chan) NewSender(ctx context.Context, params func(SendCloser_newSender_Pa
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(SendCloser_newSender_Params(s)) }
 	}
+
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return SendCloser_newSender_Results_Future{Future: ans.Future()}, release
+
 }
+
 func (c Chan) NewCloser(ctx context.Context, params func(SendCloser_newCloser_Params) error) (SendCloser_newCloser_Results_Future, capnp.ReleaseFunc) {
+
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xe9a7d19a7d14e94e,
@@ -1511,10 +1571,14 @@ func (c Chan) NewCloser(ctx context.Context, params func(SendCloser_newCloser_Pa
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(SendCloser_newCloser_Params(s)) }
 	}
+
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return SendCloser_newCloser_Results_Future{Future: ans.Future()}, release
+
 }
+
 func (c Chan) Send(ctx context.Context, params func(Sender_send_Params) error) (Sender_send_Results_Future, capnp.ReleaseFunc) {
+
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xe8bbed1438ea16ee,
@@ -1527,10 +1591,14 @@ func (c Chan) Send(ctx context.Context, params func(Sender_send_Params) error) (
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Sender_send_Params(s)) }
 	}
+
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Sender_send_Results_Future{Future: ans.Future()}, release
+
 }
+
 func (c Chan) Close(ctx context.Context, params func(Closer_close_Params) error) (Closer_close_Results_Future, capnp.ReleaseFunc) {
+
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xfad0e4b80d3779c3,
@@ -1543,10 +1611,14 @@ func (c Chan) Close(ctx context.Context, params func(Closer_close_Params) error)
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Closer_close_Params(s)) }
 	}
+
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Closer_close_Results_Future{Future: ans.Future()}, release
+
 }
+
 func (c Chan) Recv(ctx context.Context, params func(Recver_recv_Params) error) (Recver_recv_Results_Future, capnp.ReleaseFunc) {
+
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xdf05a90d671c0c07,
@@ -1559,8 +1631,14 @@ func (c Chan) Recv(ctx context.Context, params func(Recver_recv_Params) error) (
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Recver_recv_Params(s)) }
 	}
+
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Recver_recv_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c Chan) WaitStreaming() error {
+	return capnp.Client(c).WaitStreaming()
 }
 
 // String returns a string that identifies this capability for debugging
@@ -1568,7 +1646,7 @@ func (c Chan) Recv(ctx context.Context, params func(Recver_recv_Params) error) (
 // should not be used to compare clients.  Use IsSame to compare clients
 // for equality.
 func (c Chan) String() string {
-	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+	return "Chan(" + capnp.Client(c).String() + ")"
 }
 
 // AddRef creates a new Client that refers to the same capability as c.
@@ -1628,7 +1706,9 @@ func (c Chan) SetFlowLimiter(lim fc.FlowLimiter) {
 // for this client.
 func (c Chan) GetFlowLimiter() fc.FlowLimiter {
 	return capnp.Client(c).GetFlowLimiter()
-} // A Chan_Server is a Chan with a local implementation.
+}
+
+// A Chan_Server is a Chan with a local implementation.
 type Chan_Server interface {
 	NewSendCloser(context.Context, Chan_newSendCloser) error
 
@@ -1920,7 +2000,7 @@ func (s Chan_newSendCloser_Results) SetSendCloser(v SendCloser) error {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
 	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(capnp.Client(v)))
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
 	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
@@ -2070,7 +2150,7 @@ func (s Chan_newRecver_Results) SetRecver(v Recver) error {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
 	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(capnp.Client(v)))
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
 	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
@@ -2160,25 +2240,30 @@ const schema_872a451f9aa74ebf = "x\xda\x94VQh\x1cU\x17>gg\xee\xdc\xfc!" +
 	"\xbfd\x18\xdb\x09)Fh6\xa4\x0c\x9b\xdav\xc2\xea" +
 	"\xa6\xfc7\x00\x00\xff\xff\xda\x9e\xfa="
 
-func init() {
-	schemas.Register(schema_872a451f9aa74ebf,
-		0x8166bc9c3ded78ca,
-		0x891b1d7a66ab36b5,
-		0x95c89fe7d966f751,
-		0x9f8a81c20d0e72c9,
-		0xb0e88f4d0a3a1694,
-		0xbb3101eccc20b4eb,
-		0xbb370dcc71a43ba9,
-		0xca7110014301ab81,
-		0xcbbc3fcd0d01a855,
-		0xcbee5caf8b7af4ea,
-		0xdd377ddc0d2426ea,
-		0xdf05a90d671c0c07,
-		0xe48d9443d96ba68d,
-		0xe76adde17bd7c3df,
-		0xe8bbed1438ea16ee,
-		0xe9a7d19a7d14e94e,
-		0xf1dd4079b7c319f1,
-		0xfad0e4b80d3779c3,
-		0xfd07d8a1cc36583c)
+func RegisterSchema(reg *schemas.Registry) {
+	reg.Register(&schemas.Schema{
+		String: schema_872a451f9aa74ebf,
+		Nodes: []uint64{
+			0x8166bc9c3ded78ca,
+			0x891b1d7a66ab36b5,
+			0x95c89fe7d966f751,
+			0x9f8a81c20d0e72c9,
+			0xb0e88f4d0a3a1694,
+			0xbb3101eccc20b4eb,
+			0xbb370dcc71a43ba9,
+			0xca7110014301ab81,
+			0xcbbc3fcd0d01a855,
+			0xcbee5caf8b7af4ea,
+			0xdd377ddc0d2426ea,
+			0xdf05a90d671c0c07,
+			0xe48d9443d96ba68d,
+			0xe76adde17bd7c3df,
+			0xe8bbed1438ea16ee,
+			0xe9a7d19a7d14e94e,
+			0xf1dd4079b7c319f1,
+			0xfad0e4b80d3779c3,
+			0xfd07d8a1cc36583c,
+		},
+		Compressed: true,
+	})
 }

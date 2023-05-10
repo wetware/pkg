@@ -11,6 +11,7 @@ import (
 	cluster "github.com/wetware/casm/pkg/cluster"
 	debug "github.com/wetware/casm/pkg/debug"
 	anchor "github.com/wetware/ww/pkg/anchor"
+	csp "github.com/wetware/ww/pkg/csp"
 	pubsub "github.com/wetware/ww/pkg/pubsub"
 )
 
@@ -160,4 +161,41 @@ func (m *MockDebugProvider) Debugger() debug.Debugger {
 func (mr *MockDebugProviderMockRecorder) Debugger() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Debugger", reflect.TypeOf((*MockDebugProvider)(nil).Debugger))
+}
+
+// MockExecutorProvider is a mock of ExecutorProvider interface.
+type MockExecutorProvider struct {
+	ctrl     *gomock.Controller
+	recorder *MockExecutorProviderMockRecorder
+}
+
+// MockExecutorProviderMockRecorder is the mock recorder for MockExecutorProvider.
+type MockExecutorProviderMockRecorder struct {
+	mock *MockExecutorProvider
+}
+
+// NewMockExecutorProvider creates a new mock instance.
+func NewMockExecutorProvider(ctrl *gomock.Controller) *MockExecutorProvider {
+	mock := &MockExecutorProvider{ctrl: ctrl}
+	mock.recorder = &MockExecutorProviderMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockExecutorProvider) EXPECT() *MockExecutorProviderMockRecorder {
+	return m.recorder
+}
+
+// Executor mocks base method.
+func (m *MockExecutorProvider) Executor() csp.Executor {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Executor")
+	ret0, _ := ret[0].(csp.Executor)
+	return ret0
+}
+
+// Executor indicates an expected call of Executor.
+func (mr *MockExecutorProviderMockRecorder) Executor() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Executor", reflect.TypeOf((*MockExecutorProvider)(nil).Executor))
 }

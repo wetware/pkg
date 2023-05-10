@@ -9,7 +9,6 @@ import (
 	schemas "capnproto.org/go/capnp/v3/schemas"
 	server "capnproto.org/go/capnp/v3/server"
 	context "context"
-	fmt "fmt"
 	channel "github.com/wetware/ww/internal/api/channel"
 	pubsub "github.com/wetware/ww/internal/api/pubsub"
 	strconv "strconv"
@@ -21,6 +20,7 @@ type Registry capnp.Client
 const Registry_TypeID = 0xfdee076f6379cb46
 
 func (c Registry) Provide(ctx context.Context, params func(Registry_provide_Params) error) (Registry_provide_Results_Future, capnp.ReleaseFunc) {
+
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xfdee076f6379cb46,
@@ -33,10 +33,14 @@ func (c Registry) Provide(ctx context.Context, params func(Registry_provide_Para
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 2}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Registry_provide_Params(s)) }
 	}
+
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Registry_provide_Results_Future{Future: ans.Future()}, release
+
 }
+
 func (c Registry) FindProviders(ctx context.Context, params func(Registry_findProviders_Params) error) (Registry_findProviders_Results_Future, capnp.ReleaseFunc) {
+
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xfdee076f6379cb46,
@@ -49,8 +53,14 @@ func (c Registry) FindProviders(ctx context.Context, params func(Registry_findPr
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 2}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Registry_findProviders_Params(s)) }
 	}
+
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Registry_findProviders_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c Registry) WaitStreaming() error {
+	return capnp.Client(c).WaitStreaming()
 }
 
 // String returns a string that identifies this capability for debugging
@@ -58,7 +68,7 @@ func (c Registry) FindProviders(ctx context.Context, params func(Registry_findPr
 // should not be used to compare clients.  Use IsSame to compare clients
 // for equality.
 func (c Registry) String() string {
-	return fmt.Sprintf("%T(%v)", c, capnp.Client(c))
+	return "Registry(" + capnp.Client(c).String() + ")"
 }
 
 // AddRef creates a new Client that refers to the same capability as c.
@@ -118,7 +128,9 @@ func (c Registry) SetFlowLimiter(lim fc.FlowLimiter) {
 // for this client.
 func (c Registry) GetFlowLimiter() fc.FlowLimiter {
 	return capnp.Client(c).GetFlowLimiter()
-} // A Registry_Server is a Registry with a local implementation.
+}
+
+// A Registry_Server is a Registry with a local implementation.
 type Registry_Server interface {
 	Provide(context.Context, Registry_provide) error
 
@@ -275,7 +287,7 @@ func (s Registry_provide_Params) SetTopic(v pubsub.Topic) error {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
 	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(capnp.Client(v)))
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
 	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
@@ -438,7 +450,7 @@ func (s Registry_findProviders_Params) SetTopic(v pubsub.Topic) error {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
 	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(capnp.Client(v)))
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
 	return capnp.Struct(s).SetPtr(0, in.ToPtr())
 }
 
@@ -456,7 +468,7 @@ func (s Registry_findProviders_Params) SetChan(v channel.Sender) error {
 		return capnp.Struct(s).SetPtr(1, capnp.Ptr{})
 	}
 	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().AddCap(capnp.Client(v)))
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
 	return capnp.Struct(s).SetPtr(1, in.ToPtr())
 }
 
@@ -912,13 +924,18 @@ const schema_fcba4f486a351ac3 = "x\xda\x8cSKh$U\x14=\xe7\xbd\xaa.\x07\xd2" +
 	"@\xb5\xbb\x89:\x1b\xe4\x7f\x01\x00\x00\xff\xff\x7f\xc2(" +
 	"-"
 
-func init() {
-	schemas.Register(schema_fcba4f486a351ac3,
-		0xbf9edfd4684337f6,
-		0xd2afeaf36c70c91f,
-		0xd589c56f3d6a445e,
-		0xd86baa632daef690,
-		0xd9ef66060e1157d3,
-		0xe61540af32cf81b6,
-		0xfdee076f6379cb46)
+func RegisterSchema(reg *schemas.Registry) {
+	reg.Register(&schemas.Schema{
+		String: schema_fcba4f486a351ac3,
+		Nodes: []uint64{
+			0xbf9edfd4684337f6,
+			0xd2afeaf36c70c91f,
+			0xd589c56f3d6a445e,
+			0xd86baa632daef690,
+			0xd9ef66060e1157d3,
+			0xe61540af32cf81b6,
+			0xfdee076f6379cb46,
+		},
+		Compressed: true,
+	})
 }

@@ -12,7 +12,6 @@ import (
 	"github.com/wetware/casm/pkg/cluster"
 	"github.com/wetware/ww/pkg/anchor"
 	"github.com/wetware/ww/pkg/host"
-	"github.com/wetware/ww/pkg/process"
 	"github.com/wetware/ww/pkg/pubsub"
 	service "github.com/wetware/ww/pkg/registry"
 )
@@ -60,7 +59,7 @@ type Joiner struct {
 }
 
 // Join the cluster.  Note that callers MUST call Bootstrap() on
-// the returned *Node to complete the bootstrap process.
+// the returned *Node to complete the bootstrap csp.
 func (j Joiner) Join(vat casm.Vat, r Router) (*Node, error) {
 	c, err := j.Cluster.New(vat, r)
 	if err != nil {
@@ -73,7 +72,7 @@ func (j Joiner) Join(vat casm.Vat, r Router) (*Node, error) {
 		AnchorProvider:   j.anchor(),
 		DebugProvider:    j.Debugger.New(),
 		RegistryProvider: j.service(),
-		ExecutorProvider: j.executor(),
+		ExecutorProvider: j.Runtime.New(),
 	})
 
 	return &Node{
@@ -93,12 +92,7 @@ func (j Joiner) service() service.Server {
 	return service.Server{}
 }
 
-func (j Joiner) anchor() anchor.Server {
-	return anchor.Root()
-}
-
-func (j Joiner) executor() process.Server {
-	return process.Server{
-		Runtime: j.Runtime.New(),
-	}
+// TODO(soon):  return a host anchor instead of a generic anchor.
+func (j Joiner) anchor() *anchor.Node {
+	return new(anchor.Node) // root node
 }
