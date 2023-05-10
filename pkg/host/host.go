@@ -14,7 +14,7 @@ import (
 	api "github.com/wetware/ww/internal/api/cluster"
 	process_api "github.com/wetware/ww/internal/api/process"
 	pubsub_api "github.com/wetware/ww/internal/api/pubsub"
-	serv_api "github.com/wetware/ww/internal/api/service"
+	reg_api "github.com/wetware/ww/internal/api/registry"
 	"github.com/wetware/ww/pkg/anchor"
 	"github.com/wetware/ww/pkg/process"
 	"github.com/wetware/ww/pkg/pubsub"
@@ -160,7 +160,7 @@ func (s Server) Registry(_ context.Context, call api.Host_registry) error {
 	res, err := call.AllocResults()
 	if err == nil {
 		registry := s.RegistryProvider.Registry()
-		err = res.SetRegistry(serv_api.Registry(registry))
+		err = res.SetRegistry(reg_api.Registry(registry))
 	}
 
 	return err

@@ -1,8 +1,12 @@
 package cluster
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 
+	p2pRec "github.com/libp2p/go-libp2p-core/record"
+	"github.com/libp2p/go-libp2p/core/crypto"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
 	service "github.com/wetware/ww/pkg/registry"
@@ -44,6 +48,11 @@ func provide() *cli.Command {
 				Aliases: []string{"maddr"},
 				Usage:   "multiaddress of the service provider",
 			},
+			&cli.StringFlag{
+				Name:    "privKey",
+				Aliases: []string{"pk"},
+				Usage:   "private key used to sign the location",
+			},
 		},
 		Before: setup(),
 		After:  teardown(),
@@ -71,7 +80,25 @@ func locAction() cli.ActionFunc {
 }
 
 func provAction() cli.ActionFunc {
-	return func(c *cli.Context) error {
+	return func(c *cli.Context) (err error) {
+		var privKey crypto.PrivKey
+
+		if pkString := c.String("privKey"); pkString != "" {
+			privKeyBytes, err := hex.DecodeString(pkString)
+			if err != nil {
+				return err
+			}
+			if privKey, err = crypto.UnmarshalEd25519PrivateKey(privKeyBytes); err != nil {
+				return err
+			}
+		} else {
+			fmt.Printf("'privKey' not specified, generating random...\n")
+
+			privKey, _, err = crypto.GenerateKeyPairWithReader(crypto.Ed25519, 2048, rand.Reader)
+			if err != nil {
+				return err
+			}
+		}
 		// parse multiaddr location
 		maddrsStr := c.StringSlice("maddr")
 		maddrs := make([]ma.Multiaddr, 0, len(maddrsStr))
@@ -96,6 +123,11 @@ func provAction() cli.ActionFunc {
 			return fmt.Errorf("failed to set service name: %w", err)
 		}
 
+		e, err := p2pRec.Seal(&loc, privKey)
+		if err != nil {
+			return err
+		}
+
 		// provide service
 		registry, release := node.Registry(c.Context)
 		defer release()
@@ -103,7 +135,7 @@ func provAction() cli.ActionFunc {
 		topic, release := node.Join(c.Context, c.String("name"))
 		defer release()
 
-		fut, release := registry.Provide(c.Context, topic, loc)
+		fut, release := registry.Provide(c.Context, topic, e)
 		defer release()
 
 		fmt.Printf("providing |%s| at", c.String("name"))
