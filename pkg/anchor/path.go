@@ -59,20 +59,21 @@ func PathFromParts(parts []string) Path {
 	return NewPath(path.Join(parts...))
 }
 
+func (p Path) Maybe() (string, error) {
+	return p.value.Maybe()
+}
+
 // Err returns a non-nil error if the path is malformed.
 func (p Path) Err() error {
-	_, err := p.value.Maybe()
+	_, err := p.Maybe()
 	return err
 }
 
 // String returns the canonical path string.  If Err() != nil,
 // String() returns the root path.
-func (p Path) String() (path string) {
-	p.bind(func(s string) bounded.Type[string] {
-		path = s
-		return bounded.Value(s)
-	})
-	return
+func (p Path) String() string {
+	path, _ := p.Maybe()
+	return path
 }
 
 // IsRoot returns true if the p is the root path.

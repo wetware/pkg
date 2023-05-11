@@ -6,80 +6,159 @@
 package main
 
 import (
+	"context"
+	"crypto/rand"
+	_ "embed"
+	"fmt"
+	"io"
 	"os"
+	"os/signal"
+	"syscall"
 
+	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/lthibault/log"
 	"github.com/urfave/cli/v2"
+	"go.uber.org/fx"
 
-	"github.com/wetware/ww/internal/cmd/cluster"
-	"github.com/wetware/ww/internal/cmd/debug"
-	"github.com/wetware/ww/internal/cmd/run"
-	"github.com/wetware/ww/internal/cmd/start"
-	ww "github.com/wetware/ww/pkg"
+	"github.com/wetware/ww"
+	"github.com/wetware/ww/system"
 )
 
 var flags = []cli.Flag{
-	// Logging
 	&cli.StringFlag{
-		Name:    "logfmt",
-		Aliases: []string{"f"},
-		Usage:   "`format` logs as text, json or none",
-		Value:   "text",
-		EnvVars: []string{"WW_LOGFMT"},
+		Name:    "ns",
+		Usage:   "namespace",
+		Value:   "ww",
+		EnvVars: []string{"WW_NS"},
 	},
 	&cli.StringFlag{
-		Name:    "loglvl",
-		Usage:   "set logging `level` to trace, debug, info, warn, error or fatal",
-		Value:   "info",
-		EnvVars: []string{"WW_LOGLVL"},
+		Name:    "rom",
+		Usage:   "cid of boot rom",
+		EnvVars: []string{"WW_ROM"},
 	},
-	&cli.PathFlag{
-		Name:        "data",
-		Usage:       "persist cache data to `path`",
-		DefaultText: "disabled",
-		EnvVars:     []string{"WW_DATA"},
-	},
-	// Statsd
-	&cli.StringFlag{
-		Name:        "metrics",
-		Aliases:     []string{"statsd"},
-		Usage:       "send metrics to udp `host:port`",
-		EnvVars:     []string{"WW_METRICS", "WW_STATSD"},
-		DefaultText: "disabled",
-	},
-	// Misc.
 	&cli.BoolFlag{
-		Name:    "prettyprint",
-		Aliases: []string{"pp"},
-		Usage:   "pretty-print JSON output",
-		Hidden:  true,
+		Name:    "stdin",
+		Aliases: []string{"s"},
+		Usage:   "load system image from stdin",
 	},
-}
-
-var commands = []*cli.Command{
-	start.Command(),
-	cluster.Command(),
-	run.Command(),
-	debug.Command(),
 }
 
 func main() {
+	ctx, cancel := signal.NotifyContext(
+		context.Background(),
+		syscall.SIGTERM,
+		syscall.SIGINT,
+		syscall.SIGKILL)
+	defer cancel()
+
 	app := &cli.App{
 		Name:                 "wetware",
 		HelpName:             "ww",
 		Usage:                "simple, secure clusters",
 		UsageText:            "ww [global options] command [command options] [arguments...]",
 		Copyright:            "2020 The Wetware Project",
-		Version:              ww.Version,
 		EnableBashCompletion: true,
 		Flags:                flags,
-		Commands:             commands,
-		Metadata: map[string]interface{}{
-			"version": ww.Version,
-		},
+		Action:               action(),
 	}
 
-	if err := app.Run(os.Args); err != nil {
-		log.Fatal(err)
+	if err := app.RunContext(ctx, os.Args); err != nil {
+		fmt.Println(err)
+		os.Exit(1) // application error
 	}
+}
+
+func action() cli.ActionFunc {
+	return func(c *cli.Context) error {
+		var wetware ww.Ww
+
+		app := fx.New(fx.NopLogger,
+			fx.Supply(c, c.String("ns")),
+			system.WithDefaultServer(),
+			fx.Populate(&wetware /*&code*/),
+			fx.Decorate(bytecode),
+			fx.Provide(
+				stdio,
+				logger,
+				identity))
+		if err := start(app); err != nil {
+			return err
+		}
+
+		if err := wetware.Exec(c.Context); err != nil {
+			return err
+		}
+
+		return stop(app)
+	}
+}
+
+func logger(c *cli.Context) log.Logger {
+	return log.New()
+}
+
+type Stdio struct {
+	fx.Out
+
+	Stdin  io.Reader `name:"stdin"`
+	Stdout io.Writer `name:"stdout"`
+	Stderr io.Writer `name:"stderr"`
+}
+
+func stdio(c *cli.Context) Stdio {
+	return Stdio{
+		Stdin:  c.App.Reader,
+		Stdout: c.App.Writer,
+		Stderr: c.App.ErrWriter,
+	}
+}
+
+func identity(c *cli.Context) (crypto.PrivKey, error) {
+	privkey, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	return privkey, err
+}
+
+func bytecode(c *cli.Context, rom system.ROM) (system.ROM, error) {
+	// user specified the CID of a ROM?
+	if c.IsSet("rom") {
+		panic("TODO:  load ROM from BitSwap") // FIXME
+	}
+
+	if c.Bool("stdin") {
+		return io.ReadAll(c.App.Reader)
+	}
+
+	// file?
+	if c.Args().Len() > 0 {
+		return os.ReadFile(c.Args().First())
+	}
+
+	// use the default bytecode, provided by Fx.
+	return rom, nil
+}
+
+func start(app *fx.App) error {
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		app.StartTimeout())
+	defer cancel()
+
+	if err := app.Start(ctx); err != nil {
+		return fmt.Errorf("start: %w", err)
+	}
+
+	return nil
+}
+
+func stop(app *fx.App) error {
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		app.StartTimeout())
+	defer cancel()
+
+	if err := app.Stop(ctx); err != nil {
+		return fmt.Errorf("stop: %w", err)
+	}
+
+	return nil
 }
