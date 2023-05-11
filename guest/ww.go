@@ -15,12 +15,15 @@ import (
 // Bootstrap returns the host capability exported by the Wetware
 // runtime.
 func Bootstrap(ctx context.Context) cluster.Host {
-	f, err := os.Open("/")
+	f, err := os.OpenFile("/rpc", os.O_RDWR, os.ModeSocket)
 	if err != nil {
 		panic(err)
 	}
-	guestConn := fs.File(f).(ww_fs.File).Conn()
-	conn := rpc.NewConn(rpc.NewStreamTransport(guestConn), nil) // TODO missing bootstrap client?
+	wwf, ok := fs.File(f).(ww_fs.File)
+	if !ok {
+		panic("TODO")
+	}
+	conn := rpc.NewConn(rpc.NewStreamTransport(wwf.Conn()), nil) // TODO missing bootstrap client?
 
 	return cluster.Host(conn.Bootstrap(ctx))
 }

@@ -110,17 +110,14 @@ func (r *Runtime) mkmod(ctx context.Context, args api.Executor_exec_Params) (was
 	}
 
 	host, guest := net.Pipe()
-
-	// TODO wrap guest in host in File, provided by a FS
-	// TODO wrap host in RPC.NewStreamTransport(?) and provide the bootstrap capability
-	// in separate goroutine
+	fileSystem := fs.FS{Host: host, Guest: guest, BootstrapClient: capnp.Client{}}
 
 	return r.Runtime.InstantiateModule(ctx, module, wazero.
 		NewModuleConfig().
 		WithName(name).
 		WithStartFunctions(). // disable automatic calling of _start (main)
 		WithRandSource(rand.Reader).
-		WithFS(fs.FS{Host: host, Guest: guest, BootstrapClient: capnp.Client{}}))
+		WithFS(fileSystem))
 }
 
 func (r *Runtime) spawn(fn wasm.Function) (<-chan execResult, context.CancelFunc) {

@@ -9,11 +9,6 @@ import (
 
 func main() {
 	ctx := context.Background()
-	// f, err := os.OpenFile("/", os.O_RDWR, os.ModeSocket)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// defer f.Close()
 	ww.Bootstrap(ctx)
 	time.Sleep(3 * time.Second)
 	// err := host.Resolve(ctx)

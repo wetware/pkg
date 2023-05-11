@@ -3,7 +3,6 @@ package fs
 import (
 	"errors"
 	"io/fs"
-	"math"
 	"net"
 	"time"
 
@@ -67,11 +66,14 @@ func (fi FileInfo) Name() string {
 }
 
 func (fi FileInfo) Size() int64 {
-	return math.MinInt64 // TODO
+	return 1
+	// return math.MinInt64 // TODO
 }
 
 func (fi FileInfo) Mode() fs.FileMode {
-	return fs.ModeSocket
+	return fs.ModeDir
+	// return fs.ModeAppend
+	// return fs.ModeSocket
 }
 
 func (fi FileInfo) ModTime() time.Time {
