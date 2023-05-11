@@ -15,12 +15,15 @@ import (
 	"os/signal"
 	"syscall"
 
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/lthibault/log"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
 
+	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/ww"
+	"github.com/wetware/ww/pkg/server"
 	"github.com/wetware/ww/system"
 )
 
@@ -73,14 +76,12 @@ func action() cli.ActionFunc {
 		var wetware ww.Ww
 
 		app := fx.New(fx.NopLogger,
-			fx.Supply(c, c.String("ns")),
-			system.WithDefaultServer(),
-			fx.Populate(&wetware /*&code*/),
+			fx.Supply(c),
+			fx.Provide(env, identity),
 			fx.Decorate(bytecode),
-			fx.Provide(
-				stdio,
-				logger,
-				identity))
+			fx.Populate(&wetware),
+			system.WithDefaultServer(),
+			fx.Invoke(joinCluster))
 		if err := start(app); err != nil {
 			return err
 		}
@@ -93,24 +94,32 @@ func action() cli.ActionFunc {
 	}
 }
 
-func logger(c *cli.Context) log.Logger {
-	return log.New()
-}
-
-type Stdio struct {
+type Env struct {
 	fx.Out
+
+	Context context.Context
+	Log     log.Logger
+
+	NS string
 
 	Stdin  io.Reader `name:"stdin"`
 	Stdout io.Writer `name:"stdout"`
 	Stderr io.Writer `name:"stderr"`
 }
 
-func stdio(c *cli.Context) Stdio {
-	return Stdio{
-		Stdin:  c.App.Reader,
-		Stdout: c.App.Writer,
-		Stderr: c.App.ErrWriter,
+func env(c *cli.Context) Env {
+	return Env{
+		Context: c.Context,
+		Log:     logger(c),
+		NS:      c.String("ns"),
+		Stdin:   c.App.Reader,
+		Stdout:  c.App.Writer,
+		Stderr:  c.App.ErrWriter,
 	}
+}
+
+func logger(c *cli.Context) log.Logger {
+	return log.New()
 }
 
 func identity(c *cli.Context) (crypto.PrivKey, error) {
@@ -135,6 +144,22 @@ func bytecode(c *cli.Context, rom system.ROM) (system.ROM, error) {
 
 	// use the default bytecode, provided by Fx.
 	return rom, nil
+}
+
+func joinCluster(lx fx.Lifecycle, vat casm.Vat, j server.Joiner, ps *pubsub.PubSub) {
+	var n *server.Node
+	lx.Append(fx.StartStopHook(
+		func(ctx context.Context) (err error) {
+			if n, err = j.Join(vat, ps); err == nil {
+				err = n.Bootstrap(ctx)
+			}
+
+			return
+		},
+		func() error {
+			return n.Close()
+		},
+	))
 }
 
 func start(app *fx.App) error {
