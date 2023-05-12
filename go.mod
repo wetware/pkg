@@ -3,7 +3,7 @@ module github.com/wetware/ww
 go 1.20
 
 require (
-	capnproto.org/go/capnp/v3 v3.0.0-alpha.27
+	capnproto.org/go/capnp/v3 v3.0.0-alpha.28
 	github.com/davidlazar/go-crypto v0.0.0-20200604182044-b73af7476f6c // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/huin/goupnp v1.1.0 // indirect
@@ -34,12 +34,12 @@ require (
 	github.com/ipfs/go-ds-badger2 v0.1.3
 	github.com/lthibault/go-libp2p-inproc-transport v0.4.0
 	github.com/multiformats/go-multistream v0.4.1
-	github.com/stealthrocket/wazergo v0.14.0
+	github.com/stealthrocket/wazergo v0.17.1
 	github.com/stretchr/testify v1.8.2
-	github.com/tetratelabs/wazero v1.0.3
+	github.com/tetratelabs/wazero v1.1.0
 	github.com/thejerf/suture/v4 v4.0.2
 	github.com/wetware/casm v0.0.0-20230410223030-669726c25fe7
-	golang.org/x/sync v0.1.0
+	golang.org/x/sync v0.2.0
 	gopkg.in/alexcesaro/statsd.v2 v2.0.0
 	lukechampine.com/blake3 v1.1.7
 )
@@ -153,5 +153,5 @@ require (
 	gonum.org/v1/gonum v0.11.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
-	zenhack.net/go/util v0.0.0-20230407221818-ef608d25cf61 // indirect
+	zenhack.net/go/util v0.0.0-20230512035932-3f5fdfa0f47d // indirect
 )
