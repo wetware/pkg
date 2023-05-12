@@ -2,8 +2,8 @@ package fs
 
 import (
 	"errors"
+	"io"
 	"io/fs"
-	"net"
 	"time"
 
 	"capnproto.org/go/capnp/v3"
@@ -11,7 +11,7 @@ import (
 )
 
 type FS struct {
-	Guest, Host     net.Conn
+	Guest, Host     io.ReadWriteCloser
 	BootstrapClient capnp.Client
 }
 
@@ -29,14 +29,14 @@ func (fs FS) Open(name string) (fs.File, error) {
 	}()
 
 	return File{
-		conn: fs.Guest,
-		name: name,
+		pipeEnd: fs.Guest,
+		name:    name,
 	}, nil
 }
 
 type File struct {
-	name string
-	conn net.Conn
+	name    string
+	pipeEnd io.ReadWriteCloser
 }
 
 func (f File) Stat() (fs.FileInfo, error) {
@@ -46,15 +46,15 @@ func (f File) Stat() (fs.FileInfo, error) {
 }
 
 func (f File) Read(b []byte) (int, error) {
-	return f.conn.Read(b)
+	return f.pipeEnd.Read(b)
 }
 
 func (f File) Close() error {
-	return f.conn.Close()
+	return f.pipeEnd.Close()
 }
 
-func (f File) Conn() net.Conn {
-	return f.conn
+func (f File) PipeEnd() io.ReadWriteCloser {
+	return f.pipeEnd
 }
 
 type FileInfo struct {

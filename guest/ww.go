@@ -23,7 +23,7 @@ func Bootstrap(ctx context.Context) cluster.Host {
 	if !ok {
 		panic("TODO")
 	}
-	conn := rpc.NewConn(rpc.NewStreamTransport(wwf.Conn()), nil) // TODO missing bootstrap client?
+	conn := rpc.NewConn(rpc.NewStreamTransport(wwf.PipeEnd()), nil) // TODO missing bootstrap client?
 
 	return cluster.Host(conn.Bootstrap(ctx))
 }
