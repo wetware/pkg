@@ -23,6 +23,7 @@ import (
 
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/ww"
+	"github.com/wetware/ww/pkg/anchor"
 	"github.com/wetware/ww/pkg/server"
 	"github.com/wetware/ww/system"
 )
@@ -43,6 +44,10 @@ var flags = []cli.Flag{
 		Name:    "stdin",
 		Aliases: []string{"s"},
 		Usage:   "load system image from stdin",
+	},
+	&cli.BoolFlag{
+		Name:  "debug",
+		Usage: "enable debug logging",
 	},
 }
 
@@ -76,7 +81,7 @@ func action() cli.ActionFunc {
 		var wetware ww.Ww
 
 		app := fx.New(fx.NopLogger,
-			fx.Supply(c),
+			fx.Supply(c, new(anchor.Node)),
 			fx.Provide(env, identity),
 			fx.Decorate(bytecode),
 			fx.Populate(&wetware),
@@ -119,7 +124,12 @@ func env(c *cli.Context) Env {
 }
 
 func logger(c *cli.Context) log.Logger {
-	return log.New()
+	level := log.InfoLevel
+	if c.Bool("debug") {
+		level = log.DebugLevel
+	}
+
+	return log.New(log.WithLevel(level))
 }
 
 func identity(c *cli.Context) (crypto.PrivKey, error) {
