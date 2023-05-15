@@ -40,6 +40,7 @@ type Cluster interface {
 type Node struct {
 	Vat casm.Vat
 	Cluster
+	host.PubSubProvider
 }
 
 func (n Node) Loggable() map[string]any {
@@ -65,6 +66,7 @@ func (j Joiner) Join(vat casm.Vat, r Router) (*Node, error) {
 		return nil, err
 	}
 
+	ps := j.pubsub(vat.Logger, r)
 	vat.Export(host.Capability, host.Server{
 		ViewProvider:   c,
 		PubSubProvider: j.pubsub(vat.Logger, r),
@@ -74,8 +76,9 @@ func (j Joiner) Join(vat casm.Vat, r Router) (*Node, error) {
 	})
 
 	return &Node{
-		Vat:     vat,
-		Cluster: c,
+		Vat:            vat,
+		Cluster:        c,
+		PubSubProvider: ps,
 	}, nil
 }
 
