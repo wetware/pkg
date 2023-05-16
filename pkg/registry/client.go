@@ -96,6 +96,7 @@ func (h handler) Send(ctx context.Context, call chan_api.Sender_send) error {
 	data := ptr.Data()
 	b := make([]byte, len(data))
 	copy(b, data)
+
 	// decode
 	_, rec, err := record.ConsumeEnvelope(b, EnvelopeDomain)
 	if err != nil {
