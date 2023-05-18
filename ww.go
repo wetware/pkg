@@ -64,10 +64,15 @@ func (ww Ww) Exec(ctx context.Context) error {
 	go func() {
 		defer host.Close()
 
+		// DEMO
+		//
+		// We send a string to the host and then read back a response and print it.
+		// At the transport level, this is a bidirectional byte-stream.
 		io.Copy(host, strings.NewReader("Hello, Wetware!"))
 		io.Copy(os.Stdout, host)
 
-		<-ctx.Done()
+		<-ctx.Done() // Block until the context expires
+		// -- DEMO
 	}()
 
 	sysmod := wazergo.MustInstantiate(ctx, r, system.HostModule,
