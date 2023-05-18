@@ -52,9 +52,9 @@ func (n Node) Loggable() map[string]any {
 type Joiner struct {
 	fx.In
 
-	Cluster  ClusterConfig `optional:"true"`
-	Runtime  RuntimeConfig `optional:"true"`
-	Debugger DebugConfig   `optional:"true"`
+	Cluster ClusterConfig `optional:"true"`
+	// Runtime  RuntimeConfig `optional:"true"`
+	Debugger DebugConfig `optional:"true"`
 }
 
 // Join the cluster.  Note that callers MUST call Bootstrap() on
@@ -66,11 +66,11 @@ func (j Joiner) Join(vat casm.Vat, r Router) (*Node, error) {
 	}
 
 	vat.Export(host.Capability, host.Server{
-		ViewProvider:     c,
-		PubSubProvider:   j.pubsub(vat.Logger, r),
-		AnchorProvider:   j.anchor(),
-		DebugProvider:    j.Debugger.New(),
-		ExecutorProvider: j.Runtime.New(),
+		ViewProvider:   c,
+		PubSubProvider: j.pubsub(vat.Logger, r),
+		AnchorProvider: j.anchor(),
+		DebugProvider:  j.Debugger.New(),
+		// ExecutorProvider: j.Runtime.New(),
 	})
 
 	return &Node{
