@@ -8,7 +8,15 @@ import (
 	"unsafe"
 )
 
+// main is just a demo right now.  It is the counterpart to
+// the net.Conn that is the subject of ww.go's demo.  It reads
+// a greeting from the pipe, and prints a reply.
+//
+// This proves we can stream bytes bidirectionally between host
+// and guest.  From here, we should hopefully be able to wrap it
+// in an rpc.Conn and have it "just work".
 func main() {
+	// DEMO
 	buf := make([]byte, 42)
 	n, err := pipe{}.Read(buf)
 	if err != nil {
@@ -18,28 +26,22 @@ func main() {
 
 	fmt.Println(string(buf[:n]))
 	pipe{}.Write([]byte("nm, u?"))
-
-	// 	info(
-	// 		stringToPointer("[ LOG ] Hello, Wetware!"),
-	// 		uint32(23))
-
-	// buf := make([]byte, 32)
-	// u64 := recv(
-	//
-	//	bytesToPointer(buf),
-	//	uint32(len(buf)))
-	//
-	// fmt.Printf("%064b\n", u64)
-	// fmt.Println(string(buf))
+	// -- DEMO
 }
+
+/*
+	Below are the improted functions from the host environment.
+	Confusingly, these are labled as `go export`, but they are
+	indeed imports.
+*/
 
 //go:wasm-module ww
 //go:export _info
-func info(offset uintptr, size uint32)
+func info(offset uintptr, size uint32) // HACK:  here for debug purposes; will go away
 
 //go:wasm-module ww
 //go:export _close
-func rpcClose() uint32
+func kill() uint32
 
 //go:wasm-module ww
 //go:export _recv
@@ -49,10 +51,15 @@ func recv(offset uintptr, size uint32) uint64
 //go:export _send
 func send(offset uintptr, size uint32) uint64
 
+// pipe is a wrapper around send/recv/kill that satisfies the
+// io.ReadWriteCloser interface.
+//
+// Implementation involves low-level WASM bit-twiddling.  It
+// is intentionally kept simple.
 type pipe struct{}
 
 func (pipe) Close() error {
-	if errno := rpcClose(); errno != 0 {
+	if errno := kill(); errno != 0 {
 		return fmt.Errorf("%d", errno) // TODO:  parse errno
 	}
 
