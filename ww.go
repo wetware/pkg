@@ -75,17 +75,21 @@ func (ww Ww) Exec(ctx context.Context) error {
 		// -- DEMO
 	}()
 
+	// Instantiate Wetware.  Wetware is implemented as a host module, like WASI.
 	sysmod := wazergo.MustInstantiate(ctx, r, system.HostModule,
 		system.WithPipe(guest),
 		system.WithLogger(ww.Log))
 
-	// compile guest module
+	// Compile guest module.
+	//
+	// TODO:  the ROM needs to be validated upstream of this call.
 	compiled, err := r.CompileModule(ctx, ww.ROM)
 	if err != nil {
 		return err
 	}
 	defer compiled.Close(ctx)
 
+	// Instantiate the guest module, and configure host exports.
 	mod, err := r.InstantiateModule(ctx, compiled, wazero.NewModuleConfig().
 		WithOsyield(runtime.Gosched).
 		WithRandSource(rand.Reader).
@@ -113,11 +117,3 @@ func (ww Ww) Exec(ctx context.Context) error {
 	return err
 
 }
-
-// func (ww Ww) FS(ctx context.Context) system.FS {
-// 	return system.FS{
-// 		Ctx:  ctx,
-// 		Log:  ww.Log,
-// 		Root: ww.Root,
-// 	}
-// }
