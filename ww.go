@@ -46,6 +46,9 @@ func (ww Ww) String() string {
 	return ww.Name
 }
 
+// Exec compiles and runs the ww instance's ROM in a WASM runtime.
+// It returns any error produced by the compilation or execution of
+// the ROM.
 func (ww Ww) Exec(ctx context.Context) error {
 	// Spawn a new runtime.
 	r := wazero.NewRuntimeWithConfig(ctx, wazero.
@@ -93,12 +96,12 @@ func (ww Ww) Exec(ctx context.Context) error {
 	mod, err := r.InstantiateModule(ctx, compiled, wazero.NewModuleConfig().
 		WithOsyield(runtime.Gosched).
 		WithRandSource(rand.Reader).
-		WithStartFunctions(). // don't call _start until later
+		WithStartFunctions(). // don't automatically call _start while instanitating.
 		WithSysNanosleep().
 		WithSysNanotime().
 		WithSysWalltime().
 		WithEnv("ns", ww.Name).
-		WithStdin(ww.Stdin).
+		WithStdin(ww.Stdin). // notice:  we connect stdio to host process' stdio
 		WithStdout(ww.Stdout).
 		WithStderr(ww.Stderr))
 	if err != nil {
