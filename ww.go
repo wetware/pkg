@@ -5,10 +5,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"io"
-	"net"
-	"os"
 	"runtime"
-	"strings"
 
 	// "github.com/spy16/slurp"
 	// "github.com/spy16/slurp/core"
@@ -16,7 +13,6 @@ import (
 	// "github.com/spy16/slurp/repl"
 
 	"github.com/lthibault/log"
-	"github.com/stealthrocket/wazergo"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	casm "github.com/wetware/casm/pkg"
@@ -63,25 +59,12 @@ func (ww Ww) Exec(ctx context.Context) error {
 	}
 	defer c.Close(ctx)
 
-	host, guest := net.Pipe()
-	go func() {
-		defer host.Close()
-
-		// DEMO
-		//
-		// We send a string to the host and then read back a response and print it.
-		// At the transport level, this is a bidirectional byte-stream.
-		io.Copy(host, strings.NewReader("Hello, Wetware!"))
-		io.Copy(os.Stdout, host)
-
-		<-ctx.Done() // Block until the context expires
-		// -- DEMO
-	}()
-
-	// Instantiate Wetware.  Wetware is implemented as a host module, like WASI.
-	sysmod := wazergo.MustInstantiate(ctx, r, system.HostModule,
-		system.WithPipe(guest),
-		system.WithLogger(ww.Log))
+	// Instantiate Wetware.
+	host, err := system.Instantiate(ctx, r)
+	if err != nil {
+		return err
+	}
+	defer host.Close(ctx)
 
 	// Compile guest module.
 	//
@@ -109,6 +92,14 @@ func (ww Ww) Exec(ctx context.Context) error {
 	}
 	defer mod.Close(ctx)
 
+	// Bind the host module to the guest module, producing a bidirectional byte-
+	// stream between them.
+	conn, err := host.Bind(ctx, mod)
+	if err != nil {
+		return err
+	}
+	ctx = system.WithConn(ctx, conn)
+
 	// Grab the the main() function and call it with the system context.
 	fn := mod.ExportedFunction("_start")
 	if fn == nil {
@@ -116,7 +107,6 @@ func (ww Ww) Exec(ctx context.Context) error {
 	}
 
 	// TODO(performance):  fn.CallWithStack(ctx, nil)
-	_, err = fn.Call(wazergo.WithModuleInstance(ctx, sysmod))
+	_, err = fn.Call(ctx)
 	return err
-
 }
