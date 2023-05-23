@@ -72,7 +72,11 @@ func locAction() cli.ActionFunc {
 		defer release()
 
 		for loc, ok := locs.Next(); ok; loc, ok = locs.Next() {
-			fmt.Println(loc.String())
+			m, err := loc.Maddrs()
+			if err != nil{
+				return fmt.Errorf("failed to get maddrs from location: %w", err)
+			}
+			fmt.Println(m)
 		}
 
 		return locs.Err()

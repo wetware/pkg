@@ -98,14 +98,10 @@ func (h handler) Send(ctx context.Context, call chan_api.Sender_send) error {
 	copy(b, data)
 
 	// decode
-	_, rec, err := record.ConsumeEnvelope(b, EnvelopeDomain)
+	var loc Location
+	_, err = record.ConsumeTypedEnvelope(b, &loc)
 	if err != nil {
-		return fmt.Errorf("failed to consume envelope: %w", err)
-	}
-
-	loc, ok := rec.(*Location)
-	if !ok {
-		return ErrInavlidType
+		return fmt.Errorf("failed to consume typed envelope: %w", err)
 	}
 
 	// validate
@@ -114,7 +110,7 @@ func (h handler) Send(ctx context.Context, call chan_api.Sender_send) error {
 	}
 
 	select {
-	case h.ch <- *loc:
+	case h.ch <- loc:
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
