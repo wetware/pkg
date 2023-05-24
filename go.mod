@@ -32,6 +32,7 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/ipfs/go-datastore v0.6.0
 	github.com/ipfs/go-ds-badger2 v0.1.3
+	github.com/libp2p/go-libp2p-core v0.20.1
 	github.com/lthibault/go-libp2p-inproc-transport v0.4.0
 	github.com/multiformats/go-multistream v0.4.1
 	github.com/stealthrocket/wazergo v0.14.0

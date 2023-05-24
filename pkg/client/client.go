@@ -12,6 +12,7 @@ import (
 	"github.com/wetware/ww/pkg/csp"
 	"github.com/wetware/ww/pkg/host"
 	"github.com/wetware/ww/pkg/pubsub"
+	service "github.com/wetware/ww/pkg/registry"
 )
 
 type Node struct {
@@ -42,6 +43,10 @@ func (n *Node) View(ctx context.Context) (cluster.View, capnp.ReleaseFunc) {
 	return n.Host(ctx).View(ctx)
 }
 
+func (n *Node) PubsSub(ctx context.Context) (pubsub.Router, capnp.ReleaseFunc) {
+	return n.Host(ctx).PubSub(ctx)
+}
+
 // Join a pubsub topic.
 func (n *Node) Join(ctx context.Context, topic string) (pubsub.Topic, capnp.ReleaseFunc) {
 	router, release := n.Host(ctx).PubSub(ctx)
@@ -52,6 +57,10 @@ func (n *Node) Join(ctx context.Context, topic string) (pubsub.Topic, capnp.Rele
 
 func (n *Node) Debug(ctx context.Context) (debug.Debugger, capnp.ReleaseFunc) {
 	return n.Host(ctx).Debug(ctx)
+}
+
+func (n *Node) Registry(ctx context.Context) (service.Registry, capnp.ReleaseFunc) {
+	return n.Host(ctx).Registry(ctx)
 }
 
 func (n *Node) Executor(ctx context.Context) (csp.Executor, capnp.ReleaseFunc) {

@@ -12,6 +12,7 @@ import (
 	anchor "github.com/wetware/ww/internal/api/anchor"
 	process "github.com/wetware/ww/internal/api/process"
 	pubsub "github.com/wetware/ww/internal/api/pubsub"
+	registry "github.com/wetware/ww/internal/api/registry"
 )
 
 type Host capnp.Client
@@ -99,12 +100,32 @@ func (c Host) Debug(ctx context.Context, params func(Host_debug_Params) error) (
 
 }
 
-func (c Host) Executor(ctx context.Context, params func(Host_executor_Params) error) (Host_executor_Results_Future, capnp.ReleaseFunc) {
+func (c Host) Registry(ctx context.Context, params func(Host_registry_Params) error) (Host_registry_Results_Future, capnp.ReleaseFunc) {
 
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0x957cbefc645fd307,
 			MethodID:      4,
+			InterfaceName: "cluster.capnp:Host",
+			MethodName:    "registry",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Host_registry_Params(s)) }
+	}
+
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return Host_registry_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c Host) Executor(ctx context.Context, params func(Host_executor_Params) error) (Host_executor_Results_Future, capnp.ReleaseFunc) {
+
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0x957cbefc645fd307,
+			MethodID:      5,
 			InterfaceName: "cluster.capnp:Host",
 			MethodName:    "executor",
 		},
@@ -200,6 +221,8 @@ type Host_Server interface {
 
 	Debug(context.Context, Host_debug) error
 
+	Registry(context.Context, Host_registry) error
+
 	Executor(context.Context, Host_executor) error
 }
 
@@ -219,7 +242,7 @@ func Host_ServerToClient(s Host_Server) Host {
 // This can be used to create a more complicated Server.
 func Host_Methods(methods []server.Method, s Host_Server) []server.Method {
 	if cap(methods) == 0 {
-		methods = make([]server.Method, 0, 5)
+		methods = make([]server.Method, 0, 6)
 	}
 
 	methods = append(methods, server.Method{
@@ -274,6 +297,18 @@ func Host_Methods(methods []server.Method, s Host_Server) []server.Method {
 		Method: capnp.Method{
 			InterfaceID:   0x957cbefc645fd307,
 			MethodID:      4,
+			InterfaceName: "cluster.capnp:Host",
+			MethodName:    "registry",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Registry(ctx, Host_registry{call})
+		},
+	})
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0x957cbefc645fd307,
+			MethodID:      5,
 			InterfaceName: "cluster.capnp:Host",
 			MethodName:    "executor",
 		},
@@ -351,6 +386,23 @@ func (c Host_debug) Args() Host_debug_Params {
 func (c Host_debug) AllocResults() (Host_debug_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
 	return Host_debug_Results(r), err
+}
+
+// Host_registry holds the state for a server call to Host.registry.
+// See server.Call for documentation.
+type Host_registry struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c Host_registry) Args() Host_registry_Params {
+	return Host_registry_Params(c.Call.Args())
+}
+
+// AllocResults allocates the results struct.
+func (c Host_registry) AllocResults() (Host_registry_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Host_registry_Results(r), err
 }
 
 // Host_executor holds the state for a server call to Host.executor.
@@ -979,10 +1031,160 @@ func (p Host_debug_Results_Future) Debugger() capnp.Client {
 	return p.Future.Field(0, nil).Client()
 }
 
+type Host_registry_Params capnp.Struct
+
+// Host_registry_Params_TypeID is the unique identifier for the type Host_registry_Params.
+const Host_registry_Params_TypeID = 0xbe5314ed29d84c52
+
+func NewHost_registry_Params(s *capnp.Segment) (Host_registry_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Host_registry_Params(st), err
+}
+
+func NewRootHost_registry_Params(s *capnp.Segment) (Host_registry_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Host_registry_Params(st), err
+}
+
+func ReadRootHost_registry_Params(msg *capnp.Message) (Host_registry_Params, error) {
+	root, err := msg.Root()
+	return Host_registry_Params(root.Struct()), err
+}
+
+func (s Host_registry_Params) String() string {
+	str, _ := text.Marshal(0xbe5314ed29d84c52, capnp.Struct(s))
+	return str
+}
+
+func (s Host_registry_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Host_registry_Params) DecodeFromPtr(p capnp.Ptr) Host_registry_Params {
+	return Host_registry_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Host_registry_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Host_registry_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Host_registry_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Host_registry_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+
+// Host_registry_Params_List is a list of Host_registry_Params.
+type Host_registry_Params_List = capnp.StructList[Host_registry_Params]
+
+// NewHost_registry_Params creates a new list of Host_registry_Params.
+func NewHost_registry_Params_List(s *capnp.Segment, sz int32) (Host_registry_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	return capnp.StructList[Host_registry_Params](l), err
+}
+
+// Host_registry_Params_Future is a wrapper for a Host_registry_Params promised by a client call.
+type Host_registry_Params_Future struct{ *capnp.Future }
+
+func (f Host_registry_Params_Future) Struct() (Host_registry_Params, error) {
+	p, err := f.Future.Ptr()
+	return Host_registry_Params(p.Struct()), err
+}
+
+type Host_registry_Results capnp.Struct
+
+// Host_registry_Results_TypeID is the unique identifier for the type Host_registry_Results.
+const Host_registry_Results_TypeID = 0x9e8120f9bb059602
+
+func NewHost_registry_Results(s *capnp.Segment) (Host_registry_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Host_registry_Results(st), err
+}
+
+func NewRootHost_registry_Results(s *capnp.Segment) (Host_registry_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Host_registry_Results(st), err
+}
+
+func ReadRootHost_registry_Results(msg *capnp.Message) (Host_registry_Results, error) {
+	root, err := msg.Root()
+	return Host_registry_Results(root.Struct()), err
+}
+
+func (s Host_registry_Results) String() string {
+	str, _ := text.Marshal(0x9e8120f9bb059602, capnp.Struct(s))
+	return str
+}
+
+func (s Host_registry_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Host_registry_Results) DecodeFromPtr(p capnp.Ptr) Host_registry_Results {
+	return Host_registry_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Host_registry_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Host_registry_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Host_registry_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Host_registry_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Host_registry_Results) Registry() registry.Registry {
+	p, _ := capnp.Struct(s).Ptr(0)
+	return registry.Registry(p.Interface().Client())
+}
+
+func (s Host_registry_Results) HasRegistry() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Host_registry_Results) SetRegistry(v registry.Registry) error {
+	if !v.IsValid() {
+		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
+	}
+	seg := s.Segment()
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
+	return capnp.Struct(s).SetPtr(0, in.ToPtr())
+}
+
+// Host_registry_Results_List is a list of Host_registry_Results.
+type Host_registry_Results_List = capnp.StructList[Host_registry_Results]
+
+// NewHost_registry_Results creates a new list of Host_registry_Results.
+func NewHost_registry_Results_List(s *capnp.Segment, sz int32) (Host_registry_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[Host_registry_Results](l), err
+}
+
+// Host_registry_Results_Future is a wrapper for a Host_registry_Results promised by a client call.
+type Host_registry_Results_Future struct{ *capnp.Future }
+
+func (f Host_registry_Results_Future) Struct() (Host_registry_Results, error) {
+	p, err := f.Future.Ptr()
+	return Host_registry_Results(p.Struct()), err
+}
+func (p Host_registry_Results_Future) Registry() registry.Registry {
+	return registry.Registry(p.Future.Field(0, nil).Client())
+}
+
 type Host_executor_Params capnp.Struct
 
 // Host_executor_Params_TypeID is the unique identifier for the type Host_executor_Params.
-const Host_executor_Params_TypeID = 0xbe5314ed29d84c52
+const Host_executor_Params_TypeID = 0x9eaa92308c59a588
 
 func NewHost_executor_Params(s *capnp.Segment) (Host_executor_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
@@ -1000,7 +1202,7 @@ func ReadRootHost_executor_Params(msg *capnp.Message) (Host_executor_Params, err
 }
 
 func (s Host_executor_Params) String() string {
-	str, _ := text.Marshal(0xbe5314ed29d84c52, capnp.Struct(s))
+	str, _ := text.Marshal(0x9eaa92308c59a588, capnp.Struct(s))
 	return str
 }
 
@@ -1047,7 +1249,7 @@ func (f Host_executor_Params_Future) Struct() (Host_executor_Params, error) {
 type Host_executor_Results capnp.Struct
 
 // Host_executor_Results_TypeID is the unique identifier for the type Host_executor_Results.
-const Host_executor_Results_TypeID = 0x9e8120f9bb059602
+const Host_executor_Results_TypeID = 0x99b232a18288d3d8
 
 func NewHost_executor_Results(s *capnp.Segment) (Host_executor_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
@@ -1065,7 +1267,7 @@ func ReadRootHost_executor_Results(msg *capnp.Message) (Host_executor_Results, e
 }
 
 func (s Host_executor_Results) String() string {
-	str, _ := text.Marshal(0x9e8120f9bb059602, capnp.Struct(s))
+	str, _ := text.Marshal(0x99b232a18288d3d8, capnp.Struct(s))
 	return str
 }
 
@@ -1129,45 +1331,50 @@ func (p Host_executor_Results_Future) Executor() process.Executor {
 	return process.Executor(p.Future.Field(0, nil).Client())
 }
 
-const schema_fcf6ac08e448a6ac = "x\xda\x8cRKh\x13Q\x14\xbd\xf7\xbd\x893\xa3\xb6" +
-	"\xf5e\xba(\x8a\xbfZ\xc1vQ\xac\"b@:]" +
-	"\x14\xdb\xdaE\xa6\xa5\xe8B\xd4$\x1dJ!5!3" +
-	"S\x15\xdcT\x08(BDAA\x17\xaej\x17Rt" +
-	"!\"Z\xc8B\\\xb9T\x17\x16D7\xa9+-\xa2" +
-	"T\x88\x04\x9e\xbcIf\xf2\x92Zt}\xcf=\xe7\x9e" +
-	"s\xee\xc1eb*}-\x9f\xb7\x01\xb1^G6\xf1" +
-	"\xe2\xf3\xd5\x95}\x07n\\\x05f \x80\xa2\x02\x18\x13" +
-	"\xdaoP\xf8\xcf\xd4\x8f\xef\xbb\x0a_\xaf\xd7\x07\x87\x8f" +
-	"i\x04A\xe1k\xefG\xf3\x85\xdb\xa7oV'\x11\x14" +
-	"\xa3\x9db\x84\xc6^\xad\x1f\x90\xab\xef\xceMV\x8aW" +
-	"\xee\x00k\xa5|qa\xa8\xa4-\xfe\xaa\x00\xa01\xa0" +
-	"\xdd7\x865\x81\x1f\xd4N\xa0\xc1t\x15\x80\x93\xbb\x91" +
-	"\xa5\xf2\x9e\xb9\x072]Y\xeb\x14t\xa8\x0b\xba\xd2\x0b" +
-	"o\xfc\xe4+e^:q\xbf.N\xecV\xda\x1e\xd3" +
-	"\xf3\x1dEyS\xd77\x8bM\xe6o\x8e\x8d~\xe8\xfe" +
-	"\xd6>^\x94<\x1c\xd1\xb7\x0b\x0f[\x06O\xcd\xe7\xcf" +
-	",\xbdi\xf0\xa0W=\xf8\xab\xab\xad\xfa\x9aW\xbe\xf6" +
-	"Q\x06\x0c\xe8Q\x01\x18\xf6\x01\xf7\x1eU\"^\xe7\xb3" +
-	"\x15\x89{ZhsX\xe0\xa9\xb4\xe7\xb8v\xae\x97\xa4" +
-	"\x12\xd9\x0b\xd9\xd8P\xc6q{s\x99\x8c\xdb\xd5\x1fO" +
-	"\xe4\x123N\x08P%\xc0\xa4\x9d\xf4\xa6\xba\xaa\x00\x08" +
-	"\x00\xd2|v\xda\xbe\xd85f;^\xdau\xc0R\xa8" +
-	"\x02\xa0 \x00k\xe9\x01\xb04\x8aV;\xc16\x01\xc2" +
-	"\xa8B\x011\x0a\x18\xea`\xc0C\x1d7\x8eh\xb5\xd3" +
-	"\x08@\x18,\x06\x8d\xb2[=@X^\xc5\xba=\x0c" +
-	"\x82`\x97c@\xd8\x8c\x8a$\xfc\x19\x0cRd\x09\xb1" +
-	"7\xa1\"\x0d\xdf\x06\x83r\xd8\xf0! \xec\xb8\x8aJ" +
-	"X\x07\x06\x95\xb3\xbe\x11 \xac[\xf5\xcf6\xb1?\xeb" +
-	"%\xc7\xbd\xa4\x89m\",\x13w\xfb\x91\x98\xc8\xedK" +
-	"v\xcas39\x0001\x8eu_T\xca'\x00\xf9" +
-	"\x19\xa9i\xd7\x913\x1a\x01\xb0\xb6R\xb4:H\x03\x1b" +
-	"2\xfe\xd6\x9b{\xf8\xf2l\xef\x13\x00D&EF\x9a" +
-	"\xa3o\xee\x8e\xae\xeb.(\x076R\xf6aS\xb6\xaf" +
-	"\xbc\xbe\xa4\xbf\x9a\x11\xa2t\x03U\xff\xa5\xfe\xf5\x11\x02" +
-	"\x84\x8cw.\x17\xf4\xd2\xd1h\xa9\xd9\xa6\xccW\x8d\xbf" +
-	"\xc6\x88\x0d\xf9\xc5\xea\x8c\xb5\x96\x90\xf1Xfv\xc7\x97" +
-	"\xa7\xf1O\xff\xc1Y{k\xf8\x13\x00\x00\xff\xff}\xa0" +
-	"H\x90"
+const schema_fcf6ac08e448a6ac = "x\xda\x8c\x93]H\x14_\x18\xc6\xdf\xf7\x9c\xd9\xff8" +
+	";\x7f\x95\xb3k`E\x1f\x98\x17)$fH\xb4\x10" +
+	"n\x17\x85\x99\xd0\x8e^T\xd0\xd7\xba\x0e\"h+;" +
+	"3\x96\xd0\x8d\x82dT\x06B\x81]\x08\x81v!R" +
+	"TD\x94\xb0\x17]\xd6]\x16(TWkW&}" +
+	"``h'\xce\xac3{\\M\xbb\xdb\xe5}\xce\xef" +
+	"\xbc\xcfs\x9e\xa9\xee\xa4Qe\x7f\xe1\xc9\x12 \xc6\\" +
+	"\xe0?\x9e~>?\xbbg\xef\x8d>`a\x04PT" +
+	"\x80pa\xf0\x17(\xfcG\xe2\xfb\xd7\x9d\x83s\xd7s" +
+	"\x83\x03\xdf4\x82\xa0\xf0\x85w\x8d\xfd\x83C\xa7og" +
+	"'\x01\x14\xa3\xf7b\x84\xe1\x19\xad\x0e\x90\xabS\x17Z" +
+	"\x97\xd2W\xef\x00+\xa2|\xe2A}\xa6`\xe2\xe7\x12" +
+	"\x00\x86\x17\xb5{a\x0c\x0a\xfd\xb2v\x0d\xc3\x0b\xe2'" +
+	"\x9f\x9e\x1a\xe8\xbb_\xf3dX\xc6}\x0c\x96\x09\xdcl" +
+	"P\xe0\xc8\xdd\xc0\xe4\xe2\xee\xde\x11Y\xa0\xe9\xae\x80\xe9" +
+	"B00v\xe6f\xf5\xd0\xf8\x88\xb4j\xad\xbeM\xac" +
+	"\x9ay\xe14\x9fx\xa5\x8cJ\xeev\xe8\xc2]\x85R" +
+	"\xfc\x90^,M\xcbL\xd4\x83\x82\xa9\xb9\xcc\xa6\xc6\xe9" +
+	"\x8a/%\xcdi\x89\xb9/\xcb\xd4\x8f\x9e\x1a\xed?;" +
+	"\xf9Z>\xbaEw\xedou\x8f\xce\x17i\x0b\xce\xe2" +
+	"\xc0\x07YpH\x0f\x09\xc1\x11W0<\xbe\x14p\xca" +
+	"\x9e\xcdJ\xec\xb8\xb8\x9b\xc3o\x9e\xe8p,\xdbLU" +
+	"\x91D\xbc\xebRW\xa4>i\xd9U\xa9d\xd2.\xaf" +
+	"\x8b\xc5S\xf1N\xcb\x17\xa8\x92\xa0\xd5lq\xda\xca\xb3" +
+	"\x02\xf0\x04\xd2\xbc\xbb\xdd\xbc\\\xdedZN\x87m\x81" +
+	"\xa1P\x05@A\x00VX\x09`\x14P4J\x08\x16" +
+	"\x0b\x11\x86\x14\x0a\x88!@\xff\x1e\xf48\xd4\xb2c\x88" +
+	"F)\x0d\x00\xf8\xc1\xa2W\x06\xf6\xb8\x12\x08\x1bS1" +
+	"g\x0f\xbd \xd8p\x04\x08\xbb\xa5\"\xf1\xeb\x86^\x8a" +
+	"\xacW\x9csT\xa4~\xe3\xd0{\x1c\xd6^\x03\x84\x9d" +
+	"SQ\xf1\x9f\x03\xbd20\xa3\x01\x08;\xaeb\xc0\x7f" +
+	"~\xf4\x9a\xc4\x0e\x8bY\xad\xeaZ\x8ab]\x97\xd3\xd2" +
+	"\xec\xb4D\xb1X\x04\x19\xc5]n\\Q\xe4)\xb3\xad" +
+	"\xdd\xb2S=\x00\x10En^1\x13\x8e\x9dL\xb9\xff" +
+	"b\x98K\x80JIz\"7M\xb5\xc3\xb6\xe44\x1b" +
+	"\x00\x8c\xff)\x1a\xa5d\x15\x0d\x19\x7f\xeb\xf4\x8e\xbd<" +
+	"_\xf5\x08\x00\x91\xc1\xfaho\x9bM\xd1\xd2\xda\xc8\xf8" +
+	"\xb17=\x89\xa4:\xbf\xbc\x11\xda\xdfZT\x84J%" +
+	"\"\xf9%\xc9o\x19]\xd32\xafF\xf0\xb7\xf5\\Y" +
+	"\x9b\xe9:_[\xa7u\x1d\xe7\xafE\xf3\xcb\xbfYw" +
+	"\x85\x08\x19/\x9b\x19\xd42\x07C\x99\x8d\xb2\xc8\x96a" +
+	"\x85\x88\xabB\x8e\xe4\x88+\x9dA\xc6#\xc9\xee\xed\x9f" +
+	"\x9f\xc6>\xfd\x03s\xe5\x03\x84?\x01\x00\x00\xff\xffX" +
+	" \x93'"
 
 func RegisterSchema(reg *schemas.Registry) {
 	reg.Register(&schemas.Schema{
@@ -1177,7 +1384,9 @@ func RegisterSchema(reg *schemas.Registry) {
 			0x89ec8e1ef0f263f3,
 			0x8f58928e854cd4f5,
 			0x957cbefc645fd307,
+			0x99b232a18288d3d8,
 			0x9e8120f9bb059602,
+			0x9eaa92308c59a588,
 			0xa404c24b5375b9e4,
 			0xbe186003ae0f0429,
 			0xbe5314ed29d84c52,
