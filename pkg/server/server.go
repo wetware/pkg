@@ -13,6 +13,7 @@ import (
 	"github.com/wetware/ww/pkg/anchor"
 	"github.com/wetware/ww/pkg/host"
 	"github.com/wetware/ww/pkg/pubsub"
+	service "github.com/wetware/ww/pkg/registry"
 )
 
 // Router provides an interface for routing messages by topic, and supports
@@ -68,10 +69,11 @@ func (j Joiner) Join(vat casm.Vat, r Router) (*Node, error) {
 
 	ps := j.pubsub(vat.Logger, r)
 	vat.Export(host.Capability, host.Server{
-		ViewProvider:   c,
-		PubSubProvider: j.pubsub(vat.Logger, r),
-		AnchorProvider: j.anchor(),
-		DebugProvider:  j.Debugger.New(),
+		ViewProvider:     c,
+		PubSubProvider:   ps,
+		AnchorProvider:   j.anchor(),
+		DebugProvider:    j.Debugger.New(),
+		RegistryProvider: j.service(),
 		// ExecutorProvider: j.Runtime.New(),
 	})
 
@@ -87,6 +89,10 @@ func (j Joiner) pubsub(log log.Logger, router pubsub.TopicJoiner) *pubsub.Server
 		Log:         log,
 		TopicJoiner: router,
 	}
+}
+
+func (j Joiner) service() service.Server {
+	return service.Server{}
 }
 
 // TODO(soon):  return a host anchor instead of a generic anchor.

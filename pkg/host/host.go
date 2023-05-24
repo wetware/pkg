@@ -14,9 +14,11 @@ import (
 	api "github.com/wetware/ww/internal/api/cluster"
 	process_api "github.com/wetware/ww/internal/api/process"
 	pubsub_api "github.com/wetware/ww/internal/api/pubsub"
+	reg_api "github.com/wetware/ww/internal/api/registry"
 	"github.com/wetware/ww/pkg/anchor"
 	"github.com/wetware/ww/pkg/csp"
 	"github.com/wetware/ww/pkg/pubsub"
+	service "github.com/wetware/ww/pkg/registry"
 )
 
 var Capability = casm.BasicCap{
@@ -59,6 +61,11 @@ func (h Host) Debug(ctx context.Context) (debug.Debugger, capnp.ReleaseFunc) {
 	return debug.Debugger(f.Debugger()), release
 }
 
+func (h Host) Registry(ctx context.Context) (service.Registry, capnp.ReleaseFunc) {
+	f, release := api.Host(h).Registry(ctx, nil)
+	return service.Registry(f.Registry()), release
+}
+
 func (h Host) Executor(ctx context.Context) (csp.Executor, capnp.ReleaseFunc) {
 	f, release := api.Host(h).Executor(ctx, nil)
 	return csp.Executor(f.Executor()), release
@@ -86,6 +93,10 @@ type DebugProvider interface {
 	Debugger() debug.Debugger
 }
 
+type RegistryProvider interface {
+	Registry() service.Registry
+}
+
 type ExecutorProvider interface {
 	Executor() csp.Executor
 }
@@ -96,6 +107,7 @@ type Server struct {
 	PubSubProvider   PubSubProvider
 	AnchorProvider   AnchorProvider
 	DebugProvider    DebugProvider
+	RegistryProvider RegistryProvider
 	ExecutorProvider ExecutorProvider
 }
 
@@ -139,6 +151,16 @@ func (s Server) Debug(_ context.Context, call api.Host_debug) error {
 	if err == nil {
 		debugger := s.DebugProvider.Debugger()
 		err = res.SetDebugger(capnp.Client(debugger))
+	}
+
+	return err
+}
+
+func (s Server) Registry(_ context.Context, call api.Host_registry) error {
+	res, err := call.AllocResults()
+	if err == nil {
+		registry := s.RegistryProvider.Registry()
+		err = res.SetRegistry(reg_api.Registry(registry))
 	}
 
 	return err
