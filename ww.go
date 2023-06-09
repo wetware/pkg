@@ -25,6 +25,9 @@ import (
 
 const Version = "0.1.0"
 
+// Ww is the execution context for WebAssembly (WASM) bytecode,
+// allowing it to interact with (1) the local host and (2) the
+// cluster environment.
 type Ww struct {
 	fx.In `ignore-unexported:"true"`
 
