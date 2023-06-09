@@ -38,6 +38,8 @@ type Ww struct {
 	Root   *anchor.Node
 }
 
+// String returns the cluster namespace in which the wetware is
+// executing.  It is guaranteed to return ww.Name.
 func (ww Ww) String() string {
 	return ww.Name
 }
