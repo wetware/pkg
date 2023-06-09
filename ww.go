@@ -32,7 +32,7 @@ type Ww struct {
 	fx.In `ignore-unexported:"true"`
 
 	Log    log.Logger
-	Name   string
+	Name   string    `optional:"true"`
 	Stdin  io.Reader `name:"stdin"`
 	Stdout io.Writer `name:"stdout"`
 	Stderr io.Writer `name:"stderr"`
@@ -42,9 +42,14 @@ type Ww struct {
 }
 
 // String returns the cluster namespace in which the wetware is
-// executing.  It is guaranteed to return ww.Name.
+// executing.  If ww.Name has been assigned a non-empty string,
+// it returns the string unchanged.  Else, it defaults to "ww".
 func (ww Ww) String() string {
-	return ww.Name
+	if ww.Name != "" {
+		return ww.Name
+	}
+
+	return "ww"
 }
 
 // Exec compiles and runs the ww instance's ROM in a WASM runtime.
