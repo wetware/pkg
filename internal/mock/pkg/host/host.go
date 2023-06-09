@@ -13,6 +13,7 @@ import (
 	anchor "github.com/wetware/ww/pkg/anchor"
 	csp "github.com/wetware/ww/pkg/csp"
 	pubsub "github.com/wetware/ww/pkg/pubsub"
+	service "github.com/wetware/ww/pkg/registry"
 )
 
 // MockViewProvider is a mock of ViewProvider interface.
@@ -161,6 +162,43 @@ func (m *MockDebugProvider) Debugger() debug.Debugger {
 func (mr *MockDebugProviderMockRecorder) Debugger() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Debugger", reflect.TypeOf((*MockDebugProvider)(nil).Debugger))
+}
+
+// MockRegistryProvider is a mock of RegistryProvider interface.
+type MockRegistryProvider struct {
+	ctrl     *gomock.Controller
+	recorder *MockRegistryProviderMockRecorder
+}
+
+// MockRegistryProviderMockRecorder is the mock recorder for MockRegistryProvider.
+type MockRegistryProviderMockRecorder struct {
+	mock *MockRegistryProvider
+}
+
+// NewMockRegistryProvider creates a new mock instance.
+func NewMockRegistryProvider(ctrl *gomock.Controller) *MockRegistryProvider {
+	mock := &MockRegistryProvider{ctrl: ctrl}
+	mock.recorder = &MockRegistryProviderMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockRegistryProvider) EXPECT() *MockRegistryProviderMockRecorder {
+	return m.recorder
+}
+
+// Registry mocks base method.
+func (m *MockRegistryProvider) Registry() service.Registry {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Registry")
+	ret0, _ := ret[0].(service.Registry)
+	return ret0
+}
+
+// Registry indicates an expected call of Registry.
+func (mr *MockRegistryProviderMockRecorder) Registry() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Registry", reflect.TypeOf((*MockRegistryProvider)(nil).Registry))
 }
 
 // MockExecutorProvider is a mock of ExecutorProvider interface.
