@@ -31,11 +31,11 @@ const Version = "0.1.0"
 type Ww struct {
 	fx.In `ignore-unexported:"true"`
 
-	Log    log.Logger
-	Name   string    `optional:"true"`
-	Stdin  io.Reader `name:"stdin"`
-	Stdout io.Writer `name:"stdout"`
-	Stderr io.Writer `name:"stderr"`
+	Log    log.Logger `optional:"true"`
+	Name   string     `optional:"true"`
+	Stdin  io.Reader  `name:"stdin"`
+	Stdout io.Writer  `name:"stdout"`
+	Stderr io.Writer  `name:"stderr"`
 	ROM    system.ROM
 	Vat    casm.Vat
 	Root   *anchor.Node
@@ -56,6 +56,8 @@ func (ww Ww) String() string {
 // It returns any error produced by the compilation or execution of
 // the ROM.
 func (ww Ww) Exec(ctx context.Context) error {
+	ww.instantiate()
+
 	// Spawn a new runtime.
 	r := wazero.NewRuntimeWithConfig(ctx, wazero.
 		NewRuntimeConfigCompiler().
@@ -119,4 +121,14 @@ func (ww Ww) Exec(ctx context.Context) error {
 	// TODO(performance):  fn.CallWithStack(ctx, nil)
 	_, err = fn.Call(ctx)
 	return err
+}
+
+// instantiate is run at the start of each call to Exec to populate
+// optional fields that have not been supplied by the caller.
+// Note that Exec's receiver is not a pointer, so changes are
+// discarded on each call.
+func (ww *Ww) instantiate() {
+	if ww.Log == nil {
+		ww.Log = log.New()
+	}
 }
