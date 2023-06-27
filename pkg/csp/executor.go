@@ -2,18 +2,22 @@ package csp
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
+	"net"
+	"os"
+	"time"
 
 	capnp "capnproto.org/go/capnp/v3"
-	"github.com/stealthrocket/wazergo"
+	"capnproto.org/go/capnp/v3/rpc"
+	"github.com/lthibault/log"
 	"github.com/tetratelabs/wazero"
 	"lukechampine.com/blake3"
 
 	wasm "github.com/tetratelabs/wazero/api"
-	api "github.com/wetware/ww/api/process"
-	"github.com/wetware/ww/pkg/csp/proc"
+	"github.com/tetratelabs/wazero/experimental/sock"
+	api "github.com/wetware/ww/internal/api/process"
 )
 
 // ByteCode is a representation of arbitrary executable data.
@@ -51,8 +55,7 @@ func (ex Executor) Exec(ctx context.Context, src []byte) (Proc, capnp.ReleaseFun
 // Runtime is the main Executor implementation.  It spawns WebAssembly-
 // based processes.  The zero-value Runtime panics.
 type Runtime struct {
-	Runtime    wazero.Runtime
-	HostModule *wazergo.ModuleInstance[*proc.Module]
+	Runtime wazero.Runtime
 }
 
 // Executor provides the Executor capability.
@@ -102,20 +105,65 @@ func (r Runtime) mkmod(ctx context.Context, args api.Executor_exec_Params) (wasm
 
 	// TODO(perf):  cache compiled modules so that we can instantiate module
 	//              instances for concurrent use.
-	module, err := r.Runtime.CompileModule(ctx, bc)
+	compiled, err := r.Runtime.CompileModule(ctx, bc)
 	if err != nil {
 		return nil, err
 	}
 
-	return r.Runtime.InstantiateModule(ctx, module, wazero.
-		NewModuleConfig().
+	// TODO(perf): find a way of locating a free port without opening and closing a connection
+	l, err := net.Listen("tcp", ":0")
+	if err != nil {
+		return nil, err
+	}
+	addr := l.Addr().(*net.TCPAddr)
+
+	sockCfg := sock.NewConfig().WithTCPListener("", addr.Port)
+	sockCtx := sock.WithConfig(ctx, sockCfg)
+	modCfg := wazero.NewModuleConfig().
+		WithStartFunctions(). // don't call _start until later
+		WithSysNanosleep().
+		WithSysNanotime().
+		WithSysWalltime().
 		WithName(name).
-		WithStartFunctions(). // disable automatic calling of _start (main)
-		WithRandSource(rand.Reader))
+		WithEnv("ns", name).
+		WithStdin(os.Stdin).
+		WithStdout(os.Stdout).
+		WithStderr(os.Stderr)
+
+	l.Close()
+	mod, err := r.Runtime.InstantiateModule(sockCtx, compiled, modCfg)
+	if err != nil {
+		return nil, err
+	}
+
+	go func() {
+		time.Sleep(1 * time.Second) // TODO good programmers HATE this one simple trick
+		tcpConn, err := net.Dial("tcp", addr.String())
+		if err != nil {
+			panic(err)
+		}
+		defer tcpConn.Close()
+
+		client := api.Executor_ServerToClient(r)
+		conn := rpc.NewConn(rpc.NewStreamTransport(tcpConn), &rpc.Options{
+			BootstrapClient: capnp.Client(client),
+			ErrorReporter: errLogger{
+				Logger: log.New().WithField("conn", "host"),
+			},
+		})
+		defer conn.Close()
+
+		select {
+		case <-conn.Done(): // conn is closed by authenticate if auth fails
+		case <-ctx.Done(): // close conn if the program is exiting
+		}
+	}()
+
+	return mod, nil
 }
 
 func (r Runtime) spawn(fn wasm.Function) (<-chan execResult, context.CancelFunc) {
-	out := make(chan execResult, 1)
+	done := make(chan execResult, 1)
 
 	// NOTE:  we use context.Background instead of the context obtained from the
 	//        rpc handler. This ensures that a process can continue to run after
@@ -124,15 +172,26 @@ func (r Runtime) spawn(fn wasm.Function) (<-chan execResult, context.CancelFunc)
 	ctx, cancel := context.WithCancel(context.Background())
 
 	go func() {
-		defer close(out)
+		defer close(done)
 		defer cancel()
 
-		vs, err := fn.Call(wazergo.WithModuleInstance(ctx, r.HostModule))
-		out <- execResult{
+		vs, err := fn.Call(ctx)
+		fmt.Println(err)
+		done <- execResult{
 			Values: vs,
 			Err:    err,
 		}
 	}()
 
-	return out, cancel
+	return done, cancel
+}
+
+type errLogger struct {
+	log.Logger
+}
+
+func (e errLogger) ReportError(err error) {
+	if err != nil {
+		e.WithError(err).Warn("rpc connection failed")
+	}
 }
