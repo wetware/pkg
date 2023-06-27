@@ -2,15 +2,14 @@ package ww
 
 import (
 	"context"
-	"crypto/rand"
-	_ "embed"
-	"errors"
 	"io"
-	"runtime"
 
-	"capnproto.org/go/capnp/v3"
+	"capnproto.org/go/capnp"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
+
+	api "github.com/wetware/ww/internal/api/process"
+	"github.com/wetware/ww/pkg/csp"
 )
 
 const Version = "0.1.0"
@@ -40,53 +39,36 @@ func (ww *Ww) String() string {
 // Exec compiles and runs the ww instance's ROM in a WASM runtime.
 // It returns any error produced by the compilation or execution of
 // the ROM.
-func (ww Ww) Exec(ctx context.Context, rom ROM) error {
-	// Spawn a new runtime.
-	r := wazero.NewRuntimeWithConfig(ctx, wazero.
+func (ww Ww) Exec(ctx context.Context) error {
+	runtimeCfg := wazero.
 		NewRuntimeConfigCompiler().
-		WithCloseOnContextDone(true))
-	defer r.Close(ctx)
-
-	// Instantiate WASI.
-	c, err := wasi_snapshot_preview1.Instantiate(ctx, r)
+		WithCloseOnContextDone(true)
+	wasmRuntime := wazero.NewRuntimeWithConfig(ctx, runtimeCfg)
+	c, err := wasi_snapshot_preview1.Instantiate(ctx, wasmRuntime)
 	if err != nil {
 		return err
 	}
 	defer c.Close(ctx)
 
-	// TODO:  serve ww.Client over RPC connection to guest
+	r := csp.Runtime{
+		Runtime: wasmRuntime,
+	}
+	executor := api.Executor_ServerToClient(r)
 
-	// Compile guest module.
-	compiled, err := r.CompileModule(ctx, rom.bytecode)
+	exec, release := executor.Exec(ctx, func(e api.Executor_exec_Params) error {
+		return e.SetBytecode(ww.ROM)
+	})
+	defer release()
+	<-exec.Done()
+
+	result, err := exec.Struct()
 	if err != nil {
 		return err
 	}
-	defer compiled.Close(ctx)
+	proc := result.Process()
+	wait, release := proc.Wait(ctx, nil)
+	defer release()
+	<-wait.Done()
 
-	// Instantiate the guest module, and configure host exports.
-	mod, err := r.InstantiateModule(ctx, compiled, wazero.NewModuleConfig().
-		WithOsyield(runtime.Gosched).
-		WithRandSource(rand.Reader).
-		WithStartFunctions(). // don't automatically call _start while instanitating.
-		WithSysNanosleep().
-		WithSysNanotime().
-		WithSysWalltime().
-		WithEnv("ns", ww.String()).
-		WithStdin(ww.Stdin). // notice:  we connect stdio to host process' stdio
-		WithStdout(ww.Stdout).
-		WithStderr(ww.Stderr))
-	if err != nil {
-		return err
-	}
-	defer mod.Close(ctx)
-
-	// Grab the the main() function and call it with the system context.
-	fn := mod.ExportedFunction("_start")
-	if fn == nil {
-		return errors.New("missing export: _start")
-	}
-
-	// TODO(performance):  fn.CallWithStack(ctx, nil)
-	_, err = fn.Call(ctx)
-	return err
+	return nil
 }
