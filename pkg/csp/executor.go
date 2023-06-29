@@ -137,8 +137,7 @@ func (r Runtime) mkmod(ctx context.Context, args api.Executor_exec_Params) (wasm
 	}
 
 	go func() {
-		time.Sleep(1 * time.Second) // TODO good programmers HATE this one simple trick
-		tcpConn, err := net.Dial("tcp", addr.String())
+		tcpConn, err := dialWithRetries(addr)
 		if err != nil {
 			panic(err)
 		}
@@ -194,4 +193,22 @@ func (e errLogger) ReportError(err error) {
 	if err != nil {
 		e.WithError(err).Warn("rpc connection failed")
 	}
+}
+
+// TODO (perf) find a cleaner way
+func dialWithRetries(addr *net.TCPAddr) (net.Conn, error) {
+	maxRetries := 20
+	waitTime := 10 * time.Millisecond
+	var err error
+	var conn net.Conn
+
+	for retries := 0; retries < maxRetries; retries++ {
+		conn, err = net.Dial("tcp", addr.String())
+		if err == nil {
+			break
+		}
+		time.Sleep(waitTime)
+	}
+
+	return conn, err
 }
