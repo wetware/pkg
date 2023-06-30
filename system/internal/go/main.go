@@ -54,6 +54,7 @@ func doRpc() error {
 
 	client := conn.Bootstrap(context.Background())
 	executor := process.Executor(client)
+	defer executor.Release()
 	fmt.Println(executor)
 
 	if err := client.Resolve(context.Background()); err != nil {
