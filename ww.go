@@ -50,7 +50,7 @@ func (ww Ww) Exec(ctx context.Context) error {
 	}
 	defer c.Close(ctx)
 
-	r := csp.Runtime{
+	r := csp.Server{
 		Runtime: wasmRuntime,
 	}
 	executor := api.Executor_ServerToClient(r)

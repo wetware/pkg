@@ -63,8 +63,6 @@ func doRpc() error {
 
 	fmt.Println(executor)
 
-	defer executor.Release()
-
 	/*
 		msg := "Hello"
 		echo, release := executor.Echo(context.TODO(), func(e process.Executor_echo_Params) error {
