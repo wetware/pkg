@@ -6,11 +6,14 @@ import (
 
 	ps "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/lthibault/log"
+	"github.com/tetratelabs/wazero"
+	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"go.uber.org/fx"
 
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/cluster"
 	"github.com/wetware/ww/pkg/anchor"
+	"github.com/wetware/ww/pkg/csp"
 	"github.com/wetware/ww/pkg/host"
 	"github.com/wetware/ww/pkg/pubsub"
 	service "github.com/wetware/ww/pkg/registry"
@@ -72,7 +75,7 @@ func (j Joiner) Join(vat casm.Vat, r Router) (*Node, error) {
 		PubSubProvider:   ps,
 		AnchorProvider:   j.anchor(),
 		RegistryProvider: j.service(),
-		// ExecutorProvider: j.Runtime.New(),
+		ExecutorProvider: j.executor(),
 	})
 
 	return &Node{
@@ -96,4 +99,22 @@ func (j Joiner) service() service.Server {
 // TODO(soon):  return a host anchor instead of a generic anchor.
 func (j Joiner) anchor() *anchor.Node {
 	return new(anchor.Node) // root node
+}
+
+func (j Joiner) executor() csp.Server {
+	// TODO find an elegant way of creating custom executors
+	ctx := context.TODO()
+	cache := wazero.NewCompilationCache()
+	runtimeCfg := wazero.
+		NewRuntimeConfigCompiler().
+		WithCompilationCache(cache)
+	r := wazero.NewRuntimeWithConfig(ctx, runtimeCfg)
+	_, err := wasi_snapshot_preview1.Instantiate(ctx, r)
+	if err != nil {
+		panic(err)
+	}
+
+	return csp.Server{
+		Runtime: r,
+	}
 }
