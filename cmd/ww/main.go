@@ -18,7 +18,9 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/wetware/ww"
+	"github.com/wetware/ww/internal/cmd/run"
 	cmdrun "github.com/wetware/ww/internal/cmd/run"
+	"github.com/wetware/ww/internal/cmd/start"
 	cmdstart "github.com/wetware/ww/internal/cmd/start"
 )
 
@@ -56,6 +58,13 @@ var flags = []cli.Flag{
 		EnvVars:  []string{"WW_JSON"},
 		Category: "LOGGING",
 	},
+}
+
+var commands = []*cli.Command{
+	cluster.Command(),
+	debug.Command(),
+	run.Command(),
+	start.Command(),
 }
 
 func main() {
