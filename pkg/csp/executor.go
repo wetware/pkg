@@ -52,24 +52,39 @@ func (ex Executor) Exec(ctx context.Context, src []byte) (Proc, capnp.ReleaseFun
 	return Proc(f.Process()), release
 }
 
-// Runtime is the main Executor implementation.  It spawns WebAssembly-
-// based processes.  The zero-value Runtime panics.
-type Runtime struct {
+func (ex Executor) ExecWithCap(ctx context.Context, src []byte, cap capnp.Client) (Proc, capnp.ReleaseFunc) {
+	f, release := api.Executor(ex).ExecWithCap(ctx, func(ps api.Executor_execWithCap_Params) error {
+		if err := ps.SetBytecode(src); err != nil {
+			return err
+		}
+		return ps.SetCap(cap)
+	})
+	return Proc(f.Process()), release
+}
+
+// Server is the main Executor implementation.  It spawns WebAssembly-
+// based processes.  The zero-value Server panics.
+type Server struct {
 	Runtime wazero.Runtime
 }
 
 // Executor provides the Executor capability.
-func (r Runtime) Executor() Executor {
+func (r Server) Executor() Executor {
 	return Executor(api.Executor_ServerToClient(r))
 }
 
-func (r Runtime) Exec(ctx context.Context, call api.Executor_exec) error {
+func (r Server) Exec(ctx context.Context, call api.Executor_exec) error {
 	res, err := call.AllocResults()
 	if err != nil {
 		return err
 	}
 
-	p, err := r.mkproc(ctx, call.Args())
+	bc, err := call.Args().Bytecode()
+	if err != nil {
+		return err
+	}
+
+	p, err := r.mkproc(ctx, bc, nil)
 	if err != nil {
 		return err
 	}
@@ -77,8 +92,29 @@ func (r Runtime) Exec(ctx context.Context, call api.Executor_exec) error {
 	return res.SetProcess(api.Process_ServerToClient(p))
 }
 
-func (r Runtime) mkproc(ctx context.Context, args api.Executor_exec_Params) (*process, error) {
-	mod, err := r.mkmod(ctx, args)
+func (r Server) ExecWithCap(ctx context.Context, call api.Executor_execWithCap) error {
+	res, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	bc, err := call.Args().Bytecode()
+	if err != nil {
+		return err
+	}
+
+	cap := call.Args().Cap().AddRef()
+
+	p, err := r.mkproc(ctx, bc, &cap)
+	if err != nil {
+		return err
+	}
+
+	return res.SetProcess(api.Process_ServerToClient(p))
+}
+
+func (r Server) mkproc(ctx context.Context, bytecode []byte, cap *capnp.Client) (*process, error) {
+	mod, err := r.mkmod(ctx, bytecode, cap)
 	if err != nil {
 		return nil, err
 	}
@@ -95,17 +131,12 @@ func (r Runtime) mkproc(ctx context.Context, args api.Executor_exec_Params) (*pr
 	}, nil
 }
 
-func (r Runtime) mkmod(ctx context.Context, args api.Executor_exec_Params) (wasm.Module, error) {
-	bc, err := args.Bytecode()
-	if err != nil {
-		return nil, err
-	}
-
-	name := ByteCode(bc).String()
+func (r Server) mkmod(ctx context.Context, bytecode []byte, cap *capnp.Client) (wasm.Module, error) {
+	name := ByteCode(bytecode).String()
 
 	// TODO(perf):  cache compiled modules so that we can instantiate module
 	//              instances for concurrent use.
-	compiled, err := r.Runtime.CompileModule(ctx, bc)
+	compiled, err := r.Runtime.CompileModule(ctx, bytecode)
 	if err != nil {
 		return nil, err
 	}
@@ -143,9 +174,15 @@ func (r Runtime) mkmod(ctx context.Context, args api.Executor_exec_Params) (wasm
 		}
 		defer tcpConn.Close()
 
-		client := api.Executor_ServerToClient(r)
+		var client capnp.Client
+		// TODO we are always passing a capability, change this so it is not required
+		if cap == nil {
+			client = capnp.Client(api.Executor_ServerToClient(r))
+		} else {
+			client = *cap
+		}
 		conn := rpc.NewConn(rpc.NewStreamTransport(tcpConn), &rpc.Options{
-			BootstrapClient: capnp.Client(client),
+			BootstrapClient: client,
 			ErrorReporter: errLogger{
 				Logger: log.New().WithField("conn", "host"),
 			},
@@ -161,7 +198,7 @@ func (r Runtime) mkmod(ctx context.Context, args api.Executor_exec_Params) (wasm
 	return mod, nil
 }
 
-func (r Runtime) spawn(fn wasm.Function) (<-chan execResult, context.CancelFunc) {
+func (r Server) spawn(fn wasm.Function) (<-chan execResult, context.CancelFunc) {
 	done := make(chan execResult, 1)
 
 	// NOTE:  we use context.Background instead of the context obtained from the

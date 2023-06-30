@@ -36,6 +36,26 @@ func (c Executor) Exec(ctx context.Context, params func(Executor_exec_Params) er
 
 }
 
+func (c Executor) ExecWithCap(ctx context.Context, params func(Executor_execWithCap_Params) error) (Executor_execWithCap_Results_Future, capnp.ReleaseFunc) {
+
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0xaf2e5ebaa58175d2,
+			MethodID:      1,
+			InterfaceName: "process.capnp:Executor",
+			MethodName:    "execWithCap",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 2}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Executor_execWithCap_Params(s)) }
+	}
+
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return Executor_execWithCap_Results_Future{Future: ans.Future()}, release
+
+}
+
 func (c Executor) WaitStreaming() error {
 	return capnp.Client(c).WaitStreaming()
 }
@@ -110,6 +130,8 @@ func (c Executor) GetFlowLimiter() fc.FlowLimiter {
 // A Executor_Server is a Executor with a local implementation.
 type Executor_Server interface {
 	Exec(context.Context, Executor_exec) error
+
+	ExecWithCap(context.Context, Executor_execWithCap) error
 }
 
 // Executor_NewServer creates a new Server from an implementation of Executor_Server.
@@ -128,7 +150,7 @@ func Executor_ServerToClient(s Executor_Server) Executor {
 // This can be used to create a more complicated Server.
 func Executor_Methods(methods []server.Method, s Executor_Server) []server.Method {
 	if cap(methods) == 0 {
-		methods = make([]server.Method, 0, 1)
+		methods = make([]server.Method, 0, 2)
 	}
 
 	methods = append(methods, server.Method{
@@ -140,6 +162,18 @@ func Executor_Methods(methods []server.Method, s Executor_Server) []server.Metho
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
 			return s.Exec(ctx, Executor_exec{call})
+		},
+	})
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xaf2e5ebaa58175d2,
+			MethodID:      1,
+			InterfaceName: "process.capnp:Executor",
+			MethodName:    "execWithCap",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.ExecWithCap(ctx, Executor_execWithCap{call})
 		},
 	})
 
@@ -161,6 +195,23 @@ func (c Executor_exec) Args() Executor_exec_Params {
 func (c Executor_exec) AllocResults() (Executor_exec_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
 	return Executor_exec_Results(r), err
+}
+
+// Executor_execWithCap holds the state for a server call to Executor.execWithCap.
+// See server.Call for documentation.
+type Executor_execWithCap struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c Executor_execWithCap) Args() Executor_execWithCap_Params {
+	return Executor_execWithCap_Params(c.Call.Args())
+}
+
+// AllocResults allocates the results struct.
+func (c Executor_execWithCap) AllocResults() (Executor_execWithCap_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Executor_execWithCap_Results(r), err
 }
 
 // Executor_List is a list of Executor.
@@ -331,6 +382,189 @@ func (f Executor_exec_Results_Future) Struct() (Executor_exec_Results, error) {
 	return Executor_exec_Results(p.Struct()), err
 }
 func (p Executor_exec_Results_Future) Process() Process {
+	return Process(p.Future.Field(0, nil).Client())
+}
+
+type Executor_execWithCap_Params capnp.Struct
+
+// Executor_execWithCap_Params_TypeID is the unique identifier for the type Executor_execWithCap_Params.
+const Executor_execWithCap_Params_TypeID = 0xb9b9c4df47b44962
+
+func NewExecutor_execWithCap_Params(s *capnp.Segment) (Executor_execWithCap_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
+	return Executor_execWithCap_Params(st), err
+}
+
+func NewRootExecutor_execWithCap_Params(s *capnp.Segment) (Executor_execWithCap_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
+	return Executor_execWithCap_Params(st), err
+}
+
+func ReadRootExecutor_execWithCap_Params(msg *capnp.Message) (Executor_execWithCap_Params, error) {
+	root, err := msg.Root()
+	return Executor_execWithCap_Params(root.Struct()), err
+}
+
+func (s Executor_execWithCap_Params) String() string {
+	str, _ := text.Marshal(0xb9b9c4df47b44962, capnp.Struct(s))
+	return str
+}
+
+func (s Executor_execWithCap_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Executor_execWithCap_Params) DecodeFromPtr(p capnp.Ptr) Executor_execWithCap_Params {
+	return Executor_execWithCap_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Executor_execWithCap_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Executor_execWithCap_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Executor_execWithCap_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Executor_execWithCap_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Executor_execWithCap_Params) Bytecode() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return []byte(p.Data()), err
+}
+
+func (s Executor_execWithCap_Params) HasBytecode() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Executor_execWithCap_Params) SetBytecode(v []byte) error {
+	return capnp.Struct(s).SetData(0, v)
+}
+
+func (s Executor_execWithCap_Params) Cap() capnp.Client {
+	p, _ := capnp.Struct(s).Ptr(1)
+	return p.Interface().Client()
+}
+
+func (s Executor_execWithCap_Params) HasCap() bool {
+	return capnp.Struct(s).HasPtr(1)
+}
+
+func (s Executor_execWithCap_Params) SetCap(c capnp.Client) error {
+	if !c.IsValid() {
+		return capnp.Struct(s).SetPtr(1, capnp.Ptr{})
+	}
+	seg := s.Segment()
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(c))
+	return capnp.Struct(s).SetPtr(1, in.ToPtr())
+}
+
+// Executor_execWithCap_Params_List is a list of Executor_execWithCap_Params.
+type Executor_execWithCap_Params_List = capnp.StructList[Executor_execWithCap_Params]
+
+// NewExecutor_execWithCap_Params creates a new list of Executor_execWithCap_Params.
+func NewExecutor_execWithCap_Params_List(s *capnp.Segment, sz int32) (Executor_execWithCap_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2}, sz)
+	return capnp.StructList[Executor_execWithCap_Params](l), err
+}
+
+// Executor_execWithCap_Params_Future is a wrapper for a Executor_execWithCap_Params promised by a client call.
+type Executor_execWithCap_Params_Future struct{ *capnp.Future }
+
+func (f Executor_execWithCap_Params_Future) Struct() (Executor_execWithCap_Params, error) {
+	p, err := f.Future.Ptr()
+	return Executor_execWithCap_Params(p.Struct()), err
+}
+func (p Executor_execWithCap_Params_Future) Cap() capnp.Client {
+	return p.Future.Field(1, nil).Client()
+}
+
+type Executor_execWithCap_Results capnp.Struct
+
+// Executor_execWithCap_Results_TypeID is the unique identifier for the type Executor_execWithCap_Results.
+const Executor_execWithCap_Results_TypeID = 0xa21a945a0ef3799e
+
+func NewExecutor_execWithCap_Results(s *capnp.Segment) (Executor_execWithCap_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Executor_execWithCap_Results(st), err
+}
+
+func NewRootExecutor_execWithCap_Results(s *capnp.Segment) (Executor_execWithCap_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Executor_execWithCap_Results(st), err
+}
+
+func ReadRootExecutor_execWithCap_Results(msg *capnp.Message) (Executor_execWithCap_Results, error) {
+	root, err := msg.Root()
+	return Executor_execWithCap_Results(root.Struct()), err
+}
+
+func (s Executor_execWithCap_Results) String() string {
+	str, _ := text.Marshal(0xa21a945a0ef3799e, capnp.Struct(s))
+	return str
+}
+
+func (s Executor_execWithCap_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Executor_execWithCap_Results) DecodeFromPtr(p capnp.Ptr) Executor_execWithCap_Results {
+	return Executor_execWithCap_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Executor_execWithCap_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Executor_execWithCap_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Executor_execWithCap_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Executor_execWithCap_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Executor_execWithCap_Results) Process() Process {
+	p, _ := capnp.Struct(s).Ptr(0)
+	return Process(p.Interface().Client())
+}
+
+func (s Executor_execWithCap_Results) HasProcess() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Executor_execWithCap_Results) SetProcess(v Process) error {
+	if !v.IsValid() {
+		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
+	}
+	seg := s.Segment()
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
+	return capnp.Struct(s).SetPtr(0, in.ToPtr())
+}
+
+// Executor_execWithCap_Results_List is a list of Executor_execWithCap_Results.
+type Executor_execWithCap_Results_List = capnp.StructList[Executor_execWithCap_Results]
+
+// NewExecutor_execWithCap_Results creates a new list of Executor_execWithCap_Results.
+func NewExecutor_execWithCap_Results_List(s *capnp.Segment, sz int32) (Executor_execWithCap_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[Executor_execWithCap_Results](l), err
+}
+
+// Executor_execWithCap_Results_Future is a wrapper for a Executor_execWithCap_Results promised by a client call.
+type Executor_execWithCap_Results_Future struct{ *capnp.Future }
+
+func (f Executor_execWithCap_Results_Future) Struct() (Executor_execWithCap_Results, error) {
+	p, err := f.Future.Ptr()
+	return Executor_execWithCap_Results(p.Struct()), err
+}
+func (p Executor_execWithCap_Results_Future) Process() Process {
 	return Process(p.Future.Field(0, nil).Client())
 }
 
@@ -813,42 +1047,51 @@ func (f Process_kill_Results_Future) Struct() (Process_kill_Results, error) {
 	return Process_kill_Results(p.Struct()), err
 }
 
-const schema_9a51e53177277763 = "x\xda|\x921h\x13Q\x18\xc7\xff\xffw/\xbd\x03" +
-	"=\xc3\xebi\xb4\x82\x08\xdaP\xe8\x10\x13\x8a\x8b \x0d" +
-	"\x8a\x04\x0bb\x9e\xbbB<\x0f\x0c&&\xe4.$N" +
-	"\xe2 \xee\x8a\x88\x8a\xe0\"u\x10-\xd5\xa9\xce\xeeR" +
-	"\x05A7\xc5\xc5\xa1\x88[\x079y\xd7\\<\xa9\xe9" +
-	"v\x8f\xef\xfb\xfe\xff\xff\xf7\xfb\xae,Y\x95\x15wN" +
-	"B\xe8rn*^\xef\xdfz\xb6v\xa9\xf4\x0aj\x8f" +
-	"\x15\xfb\x83\xb9A\xe5\xbb~\x04\xd0\xdb\xe4\x9aGa\x03" +
-	"\xdeo\xd6\xbc\xa2\xf9\x8a\x1f\xbf__^)\x9c\x7f\x0b" +
-	"\xb5\x9f@\x8e6\xb0\xe0\x8a#\x04\xbd}b\x11\x8c7" +
-	"\x1e|\x0cW\xafV\xdeA\x15\x08HS?.\x0e\x12" +
-	"2~Q+\xcf>}3\xff\x09\xba\xc0\xb4t\xc8\x94" +
-	"\xe8\x15\x93\xd1\x85\xa9\xe2\xf3\x0f?\x8f~\xde\x16\xe4\xac" +
-	"X\xf5t\x12\xe4\x9c\xb8\xe3=I\x82\xd4.\x1e[\x99" +
-	"y\xb9\xbc\x91\xf1\xb9-\xa6\x8d\xcf\xf4\xbd\xbb\xf7\x7f\x9c" +
-	"\xdc\xf5+\x1b\xb1\xbd\xe5\xd3O|\xbe\xbd\xfe\xe2|]" +
-	"jnfF\x1f\x9a\xd1r\xdc\xedu\xfc \x0cK\xf4" +
-	"\x1b\xdd\xeb\xdd\x13g\x86\x8b\x81\xdf\x8f:\xbd:\xa9\xa5" +
-	"\x95\x03\xc6\xe2LA(5\x0f\xa1rv>\x18\x06~" +
-	"\x95ur\xacb\xa5*[\"%\xd31{!\x08\xfb" +
-	"v+\x0a\xb5\xb4$ \x09(\xf7\x14\xa0\x1d\x8bz\xaf" +
-	"\xe0\xcd\xd10\xd5_\x1c \x15\xb6\xc9\xd6G\xcfk\xcd" +
-	"V+QmYQ8\xa9i\xd0hF\xe3\xa6\xac\xf5" +
-	"\x12\xa0w[\xd4\x07\x04\xe3`\xd8\x8cNw\xae\x04\x00" +
-	"\xe8@\xd0\xc9\x982\xd5;\x9c\xbc\x0d\x10'\x01\x92\xc2" +
-	"dz^U1@\x8a69\xbe\x11\xd3\x9fB\xcd\x98" +
-	"\x9ak\xe7M\x9e*\xf3&\xfb\x7f\x99\xfd\xb3\\\xbd\xd1" +
-	"k\xb4\x19\xee\xcc\xd54Y\xed\x89\xbb]\xbe\x11\x05\xfe" +
-	"h7\x17\x82\xeed\xa0\x09\xab\x91\xe7\x9f\x00\x00\x00\xff" +
-	"\xff8\xaa\xe7q"
+const schema_9a51e53177277763 = "x\xda\xa4SOH\x14_\x1c\xff~\xde\x1b\x9d\x81\xdf" +
+	"o\x95\xb7#\x96^\x02SJ\x09s\xb0\x83\x05\xe1\x96" +
+	"\x84\xe4\xa5}^\x02\xc1`\x9c\x06\x1cZs\xd8\x99e" +
+	"\xf5\x10\xe1!\xa4c\xff\x08\x0a\xa2\x82\xb0C\x94\x98\x1d" +
+	"\xd6\xe8V\x87na\x85P\x87\xa0\xe8\xd2A\xa2N\x9d" +
+	"&\xde:\xb3N\xb8J\xd0\xed\xbdy\xef}\xfe~\xa7" +
+	"\xcfFN\xb32k\x1a19\xd0\xd0\x18\xdd\x99\xfd\xd9" +
+	"4v\xbd\xfd>\x89] j\x80N\xd4/\xd9\x18\x08" +
+	"\xe68\x1b$D\xab\xa5\xb9\x07+gz\x9f\x90h\xe2" +
+	"\x91S\xdeW\xb6\xbe\xca[D0/\xb0\x15\xf3\x12\xd3" +
+	"\x89\xcc96o\xbeW\xabh\xe2\xe4\xf2\xf0\xa7\x97\x95" +
+	"J\x8c\xa6\xbe\xf5\xbf`\xa3\x0a\xed5+\x13\xa2\xdbo" +
+	"V\x17\x16[O=O\xd3u\xf3\x0eu\xc1\xe2\x8an" +
+	"\xfd\xe6\xbb`i\xd2zE\xa2\x15DZU\x0eo\x07" +
+	"i\xd1\xa3\xe1\xbe\xce\xbb\xcb=k$[\x91\x1c\x1dV" +
+	"G0\x8fU\x9f\xf67v=|\xfb}\xef\x87-J" +
+	"]\xbedNq\xa5\xd4\xe3\xf3fE\xad\xa2\xe1\xf1\x83" +
+	"\x8bm\x8f\x17\xd6S<\xf7xV\xf1d\xaf]\xbd\xf1" +
+	"\xed\xe8\x7f?\xd2\x12/o\xf0\\\xa9\xf2|y\xfa\xd1" +
+	"\xf8<\xe2\xfdJ=}\xa6\x9e\xf6E~q\xdaq\x83" +
+	"\xa0Wsl\xff\xbc\x7f\xe4\xc4\x8c\xeb\x94\xc2\xe9b\xaf" +
+	";\xe3:\xa7\xbdpr\xc8\xf6;G\xdd\xa0T\xe0a" +
+	" 5\xae\x11i \x12\x99\xe3D\xd2\xe0\x90-\x0c\x17" +
+	"c\x0c\x88M?\x04\x08B\x0d\x1d\x09\xfa\xe0\x06|\x1e" +
+	"\x90\x06o \xaaIG\x12\xb3\xb0z\x88\x89.\x1d\xa8" +
+	"U\x83\xa4q\xd16AL\x08\xbdY\xa9\xcb!JD" +
+	"\x92>d\xfb9\xe4\x81\xbf\xf2\x93\xb7\x8b\xf6\x14\x02i" +
+	"\xd4\xect\x8f\x10\xc9\xfd\x1c\xf2\x10\x83\x00ZT[\xc2" +
+	"\xea \x92\x078\xe4\x00C41\x1b\xba\xce\xf4Y\x97" +
+	"\x88\x90!\x86\x0cAwl\x1fY\x8d\x13\x90My\xe5" +
+	"u\x98\xab\x11\xea\x85\x7f\x890\x86\xcd\xc7\xdbs^\xa1" +
+	"P+f\xbbKe\xdb\x0b\xeb\xb6\xa7\xec\xfe\xcf!w" +
+	"3\x15\xa2\x17\x0e\xc5\xce\x0cb0\xb6\xf6\x96/\xee\xa9" +
+	"\xee7kK\x06\x0a\xc9\x88\xa7jK\xe6\x14\xc9\x8f!" +
+	"\xda\xd4YFoVzrhV\xda\xffl\xab\x9e\xb9" +
+	"\xb8\xa5\x9dsU\x97\xf8\xd4\xb6\xde\xea\xb4\xb6cV1" +
+	"\xe7\xef\x00\x00\x00\xff\xffr\xa3?F"
 
 func RegisterSchema(reg *schemas.Registry) {
 	reg.Register(&schemas.Schema{
 		String: schema_9a51e53177277763,
 		Nodes: []uint64{
+			0xa21a945a0ef3799e,
 			0xaf2e5ebaa58175d2,
+			0xb9b9c4df47b44962,
 			0xbb4f16b0a7d2d09b,
 			0xc53168b273d497ee,
 			0xd72ab4a0243047ac,
