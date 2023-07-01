@@ -4,9 +4,9 @@ import (
 	"context"
 
 	capnp "capnproto.org/go/capnp/v3"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/lthibault/log"
-	api "github.com/wetware/ww/api/pubsub"
+	pubsub "github.com/mikelsr/go-libp2p-pubsub"
+	api "github.com/wetware/ww/internal/api/pubsub"
 )
 
 // Router is a client capability that confers the right to join pubsub

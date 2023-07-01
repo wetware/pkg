@@ -1,7 +1,7 @@
 package ww
 
 import (
-	"github.com/libp2p/go-libp2p/core/protocol"
+	"github.com/mikelsr/go-libp2p/core/protocol"
 	casm "github.com/wetware/casm/pkg"
 	protoutil "github.com/wetware/casm/pkg/util/proto"
 )

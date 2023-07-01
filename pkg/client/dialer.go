@@ -8,8 +8,8 @@ import (
 	"github.com/lthibault/log"
 	"go.uber.org/fx"
 
-	"github.com/libp2p/go-libp2p/core/discovery"
-	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/mikelsr/go-libp2p/core/discovery"
+	"github.com/mikelsr/go-libp2p/core/peer"
 
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/ww/pkg/host"

@@ -1,10 +1,10 @@
 package pubsub
 
 import (
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/lthibault/log"
+	pubsub "github.com/mikelsr/go-libp2p-pubsub"
+	"github.com/mikelsr/go-libp2p/core/peer"
+	"github.com/mikelsr/go-libp2p/core/protocol"
 )
 
 var _ pubsub.RawTracer = (*Tracer)(nil)

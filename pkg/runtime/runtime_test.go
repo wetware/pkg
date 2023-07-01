@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/libp2p/go-libp2p"
-	inproc "github.com/lthibault/go-libp2p-inproc-transport"
 	"github.com/lthibault/log"
+	"github.com/mikelsr/go-libp2p"
+	inproc "github.com/mikelsr/go-libp2p-inproc-transport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	casm "github.com/wetware/casm/pkg"

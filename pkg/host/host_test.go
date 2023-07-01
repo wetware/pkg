@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/mikelsr/go-libp2p/core/peer"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"

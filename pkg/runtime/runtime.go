@@ -8,8 +8,8 @@ import (
 	"reflect"
 	"time"
 
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/lthibault/log"
+	pubsub "github.com/mikelsr/go-libp2p-pubsub"
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/util/metrics"
 	logutil "github.com/wetware/ww/internal/util/log"

@@ -3,9 +3,9 @@ package runtime
 import (
 	"context"
 
-	dht "github.com/libp2p/go-libp2p-kad-dht"
-	"github.com/libp2p/go-libp2p-kad-dht/dual"
-	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
+	dht "github.com/mikelsr/go-libp2p-kad-dht"
+	"github.com/mikelsr/go-libp2p-kad-dht/dual"
+	routedhost "github.com/mikelsr/go-libp2p/p2p/host/routed"
 	casm "github.com/wetware/casm/pkg"
 	ww "github.com/wetware/ww/pkg"
 	"go.uber.org/fx"

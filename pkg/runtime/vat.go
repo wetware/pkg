@@ -3,9 +3,9 @@ package runtime
 import (
 	"crypto/rand"
 
-	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/lthibault/log"
+	"github.com/mikelsr/go-libp2p"
+	"github.com/mikelsr/go-libp2p/core/crypto"
 
 	"go.uber.org/fx"
 

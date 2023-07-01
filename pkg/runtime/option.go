@@ -1,7 +1,7 @@
 package runtime
 
 import (
-	"github.com/libp2p/go-libp2p"
+	"github.com/mikelsr/go-libp2p"
 	"github.com/tetratelabs/wazero"
 	"go.uber.org/fx"
 

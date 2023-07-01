@@ -4,8 +4,8 @@ package server
 import (
 	"context"
 
-	ps "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/lthibault/log"
+	ps "github.com/mikelsr/go-libp2p-pubsub"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"go.uber.org/fx"
