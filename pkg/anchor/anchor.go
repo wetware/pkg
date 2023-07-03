@@ -2,6 +2,7 @@ package anchor
 
 import (
 	"context"
+	"errors"
 
 	"capnproto.org/go/capnp/v3"
 	api "github.com/wetware/ww/internal/api/anchor"
@@ -178,6 +179,10 @@ func (s server) Walk(ctx context.Context, call api.Anchor_walk) error {
 	}
 
 	return res.SetAnchor(anchor(s))
+}
+
+func (s server) Cell(ctx context.Context, call api.Anchor_cell) error {
+	return errors.New("NOT IMPLEMENTED") // TODO(soon): implement Anchor.Cell()
 }
 
 func anchor(n interface{ Anchor() Anchor }) api.Anchor {
