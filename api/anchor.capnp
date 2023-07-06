@@ -80,12 +80,12 @@ interface Anchor {
         # bearer the authority to modify an Anchor's underlying value
         # without accessing its currently-stored value.
 
-        store @0 (value :Value, force :Bool) -> (succeeded :Bool);
-        # Store the supplied value in the cell. The returned bool
-        # is set to true if the operation succeeded.  Store fails
-        # when there is already a value in the cell, unless force
-        # is set to true. To clear a value from the cell, callers
-        # should forcibly store a null value.
+        store @0 (value :Value, overwrite :Bool) -> (succeeded :Bool);
+        # Store the supplied value in the cell.  The returned bool is
+        # set to true if the operation succeeded.  Store fails when a
+        # value is already stored in the cell unless overwrite is set
+        # to true. To clear a value from the cell, overwrite existing
+        # values with null.
         #
         # As with the Loader interface, a concurrent thread may load
         # or store a value at any point before and after the call to
