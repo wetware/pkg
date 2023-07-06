@@ -7,10 +7,11 @@ $Go.import("github.com/wetware/ww/internal/api/anchor");
 
 
 interface Anchor {
-    # Anchor is a shared memory register.  Anchors form a tree structure
-    # similar to a filesyste, with one important constraint: nodes along
-    # any given path can only access their children.  They cannot access
-    # their parents.  This provides strong isolation properties.
+    # Anchor is a shared memory register, accessible over the network.
+    # Anchors form a tree structure similar to a filesystem, with one
+    # important property:  each node can only reference its immediate
+    # children, and cannot reference its parents. This provides basic
+    # isolation between anchors.
 
     ls   @0 () -> (children :List(Child));
     # ls returns the Anchor's children along with their names.
