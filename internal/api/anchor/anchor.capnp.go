@@ -9,8 +9,6 @@ import (
 	schemas "capnproto.org/go/capnp/v3/schemas"
 	server "capnproto.org/go/capnp/v3/server"
 	context "context"
-	channel "github.com/wetware/ww/internal/api/channel"
-	strconv "strconv"
 )
 
 type Anchor capnp.Client
@@ -379,301 +377,6 @@ func (p Anchor_Child_Future) Anchor() Anchor {
 	return Anchor(p.Future.Field(0, nil).Client())
 }
 
-type Anchor_Value capnp.Struct
-type Anchor_Value_chan Anchor_Value
-type Anchor_Value_Which uint16
-
-const (
-	Anchor_Value_Which_null Anchor_Value_Which = 0
-	Anchor_Value_Which_chan Anchor_Value_Which = 1
-)
-
-func (w Anchor_Value_Which) String() string {
-	const s = "nullchan"
-	switch w {
-	case Anchor_Value_Which_null:
-		return s[0:4]
-	case Anchor_Value_Which_chan:
-		return s[4:8]
-
-	}
-	return "Anchor_Value_Which(" + strconv.FormatUint(uint64(w), 10) + ")"
-}
-
-type Anchor_Value_chan_Which uint16
-
-const (
-	Anchor_Value_chan_Which_closer     Anchor_Value_chan_Which = 0
-	Anchor_Value_chan_Which_sender     Anchor_Value_chan_Which = 1
-	Anchor_Value_chan_Which_recver     Anchor_Value_chan_Which = 2
-	Anchor_Value_chan_Which_sendCloser Anchor_Value_chan_Which = 3
-	Anchor_Value_chan_Which_chan       Anchor_Value_chan_Which = 4
-)
-
-func (w Anchor_Value_chan_Which) String() string {
-	const s = "closersenderrecversendCloserchan"
-	switch w {
-	case Anchor_Value_chan_Which_closer:
-		return s[0:6]
-	case Anchor_Value_chan_Which_sender:
-		return s[6:12]
-	case Anchor_Value_chan_Which_recver:
-		return s[12:18]
-	case Anchor_Value_chan_Which_sendCloser:
-		return s[18:28]
-	case Anchor_Value_chan_Which_chan:
-		return s[28:32]
-
-	}
-	return "Anchor_Value_chan_Which(" + strconv.FormatUint(uint64(w), 10) + ")"
-}
-
-// Anchor_Value_TypeID is the unique identifier for the type Anchor_Value.
-const Anchor_Value_TypeID = 0xedb5c4700521188e
-
-func NewAnchor_Value(s *capnp.Segment) (Anchor_Value, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
-	return Anchor_Value(st), err
-}
-
-func NewRootAnchor_Value(s *capnp.Segment) (Anchor_Value, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
-	return Anchor_Value(st), err
-}
-
-func ReadRootAnchor_Value(msg *capnp.Message) (Anchor_Value, error) {
-	root, err := msg.Root()
-	return Anchor_Value(root.Struct()), err
-}
-
-func (s Anchor_Value) String() string {
-	str, _ := text.Marshal(0xedb5c4700521188e, capnp.Struct(s))
-	return str
-}
-
-func (s Anchor_Value) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
-	return capnp.Struct(s).EncodeAsPtr(seg)
-}
-
-func (Anchor_Value) DecodeFromPtr(p capnp.Ptr) Anchor_Value {
-	return Anchor_Value(capnp.Struct{}.DecodeFromPtr(p))
-}
-
-func (s Anchor_Value) ToPtr() capnp.Ptr {
-	return capnp.Struct(s).ToPtr()
-}
-
-func (s Anchor_Value) Which() Anchor_Value_Which {
-	return Anchor_Value_Which(capnp.Struct(s).Uint16(0))
-}
-func (s Anchor_Value) IsValid() bool {
-	return capnp.Struct(s).IsValid()
-}
-
-func (s Anchor_Value) Message() *capnp.Message {
-	return capnp.Struct(s).Message()
-}
-
-func (s Anchor_Value) Segment() *capnp.Segment {
-	return capnp.Struct(s).Segment()
-}
-func (s Anchor_Value) SetNull() {
-	capnp.Struct(s).SetUint16(0, 0)
-
-}
-
-func (s Anchor_Value) Chan() Anchor_Value_chan { return Anchor_Value_chan(s) }
-
-func (s Anchor_Value) SetChan() {
-	capnp.Struct(s).SetUint16(0, 1)
-}
-
-func (s Anchor_Value_chan) Which() Anchor_Value_chan_Which {
-	return Anchor_Value_chan_Which(capnp.Struct(s).Uint16(2))
-}
-func (s Anchor_Value_chan) IsValid() bool {
-	return capnp.Struct(s).IsValid()
-}
-
-func (s Anchor_Value_chan) Message() *capnp.Message {
-	return capnp.Struct(s).Message()
-}
-
-func (s Anchor_Value_chan) Segment() *capnp.Segment {
-	return capnp.Struct(s).Segment()
-}
-func (s Anchor_Value_chan) Closer() channel.Closer {
-	if capnp.Struct(s).Uint16(2) != 0 {
-		panic("Which() != closer")
-	}
-	p, _ := capnp.Struct(s).Ptr(0)
-	return channel.Closer(p.Interface().Client())
-}
-
-func (s Anchor_Value_chan) HasCloser() bool {
-	if capnp.Struct(s).Uint16(2) != 0 {
-		return false
-	}
-	return capnp.Struct(s).HasPtr(0)
-}
-
-func (s Anchor_Value_chan) SetCloser(v channel.Closer) error {
-	capnp.Struct(s).SetUint16(2, 0)
-	if !v.IsValid() {
-		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
-	}
-	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
-	return capnp.Struct(s).SetPtr(0, in.ToPtr())
-}
-
-func (s Anchor_Value_chan) Sender() channel.Sender {
-	if capnp.Struct(s).Uint16(2) != 1 {
-		panic("Which() != sender")
-	}
-	p, _ := capnp.Struct(s).Ptr(0)
-	return channel.Sender(p.Interface().Client())
-}
-
-func (s Anchor_Value_chan) HasSender() bool {
-	if capnp.Struct(s).Uint16(2) != 1 {
-		return false
-	}
-	return capnp.Struct(s).HasPtr(0)
-}
-
-func (s Anchor_Value_chan) SetSender(v channel.Sender) error {
-	capnp.Struct(s).SetUint16(2, 1)
-	if !v.IsValid() {
-		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
-	}
-	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
-	return capnp.Struct(s).SetPtr(0, in.ToPtr())
-}
-
-func (s Anchor_Value_chan) Recver() channel.Recver {
-	if capnp.Struct(s).Uint16(2) != 2 {
-		panic("Which() != recver")
-	}
-	p, _ := capnp.Struct(s).Ptr(0)
-	return channel.Recver(p.Interface().Client())
-}
-
-func (s Anchor_Value_chan) HasRecver() bool {
-	if capnp.Struct(s).Uint16(2) != 2 {
-		return false
-	}
-	return capnp.Struct(s).HasPtr(0)
-}
-
-func (s Anchor_Value_chan) SetRecver(v channel.Recver) error {
-	capnp.Struct(s).SetUint16(2, 2)
-	if !v.IsValid() {
-		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
-	}
-	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
-	return capnp.Struct(s).SetPtr(0, in.ToPtr())
-}
-
-func (s Anchor_Value_chan) SendCloser() channel.SendCloser {
-	if capnp.Struct(s).Uint16(2) != 3 {
-		panic("Which() != sendCloser")
-	}
-	p, _ := capnp.Struct(s).Ptr(0)
-	return channel.SendCloser(p.Interface().Client())
-}
-
-func (s Anchor_Value_chan) HasSendCloser() bool {
-	if capnp.Struct(s).Uint16(2) != 3 {
-		return false
-	}
-	return capnp.Struct(s).HasPtr(0)
-}
-
-func (s Anchor_Value_chan) SetSendCloser(v channel.SendCloser) error {
-	capnp.Struct(s).SetUint16(2, 3)
-	if !v.IsValid() {
-		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
-	}
-	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
-	return capnp.Struct(s).SetPtr(0, in.ToPtr())
-}
-
-func (s Anchor_Value_chan) Chan() channel.Chan {
-	if capnp.Struct(s).Uint16(2) != 4 {
-		panic("Which() != chan")
-	}
-	p, _ := capnp.Struct(s).Ptr(0)
-	return channel.Chan(p.Interface().Client())
-}
-
-func (s Anchor_Value_chan) HasChan() bool {
-	if capnp.Struct(s).Uint16(2) != 4 {
-		return false
-	}
-	return capnp.Struct(s).HasPtr(0)
-}
-
-func (s Anchor_Value_chan) SetChan(v channel.Chan) error {
-	capnp.Struct(s).SetUint16(2, 4)
-	if !v.IsValid() {
-		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
-	}
-	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
-	return capnp.Struct(s).SetPtr(0, in.ToPtr())
-}
-
-// Anchor_Value_List is a list of Anchor_Value.
-type Anchor_Value_List = capnp.StructList[Anchor_Value]
-
-// NewAnchor_Value creates a new list of Anchor_Value.
-func NewAnchor_Value_List(s *capnp.Segment, sz int32) (Anchor_Value_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1}, sz)
-	return capnp.StructList[Anchor_Value](l), err
-}
-
-// Anchor_Value_Future is a wrapper for a Anchor_Value promised by a client call.
-type Anchor_Value_Future struct{ *capnp.Future }
-
-func (f Anchor_Value_Future) Struct() (Anchor_Value, error) {
-	p, err := f.Future.Ptr()
-	return Anchor_Value(p.Struct()), err
-}
-func (p Anchor_Value_Future) Chan() Anchor_Value_chan_Future {
-	return Anchor_Value_chan_Future{p.Future}
-}
-
-// Anchor_Value_chan_Future is a wrapper for a Anchor_Value_chan promised by a client call.
-type Anchor_Value_chan_Future struct{ *capnp.Future }
-
-func (f Anchor_Value_chan_Future) Struct() (Anchor_Value_chan, error) {
-	p, err := f.Future.Ptr()
-	return Anchor_Value_chan(p.Struct()), err
-}
-func (p Anchor_Value_chan_Future) Closer() channel.Closer {
-	return channel.Closer(p.Future.Field(0, nil).Client())
-}
-
-func (p Anchor_Value_chan_Future) Sender() channel.Sender {
-	return channel.Sender(p.Future.Field(0, nil).Client())
-}
-
-func (p Anchor_Value_chan_Future) Recver() channel.Recver {
-	return channel.Recver(p.Future.Field(0, nil).Client())
-}
-
-func (p Anchor_Value_chan_Future) SendCloser() channel.SendCloser {
-	return channel.SendCloser(p.Future.Field(0, nil).Client())
-}
-
-func (p Anchor_Value_chan_Future) Chan() channel.Chan {
-	return channel.Chan(p.Future.Field(0, nil).Client())
-}
-
 type Anchor_Loader capnp.Client
 
 // Anchor_Loader_TypeID is the unique identifier for the type Anchor_Loader.
@@ -947,28 +650,16 @@ func (s Anchor_Loader_load_Results) Message() *capnp.Message {
 func (s Anchor_Loader_load_Results) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s Anchor_Loader_load_Results) Value() (Anchor_Value, error) {
-	p, err := capnp.Struct(s).Ptr(0)
-	return Anchor_Value(p.Struct()), err
+func (s Anchor_Loader_load_Results) Value() (capnp.Ptr, error) {
+	return capnp.Struct(s).Ptr(0)
 }
 
 func (s Anchor_Loader_load_Results) HasValue() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s Anchor_Loader_load_Results) SetValue(v Anchor_Value) error {
-	return capnp.Struct(s).SetPtr(0, capnp.Struct(v).ToPtr())
-}
-
-// NewValue sets the value field to a newly
-// allocated Anchor_Value struct, preferring placement in s's segment.
-func (s Anchor_Loader_load_Results) NewValue() (Anchor_Value, error) {
-	ss, err := NewAnchor_Value(capnp.Struct(s).Segment())
-	if err != nil {
-		return Anchor_Value{}, err
-	}
-	err = capnp.Struct(s).SetPtr(0, capnp.Struct(ss).ToPtr())
-	return ss, err
+func (s Anchor_Loader_load_Results) SetValue(v capnp.Ptr) error {
+	return capnp.Struct(s).SetPtr(0, v)
 }
 
 // Anchor_Loader_load_Results_List is a list of Anchor_Loader_load_Results.
@@ -987,8 +678,8 @@ func (f Anchor_Loader_load_Results_Future) Struct() (Anchor_Loader_load_Results,
 	p, err := f.Future.Ptr()
 	return Anchor_Loader_load_Results(p.Struct()), err
 }
-func (p Anchor_Loader_load_Results_Future) Value() Anchor_Value_Future {
-	return Anchor_Value_Future{Future: p.Future.Field(0, nil)}
+func (p Anchor_Loader_load_Results_Future) Value() *capnp.Future {
+	return p.Future.Field(0, nil)
 }
 
 type Anchor_Storer capnp.Client
@@ -1199,35 +890,22 @@ func (s Anchor_Storer_store_Params) Message() *capnp.Message {
 func (s Anchor_Storer_store_Params) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s Anchor_Storer_store_Params) Value() (Anchor_Value, error) {
-	p, err := capnp.Struct(s).Ptr(0)
-	return Anchor_Value(p.Struct()), err
+func (s Anchor_Storer_store_Params) Value() (capnp.Ptr, error) {
+	return capnp.Struct(s).Ptr(0)
 }
 
 func (s Anchor_Storer_store_Params) HasValue() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s Anchor_Storer_store_Params) SetValue(v Anchor_Value) error {
-	return capnp.Struct(s).SetPtr(0, capnp.Struct(v).ToPtr())
+func (s Anchor_Storer_store_Params) SetValue(v capnp.Ptr) error {
+	return capnp.Struct(s).SetPtr(0, v)
 }
-
-// NewValue sets the value field to a newly
-// allocated Anchor_Value struct, preferring placement in s's segment.
-func (s Anchor_Storer_store_Params) NewValue() (Anchor_Value, error) {
-	ss, err := NewAnchor_Value(capnp.Struct(s).Segment())
-	if err != nil {
-		return Anchor_Value{}, err
-	}
-	err = capnp.Struct(s).SetPtr(0, capnp.Struct(ss).ToPtr())
-	return ss, err
-}
-
-func (s Anchor_Storer_store_Params) Force() bool {
+func (s Anchor_Storer_store_Params) Overwrite() bool {
 	return capnp.Struct(s).Bit(0)
 }
 
-func (s Anchor_Storer_store_Params) SetForce(v bool) {
+func (s Anchor_Storer_store_Params) SetOverwrite(v bool) {
 	capnp.Struct(s).SetBit(0, v)
 }
 
@@ -1247,8 +925,8 @@ func (f Anchor_Storer_store_Params_Future) Struct() (Anchor_Storer_store_Params,
 	p, err := f.Future.Ptr()
 	return Anchor_Storer_store_Params(p.Struct()), err
 }
-func (p Anchor_Storer_store_Params_Future) Value() Anchor_Value_Future {
-	return Anchor_Value_Future{Future: p.Future.Field(0, nil)}
+func (p Anchor_Storer_store_Params_Future) Value() *capnp.Future {
+	return p.Future.Field(0, nil)
 }
 
 type Anchor_Storer_store_Results capnp.Struct
@@ -1582,28 +1260,16 @@ func (s Anchor_Swapper_swap_Params) Message() *capnp.Message {
 func (s Anchor_Swapper_swap_Params) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s Anchor_Swapper_swap_Params) New() (Anchor_Value, error) {
-	p, err := capnp.Struct(s).Ptr(0)
-	return Anchor_Value(p.Struct()), err
+func (s Anchor_Swapper_swap_Params) New() (capnp.Ptr, error) {
+	return capnp.Struct(s).Ptr(0)
 }
 
 func (s Anchor_Swapper_swap_Params) HasNew() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s Anchor_Swapper_swap_Params) SetNew(v Anchor_Value) error {
-	return capnp.Struct(s).SetPtr(0, capnp.Struct(v).ToPtr())
-}
-
-// NewNew sets the new field to a newly
-// allocated Anchor_Value struct, preferring placement in s's segment.
-func (s Anchor_Swapper_swap_Params) NewNew() (Anchor_Value, error) {
-	ss, err := NewAnchor_Value(capnp.Struct(s).Segment())
-	if err != nil {
-		return Anchor_Value{}, err
-	}
-	err = capnp.Struct(s).SetPtr(0, capnp.Struct(ss).ToPtr())
-	return ss, err
+func (s Anchor_Swapper_swap_Params) SetNew(v capnp.Ptr) error {
+	return capnp.Struct(s).SetPtr(0, v)
 }
 
 // Anchor_Swapper_swap_Params_List is a list of Anchor_Swapper_swap_Params.
@@ -1622,8 +1288,8 @@ func (f Anchor_Swapper_swap_Params_Future) Struct() (Anchor_Swapper_swap_Params,
 	p, err := f.Future.Ptr()
 	return Anchor_Swapper_swap_Params(p.Struct()), err
 }
-func (p Anchor_Swapper_swap_Params_Future) New() Anchor_Value_Future {
-	return Anchor_Value_Future{Future: p.Future.Field(0, nil)}
+func (p Anchor_Swapper_swap_Params_Future) New() *capnp.Future {
+	return p.Future.Field(0, nil)
 }
 
 type Anchor_Swapper_swap_Results capnp.Struct
@@ -1673,28 +1339,16 @@ func (s Anchor_Swapper_swap_Results) Message() *capnp.Message {
 func (s Anchor_Swapper_swap_Results) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s Anchor_Swapper_swap_Results) Old() (Anchor_Value, error) {
-	p, err := capnp.Struct(s).Ptr(0)
-	return Anchor_Value(p.Struct()), err
+func (s Anchor_Swapper_swap_Results) Old() (capnp.Ptr, error) {
+	return capnp.Struct(s).Ptr(0)
 }
 
 func (s Anchor_Swapper_swap_Results) HasOld() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s Anchor_Swapper_swap_Results) SetOld(v Anchor_Value) error {
-	return capnp.Struct(s).SetPtr(0, capnp.Struct(v).ToPtr())
-}
-
-// NewOld sets the old field to a newly
-// allocated Anchor_Value struct, preferring placement in s's segment.
-func (s Anchor_Swapper_swap_Results) NewOld() (Anchor_Value, error) {
-	ss, err := NewAnchor_Value(capnp.Struct(s).Segment())
-	if err != nil {
-		return Anchor_Value{}, err
-	}
-	err = capnp.Struct(s).SetPtr(0, capnp.Struct(ss).ToPtr())
-	return ss, err
+func (s Anchor_Swapper_swap_Results) SetOld(v capnp.Ptr) error {
+	return capnp.Struct(s).SetPtr(0, v)
 }
 
 // Anchor_Swapper_swap_Results_List is a list of Anchor_Swapper_swap_Results.
@@ -1713,8 +1367,8 @@ func (f Anchor_Swapper_swap_Results_Future) Struct() (Anchor_Swapper_swap_Result
 	p, err := f.Future.Ptr()
 	return Anchor_Swapper_swap_Results(p.Struct()), err
 }
-func (p Anchor_Swapper_swap_Results_Future) Old() Anchor_Value_Future {
-	return Anchor_Value_Future{Future: p.Future.Field(0, nil)}
+func (p Anchor_Swapper_swap_Results_Future) Old() *capnp.Future {
+	return p.Future.Field(0, nil)
 }
 
 type Anchor_Swapper_compareAndSwap_Params capnp.Struct
@@ -1764,52 +1418,27 @@ func (s Anchor_Swapper_compareAndSwap_Params) Message() *capnp.Message {
 func (s Anchor_Swapper_compareAndSwap_Params) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s Anchor_Swapper_compareAndSwap_Params) Old() (Anchor_Value, error) {
-	p, err := capnp.Struct(s).Ptr(0)
-	return Anchor_Value(p.Struct()), err
+func (s Anchor_Swapper_compareAndSwap_Params) Old() (capnp.Ptr, error) {
+	return capnp.Struct(s).Ptr(0)
 }
 
 func (s Anchor_Swapper_compareAndSwap_Params) HasOld() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s Anchor_Swapper_compareAndSwap_Params) SetOld(v Anchor_Value) error {
-	return capnp.Struct(s).SetPtr(0, capnp.Struct(v).ToPtr())
+func (s Anchor_Swapper_compareAndSwap_Params) SetOld(v capnp.Ptr) error {
+	return capnp.Struct(s).SetPtr(0, v)
 }
-
-// NewOld sets the old field to a newly
-// allocated Anchor_Value struct, preferring placement in s's segment.
-func (s Anchor_Swapper_compareAndSwap_Params) NewOld() (Anchor_Value, error) {
-	ss, err := NewAnchor_Value(capnp.Struct(s).Segment())
-	if err != nil {
-		return Anchor_Value{}, err
-	}
-	err = capnp.Struct(s).SetPtr(0, capnp.Struct(ss).ToPtr())
-	return ss, err
-}
-
-func (s Anchor_Swapper_compareAndSwap_Params) New() (Anchor_Value, error) {
-	p, err := capnp.Struct(s).Ptr(1)
-	return Anchor_Value(p.Struct()), err
+func (s Anchor_Swapper_compareAndSwap_Params) New() (capnp.Ptr, error) {
+	return capnp.Struct(s).Ptr(1)
 }
 
 func (s Anchor_Swapper_compareAndSwap_Params) HasNew() bool {
 	return capnp.Struct(s).HasPtr(1)
 }
 
-func (s Anchor_Swapper_compareAndSwap_Params) SetNew(v Anchor_Value) error {
-	return capnp.Struct(s).SetPtr(1, capnp.Struct(v).ToPtr())
-}
-
-// NewNew sets the new field to a newly
-// allocated Anchor_Value struct, preferring placement in s's segment.
-func (s Anchor_Swapper_compareAndSwap_Params) NewNew() (Anchor_Value, error) {
-	ss, err := NewAnchor_Value(capnp.Struct(s).Segment())
-	if err != nil {
-		return Anchor_Value{}, err
-	}
-	err = capnp.Struct(s).SetPtr(1, capnp.Struct(ss).ToPtr())
-	return ss, err
+func (s Anchor_Swapper_compareAndSwap_Params) SetNew(v capnp.Ptr) error {
+	return capnp.Struct(s).SetPtr(1, v)
 }
 
 // Anchor_Swapper_compareAndSwap_Params_List is a list of Anchor_Swapper_compareAndSwap_Params.
@@ -1828,11 +1457,11 @@ func (f Anchor_Swapper_compareAndSwap_Params_Future) Struct() (Anchor_Swapper_co
 	p, err := f.Future.Ptr()
 	return Anchor_Swapper_compareAndSwap_Params(p.Struct()), err
 }
-func (p Anchor_Swapper_compareAndSwap_Params_Future) Old() Anchor_Value_Future {
-	return Anchor_Value_Future{Future: p.Future.Field(0, nil)}
+func (p Anchor_Swapper_compareAndSwap_Params_Future) Old() *capnp.Future {
+	return p.Future.Field(0, nil)
 }
-func (p Anchor_Swapper_compareAndSwap_Params_Future) New() Anchor_Value_Future {
-	return Anchor_Value_Future{Future: p.Future.Field(1, nil)}
+func (p Anchor_Swapper_compareAndSwap_Params_Future) New() *capnp.Future {
+	return p.Future.Field(1, nil)
 }
 
 type Anchor_Swapper_compareAndSwap_Results capnp.Struct
@@ -2421,97 +2050,79 @@ func (p Anchor_cell_Results_Future) Swapper() Anchor_Swapper {
 	return Anchor_Swapper(p.Future.Field(2, nil).Client())
 }
 
-const schema_efb5a91f96d44de3 = "x\xda\x8cV}lSU\x14?\xe7\xbeW^\xdb\xbd" +
-	"Z.\xaf\x10>F\x1a\xc8\x08c\x86\xc96\x0c\xb8?" +
-	"l\x19\x0c\x94\x00\xf6\x0e\x91M\xd4\xe4\xa5}8\xe4\xad" +
-	"-\xed\xc6P!\x13\xe3\x04\x0c\x101`\x104F\x13" +
-	"b\x88QDE\x04\xe2\x1fC\x0c\xf8\x99A \x0a\x89" +
-	"!|\x04\x9d\x09\x1aL\x8c0\xc5g\xee{}\x1f]" +
-	";\xc2_\xeb\xee=\xefw\xce\xf9\x9d\xdf9\xf7\xcc\xa8" +
-	"\x17\xe3b]\xa8'\x0c\x84}\xea\x1ba\xf4U\xf7_" +
-	">\xf9L\xc3+@#\x821\xf9\xfc\xf6\xc0\xd5Y\xa3" +
-	"\xae\x02\xa0\xb2O\xba\xa0\x1c\x94$\x00\xe5\x03i\x81r" +
-	"\x8e\xff2\xd2\xdf\x1d\x9d\xff\xc9\x8a\x96\xbd@+\x11\xc0" +
-	"G$\x80\x86/\xa4\xd7\x10P\xf9^\xea\x064\x06|" +
-	"\x07\xf7\xcc\xdf\xfa\xfc;@#\xdc@\xe0\x06\xd3\xfcA" +
-	"nP\xe7?\x00hL}\xabmw4\xb0\xed\xfd\x12" +
-	"w_\xfb/(\xe7\xfc\xdc\xddi\xff\x02\xe5\x16\xffe" +
-	"\xe8\xa7\xde\xecn\x9dx\xfc\xc3\x02\x1ar\xb4K\x16\xda" +
-	"\x80?\x06h\xec[\xb2\xf8\x86q\xe0\xe7\xc3@'8" +
-	"\x06\x81@\x137\xa0\x01n\xb0\x86\xb5\xaaS\x07\xc3G" +
-	"\xbc\x08u\x01\xc2\x0d\xee7\x0d\x16\xce\x9c\x7f\xed\xa9\xf5" +
-	"\x07\x8f\x01\x1b\x8fhl\x1f;\xc9\x97=q\xe8:," +
-	"C\x09}\x88\xca\xb2\xc0 `C[ \x8a\x80\xc6%" +
-	"\xba<\xdf\xdb\xef\xeb\xb3\xc0D\x1ekG\xf0O\x10\x8d" +
-	"\x97\xaf\xcc[[{\xdf\xea\xe3\x05ZL/,\xb8\x90" +
-	"{y2\xc8\xbd\xbcQ\xb7\xec\xe3\xcaucO\xf2/" +
-	"\xdd\xacM\xfe\x94\x0d\xc13\xca\x96 \xff\xd5\x1b\xe4\x14" +
-	"~{s\xc46q\xe3\xb9\x1f\x80Ub\xc1M\xc3\xa5" +
-	"\xe0\x1e\x0ev\xc3\x04k\xfbh\xa0\xf7'\xe1\x893n" +
-	"\x18\x0d\xb4\x82 \x88F\xdb\xd9\xc8\x89\xfe\x9e\x1f/\x00" +
-	"\x9b\x80N \x7f\x05M>n\x9b\xe0\xdb\xee\xad\xde\xbc" +
-	"\xf3\x9bM\x17\xbd\x91\xb6U\x98\x06j\x05\x07o\xed\x1e" +
-	"\xd5\xb3\xf3\xc0\x94+\x1e\xc2\x94\x8d\x15\x83\x80J\xafy" +
-	"\xef\x04OC\x82qe\xf1\xd9\xd7\xa3\xfb\x0f\xfd\xc1\xeb" +
-	"w\xa4\xe2]\xa5\xafb9\x80r\xab\xe2\xa4\xb2F\xe6" +
-	"\xf5[~\xb8q\xef\x8b\xd7\xcf^+\xc4c\x86\xda&" +
-	"\x9b\xbch2Gs\xf8f\x11\xf4`7\xa3D\x00\x94" +
-	"-\xf2\x19e\x17\x07Rv\xc8<\xf8\x15c\x8e>\xf2" +
-	"jM\xfc\xa6Um\x13\xed\xb4\xdc\xc8\x13o\xfel\xf6" +
-	"\x83r\xebE\xa3DUG\xe4\xcb\xcaW&D\x9f\xbc" +
-	"I\x19\x1d\x92\xc0\x00\xbf\xa1\xa6\x93\xed\x99\\m\x92\xa8" +
-	"\xd9t\xb6q\x8e\xf5\xdf\xa2\x8c\x9a\x12\xb4\\\x02\x91\x89" +
-	"\x82\x0f\xc0q\x87\xb6\xca(\xad\x01B}RX\xcf\xa8" +
-	"\xa98&\x10\x1d$\x9f\x17ii\xb7\x9a\xcdj\xb9\xda" +
-	"d\xa6#\xab\xe6\xb49\xe9\x14?\xa9J\xa89\xb5\x03" +
-	"\xf3\xcc/\x88\x00\"\x02\xd0i\x93\x01X\x95\x80l\x06" +
-	"A\x8a\x18\xe1$\xd1\xe9\xfc\xb0Z@6\x93\xa0\x94\xd1" +
-	"S8\xd2\xa5\x09\x10G\x02Ji\xad\xbb\xf4\xd4\x89E" +
-	"\xf0\xc6\x92\xd4t\xbd\xaaE\xcbw\xe9\x9dy\x00&;" +
-	"\xbe\x9b\x1b\x01X\\@\xb6\xc8\xe3\xfba~8O@" +
-	"\x96 H\x09\x89 \x01\xa0\x8b\x9b\x00\xd8C\x02\xb2G" +
-	"\x09\xc6x\xeaZ\x0e\xa9;7\x00\x91\x02\xc6\xf2\x9d\x99" +
-	"\x9cy\xe1t\xb8u\xd1\x93\xb7\xd8@\xeaV\xc9\xba)" +
-	"_\x86\xa5\x9d\x99\\Q\x19lQ\xa3\xad&J\xeb\xcd" +
-	"2DM\x97\xc5u(\xca\xbd[\xd5W{r\x17\x9d" +
-	"\xdcC<M\xbf\x80,B0f}\x8a\xd4\xab\x9b\xa2" +
-	"\xf0\xc4\xa1*\xd1r\xb5\x9c\x06\x07\xda\x8b\\\xef\"G" +
-	"\xd7\xaaz\x97v\xb7\x852\x835%R\x0cX\xe3\x02" +
-	"\x86\xb3jg;\xca@P\x1e\x8e\xbd\xc7T\xbd+\xa6" +
-	"\xd5&\xdb\xd54\x8b\x08\xa2l\x18Va7\xf0\x8c\xd7" +
-	"\x09\xc8^\"\x18\xc2\xff\x0c\xab\xb2\x1b\xf9\xe9z\x01\xd9" +
-	"f\x82!r\xdb\x88\xa0\x00@{\xf9\xe9\x0b\x02\xb2\xad" +
-	"\x04C\xc2\xbfF\x04E\x00\xba\xe5q\x00\xb6Y@\xb6" +
-	"\x93`H\xfc\xc7\x88\xa0\x0f\x80\xee\xe0\xe1m\x15\x90\xed" +
-	"&\x18K\xea\x99\xbcY\xe8/\x9f\x9d\x15\xfa\xfcj\xff" +
-	"\xa0\xa3\x0d-m\x89\xe6\xf71\xbf\xcd\x8e\\?\xf6\xab" +
-	"}\x91\xd3\x92k\xcd\x0bI\xae|:\xb4\xdfw\xd1\xe6" +
-	"\x9e\x7f1W\xcf\xe4A0\xaf\x97\x0cD6\xec9\xfd" +
-	"\xde@\xe1:\xcc\xf3Cj\xb0\xbfW\x9e\xff\xe5\xedS" +
-	"\xbb\xee((=_\x95\x88\x9a\xbc\x96\xaf\xa8\xdd\xad\\" +
-	"\xa7\xe5\xd52\xd9-A\xf9\x86,\xefxn\xfb*\x1d" +
-	"S\\\xc8\x9e\x8eo,\xd7\xf15n\xc7\x0f+\xc7p" +
-	"Z\xed\xd0J\x8a\x7f7s\xc7\xccI\xe8\xcc{Sj" +
-	"rS*4h\x0a\x11\x08\xa2\x07\xdb_2G\x0a\xf2" +
-	"\xb4\x0d\x86\xb6-'\x91\xffqd\xec\xc9\xbb\xde\xcd\xdb" +
-	"I\xbb\xdeM{\xb8^\x89\xae\xcc\xe4\x92ZIh\xc3" +
-	"\x17\xb0L\x07y\xcbw\xe7\xc99T7-1K\x0e" +
-	"^\xb4\x85\xe6\x14EVM\xd0H\xb6\xaf\xd2S9-" +
-	"\x0d\x00x\x0f`B@\x1c\xe9\xbe\xf5\x80\xfc\xd0\x01G" +
-	"\x1b\\j\xcf\xe4\xcc\xf7\xce\xdd\x0a&\xd5\xbb1\xd1\x89" +
-	"\xf5\x9e\xa5l\\\xa3ge\x1a\xdd\xe8y\xe9hS\x94" +
-	"+,\x15\xe5=\xaf\xc5\xac\xc1\x14\xb3\xea\xd0S\xe0\x84" +
-	"\xc9\xe6\x08\xb5\x17\x17\xb4_w\xca\xc6\x03\xa1\xcd\x12\xba" +
-	"\x1b\x12\xda\xcb\x16}\x80\xbfr\xd3%$\xce\xa6\x81\xf6" +
-	"ZG'\xf1\xbb\xd1\x92\xa0\xe7\xe3\x18\xe6#+\x8ea" +
-	".\x8d\xe2),\x0e\xab\x8c\xb2\xfd\xd5R\xa0t,A" +
-	"#\xdf\x95LjZJ\x03,\x15d\xc9\xa4C\xad\xd0" +
-	"]\xb2aX2\xabqe\xc6\xc7\x1cz\x16<\xdef" +
-	"$\x9c\xee\xd2u\x18a\x0e\x90\xf2s\xd8;\xe0c\x89" +
-	"\xe2\xb9A\x86\xcaN\xcaZ/\x95\xdf\xa4\xd9^\xae\xd0" +
-	"\xde\x07i\x1d\xa7k\x0a\xa7\xd9\xde\x9c\xd1^\xef\xe8\xb8" +
-	"\xe7\x80P*\x85\xb9l\xe3h\xd8M\x0b1\xabmM" +
-	"F\xff\x0f\x00\x00\xff\xff\xabQ>~"
+const schema_efb5a91f96d44de3 = "x\xda\x8cV]h\x1cU\x14>\xe7\xce\xccN\"Y" +
+	"\xb77\xb3\x91\xc6\xa6,\x0d)\x8d\xb1\x8dM\"X\xf7" +
+	"\xc1\xdd\xc4\xa6\xb1\xa5\xd1\xbd\xa9\xd2\x84\xf6e\xd8\x1dH" +
+	"\xecdw3\xbb\xc9\x8aR\x82B\xac\x15#*U\xb4" +
+	"\xb5\x0f\x15\xf2\x10\x04\xe3\x0fZ\xec[\x8b\x10Q\x91P" +
+	"\"j\xa0\x14\x9bF\xc8\x83\x14\x05\xa1\xf4e\xe4\xde\xd9" +
+	"\xf9\xd9\xec\xae\xf4)\x9b\x99s\xbfs\xbe\xef|\xe7\x9e" +
+	"\xd9\xbfB\x92rO\xf8\x8e\x0a\x84\x9dTB\xf6\xd5\xce" +
+	"\x95[\xcb/\xf6\xbd\x094*\xd9\xed\xbf\xbf\xddx\xfb" +
+	"\x89\xe6\xdb\x00\xa8\xdd\x90\xd6\xb4MI\x05\xd06\xa4!" +
+	"-,\xab\x00v\xf6\xa7+\x87\xbe:1r\x01h\x1b" +
+	"\x02(D\x05\xe8\xfbWz\x0f\x015E.\x01\xda\x9b" +
+	"\xca\x17\xe7\x0f\xbd\xf5\xca%\xa0Q\x1e\xc0\x8f\xf7\xe9\xf2" +
+	"\x03<`B^\x02\xb4\xf7\\\x1c\xfb0\xd68\xffi" +
+	"U:T\xd6\xb4\xb0\xc2\xd35*CZ\x0f\xffe\x9b" +
+	"\xdf\x7f\\\x1a\xddy\xed\xb32\x1ar\xb4VE\xa0\xed" +
+	"R\x12\x80\xf6\xc2\xb3\xc3\x7f\xdbK7.\x03\xdd\xe1\x05" +
+	"\xf4+\x03<\xe0\xb0\x08\x98b\xa3\xfa\x9e{\x91o\x83" +
+	"\x08\x13\x0a\xe1\x01\x93\"\xe0\x0fz\xbc0\xb7\xa2\\u" +
+	"\x028Im^\xf9\x07d\xfb\xf5\xf5\x833\xdd\x8f\x9d" +
+	"\xbaV\xa6*NN)G\xf8\xc9\xd3\xe2\xe4G=/" +
+	"|\xd9\xf6\xd2\xf6e~\xd2g\"4\xd1.*\xd7\xb5" +
+	"EAfA\xe1\xb2\xfcx74/\xbf\xfa\xcb\xcf\xc0" +
+	"\xda\xb0\x9c\xa6\x0fC\xe79\x18\x0dq\xb0\xb1\xcf7\xe7" +
+	"~\x93N^\xf7\xcb\xe8\xeb\x09\x11\x04\xd9\x1e[\x8d~" +
+	"\xb72\xfb\xeb\x1a\xb0\x1d\xe8\x15\xd2\x12\x12\x1cw\x868" +
+	"\xf8\xfc\xa3\x9do\x9c\xfb\xe1\xcc\xcd`\xa5\xa7\x9d\x809" +
+	"\x01>Zj\x9e=\xb7\xb4{= \x82\xb6\x10\xba\x07" +
+	"\xa8-\x8a\xf7^\xf14,\xd9\xeb\xc3\xab\x1f\xc4\x16\xbf" +
+	"\xbe#,\x10\xfaD\xdb\x08\x0d\x01hT]\xd6\xce\xaa" +
+	"\xbc'\xc7/\xc7/\xbc\xf6\xd7\xea\x9f\xe5zD\xa9S" +
+	"\xaa\xa3\x8b\xca\xd1N<t\xe5\xb9w\xba\x92w\x9d\x9e" +
+	"\x88\xf7\x97\xd48\xa72\xf8\xcd\x81\xa7\x9aFo\xdaU" +
+	"\xbd?\xab\xde\xd2\xde\xe7\xe8\xda\xbb\xea\x19mCUa" +
+	"\xaf\xadg\xd3\xe39\xab;M\xf4|6\x1f\xefw\xfe" +
+	";\x9a\xd33\x92a\xa5\x10\x99,)\x00^2t\x9d" +
+	"@i\x17\x10\xaa\xa8\x113\xa7g\x92\x98B\xf4\x90\x94" +
+	" \xd2\xb1\x92\x9e\xcf\x1bVw:7\x99\xd7-\xa3?" +
+	"\x9b\xe1O:R\xba\xa5Ob\x815H2\x80\x8c\x00" +
+	"\xf4\x91v\x00\xd6!!\xdbO\x90\"F9i\xba\x8f" +
+	"?\xec\x94\x90=NP\xcd\x99\x19l\x06\x82\xcd\x80j" +
+	"\xd6(\xb9\xbf\xbd\xbcR0o\xda0\xcd\x8e\x11\xa30" +
+	"m\x16\x0b\x00\xac\xc9\xcb3\x18\x07`I\x09\xd9\xd1@" +
+	"\x9e\xc3\xfc\xe1A\x09Y\x8a %$\x8a\x04\x80\x0e\x0f" +
+	"\x00\xb0g$d\xcf\x13Lp\x9a\x86\x85\xd4\x9fc@" +
+	"\xa4\x80\x89B1g\x89\x17\xde\xc49/f\x0b\x0es" +
+	"\xa4~?\x9c7\xb5%?V\xccY\x15\x92\xbb\x86D" +
+	"\xd7\x09\x94\xf6\x0a\xc9c\"e\xa5\xe6\x15\xdcK\xbay" +
+	"*\xc0]\xf6\xb8\x879\xcd\x06\x09Y\x94`\xc29\x8a" +
+	"4\xe8\x90\x8a\xf2\xe4\xad\x8e0\xacn.\x83\x07\x1dD" +
+	"\xee\xf5\x91c3\xba9m\xfc\x7f{D\x89\xc2\x04\x95" +
+	"0]>L$\xaf\x17\xc7\xb1\x09\x086\xd5\xd3\xcc," +
+	"t\xa4b\x02\xa4v\xd1\xae\xf9x+j\x0b\xd2\xee\xe7" +
+	"\x0b\xfa\xabv\xba\xa7\xc7'L\xcc\xf0\x0e\x05l\x1b\xaf" +
+	"e\xdb.\xdf\xb6uu\x8ed\xf5I\xa3\x8a\xdf\xfd\x0c" +
+	"\x8f`\"\x15\x0bA\"\x03>\x91\xb2\xf32\x88@\x10" +
+	"\x03\xd8\x0dU\x03R\xee\x80\x1b\xb0\xd5\x8f\\:\xfe\xc7" +
+	"\xebT\x80w\xaf\xcf\xdb\xa3=\x02\xc0\xf6J\xc8\x0eT" +
+	"\x99 7cX%k\xa2\x08hT\x95U\xbfe5" +
+	"\x0c\x12lX\xadK`\xab?F\x12N\xdb\x83\x18G" +
+	"\xc4\x85\x80\xac\x93\xa0\x9d\x1e\x9f03\x96\x91\x05\x00|" +
+	"\x100%!n\xf3W\x0e \x7f\xe8\x81\xa3\x0b\xae\x8e" +
+	"\xe7,\xb6\x0d\x83\xcb\xa9\xb57\xb0\xe2[\xe2\x81\x05L" +
+	"\xe3\x81\x1b9<\x10\xe36\xca$\x9c\x81J82\xcf" +
+	"\x96i\xb3&1\xfa\xee\xb2Dw\xa3P\xf60\x10:" +
+	"\xa8\xa2\xbfi\xd1]\xda\xf4I~\x13\xefS\x91x\xdb" +
+	"\x0d\xdd\xcf\x03\xba\x8b\xbfkQ%\xb3\x90\xc4\x08\x1f\xba" +
+	"$Fx\xe7+o\x0f\xb9n\xe3k\x0e\xcdHY\xbf" +
+	"\xed\x04\xed\xc2t:m\x18\x19\x03\xb0\xdaoR\xbd\x0b" +
+	"$\x91\xaa\x1cZ\xb2\xd5\x01j\xde\xb9\x09\x1b\x84\x1c\xee" +
+	"\xe2E\xf7[\x81\xf6pZ\xbb\xb9\x1c\xee\x97\x12\xba\xab" +
+	"\x9f\xb6\xbe\x0c\x84R5\xc2\x1d\x94D\xdb\x9d\x1dH8" +
+	"\xd3#\x98\xff\x17\x00\x00\xff\xff\x19+\x94\x8c"
 
 func RegisterSchema(reg *schemas.Registry) {
 	reg.Register(&schemas.Schema{
@@ -2524,7 +2135,6 @@ func RegisterSchema(reg *schemas.Registry) {
 			0xaec21d58779cc86c,
 			0xb7ddaffff14d4ea5,
 			0xb90ffa2761585171,
-			0xbbb17c5ee646344a,
 			0xc105d085735711e1,
 			0xc26b2f2e7644e386,
 			0xc718781cb2553199,
@@ -2535,7 +2145,6 @@ func RegisterSchema(reg *schemas.Registry) {
 			0xe325af947f127758,
 			0xe41237e4098ed922,
 			0xe6d4ed829b3ab757,
-			0xedb5c4700521188e,
 			0xf8402a904fba165b,
 			0xffdf580c3e38b645,
 		},

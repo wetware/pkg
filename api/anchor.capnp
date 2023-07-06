@@ -39,29 +39,7 @@ interface Anchor {
         name   @1 :Text;
     }
 
-    struct Value {
-        # Value is a union type that can be assigned to an Anchor.
-        
-        union {
-            null @0 :Void;
-            # Null value indicates that the Anchor is empty, i.e. it
-            # contains no value.
-
-            chan    :union {
-            # Chan values contain some sort of channel. The union is
-            # used as a type hint on the receiving side.
-
-                closer     @1 :import "channel.capnp".Closer;
-                sender     @2 :import "channel.capnp".Sender;
-                recver     @3 :import "channel.capnp".Recver;
-                sendCloser @4 :import "channel.capnp".SendCloser;
-                chan       @5 :import "channel.capnp".Chan;
-            }
-
-            # proc    :group {  # TODO
-            # }
-        }
-    }
+    using Value = AnyPointer;
 
     interface Loader {
         # Loader is a read-only interface to a value.   It grants the
