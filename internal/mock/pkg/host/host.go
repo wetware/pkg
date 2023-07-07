@@ -9,7 +9,6 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	cluster "github.com/wetware/casm/pkg/cluster"
-	debug "github.com/wetware/casm/pkg/debug"
 	anchor "github.com/wetware/ww/pkg/anchor"
 	csp "github.com/wetware/ww/pkg/csp"
 	pubsub "github.com/wetware/ww/pkg/pubsub"
@@ -125,43 +124,6 @@ func (m *MockAnchorProvider) Anchor() anchor.Anchor {
 func (mr *MockAnchorProviderMockRecorder) Anchor() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Anchor", reflect.TypeOf((*MockAnchorProvider)(nil).Anchor))
-}
-
-// MockDebugProvider is a mock of DebugProvider interface.
-type MockDebugProvider struct {
-	ctrl     *gomock.Controller
-	recorder *MockDebugProviderMockRecorder
-}
-
-// MockDebugProviderMockRecorder is the mock recorder for MockDebugProvider.
-type MockDebugProviderMockRecorder struct {
-	mock *MockDebugProvider
-}
-
-// NewMockDebugProvider creates a new mock instance.
-func NewMockDebugProvider(ctrl *gomock.Controller) *MockDebugProvider {
-	mock := &MockDebugProvider{ctrl: ctrl}
-	mock.recorder = &MockDebugProviderMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockDebugProvider) EXPECT() *MockDebugProviderMockRecorder {
-	return m.recorder
-}
-
-// Debugger mocks base method.
-func (m *MockDebugProvider) Debugger() debug.Debugger {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Debugger")
-	ret0, _ := ret[0].(debug.Debugger)
-	return ret0
-}
-
-// Debugger indicates an expected call of Debugger.
-func (mr *MockDebugProviderMockRecorder) Debugger() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Debugger", reflect.TypeOf((*MockDebugProvider)(nil).Debugger))
 }
 
 // MockRegistryProvider is a mock of RegistryProvider interface.

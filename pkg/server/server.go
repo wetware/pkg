@@ -55,8 +55,7 @@ type Joiner struct {
 	fx.In
 
 	Cluster ClusterConfig `optional:"true"`
-	// Runtime  RuntimeConfig `optional:"true"`
-	Debugger DebugConfig `optional:"true"`
+	// Runtime RuntimeConfig `optional:"true"`
 }
 
 // Join the cluster.  Note that callers MUST call Bootstrap() on
@@ -72,7 +71,6 @@ func (j Joiner) Join(vat casm.Vat, r Router) (*Node, error) {
 		ViewProvider:     c,
 		PubSubProvider:   ps,
 		AnchorProvider:   j.anchor(),
-		DebugProvider:    j.Debugger.New(),
 		RegistryProvider: j.service(),
 		// ExecutorProvider: j.Runtime.New(),
 	})

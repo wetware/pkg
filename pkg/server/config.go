@@ -10,7 +10,6 @@ import (
 	"github.com/wetware/casm/pkg/cluster"
 	"github.com/wetware/casm/pkg/cluster/pulse"
 	"github.com/wetware/casm/pkg/cluster/routing"
-	"github.com/wetware/casm/pkg/debug"
 )
 
 type ClusterConfig struct {
@@ -85,22 +84,6 @@ func (rc ClusterConfig) routingTable() cluster.RoutingTable {
 // 		HostModule: m,
 // 	}
 // }
-
-type DebugConfig struct {
-	fx.In
-
-	System   debug.SystemContext        `optional:"true" name:"debug-info"`
-	Environ  func() []string            `optional:"true" name:"debug-environ"`
-	Profiles map[debug.Profile]struct{} `optional:"true" name:"debug-profiles"`
-}
-
-func (dc DebugConfig) New() *debug.Server {
-	return &debug.Server{
-		Context:  dc.System,
-		Environ:  dc.Environ,
-		Profiles: dc.Profiles,
-	}
-}
 
 // Router binds the lifecycle of CASM's *cluster.Router to that of the
 // local Router interface.  This is needed because CASM requires us to

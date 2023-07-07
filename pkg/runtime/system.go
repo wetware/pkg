@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/user"
 	"path/filepath"
 
 	"github.com/lthibault/log"
@@ -12,8 +11,6 @@ import (
 
 	"github.com/wetware/casm/pkg/cluster/pulse"
 	"github.com/wetware/casm/pkg/cluster/routing"
-	"github.com/wetware/casm/pkg/debug"
-	ww "github.com/wetware/ww/pkg"
 
 	ds "github.com/ipfs/go-datastore"
 	ds_sync "github.com/ipfs/go-datastore/sync"
@@ -29,30 +26,7 @@ import (
 func (c Config) System() fx.Option {
 	return fx.Module("system", fx.Provide(
 		storage,
-		metadata,
-		debugger))
-}
-
-type debugModule struct {
-	fx.Out
-
-	System   debug.SystemContext        `name:"debug-info"`
-	Environ  func() []string            `name:"debug-environ"`
-	Profiles map[debug.Profile]struct{} `name:"debug-profiles"`
-}
-
-func debugger() (mod debugModule, err error) {
-	mod.Environ = os.Environ
-	mod.Profiles = debug.DefaultProfiles
-	mod.System.Version = ww.Version
-	mod.System.Argv = os.Args
-	mod.System.PID = os.Getpid()
-	mod.System.Hostname, err = os.Hostname()
-	if err == nil {
-		mod.System.User, err = user.Current()
-	}
-
-	return
+		metadata))
 }
 
 type meta struct {

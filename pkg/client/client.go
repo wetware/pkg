@@ -8,7 +8,6 @@ import (
 
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/cluster"
-	"github.com/wetware/casm/pkg/debug"
 	"github.com/wetware/ww/pkg/csp"
 	"github.com/wetware/ww/pkg/host"
 	"github.com/wetware/ww/pkg/pubsub"
@@ -53,10 +52,6 @@ func (n *Node) Join(ctx context.Context, topic string) (pubsub.Topic, capnp.Rele
 	defer release()
 
 	return router.Join(ctx, topic)
-}
-
-func (n *Node) Debug(ctx context.Context) (debug.Debugger, capnp.ReleaseFunc) {
-	return n.Host(ctx).Debug(ctx)
 }
 
 func (n *Node) Registry(ctx context.Context) (service.Registry, capnp.ReleaseFunc) {

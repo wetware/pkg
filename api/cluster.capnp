@@ -32,17 +32,11 @@ interface Host {
     # Root returns the host's root Anchor, which confers access to
     # all shared memory on the host.
 
-    debug @3 () -> (debugger :Capability);
-    # Debugger provides a set of tools for debugging live Wetware
-    # hosts.  The debugger can potentially reveal sensitive data,
-    # including cryptographic secrets and SHOULD NOT be provided
-    # to untrusted parties.
-
-    registry @4 () -> (registry :import "registry.capnp".Registry);
+    registry @3 () -> (registry :import "registry.capnp".Registry);
     # Registry returns a Service Registry capability, which is used for 
     # discovering and providing service. This way, applications can find each other.
 
-    executor @5 () -> (executor :import "process.capnp".Executor);
+    executor @4 () -> (executor :import "process.capnp".Executor);
     # Executor provides a way of spawning and running WASM-based
     # processes.
 }
