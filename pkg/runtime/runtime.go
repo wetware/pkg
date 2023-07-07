@@ -257,6 +257,18 @@ func (lx fxLogger) LogEvent(ev fxevent.Event) {
 			lx.Error("start hook failed")
 		}
 
+	case *fxevent.Run:
+		lx.Logger = lx.MaybeError(event.Err).
+			MaybeModule(event.ModuleName).
+			WithField("name", event.Name).
+			WithField("kind", event.Kind)
+
+		if event.Err != nil {
+			lx.Trace("run")
+		} else {
+			lx.Error("run failed")
+		}
+
 	default:
 		panic(fmt.Sprintf("invalid Fx event: %s", reflect.TypeOf(ev)))
 	}
