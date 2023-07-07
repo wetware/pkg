@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/wetware/casm/pkg/cluster"
-	"github.com/wetware/casm/pkg/debug"
 	mock_client "github.com/wetware/ww/internal/mock/pkg/client"
 	"github.com/wetware/ww/pkg/anchor"
 	"github.com/wetware/ww/pkg/client"
@@ -40,7 +39,6 @@ func TestNode(t *testing.T) {
 		ViewProvider:   mockViewProvider{},
 		PubSubProvider: mockPubSubProvider{},
 		AnchorProvider: mockAnchorProvider{},
-		DebugProvider:  mockDebugProvider{},
 	}.Client()
 	defer c.Release()
 
@@ -70,11 +68,6 @@ func TestNode(t *testing.T) {
 	require.NotNil(t, release, "should return release func")
 	assert.NotZero(t, topic, "should return topic")
 	defer release()
-
-	d, release := n.Debug(context.Background())
-	require.NotNil(t, d, "should return release func")
-	assert.NotZero(t, topic, "should return debugger")
-	defer release()
 }
 
 type mockViewProvider struct{}
@@ -93,10 +86,4 @@ type mockAnchorProvider struct{}
 
 func (mockAnchorProvider) Anchor() anchor.Anchor {
 	return anchor.Anchor(capnp.ErrorClient(errors.New("mock")))
-}
-
-type mockDebugProvider struct{}
-
-func (mockDebugProvider) Debugger() debug.Debugger {
-	return debug.Debugger(capnp.ErrorClient(errors.New("mock")))
 }

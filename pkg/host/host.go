@@ -9,7 +9,6 @@ import (
 
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/cluster"
-	"github.com/wetware/casm/pkg/debug"
 	anchor_api "github.com/wetware/ww/internal/api/anchor"
 	api "github.com/wetware/ww/internal/api/cluster"
 	process_api "github.com/wetware/ww/internal/api/process"
@@ -56,11 +55,6 @@ func (h Host) Root(ctx context.Context) (anchor.Anchor, capnp.ReleaseFunc) {
 	return anchor.Anchor(f.Root()), release
 }
 
-func (h Host) Debug(ctx context.Context) (debug.Debugger, capnp.ReleaseFunc) {
-	f, release := api.Host(h).Debug(ctx, nil)
-	return debug.Debugger(f.Debugger()), release
-}
-
 func (h Host) Registry(ctx context.Context) (service.Registry, capnp.ReleaseFunc) {
 	f, release := api.Host(h).Registry(ctx, nil)
 	return service.Registry(f.Registry()), release
@@ -89,10 +83,6 @@ type AnchorProvider interface {
 	Anchor() anchor.Anchor
 }
 
-type DebugProvider interface {
-	Debugger() debug.Debugger
-}
-
 type RegistryProvider interface {
 	Registry() service.Registry
 }
@@ -106,7 +96,6 @@ type Server struct {
 	ViewProvider     ViewProvider
 	PubSubProvider   PubSubProvider
 	AnchorProvider   AnchorProvider
-	DebugProvider    DebugProvider
 	RegistryProvider RegistryProvider
 	ExecutorProvider ExecutorProvider
 }
@@ -141,16 +130,6 @@ func (s Server) Root(_ context.Context, call api.Host_root) error {
 	res, err := call.AllocResults()
 	if err == nil {
 		err = res.SetRoot(anchor_api.Anchor(s.AnchorProvider.Anchor()))
-	}
-
-	return err
-}
-
-func (s Server) Debug(_ context.Context, call api.Host_debug) error {
-	res, err := call.AllocResults()
-	if err == nil {
-		debugger := s.DebugProvider.Debugger()
-		err = res.SetDebugger(capnp.Client(debugger))
 	}
 
 	return err

@@ -13,7 +13,6 @@ import (
 	"github.com/wetware/casm/pkg/cluster"
 	"github.com/wetware/casm/pkg/cluster/pulse"
 	"github.com/wetware/casm/pkg/cluster/routing"
-	"github.com/wetware/casm/pkg/debug"
 	"github.com/wetware/ww/pkg/csp"
 	"github.com/wetware/ww/pkg/csp/proc"
 )
@@ -88,22 +87,6 @@ func (rc RuntimeConfig) New() csp.Runtime {
 	return csp.Runtime{
 		Runtime:    r,
 		HostModule: m,
-	}
-}
-
-type DebugConfig struct {
-	fx.In
-
-	System   debug.SystemContext        `optional:"true" name:"debug-info"`
-	Environ  func() []string            `optional:"true" name:"debug-environ"`
-	Profiles map[debug.Profile]struct{} `optional:"true" name:"debug-profiles"`
-}
-
-func (dc DebugConfig) New() *debug.Server {
-	return &debug.Server{
-		Context:  dc.System,
-		Environ:  dc.Environ,
-		Profiles: dc.Profiles,
 	}
 }
 
