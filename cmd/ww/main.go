@@ -12,7 +12,6 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/wetware/ww/internal/cmd/cluster"
-	"github.com/wetware/ww/internal/cmd/debug"
 	"github.com/wetware/ww/internal/cmd/run"
 	"github.com/wetware/ww/internal/cmd/start"
 	ww "github.com/wetware/ww/pkg"
@@ -60,7 +59,6 @@ var commands = []*cli.Command{
 	start.Command(),
 	cluster.Command(),
 	run.Command(),
-	debug.Command(),
 }
 
 func main() {
