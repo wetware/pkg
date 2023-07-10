@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	"capnproto.org/go/capnp/v3"
-	api "github.com/wetware/ww/internal/api/anchor"
+	api "github.com/wetware/ww/api/anchor"
 	"github.com/wetware/ww/pkg/internal/bounded"
 )
 

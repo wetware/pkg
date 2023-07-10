@@ -3,7 +3,7 @@ using Go = import "/go.capnp";
 @0xced7a3b0e18b5291;
 
 $Go.package("bitswap");
-$Go.import("github.com/wetware/ww/internal/api/bitswap");
+$Go.import("github.com/wetware/ww/api/bitswap");
 
 
 interface BitSwap {

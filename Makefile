@@ -15,55 +15,55 @@ capnp: capnp-anchor capnp-pubsub capnp-cluster capnp-channel capnp-process capnp
 #        on the GOPATH.
 
 capnp-anchor:
-	@mkdir -p internal/api/anchor
-	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/std -ogo:internal/api/anchor --src-prefix=api api/anchor.capnp
+	@mkdir -p api/anchor
+	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/v3/std -ogo:api/anchor --src-prefix=api api/anchor.capnp
 
 capnp-pubsub:
-	@mkdir -p internal/api/pubsub
-	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/std -ogo:internal/api/pubsub --src-prefix=api api/pubsub.capnp
+	@mkdir -p api/pubsub
+	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/v3/std -ogo:api/pubsub --src-prefix=api api/pubsub.capnp
 
 capnp-cluster:
-	@mkdir -p internal/api/cluster
-	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/std -ogo:internal/api/cluster --src-prefix=api api/cluster.capnp
+	@mkdir -p api/cluster
+	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/v3/std -ogo:api/cluster --src-prefix=api api/cluster.capnp
 
 capnp-channel:
-	@mkdir -p internal/api/channel
-	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/std -ogo:internal/api/channel --src-prefix=api api/channel.capnp
+	@mkdir -p api/channel
+	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/v3/std -ogo:api/channel --src-prefix=api api/channel.capnp
 
 capnp-process:
-	@mkdir -p internal/api/process
-	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/std -ogo:internal/api/process --src-prefix=api api/process.capnp
+	@mkdir -p api/process
+	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/v3/std -ogo:api/process --src-prefix=api api/process.capnp
 
 capnp-registry:
-	@mkdir -p internal/api/registry
-	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/std -ogo:internal/api/registry --src-prefix=api api/registry.capnp
+	@mkdir -p api/registry
+	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/v3/std -ogo:api/registry --src-prefix=api api/registry.capnp
 
 capnp-bitswap:
-	@mkdir -p internal/api/bitswap
-	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/std -ogo:internal/api/bitswap --src-prefix=api api/bitswap.capnp
+	@mkdir -p api/bitswap
+	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/v3/std -ogo:api/bitswap --src-prefix=api api/bitswap.capnp
 
 clean-capnp: clean-capnp-anchor clean-capnp-pubsub clean-capnp-cluster clean-capnp-channel clean-capnp-process clean-capnp-registry clean-capnp-bitswap
 
 clean-capnp-anchor:
-	@rm -rf internal/api/anchor
+	@rm -rf api/anchor
 
 clean-capnp-pubsub:
-	@rm -rf internal/api/pubsub
+	@rm -rf api/pubsub
 
 clean-capnp-cluster:
-	@rm -rf internal/api/cluster
+	@rm -rf api/cluster
 
 clean-capnp-channel:
-	@rm -rf internal/api/channel
+	@rm -rf api/channel
 
 clean-capnp-process:
-	@rm -rf internal/api/process
+	@rm -rf api/process
 
 clean-capnp-registry:
-	@rm -rf internal/api/registry
+	@rm -rf api/registry
 
 clean-capnp-bitswap:
-	@rm -rf internal/api/bitswap
+	@rm -rf api/bitswap
 
 mocks: clean-mocks
 # This roundabout call to 'go generate' allows us to:

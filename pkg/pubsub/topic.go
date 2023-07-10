@@ -9,7 +9,7 @@ import (
 	"github.com/lthibault/log"
 
 	casm "github.com/wetware/casm/pkg"
-	api "github.com/wetware/ww/internal/api/pubsub"
+	api "github.com/wetware/ww/api/pubsub"
 )
 
 // Topic is the handle for a pubsub topic.  It is used to publish to

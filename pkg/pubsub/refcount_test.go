@@ -13,7 +13,7 @@ import (
 	logtest "github.com/lthibault/log/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	api "github.com/wetware/ww/internal/api/pubsub"
+	api "github.com/wetware/ww/api/pubsub"
 )
 
 func TestTopicManager(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"capnproto.org/go/capnp/v3"
-	api "github.com/wetware/ww/internal/api/channel"
+	api "github.com/wetware/ww/api/channel"
 )
 
 var _ ChanServer = (*SyncChan)(nil)

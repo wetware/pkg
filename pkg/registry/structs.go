@@ -7,7 +7,7 @@ import (
 	"capnproto.org/go/capnp/v3"
 	"github.com/libp2p/go-libp2p-core/record"
 	ma "github.com/multiformats/go-multiaddr"
-	api "github.com/wetware/ww/internal/api/registry"
+	api "github.com/wetware/ww/api/registry"
 )
 
 // TODO:  register this once stable.
