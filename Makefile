@@ -16,31 +16,31 @@ capnp: capnp-anchor capnp-pubsub capnp-cluster capnp-channel capnp-process capnp
 
 capnp-anchor:
 	@mkdir -p api/anchor
-	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/v3/std -ogo:api/anchor --src-prefix=api api/anchor.capnp
+	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/std -ogo:api/anchor --src-prefix=api api/anchor.capnp
 
 capnp-pubsub:
 	@mkdir -p api/pubsub
-	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/v3/std -ogo:api/pubsub --src-prefix=api api/pubsub.capnp
+	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/std -ogo:api/pubsub --src-prefix=api api/pubsub.capnp
 
 capnp-cluster:
 	@mkdir -p api/cluster
-	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/v3/std -ogo:api/cluster --src-prefix=api api/cluster.capnp
+	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/std -ogo:api/cluster --src-prefix=api api/cluster.capnp
 
 capnp-channel:
 	@mkdir -p api/channel
-	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/v3/std -ogo:api/channel --src-prefix=api api/channel.capnp
+	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/std -ogo:api/channel --src-prefix=api api/channel.capnp
 
 capnp-process:
 	@mkdir -p api/process
-	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/v3/std -ogo:api/process --src-prefix=api api/process.capnp
+	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/std -ogo:api/process --src-prefix=api api/process.capnp
 
 capnp-registry:
 	@mkdir -p api/registry
-	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/v3/std -ogo:api/registry --src-prefix=api api/registry.capnp
+	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/std -ogo:api/registry --src-prefix=api api/registry.capnp
 
 capnp-bitswap:
 	@mkdir -p api/bitswap
-	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/v3/std -ogo:api/bitswap --src-prefix=api api/bitswap.capnp
+	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/std -ogo:api/bitswap --src-prefix=api api/bitswap.capnp
 
 clean-capnp: clean-capnp-anchor clean-capnp-pubsub clean-capnp-cluster clean-capnp-channel clean-capnp-process clean-capnp-registry clean-capnp-bitswap
 
