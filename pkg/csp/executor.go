@@ -12,7 +12,7 @@ import (
 	"lukechampine.com/blake3"
 
 	wasm "github.com/tetratelabs/wazero/api"
-	api "github.com/wetware/ww/internal/api/process"
+	api "github.com/wetware/ww/api/process"
 	"github.com/wetware/ww/pkg/csp/proc"
 )
 

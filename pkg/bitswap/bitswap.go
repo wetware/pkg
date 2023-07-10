@@ -9,7 +9,7 @@ import (
 	"capnproto.org/go/capnp/v3"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	api "github.com/wetware/ww/internal/api/bitswap"
+	api "github.com/wetware/ww/api/bitswap"
 )
 
 // Exchange is the local peer's BitSwap exchange.  It is wrapped by Server

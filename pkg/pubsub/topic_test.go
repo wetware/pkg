@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	api "github.com/wetware/ww/internal/api/pubsub"
+	api "github.com/wetware/ww/api/pubsub"
 	mock_pubsub "github.com/wetware/ww/internal/mock/pkg/pubsub"
 	"github.com/wetware/ww/pkg/pubsub"
 )

@@ -5,7 +5,7 @@ package pubsub
 import (
 	"context"
 
-	api "github.com/wetware/ww/internal/api/pubsub"
+	api "github.com/wetware/ww/api/pubsub"
 )
 
 type (

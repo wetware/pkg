@@ -5,7 +5,7 @@ import (
 	"sync/atomic"
 
 	"capnproto.org/go/capnp/v3"
-	api "github.com/wetware/ww/internal/api/anchor"
+	api "github.com/wetware/ww/api/anchor"
 )
 
 type Node struct {
