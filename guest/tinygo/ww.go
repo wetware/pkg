@@ -7,7 +7,7 @@ import (
 
 	"capnproto.org/go/capnp/v3/rpc"
 
-	"github.com/wetware/ww/internal/api/cluster"
+	api "github.com/wetware/ww/api/cluster"
 
 	"github.com/stealthrocket/wazergo/types"
 )
@@ -16,8 +16,8 @@ var conn = rpc.NewConn(rpc.NewStreamTransport(hostPipe{}), nil)
 
 // Bootstrap returns the host capability exported by the Wetware
 // runtime.
-func Bootstrap(ctx context.Context) cluster.Host {
-	return cluster.Host(conn.Bootstrap(ctx))
+func Bootstrap(ctx context.Context) api.Host {
+	return api.Host(conn.Bootstrap(ctx))
 }
 
 type hostPipe struct{}
