@@ -3,7 +3,7 @@ using Go = import "/go.capnp";
 @0x9a51e53177277763;
 
 $Go.package("process");
-$Go.import("github.com/wetware/ww/internal/api/process");
+$Go.import("github.com/wetware/ww/api/process");
 
 
 interface Executor {

@@ -15,7 +15,7 @@ import (
 	inproc "github.com/lthibault/go-libp2p-inproc-transport"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/require"
-	api "github.com/wetware/ww/internal/api/registry"
+	api "github.com/wetware/ww/api/registry"
 	pscap "github.com/wetware/ww/pkg/pubsub"
 	service "github.com/wetware/ww/pkg/registry"
 )

@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"capnproto.org/go/capnp/v3"
-	"github.com/wetware/ww/internal/api/channel"
-	api "github.com/wetware/ww/internal/api/registry"
+	"github.com/wetware/ww/api/channel"
+	api "github.com/wetware/ww/api/registry"
 	"github.com/wetware/ww/pkg/pubsub"
 )
 

@@ -8,7 +8,7 @@ import (
 	"github.com/tetratelabs/wazero/sys"
 
 	casm "github.com/wetware/casm/pkg"
-	api "github.com/wetware/ww/internal/api/process"
+	api "github.com/wetware/ww/api/process"
 )
 
 var (

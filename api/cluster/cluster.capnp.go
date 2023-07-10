@@ -9,10 +9,10 @@ import (
 	schemas "capnproto.org/go/capnp/v3/schemas"
 	server "capnproto.org/go/capnp/v3/server"
 	context "context"
-	anchor "github.com/wetware/ww/internal/api/anchor"
-	process "github.com/wetware/ww/internal/api/process"
-	pubsub "github.com/wetware/ww/internal/api/pubsub"
-	registry "github.com/wetware/ww/internal/api/registry"
+	anchor "github.com/wetware/ww/api/anchor"
+	process "github.com/wetware/ww/api/process"
+	pubsub "github.com/wetware/ww/api/pubsub"
+	registry "github.com/wetware/ww/api/registry"
 )
 
 type Host capnp.Client

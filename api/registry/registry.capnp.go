@@ -9,8 +9,8 @@ import (
 	schemas "capnproto.org/go/capnp/v3/schemas"
 	server "capnproto.org/go/capnp/v3/server"
 	context "context"
-	channel "github.com/wetware/ww/internal/api/channel"
-	pubsub "github.com/wetware/ww/internal/api/pubsub"
+	channel "github.com/wetware/ww/api/channel"
+	pubsub "github.com/wetware/ww/api/pubsub"
 	strconv "strconv"
 )
 

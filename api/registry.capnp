@@ -3,7 +3,7 @@ using Go = import "/go.capnp";
 @0xfcba4f486a351ac3;
 
 $Go.package("registry");
-$Go.import("github.com/wetware/ww/internal/api/registry");
+$Go.import("github.com/wetware/ww/api/registry");
 
 
 using Envelope = Data;
