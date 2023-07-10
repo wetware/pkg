@@ -8,7 +8,7 @@ import (
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 
-	api "github.com/wetware/ww/internal/api/process"
+	api "github.com/wetware/ww/api/process"
 	"github.com/wetware/ww/pkg/csp"
 )
 

@@ -11,7 +11,7 @@ import (
 	"syscall"
 
 	"capnproto.org/go/capnp/v3/rpc"
-	"github.com/wetware/ww/internal/api/process"
+	"github.com/wetware/ww/api/process"
 )
 
 //go:embed sub/main.wasm

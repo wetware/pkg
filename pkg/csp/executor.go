@@ -17,7 +17,7 @@ import (
 
 	wasm "github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/experimental/sock"
-	api "github.com/wetware/ww/internal/api/process"
+	api "github.com/wetware/ww/api/process"
 )
 
 // ByteCode is a representation of arbitrary executable data.

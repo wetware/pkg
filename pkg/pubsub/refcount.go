@@ -7,7 +7,7 @@ import (
 	capnp "capnproto.org/go/capnp/v3"
 	"github.com/lthibault/log"
 	pubsub "github.com/mikelsr/go-libp2p-pubsub"
-	api "github.com/wetware/ww/internal/api/pubsub"
+	api "github.com/wetware/ww/api/pubsub"
 )
 
 // topicManager is responsible for refcounting *pubsub.Topic instances.
