@@ -252,9 +252,21 @@ func (lx fxLogger) LogEvent(ev fxevent.Event) {
 			WithField("dur", event.Runtime)
 
 		if event.Err == nil {
-			lx.Trace("exeuted start hook")
+			lx.Trace("executed start hook")
 		} else {
 			lx.Error("start hook failed")
+		}
+
+	case *fxevent.Run:
+		lx.Logger = lx.MaybeError(event.Err).
+			WithField("name", event.Name).
+			WithField("module_name", event.ModuleName).
+			WithField("kind", event.Kind)
+
+		if event.Err == nil {
+			lx.Trace("run ok")
+		} else {
+			lx.Error("run failed")
 		}
 
 	default:
