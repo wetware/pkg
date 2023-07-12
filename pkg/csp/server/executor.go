@@ -166,7 +166,7 @@ func (r Server) mkmod(ctx context.Context, bytecode []byte, caps capnp.PointerLi
 		conn := rpc.NewConn(rpc.NewStreamTransport(tcpConn), &rpc.Options{
 			BootstrapClient: inboxClient,
 			ErrorReporter: errLogger{
-				Logger: log.New().WithField("conn", "host"),
+				Logger: log.New(log.WithLevel(log.ErrorLevel)).WithField("conn", "host"),
 			},
 		})
 		defer conn.Close()
