@@ -62,8 +62,10 @@ func (r Server) Exec(ctx context.Context, call api.Executor_exec) error {
 	// If call.Caps will be used if non-null, otherwise an empty list
 	// will be used instead.
 	var caps capnp.PointerList
+	// FIXME there is a difference between both
 	if call.Args().HasCaps() {
 		caps, err = call.Args().Caps()
+		// FIXME caps are still good here
 		if err != nil {
 			return err
 		}
@@ -145,6 +147,21 @@ func (r Server) mkmod(ctx context.Context, bytecode []byte, caps capnp.PointerLi
 		return nil, err
 	}
 
+	var inbox anyIbox
+	// The process is provided its own executor by default.
+	if caps.Len() <= 0 {
+		executor := capnp.Client(api.Executor_ServerToClient(r))
+		inbox = newDecodedInbox(executor)
+	} else { // Otherwise it will pass the received capabilities.
+		// FIXME its broken here
+		inbox, err = newEncodedInbox(caps)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	inboxClient := capnp.Client(api.Inbox_ServerToClient(inbox))
+
 	go func() {
 		tcpConn, err := dialWithRetries(addr)
 		if err != nil {
@@ -152,16 +169,6 @@ func (r Server) mkmod(ctx context.Context, bytecode []byte, caps capnp.PointerLi
 		}
 		defer tcpConn.Close()
 
-		var inbox anyIbox
-		// The process is provided its own executor by default.
-		if caps.Len() <= 0 {
-			executor := capnp.Client(api.Executor_ServerToClient(r))
-			inbox = newDecodedInbox(executor)
-		} else { // Otherwise it will pass the received capabilities.
-			inbox = newEncodedInbox(caps)
-		}
-
-		inboxClient := capnp.Client(api.Inbox_ServerToClient(inbox))
 		defer inboxClient.Release()
 		conn := rpc.NewConn(rpc.NewStreamTransport(tcpConn), &rpc.Options{
 			BootstrapClient: inboxClient,
@@ -178,7 +185,7 @@ func (r Server) mkmod(ctx context.Context, bytecode []byte, caps capnp.PointerLi
 		}
 	}()
 
-	return mod, nil
+	return mod, nil // FIXME exiting here is releasing caps
 }
 
 func (r Server) spawn(fn wasm.Function) (<-chan execResult, context.CancelFunc) {

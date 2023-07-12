@@ -29,8 +29,8 @@ func (i Inbox) Open(ctx context.Context) ([]capnp.Client, error) {
 	return ListToClients(list)
 }
 
-// ClientsToList encodes a list of capnp.Clients into a capnp.PointerList
-func ClientsToList(caps ...capnp.Client) (capnp.PointerList, error) {
+// ClientsToNewList encodes a list of capnp.Clients into a new capnp.PointerList
+func ClientsToNewList(caps ...capnp.Client) (capnp.PointerList, error) {
 	_, seg, err := capnp.NewMessage(capnp.SingleSegment(nil))
 	if err != nil {
 		return capnp.PointerList{}, err
@@ -39,14 +39,25 @@ func ClientsToList(caps ...capnp.Client) (capnp.PointerList, error) {
 	if err != nil {
 		return capnp.PointerList{}, err
 	}
+
+	return l, ClientsToExistingList(&l, caps...)
+}
+
+// ClientsToExistingList encodes a list of capnp.Clients into an existing capnp.PointerList
+func ClientsToExistingList(pl *capnp.PointerList, caps ...capnp.Client) error {
+	l := *pl
 	for i, cap := range caps {
+		cap = cap.AddRef() // TODO mikel is this necessary?
+		if !cap.IsValid() {
+			return errors.New("invalid client when converting to list")
+		}
 		_, iSeg, err := capnp.NewMessage(capnp.SingleSegment(nil))
 		if err != nil {
-			return capnp.PointerList{}, err
+			return err
 		}
-		l.Set(i, cap.EncodeAsPtr(iSeg))
+		l.Set(i, cap.AddRef().EncodeAsPtr(iSeg))
 	}
-	return l, nil
+	return nil
 }
 
 // ListToClients decodes a capnp.PointerList to a list of capnp.Clients

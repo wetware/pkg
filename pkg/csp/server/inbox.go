@@ -29,10 +29,31 @@ func newDecodedInbox(content ...capnp.Client) decodedInbox {
 	}
 }
 
-func newEncodedInbox(content capnp.PointerList) encodedInbox {
-	return encodedInbox{
-		Content: content,
+func newEncodedInbox(content capnp.PointerList) (encodedInbox, error) {
+	// the content needs to be copied because the original capability might be
+	// released before the contents are used.
+	_, seg, _ := capnp.NewMessage(capnp.SingleSegment(nil))
+	pl, err := capnp.NewPointerList(seg, int32(content.Len()))
+	if err != nil {
+		return encodedInbox{}, err
 	}
+
+	for i := 0; i < content.Len(); i++ {
+		ptr, err := content.At(i)
+		if err != nil {
+			return encodedInbox{}, err
+		}
+		_, pSeg, _ := capnp.NewMessage(capnp.SingleSegment(nil))
+		var client capnp.Client
+		client = client.DecodeFromPtr(ptr)
+		if err = pl.Set(i, client.EncodeAsPtr(pSeg)); err != nil {
+			return encodedInbox{}, err
+		}
+	}
+
+	return encodedInbox{
+		Content: pl,
+	}, nil
 }
 
 func (di decodedInbox) Open(ctx context.Context, call api.Inbox_open) error {
@@ -64,5 +85,6 @@ func (ei encodedInbox) Open(ctx context.Context, call api.Inbox_open) error {
 	if err != nil {
 		return err
 	}
+	// FIXME mikel the error is here
 	return res.SetContent(ei.Content)
 }
