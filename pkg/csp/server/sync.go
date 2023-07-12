@@ -1,4 +1,4 @@
-package csp
+package server
 
 import (
 	"container/list"

@@ -19,7 +19,7 @@ import (
 	api "github.com/wetware/ww/api/process"
 	tools_api "github.com/wetware/ww/experiments/api/tools"
 	"github.com/wetware/ww/experiments/pkg/tools"
-	"github.com/wetware/ww/pkg/csp"
+	csp "github.com/wetware/ww/pkg/csp/client"
 )
 
 // ByteCode is a representation of arbitrary executable data.

@@ -1,11 +1,11 @@
-package csp_test
+package server_test
 
 import (
 	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/wetware/ww/pkg/csp"
+	csp "github.com/wetware/ww/pkg/csp/server"
 	"golang.org/x/sync/errgroup"
 )
 
