@@ -46,19 +46,16 @@ func (ex Executor) Release() {
 	capnp.Client(ex).Release()
 }
 
-func (ex Executor) Exec(ctx context.Context, src []byte) (Proc, capnp.ReleaseFunc) {
+func (ex Executor) ExecWithCap(ctx context.Context, src []byte, cap *capnp.Client) (Proc, capnp.ReleaseFunc) {
 	f, release := api.Executor(ex).Exec(ctx, func(ps api.Executor_exec_Params) error {
-		return ps.SetBytecode(src)
-	})
-	return Proc(f.Process()), release
-}
-
-func (ex Executor) ExecWithCap(ctx context.Context, src []byte, cap capnp.Client) (Proc, capnp.ReleaseFunc) {
-	f, release := api.Executor(ex).ExecWithCap(ctx, func(ps api.Executor_execWithCap_Params) error {
 		if err := ps.SetBytecode(src); err != nil {
 			return err
 		}
-		return ps.SetCap(cap)
+		if cap == nil {
+			return nil
+		}
+		c := *cap
+		return ps.SetCap(c.AddRef())
 	})
 	return Proc(f.Process()), release
 }
@@ -85,7 +82,13 @@ func (r Server) Exec(ctx context.Context, call api.Executor_exec) error {
 		return err
 	}
 
-	p, err := r.mkproc(ctx, bc, nil)
+	var cap *capnp.Client
+	if call.Args().HasCap() {
+		c := call.Args().Cap().AddRef()
+		cap = &c
+	}
+
+	p, err := r.mkproc(ctx, bc, cap)
 	if err != nil {
 		return err
 	}
@@ -93,25 +96,9 @@ func (r Server) Exec(ctx context.Context, call api.Executor_exec) error {
 	return res.SetProcess(api.Process_ServerToClient(p))
 }
 
-func (r Server) ExecWithCap(ctx context.Context, call api.Executor_execWithCap) error {
-	res, err := call.AllocResults()
-	if err != nil {
-		return err
-	}
-
-	bc, err := call.Args().Bytecode()
-	if err != nil {
-		return err
-	}
-
-	cap := call.Args().Cap().AddRef()
-
-	p, err := r.mkproc(ctx, bc, &cap)
-	if err != nil {
-		return err
-	}
-
-	return res.SetProcess(api.Process_ServerToClient(p))
+func (r Server) ExecFromCache(ctx context.Context, call api.Executor_execFromCache) error {
+	// TODO mikel
+	return nil
 }
 
 func (r Server) mkproc(ctx context.Context, bytecode []byte, cap *capnp.Client) (*process, error) {
@@ -176,7 +163,6 @@ func (r Server) mkmod(ctx context.Context, bytecode []byte, cap *capnp.Client) (
 		defer tcpConn.Close()
 
 		var client capnp.Client
-		// TODO we are always passing a capability, change this so it is not required
 		if cap == nil {
 			client = capnp.Client(api.Executor_ServerToClient(r))
 		} else {

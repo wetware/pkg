@@ -69,29 +69,7 @@ func doRpc() error {
 	<-of.Done()
 	content := of.Content()
 	executor := process.Executor(content)
-	/*
-		msg := "Hello"
-		echo, release := executor.Echo(context.TODO(), func(e process.Executor_echo_Params) error {
-			return e.SetA(msg)
-		})
-		defer release()
-		<-echo.Done()
-		result, err := echo.Struct()
-		if err != nil {
-			return err
-		}
-		b, err := result.B()
-		if err != nil {
-			return err
-		}
-		if b != msg {
-			return fmt.Errorf("echo: expected '%s' got '%s'", msg, b)
-		} else {
-			fmt.Println("echo: matched")
-		}
-	*/
 
-	/* */
 	exec, release := executor.Exec(context.TODO(), func(e process.Executor_exec_Params) error {
 		return e.SetBytecode(subProcessBC)
 	})
