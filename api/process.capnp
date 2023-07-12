@@ -5,7 +5,7 @@ using Go = import "/go.capnp";
 $Go.package("process");
 $Go.import("github.com/wetware/ww/api/process");
 
-using Tools = "/experiments/tools.capnp";
+using Tools = import "/experiments/tools.capnp";
 
 
 interface Executor {
@@ -17,11 +17,11 @@ interface Executor {
     # be available at the process inbox.
     #
     # The Process capability is associated to the created process.
-    execFromCache @2 (md5sum :Data, cap :Capability) -> (process :Process);
+    execFromCache @1 (md5sum :Data, cap :Capability) -> (process :Process);
     # Same as Exec, but the bytecode is directly from the BytecodeRegistry.
     # Provides a significant performance improvement for medium to large
     # WASM streams.
-    tools @2 () -> (tools Tools.Tools);
+    tools @2 () -> (tools :Tools.Tools);
     # Tools makes the experimental tools accessibles to anyone with access to the
     # Executor capability.
 }
