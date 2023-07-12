@@ -2,8 +2,10 @@ package server
 
 import (
 	"context"
+	"crypto/md5"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"time"
@@ -39,7 +41,8 @@ func (b ByteCode) Hash() [32]byte {
 // Server is the main Executor implementation.  It spawns WebAssembly-
 // based processes.  The zero-value Server panics.
 type Server struct {
-	Runtime wazero.Runtime
+	Runtime    wazero.Runtime
+	BcRegistry RegistryServer
 }
 
 // Executor provides the Executor capability.
@@ -56,6 +59,12 @@ func (r Server) Exec(ctx context.Context, call api.Executor_exec) error {
 	bc, err := call.Args().Bytecode()
 	if err != nil {
 		return err
+	}
+
+	// Cache new bytecodes by registering them every time they are received.
+	md5sum := md5.Sum(bc)
+	if !r.BcRegistry.has(md5sum[:]) {
+		r.BcRegistry.put(bc)
 	}
 
 	// Prepare the capability list that will be passed downstream.
@@ -87,8 +96,36 @@ func (r Server) Exec(ctx context.Context, call api.Executor_exec) error {
 }
 
 func (r Server) ExecFromCache(ctx context.Context, call api.Executor_execFromCache) error {
-	// TODO mikel
-	return nil
+	res, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	caps, err := call.Args().Caps()
+	if err != nil {
+		return err
+	}
+
+	md5sum, err := call.Args().Md5sum()
+	if err != nil {
+		return err
+	}
+
+	if len(md5sum) != md5.Size {
+		return fmt.Errorf("unexpected md5sum size, got %d expected %d", len(md5sum), md5.Size)
+	}
+
+	bc := r.BcRegistry.get(md5sum)
+	if bc == nil {
+		return fmt.Errorf("bytecode for md5 sum %s not found", md5sum)
+	}
+
+	p, err := r.mkproc(ctx, bc, caps)
+	if err != nil {
+		return err
+	}
+
+	return res.SetProcess(api.Process_ServerToClient(p))
 }
 
 func (r Server) mkproc(ctx context.Context, bytecode []byte, caps capnp.PointerList) (*process, error) {
@@ -243,6 +280,14 @@ func dialWithRetries(addr *net.TCPAddr) (net.Conn, error) {
 	}
 
 	return conn, err
+}
+
+func (r Server) Registry(ctx context.Context, call api.Executor_registry) error {
+	res, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+	return res.SetRegistry(api.BytecodeRegistry_ServerToClient(r.BcRegistry))
 }
 
 func (r Server) Tools(ctx context.Context, call api.Executor_tools) error {

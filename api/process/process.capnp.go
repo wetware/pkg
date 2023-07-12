@@ -57,12 +57,32 @@ func (c Executor) ExecFromCache(ctx context.Context, params func(Executor_execFr
 
 }
 
-func (c Executor) Tools(ctx context.Context, params func(Executor_tools_Params) error) (Executor_tools_Results_Future, capnp.ReleaseFunc) {
+func (c Executor) Registry(ctx context.Context, params func(Executor_registry_Params) error) (Executor_registry_Results_Future, capnp.ReleaseFunc) {
 
 	s := capnp.Send{
 		Method: capnp.Method{
 			InterfaceID:   0xaf2e5ebaa58175d2,
 			MethodID:      2,
+			InterfaceName: "process.capnp:Executor",
+			MethodName:    "registry",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Executor_registry_Params(s)) }
+	}
+
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return Executor_registry_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c Executor) Tools(ctx context.Context, params func(Executor_tools_Params) error) (Executor_tools_Results_Future, capnp.ReleaseFunc) {
+
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0xaf2e5ebaa58175d2,
+			MethodID:      3,
 			InterfaceName: "process.capnp:Executor",
 			MethodName:    "tools",
 		},
@@ -154,6 +174,8 @@ type Executor_Server interface {
 
 	ExecFromCache(context.Context, Executor_execFromCache) error
 
+	Registry(context.Context, Executor_registry) error
+
 	Tools(context.Context, Executor_tools) error
 }
 
@@ -173,7 +195,7 @@ func Executor_ServerToClient(s Executor_Server) Executor {
 // This can be used to create a more complicated Server.
 func Executor_Methods(methods []server.Method, s Executor_Server) []server.Method {
 	if cap(methods) == 0 {
-		methods = make([]server.Method, 0, 3)
+		methods = make([]server.Method, 0, 4)
 	}
 
 	methods = append(methods, server.Method{
@@ -204,6 +226,18 @@ func Executor_Methods(methods []server.Method, s Executor_Server) []server.Metho
 		Method: capnp.Method{
 			InterfaceID:   0xaf2e5ebaa58175d2,
 			MethodID:      2,
+			InterfaceName: "process.capnp:Executor",
+			MethodName:    "registry",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Registry(ctx, Executor_registry{call})
+		},
+	})
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xaf2e5ebaa58175d2,
+			MethodID:      3,
 			InterfaceName: "process.capnp:Executor",
 			MethodName:    "tools",
 		},
@@ -247,6 +281,23 @@ func (c Executor_execFromCache) Args() Executor_execFromCache_Params {
 func (c Executor_execFromCache) AllocResults() (Executor_execFromCache_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
 	return Executor_execFromCache_Results(r), err
+}
+
+// Executor_registry holds the state for a server call to Executor.registry.
+// See server.Call for documentation.
+type Executor_registry struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c Executor_registry) Args() Executor_registry_Params {
+	return Executor_registry_Params(c.Call.Args())
+}
+
+// AllocResults allocates the results struct.
+func (c Executor_registry) AllocResults() (Executor_registry_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Executor_registry_Results(r), err
 }
 
 // Executor_tools holds the state for a server call to Executor.tools.
@@ -521,22 +572,28 @@ func (s Executor_execFromCache_Params) SetMd5sum(v []byte) error {
 	return capnp.Struct(s).SetData(0, v)
 }
 
-func (s Executor_execFromCache_Params) Cap() capnp.Client {
-	p, _ := capnp.Struct(s).Ptr(1)
-	return p.Interface().Client()
+func (s Executor_execFromCache_Params) Caps() (capnp.PointerList, error) {
+	p, err := capnp.Struct(s).Ptr(1)
+	return capnp.PointerList(p.List()), err
 }
 
-func (s Executor_execFromCache_Params) HasCap() bool {
+func (s Executor_execFromCache_Params) HasCaps() bool {
 	return capnp.Struct(s).HasPtr(1)
 }
 
-func (s Executor_execFromCache_Params) SetCap(c capnp.Client) error {
-	if !c.IsValid() {
-		return capnp.Struct(s).SetPtr(1, capnp.Ptr{})
+func (s Executor_execFromCache_Params) SetCaps(v capnp.PointerList) error {
+	return capnp.Struct(s).SetPtr(1, v.ToPtr())
+}
+
+// NewCaps sets the caps field to a newly
+// allocated capnp.PointerList, preferring placement in s's segment.
+func (s Executor_execFromCache_Params) NewCaps(n int32) (capnp.PointerList, error) {
+	l, err := capnp.NewPointerList(capnp.Struct(s).Segment(), n)
+	if err != nil {
+		return capnp.PointerList{}, err
 	}
-	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(c))
-	return capnp.Struct(s).SetPtr(1, in.ToPtr())
+	err = capnp.Struct(s).SetPtr(1, l.ToPtr())
+	return l, err
 }
 
 // Executor_execFromCache_Params_List is a list of Executor_execFromCache_Params.
@@ -554,9 +611,6 @@ type Executor_execFromCache_Params_Future struct{ *capnp.Future }
 func (f Executor_execFromCache_Params_Future) Struct() (Executor_execFromCache_Params, error) {
 	p, err := f.Future.Ptr()
 	return Executor_execFromCache_Params(p.Struct()), err
-}
-func (p Executor_execFromCache_Params_Future) Cap() capnp.Client {
-	return p.Future.Field(1, nil).Client()
 }
 
 type Executor_execFromCache_Results capnp.Struct
@@ -644,10 +698,160 @@ func (p Executor_execFromCache_Results_Future) Process() Process {
 	return Process(p.Future.Field(0, nil).Client())
 }
 
+type Executor_registry_Params capnp.Struct
+
+// Executor_registry_Params_TypeID is the unique identifier for the type Executor_registry_Params.
+const Executor_registry_Params_TypeID = 0xe863235b8d7aeca3
+
+func NewExecutor_registry_Params(s *capnp.Segment) (Executor_registry_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Executor_registry_Params(st), err
+}
+
+func NewRootExecutor_registry_Params(s *capnp.Segment) (Executor_registry_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Executor_registry_Params(st), err
+}
+
+func ReadRootExecutor_registry_Params(msg *capnp.Message) (Executor_registry_Params, error) {
+	root, err := msg.Root()
+	return Executor_registry_Params(root.Struct()), err
+}
+
+func (s Executor_registry_Params) String() string {
+	str, _ := text.Marshal(0xe863235b8d7aeca3, capnp.Struct(s))
+	return str
+}
+
+func (s Executor_registry_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Executor_registry_Params) DecodeFromPtr(p capnp.Ptr) Executor_registry_Params {
+	return Executor_registry_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Executor_registry_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Executor_registry_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Executor_registry_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Executor_registry_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+
+// Executor_registry_Params_List is a list of Executor_registry_Params.
+type Executor_registry_Params_List = capnp.StructList[Executor_registry_Params]
+
+// NewExecutor_registry_Params creates a new list of Executor_registry_Params.
+func NewExecutor_registry_Params_List(s *capnp.Segment, sz int32) (Executor_registry_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	return capnp.StructList[Executor_registry_Params](l), err
+}
+
+// Executor_registry_Params_Future is a wrapper for a Executor_registry_Params promised by a client call.
+type Executor_registry_Params_Future struct{ *capnp.Future }
+
+func (f Executor_registry_Params_Future) Struct() (Executor_registry_Params, error) {
+	p, err := f.Future.Ptr()
+	return Executor_registry_Params(p.Struct()), err
+}
+
+type Executor_registry_Results capnp.Struct
+
+// Executor_registry_Results_TypeID is the unique identifier for the type Executor_registry_Results.
+const Executor_registry_Results_TypeID = 0xa20ce2af932c2730
+
+func NewExecutor_registry_Results(s *capnp.Segment) (Executor_registry_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Executor_registry_Results(st), err
+}
+
+func NewRootExecutor_registry_Results(s *capnp.Segment) (Executor_registry_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Executor_registry_Results(st), err
+}
+
+func ReadRootExecutor_registry_Results(msg *capnp.Message) (Executor_registry_Results, error) {
+	root, err := msg.Root()
+	return Executor_registry_Results(root.Struct()), err
+}
+
+func (s Executor_registry_Results) String() string {
+	str, _ := text.Marshal(0xa20ce2af932c2730, capnp.Struct(s))
+	return str
+}
+
+func (s Executor_registry_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Executor_registry_Results) DecodeFromPtr(p capnp.Ptr) Executor_registry_Results {
+	return Executor_registry_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Executor_registry_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Executor_registry_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Executor_registry_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Executor_registry_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Executor_registry_Results) Registry() BytecodeRegistry {
+	p, _ := capnp.Struct(s).Ptr(0)
+	return BytecodeRegistry(p.Interface().Client())
+}
+
+func (s Executor_registry_Results) HasRegistry() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Executor_registry_Results) SetRegistry(v BytecodeRegistry) error {
+	if !v.IsValid() {
+		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
+	}
+	seg := s.Segment()
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
+	return capnp.Struct(s).SetPtr(0, in.ToPtr())
+}
+
+// Executor_registry_Results_List is a list of Executor_registry_Results.
+type Executor_registry_Results_List = capnp.StructList[Executor_registry_Results]
+
+// NewExecutor_registry_Results creates a new list of Executor_registry_Results.
+func NewExecutor_registry_Results_List(s *capnp.Segment, sz int32) (Executor_registry_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[Executor_registry_Results](l), err
+}
+
+// Executor_registry_Results_Future is a wrapper for a Executor_registry_Results promised by a client call.
+type Executor_registry_Results_Future struct{ *capnp.Future }
+
+func (f Executor_registry_Results_Future) Struct() (Executor_registry_Results, error) {
+	p, err := f.Future.Ptr()
+	return Executor_registry_Results(p.Struct()), err
+}
+func (p Executor_registry_Results_Future) Registry() BytecodeRegistry {
+	return BytecodeRegistry(p.Future.Field(0, nil).Client())
+}
+
 type Executor_tools_Params capnp.Struct
 
 // Executor_tools_Params_TypeID is the unique identifier for the type Executor_tools_Params.
-const Executor_tools_Params_TypeID = 0xe863235b8d7aeca3
+const Executor_tools_Params_TypeID = 0xfb52998547c680f0
 
 func NewExecutor_tools_Params(s *capnp.Segment) (Executor_tools_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
@@ -665,7 +869,7 @@ func ReadRootExecutor_tools_Params(msg *capnp.Message) (Executor_tools_Params, e
 }
 
 func (s Executor_tools_Params) String() string {
-	str, _ := text.Marshal(0xe863235b8d7aeca3, capnp.Struct(s))
+	str, _ := text.Marshal(0xfb52998547c680f0, capnp.Struct(s))
 	return str
 }
 
@@ -712,7 +916,7 @@ func (f Executor_tools_Params_Future) Struct() (Executor_tools_Params, error) {
 type Executor_tools_Results capnp.Struct
 
 // Executor_tools_Results_TypeID is the unique identifier for the type Executor_tools_Results.
-const Executor_tools_Results_TypeID = 0xa20ce2af932c2730
+const Executor_tools_Results_TypeID = 0xd29163211833b55f
 
 func NewExecutor_tools_Results(s *capnp.Segment) (Executor_tools_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
@@ -730,7 +934,7 @@ func ReadRootExecutor_tools_Results(msg *capnp.Message) (Executor_tools_Results,
 }
 
 func (s Executor_tools_Results) String() string {
-	str, _ := text.Marshal(0xa20ce2af932c2730, capnp.Struct(s))
+	str, _ := text.Marshal(0xd29163211833b55f, capnp.Struct(s))
 	return str
 }
 
@@ -1901,75 +2105,821 @@ func (f Inbox_open_Results_Future) Struct() (Inbox_open_Results, error) {
 	return Inbox_open_Results(p.Struct()), err
 }
 
-const schema_9a51e53177277763 = "x\xda\xacT]h\x1cU\x14>\xe7\xce\xdf6f\xb3" +
-	"\xdc\x9d\x18M_\x82\xe9\x86\xda\xb5\xddf\x1b\x0bZ\x90" +
-	"\xddX\xe2\x9a\xbc\xb8\xe3\x8b\xa0(\x9d\x9d\x8e\xc9jv" +
-	"g\x9d\x99\x90\xad EQ\xeaK\x05\x8d\xc1\x1a\xa1\xb4" +
-	"\x95\xd2\x06\xaa-5/i\xd1\x17\x15\xf5A0U\x11" +
-	"\xf5\xa1\xb4E\x11\x91\xe2\xcf\x83X(#\xf7\xce\xdc\xdd" +
-	"\xcd\xee6O}\xbb\xc39\xf3}\xdf\xfd\xcew\xcf\xe8" +
-	"1\x92\x97\xb3\xf1'z\x80\x18uE\x0d\x92=\xef\xde" +
-	"\x97\\<~\x18\xa8\x8e\x00\x0aj\x00cT!\x08\xa8" +
-	"\xdf\xa9\xe4\x00\x83/\x1f\xc8\xf5,\x1c\xad\xbf\x01\xb4\x1f" +
-	"\x01dV\x9f`u9(\xed\xf8dy91\xb3\x14" +
-	"\xfe\xca*\xfa6\xe5\x06\xc8\xc1\xe8\xd6\xed\x0bg\xaf\xf6" +
-	"\x9e\x00zW\x033\xae\xa4\x9b\x98G\x0f\xfc\xd3\xf7\xe4" +
-	"\xdb\x9b\xd75\xecV\x9ec\x0d\xe3\xbc\xe1\xd2\xdc\xcb'" +
-	"/<\x939\x0b\xb4O\x0a\xac\xf9\xad\xf3\xd9_\x8c%" +
-	"\x00\xd4M\xe5\x82^V\x18\x95\xad|\xa1_a\xa7\x9b" +
-	"\xfb^}\xf3\xc8\xce#+\\_\x88\xf5\x95\xd2\xc3\xb0" +
-	"\xd68Vir\xa5p\xf9\xb3\xd5\xd5\x88\x8c\xb0\x06T" +
-	"K\xac!\xae\xce\x03\x06\xbf\xc6\xfe]\x1d;\x9d\xbe\xd8" +
-	"AVV\x97\xf4\x17TFVQ\x0b\xfa\";\x05\xef" +
-	"}s\xe9\xd4\xb9\x81\xc7.\xb6J\x7fI\x1dfh\xaf" +
-	"\xa9\x8cn\xe4\xda\xb3\x872\xaf\xdc\xfc\xb8\x03\xed\xa4z" +
-	"B\xff\x80\xa3-\xab\x05}\x8d\xa3]\x7f\xe7;\xef\xfc" +
-	"L\xf6s\xa0\x03\xc2\xdcUu33\xf7La4u" +
-	"l%\xfd\x03\x18\x03(J\xc7Y\x09\xf5e\xce3\xa6" +
-	"\x8e\x9c\xfe\xf6\xcf-?u\xf0|\xad\x9e\xd7\xbf\xe7<" +
-	"k\xea!\xfd\x1e\x8d\xf1\xbc\xff\xc7\x8b\x87\x9f\xdab\xfd" +
-	"\x16\xaa\xe6`\x9b\xb4a\xc6Sxz\xe7\xb9\xc1\x0fO" +
-	"]oQ\xf0\x97\x9ad\x95\xe4\xc2[\x8b\xbf?t\xc7" +
-	"\xdf\xad\xbe\xfd\x18*\xb8\xc2}\xbb\xf6\xd1\xcf\xb1\xabS" +
-	"\xe5\xffZ~5\xb4$\xc2\xebA\xcdu,\xdb\xf32" +
-	"\x92e\xd6\xaa\xb5=\xe3\xee\xb4\x971\xddi/\xf5\xb8" +
-	"\xed\xcd\xcd\xfa\x1e\x18\xb2$\x03\xc8\x08@\xe3i\x00#" +
-	"&\xa1\x91\"\x98`M\xd8\x07X\x94\x10{\x81\xb0c" +
-	"\x03L\x0d\xc1&\xab%\xa7\x9eqjv5U4]" +
-	"\xb3\xe2\x81hh'\xcb\x85\xf5v5\x13u\xdb\x9a\xf3" +
-	"\x1d7\xe3;\xce,\x97\x94`\x9aZ%\xed\x8a$\xf5" +
-	"\x13\x1c\xe2]H\x83\xec\xe5376\x0d\x0c\x7f\x0a\x80" +
-	"H[d\xc9m\xa8v\xdd\xb6\x1eq\x9d\xca^\xd3\x9a" +
-	"\xb1\xbb\xa2?\xdcD?\x18\xa1 m\xce\xb3\x0d\x1f\x05" +
-	"~.$(\"\x1a\xbd\x92\x02\xd0\x18\x10\x8aLR#" +
-	"\x0d\x84Nh\xd8\x0c=\x8a\xa7F\x1ft\x81\xd0\xac\x86" +
-	"\xa4\x11\x06\x14\xef\x94\x8e\xec\x02B\x07\xb5\x04\xd3\x9e\xc7" +
-	"@\\\x01\x86\xf8%\xf2\x91\x09y,\"\xb6\xbb\xd92" +
-	"\x0e1\\\xe8v\xd9\x14\xc1\x83\x96S\xf5\xed\xaa/\x06" +
-	"\x9c\x94%\xc0u#\xde\xd8\xcb\xa2\xe9jf\xc53b" +
-	"\x0d\xf4m{\x00\x8c\x94\x84\xc6(A\x8a\xd8\xcf^\x0a" +
-	"\xdd1\x0c`\xdc+\xa1q?\xc1\\e\xffno\xae" +
-	"\x82q \x18\x07\xd4,\xb3\x16\xd1&;-\x1ew\xa5" +
-	"i\x8f\xd9+s{\xc5zC\xb1\")e\xf6*\x1a" +
-	"OiW3\xd6\x09\xe7~h\xb7c\xf6\x93U\xad\xe4" +
-	"\xd4\x9b\xca\xc4J\xc6}\x10\xad>\xa1\x8c\xcd\xa1\xab\xb2" +
-	"b\xf4\xf9|yv6\x1c\x94\xe4{\xb7j\x9a7\xcb" +
-	"~\xa3\xa9U\xfd\x14\x80\xd1+\xa1q7a!)\xfb" +
-	"{\x9d\xfd6\x00`\x0c\x08\xc6:u\x17\xdd!\xfe\xcd" +
-	"\x94\xc7\xb8r\xb12P\xac7\x9ae\xcaGXd\xc5" +
-	"&B\xb1\x14\xe9 \xab\xc5\xb5\x04\xd3\x93\xc7\x04\xd3\xbe" +
-	"\xb1\xed\xe1\x8b\x8er\xb2\xa1\x05|5\xa0\xb7\xf1\x00Y" +
-	"\x93\xb4>pS\xcdl5\x02\x97e\x1bl\xbb\x84\xc6" +
-	"\xa3\x04\x83\xd2\x01\xdf\xb6\"[\xa2\xd4%,\xb3\xe6\xdd" +
-	":\xf4\xdd\xcc\x8f\xe4\xfd\x1f\x00\x00\xff\xffu\x8d\x1a:"
+type BytecodeRegistry capnp.Client
+
+// BytecodeRegistry_TypeID is the unique identifier for the type BytecodeRegistry.
+const BytecodeRegistry_TypeID = 0x990f02d816472ef8
+
+func (c BytecodeRegistry) Put(ctx context.Context, params func(BytecodeRegistry_put_Params) error) (BytecodeRegistry_put_Results_Future, capnp.ReleaseFunc) {
+
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0x990f02d816472ef8,
+			MethodID:      0,
+			InterfaceName: "process.capnp:BytecodeRegistry",
+			MethodName:    "put",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(BytecodeRegistry_put_Params(s)) }
+	}
+
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return BytecodeRegistry_put_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c BytecodeRegistry) Get(ctx context.Context, params func(BytecodeRegistry_get_Params) error) (BytecodeRegistry_get_Results_Future, capnp.ReleaseFunc) {
+
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0x990f02d816472ef8,
+			MethodID:      1,
+			InterfaceName: "process.capnp:BytecodeRegistry",
+			MethodName:    "get",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(BytecodeRegistry_get_Params(s)) }
+	}
+
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return BytecodeRegistry_get_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c BytecodeRegistry) Has(ctx context.Context, params func(BytecodeRegistry_has_Params) error) (BytecodeRegistry_has_Results_Future, capnp.ReleaseFunc) {
+
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0x990f02d816472ef8,
+			MethodID:      2,
+			InterfaceName: "process.capnp:BytecodeRegistry",
+			MethodName:    "has",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(BytecodeRegistry_has_Params(s)) }
+	}
+
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return BytecodeRegistry_has_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c BytecodeRegistry) WaitStreaming() error {
+	return capnp.Client(c).WaitStreaming()
+}
+
+// String returns a string that identifies this capability for debugging
+// purposes.  Its format should not be depended on: in particular, it
+// should not be used to compare clients.  Use IsSame to compare clients
+// for equality.
+func (c BytecodeRegistry) String() string {
+	return "BytecodeRegistry(" + capnp.Client(c).String() + ")"
+}
+
+// AddRef creates a new Client that refers to the same capability as c.
+// If c is nil or has resolved to null, then AddRef returns nil.
+func (c BytecodeRegistry) AddRef() BytecodeRegistry {
+	return BytecodeRegistry(capnp.Client(c).AddRef())
+}
+
+// Release releases a capability reference.  If this is the last
+// reference to the capability, then the underlying resources associated
+// with the capability will be released.
+//
+// Release will panic if c has already been released, but not if c is
+// nil or resolved to null.
+func (c BytecodeRegistry) Release() {
+	capnp.Client(c).Release()
+}
+
+// Resolve blocks until the capability is fully resolved or the Context
+// expires.
+func (c BytecodeRegistry) Resolve(ctx context.Context) error {
+	return capnp.Client(c).Resolve(ctx)
+}
+
+func (c BytecodeRegistry) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Client(c).EncodeAsPtr(seg)
+}
+
+func (BytecodeRegistry) DecodeFromPtr(p capnp.Ptr) BytecodeRegistry {
+	return BytecodeRegistry(capnp.Client{}.DecodeFromPtr(p))
+}
+
+// IsValid reports whether c is a valid reference to a capability.
+// A reference is invalid if it is nil, has resolved to null, or has
+// been released.
+func (c BytecodeRegistry) IsValid() bool {
+	return capnp.Client(c).IsValid()
+}
+
+// IsSame reports whether c and other refer to a capability created by the
+// same call to NewClient.  This can return false negatives if c or other
+// are not fully resolved: use Resolve if this is an issue.  If either
+// c or other are released, then IsSame panics.
+func (c BytecodeRegistry) IsSame(other BytecodeRegistry) bool {
+	return capnp.Client(c).IsSame(capnp.Client(other))
+}
+
+// Update the flowcontrol.FlowLimiter used to manage flow control for
+// this client. This affects all future calls, but not calls already
+// waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
+// which is also the default.
+func (c BytecodeRegistry) SetFlowLimiter(lim fc.FlowLimiter) {
+	capnp.Client(c).SetFlowLimiter(lim)
+}
+
+// Get the current flowcontrol.FlowLimiter used to manage flow control
+// for this client.
+func (c BytecodeRegistry) GetFlowLimiter() fc.FlowLimiter {
+	return capnp.Client(c).GetFlowLimiter()
+}
+
+// A BytecodeRegistry_Server is a BytecodeRegistry with a local implementation.
+type BytecodeRegistry_Server interface {
+	Put(context.Context, BytecodeRegistry_put) error
+
+	Get(context.Context, BytecodeRegistry_get) error
+
+	Has(context.Context, BytecodeRegistry_has) error
+}
+
+// BytecodeRegistry_NewServer creates a new Server from an implementation of BytecodeRegistry_Server.
+func BytecodeRegistry_NewServer(s BytecodeRegistry_Server) *server.Server {
+	c, _ := s.(server.Shutdowner)
+	return server.New(BytecodeRegistry_Methods(nil, s), s, c)
+}
+
+// BytecodeRegistry_ServerToClient creates a new Client from an implementation of BytecodeRegistry_Server.
+// The caller is responsible for calling Release on the returned Client.
+func BytecodeRegistry_ServerToClient(s BytecodeRegistry_Server) BytecodeRegistry {
+	return BytecodeRegistry(capnp.NewClient(BytecodeRegistry_NewServer(s)))
+}
+
+// BytecodeRegistry_Methods appends Methods to a slice that invoke the methods on s.
+// This can be used to create a more complicated Server.
+func BytecodeRegistry_Methods(methods []server.Method, s BytecodeRegistry_Server) []server.Method {
+	if cap(methods) == 0 {
+		methods = make([]server.Method, 0, 3)
+	}
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0x990f02d816472ef8,
+			MethodID:      0,
+			InterfaceName: "process.capnp:BytecodeRegistry",
+			MethodName:    "put",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Put(ctx, BytecodeRegistry_put{call})
+		},
+	})
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0x990f02d816472ef8,
+			MethodID:      1,
+			InterfaceName: "process.capnp:BytecodeRegistry",
+			MethodName:    "get",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Get(ctx, BytecodeRegistry_get{call})
+		},
+	})
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0x990f02d816472ef8,
+			MethodID:      2,
+			InterfaceName: "process.capnp:BytecodeRegistry",
+			MethodName:    "has",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Has(ctx, BytecodeRegistry_has{call})
+		},
+	})
+
+	return methods
+}
+
+// BytecodeRegistry_put holds the state for a server call to BytecodeRegistry.put.
+// See server.Call for documentation.
+type BytecodeRegistry_put struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c BytecodeRegistry_put) Args() BytecodeRegistry_put_Params {
+	return BytecodeRegistry_put_Params(c.Call.Args())
+}
+
+// AllocResults allocates the results struct.
+func (c BytecodeRegistry_put) AllocResults() (BytecodeRegistry_put_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return BytecodeRegistry_put_Results(r), err
+}
+
+// BytecodeRegistry_get holds the state for a server call to BytecodeRegistry.get.
+// See server.Call for documentation.
+type BytecodeRegistry_get struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c BytecodeRegistry_get) Args() BytecodeRegistry_get_Params {
+	return BytecodeRegistry_get_Params(c.Call.Args())
+}
+
+// AllocResults allocates the results struct.
+func (c BytecodeRegistry_get) AllocResults() (BytecodeRegistry_get_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return BytecodeRegistry_get_Results(r), err
+}
+
+// BytecodeRegistry_has holds the state for a server call to BytecodeRegistry.has.
+// See server.Call for documentation.
+type BytecodeRegistry_has struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c BytecodeRegistry_has) Args() BytecodeRegistry_has_Params {
+	return BytecodeRegistry_has_Params(c.Call.Args())
+}
+
+// AllocResults allocates the results struct.
+func (c BytecodeRegistry_has) AllocResults() (BytecodeRegistry_has_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 8, PointerCount: 0})
+	return BytecodeRegistry_has_Results(r), err
+}
+
+// BytecodeRegistry_List is a list of BytecodeRegistry.
+type BytecodeRegistry_List = capnp.CapList[BytecodeRegistry]
+
+// NewBytecodeRegistry creates a new list of BytecodeRegistry.
+func NewBytecodeRegistry_List(s *capnp.Segment, sz int32) (BytecodeRegistry_List, error) {
+	l, err := capnp.NewPointerList(s, sz)
+	return capnp.CapList[BytecodeRegistry](l), err
+}
+
+type BytecodeRegistry_put_Params capnp.Struct
+
+// BytecodeRegistry_put_Params_TypeID is the unique identifier for the type BytecodeRegistry_put_Params.
+const BytecodeRegistry_put_Params_TypeID = 0xcb1ece3fc10a2abe
+
+func NewBytecodeRegistry_put_Params(s *capnp.Segment) (BytecodeRegistry_put_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return BytecodeRegistry_put_Params(st), err
+}
+
+func NewRootBytecodeRegistry_put_Params(s *capnp.Segment) (BytecodeRegistry_put_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return BytecodeRegistry_put_Params(st), err
+}
+
+func ReadRootBytecodeRegistry_put_Params(msg *capnp.Message) (BytecodeRegistry_put_Params, error) {
+	root, err := msg.Root()
+	return BytecodeRegistry_put_Params(root.Struct()), err
+}
+
+func (s BytecodeRegistry_put_Params) String() string {
+	str, _ := text.Marshal(0xcb1ece3fc10a2abe, capnp.Struct(s))
+	return str
+}
+
+func (s BytecodeRegistry_put_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (BytecodeRegistry_put_Params) DecodeFromPtr(p capnp.Ptr) BytecodeRegistry_put_Params {
+	return BytecodeRegistry_put_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s BytecodeRegistry_put_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s BytecodeRegistry_put_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s BytecodeRegistry_put_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s BytecodeRegistry_put_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s BytecodeRegistry_put_Params) Bytecode() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return []byte(p.Data()), err
+}
+
+func (s BytecodeRegistry_put_Params) HasBytecode() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s BytecodeRegistry_put_Params) SetBytecode(v []byte) error {
+	return capnp.Struct(s).SetData(0, v)
+}
+
+// BytecodeRegistry_put_Params_List is a list of BytecodeRegistry_put_Params.
+type BytecodeRegistry_put_Params_List = capnp.StructList[BytecodeRegistry_put_Params]
+
+// NewBytecodeRegistry_put_Params creates a new list of BytecodeRegistry_put_Params.
+func NewBytecodeRegistry_put_Params_List(s *capnp.Segment, sz int32) (BytecodeRegistry_put_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[BytecodeRegistry_put_Params](l), err
+}
+
+// BytecodeRegistry_put_Params_Future is a wrapper for a BytecodeRegistry_put_Params promised by a client call.
+type BytecodeRegistry_put_Params_Future struct{ *capnp.Future }
+
+func (f BytecodeRegistry_put_Params_Future) Struct() (BytecodeRegistry_put_Params, error) {
+	p, err := f.Future.Ptr()
+	return BytecodeRegistry_put_Params(p.Struct()), err
+}
+
+type BytecodeRegistry_put_Results capnp.Struct
+
+// BytecodeRegistry_put_Results_TypeID is the unique identifier for the type BytecodeRegistry_put_Results.
+const BytecodeRegistry_put_Results_TypeID = 0x87256efbef4d0d6b
+
+func NewBytecodeRegistry_put_Results(s *capnp.Segment) (BytecodeRegistry_put_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return BytecodeRegistry_put_Results(st), err
+}
+
+func NewRootBytecodeRegistry_put_Results(s *capnp.Segment) (BytecodeRegistry_put_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return BytecodeRegistry_put_Results(st), err
+}
+
+func ReadRootBytecodeRegistry_put_Results(msg *capnp.Message) (BytecodeRegistry_put_Results, error) {
+	root, err := msg.Root()
+	return BytecodeRegistry_put_Results(root.Struct()), err
+}
+
+func (s BytecodeRegistry_put_Results) String() string {
+	str, _ := text.Marshal(0x87256efbef4d0d6b, capnp.Struct(s))
+	return str
+}
+
+func (s BytecodeRegistry_put_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (BytecodeRegistry_put_Results) DecodeFromPtr(p capnp.Ptr) BytecodeRegistry_put_Results {
+	return BytecodeRegistry_put_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s BytecodeRegistry_put_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s BytecodeRegistry_put_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s BytecodeRegistry_put_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s BytecodeRegistry_put_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s BytecodeRegistry_put_Results) Md5sum() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return []byte(p.Data()), err
+}
+
+func (s BytecodeRegistry_put_Results) HasMd5sum() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s BytecodeRegistry_put_Results) SetMd5sum(v []byte) error {
+	return capnp.Struct(s).SetData(0, v)
+}
+
+// BytecodeRegistry_put_Results_List is a list of BytecodeRegistry_put_Results.
+type BytecodeRegistry_put_Results_List = capnp.StructList[BytecodeRegistry_put_Results]
+
+// NewBytecodeRegistry_put_Results creates a new list of BytecodeRegistry_put_Results.
+func NewBytecodeRegistry_put_Results_List(s *capnp.Segment, sz int32) (BytecodeRegistry_put_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[BytecodeRegistry_put_Results](l), err
+}
+
+// BytecodeRegistry_put_Results_Future is a wrapper for a BytecodeRegistry_put_Results promised by a client call.
+type BytecodeRegistry_put_Results_Future struct{ *capnp.Future }
+
+func (f BytecodeRegistry_put_Results_Future) Struct() (BytecodeRegistry_put_Results, error) {
+	p, err := f.Future.Ptr()
+	return BytecodeRegistry_put_Results(p.Struct()), err
+}
+
+type BytecodeRegistry_get_Params capnp.Struct
+
+// BytecodeRegistry_get_Params_TypeID is the unique identifier for the type BytecodeRegistry_get_Params.
+const BytecodeRegistry_get_Params_TypeID = 0x8e8bba35397049d4
+
+func NewBytecodeRegistry_get_Params(s *capnp.Segment) (BytecodeRegistry_get_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return BytecodeRegistry_get_Params(st), err
+}
+
+func NewRootBytecodeRegistry_get_Params(s *capnp.Segment) (BytecodeRegistry_get_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return BytecodeRegistry_get_Params(st), err
+}
+
+func ReadRootBytecodeRegistry_get_Params(msg *capnp.Message) (BytecodeRegistry_get_Params, error) {
+	root, err := msg.Root()
+	return BytecodeRegistry_get_Params(root.Struct()), err
+}
+
+func (s BytecodeRegistry_get_Params) String() string {
+	str, _ := text.Marshal(0x8e8bba35397049d4, capnp.Struct(s))
+	return str
+}
+
+func (s BytecodeRegistry_get_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (BytecodeRegistry_get_Params) DecodeFromPtr(p capnp.Ptr) BytecodeRegistry_get_Params {
+	return BytecodeRegistry_get_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s BytecodeRegistry_get_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s BytecodeRegistry_get_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s BytecodeRegistry_get_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s BytecodeRegistry_get_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s BytecodeRegistry_get_Params) Md5sum() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return []byte(p.Data()), err
+}
+
+func (s BytecodeRegistry_get_Params) HasMd5sum() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s BytecodeRegistry_get_Params) SetMd5sum(v []byte) error {
+	return capnp.Struct(s).SetData(0, v)
+}
+
+// BytecodeRegistry_get_Params_List is a list of BytecodeRegistry_get_Params.
+type BytecodeRegistry_get_Params_List = capnp.StructList[BytecodeRegistry_get_Params]
+
+// NewBytecodeRegistry_get_Params creates a new list of BytecodeRegistry_get_Params.
+func NewBytecodeRegistry_get_Params_List(s *capnp.Segment, sz int32) (BytecodeRegistry_get_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[BytecodeRegistry_get_Params](l), err
+}
+
+// BytecodeRegistry_get_Params_Future is a wrapper for a BytecodeRegistry_get_Params promised by a client call.
+type BytecodeRegistry_get_Params_Future struct{ *capnp.Future }
+
+func (f BytecodeRegistry_get_Params_Future) Struct() (BytecodeRegistry_get_Params, error) {
+	p, err := f.Future.Ptr()
+	return BytecodeRegistry_get_Params(p.Struct()), err
+}
+
+type BytecodeRegistry_get_Results capnp.Struct
+
+// BytecodeRegistry_get_Results_TypeID is the unique identifier for the type BytecodeRegistry_get_Results.
+const BytecodeRegistry_get_Results_TypeID = 0x9a8b622632172e24
+
+func NewBytecodeRegistry_get_Results(s *capnp.Segment) (BytecodeRegistry_get_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return BytecodeRegistry_get_Results(st), err
+}
+
+func NewRootBytecodeRegistry_get_Results(s *capnp.Segment) (BytecodeRegistry_get_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return BytecodeRegistry_get_Results(st), err
+}
+
+func ReadRootBytecodeRegistry_get_Results(msg *capnp.Message) (BytecodeRegistry_get_Results, error) {
+	root, err := msg.Root()
+	return BytecodeRegistry_get_Results(root.Struct()), err
+}
+
+func (s BytecodeRegistry_get_Results) String() string {
+	str, _ := text.Marshal(0x9a8b622632172e24, capnp.Struct(s))
+	return str
+}
+
+func (s BytecodeRegistry_get_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (BytecodeRegistry_get_Results) DecodeFromPtr(p capnp.Ptr) BytecodeRegistry_get_Results {
+	return BytecodeRegistry_get_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s BytecodeRegistry_get_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s BytecodeRegistry_get_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s BytecodeRegistry_get_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s BytecodeRegistry_get_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s BytecodeRegistry_get_Results) Bytecode() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return []byte(p.Data()), err
+}
+
+func (s BytecodeRegistry_get_Results) HasBytecode() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s BytecodeRegistry_get_Results) SetBytecode(v []byte) error {
+	return capnp.Struct(s).SetData(0, v)
+}
+
+// BytecodeRegistry_get_Results_List is a list of BytecodeRegistry_get_Results.
+type BytecodeRegistry_get_Results_List = capnp.StructList[BytecodeRegistry_get_Results]
+
+// NewBytecodeRegistry_get_Results creates a new list of BytecodeRegistry_get_Results.
+func NewBytecodeRegistry_get_Results_List(s *capnp.Segment, sz int32) (BytecodeRegistry_get_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[BytecodeRegistry_get_Results](l), err
+}
+
+// BytecodeRegistry_get_Results_Future is a wrapper for a BytecodeRegistry_get_Results promised by a client call.
+type BytecodeRegistry_get_Results_Future struct{ *capnp.Future }
+
+func (f BytecodeRegistry_get_Results_Future) Struct() (BytecodeRegistry_get_Results, error) {
+	p, err := f.Future.Ptr()
+	return BytecodeRegistry_get_Results(p.Struct()), err
+}
+
+type BytecodeRegistry_has_Params capnp.Struct
+
+// BytecodeRegistry_has_Params_TypeID is the unique identifier for the type BytecodeRegistry_has_Params.
+const BytecodeRegistry_has_Params_TypeID = 0xd668a0b16a37bab6
+
+func NewBytecodeRegistry_has_Params(s *capnp.Segment) (BytecodeRegistry_has_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return BytecodeRegistry_has_Params(st), err
+}
+
+func NewRootBytecodeRegistry_has_Params(s *capnp.Segment) (BytecodeRegistry_has_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return BytecodeRegistry_has_Params(st), err
+}
+
+func ReadRootBytecodeRegistry_has_Params(msg *capnp.Message) (BytecodeRegistry_has_Params, error) {
+	root, err := msg.Root()
+	return BytecodeRegistry_has_Params(root.Struct()), err
+}
+
+func (s BytecodeRegistry_has_Params) String() string {
+	str, _ := text.Marshal(0xd668a0b16a37bab6, capnp.Struct(s))
+	return str
+}
+
+func (s BytecodeRegistry_has_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (BytecodeRegistry_has_Params) DecodeFromPtr(p capnp.Ptr) BytecodeRegistry_has_Params {
+	return BytecodeRegistry_has_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s BytecodeRegistry_has_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s BytecodeRegistry_has_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s BytecodeRegistry_has_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s BytecodeRegistry_has_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s BytecodeRegistry_has_Params) Md5sum() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return []byte(p.Data()), err
+}
+
+func (s BytecodeRegistry_has_Params) HasMd5sum() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s BytecodeRegistry_has_Params) SetMd5sum(v []byte) error {
+	return capnp.Struct(s).SetData(0, v)
+}
+
+// BytecodeRegistry_has_Params_List is a list of BytecodeRegistry_has_Params.
+type BytecodeRegistry_has_Params_List = capnp.StructList[BytecodeRegistry_has_Params]
+
+// NewBytecodeRegistry_has_Params creates a new list of BytecodeRegistry_has_Params.
+func NewBytecodeRegistry_has_Params_List(s *capnp.Segment, sz int32) (BytecodeRegistry_has_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[BytecodeRegistry_has_Params](l), err
+}
+
+// BytecodeRegistry_has_Params_Future is a wrapper for a BytecodeRegistry_has_Params promised by a client call.
+type BytecodeRegistry_has_Params_Future struct{ *capnp.Future }
+
+func (f BytecodeRegistry_has_Params_Future) Struct() (BytecodeRegistry_has_Params, error) {
+	p, err := f.Future.Ptr()
+	return BytecodeRegistry_has_Params(p.Struct()), err
+}
+
+type BytecodeRegistry_has_Results capnp.Struct
+
+// BytecodeRegistry_has_Results_TypeID is the unique identifier for the type BytecodeRegistry_has_Results.
+const BytecodeRegistry_has_Results_TypeID = 0xfb6429d901491013
+
+func NewBytecodeRegistry_has_Results(s *capnp.Segment) (BytecodeRegistry_has_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 0})
+	return BytecodeRegistry_has_Results(st), err
+}
+
+func NewRootBytecodeRegistry_has_Results(s *capnp.Segment) (BytecodeRegistry_has_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 0})
+	return BytecodeRegistry_has_Results(st), err
+}
+
+func ReadRootBytecodeRegistry_has_Results(msg *capnp.Message) (BytecodeRegistry_has_Results, error) {
+	root, err := msg.Root()
+	return BytecodeRegistry_has_Results(root.Struct()), err
+}
+
+func (s BytecodeRegistry_has_Results) String() string {
+	str, _ := text.Marshal(0xfb6429d901491013, capnp.Struct(s))
+	return str
+}
+
+func (s BytecodeRegistry_has_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (BytecodeRegistry_has_Results) DecodeFromPtr(p capnp.Ptr) BytecodeRegistry_has_Results {
+	return BytecodeRegistry_has_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s BytecodeRegistry_has_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s BytecodeRegistry_has_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s BytecodeRegistry_has_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s BytecodeRegistry_has_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s BytecodeRegistry_has_Results) Has() bool {
+	return capnp.Struct(s).Bit(0)
+}
+
+func (s BytecodeRegistry_has_Results) SetHas(v bool) {
+	capnp.Struct(s).SetBit(0, v)
+}
+
+// BytecodeRegistry_has_Results_List is a list of BytecodeRegistry_has_Results.
+type BytecodeRegistry_has_Results_List = capnp.StructList[BytecodeRegistry_has_Results]
+
+// NewBytecodeRegistry_has_Results creates a new list of BytecodeRegistry_has_Results.
+func NewBytecodeRegistry_has_Results_List(s *capnp.Segment, sz int32) (BytecodeRegistry_has_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 0}, sz)
+	return capnp.StructList[BytecodeRegistry_has_Results](l), err
+}
+
+// BytecodeRegistry_has_Results_Future is a wrapper for a BytecodeRegistry_has_Results promised by a client call.
+type BytecodeRegistry_has_Results_Future struct{ *capnp.Future }
+
+func (f BytecodeRegistry_has_Results_Future) Struct() (BytecodeRegistry_has_Results, error) {
+	p, err := f.Future.Ptr()
+	return BytecodeRegistry_has_Results(p.Struct()), err
+}
+
+const schema_9a51e53177277763 = "x\xda\xacVol\x13e\x18\x7f\x9e\xbbno{\xae" +
+	"\x94w\x07\x83\xf1\xc1\x85\xd1\x89TVV&QHH" +
+	"\x0b\x88uK\x8c\xbd}\x03\x83r-\xe7V\xd8\xda\xda" +
+	"k\xb3\xcd\xc4\xa0FB\x0c\x19\xc9D\"L%\x881" +
+	"@\x82\x82\x08&\x1b\x91\x84\xf8?Fc\x90(\xea\x07" +
+	"\x02\x04#F\x91\xe8\x07\x15Bj\x9e\xbb\xbe\xedm-" +
+	"\xdb4~Yny\x7f\xef\xef\xf9\xf3{~\xcf\xdb\xb6" +
+	"\xf3r\xc4\x15\xf2\xa6\xbd i\xaf\xd6\xd4\x16\xb6x\x1f" +
+	"\xfe\xedf\xaae;\xf0&\x04\xa8A\x06\xd0\xfeZ\xed" +
+	"z\x04T\x0f\xd7\x86\x01\x0b\xf5\xca\xde{\xeaw\xbf>" +
+	"\x04\\-\x01>\xab\x95\x08\xf0\x85\x05\xf8\xf4\xfe\xb0\xb2" +
+	"k\xdf\xc0N\xe0\xb3\x10\xc0E\xe7\xb7\xe8\xdcU8\xd7" +
+	"\x91Y\xbell\xc7N'\xf7\xc5\xda.\xba\xfa\xabu" +
+	"\xf5\xaf`\xb4\xe1\xbc\xe4\xdb\x0b|\x86\\H\xf4/\xec" +
+	"\x0f]\xd1F\x00P\xf5\xb2\x1bj#c\x00\xeal\xf6" +
+	"\x89:D_\x85x\xeb\xe9\xc3\x87}=#v\"\x14" +
+	"G\xcd\xb3\x1b\xe0*\xf8\x83s\x96\xde\x15\xdf1\xe2\x0c" +
+	"\xb3\x8eY%\x18\x8c\xc2\xb4-\\\xbc\xeb\xe8\xa5\xba\x03" +
+	"\xc0\xe7\x94\x00/\xb0\xd5\x04\x18\xb6\x00\xfb\x06\xff\x98\xb1" +
+	"\xfe\xa5y\xe3\x00'\xd9f\x02\x9c\xb1\x00g\xf3\xcf\xbe" +
+	"9\xf6X\xf0hE\xa2\x17\xd9\x98z\x95\xd2k\xbf\xc2" +
+	"\x18\xaaCn\x06pk\xe3\xf3\xc3{\x96\xec9a\xf5" +
+	"\xc3&\xcb\xbb\x15\"{\xdaMd\xf1\x8e\x13\xd1\x0b\x1f" +
+	"\x8e\x8e\x16\xa3I\x04x\xcb\x1d'\xc0\xa8\xbb\x1f\xb0\xf0" +
+	"\xa3\xfb\xcf\xd1\xf6C\x81S\x15\xd1Z<#j\xab\x87" +
+	"*_\xe4\x89\xaa\x1a}\x15^\xf9\xea\xec\xc1c\x0d\x8f" +
+	"\x9cr\xe6\xbe\xdc\xd3Ll\xab<\x14\xae\xe5\xf2\x13\xdb" +
+	"\x83\xcf\xddz\xbf\x82M\xf7\x1cP\x93\x16\x9b\xe1\x89\xaa" +
+	"C\x16\xdb\xb5\x97\xcf\x99\xc7{B\x1f\x01o\x10b\xe6" +
+	"=\xf3H\xcc\xd3\x01\xe5L\xf8\xcb;?wvy\x83" +
+	"\xc7\x123i\xc5y\xfcd\xfb\xdc\xf9\x89\xe1\xb3\xceD" +
+	"\x86<\x01\x02\xec\xb6\x00\xef\x8d\xdd\xb7\xf9\x9d\xfd=\xdf" +
+	"8\x19N\xda\x0cg,\xc0\x91h\x9b\x7f\xff\x89\xc0\xb7" +
+	"\xa05\xa0\x88~\x91\xa2\xa3z\xd5\x02\xb4\xd7\xb6\x1c\xfa" +
+	"\xfa\xfa\x82\xef+\xe7E9\xae\xceV\xa8\x14\xaelW" +
+	"u\xfa*\xbc\xf1\xcbSC\x8f.H\xfcd\xe7c\x91" +
+	"u(+\xa8\x94\xe8\x86%\xc7\x1a\xdf>x\xcdQd" +
+	"H\xa9\xa7\x93\xfa]/\xee\xfey\xe5\x1d\xbf;\xa5i" +
+	"T\xac\x0c\xe6+$\xcd\xe5w\x7fp_\xeaL\xfe\xed" +
+	"\xb8:l_\xbd\xfe\xcc\xc7\xd1m{\xbbn:\xc2\x0d" +
+	"*\xcdt\xa2\xce\xec\xc0\xef\x16m\xba\x09ZS\xa9," +
+	"]\xb1\xe6\xb3O\x09\xc3\xb6B&\x9bN\x18\xa6\x19t" +
+	"%\xf4L*\xb3b\xf5`\xceH\xa47\x19]Fw" +
+	"\xd2\xcce\x07\x83\x99|\xce\xdfe\x98\xf9^9gj" +
+	".\xd9\x05\xe0B\x00\xee]\x01\xa0\xb9e\xd4fI\x18" +
+	"\xee\xdb\xb4\xcc\xcc\xf7\xa1\x17$\xf4\x02\x96(e\x9br" +
+	"U\xb6\xdb\x0c\xea\xd9n\xd3\xe6\xc9\x99\xe0\xe4\x09\x14y" +
+	"\xfc\x12\xfa\x08\x843\x00c2b\x1dH\xf4Y\"s" +
+	"\xdbd\x1d\xa9xz \x98\xce\x18)\x7fL\xcf\xea}" +
+	"&\x08\xc0m\xf2\xef6r6\x12\xffm\xfa\xd2D\xc6" +
+	"\xb0M\x19C\xd4\xea\xe4\x1a\x80\xd2X\xa2Xd\\k" +
+	"\x06\x89\xafe\x88\xa5\xfd\x83bC\xf0\xe5t\xd6\xcaP" +
+	"*\x0d#\x0au\xf8|:\x9b\xcdX&\x9f\x8b \xeb" +
+	"6\xe8o\x8fnF0\x86\x15\x09\x95\xfb\x19\xb6[0" +
+	"\xa5\x86\xd4\x83j\x1av\x02hu2js%,\xc4" +
+	"\x8b\x97\x00\xa0\xa2\x13E\xde\xb5\x03F\"\x9fKg\x83" +
+	"\xd9\"qUA\x9d\xa4\x02H\xa4\xbc\xbcq\x01\x91O" +
+	"Bo\x0c\x18\x89\x07\xb3\xe9\xbe5z\xa2\xc7\xa0\x18>" +
+	"\x0a\xe2\x8c\xb1\xba\xac\xde\xd6\"\x0b\xf2\xb2C'\xf0\xa3" +
+	"\xe0\x0f\xdb\x01H\xc0\x99\x96\x80\xc2r(\x16\x19\x7f2" +
+	"\x00\x127H@\xb1)Q,h\xbe.\x0b\x12\xd7H" +
+	"@ao\x14\xdb\x9d\xaf\xed\x04\x89\xafd(\x97\xbc\x88" +
+	"b'\xf1\xd0R\x90x\x0b\xf3Q]\x11,\x88\xf2\xa0" +
+	"\xc9*02\xaeM\x11l\xca\xa5\xd3\xbd\x13\x94\x97+" +
+	"\x86_t\x1e\xaa\xb5\xc5/\xe1\xd6D:\x953R9" +
+	"a\xa7z\x97\x0c8\xceP\x93w=\xa6g\x99\xdeg" +
+	"j\xee\x12\xfb\"\xb2\x8c_F\xadMB\x8e8\x8b\xd6" +
+	"\x09o%\xfb\xde-\xa3\xf6@\x85\x8f|\x09=c\xde" +
+	"><\x8aa\x96\xbbM\x12\xc4e\x09\"\xdeY\x14/" +
+	"?\xe7$H\x0d\xb3vC\xd5\xa6\x8c+\xc0\xea\x0b\xfb" +
+	"?\xa6\xa5#\xc5\xe2\xe9\x81rf\xe2\x97\x06n\x84\xe2" +
+	"\x0b+2#=\xaaf\x16+\xfe\xbb%\xd9\xdb[\xf2" +
+	"\xdf\xb4\x16n\x95\x855]\xafN\xec\x8a5MUM" +
+	"\xb4\xb4\xdc\x16{\xe6\x90\x17B\x17\x8e\xdc\xf044\x7f" +
+	"p\x1b\x8bV$\xdb\xa3\x9b\xffq\xbbN\xe8Q\xbf\x9e" +
+	"\x9czG\x19\x03\xc9\xdc\x9ab\xddn\x90\xd0])[" +
+	",\xdbd\xfdO\xc2\xb9-\xe1\xc4\xab\x89\xe2\x85\xe7\xa1" +
+	"\x80\xe5G\xc4\xd2c\x8c\xe2\xa7\x07o\xa43/\xf3Q" +
+	">\x11\xf4\x91t\x93O]i\x17N\\\xc6\xd5\x86\xa0" +
+	"\xd8\xaa\xc9G\x98@\xf2x\xebu\x16]v\xaf\xc3z" +
+	"!\xb2\xdeb\x19\xb5\x87\xaaO\xc4\x14\xfe\xab\xd6\xff\xa9" +
+	"\xd2\xb3g\xa9\xb8\x1a\xa65\x1b\xd5\x14m.\x0f\x07\xbd" +
+	"q\x88 !\x02\xfe\x13\x00\x00\xff\xff\x0d\x1fHi"
 
 func RegisterSchema(reg *schemas.Registry) {
 	reg.Register(&schemas.Schema{
 		String: schema_9a51e53177277763,
 		Nodes: []uint64{
+			0x87256efbef4d0d6b,
 			0x8da195122b990a12,
 			0x8e789e930a3f38c8,
+			0x8e8bba35397049d4,
+			0x990f02d816472ef8,
 			0x9a680fa9a9be2d62,
+			0x9a8b622632172e24,
 			0xa20ce2af932c2730,
 			0xa21a945a0ef3799e,
 			0xaf2e5ebaa58175d2,
@@ -1979,12 +2929,17 @@ func RegisterSchema(reg *schemas.Registry) {
 			0xbb4f16b0a7d2d09b,
 			0xbdfd822e8766e325,
 			0xc53168b273d497ee,
+			0xcb1ece3fc10a2abe,
+			0xd29163211833b55f,
+			0xd668a0b16a37bab6,
 			0xd72ab4a0243047ac,
 			0xda23f0d3a8250633,
 			0xe863235b8d7aeca3,
 			0xeea7ae19b02f5d47,
 			0xf20b3dea95929312,
 			0xf9694ae208dbb3e3,
+			0xfb52998547c680f0,
+			0xfb6429d901491013,
 		},
 		Compressed: true,
 	})

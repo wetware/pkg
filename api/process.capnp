@@ -17,11 +17,13 @@ interface Executor {
     # be available at the process inbox.
     #
     # The Process capability is associated to the created process.
-    execFromCache @1 (md5sum :Data, cap :Capability) -> (process :Process);
+    execFromCache @1 (md5sum :Data, caps :List(Capability)) -> (process :Process);
     # Same as Exec, but the bytecode is directly from the BytecodeRegistry.
     # Provides a significant performance improvement for medium to large
     # WASM streams.
-    tools @2 () -> (tools :Tools.Tools);
+    registry @2 () -> (registry :BytecodeRegistry);
+    # Registry returns a capability for the BytecodeRegistry of the Executor.
+    tools @3 () -> (tools :Tools.Tools);
     # Tools makes the experimental tools accessibles to anyone with access to the
     # Executor capability.
 }
@@ -48,14 +50,14 @@ interface Inbox {
     # The receiver must know the order of the content beforehand.
 }
 
-#interface BytecodeRegistry {
-#    # BytecodeRegistry is used to store WASM byte code. May be implemented with
-#    # anchors or any other means.
-#    put @0 (bytecode :Data) -> (md5sum :Data);
-#    # Put stores the bytecode and returns the md5sum of the submitted bytecode.
-#    get @1 (md5sum :Data) -> (bytecode :Data);
-#    # Get returns the bytecode matching a md5sum if there's a match, null otherwise.
-#    has @3 (md5sum :Data) -> (has :Bool);
-#    # Has returns true if a bytecode identified by the md5sum has been previously stored.
-#}
+interface BytecodeRegistry {
+    # BytecodeRegistry is used to store WASM byte code. May be implemented with
+    # anchors or any other means.
+    put @0 (bytecode :Data) -> (md5sum :Data);
+    # Put stores the bytecode and returns the md5sum of the submitted bytecode.
+    get @1 (md5sum :Data) -> (bytecode :Data);
+    # Get returns the bytecode matching a md5sum if there's a match, null otherwise.
+    has @2 (md5sum :Data) -> (has :Bool);
+    # Has returns true if a bytecode identified by the md5sum has been previously stored.
+}
 

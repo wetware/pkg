@@ -51,7 +51,8 @@ func (ww Ww) Exec(ctx context.Context) error {
 	defer c.Close(ctx)
 
 	r := csp.Server{
-		Runtime: wasmRuntime,
+		Runtime:    wasmRuntime,
+		BcRegistry: csp.RegistryServer{},
 	}
 	executor := api.Executor_ServerToClient(r)
 
