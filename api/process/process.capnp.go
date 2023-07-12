@@ -9,6 +9,7 @@ import (
 	schemas "capnproto.org/go/capnp/v3/schemas"
 	server "capnproto.org/go/capnp/v3/server"
 	context "context"
+	tools "github.com/wetware/ww/experiments/api/tools"
 )
 
 type Executor capnp.Client
@@ -53,6 +54,26 @@ func (c Executor) ExecWithCap(ctx context.Context, params func(Executor_execWith
 
 	ans, release := capnp.Client(c).SendCall(ctx, s)
 	return Executor_execWithCap_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c Executor) Tools(ctx context.Context, params func(Executor_tools_Params) error) (Executor_tools_Results_Future, capnp.ReleaseFunc) {
+
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0xaf2e5ebaa58175d2,
+			MethodID:      2,
+			InterfaceName: "process.capnp:Executor",
+			MethodName:    "tools",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Executor_tools_Params(s)) }
+	}
+
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return Executor_tools_Results_Future{Future: ans.Future()}, release
 
 }
 
@@ -132,6 +153,8 @@ type Executor_Server interface {
 	Exec(context.Context, Executor_exec) error
 
 	ExecWithCap(context.Context, Executor_execWithCap) error
+
+	Tools(context.Context, Executor_tools) error
 }
 
 // Executor_NewServer creates a new Server from an implementation of Executor_Server.
@@ -150,7 +173,7 @@ func Executor_ServerToClient(s Executor_Server) Executor {
 // This can be used to create a more complicated Server.
 func Executor_Methods(methods []server.Method, s Executor_Server) []server.Method {
 	if cap(methods) == 0 {
-		methods = make([]server.Method, 0, 2)
+		methods = make([]server.Method, 0, 3)
 	}
 
 	methods = append(methods, server.Method{
@@ -174,6 +197,18 @@ func Executor_Methods(methods []server.Method, s Executor_Server) []server.Metho
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
 			return s.ExecWithCap(ctx, Executor_execWithCap{call})
+		},
+	})
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xaf2e5ebaa58175d2,
+			MethodID:      2,
+			InterfaceName: "process.capnp:Executor",
+			MethodName:    "tools",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Tools(ctx, Executor_tools{call})
 		},
 	})
 
@@ -212,6 +247,23 @@ func (c Executor_execWithCap) Args() Executor_execWithCap_Params {
 func (c Executor_execWithCap) AllocResults() (Executor_execWithCap_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
 	return Executor_execWithCap_Results(r), err
+}
+
+// Executor_tools holds the state for a server call to Executor.tools.
+// See server.Call for documentation.
+type Executor_tools struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c Executor_tools) Args() Executor_tools_Params {
+	return Executor_tools_Params(c.Call.Args())
+}
+
+// AllocResults allocates the results struct.
+func (c Executor_tools) AllocResults() (Executor_tools_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Executor_tools_Results(r), err
 }
 
 // Executor_List is a list of Executor.
@@ -566,6 +618,467 @@ func (f Executor_execWithCap_Results_Future) Struct() (Executor_execWithCap_Resu
 }
 func (p Executor_execWithCap_Results_Future) Process() Process {
 	return Process(p.Future.Field(0, nil).Client())
+}
+
+type Executor_tools_Params capnp.Struct
+
+// Executor_tools_Params_TypeID is the unique identifier for the type Executor_tools_Params.
+const Executor_tools_Params_TypeID = 0xe863235b8d7aeca3
+
+func NewExecutor_tools_Params(s *capnp.Segment) (Executor_tools_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Executor_tools_Params(st), err
+}
+
+func NewRootExecutor_tools_Params(s *capnp.Segment) (Executor_tools_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Executor_tools_Params(st), err
+}
+
+func ReadRootExecutor_tools_Params(msg *capnp.Message) (Executor_tools_Params, error) {
+	root, err := msg.Root()
+	return Executor_tools_Params(root.Struct()), err
+}
+
+func (s Executor_tools_Params) String() string {
+	str, _ := text.Marshal(0xe863235b8d7aeca3, capnp.Struct(s))
+	return str
+}
+
+func (s Executor_tools_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Executor_tools_Params) DecodeFromPtr(p capnp.Ptr) Executor_tools_Params {
+	return Executor_tools_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Executor_tools_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Executor_tools_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Executor_tools_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Executor_tools_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+
+// Executor_tools_Params_List is a list of Executor_tools_Params.
+type Executor_tools_Params_List = capnp.StructList[Executor_tools_Params]
+
+// NewExecutor_tools_Params creates a new list of Executor_tools_Params.
+func NewExecutor_tools_Params_List(s *capnp.Segment, sz int32) (Executor_tools_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	return capnp.StructList[Executor_tools_Params](l), err
+}
+
+// Executor_tools_Params_Future is a wrapper for a Executor_tools_Params promised by a client call.
+type Executor_tools_Params_Future struct{ *capnp.Future }
+
+func (f Executor_tools_Params_Future) Struct() (Executor_tools_Params, error) {
+	p, err := f.Future.Ptr()
+	return Executor_tools_Params(p.Struct()), err
+}
+
+type Executor_tools_Results capnp.Struct
+
+// Executor_tools_Results_TypeID is the unique identifier for the type Executor_tools_Results.
+const Executor_tools_Results_TypeID = 0xa20ce2af932c2730
+
+func NewExecutor_tools_Results(s *capnp.Segment) (Executor_tools_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Executor_tools_Results(st), err
+}
+
+func NewRootExecutor_tools_Results(s *capnp.Segment) (Executor_tools_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Executor_tools_Results(st), err
+}
+
+func ReadRootExecutor_tools_Results(msg *capnp.Message) (Executor_tools_Results, error) {
+	root, err := msg.Root()
+	return Executor_tools_Results(root.Struct()), err
+}
+
+func (s Executor_tools_Results) String() string {
+	str, _ := text.Marshal(0xa20ce2af932c2730, capnp.Struct(s))
+	return str
+}
+
+func (s Executor_tools_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Executor_tools_Results) DecodeFromPtr(p capnp.Ptr) Executor_tools_Results {
+	return Executor_tools_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Executor_tools_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Executor_tools_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Executor_tools_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Executor_tools_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Executor_tools_Results) Tools() tools.Tools {
+	p, _ := capnp.Struct(s).Ptr(0)
+	return tools.Tools(p.Interface().Client())
+}
+
+func (s Executor_tools_Results) HasTools() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Executor_tools_Results) SetTools(v tools.Tools) error {
+	if !v.IsValid() {
+		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
+	}
+	seg := s.Segment()
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
+	return capnp.Struct(s).SetPtr(0, in.ToPtr())
+}
+
+// Executor_tools_Results_List is a list of Executor_tools_Results.
+type Executor_tools_Results_List = capnp.StructList[Executor_tools_Results]
+
+// NewExecutor_tools_Results creates a new list of Executor_tools_Results.
+func NewExecutor_tools_Results_List(s *capnp.Segment, sz int32) (Executor_tools_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[Executor_tools_Results](l), err
+}
+
+// Executor_tools_Results_Future is a wrapper for a Executor_tools_Results promised by a client call.
+type Executor_tools_Results_Future struct{ *capnp.Future }
+
+func (f Executor_tools_Results_Future) Struct() (Executor_tools_Results, error) {
+	p, err := f.Future.Ptr()
+	return Executor_tools_Results(p.Struct()), err
+}
+func (p Executor_tools_Results_Future) Tools() tools.Tools {
+	return tools.Tools(p.Future.Field(0, nil).Client())
+}
+
+type Inbox capnp.Client
+
+// Inbox_TypeID is the unique identifier for the type Inbox.
+const Inbox_TypeID = 0xbdfd822e8766e325
+
+func (c Inbox) Open(ctx context.Context, params func(Inbox_open_Params) error) (Inbox_open_Results_Future, capnp.ReleaseFunc) {
+
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0xbdfd822e8766e325,
+			MethodID:      0,
+			InterfaceName: "process.capnp:Inbox",
+			MethodName:    "open",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Inbox_open_Params(s)) }
+	}
+
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return Inbox_open_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c Inbox) WaitStreaming() error {
+	return capnp.Client(c).WaitStreaming()
+}
+
+// String returns a string that identifies this capability for debugging
+// purposes.  Its format should not be depended on: in particular, it
+// should not be used to compare clients.  Use IsSame to compare clients
+// for equality.
+func (c Inbox) String() string {
+	return "Inbox(" + capnp.Client(c).String() + ")"
+}
+
+// AddRef creates a new Client that refers to the same capability as c.
+// If c is nil or has resolved to null, then AddRef returns nil.
+func (c Inbox) AddRef() Inbox {
+	return Inbox(capnp.Client(c).AddRef())
+}
+
+// Release releases a capability reference.  If this is the last
+// reference to the capability, then the underlying resources associated
+// with the capability will be released.
+//
+// Release will panic if c has already been released, but not if c is
+// nil or resolved to null.
+func (c Inbox) Release() {
+	capnp.Client(c).Release()
+}
+
+// Resolve blocks until the capability is fully resolved or the Context
+// expires.
+func (c Inbox) Resolve(ctx context.Context) error {
+	return capnp.Client(c).Resolve(ctx)
+}
+
+func (c Inbox) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Client(c).EncodeAsPtr(seg)
+}
+
+func (Inbox) DecodeFromPtr(p capnp.Ptr) Inbox {
+	return Inbox(capnp.Client{}.DecodeFromPtr(p))
+}
+
+// IsValid reports whether c is a valid reference to a capability.
+// A reference is invalid if it is nil, has resolved to null, or has
+// been released.
+func (c Inbox) IsValid() bool {
+	return capnp.Client(c).IsValid()
+}
+
+// IsSame reports whether c and other refer to a capability created by the
+// same call to NewClient.  This can return false negatives if c or other
+// are not fully resolved: use Resolve if this is an issue.  If either
+// c or other are released, then IsSame panics.
+func (c Inbox) IsSame(other Inbox) bool {
+	return capnp.Client(c).IsSame(capnp.Client(other))
+}
+
+// Update the flowcontrol.FlowLimiter used to manage flow control for
+// this client. This affects all future calls, but not calls already
+// waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
+// which is also the default.
+func (c Inbox) SetFlowLimiter(lim fc.FlowLimiter) {
+	capnp.Client(c).SetFlowLimiter(lim)
+}
+
+// Get the current flowcontrol.FlowLimiter used to manage flow control
+// for this client.
+func (c Inbox) GetFlowLimiter() fc.FlowLimiter {
+	return capnp.Client(c).GetFlowLimiter()
+}
+
+// A Inbox_Server is a Inbox with a local implementation.
+type Inbox_Server interface {
+	Open(context.Context, Inbox_open) error
+}
+
+// Inbox_NewServer creates a new Server from an implementation of Inbox_Server.
+func Inbox_NewServer(s Inbox_Server) *server.Server {
+	c, _ := s.(server.Shutdowner)
+	return server.New(Inbox_Methods(nil, s), s, c)
+}
+
+// Inbox_ServerToClient creates a new Client from an implementation of Inbox_Server.
+// The caller is responsible for calling Release on the returned Client.
+func Inbox_ServerToClient(s Inbox_Server) Inbox {
+	return Inbox(capnp.NewClient(Inbox_NewServer(s)))
+}
+
+// Inbox_Methods appends Methods to a slice that invoke the methods on s.
+// This can be used to create a more complicated Server.
+func Inbox_Methods(methods []server.Method, s Inbox_Server) []server.Method {
+	if cap(methods) == 0 {
+		methods = make([]server.Method, 0, 1)
+	}
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xbdfd822e8766e325,
+			MethodID:      0,
+			InterfaceName: "process.capnp:Inbox",
+			MethodName:    "open",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Open(ctx, Inbox_open{call})
+		},
+	})
+
+	return methods
+}
+
+// Inbox_open holds the state for a server call to Inbox.open.
+// See server.Call for documentation.
+type Inbox_open struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c Inbox_open) Args() Inbox_open_Params {
+	return Inbox_open_Params(c.Call.Args())
+}
+
+// AllocResults allocates the results struct.
+func (c Inbox_open) AllocResults() (Inbox_open_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Inbox_open_Results(r), err
+}
+
+// Inbox_List is a list of Inbox.
+type Inbox_List = capnp.CapList[Inbox]
+
+// NewInbox creates a new list of Inbox.
+func NewInbox_List(s *capnp.Segment, sz int32) (Inbox_List, error) {
+	l, err := capnp.NewPointerList(s, sz)
+	return capnp.CapList[Inbox](l), err
+}
+
+type Inbox_open_Params capnp.Struct
+
+// Inbox_open_Params_TypeID is the unique identifier for the type Inbox_open_Params.
+const Inbox_open_Params_TypeID = 0x8e789e930a3f38c8
+
+func NewInbox_open_Params(s *capnp.Segment) (Inbox_open_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Inbox_open_Params(st), err
+}
+
+func NewRootInbox_open_Params(s *capnp.Segment) (Inbox_open_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Inbox_open_Params(st), err
+}
+
+func ReadRootInbox_open_Params(msg *capnp.Message) (Inbox_open_Params, error) {
+	root, err := msg.Root()
+	return Inbox_open_Params(root.Struct()), err
+}
+
+func (s Inbox_open_Params) String() string {
+	str, _ := text.Marshal(0x8e789e930a3f38c8, capnp.Struct(s))
+	return str
+}
+
+func (s Inbox_open_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Inbox_open_Params) DecodeFromPtr(p capnp.Ptr) Inbox_open_Params {
+	return Inbox_open_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Inbox_open_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Inbox_open_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Inbox_open_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Inbox_open_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+
+// Inbox_open_Params_List is a list of Inbox_open_Params.
+type Inbox_open_Params_List = capnp.StructList[Inbox_open_Params]
+
+// NewInbox_open_Params creates a new list of Inbox_open_Params.
+func NewInbox_open_Params_List(s *capnp.Segment, sz int32) (Inbox_open_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	return capnp.StructList[Inbox_open_Params](l), err
+}
+
+// Inbox_open_Params_Future is a wrapper for a Inbox_open_Params promised by a client call.
+type Inbox_open_Params_Future struct{ *capnp.Future }
+
+func (f Inbox_open_Params_Future) Struct() (Inbox_open_Params, error) {
+	p, err := f.Future.Ptr()
+	return Inbox_open_Params(p.Struct()), err
+}
+
+type Inbox_open_Results capnp.Struct
+
+// Inbox_open_Results_TypeID is the unique identifier for the type Inbox_open_Results.
+const Inbox_open_Results_TypeID = 0xb4982f9891840060
+
+func NewInbox_open_Results(s *capnp.Segment) (Inbox_open_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Inbox_open_Results(st), err
+}
+
+func NewRootInbox_open_Results(s *capnp.Segment) (Inbox_open_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Inbox_open_Results(st), err
+}
+
+func ReadRootInbox_open_Results(msg *capnp.Message) (Inbox_open_Results, error) {
+	root, err := msg.Root()
+	return Inbox_open_Results(root.Struct()), err
+}
+
+func (s Inbox_open_Results) String() string {
+	str, _ := text.Marshal(0xb4982f9891840060, capnp.Struct(s))
+	return str
+}
+
+func (s Inbox_open_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Inbox_open_Results) DecodeFromPtr(p capnp.Ptr) Inbox_open_Results {
+	return Inbox_open_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Inbox_open_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Inbox_open_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Inbox_open_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Inbox_open_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Inbox_open_Results) Content() capnp.Client {
+	p, _ := capnp.Struct(s).Ptr(0)
+	return p.Interface().Client()
+}
+
+func (s Inbox_open_Results) HasContent() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Inbox_open_Results) SetContent(c capnp.Client) error {
+	if !c.IsValid() {
+		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
+	}
+	seg := s.Segment()
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(c))
+	return capnp.Struct(s).SetPtr(0, in.ToPtr())
+}
+
+// Inbox_open_Results_List is a list of Inbox_open_Results.
+type Inbox_open_Results_List = capnp.StructList[Inbox_open_Results]
+
+// NewInbox_open_Results creates a new list of Inbox_open_Results.
+func NewInbox_open_Results_List(s *capnp.Segment, sz int32) (Inbox_open_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[Inbox_open_Results](l), err
+}
+
+// Inbox_open_Results_Future is a wrapper for a Inbox_open_Results promised by a client call.
+type Inbox_open_Results_Future struct{ *capnp.Future }
+
+func (f Inbox_open_Results_Future) Struct() (Inbox_open_Results, error) {
+	p, err := f.Future.Ptr()
+	return Inbox_open_Results(p.Struct()), err
+}
+func (p Inbox_open_Results_Future) Content() capnp.Client {
+	return p.Future.Field(0, nil).Client()
 }
 
 type Process capnp.Client
@@ -1047,55 +1560,75 @@ func (f Process_kill_Results_Future) Struct() (Process_kill_Results, error) {
 	return Process_kill_Results(p.Struct()), err
 }
 
-const schema_9a51e53177277763 = "x\xda\xa4SOH\x14_\x1c\xff~\xde\x1b\x9d\x81\xdf" +
-	"o\x95\xb7#\x96^\x02SJ\x09s\xb0\x83\x05\xe1\x96" +
-	"\x84\xe4\xa5}^\x02\xc1`\x9c\x06\x1cZs\xd8\x99e" +
-	"\xf5\x10\xe1!\xa4c\xff\x08\x0a\xa2\x82\xb0C\x94\x98\x1d" +
-	"\xd6\xe8V\x87na\x85P\x87\xa0\xe8\xd2A\xa2N\x9d" +
-	"&\xde:\xb3N\xb8J\xd0\xed\xbdy\xef}\xfe~\xa7" +
-	"\xcfFN\xb32k\x1a19\xd0\xd0\x18\xdd\x99\xfd\xd9" +
-	"4v\xbd\xfd>\x89] j\x80N\xd4/\xd9\x18\x08" +
-	"\xe68\x1b$D\xab\xa5\xb9\x07+gz\x9f\x90h\xe2" +
-	"\x91S\xdeW\xb6\xbe\xca[D0/\xb0\x15\xf3\x12\xd3" +
-	"\x89\xcc96o\xbeW\xabh\xe2\xe4\xf2\xf0\xa7\x97\x95" +
-	"J\x8c\xa6\xbe\xf5\xbf`\xa3\x0a\xed5+\x13\xa2\xdbo" +
-	"V\x17\x16[O=O\xd3u\xf3\x0eu\xc1\xe2\x8an" +
-	"\xfd\xe6\xbb`i\xd2zE\xa2\x15DZU\x0eo\x07" +
-	"i\xd1\xa3\xe1\xbe\xce\xbb\xcb=k$[\x91\x1c\x1dV" +
-	"G0\x8fU\x9f\xf67v=|\xfb}\xef\x87-J" +
-	"]\xbedNq\xa5\xd4\xe3\xf3fE\xad\xa2\xe1\xf1\x83" +
-	"\x8bm\x8f\x17\xd6S<\xf7xV\xf1d\xaf]\xbd\xf1" +
-	"\xed\xe8\x7f?\xd2\x12/o\xf0\\\xa9\xf2|y\xfa\xd1" +
-	"\xf8<\xe2\xfdJ=}\xa6\x9e\xf6E~q\xdaq\x83" +
-	"\xa0Wsl\xff\xbc\x7f\xe4\xc4\x8c\xeb\x94\xc2\xe9b\xaf" +
-	";\xe3:\xa7\xbdpr\xc8\xf6;G\xdd\xa0T\xe0a" +
-	" 5\xae\x11i \x12\x99\xe3D\xd2\xe0\x90-\x0c\x17" +
-	"c\x0c\x88M?\x04\x08B\x0d\x1d\x09\xfa\xe0\x06|\x1e" +
-	"\x90\x06o \xaaIG\x12\xb3\xb0z\x88\x89.\x1d\xa8" +
-	"U\x83\xa4q\xd16AL\x08\xbdY\xa9\xcb!JD" +
-	"\x92>d\xfb9\xe4\x81\xbf\xf2\x93\xb7\x8b\xf6\x14\x02i" +
-	"\xd4\xect\x8f\x10\xc9\xfd\x1c\xf2\x10\x83\x00ZT[\xc2" +
-	"\xea \x92\x078\xe4\x00C41\x1b\xba\xce\xf4Y\x97" +
-	"\x88\x90!\x86\x0cAwl\x1fY\x8d\x13\x90My\xe5" +
-	"u\x98\xab\x11\xea\x85\x7f\x890\x86\xcd\xc7\xdbs^\xa1" +
-	"P+f\xbbKe\xdb\x0b\xeb\xb6\xa7\xec\xfe\xcf!w" +
-	"3\x15\xa2\x17\x0e\xc5\xce\x0cb0\xb6\xf6\x96/\xee\xa9" +
-	"\xee7kK\x06\x0a\xc9\x88\xa7jK\xe6\x14\xc9\x8f!" +
-	"\xda\xd4YFoVzrhV\xda\xffl\xab\x9e\xb9" +
-	"\xb8\xa5\x9dsU\x97\xf8\xd4\xb6\xde\xea\xb4\xb6cV1" +
-	"\xe7\xef\x00\x00\x00\xff\xffr\xa3?F"
+const schema_9a51e53177277763 = "x\xda\xacT]h#e\x14\xbdw~\xb3k\xb3\xe1" +
+	"\xcbt\xa3Y\x90\x85l\xc3jY\xb3\xcd\xae\x0b\xabP" +
+	"\x1a,%\xa4 \xcd\x14D\xa8(\x9d\x8c#\x0d\xa6\x99" +
+	"\x98\x99\x90\xd4\x17Q\x84\xfaRA\xabX\x15\x8aTJ" +
+	"}(\xb6\xd4\xbe\xb4\xe2\x83h\xd1>\x08R\x05A\x1f" +
+	"\x0a-\x05\x15[\xfcyR(#w2\x93\xa4MZ" +
+	"|\xf0q\xf8\xce\x9cs\xee\xb9\xe7\xfb\xfa\xfa\xb9\x94\x90" +
+	"\x0c\x8e\\\x00N-\x88\x92\xf3\xf5\xdd\x81\x8b\xb3\xf3\xb5" +
+	"\xd7\x81u#\x80 \x03\xdc\x9e\x118\x04\xc1\xe9\xbb~" +
+	"cve\xafk\x01\xd8\xbd\x08 \"\x1d\xbd \xf4\"" +
+	"\xa02%\x0c\x00:\xf3S\x7f]\x1a{\xeb\xca\x09\xc0" +
+	"\xbb\xc2\x18\x01\x16]\xc0N\xe5\xe5\xc5\xcdg\x12+\xc0" +
+	".\xf1\x8e^\xbd^M\x1e\xa8\xef\x01\xa0\xb2%l*" +
+	"\xdf\x90\x96\xb2-|\xa5\x0c\x892\xc0\xf1\xf8\xabo\xcc" +
+	"\xdd\x9c[wm\xd4\xb9\x1e\x12/\x12\xd7\x1d\x91\xb8r" +
+	"\x99\xf5\xf4\xee\x97\x1b\x1b\x9e\x18G\x80'\xc4Q\x02h" +
+	"b\x15\xd0y\xff\xdb\x9d\xa5\xd5\xc8\xc8\xa7\xadn>\x17" +
+	"c\x04\xd8v\x19\xe2\xfb\xcfM'^9\xfe\xac\xcd\xcd" +
+	"/\xe2\x82\xf2\x07yP\x0e\xc5\xb4rY\x92\x01\x9c\xa3" +
+	"w\xbe\xb7\xd6&\x92[\xc0\"~,\xc7\xe2\x15\x8ae" +
+	"9\xdd\xd7\xf3\xc1z\xef\x0f\xa0F\xd0?:\xa0#T" +
+	"\x0e]\x9d\xdbR\xfc\xa3\xef~\xbf\xf6c\x9b\x0e\x93\xd6" +
+	"\x94(\xb1+\x97\xa5i\xc5pu>\xfc\xed\xc5\x99\xa7" +
+	"\xae\xe9?\xd7]\xbbd\x8fK1\xd2I?}s5" +
+	"\xfa\xf1\xd2Q\x8b\x83;R\x98N\xc2\xb3o\xbe\xfdk" +
+	"\xff=\x7f\xb6Nz\xbf\xe4:\x88K\xe4`\xff\x93\x9f" +
+	"\x02{\xc3\xf9\xbf[~\xcd\xd0\xaf\xaf9\xa5\xb2\xa9\x1b" +
+	"\x96\x95\x90u\xadT,=\x9a)\xe6\xccZ\xc2,\x19" +
+	"\xc5\x9e\xacV\xd6&-\xf0\x01\xf5\xf3\xa1\x9a\xa1Wl" +
+	"\xb3\x9c\xb0M\xb3`\xf5\x8c\x1aV\xa8R\xb0-U\xe0" +
+	"\x05\x00\x01\x01X\xf0\x16\x80\x1a\xe0Q\xed\xe6\xf0\xaa\x8b" +
+	"B\xe6$w\x97\xff\xb9\x10\x89}\x01\x80\xc8\x00\x1b\xaa" +
+	"\xc2)V\xa3f\xe8O\xe6\xed\x89A\xadD\xdc\x95\x02" +
+	"\x7f\x92\xfb\xb1&\xf7K\x1e\x07\xb2f\xbe\xa7\xd8\xd1g" +
+	"\x1f\xa8\xd3g\x11\xd5.^\x04h\x04\x86~G\x98\xda" +
+	"\x0b\x1c\x1b\x92\xb1\xd9+\xf4\xdb\xcc\x1e\xc9\x01\xc7\x922" +
+	"r\x8d\xe5\xa0\x7f\x15X\xfc\x16p,*\x87\xc8y\x0a" +
+	"\x1d\x7f\x00\x90\x07\xb5R\xca\x0b \x85Yl\xba\xe2\xdb" +
+	"\x92v'\xb5-\x80\xb3F\xd5\xcd\xa2m\x14m\x0c\x0b" +
+	"< \x86\xffc\x80\xee\x02\xd1R\x03\x0d\xd2\x07\x87\x01" +
+	"\xd4\x07xT\x1f\xe6\x90!vS]Y2\x06\xa0\xde" +
+	"\xe0Q\xbd\xcb\xa1\x93\x9b\xb2\x0d\xdd|\xd6\x00\x00\x0c\x02" +
+	"\x87A@jF\x07e\xbe\x83\xb2;\x89\\\xf8\x1fv" +
+	"\x96)\xca9\xb3F\x0b\x13\xdc\x85\xf9\x8f\x12\x8e\x83\xf7" +
+	"*0Z\x98(\x87(\xc1\x8e\x01g\xbd\xcf\xe7\xf3\x85" +
+	"B\xa3Lg\x81\xaaZ\xde\xee\xd88J\xac\x8bG\xf5" +
+	">\x8e\x96\x9b\xb7\x07\xbdp\x02\xc0a\xa0\xddw\xb6|" +
+	"\xd5\xfd&\xe7\x01\xd7\xb9\x7f\xf5\xd0\x7f&X\x92\x9c\xc7" +
+	"\xa9j\xfe\x8dF\xffqaQ:\x0b\xca!\xf2\x93\xc2" +
+	"\x10y\xef8\xdc\xa9{\x98\xd5\xca\xb26i\x9d\x1b\x81" +
+	"W\x87\xf3\x17H ~\xf2\xcc\x04:\xd4\xe3\xdcD=" +
+	"\xcd\x7f\x03\x00\x00\xff\xff\x9e\x1c\xcb5"
 
 func RegisterSchema(reg *schemas.Registry) {
 	reg.Register(&schemas.Schema{
 		String: schema_9a51e53177277763,
 		Nodes: []uint64{
+			0x8e789e930a3f38c8,
+			0xa20ce2af932c2730,
 			0xa21a945a0ef3799e,
 			0xaf2e5ebaa58175d2,
+			0xb4982f9891840060,
 			0xb9b9c4df47b44962,
 			0xbb4f16b0a7d2d09b,
+			0xbdfd822e8766e325,
 			0xc53168b273d497ee,
 			0xd72ab4a0243047ac,
 			0xda23f0d3a8250633,
+			0xe863235b8d7aeca3,
 			0xeea7ae19b02f5d47,
 			0xf20b3dea95929312,
 			0xf9694ae208dbb3e3,

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"net"
 	"os"
 	"time"
@@ -18,6 +17,8 @@ import (
 	wasm "github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/experimental/sock"
 	api "github.com/wetware/ww/api/process"
+	tools_api "github.com/wetware/ww/experiments/api/tools"
+	"github.com/wetware/ww/experiments/pkg/tools"
 )
 
 // ByteCode is a representation of arbitrary executable data.
@@ -181,8 +182,14 @@ func (r Server) mkmod(ctx context.Context, bytecode []byte, cap *capnp.Client) (
 		} else {
 			client = *cap
 		}
+
+		inbox := inboxServer{
+			Content: client.AddRef(),
+		}
+		inboxClient := capnp.Client(api.Inbox_ServerToClient(inbox))
+		defer inboxClient.Release()
 		conn := rpc.NewConn(rpc.NewStreamTransport(tcpConn), &rpc.Options{
-			BootstrapClient: client,
+			BootstrapClient: inboxClient,
 			ErrorReporter: errLogger{
 				Logger: log.New().WithField("conn", "host"),
 			},
@@ -191,7 +198,8 @@ func (r Server) mkmod(ctx context.Context, bytecode []byte, cap *capnp.Client) (
 
 		select {
 		case <-conn.Done(): // conn is closed by authenticate if auth fails
-		case <-ctx.Done(): // close conn if the program is exiting
+			// case <-ctx.Done(): // close conn if the program is exiting
+			// TODO ctx.Done is called prematurely when using cluster run
 		}
 	}()
 
@@ -212,7 +220,7 @@ func (r Server) spawn(fn wasm.Function) (<-chan execResult, context.CancelFunc) 
 		defer cancel()
 
 		vs, err := fn.Call(ctx)
-		fmt.Println(err)
+		// fmt.Println(err)
 		done <- execResult{
 			Values: vs,
 			Err:    err,
@@ -248,4 +256,13 @@ func dialWithRetries(addr *net.TCPAddr) (net.Conn, error) {
 	}
 
 	return conn, err
+}
+
+func (r Server) Tools(ctx context.Context, call api.Executor_tools) error {
+	res, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	return res.SetTools(tools_api.Tools_ServerToClient(tools.ToolServer{}))
 }

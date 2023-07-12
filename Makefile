@@ -4,13 +4,15 @@ ifeq ($(origin GOPATH), undefined)
     GOPATH := $(HOME)/Go
 endif
 
-all: capnp mocks
+experiment_dir := experiments/build-capnp
+
+all: clean capnp mocks experiment
 
 
-clean: clean-capnp clean-mocks
+clean: clean-capnp clean-mocks experiment-clean-capnp
 
 
-capnp: capnp-anchor capnp-pubsub capnp-cluster capnp-channel capnp-process capnp-registry capnp-bitswap
+capnp: experiment_dir_setup experiment-capnp capnp-anchor capnp-pubsub capnp-cluster capnp-channel capnp-process capnp-registry capnp-bitswap experiment_dir_teardown
 # N.B.:  compiling capnp schemas requires having capnproto.org/go/capnp/v3 installed
 #        on the GOPATH.
 
@@ -24,7 +26,7 @@ capnp-pubsub:
 
 capnp-cluster:
 	@mkdir -p api/cluster
-	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/std -ogo:api/cluster --src-prefix=api api/cluster.capnp
+	@capnp compile -I$(experiment_dir) -ogo:api/cluster --src-prefix=api api/cluster.capnp
 
 capnp-channel:
 	@mkdir -p api/channel
@@ -32,7 +34,7 @@ capnp-channel:
 
 capnp-process:
 	@mkdir -p api/process
-	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/std -ogo:api/process --src-prefix=api api/process.capnp
+	@capnp compile -I$(experiment_dir) -ogo:api/process --src-prefix=api api/process.capnp
 
 capnp-registry:
 	@mkdir -p api/registry
@@ -75,3 +77,32 @@ mocks: clean-mocks
 
 clean-mocks:
 	@find . -name 'mock_*.go' | xargs -I{} rm {}
+
+experiment: experiment-clean-capnp experiment-capnp
+
+experiment_dir_setup:
+	@mkdir -p $(experiment_dir)/experiments
+	@cp -r $(GOPATH)/src/capnproto.org/go/capnp/v3/std/* $(experiment_dir)
+	@cp experiments/api/*.capnp $(experiment_dir)/experiments
+
+experiment_dir_teardown:
+	@rm -rf $(experiment_dir)
+
+experiment-capnp: experiment-capnp-tools experiment-capnp-http 
+
+experiment-capnp-tools:
+	@mkdir -p experiments/api/tools
+	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/v3/std -ogo:experiments/api/tools --src-prefix=experiments/api experiments/api/tools.capnp
+
+experiment-capnp-http:
+	@mkdir -p experiments/api/http
+	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/v3/std -ogo:experiments/api/http --src-prefix=experiments/api experiments/api/http.capnp
+
+experiment-clean-capnp: experiment-clean-capnp-tools experiment-clean-capnp-http
+
+experiment-clean-capnp-tools:
+	@rm -rf experiments/api/tools
+
+experiment-clean-capnp-http:
+	@rm -rf experiments/api/http
+	

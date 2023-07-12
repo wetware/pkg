@@ -19,7 +19,7 @@ import (
 	"syscall"
 
 	"capnproto.org/go/capnp/v3/rpc"
-	"github.com/wetware/ww/internal/api/cluster"
+	"github.com/wetware/ww/api/cluster"
 )
 
 func main() {

@@ -9,7 +9,11 @@ $Go.import("github.com/wetware/ww/api/process");
 interface Executor {
     exec @0 (bytecode :Data) -> (process :Process);
     execWithCap @1 (bytecode :Data, cap :Capability) -> (process :Process);  # TODO replace exec with execWithCap
-    # exec a WASM based process
+    tools @2 () -> (tools :import "/experiments/tools.capnp".Tools);
+}
+
+interface Inbox {
+    open @0 () -> (content :Capability);
 }
 
 interface Process {

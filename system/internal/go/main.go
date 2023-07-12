@@ -53,16 +53,22 @@ func doRpc() error {
 	defer conn.Close()
 
 	client := conn.Bootstrap(context.Background())
-	executor := process.Executor(client)
-	defer executor.Release()
-	fmt.Println(executor)
+	inbox := process.Inbox(client)
+	defer inbox.Release()
+	fmt.Println(inbox)
 
 	if err := client.Resolve(context.Background()); err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Println(executor)
+	fmt.Println(inbox)
 
+	of, release := inbox.Open(context.TODO(), nil)
+	defer release()
+
+	<-of.Done()
+	content := of.Content()
+	executor := process.Executor(content)
 	/*
 		msg := "Hello"
 		echo, release := executor.Echo(context.TODO(), func(e process.Executor_echo_Params) error {
