@@ -794,6 +794,320 @@ func (p Executor_tools_Results_Future) Tools() tools.Tools {
 	return tools.Tools(p.Future.Field(0, nil).Client())
 }
 
+type Args capnp.Client
+
+// Args_TypeID is the unique identifier for the type Args.
+const Args_TypeID = 0xbb2aa833b9f708e6
+
+func (c Args) Args(ctx context.Context, params func(Args_args_Params) error) (Args_args_Results_Future, capnp.ReleaseFunc) {
+
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0xbb2aa833b9f708e6,
+			MethodID:      0,
+			InterfaceName: "process.capnp:Args",
+			MethodName:    "args",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Args_args_Params(s)) }
+	}
+
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return Args_args_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c Args) WaitStreaming() error {
+	return capnp.Client(c).WaitStreaming()
+}
+
+// String returns a string that identifies this capability for debugging
+// purposes.  Its format should not be depended on: in particular, it
+// should not be used to compare clients.  Use IsSame to compare clients
+// for equality.
+func (c Args) String() string {
+	return "Args(" + capnp.Client(c).String() + ")"
+}
+
+// AddRef creates a new Client that refers to the same capability as c.
+// If c is nil or has resolved to null, then AddRef returns nil.
+func (c Args) AddRef() Args {
+	return Args(capnp.Client(c).AddRef())
+}
+
+// Release releases a capability reference.  If this is the last
+// reference to the capability, then the underlying resources associated
+// with the capability will be released.
+//
+// Release will panic if c has already been released, but not if c is
+// nil or resolved to null.
+func (c Args) Release() {
+	capnp.Client(c).Release()
+}
+
+// Resolve blocks until the capability is fully resolved or the Context
+// expires.
+func (c Args) Resolve(ctx context.Context) error {
+	return capnp.Client(c).Resolve(ctx)
+}
+
+func (c Args) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Client(c).EncodeAsPtr(seg)
+}
+
+func (Args) DecodeFromPtr(p capnp.Ptr) Args {
+	return Args(capnp.Client{}.DecodeFromPtr(p))
+}
+
+// IsValid reports whether c is a valid reference to a capability.
+// A reference is invalid if it is nil, has resolved to null, or has
+// been released.
+func (c Args) IsValid() bool {
+	return capnp.Client(c).IsValid()
+}
+
+// IsSame reports whether c and other refer to a capability created by the
+// same call to NewClient.  This can return false negatives if c or other
+// are not fully resolved: use Resolve if this is an issue.  If either
+// c or other are released, then IsSame panics.
+func (c Args) IsSame(other Args) bool {
+	return capnp.Client(c).IsSame(capnp.Client(other))
+}
+
+// Update the flowcontrol.FlowLimiter used to manage flow control for
+// this client. This affects all future calls, but not calls already
+// waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
+// which is also the default.
+func (c Args) SetFlowLimiter(lim fc.FlowLimiter) {
+	capnp.Client(c).SetFlowLimiter(lim)
+}
+
+// Get the current flowcontrol.FlowLimiter used to manage flow control
+// for this client.
+func (c Args) GetFlowLimiter() fc.FlowLimiter {
+	return capnp.Client(c).GetFlowLimiter()
+}
+
+// A Args_Server is a Args with a local implementation.
+type Args_Server interface {
+	Args(context.Context, Args_args) error
+}
+
+// Args_NewServer creates a new Server from an implementation of Args_Server.
+func Args_NewServer(s Args_Server) *server.Server {
+	c, _ := s.(server.Shutdowner)
+	return server.New(Args_Methods(nil, s), s, c)
+}
+
+// Args_ServerToClient creates a new Client from an implementation of Args_Server.
+// The caller is responsible for calling Release on the returned Client.
+func Args_ServerToClient(s Args_Server) Args {
+	return Args(capnp.NewClient(Args_NewServer(s)))
+}
+
+// Args_Methods appends Methods to a slice that invoke the methods on s.
+// This can be used to create a more complicated Server.
+func Args_Methods(methods []server.Method, s Args_Server) []server.Method {
+	if cap(methods) == 0 {
+		methods = make([]server.Method, 0, 1)
+	}
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xbb2aa833b9f708e6,
+			MethodID:      0,
+			InterfaceName: "process.capnp:Args",
+			MethodName:    "args",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Args(ctx, Args_args{call})
+		},
+	})
+
+	return methods
+}
+
+// Args_args holds the state for a server call to Args.args.
+// See server.Call for documentation.
+type Args_args struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c Args_args) Args() Args_args_Params {
+	return Args_args_Params(c.Call.Args())
+}
+
+// AllocResults allocates the results struct.
+func (c Args_args) AllocResults() (Args_args_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Args_args_Results(r), err
+}
+
+// Args_List is a list of Args.
+type Args_List = capnp.CapList[Args]
+
+// NewArgs creates a new list of Args.
+func NewArgs_List(s *capnp.Segment, sz int32) (Args_List, error) {
+	l, err := capnp.NewPointerList(s, sz)
+	return capnp.CapList[Args](l), err
+}
+
+type Args_args_Params capnp.Struct
+
+// Args_args_Params_TypeID is the unique identifier for the type Args_args_Params.
+const Args_args_Params_TypeID = 0x9a680fa9a9be2d62
+
+func NewArgs_args_Params(s *capnp.Segment) (Args_args_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Args_args_Params(st), err
+}
+
+func NewRootArgs_args_Params(s *capnp.Segment) (Args_args_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Args_args_Params(st), err
+}
+
+func ReadRootArgs_args_Params(msg *capnp.Message) (Args_args_Params, error) {
+	root, err := msg.Root()
+	return Args_args_Params(root.Struct()), err
+}
+
+func (s Args_args_Params) String() string {
+	str, _ := text.Marshal(0x9a680fa9a9be2d62, capnp.Struct(s))
+	return str
+}
+
+func (s Args_args_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Args_args_Params) DecodeFromPtr(p capnp.Ptr) Args_args_Params {
+	return Args_args_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Args_args_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Args_args_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Args_args_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Args_args_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+
+// Args_args_Params_List is a list of Args_args_Params.
+type Args_args_Params_List = capnp.StructList[Args_args_Params]
+
+// NewArgs_args_Params creates a new list of Args_args_Params.
+func NewArgs_args_Params_List(s *capnp.Segment, sz int32) (Args_args_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	return capnp.StructList[Args_args_Params](l), err
+}
+
+// Args_args_Params_Future is a wrapper for a Args_args_Params promised by a client call.
+type Args_args_Params_Future struct{ *capnp.Future }
+
+func (f Args_args_Params_Future) Struct() (Args_args_Params, error) {
+	p, err := f.Future.Ptr()
+	return Args_args_Params(p.Struct()), err
+}
+
+type Args_args_Results capnp.Struct
+
+// Args_args_Results_TypeID is the unique identifier for the type Args_args_Results.
+const Args_args_Results_TypeID = 0x8da195122b990a12
+
+func NewArgs_args_Results(s *capnp.Segment) (Args_args_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Args_args_Results(st), err
+}
+
+func NewRootArgs_args_Results(s *capnp.Segment) (Args_args_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Args_args_Results(st), err
+}
+
+func ReadRootArgs_args_Results(msg *capnp.Message) (Args_args_Results, error) {
+	root, err := msg.Root()
+	return Args_args_Results(root.Struct()), err
+}
+
+func (s Args_args_Results) String() string {
+	str, _ := text.Marshal(0x8da195122b990a12, capnp.Struct(s))
+	return str
+}
+
+func (s Args_args_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Args_args_Results) DecodeFromPtr(p capnp.Ptr) Args_args_Results {
+	return Args_args_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Args_args_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Args_args_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Args_args_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Args_args_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Args_args_Results) Args() (capnp.TextList, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return capnp.TextList(p.List()), err
+}
+
+func (s Args_args_Results) HasArgs() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Args_args_Results) SetArgs(v capnp.TextList) error {
+	return capnp.Struct(s).SetPtr(0, v.ToPtr())
+}
+
+// NewArgs sets the args field to a newly
+// allocated capnp.TextList, preferring placement in s's segment.
+func (s Args_args_Results) NewArgs(n int32) (capnp.TextList, error) {
+	l, err := capnp.NewTextList(capnp.Struct(s).Segment(), n)
+	if err != nil {
+		return capnp.TextList{}, err
+	}
+	err = capnp.Struct(s).SetPtr(0, l.ToPtr())
+	return l, err
+}
+
+// Args_args_Results_List is a list of Args_args_Results.
+type Args_args_Results_List = capnp.StructList[Args_args_Results]
+
+// NewArgs_args_Results creates a new list of Args_args_Results.
+func NewArgs_args_Results_List(s *capnp.Segment, sz int32) (Args_args_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[Args_args_Results](l), err
+}
+
+// Args_args_Results_Future is a wrapper for a Args_args_Results promised by a client call.
+type Args_args_Results_Future struct{ *capnp.Future }
+
+func (f Args_args_Results_Future) Struct() (Args_args_Results, error) {
+	p, err := f.Future.Ptr()
+	return Args_args_Results(p.Struct()), err
+}
+
 type Process capnp.Client
 
 // Process_TypeID is the unique identifier for the type Process.
@@ -1587,72 +1901,81 @@ func (f Inbox_open_Results_Future) Struct() (Inbox_open_Results, error) {
 	return Inbox_open_Results(p.Struct()), err
 }
 
-const schema_9a51e53177277763 = "x\xda\xacTM\x88\x1be\x18~\xdfo\xfe\xb2u\xb3" +
-	"\xe1\xdbYVwA\x96\xa6\x09\xb5\xa1M3\xad\x05-" +
-	"H\xa2e\x8d\xbb\x97\xe6\xab'\x15\xa5\x93\xe9H\xa3I" +
-	"&\x9b\x99\x90\xac\x97\xa2\x08\xf5RAW\xb1*\x14\xad" +
-	"\x94z(\xb6\xd4\xbd\xb4\xe2I\x8bz(HU\x04=" +
-	"\x14Z\x04\x11)\xfe\xe0a\x85e\xe4\x9d\xcc$\xd9M" +
-	"Z<\xf48|\xcf<\xcf\xf3>\xef\xf3}\xb9'Y" +
-	"A6\xe2\x07\xc7\x80\x89\xaa\xa2\xfa_?\x94\xdf\xb2r" +
-	"\xaa\xf3:\xf0)\x04\x905\x80\xbd'd\x86 \xfb\xb9" +
-	"\xed;W\xce\xdf\x18?\x0d\xfc^\x04P\x90\x8e\x96\xe4" +
-	"\x0c\x02\xea\xcbr\x1e\xd0?\xb5\xfc\xf7\xc4\xd3o\xcdn" +
-	"\x00\xbc+\xbf@\x803\x01\xe0Z\xeb\xe53\x97\x9f\xcb" +
-	"\x9e\x07>!\xf9V{{\xdb\xf8E\xbc\x07\x80\xfa\x15" +
-	"\xf9\xb2~\x95\xb4\xf4o\xe4\xaf\xf4yE\x03X?\xfc" +
-	"\xea\x1b'w\x9f\\\x0dlt\xb9v)[\x88k\x9f" +
-	"B\\\xe5\x85\xd5\xe2\xf5//]\x0a\xc5\x18\x01l\xa5" +
-	"L\x80%\xa5\x0d\xe8\xbf\xff\xed\xb5\xb3\x17\xa6\x0f~6" +
-	"\xe8\xe6\xaa\x92$\xc0\x0f\x01C\xfa\xe6\xf3\xc7\xb3\xaf\xac" +
-	"\x7f>\xe4\xe6\x1f\xe5\xb4\xbeN\x1e\xf45\xa5\xa8oU" +
-	"5\x00\xff\xd6;\xdf\xbb\x17\x8f\x1aW\x80OG\xb1\x8c" +
-	"\xa9\xb3\x14\xcb\xb9b.\xf5\xc1j\xe6G\x10\xd3\x18\x1d" +
-	"\xfd\xa9\xcc\x92\xceZ\xa0\xb3WM\x7f\xfc\xdd\x1f\xdb~" +
-	"\x1a\xd2\xb9_\xbd\xa8\xa7\x89]\xdf\xaa\x1e\xd7\x97\x02\x9d" +
-	"\x8f~\x7f\xe9\xc43\xdb\xac_\xbb\xae\x03\xb2\xa7\xd4$" +
-	"\xe9\x14\x9f\xdd}a\xe6\x93\xb3\xb7\x06\x1c<\xaaN\xd2" +
-	"\xc9\xe4\xca\x9bo\xff\xf6\xc8=\x7f\x0dF\xb1C\x0d\x1c" +
-	"\x18*Eq\xf3\xd3\x9fc7\x16+k\x03\xbf~H" +
-	"\xbf\xbe\xe67\x9a\x8ee\xbbnV\xb3\xccF\xbd\xb1\x7f" +
-	"\xa1^v:Y\xa7a\xd7S%\xb3i\xd6\\\x88\x00" +
-	"\xdd\xf3\xf9\x8em\xb5<\xa7\x99\xf5\x1c\xa7\xea\xa6\x0e\xd9" +
-	"n\xa2U\xf5\\!K2\x80\x8c\x00<\xbe\x07@\xc4" +
-	"$\x14S\x0c\xe7\x02\x14r\xdf\xb8~\xee\xdf\xb1\xe9\xe4" +
-	"\x17\x00\x88\x1c\xb0\xa7*ob\xb5;\xb6\xf5x\xd3\xa9" +
-	"\x1d0\xad\xa3\xf6H\xf6\xc7\xfa\xec\xc7B\x16\xe4\xfd\x84" +
-	"7\xf1c\xc4\x9f\xef\x0a\x94\x10\xc5\xb8\xa4\x00\xf4\"\xc3" +
-	"\xa8%\\d\x80\xf1y\x0d\xfb\xcd\xc2\xa8\xcf\xfc\xe1&" +
-	"0nh\xc8z\xeb\xc1\xe82\xf0\xf4\x1e`|FK" +
-	"\x90\xf7\x02\xfa\xd1\x080\x17\x0cQ\x08C(`\x09\xfb" +
-	"\xbe\xa4\xa1\xb4\x0f\xd9.\x8d\x0a0j\xd8\x14\xc3c\x96" +
-	"S\xf7\xec\xba\x87\x13\x80%\x09qR\x96\x00\xe9\xe3\x7f" +
-	"fY2\x9b\x9aYsE\xac\xc7\xbec?\x80HI" +
-	"(r\x0c9\xe2\x14u\x97\xefJ\x02\x88\x07$\x14\x0f" +
-	"2\xcc\xd7\x8e\xecs[5\x8c\x03\xc38 5$\x94" +
-	"\x9d\x84\xa1Q6\xc8\x06\xd3hwcs\x0bu\xad\xec" +
-	"thmr\xb0\xb6\xe8q\xc2\xc3\x10\xbe\x0e\x9c\xd6\xa6" +
-	"h\x09Jqd\xc8\xa5\xf0\xf3\xc5J\xb5\xda\x8dY\xf2" +
-	"\xdc\xdb\x81\xdaf\xc5\xeb\x81\x06\xdd/\x02\x88q\x09\xc5" +
-	"}\x8cV\\\xf1\x0e8Gl\x00\xc0\x180\x8c\x0d\xfb" +
-	".5\xe7\x82or\x1e\x0b\x9cGW\x10\xa3\xe7\x82\x1b" +
-	"\xe4<M\x85\x8bn6F\x8f\x0c\x9f\xa1\xb3\xb8\x96 " +
-	"?\x05L\x90\xf7\x91\xc3m\xba\x8f\xe1\x96\xef\x18Ap" +
-	"\xaf\xd1\xbd\xf3\x02\x09$m\xac\xcbb\xbf\x19\xbd\xba\x18" +
-	"\x19\x00\xb1SB\xf1\x04C\xbf\xbc\xec\xd9V\x18K\xd8" +
-	"\x99\x84e6\xdc\xdbWvT\xf8\xa1\xbd\xff\x02\x00\x00" +
-	"\xff\xff)\x16\xd12"
+const schema_9a51e53177277763 = "x\xda\xacT]h\x1cU\x14>\xe7\xce\xdf6f\xb3" +
+	"\xdc\x9d\x18M_\x82\xe9\x86\xda\xb5\xddf\x1b\x0bZ\x90" +
+	"\xddX\xe2\x9a\xbc\xb8\xe3\x8b\xa0(\x9d\x9d\x8e\xc9jv" +
+	"g\x9d\x99\x90\xad EQ\xeaK\x05\x8d\xc1\x1a\xa1\xb4" +
+	"\x95\xd2\x06\xaa-5/i\xd1\x17\x15\xf5A0U\x11" +
+	"\xf5\xa1\xb4E\x11\x91\xe2\xcf\x83X(#\xf7\xce\xdc\xdd" +
+	"\xcd\xee6O}\xbb\xc39\xf3}\xdf\xfd\xcew\xcf\xe8" +
+	"1\x92\x97\xb3\xf1'z\x80\x18uE\x0d\x92=\xef\xde" +
+	"\x97\\<~\x18\xa8\x8e\x00\x0aj\x00cT!\x08\xa8" +
+	"\xdf\xa9\xe4\x00\x83/\x1f\xc8\xf5,\x1c\xad\xbf\x01\xb4\x1f" +
+	"\x01dV\x9f`u9(\xed\xf8dy91\xb3\x14" +
+	"\xfe\xca*\xfa6\xe5\x06\xc8\xc1\xe8\xd6\xed\x0bg\xaf\xf6" +
+	"\x9e\x00zW\x033\xae\xa4\x9b\x98G\x0f\xfc\xd3\xf7\xe4" +
+	"\xdb\x9b\xd75\xecV\x9ec\x0d\xe3\xbc\xe1\xd2\xdc\xcb'" +
+	"/<\x939\x0b\xb4O\x0a\xac\xf9\xad\xf3\xd9_\x8c%" +
+	"\x00\xd4M\xe5\x82^V\x18\x95\xad|\xa1_a\xa7\x9b" +
+	"\xfb^}\xf3\xc8\xce#+\\_\x88\xf5\x95\xd2\xc3\xb0" +
+	"\xd68Vir\xa5p\xf9\xb3\xd5\xd5\x88\x8c\xb0\x06T" +
+	"K\xac!\xae\xce\x03\x06\xbf\xc6\xfe]\x1d;\x9d\xbe\xd8" +
+	"AVV\x97\xf4\x17TFVQ\x0b\xfa\";\x05\xef" +
+	"}s\xe9\xd4\xb9\x81\xc7.\xb6J\x7fI\x1dfh\xaf" +
+	"\xa9\x8cn\xe4\xda\xb3\x872\xaf\xdc\xfc\xb8\x03\xed\xa4z" +
+	"B\xff\x80\xa3-\xab\x05}\x8d\xa3]\x7f\xe7;\xef\xfc" +
+	"L\xf6s\xa0\x03\xc2\xdcUu33\xf7La4u" +
+	"l%\xfd\x03\x18\x03(J\xc7Y\x09\xf5e\xce3\xa6" +
+	"\x8e\x9c\xfe\xf6\xcf-?u\xf0|\xad\x9e\xd7\xbf\xe7<" +
+	"k\xea!\xfd\x1e\x8d\xf1\xbc\xff\xc7\x8b\x87\x9f\xdab\xfd" +
+	"\x16\xaa\xe6`\x9b\xb4a\xc6Sxz\xe7\xb9\xc1\x0fO" +
+	"]oQ\xf0\x97\x9ad\x95\xe4\xc2[\x8b\xbf?t\xc7" +
+	"\xdf\xad\xbe\xfd\x18*\xb8\xc2}\xbb\xf6\xd1\xcf\xb1\xabS" +
+	"\xe5\xffZ~5\xb4$\xc2\xebA\xcdu,\xdb\xf32" +
+	"\x92e\xd6\xaa\xb5=\xe3\xee\xb4\x971\xddi/\xf5\xb8" +
+	"\xed\xcd\xcd\xfa\x1e\x18\xb2$\x03\xc8\x08@\xe3i\x00#" +
+	"&\xa1\x91\"\x98`M\xd8\x07X\x94\x10{\x81\xb0c" +
+	"\x03L\x0d\xc1&\xab%\xa7\x9eqjv5U4]" +
+	"\xb3\xe2\x81hh'\xcb\x85\xf5v5\x13u\xdb\x9a\xf3" +
+	"\x1d7\xe3;\xce,\x97\x94`\x9aZ%\xed\x8a$\xf5" +
+	"\x13\x1c\xe2]H\x83\xec\xe5376\x0d\x0c\x7f\x0a\x80" +
+	"H[d\xc9m\xa8v\xdd\xb6\x1eq\x9d\xca^\xd3\x9a" +
+	"\xb1\xbb\xa2?\xdcD?\x18\xa1 m\xce\xb3\x0d\x1f\x05" +
+	"~.$(\"\x1a\xbd\x92\x02\xd0\x18\x10\x8aLR#" +
+	"\x0d\x84Nh\xd8\x0c=\x8a\xa7F\x1ft\x81\xd0\xac\x86" +
+	"\xa4\x11\x06\x14\xef\x94\x8e\xec\x02B\x07\xb5\x04\xd3\x9e\xc7" +
+	"@\\\x01\x86\xf8%\xf2\x91\x09y,\"\xb6\xbb\xd92" +
+	"\x0e1\\\xe8v\xd9\x14\xc1\x83\x96S\xf5\xed\xaa/\x06" +
+	"\x9c\x94%\xc0u#\xde\xd8\xcb\xa2\xe9jf\xc53b" +
+	"\x0d\xf4m{\x00\x8c\x94\x84\xc6(A\x8a\xd8\xcf^\x0a" +
+	"\xdd1\x0c`\xdc+\xa1q?\xc1\\e\xffno\xae" +
+	"\x82q \x18\x07\xd4,\xb3\x16\xd1&;-\x1ew\xa5" +
+	"i\x8f\xd9+s{\xc5zC\xb1\")e\xf6*\x1a" +
+	"OiW3\xd6\x09\xe7~h\xb7c\xf6\x93U\xad\xe4" +
+	"\xd4\x9b\xca\xc4J\xc6}\x10\xad>\xa1\x8c\xcd\xa1\xab\xb2" +
+	"b\xf4\xf9|yv6\x1c\x94\xe4{\xb7j\x9a7\xcb" +
+	"~\xa3\xa9U\xfd\x14\x80\xd1+\xa1q7a!)\xfb" +
+	"{\x9d\xfd6\x00`\x0c\x08\xc6:u\x17\xdd!\xfe\xcd" +
+	"\x94\xc7\xb8r\xb12P\xac7\x9ae\xcaGXd\xc5" +
+	"&B\xb1\x14\xe9 \xab\xc5\xb5\x04\xd3\x93\xc7\x04\xd3\xbe" +
+	"\xb1\xed\xe1\x8b\x8er\xb2\xa1\x05|5\xa0\xb7\xf1\x00Y" +
+	"\x93\xb4>pS\xcdl5\x02\x97e\x1bl\xbb\x84\xc6" +
+	"\xa3\x04\x83\xd2\x01\xdf\xb6\"[\xa2\xd4%,\xb3\xe6\xdd" +
+	":\xf4\xdd\xcc\x8f\xe4\xfd\x1f\x00\x00\xff\xffu\x8d\x1a:"
 
 func RegisterSchema(reg *schemas.Registry) {
 	reg.Register(&schemas.Schema{
 		String: schema_9a51e53177277763,
 		Nodes: []uint64{
+			0x8da195122b990a12,
 			0x8e789e930a3f38c8,
+			0x9a680fa9a9be2d62,
 			0xa20ce2af932c2730,
 			0xa21a945a0ef3799e,
 			0xaf2e5ebaa58175d2,
 			0xb4982f9891840060,
 			0xb9b9c4df47b44962,
+			0xbb2aa833b9f708e6,
 			0xbb4f16b0a7d2d09b,
 			0xbdfd822e8766e325,
 			0xc53168b273d497ee,

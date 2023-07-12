@@ -26,6 +26,11 @@ interface Executor {
     # Executor capability.
 }
 
+interface Args {
+    # Args contains a list of strings that can be passed to a process via caps.
+    args @0 () -> (args :List(Text));
+}
+
 interface Process {
     # Process is a points to a running WASM process.
     wait   @0 () -> (exitCode :UInt32);
