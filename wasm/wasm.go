@@ -13,7 +13,7 @@ import (
 
 	capnp "capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
-	csp "github.com/wetware/ww/pkg/csp/client"
+	csp "github.com/wetware/ww/pkg/csp"
 )
 
 // Default file descriptor for Wazero pre-openned TCP connections

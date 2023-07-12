@@ -10,7 +10,7 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	cluster "github.com/wetware/casm/pkg/cluster"
 	anchor "github.com/wetware/ww/pkg/anchor"
-	csp "github.com/wetware/ww/pkg/csp/client"
+	csp "github.com/wetware/ww/pkg/csp"
 	pubsub "github.com/wetware/ww/pkg/pubsub"
 	service "github.com/wetware/ww/pkg/registry"
 )

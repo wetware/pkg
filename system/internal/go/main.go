@@ -8,7 +8,7 @@ import (
 
 	"github.com/tetratelabs/wazero/sys"
 	"github.com/wetware/ww/api/process"
-	csp "github.com/wetware/ww/pkg/csp/client"
+	csp "github.com/wetware/ww/pkg/csp"
 	ww "github.com/wetware/ww/wasm"
 )
 
