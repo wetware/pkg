@@ -9,7 +9,7 @@ import (
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 
 	api "github.com/wetware/ww/api/process"
-	"github.com/wetware/ww/pkg/csp"
+	csp "github.com/wetware/ww/pkg/csp/server"
 )
 
 const Version = "0.1.0"

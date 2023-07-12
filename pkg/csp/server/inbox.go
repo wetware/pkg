@@ -1,4 +1,4 @@
-package csp
+package server
 
 import (
 	"context"
@@ -8,14 +8,17 @@ import (
 	api "github.com/wetware/ww/api/process"
 )
 
+// anyInbox represents any implementation of the capability
 type anyIbox interface {
 	Open(context.Context, api.Inbox_open) error
 }
 
+// decodedInbox holds unencoded capabilities until and encodes them when opened
 type decodedInbox struct {
 	Content []capnp.Client
 }
 
+// encodedInbox holds encoded capabilities and returns them as-is when opened
 type encodedInbox struct {
 	Content capnp.PointerList
 }
