@@ -7,7 +7,6 @@ import (
 	capnp "capnproto.org/go/capnp/v3"
 	"github.com/tetratelabs/wazero/sys"
 
-	casm "github.com/wetware/casm/pkg"
 	api "github.com/wetware/ww/api/process"
 )
 
@@ -30,7 +29,23 @@ func (p Proc) Kill(ctx context.Context) error {
 	f, release := api.Process(p).Kill(ctx, nil)
 	defer release()
 
-	return casm.Future(f).Await(ctx)
+	select {
+	case <-f.Done():
+	case <-ctx.Done():
+	}
+
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
+	s, err := f.Struct()
+	if err != nil {
+		return err
+	}
+	if !s.IsValid() {
+		return errors.New("failed to kill process")
+	}
+	return nil
 }
 
 func (p Proc) Wait(ctx context.Context) error {

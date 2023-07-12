@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	csp "github.com/wetware/ww/pkg/csp"
+	csp "github.com/wetware/ww/pkg/csp/server"
 )
 
 // MockCloseServer is a mock of CloseServer interface.

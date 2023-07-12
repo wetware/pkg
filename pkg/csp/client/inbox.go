@@ -1,10 +1,33 @@
 package csp
 
 import (
+	"context"
 	"errors"
 
 	capnp "capnproto.org/go/capnp/v3"
+	api "github.com/wetware/ww/api/process"
 )
+
+type Inbox api.Inbox
+
+// Open extracts the contents of the Inbox as a list of capnp.Clients
+func (i Inbox) Open(ctx context.Context) ([]capnp.Client, error) {
+	inbox := api.Inbox(i)
+	of, _ := inbox.Open(context.TODO(), nil)
+
+	<-of.Done()
+	or, err := of.Struct()
+	if err != nil {
+		return nil, err
+	}
+
+	list, err := or.Content()
+	if err != nil {
+		return nil, err
+	}
+
+	return ListToClients(list)
+}
 
 // ClientsToList encodes a list of capnp.Clients into a capnp.PointerList
 func ClientsToList(caps ...capnp.Client) (capnp.PointerList, error) {
@@ -40,6 +63,7 @@ func ListToClients(list capnp.PointerList) ([]capnp.Client, error) {
 		if !client.IsValid() {
 			return clients, errors.New("could not decode client from pointer")
 		}
+		clients[i] = client
 	}
 	return clients, nil
 }

@@ -12,6 +12,7 @@ import (
 
 	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/wetware/ww/api/process"
+	csp "github.com/wetware/ww/pkg/csp/client"
 )
 
 //go:embed sub/main.wasm
@@ -63,28 +64,12 @@ func doRpc() error {
 
 	fmt.Println(inbox)
 
-	of, release := inbox.Open(context.TODO(), nil)
-	defer release()
-
-	<-of.Done()
-	or, err := of.Struct()
-	if err != nil {
-		panic(err)
-	}
-	pl, err := or.Content()
+	clients, err := csp.Inbox(inbox).Open(context.TODO())
 	if err != nil {
 		panic(err)
 	}
 
-	executorPtr, err := pl.At(0)
-	if err != nil {
-		panic(err)
-	}
-	var executor process.Executor
-	executor = process.Executor.DecodeFromPtr(executor, executorPtr)
-	if !executor.IsValid() {
-		panic(":(")
-	}
+	executor := process.Executor(clients[0])
 
 	exec, release := executor.Exec(context.TODO(), func(e process.Executor_exec_Params) error {
 		return e.SetBytecode(subProcessBC)

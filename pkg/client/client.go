@@ -8,7 +8,7 @@ import (
 
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/casm/pkg/cluster"
-	"github.com/wetware/ww/pkg/csp"
+	csp "github.com/wetware/ww/pkg/csp/client"
 	"github.com/wetware/ww/pkg/host"
 	"github.com/wetware/ww/pkg/pubsub"
 	service "github.com/wetware/ww/pkg/registry"

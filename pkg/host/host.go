@@ -15,7 +15,7 @@ import (
 	pubsub_api "github.com/wetware/ww/api/pubsub"
 	reg_api "github.com/wetware/ww/api/registry"
 	"github.com/wetware/ww/pkg/anchor"
-	"github.com/wetware/ww/pkg/csp"
+	csp "github.com/wetware/ww/pkg/csp/client"
 	"github.com/wetware/ww/pkg/pubsub"
 	service "github.com/wetware/ww/pkg/registry"
 )
