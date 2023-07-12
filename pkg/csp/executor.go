@@ -20,30 +20,15 @@ func (ex Executor) Release() {
 }
 
 func (ex Executor) Exec(ctx context.Context, src []byte, caps ...capnp.Client) (Proc, capnp.ReleaseFunc) {
-	/**/
-	// TODO mikel is this requeted?
-	// for i, c := range caps {
-	// 	if err := c.Resolve(ctx); err != nil {
-	// 		panic(err)
-	// 	}
-	// 	caps[i] = c.AddRef()
-	// }
-	/**/
 	f, release := api.Executor(ex).Exec(ctx, func(ps api.Executor_exec_Params) error {
-		// FIXME caps wont resolve here!
-		// check out https://github.com/capnproto/go-capnp/issues/244
 		if err := ps.SetBytecode(src); err != nil {
 			return err
 		}
 		if caps == nil {
 			return nil
 		}
-		// TODO mikel I might have over-engineered this
-		cl, err := ps.NewCaps(int32(len(caps)))
+		cl, err := ClientsToNewList(caps...)
 		if err != nil {
-			return err
-		}
-		if err = ClientsToExistingList(&cl, caps...); err != nil {
 			return err
 		}
 

@@ -17,7 +17,14 @@ import (
 )
 
 // Default file descriptor for Wazero pre-openned TCP connections
-const PREOPENED_FD = 3
+const (
+	// file descriptor for pre-openned TCP socket
+	PREOPENED_FD = 3
+
+	// Inbox in which each element will be found by default on the inbox
+	HOST_INDEX = 0
+	ARGS_INDEX = 1
+)
 
 // closer contains a slice of Closers that will be closed when this type itself is closed
 type closer struct {

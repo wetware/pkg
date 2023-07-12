@@ -62,10 +62,8 @@ func (r Server) Exec(ctx context.Context, call api.Executor_exec) error {
 	// If call.Caps will be used if non-null, otherwise an empty list
 	// will be used instead.
 	var caps capnp.PointerList
-	// FIXME there is a difference between both
 	if call.Args().HasCaps() {
 		caps, err = call.Args().Caps()
-		// FIXME caps are still good here
 		if err != nil {
 			return err
 		}
@@ -147,20 +145,10 @@ func (r Server) mkmod(ctx context.Context, bytecode []byte, caps capnp.PointerLi
 		return nil, err
 	}
 
-	var inbox anyIbox
-	// The process is provided its own executor by default.
-	if caps.Len() <= 0 {
-		executor := capnp.Client(api.Executor_ServerToClient(r))
-		inbox = newDecodedInbox(executor)
-	} else { // Otherwise it will pass the received capabilities.
-		// FIXME its broken here
-		inbox, err = newEncodedInbox(caps)
-		if err != nil {
-			panic(err)
-		}
+	inbox, err := r.populateInbox(caps)
+	if err != nil {
+		return nil, err
 	}
-
-	inboxClient := capnp.Client(api.Inbox_ServerToClient(inbox))
 
 	go func() {
 		tcpConn, err := dialWithRetries(addr)
@@ -169,9 +157,9 @@ func (r Server) mkmod(ctx context.Context, bytecode []byte, caps capnp.PointerLi
 		}
 		defer tcpConn.Close()
 
-		defer inboxClient.Release()
+		defer inbox.Release()
 		conn := rpc.NewConn(rpc.NewStreamTransport(tcpConn), &rpc.Options{
-			BootstrapClient: inboxClient,
+			BootstrapClient: inbox,
 			ErrorReporter: errLogger{
 				Logger: log.New(log.WithLevel(log.ErrorLevel)).WithField("conn", "host"),
 			},
@@ -188,6 +176,24 @@ func (r Server) mkmod(ctx context.Context, bytecode []byte, caps capnp.PointerLi
 	return mod, nil // FIXME exiting here is releasing caps
 }
 
+func (r Server) populateInbox(caps capnp.PointerList) (capnp.Client, error) {
+	var inbox anyIbox
+	var err error
+
+	// The process is provided its own executor by default.
+	if caps.Len() <= 0 {
+		executor := capnp.Client(api.Executor_ServerToClient(r))
+		inbox = newDecodedInbox(executor)
+	} else { // Otherwise it will pass the received capabilities.
+		inbox, err = newEncodedInbox(caps)
+		if err != nil {
+			return capnp.Client{}, nil
+		}
+	}
+
+	return capnp.Client(api.Inbox_ServerToClient(inbox)), nil
+}
+
 func (r Server) spawn(fn wasm.Function) (<-chan execResult, context.CancelFunc) {
 	done := make(chan execResult, 1)
 
@@ -202,7 +208,6 @@ func (r Server) spawn(fn wasm.Function) (<-chan execResult, context.CancelFunc) 
 		defer cancel()
 
 		vs, err := fn.Call(ctx)
-		// fmt.Println(err)
 		done <- execResult{
 			Values: vs,
 			Err:    err,

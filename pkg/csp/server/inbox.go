@@ -85,6 +85,5 @@ func (ei encodedInbox) Open(ctx context.Context, call api.Inbox_open) error {
 	if err != nil {
 		return err
 	}
-	// FIXME mikel the error is here
 	return res.SetContent(ei.Content)
 }

@@ -47,7 +47,6 @@ func ClientsToNewList(caps ...capnp.Client) (capnp.PointerList, error) {
 func ClientsToExistingList(pl *capnp.PointerList, caps ...capnp.Client) error {
 	l := *pl
 	for i, cap := range caps {
-		cap = cap.AddRef() // TODO mikel is this necessary?
 		if !cap.IsValid() {
 			return errors.New("invalid client when converting to list")
 		}

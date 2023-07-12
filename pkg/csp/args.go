@@ -21,7 +21,6 @@ func NewArgs(args ...string) Args {
 func (a Args) Args(ctx context.Context) ([]string, error) {
 	f, _ := api.Args(a).Args(ctx, nil)
 	<-f.Done()
-
 	res, err := f.Struct()
 	if err != nil {
 		return nil, err
