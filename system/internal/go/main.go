@@ -67,8 +67,24 @@ func doRpc() error {
 	defer release()
 
 	<-of.Done()
-	content := of.Content()
-	executor := process.Executor(content)
+	or, err := of.Struct()
+	if err != nil {
+		panic(err)
+	}
+	pl, err := or.Content()
+	if err != nil {
+		panic(err)
+	}
+
+	executorPtr, err := pl.At(0)
+	if err != nil {
+		panic(err)
+	}
+	var executor process.Executor
+	executor = process.Executor.DecodeFromPtr(executor, executorPtr)
+	if !executor.IsValid() {
+		panic(":(")
+	}
 
 	exec, release := executor.Exec(context.TODO(), func(e process.Executor_exec_Params) error {
 		return e.SetBytecode(subProcessBC)

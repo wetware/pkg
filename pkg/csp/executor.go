@@ -46,16 +46,39 @@ func (ex Executor) Release() {
 	capnp.Client(ex).Release()
 }
 
-func (ex Executor) ExecWithCap(ctx context.Context, src []byte, cap *capnp.Client) (Proc, capnp.ReleaseFunc) {
+// TODO mikel clean and move to appropiate file
+func clientsToList(caps ...capnp.Client) (capnp.PointerList, error) {
+	_, seg, err := capnp.NewMessage(capnp.SingleSegment(nil))
+	if err != nil {
+		return capnp.PointerList{}, err
+	}
+	l, err := capnp.NewPointerList(seg, int32(len(caps)))
+	if err != nil {
+		return capnp.PointerList{}, err
+	}
+	for i, cap := range caps {
+		_, iSeg, err := capnp.NewMessage(capnp.SingleSegment(nil))
+		if err != nil {
+			return capnp.PointerList{}, err
+		}
+		l.Set(i, cap.EncodeAsPtr(iSeg))
+	}
+	return l, nil
+}
+
+func (ex Executor) Exec(ctx context.Context, src []byte, caps ...capnp.Client) (Proc, capnp.ReleaseFunc) {
 	f, release := api.Executor(ex).Exec(ctx, func(ps api.Executor_exec_Params) error {
 		if err := ps.SetBytecode(src); err != nil {
 			return err
 		}
-		if cap == nil {
+		if caps == nil {
 			return nil
 		}
-		c := *cap
-		return ps.SetCap(c.AddRef())
+		c, err := clientsToList(caps...)
+		if err != nil {
+			return err
+		}
+		return ps.SetCaps(c)
 	})
 	return Proc(f.Process()), release
 }
@@ -82,13 +105,27 @@ func (r Server) Exec(ctx context.Context, call api.Executor_exec) error {
 		return err
 	}
 
-	var cap *capnp.Client
-	if call.Args().HasCap() {
-		c := call.Args().Cap().AddRef()
-		cap = &c
+	// Prepare the capability list that will be passed downstream.
+	// If call.Caps will be used if non-null, otherwise an empty list
+	// will be used instead.
+	var caps capnp.PointerList
+	if call.Args().HasCaps() {
+		caps, err = call.Args().Caps()
+		if err != nil {
+			return err
+		}
+	} else {
+		_, seg, err := capnp.NewMessage(capnp.SingleSegment(nil))
+		if err != nil {
+			return err
+		}
+		caps, err = capnp.NewPointerList(seg, 0)
+		if err != nil {
+			return err
+		}
 	}
 
-	p, err := r.mkproc(ctx, bc, cap)
+	p, err := r.mkproc(ctx, bc, caps)
 	if err != nil {
 		return err
 	}
@@ -101,8 +138,8 @@ func (r Server) ExecFromCache(ctx context.Context, call api.Executor_execFromCac
 	return nil
 }
 
-func (r Server) mkproc(ctx context.Context, bytecode []byte, cap *capnp.Client) (*process, error) {
-	mod, err := r.mkmod(ctx, bytecode, cap)
+func (r Server) mkproc(ctx context.Context, bytecode []byte, caps capnp.PointerList) (*process, error) {
+	mod, err := r.mkmod(ctx, bytecode, caps)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +156,7 @@ func (r Server) mkproc(ctx context.Context, bytecode []byte, cap *capnp.Client) 
 	}, nil
 }
 
-func (r Server) mkmod(ctx context.Context, bytecode []byte, cap *capnp.Client) (wasm.Module, error) {
+func (r Server) mkmod(ctx context.Context, bytecode []byte, caps capnp.PointerList) (wasm.Module, error) {
 	name := ByteCode(bytecode).String()
 
 	// TODO(perf):  cache compiled modules so that we can instantiate module
@@ -162,16 +199,15 @@ func (r Server) mkmod(ctx context.Context, bytecode []byte, cap *capnp.Client) (
 		}
 		defer tcpConn.Close()
 
-		var client capnp.Client
-		if cap == nil {
-			client = capnp.Client(api.Executor_ServerToClient(r))
-		} else {
-			client = *cap
+		var inbox anyIbox
+		// The process is provided its own executor by default.
+		if caps.Len() <= 0 {
+			executor := capnp.Client(api.Executor_ServerToClient(r))
+			inbox = newDecodedInbox(executor)
+		} else { // Otherwise it will pass the received capabilities.
+			inbox = newEncodedInbox(caps)
 		}
 
-		inbox := inboxServer{
-			Content: client.AddRef(),
-		}
 		inboxClient := capnp.Client(api.Inbox_ServerToClient(inbox))
 		defer inboxClient.Release()
 		conn := rpc.NewConn(rpc.NewStreamTransport(tcpConn), &rpc.Options{

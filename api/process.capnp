@@ -11,7 +11,7 @@ using Tools = import "/experiments/tools.capnp";
 interface Executor {
     # Executor has the ability to create and run WASM processes given the
     # WASM bytecode.
-    exec @0 (bytecode :Data, cap :Capability) -> (process :Process);
+    exec @0 (bytecode :Data, caps :List(Capability)) -> (process :Process);
     # Exec creates an runs a process from the provided bytecode. Optionally, a
     # capability can be passed through the `cap` parameter. This capability will
     # be available at the process inbox.
@@ -38,8 +38,9 @@ interface Inbox {
     # Inbox is used to make other capabilities available to spawning processes.
     # e.g. if process A spawns process B, it can leave a channel pointing to A
     # in it's inbox to stablish a direct communication channel.
-    open @0 () -> (content :Capability);
+    open @0 () -> (content :List(Capability));
     # Open returns all the capabilities that were left on the inbox.
+    # The receiver must know the order of the content beforehand.
 }
 
 #interface BytecodeRegistry {
