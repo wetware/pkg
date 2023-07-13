@@ -2,37 +2,57 @@ package http
 
 import (
 	"context"
-	"io"
-	"net/http"
+	"fmt"
 
-	api "github.com/wetware/ww/experiments/api/http"
+	http_api "github.com/wetware/ww/experiments/api/http"
 )
 
-type HttpServer struct{}
+// Response contains the most basic attributes of an HTTP GET response
+type Response struct {
+	Body   []byte
+	Status uint32
+	Error  string
+}
 
-// TODO try wasi-go instead of breaking encapsulation
-func (HttpServer) Get(ctx context.Context, call api.HttpGetter_get) error {
-	res, err := call.AllocResults()
-	if err != nil {
-		return err
+func (r Response) String() string {
+	bodyLen := 15
+	if len(r.Body) < bodyLen {
+		bodyLen = len(r.Body)
 	}
 
-	url, err := call.Args().Url()
+	return fmt.Sprintf("status: %d, error: %s, body: %s", r.Status, r.Error, string(r.Body)[:bodyLen])
+}
+
+// get uses the getter capability to perform HTTP GET requests
+func Get(ctx context.Context, getter http_api.HttpGetter, url string) (Response, error) {
+	f, release := getter.Get(ctx, func(hg http_api.HttpGetter_get_Params) error {
+		return hg.SetUrl(url)
+	})
+	defer release()
+	<-f.Done()
+
+	res, err := f.Struct()
 	if err != nil {
-		return err
+		return Response{}, err
 	}
 
-	resp, err := http.Get(url)
+	status := res.Status()
+
+	resErr, err := res.Error()
 	if err != nil {
-		return res.SetError(err.Error())
+		return Response{}, err
 	}
 
-	// defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
+	buf, err := res.Body()
 	if err != nil {
-		return err
+		return Response{}, err
 	}
+	body := make([]byte, len(buf)) // avoid garbage-collecting the body
+	copy(body, buf)
 
-	res.SetStatus(uint32(resp.StatusCode))
-	return res.SetBody(body)
+	return Response{
+		Body:   body,
+		Status: status,
+		Error:  resErr,
+	}, nil
 }

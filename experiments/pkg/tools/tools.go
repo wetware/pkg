@@ -5,7 +5,7 @@ import (
 
 	http_api "github.com/wetware/ww/experiments/api/http"
 	api "github.com/wetware/ww/experiments/api/tools"
-	"github.com/wetware/ww/experiments/pkg/http"
+	http "github.com/wetware/ww/experiments/pkg/http/server"
 )
 
 type ToolServer struct{}
