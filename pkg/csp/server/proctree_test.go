@@ -16,8 +16,8 @@ func TestProcTreeFindParent(t *testing.T) {
 		      2   3  8
 			   \   \
 				9   4
-			   /    / \
-			  10   5   6
+			   /   / \
+			  10  5   6
 	*/
 	root := &csp.ProcNode{
 		Id: 0,
