@@ -20,35 +20,35 @@ func TestProcTreeFindParent(t *testing.T) {
 			  10  5   6
 	*/
 	root := &csp.ProcNode{
-		Id: 0,
+		Pid: 0,
 		Left: &csp.ProcNode{
-			Id: 1,
+			Pid: 1,
 			Left: &csp.ProcNode{
-				Id: 2,
+				Pid: 2,
 				Right: &csp.ProcNode{
-					Id: 9,
+					Pid: 9,
 					Left: &csp.ProcNode{
-						Id: 10,
+						Pid: 10,
 					},
 				},
 			},
 			Right: &csp.ProcNode{
-				Id: 3,
+				Pid: 3,
 				Right: &csp.ProcNode{
-					Id: 4,
+					Pid: 4,
 					Left: &csp.ProcNode{
-						Id: 5,
+						Pid: 5,
 					},
 					Right: &csp.ProcNode{
-						Id: 6,
+						Pid: 6,
 					},
 				},
 			},
 		},
 		Right: &csp.ProcNode{
-			Id: 7,
+			Pid: 7,
 			Left: &csp.ProcNode{
-				Id: 8,
+				Pid: 8,
 			},
 		},
 	}
@@ -71,13 +71,13 @@ func TestProcTreeFindParent(t *testing.T) {
 			t.Fatalf("nil parent for %d", c)
 		}
 		e := match[1]
-		if p.Id != e {
-			t.Fatalf("found parent %d for %d but expected %d", p.Id, c, e)
+		if p.Pid != e {
+			t.Fatalf("found parent %d for %d but expected %d", p.Pid, c, e)
 		}
 	}
 	c := uint32(math.MaxUint32)
 	p := pt.FindParent(c)
 	if p != nil {
-		t.Fatalf("found parent %d for %d but expected no parent", p.Id, c)
+		t.Fatalf("found parent %d for %d but expected no parent", p.Pid, c)
 	}
 }
