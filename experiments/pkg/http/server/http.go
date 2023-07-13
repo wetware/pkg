@@ -11,8 +11,13 @@ import (
 type HttpServer struct{}
 
 // TODO try wasi-go instead of breaking encapsulation
-func (HttpServer) Get(ctx context.Context, call api.HttpGetter_get) error {
+func (HttpServer) Get(ctx context.Context, call api.Requester_get) error {
 	res, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	response, err := res.NewResponse()
 	if err != nil {
 		return err
 	}
@@ -23,8 +28,10 @@ func (HttpServer) Get(ctx context.Context, call api.HttpGetter_get) error {
 	}
 
 	resp, err := http.Get(url)
+
 	if err != nil {
-		return res.SetError(err.Error())
+		response.SetError(err.Error())
+		return res.SetResponse(response)
 	}
 
 	// defer resp.Body.Close()
@@ -32,7 +39,11 @@ func (HttpServer) Get(ctx context.Context, call api.HttpGetter_get) error {
 	if err != nil {
 		return err
 	}
+	if err = response.SetBody(body); err != nil {
+		response.SetError(err.Error())
+		return res.SetResponse(response)
+	}
 
-	res.SetStatus(uint32(resp.StatusCode))
-	return res.SetBody(body)
+	response.SetStatus(uint32(resp.StatusCode))
+	return res.SetResponse(response)
 }

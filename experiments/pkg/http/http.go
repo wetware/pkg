@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	http_api "github.com/wetware/ww/experiments/api/http"
+	api "github.com/wetware/ww/experiments/api/http"
 )
 
 // Response contains the most basic attributes of an HTTP GET response
@@ -23,9 +23,16 @@ func (r Response) String() string {
 	return fmt.Sprintf("status: %d, error: %s, body: %s", r.Status, r.Error, string(r.Body)[:bodyLen])
 }
 
-// get uses the getter capability to perform HTTP GET requests
-func Get(ctx context.Context, getter http_api.HttpGetter, url string) (Response, error) {
-	f, release := getter.Get(ctx, func(hg http_api.HttpGetter_get_Params) error {
+type Requester api.Requester
+
+// Get calls the top-level Get function and passes r as the requester
+func (r Requester) Get(ctx context.Context, url string) (Response, error) {
+	return Get(ctx, api.Requester(r), url)
+}
+
+// Get uses the getter capability to perform HTTP GET requests
+func Get(ctx context.Context, requester api.Requester, url string) (Response, error) {
+	f, release := requester.Get(ctx, func(hg api.Requester_get_Params) error {
 		return hg.SetUrl(url)
 	})
 	defer release()
@@ -36,14 +43,19 @@ func Get(ctx context.Context, getter http_api.HttpGetter, url string) (Response,
 		return Response{}, err
 	}
 
-	status := res.Status()
-
-	resErr, err := res.Error()
+	resp, err := res.Response()
 	if err != nil {
 		return Response{}, err
 	}
 
-	buf, err := res.Body()
+	status := resp.Status()
+
+	resErr, err := resp.Error()
+	if err != nil {
+		return Response{}, err
+	}
+
+	buf, err := resp.Body()
 	if err != nil {
 		return Response{}, err
 	}

@@ -11,32 +11,32 @@ import (
 	context "context"
 )
 
-type HttpGetter capnp.Client
+type Requester capnp.Client
 
-// HttpGetter_TypeID is the unique identifier for the type HttpGetter.
-const HttpGetter_TypeID = 0xfc98acef9abe3c68
+// Requester_TypeID is the unique identifier for the type Requester.
+const Requester_TypeID = 0xca2cf5b44093c972
 
-func (c HttpGetter) Get(ctx context.Context, params func(HttpGetter_get_Params) error) (HttpGetter_get_Results_Future, capnp.ReleaseFunc) {
+func (c Requester) Get(ctx context.Context, params func(Requester_get_Params) error) (Requester_get_Results_Future, capnp.ReleaseFunc) {
 
 	s := capnp.Send{
 		Method: capnp.Method{
-			InterfaceID:   0xfc98acef9abe3c68,
+			InterfaceID:   0xca2cf5b44093c972,
 			MethodID:      0,
-			InterfaceName: "http.capnp:HttpGetter",
+			InterfaceName: "http.capnp:Requester",
 			MethodName:    "get",
 		},
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(HttpGetter_get_Params(s)) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Requester_get_Params(s)) }
 	}
 
 	ans, release := capnp.Client(c).SendCall(ctx, s)
-	return HttpGetter_get_Results_Future{Future: ans.Future()}, release
+	return Requester_get_Results_Future{Future: ans.Future()}, release
 
 }
 
-func (c HttpGetter) WaitStreaming() error {
+func (c Requester) WaitStreaming() error {
 	return capnp.Client(c).WaitStreaming()
 }
 
@@ -44,14 +44,14 @@ func (c HttpGetter) WaitStreaming() error {
 // purposes.  Its format should not be depended on: in particular, it
 // should not be used to compare clients.  Use IsSame to compare clients
 // for equality.
-func (c HttpGetter) String() string {
-	return "HttpGetter(" + capnp.Client(c).String() + ")"
+func (c Requester) String() string {
+	return "Requester(" + capnp.Client(c).String() + ")"
 }
 
 // AddRef creates a new Client that refers to the same capability as c.
 // If c is nil or has resolved to null, then AddRef returns nil.
-func (c HttpGetter) AddRef() HttpGetter {
-	return HttpGetter(capnp.Client(c).AddRef())
+func (c Requester) AddRef() Requester {
+	return Requester(capnp.Client(c).AddRef())
 }
 
 // Release releases a capability reference.  If this is the last
@@ -60,28 +60,28 @@ func (c HttpGetter) AddRef() HttpGetter {
 //
 // Release will panic if c has already been released, but not if c is
 // nil or resolved to null.
-func (c HttpGetter) Release() {
+func (c Requester) Release() {
 	capnp.Client(c).Release()
 }
 
 // Resolve blocks until the capability is fully resolved or the Context
 // expires.
-func (c HttpGetter) Resolve(ctx context.Context) error {
+func (c Requester) Resolve(ctx context.Context) error {
 	return capnp.Client(c).Resolve(ctx)
 }
 
-func (c HttpGetter) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (c Requester) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Client(c).EncodeAsPtr(seg)
 }
 
-func (HttpGetter) DecodeFromPtr(p capnp.Ptr) HttpGetter {
-	return HttpGetter(capnp.Client{}.DecodeFromPtr(p))
+func (Requester) DecodeFromPtr(p capnp.Ptr) Requester {
+	return Requester(capnp.Client{}.DecodeFromPtr(p))
 }
 
 // IsValid reports whether c is a valid reference to a capability.
 // A reference is invalid if it is nil, has resolved to null, or has
 // been released.
-func (c HttpGetter) IsValid() bool {
+func (c Requester) IsValid() bool {
 	return capnp.Client(c).IsValid()
 }
 
@@ -89,7 +89,7 @@ func (c HttpGetter) IsValid() bool {
 // same call to NewClient.  This can return false negatives if c or other
 // are not fully resolved: use Resolve if this is an issue.  If either
 // c or other are released, then IsSame panics.
-func (c HttpGetter) IsSame(other HttpGetter) bool {
+func (c Requester) IsSame(other Requester) bool {
 	return capnp.Client(c).IsSame(capnp.Client(other))
 }
 
@@ -97,295 +97,497 @@ func (c HttpGetter) IsSame(other HttpGetter) bool {
 // this client. This affects all future calls, but not calls already
 // waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
 // which is also the default.
-func (c HttpGetter) SetFlowLimiter(lim fc.FlowLimiter) {
+func (c Requester) SetFlowLimiter(lim fc.FlowLimiter) {
 	capnp.Client(c).SetFlowLimiter(lim)
 }
 
 // Get the current flowcontrol.FlowLimiter used to manage flow control
 // for this client.
-func (c HttpGetter) GetFlowLimiter() fc.FlowLimiter {
+func (c Requester) GetFlowLimiter() fc.FlowLimiter {
 	return capnp.Client(c).GetFlowLimiter()
 }
 
-// A HttpGetter_Server is a HttpGetter with a local implementation.
-type HttpGetter_Server interface {
-	Get(context.Context, HttpGetter_get) error
+// A Requester_Server is a Requester with a local implementation.
+type Requester_Server interface {
+	Get(context.Context, Requester_get) error
 }
 
-// HttpGetter_NewServer creates a new Server from an implementation of HttpGetter_Server.
-func HttpGetter_NewServer(s HttpGetter_Server) *server.Server {
+// Requester_NewServer creates a new Server from an implementation of Requester_Server.
+func Requester_NewServer(s Requester_Server) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(HttpGetter_Methods(nil, s), s, c)
+	return server.New(Requester_Methods(nil, s), s, c)
 }
 
-// HttpGetter_ServerToClient creates a new Client from an implementation of HttpGetter_Server.
+// Requester_ServerToClient creates a new Client from an implementation of Requester_Server.
 // The caller is responsible for calling Release on the returned Client.
-func HttpGetter_ServerToClient(s HttpGetter_Server) HttpGetter {
-	return HttpGetter(capnp.NewClient(HttpGetter_NewServer(s)))
+func Requester_ServerToClient(s Requester_Server) Requester {
+	return Requester(capnp.NewClient(Requester_NewServer(s)))
 }
 
-// HttpGetter_Methods appends Methods to a slice that invoke the methods on s.
+// Requester_Methods appends Methods to a slice that invoke the methods on s.
 // This can be used to create a more complicated Server.
-func HttpGetter_Methods(methods []server.Method, s HttpGetter_Server) []server.Method {
+func Requester_Methods(methods []server.Method, s Requester_Server) []server.Method {
 	if cap(methods) == 0 {
 		methods = make([]server.Method, 0, 1)
 	}
 
 	methods = append(methods, server.Method{
 		Method: capnp.Method{
-			InterfaceID:   0xfc98acef9abe3c68,
+			InterfaceID:   0xca2cf5b44093c972,
 			MethodID:      0,
-			InterfaceName: "http.capnp:HttpGetter",
+			InterfaceName: "http.capnp:Requester",
 			MethodName:    "get",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.Get(ctx, HttpGetter_get{call})
+			return s.Get(ctx, Requester_get{call})
 		},
 	})
 
 	return methods
 }
 
-// HttpGetter_get holds the state for a server call to HttpGetter.get.
+// Requester_get holds the state for a server call to Requester.get.
 // See server.Call for documentation.
-type HttpGetter_get struct {
+type Requester_get struct {
 	*server.Call
 }
 
 // Args returns the call's arguments.
-func (c HttpGetter_get) Args() HttpGetter_get_Params {
-	return HttpGetter_get_Params(c.Call.Args())
+func (c Requester_get) Args() Requester_get_Params {
+	return Requester_get_Params(c.Call.Args())
 }
 
 // AllocResults allocates the results struct.
-func (c HttpGetter_get) AllocResults() (HttpGetter_get_Results, error) {
-	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 8, PointerCount: 2})
-	return HttpGetter_get_Results(r), err
+func (c Requester_get) AllocResults() (Requester_get_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Requester_get_Results(r), err
 }
 
-// HttpGetter_List is a list of HttpGetter.
-type HttpGetter_List = capnp.CapList[HttpGetter]
+// Requester_List is a list of Requester.
+type Requester_List = capnp.CapList[Requester]
 
-// NewHttpGetter creates a new list of HttpGetter.
-func NewHttpGetter_List(s *capnp.Segment, sz int32) (HttpGetter_List, error) {
+// NewRequester creates a new list of Requester.
+func NewRequester_List(s *capnp.Segment, sz int32) (Requester_List, error) {
 	l, err := capnp.NewPointerList(s, sz)
-	return capnp.CapList[HttpGetter](l), err
+	return capnp.CapList[Requester](l), err
 }
 
-type HttpGetter_get_Params capnp.Struct
+type Requester_Header capnp.Struct
 
-// HttpGetter_get_Params_TypeID is the unique identifier for the type HttpGetter_get_Params.
-const HttpGetter_get_Params_TypeID = 0xfeeecd93e405c211
+// Requester_Header_TypeID is the unique identifier for the type Requester_Header.
+const Requester_Header_TypeID = 0xaa607977b7d3ba04
 
-func NewHttpGetter_get_Params(s *capnp.Segment) (HttpGetter_get_Params, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return HttpGetter_get_Params(st), err
+func NewRequester_Header(s *capnp.Segment) (Requester_Header, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
+	return Requester_Header(st), err
 }
 
-func NewRootHttpGetter_get_Params(s *capnp.Segment) (HttpGetter_get_Params, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return HttpGetter_get_Params(st), err
+func NewRootRequester_Header(s *capnp.Segment) (Requester_Header, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
+	return Requester_Header(st), err
 }
 
-func ReadRootHttpGetter_get_Params(msg *capnp.Message) (HttpGetter_get_Params, error) {
+func ReadRootRequester_Header(msg *capnp.Message) (Requester_Header, error) {
 	root, err := msg.Root()
-	return HttpGetter_get_Params(root.Struct()), err
+	return Requester_Header(root.Struct()), err
 }
 
-func (s HttpGetter_get_Params) String() string {
-	str, _ := text.Marshal(0xfeeecd93e405c211, capnp.Struct(s))
+func (s Requester_Header) String() string {
+	str, _ := text.Marshal(0xaa607977b7d3ba04, capnp.Struct(s))
 	return str
 }
 
-func (s HttpGetter_get_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (s Requester_Header) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Struct(s).EncodeAsPtr(seg)
 }
 
-func (HttpGetter_get_Params) DecodeFromPtr(p capnp.Ptr) HttpGetter_get_Params {
-	return HttpGetter_get_Params(capnp.Struct{}.DecodeFromPtr(p))
+func (Requester_Header) DecodeFromPtr(p capnp.Ptr) Requester_Header {
+	return Requester_Header(capnp.Struct{}.DecodeFromPtr(p))
 }
 
-func (s HttpGetter_get_Params) ToPtr() capnp.Ptr {
+func (s Requester_Header) ToPtr() capnp.Ptr {
 	return capnp.Struct(s).ToPtr()
 }
-func (s HttpGetter_get_Params) IsValid() bool {
+func (s Requester_Header) IsValid() bool {
 	return capnp.Struct(s).IsValid()
 }
 
-func (s HttpGetter_get_Params) Message() *capnp.Message {
+func (s Requester_Header) Message() *capnp.Message {
 	return capnp.Struct(s).Message()
 }
 
-func (s HttpGetter_get_Params) Segment() *capnp.Segment {
+func (s Requester_Header) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s HttpGetter_get_Params) Url() (string, error) {
+func (s Requester_Header) Key() (string, error) {
 	p, err := capnp.Struct(s).Ptr(0)
 	return p.Text(), err
 }
 
-func (s HttpGetter_get_Params) HasUrl() bool {
+func (s Requester_Header) HasKey() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s HttpGetter_get_Params) UrlBytes() ([]byte, error) {
+func (s Requester_Header) KeyBytes() ([]byte, error) {
 	p, err := capnp.Struct(s).Ptr(0)
 	return p.TextBytes(), err
 }
 
-func (s HttpGetter_get_Params) SetUrl(v string) error {
+func (s Requester_Header) SetKey(v string) error {
 	return capnp.Struct(s).SetText(0, v)
 }
 
-// HttpGetter_get_Params_List is a list of HttpGetter_get_Params.
-type HttpGetter_get_Params_List = capnp.StructList[HttpGetter_get_Params]
-
-// NewHttpGetter_get_Params creates a new list of HttpGetter_get_Params.
-func NewHttpGetter_get_Params_List(s *capnp.Segment, sz int32) (HttpGetter_get_Params_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[HttpGetter_get_Params](l), err
+func (s Requester_Header) Value() (string, error) {
+	p, err := capnp.Struct(s).Ptr(1)
+	return p.Text(), err
 }
 
-// HttpGetter_get_Params_Future is a wrapper for a HttpGetter_get_Params promised by a client call.
-type HttpGetter_get_Params_Future struct{ *capnp.Future }
+func (s Requester_Header) HasValue() bool {
+	return capnp.Struct(s).HasPtr(1)
+}
 
-func (f HttpGetter_get_Params_Future) Struct() (HttpGetter_get_Params, error) {
+func (s Requester_Header) ValueBytes() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(1)
+	return p.TextBytes(), err
+}
+
+func (s Requester_Header) SetValue(v string) error {
+	return capnp.Struct(s).SetText(1, v)
+}
+
+// Requester_Header_List is a list of Requester_Header.
+type Requester_Header_List = capnp.StructList[Requester_Header]
+
+// NewRequester_Header creates a new list of Requester_Header.
+func NewRequester_Header_List(s *capnp.Segment, sz int32) (Requester_Header_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2}, sz)
+	return capnp.StructList[Requester_Header](l), err
+}
+
+// Requester_Header_Future is a wrapper for a Requester_Header promised by a client call.
+type Requester_Header_Future struct{ *capnp.Future }
+
+func (f Requester_Header_Future) Struct() (Requester_Header, error) {
 	p, err := f.Future.Ptr()
-	return HttpGetter_get_Params(p.Struct()), err
+	return Requester_Header(p.Struct()), err
 }
 
-type HttpGetter_get_Results capnp.Struct
+type Requester_Response capnp.Struct
 
-// HttpGetter_get_Results_TypeID is the unique identifier for the type HttpGetter_get_Results.
-const HttpGetter_get_Results_TypeID = 0xd83f041b50142dbb
+// Requester_Response_TypeID is the unique identifier for the type Requester_Response.
+const Requester_Response_TypeID = 0xf9b7d43933d55000
 
-func NewHttpGetter_get_Results(s *capnp.Segment) (HttpGetter_get_Results, error) {
+func NewRequester_Response(s *capnp.Segment) (Requester_Response, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2})
-	return HttpGetter_get_Results(st), err
+	return Requester_Response(st), err
 }
 
-func NewRootHttpGetter_get_Results(s *capnp.Segment) (HttpGetter_get_Results, error) {
+func NewRootRequester_Response(s *capnp.Segment) (Requester_Response, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2})
-	return HttpGetter_get_Results(st), err
+	return Requester_Response(st), err
 }
 
-func ReadRootHttpGetter_get_Results(msg *capnp.Message) (HttpGetter_get_Results, error) {
+func ReadRootRequester_Response(msg *capnp.Message) (Requester_Response, error) {
 	root, err := msg.Root()
-	return HttpGetter_get_Results(root.Struct()), err
+	return Requester_Response(root.Struct()), err
 }
 
-func (s HttpGetter_get_Results) String() string {
-	str, _ := text.Marshal(0xd83f041b50142dbb, capnp.Struct(s))
+func (s Requester_Response) String() string {
+	str, _ := text.Marshal(0xf9b7d43933d55000, capnp.Struct(s))
 	return str
 }
 
-func (s HttpGetter_get_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (s Requester_Response) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Struct(s).EncodeAsPtr(seg)
 }
 
-func (HttpGetter_get_Results) DecodeFromPtr(p capnp.Ptr) HttpGetter_get_Results {
-	return HttpGetter_get_Results(capnp.Struct{}.DecodeFromPtr(p))
+func (Requester_Response) DecodeFromPtr(p capnp.Ptr) Requester_Response {
+	return Requester_Response(capnp.Struct{}.DecodeFromPtr(p))
 }
 
-func (s HttpGetter_get_Results) ToPtr() capnp.Ptr {
+func (s Requester_Response) ToPtr() capnp.Ptr {
 	return capnp.Struct(s).ToPtr()
 }
-func (s HttpGetter_get_Results) IsValid() bool {
+func (s Requester_Response) IsValid() bool {
 	return capnp.Struct(s).IsValid()
 }
 
-func (s HttpGetter_get_Results) Message() *capnp.Message {
+func (s Requester_Response) Message() *capnp.Message {
 	return capnp.Struct(s).Message()
 }
 
-func (s HttpGetter_get_Results) Segment() *capnp.Segment {
+func (s Requester_Response) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s HttpGetter_get_Results) Status() uint32 {
+func (s Requester_Response) Status() uint32 {
 	return capnp.Struct(s).Uint32(0)
 }
 
-func (s HttpGetter_get_Results) SetStatus(v uint32) {
+func (s Requester_Response) SetStatus(v uint32) {
 	capnp.Struct(s).SetUint32(0, v)
 }
 
-func (s HttpGetter_get_Results) Body() ([]byte, error) {
+func (s Requester_Response) Body() ([]byte, error) {
 	p, err := capnp.Struct(s).Ptr(0)
 	return []byte(p.Data()), err
 }
 
-func (s HttpGetter_get_Results) HasBody() bool {
+func (s Requester_Response) HasBody() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s HttpGetter_get_Results) SetBody(v []byte) error {
+func (s Requester_Response) SetBody(v []byte) error {
 	return capnp.Struct(s).SetData(0, v)
 }
 
-func (s HttpGetter_get_Results) Error() (string, error) {
+func (s Requester_Response) Error() (string, error) {
 	p, err := capnp.Struct(s).Ptr(1)
 	return p.Text(), err
 }
 
-func (s HttpGetter_get_Results) HasError() bool {
+func (s Requester_Response) HasError() bool {
 	return capnp.Struct(s).HasPtr(1)
 }
 
-func (s HttpGetter_get_Results) ErrorBytes() ([]byte, error) {
+func (s Requester_Response) ErrorBytes() ([]byte, error) {
 	p, err := capnp.Struct(s).Ptr(1)
 	return p.TextBytes(), err
 }
 
-func (s HttpGetter_get_Results) SetError(v string) error {
+func (s Requester_Response) SetError(v string) error {
 	return capnp.Struct(s).SetText(1, v)
 }
 
-// HttpGetter_get_Results_List is a list of HttpGetter_get_Results.
-type HttpGetter_get_Results_List = capnp.StructList[HttpGetter_get_Results]
+// Requester_Response_List is a list of Requester_Response.
+type Requester_Response_List = capnp.StructList[Requester_Response]
 
-// NewHttpGetter_get_Results creates a new list of HttpGetter_get_Results.
-func NewHttpGetter_get_Results_List(s *capnp.Segment, sz int32) (HttpGetter_get_Results_List, error) {
+// NewRequester_Response creates a new list of Requester_Response.
+func NewRequester_Response_List(s *capnp.Segment, sz int32) (Requester_Response_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2}, sz)
-	return capnp.StructList[HttpGetter_get_Results](l), err
+	return capnp.StructList[Requester_Response](l), err
 }
 
-// HttpGetter_get_Results_Future is a wrapper for a HttpGetter_get_Results promised by a client call.
-type HttpGetter_get_Results_Future struct{ *capnp.Future }
+// Requester_Response_Future is a wrapper for a Requester_Response promised by a client call.
+type Requester_Response_Future struct{ *capnp.Future }
 
-func (f HttpGetter_get_Results_Future) Struct() (HttpGetter_get_Results, error) {
+func (f Requester_Response_Future) Struct() (Requester_Response, error) {
 	p, err := f.Future.Ptr()
-	return HttpGetter_get_Results(p.Struct()), err
+	return Requester_Response(p.Struct()), err
 }
 
-const schema_bb59054ba43c3861 = "x\xda|\xd0\xb1K#A\x1c\xc5\xf1\xf7fvo\xc3" +
-	"]\x96\xbb\xb9]\xd2\xdc\x1d\x81p6B\x02\x9aFB" +
-	" )\x94DT\xd8\x11\x1b\xcbU\x97\xa4\x88f\xd9\x9d" +
-	"\x14\xfe\x1d6bm\xa7 \xd8\x06\x05\x05K\x0b;\xed" +
-	"ml\xf4\x1f\x10WV\x8cX\xd9\x0dS<>\xdf\xdf" +
-	"\xaf\xa3\xb65\xe3\x0e\x05\x84\xfek\x7f\xcb\xc6U?\xf8" +
-	"c\xb5n\xa1K$`\x0b\x07\xa8\xff\xe3o\x82\xde\x14" +
-	"O\xc0\xac\xdf<?x:\xde\x7f\x86\xfa!\xb3p\xae" +
-	"y\xb8d\xaf\x8f\x01zg<\xf5\xae\xe8\x00\xde\x05;" +
-	"\xdeC\xfe\xca\xd4\xa5}\xbfw\xfd\xf8\x02U\xca\xd7\xf2" +
-	"\xbf\xfa\x0d\xbf\xe7kwl\xa1\x9a\xf5\x8d\x89k\x9ba" +
-	",w\xe2F\xd7\x98\xb8\x13\x19\x13%\xb5^d\xfe\xaf" +
-	"F\xe9h`\x98\xea\xa2\xb4\x00\x8b\x80Zh\x00\xba-" +
-	"\xa9\x97\x05I?\x17\xaa\xc5i@\xcfK\xea@P\x09" +
-	"\xfa\x14\x80Z\x99\x05tWR\xaf\x09\xb6R\x13\x9aQ" +
-	"\xca\x02\x04\x0b\xe0\xcf\x8d\xe1\xd6.]\x08\xba`9J" +
-	"\x92a\xc2\"\x04\x8by\xdb\xbb\x86\x13M\xf9\x8d\x13\x90" +
-	"\xda\x92\xf6\xa7\x1eN\xee\xa4T\x05B\xd9\x8e\xd3\x8bL" +
-	"\x9b\x01\xf9UQ\x10&\xe1v\x0ah\xeb\xa3\xc8\xad\x00" +
-	"\xba \xa9}Ag\x94\x0c&\x94\xd7\x00\x00\x00\xff\xff" +
-	"\x11\x93^\xbf"
+type Requester_get_Params capnp.Struct
+
+// Requester_get_Params_TypeID is the unique identifier for the type Requester_get_Params.
+const Requester_get_Params_TypeID = 0xae793c8de2c28098
+
+func NewRequester_get_Params(s *capnp.Segment) (Requester_get_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Requester_get_Params(st), err
+}
+
+func NewRootRequester_get_Params(s *capnp.Segment) (Requester_get_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Requester_get_Params(st), err
+}
+
+func ReadRootRequester_get_Params(msg *capnp.Message) (Requester_get_Params, error) {
+	root, err := msg.Root()
+	return Requester_get_Params(root.Struct()), err
+}
+
+func (s Requester_get_Params) String() string {
+	str, _ := text.Marshal(0xae793c8de2c28098, capnp.Struct(s))
+	return str
+}
+
+func (s Requester_get_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Requester_get_Params) DecodeFromPtr(p capnp.Ptr) Requester_get_Params {
+	return Requester_get_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Requester_get_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Requester_get_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Requester_get_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Requester_get_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Requester_get_Params) Url() (string, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return p.Text(), err
+}
+
+func (s Requester_get_Params) HasUrl() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Requester_get_Params) UrlBytes() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return p.TextBytes(), err
+}
+
+func (s Requester_get_Params) SetUrl(v string) error {
+	return capnp.Struct(s).SetText(0, v)
+}
+
+// Requester_get_Params_List is a list of Requester_get_Params.
+type Requester_get_Params_List = capnp.StructList[Requester_get_Params]
+
+// NewRequester_get_Params creates a new list of Requester_get_Params.
+func NewRequester_get_Params_List(s *capnp.Segment, sz int32) (Requester_get_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[Requester_get_Params](l), err
+}
+
+// Requester_get_Params_Future is a wrapper for a Requester_get_Params promised by a client call.
+type Requester_get_Params_Future struct{ *capnp.Future }
+
+func (f Requester_get_Params_Future) Struct() (Requester_get_Params, error) {
+	p, err := f.Future.Ptr()
+	return Requester_get_Params(p.Struct()), err
+}
+
+type Requester_get_Results capnp.Struct
+
+// Requester_get_Results_TypeID is the unique identifier for the type Requester_get_Results.
+const Requester_get_Results_TypeID = 0xdf6a51cd11a341bd
+
+func NewRequester_get_Results(s *capnp.Segment) (Requester_get_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Requester_get_Results(st), err
+}
+
+func NewRootRequester_get_Results(s *capnp.Segment) (Requester_get_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Requester_get_Results(st), err
+}
+
+func ReadRootRequester_get_Results(msg *capnp.Message) (Requester_get_Results, error) {
+	root, err := msg.Root()
+	return Requester_get_Results(root.Struct()), err
+}
+
+func (s Requester_get_Results) String() string {
+	str, _ := text.Marshal(0xdf6a51cd11a341bd, capnp.Struct(s))
+	return str
+}
+
+func (s Requester_get_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Requester_get_Results) DecodeFromPtr(p capnp.Ptr) Requester_get_Results {
+	return Requester_get_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Requester_get_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Requester_get_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Requester_get_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Requester_get_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Requester_get_Results) Response() (Requester_Response, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return Requester_Response(p.Struct()), err
+}
+
+func (s Requester_get_Results) HasResponse() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Requester_get_Results) SetResponse(v Requester_Response) error {
+	return capnp.Struct(s).SetPtr(0, capnp.Struct(v).ToPtr())
+}
+
+// NewResponse sets the response field to a newly
+// allocated Requester_Response struct, preferring placement in s's segment.
+func (s Requester_get_Results) NewResponse() (Requester_Response, error) {
+	ss, err := NewRequester_Response(capnp.Struct(s).Segment())
+	if err != nil {
+		return Requester_Response{}, err
+	}
+	err = capnp.Struct(s).SetPtr(0, capnp.Struct(ss).ToPtr())
+	return ss, err
+}
+
+// Requester_get_Results_List is a list of Requester_get_Results.
+type Requester_get_Results_List = capnp.StructList[Requester_get_Results]
+
+// NewRequester_get_Results creates a new list of Requester_get_Results.
+func NewRequester_get_Results_List(s *capnp.Segment, sz int32) (Requester_get_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[Requester_get_Results](l), err
+}
+
+// Requester_get_Results_Future is a wrapper for a Requester_get_Results promised by a client call.
+type Requester_get_Results_Future struct{ *capnp.Future }
+
+func (f Requester_get_Results_Future) Struct() (Requester_get_Results, error) {
+	p, err := f.Future.Ptr()
+	return Requester_get_Results(p.Struct()), err
+}
+func (p Requester_get_Results_Future) Response() Requester_Response_Future {
+	return Requester_Response_Future{Future: p.Future.Field(0, nil)}
+}
+
+const schema_bb59054ba43c3861 = "x\xda|\x91\xbdkSQ\x18\xc6\x9f\xe7=\xb9\xde\xa8" +
+	"\x09\xed\xe1\xa6\xe0\"\x81\x12\xf0\x03S\xaaU\xd0PH" +
+	"\x04\x8b\xb1*\xe4\x04\x97n^\xcd\xa1\xa2\xb1\x89\xf7\xc3" +
+	"\x92A\xd0?\xc0\xc9\xc5]\xa7\x0e\xba\x08\x05\xc5\xc5M" +
+	"\xc1I\x1d\x1cD\xe8\x9f 88\xe8\x95S\xb81\xa1" +
+	"\xe0\xf6\x9e\x8f\xf7\xf7<\xef\xf3.\x92\xad\xc2\xc9rU" +
+	"AL\xcd\xdb\x97\x15^\x7f\xda\xde\x1c]\xdf\x82\x9ec" +
+	"\x16\xbd\x7f\xd2z\xf5\xf3\xc4\x07x\xe2\x03A\xca\x9d\xe0" +
+	"\x11]\xf5\x80\x9b`\xf6\xf4\xe1\xbb\x9d\xc7\xcb\xa3\x17\xee" +
+	"/\xe0\xb9\x97\xa5\xaf\x14\x82\xc1761\xd1\xaf\x0f\xaa" +
+	",<\xbb\xfc\xfc\xb2\xb7\xf6\x06`\xf0\x9b[\x81'G" +
+	"\x80\xe0\xb0\\\x0cV\x1c={{\xfe\x99\xfehn\x7f" +
+	"\x9f\xa4\xd5\xe5\x80\xa3\x9d\x91&\xf8\xa7\xf3e\xe9\xdc\xe7" +
+	"\xed_f\x8e{\x9c\xad\xc9\x8f\xc0\xeeV\xa1\xbcD=" +
+	"\xbb\x95$\xc3\x85\x9b\xe1P6\x86\x8d\xae\xbd\x97\xda8" +
+	"\xb1\xd1B\xdb\x86~\xcfF\x1d\xd2\x14U\x01(\x10\xd0" +
+	"\xc7\xe6\x01SS4\x8bBMV\xe8.\xeb\xa7\x00s" +
+	"T\xd1\x9c\x16\xfaw\xec\x88%\x08K`\xf5~\xd8O" +
+	"m~\x1a\xcb\xa8)\x99u\x9b\xd4:a\x14\xde\x8da" +
+	"\x0ac\x9d\xb2\xd3)*\x9a\x8a\xd0O\xa3\xfe\x1e\x08s" +
+	"\xc8\x8c\xa3\x98\"9\xb1\x8c\xfd\x8d||\xed\xad6\xdb" +
+	"6\xec\xd9(\xeb\xdax8\xd8\x88-\xe0\x84<`\xbc" +
+	"\x11\xe6aj=\x0f\xd1\x9e\xef\xaf\xdb\xa4\xc5\x0e\xff\xe7" +
+	"\xb9k\xe3\xb4\x9f\xc4\x98r\xbd\x0a\x98\x92\xa29$\xcc" +
+	"\xa2\x7fz\x9c\xcd\xfd\x80\x9c\x9d\x98b:\xf1\xae\x8d\xab" +
+	"\xbb-.\xf3\xd2\x98\xba\xd2\x00LK\xd1\\\x11\xe6\x91" +
+	"_:\x0e\x98\x0b\x8a\xa6#\xd4\xc2\x0a\x05\xd0W\xdd\x1e" +
+	"\xda\x8a\xe6\x9a\xb0\x19'a\x92\xc6,BX\x04gn" +
+	"\x0cz#\x96!,\x83U\x1bE\x83(\x8f\xf4o\x00" +
+	"\x00\x00\xff\xffa \xb6\x18"
 
 func RegisterSchema(reg *schemas.Registry) {
 	reg.Register(&schemas.Schema{
 		String: schema_bb59054ba43c3861,
 		Nodes: []uint64{
-			0xd83f041b50142dbb,
-			0xfc98acef9abe3c68,
-			0xfeeecd93e405c211,
+			0xaa607977b7d3ba04,
+			0xae793c8de2c28098,
+			0xca2cf5b44093c972,
+			0xdf6a51cd11a341bd,
+			0xf9b7d43933d55000,
 		},
 		Compressed: true,
 	})

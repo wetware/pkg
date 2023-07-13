@@ -16,6 +16,6 @@ func (ToolServer) Http(ctx context.Context, call api.Tools_http) error {
 		return err
 	}
 
-	httpServer := http_api.HttpGetter_ServerToClient(http.HttpServer{})
-	return res.SetGetter(httpServer.AddRef())
+	httpServer := http_api.Requester_ServerToClient(http.HttpServer{})
+	return res.SetHttp(httpServer.AddRef())
 }

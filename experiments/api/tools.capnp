@@ -5,6 +5,8 @@ using Go = import "/go.capnp";
 $Go.package("tools");
 $Go.import("github.com/wetware/ww/experiments/api/tools");
 
+using Http = import "http.capnp";
+
 interface Tools {
-    http @0 () -> (getter :import "http.capnp".HttpGetter);
+    http @0 () -> (http :Http.Requester);
 }
