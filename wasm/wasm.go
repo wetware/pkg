@@ -22,8 +22,8 @@ const (
 	PREOPENED_FD = 3
 
 	// Inbox in which each element will be found by default on the inbox
-	HOST_INDEX = 0
-	ARGS_INDEX = 1
+	ARGS_INDEX = 0
+	CAPS_INDEX = 1
 )
 
 // closer contains a slice of Closers that will be closed when this type itself is closed
