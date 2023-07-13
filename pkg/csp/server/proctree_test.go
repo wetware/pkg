@@ -7,7 +7,7 @@ import (
 	csp "github.com/wetware/ww/pkg/csp/server"
 )
 
-func TestProcTreeFindParent(t *testing.T) {
+func testProcTree() csp.ProcTree {
 	/*
 		          0
 		        /    \
@@ -52,9 +52,25 @@ func TestProcTreeFindParent(t *testing.T) {
 			},
 		},
 	}
-	pt := csp.ProcTree{
+	return csp.ProcTree{
 		Root: root,
 	}
+}
+
+func TestProcTree_Find(t *testing.T) {
+	pt := testProcTree()
+	for i := uint32(0); i <= 10; i++ {
+		n := pt.Find(i)
+		if n == nil {
+			t.Fatalf("failed to find node %d", i)
+		}
+		if n.Pid != i {
+			t.Fatalf("found node %d instead of %d", n.Pid, i)
+		}
+	}
+}
+
+func TestProcTree_FindParent(t *testing.T) {
 	// child, parent
 	var matches = [6][2]uint32{
 		{5, 4},
@@ -64,6 +80,7 @@ func TestProcTreeFindParent(t *testing.T) {
 		{9, 1},
 		{10, 9},
 	}
+	pt := testProcTree()
 	for _, match := range matches {
 		c := match[0]
 		p := pt.FindParent(c)
