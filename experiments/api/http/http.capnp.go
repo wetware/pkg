@@ -36,6 +36,26 @@ func (c Requester) Get(ctx context.Context, params func(Requester_get_Params) er
 
 }
 
+func (c Requester) Post(ctx context.Context, params func(Requester_post_Params) error) (Requester_post_Results_Future, capnp.ReleaseFunc) {
+
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0xca2cf5b44093c972,
+			MethodID:      1,
+			InterfaceName: "http.capnp:Requester",
+			MethodName:    "post",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 3}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Requester_post_Params(s)) }
+	}
+
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return Requester_post_Results_Future{Future: ans.Future()}, release
+
+}
+
 func (c Requester) WaitStreaming() error {
 	return capnp.Client(c).WaitStreaming()
 }
@@ -110,6 +130,8 @@ func (c Requester) GetFlowLimiter() fc.FlowLimiter {
 // A Requester_Server is a Requester with a local implementation.
 type Requester_Server interface {
 	Get(context.Context, Requester_get) error
+
+	Post(context.Context, Requester_post) error
 }
 
 // Requester_NewServer creates a new Server from an implementation of Requester_Server.
@@ -128,7 +150,7 @@ func Requester_ServerToClient(s Requester_Server) Requester {
 // This can be used to create a more complicated Server.
 func Requester_Methods(methods []server.Method, s Requester_Server) []server.Method {
 	if cap(methods) == 0 {
-		methods = make([]server.Method, 0, 1)
+		methods = make([]server.Method, 0, 2)
 	}
 
 	methods = append(methods, server.Method{
@@ -140,6 +162,18 @@ func Requester_Methods(methods []server.Method, s Requester_Server) []server.Met
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
 			return s.Get(ctx, Requester_get{call})
+		},
+	})
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xca2cf5b44093c972,
+			MethodID:      1,
+			InterfaceName: "http.capnp:Requester",
+			MethodName:    "post",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Post(ctx, Requester_post{call})
 		},
 	})
 
@@ -161,6 +195,23 @@ func (c Requester_get) Args() Requester_get_Params {
 func (c Requester_get) AllocResults() (Requester_get_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
 	return Requester_get_Results(r), err
+}
+
+// Requester_post holds the state for a server call to Requester.post.
+// See server.Call for documentation.
+type Requester_post struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c Requester_post) Args() Requester_post_Params {
+	return Requester_post_Params(c.Call.Args())
+}
+
+// AllocResults allocates the results struct.
+func (c Requester_post) AllocResults() (Requester_post_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Requester_post_Results(r), err
 }
 
 // Requester_List is a list of Requester.
@@ -548,36 +599,253 @@ func (p Requester_get_Results_Future) Response() Requester_Response_Future {
 	return Requester_Response_Future{Future: p.Future.Field(0, nil)}
 }
 
-const schema_bb59054ba43c3861 = "x\xda|\x91\xbdkSQ\x18\xc6\x9f\xe7=\xb9\xde\xa8" +
-	"\x09\xed\xe1\xa6\xe0\"\x81\x12\xf0\x03S\xaaU\xd0PH" +
-	"\x04\x8b\xb1*\xe4\x04\x97n^\xcd\xa1\xa2\xb1\x89\xf7\xc3" +
-	"\x92A\xd0?\xc0\xc9\xc5]\xa7\x0e\xba\x08\x05\xc5\xc5M" +
-	"\xc1I\x1d\x1cD\xe8\x9f 88\xe8\x95S\xb81\xa1" +
-	"\xe0\xf6\x9e\x8f\xf7\xf7<\xef\xf3.\x92\xad\xc2\xc9rU" +
-	"AL\xcd\xdb\x97\x15^\x7f\xda\xde\x1c]\xdf\x82\x9ec" +
-	"\x16\xbd\x7f\xd2z\xf5\xf3\xc4\x07x\xe2\x03A\xca\x9d\xe0" +
-	"\x11]\xf5\x80\x9b`\xf6\xf4\xe1\xbb\x9d\xc7\xcb\xa3\x17\xee" +
-	"/\xe0\xb9\x97\xa5\xaf\x14\x82\xc1761\xd1\xaf\x0f\xaa" +
-	",<\xbb\xfc\xfc\xb2\xb7\xf6\x06`\xf0\x9b[\x81'G" +
-	"\x80\xe0\xb0\\\x0cV\x1c={{\xfe\x99\xfehn\x7f" +
-	"\x9f\xa4\xd5\xe5\x80\xa3\x9d\x91&\xf8\xa7\xf3e\xe9\xdc\xe7" +
-	"\xed_f\x8e{\x9c\xad\xc9\x8f\xc0\xeeV\xa1\xbcD=" +
-	"\xbb\x95$\xc3\x85\x9b\xe1P6\x86\x8d\xae\xbd\x97\xda8" +
-	"\xb1\xd1B\xdb\x86~\xcfF\x1d\xd2\x14U\x01(\x10\xd0" +
-	"\xc7\xe6\x01SS4\x8bBMV\xe8.\xeb\xa7\x00s" +
-	"T\xd1\x9c\x16\xfaw\xec\x88%\x08K`\xf5~\xd8O" +
-	"m~\x1a\xcb\xa8)\x99u\x9b\xd4:a\x14\xde\x8da" +
-	"\x0ac\x9d\xb2\xd3)*\x9a\x8a\xd0O\xa3\xfe\x1e\x08s" +
-	"\xc8\x8c\xa3\x98\"9\xb1\x8c\xfd\x8d||\xed\xad6\xdb" +
-	"6\xec\xd9(\xeb\xdax8\xd8\x88-\xe0\x84<`\xbc" +
-	"\x11\xe6aj=\x0f\xd1\x9e\xef\xaf\xdb\xa4\xc5\x0e\xff\xe7" +
-	"\xb9k\xe3\xb4\x9f\xc4\x98r\xbd\x0a\x98\x92\xa29$\xcc" +
-	"\xa2\x7fz\x9c\xcd\xfd\x80\x9c\x9d\x98b:\xf1\xae\x8d\xab" +
-	"\xbb-.\xf3\xd2\x98\xba\xd2\x00LK\xd1\\\x11\xe6\x91" +
-	"_:\x0e\x98\x0b\x8a\xa6#\xd4\xc2\x0a\x05\xd0W\xdd\x1e" +
-	"\xda\x8a\xe6\x9a\xb0\x19'a\x92\xc6,BX\x04gn" +
-	"\x0cz#\x96!,\x83U\x1bE\x83(\x8f\xf4o\x00" +
-	"\x00\x00\xff\xffa \xb6\x18"
+type Requester_post_Params capnp.Struct
+
+// Requester_post_Params_TypeID is the unique identifier for the type Requester_post_Params.
+const Requester_post_Params_TypeID = 0xdbcdd2e486da072d
+
+func NewRequester_post_Params(s *capnp.Segment) (Requester_post_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 3})
+	return Requester_post_Params(st), err
+}
+
+func NewRootRequester_post_Params(s *capnp.Segment) (Requester_post_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 3})
+	return Requester_post_Params(st), err
+}
+
+func ReadRootRequester_post_Params(msg *capnp.Message) (Requester_post_Params, error) {
+	root, err := msg.Root()
+	return Requester_post_Params(root.Struct()), err
+}
+
+func (s Requester_post_Params) String() string {
+	str, _ := text.Marshal(0xdbcdd2e486da072d, capnp.Struct(s))
+	return str
+}
+
+func (s Requester_post_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Requester_post_Params) DecodeFromPtr(p capnp.Ptr) Requester_post_Params {
+	return Requester_post_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Requester_post_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Requester_post_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Requester_post_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Requester_post_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Requester_post_Params) Url() (string, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return p.Text(), err
+}
+
+func (s Requester_post_Params) HasUrl() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Requester_post_Params) UrlBytes() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return p.TextBytes(), err
+}
+
+func (s Requester_post_Params) SetUrl(v string) error {
+	return capnp.Struct(s).SetText(0, v)
+}
+
+func (s Requester_post_Params) Headers() (Requester_Header_List, error) {
+	p, err := capnp.Struct(s).Ptr(1)
+	return Requester_Header_List(p.List()), err
+}
+
+func (s Requester_post_Params) HasHeaders() bool {
+	return capnp.Struct(s).HasPtr(1)
+}
+
+func (s Requester_post_Params) SetHeaders(v Requester_Header_List) error {
+	return capnp.Struct(s).SetPtr(1, v.ToPtr())
+}
+
+// NewHeaders sets the headers field to a newly
+// allocated Requester_Header_List, preferring placement in s's segment.
+func (s Requester_post_Params) NewHeaders(n int32) (Requester_Header_List, error) {
+	l, err := NewRequester_Header_List(capnp.Struct(s).Segment(), n)
+	if err != nil {
+		return Requester_Header_List{}, err
+	}
+	err = capnp.Struct(s).SetPtr(1, l.ToPtr())
+	return l, err
+}
+func (s Requester_post_Params) Body() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(2)
+	return []byte(p.Data()), err
+}
+
+func (s Requester_post_Params) HasBody() bool {
+	return capnp.Struct(s).HasPtr(2)
+}
+
+func (s Requester_post_Params) SetBody(v []byte) error {
+	return capnp.Struct(s).SetData(2, v)
+}
+
+// Requester_post_Params_List is a list of Requester_post_Params.
+type Requester_post_Params_List = capnp.StructList[Requester_post_Params]
+
+// NewRequester_post_Params creates a new list of Requester_post_Params.
+func NewRequester_post_Params_List(s *capnp.Segment, sz int32) (Requester_post_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 3}, sz)
+	return capnp.StructList[Requester_post_Params](l), err
+}
+
+// Requester_post_Params_Future is a wrapper for a Requester_post_Params promised by a client call.
+type Requester_post_Params_Future struct{ *capnp.Future }
+
+func (f Requester_post_Params_Future) Struct() (Requester_post_Params, error) {
+	p, err := f.Future.Ptr()
+	return Requester_post_Params(p.Struct()), err
+}
+
+type Requester_post_Results capnp.Struct
+
+// Requester_post_Results_TypeID is the unique identifier for the type Requester_post_Results.
+const Requester_post_Results_TypeID = 0xb00c21dc511752fc
+
+func NewRequester_post_Results(s *capnp.Segment) (Requester_post_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Requester_post_Results(st), err
+}
+
+func NewRootRequester_post_Results(s *capnp.Segment) (Requester_post_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Requester_post_Results(st), err
+}
+
+func ReadRootRequester_post_Results(msg *capnp.Message) (Requester_post_Results, error) {
+	root, err := msg.Root()
+	return Requester_post_Results(root.Struct()), err
+}
+
+func (s Requester_post_Results) String() string {
+	str, _ := text.Marshal(0xb00c21dc511752fc, capnp.Struct(s))
+	return str
+}
+
+func (s Requester_post_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Requester_post_Results) DecodeFromPtr(p capnp.Ptr) Requester_post_Results {
+	return Requester_post_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Requester_post_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Requester_post_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Requester_post_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Requester_post_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Requester_post_Results) Response() (Requester_Response, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return Requester_Response(p.Struct()), err
+}
+
+func (s Requester_post_Results) HasResponse() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Requester_post_Results) SetResponse(v Requester_Response) error {
+	return capnp.Struct(s).SetPtr(0, capnp.Struct(v).ToPtr())
+}
+
+// NewResponse sets the response field to a newly
+// allocated Requester_Response struct, preferring placement in s's segment.
+func (s Requester_post_Results) NewResponse() (Requester_Response, error) {
+	ss, err := NewRequester_Response(capnp.Struct(s).Segment())
+	if err != nil {
+		return Requester_Response{}, err
+	}
+	err = capnp.Struct(s).SetPtr(0, capnp.Struct(ss).ToPtr())
+	return ss, err
+}
+
+// Requester_post_Results_List is a list of Requester_post_Results.
+type Requester_post_Results_List = capnp.StructList[Requester_post_Results]
+
+// NewRequester_post_Results creates a new list of Requester_post_Results.
+func NewRequester_post_Results_List(s *capnp.Segment, sz int32) (Requester_post_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[Requester_post_Results](l), err
+}
+
+// Requester_post_Results_Future is a wrapper for a Requester_post_Results promised by a client call.
+type Requester_post_Results_Future struct{ *capnp.Future }
+
+func (f Requester_post_Results_Future) Struct() (Requester_post_Results, error) {
+	p, err := f.Future.Ptr()
+	return Requester_post_Results(p.Struct()), err
+}
+func (p Requester_post_Results_Future) Response() Requester_Response_Future {
+	return Requester_Response_Future{Future: p.Future.Field(0, nil)}
+}
+
+const schema_bb59054ba43c3861 = "x\xda\xa4\x92\xc1K\x14o\x1c\xc6\xbf\xcf\xf7\xdd\xfd\xcd" +
+	"\xfej\xb7\xf5m\x94\xea$\x89Q\x89\x8afA\x89\xb0" +
+	"\x9b\x14\x98\x15\xcc\xbb\x14\xd4Apj_\x942w\x9b" +
+	"\x99M\xf6T]\x0a\x0f\x1d\xa2K\xd7\xa8\x93\x87\xecP" +
+	"\x08\x85\x87\xba\x15HPy\xb0\x82H\xfa\x07\x0a:\x04" +
+	"\xd1\xc4\xbb:\xe3H`\x87n3\xef|\xdf\xe7\x99\xcf" +
+	"\xf7yz&QL\xf5\xe6^\x0bb\xd5\x99\xfe/L" +
+	"=};7U\x1f\x9d!\xd9\x82\xd0{y\xa7\xf8\xf8" +
+	"{\xe7+J\xb3Ed/`\xd9^\x82yZ\xc4\x14" +
+	"!\xbc{\xed\xc5\xf2\xad\x81\xfaC3K\x946_\xfa" +
+	"z\x99A\xb0\x0fp\x81\x10\xfe,mS\x1fwf\x1f" +
+	"%\x07N\xf3V30\xd2\x18\x88\x0d\xe4f\x11\xba\x07" +
+	"\x07\x1e\x1cO\x9f}F\x04\xfb:\xcf\xd8\xd3\xbc\x9b\xc8" +
+	"\xbe\xc77\xed\xaf\xc6>\xec\xb2\xde\xdf\xf8\xf2f\xe1\xc3" +
+	"\xaa\x9a0jK\xbc\xc9\xa8}\xe6YB8\x7f\xf8\xbe" +
+	"\\P\x17>%\xed\xa6Ec\xe0\xb6(\x10~9\x8b" +
+	"}\x87\xde\xcd\xfdP-\xf8\x83\xed\x89\xf8f?7\x92" +
+	"\xf6\xbc\x98\xa5\xaep<\x08\xaa\xdd\xe7\xdd*OV\xfb" +
+	"K\xfarM\xfb\x81\xf6\xba\x87\xb4k\x95\xb5\xe7\x00*" +
+	"#RD)\x10\xc9\xbdmD\xaa]@\xf50$\xd0" +
+	"\x0cs\xd8\xb5\x8fH\xed\x11P\xfb\x19\xd6E]G\x96" +
+	"\x18YB\xeb\x15w\xa2\xa6\xa3\xb7\xd8F\xac\xb3\x19\xd3" +
+	"A\xbb\xe3z\xee%\x9fT*\xf6\xc9\x19\x9f\x8c\x80j" +
+	"fX5o\xe2/\"\xd5\x8a\x1f\xb4\x97\xb4_\x9b\x08" +
+	"\xe0'e\x86\x89TV@mg\x84\x9e\xf6\xab\x95I" +
+	"_\x13\x11\x9a\xa2\xfd\x10\xd0\x94\x90E$\x9b7\xba*" +
+	"\x03$Z\xf2\x7f\x7ftK\xa6\x87\x0bC\xda-k/" +
+	",\xad\xa9\xaa\x8cH\x13\xc5UA\x94\x91\xecm#\x96" +
+	"\xbb, \xce\x15Q]\xe4\x8e\x0eb\x99\xb3\xac1\x1d" +
+	"\x14\x917 E8\xd8\x10tu]\x86,\x02=j" +
+	"\xf6U\x14P'\x12\xb9\x1c\x1b$RG\x04\xd4(C" +
+	"27\x83\x89\xe4H\x07\x91:#\xa0\xca\xeb7{u" +
+	"\xbc\xc1\xe3c\x0b\xc1\x11@\xd3\x1a8\xc1\x1c\xe6\x07+" +
+	"\xe5:r\xc4\xc8m\x18\xe6J\x0c\xe6\xf7\xfe!\x87\xf5" +
+	"U,i\xbf\xb5q\xc5\x941\x01\xdd\xbf\x06\x1d3w" +
+	"\xac2;\x86\x19+\xcc'MA\x87\x04\xd4)F\xc1" +
+	"\x0f\xdc\xa0\xe6#C\x8c\x0c!\x7f.A\xd5\xaa=\xaf" +
+	"\xe2E\x1b\xf9\x1d\x00\x00\xff\xff\xe2\x07\x0e\xc1"
 
 func RegisterSchema(reg *schemas.Registry) {
 	reg.Register(&schemas.Schema{
@@ -585,7 +853,9 @@ func RegisterSchema(reg *schemas.Registry) {
 		Nodes: []uint64{
 			0xaa607977b7d3ba04,
 			0xae793c8de2c28098,
+			0xb00c21dc511752fc,
 			0xca2cf5b44093c972,
+			0xdbcdd2e486da072d,
 			0xdf6a51cd11a341bd,
 			0xf9b7d43933d55000,
 		},
