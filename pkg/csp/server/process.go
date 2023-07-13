@@ -27,6 +27,7 @@ func (p process) Kill(context.Context, api.Process_kill) error {
 }
 
 func (p *process) Wait(ctx context.Context, call api.Process_wait) error {
+	call.Go()
 	select {
 	case res, ok := <-p.done:
 		if ok {

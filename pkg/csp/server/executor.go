@@ -12,6 +12,7 @@ import (
 
 	capnp "capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
+	"github.com/google/uuid"
 	"github.com/lthibault/log"
 	"github.com/tetratelabs/wazero"
 	"lukechampine.com/blake3"
@@ -62,10 +63,7 @@ func (r Server) Exec(ctx context.Context, call api.Executor_exec) error {
 	}
 
 	// Cache new bytecodes by registering them every time they are received.
-	md5sum := md5.Sum(bc)
-	if !r.BcRegistry.has(md5sum[:]) {
-		r.BcRegistry.put(bc)
-	}
+	r.BcRegistry.put(bc)
 
 	// Prepare the capability list that will be passed downstream.
 	// If call.Caps will be used if non-null, otherwise an empty list
@@ -115,10 +113,13 @@ func (r Server) ExecFromCache(ctx context.Context, call api.Executor_execFromCac
 		return fmt.Errorf("unexpected md5sum size, got %d expected %d", len(md5sum), md5.Size)
 	}
 
+	fmt.Printf("Retrieve bytecode %x from cache\n", md5sum)
 	bc := r.BcRegistry.get(md5sum)
 	if bc == nil {
+		fmt.Println("failed")
 		return fmt.Errorf("bytecode for md5 sum %s not found", md5sum)
 	}
+	fmt.Printf("Retrieved bytecode %x from cache\n", md5.Sum(bc))
 
 	p, err := r.mkproc(ctx, bc, caps)
 	if err != nil {
@@ -147,7 +148,11 @@ func (r Server) mkproc(ctx context.Context, bytecode []byte, caps capnp.PointerL
 }
 
 func (r Server) mkmod(ctx context.Context, bytecode []byte, caps capnp.PointerList) (wasm.Module, error) {
-	name := ByteCode(bytecode).String()
+	name := fmt.Sprintf(
+		"%s-%s",
+		ByteCode(bytecode).String(), // TODO standardize hashes, md5...
+		uuid.New(),
+	)
 
 	// TODO(perf):  cache compiled modules so that we can instantiate module
 	//              instances for concurrent use.

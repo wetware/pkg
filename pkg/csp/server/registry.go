@@ -15,7 +15,9 @@ type RegistryServer map[[md5.Size]byte][]byte
 func (r RegistryServer) put(bc []byte) []byte {
 	md5sum := md5.Sum(bc)
 	if _, found := r[md5sum]; !found {
-		r[md5sum] = bc
+		cached := make([]byte, len(bc))
+		copy(cached, bc)
+		r[md5sum] = cached
 	}
 	return md5sum[:]
 }
