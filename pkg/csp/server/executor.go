@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"crypto/md5"
+	"crypto/rsa"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -42,9 +43,10 @@ func (b ByteCode) Hash() [32]byte {
 // Server is the main Executor implementation.  It spawns WebAssembly-
 // based processes.  The zero-value Server panics.
 type Server struct {
-	ProcCounter AtomicCounter
-	Runtime     wazero.Runtime
-	BcRegistry  RegistryServer
+	PrvKey     *rsa.PrivateKey
+	PubKey     *rsa.PublicKey
+	Runtime    wazero.Runtime
+	BcRegistry RegistryServer
 }
 
 // Executor provides the Executor capability.
@@ -188,6 +190,8 @@ func (r Server) mkmod(ctx context.Context, bytecode []byte, caps capnp.PointerLi
 		return nil, err
 	}
 
+	// TODO the private key is being sent unencrypted over the wire.
+	// Send it over an encrypted channel instead.
 	inbox, err := r.populateInbox(caps)
 	if err != nil {
 		return nil, err
