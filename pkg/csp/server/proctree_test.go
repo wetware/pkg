@@ -9,15 +9,17 @@ import (
 
 func testProcTree() csp.ProcTree {
 	/*
-                        0
-                      /   \
-                     1     7
-                    / \   /
-                   2   3 8
-                    \   \
-                     9   4
-                    /   / \
-                   10  5   6
+	        0
+	        |
+	        1
+	      /   \
+	     2     10
+	    / \   /
+	   3   6 11
+	    \   \
+	     4   7
+	    /   / \
+	   5   8   9
 	*/
 	root := &csp.ProcNode{
 		Pid: 0,
@@ -25,41 +27,46 @@ func testProcTree() csp.ProcTree {
 			Pid: 1,
 			Left: &csp.ProcNode{
 				Pid: 2,
+				Left: &csp.ProcNode{
+					Pid: 3,
+					Right: &csp.ProcNode{
+						Pid: 4,
+						Left: &csp.ProcNode{
+							Pid: 5,
+						},
+					},
+				},
 				Right: &csp.ProcNode{
-					Pid: 9,
-					Left: &csp.ProcNode{
-						Pid: 10,
+					Pid: 6,
+					Right: &csp.ProcNode{
+						Pid: 7,
+						Left: &csp.ProcNode{
+							Pid: 8,
+						},
+						Right: &csp.ProcNode{
+							Pid: 9,
+						},
 					},
 				},
 			},
 			Right: &csp.ProcNode{
-				Pid: 3,
-				Right: &csp.ProcNode{
-					Pid: 4,
-					Left: &csp.ProcNode{
-						Pid: 5,
-					},
-					Right: &csp.ProcNode{
-						Pid: 6,
-					},
+				Pid: 10,
+				Left: &csp.ProcNode{
+					Pid: 11,
 				},
-			},
-		},
-		Right: &csp.ProcNode{
-			Pid: 7,
-			Left: &csp.ProcNode{
-				Pid: 8,
 			},
 		},
 	}
 	return csp.ProcTree{
+		IDC:  csp.AtomicCounter{},
+		PC:   csp.AtomicCounter{},
 		Root: root,
 	}
 }
 
 func TestProcTree_Find(t *testing.T) {
 	pt := testProcTree()
-	for i := uint32(0); i <= 10; i++ {
+	for i := uint32(0); i <= 11; i++ {
 		n := pt.Find(i)
 		if n == nil {
 			t.Fatalf("failed to find node %d", i)
@@ -72,13 +79,14 @@ func TestProcTree_Find(t *testing.T) {
 
 func TestProcTree_FindParent(t *testing.T) {
 	// child, parent
-	var matches = [6][2]uint32{
-		{5, 4},
-		{6, 0},
+	matches := [6][2]uint32{
 		{8, 7},
 		{2, 1},
 		{9, 1},
-		{10, 9},
+		{11, 10},
+		{3, 2},
+		{4, 2},
+		{5, 4},
 	}
 	pt := testProcTree()
 	for _, match := range matches {
@@ -99,23 +107,49 @@ func TestProcTree_FindParent(t *testing.T) {
 	}
 }
 
+func TestProcTree_Insert(t *testing.T) {
+	// child, parent, branchof, 0=left 1=right
+	matches := [4][4]uint32{
+		{12, 5, 5, 0},
+		{13, 12, 12, 0},
+		{13, 1, 9, 1},
+		{14, 7, 8, 1},
+	}
+	pt := testProcTree()
+	for _, match := range matches {
+		pid, ppid, expectedId, side := match[0], match[1], match[2], match[3]
+		pt.Insert(pid, ppid)
+		n := pt.Find(expectedId)
+		if side == 0 {
+			if n.Left == nil || n.Left.Pid != pid {
+				t.Fatalf("failet to insert %d at %d (branch %s)", pid, ppid, n)
+			}
+		} else {
+			if n.Right == nil || n.Right.Pid != pid {
+				t.Fatalf("failet to insert %d at %d (branch %s)", pid, ppid, n)
+			}
+		}
+	}
+
+}
+
 func TestProcTree_Pop(t *testing.T) {
 	pt := testProcTree()
-	parent := pt.FindParent(3)
-	sibling := pt.Find(1)
-	child := pt.Find(3)
-	popped := pt.Pop(3)
+	parent := pt.FindParent(6)
+	sibling := pt.Find(2)
+	child := pt.Find(6)
+	popped := pt.Pop(6)
 	if popped.Pid != child.Pid {
 		t.Fatalf("popped item with PID %d instead of %d", popped.Pid, child.Pid)
 	}
-	if sibling.Right.Pid != 4 {
-		t.Fatalf("new right branch of %d should be 4, not %d", parent.Pid, sibling.Right.Pid)
+	if sibling.Right.Pid != 7 {
+		t.Fatalf("new right branch of %d should be 7, not %d", parent.Pid, sibling.Right.Pid)
 	}
 	// this test makes me dizzy
 	parent = sibling.Right
 	child = parent.Left
-	if child.Pid != 5 {
-		t.Fatalf("expected pid 5 got %d", child.Pid)
+	if child.Pid != 8 {
+		t.Fatalf("expected pid 8 got %d", child.Pid)
 	}
 	popped = pt.Pop(child.Pid)
 	if popped.Pid != child.Pid {

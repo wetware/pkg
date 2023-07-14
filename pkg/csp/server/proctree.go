@@ -18,10 +18,17 @@ type ProcTree struct {
 // Pop removes the node with PID=pid and replaces it with a sibling
 // in the process tree.
 func (pt ProcTree) Pop(pid uint32) *ProcNode {
+	// Root proc.
+	if pid == pt.Root.Pid {
+		return nil
+	}
+
 	// Find the parent.
 	parent := pt.FindParent(pid)
+
+	// Orphaned node.
 	if parent == nil {
-		return nil
+		return pt.Find(pid)
 	}
 
 	child := parent.Left
@@ -60,6 +67,11 @@ func (pt ProcTree) Find(pid uint32) *ProcNode {
 func (pt ProcTree) FindParent(pid uint32) *ProcNode {
 	n, _ := findParent(pt.Root, pid)
 	return n
+}
+
+// Insert creates a node with PID=pid as a child of PID=ppid.
+func (pt ProcTree) Insert(pid, ppid uint32) {
+	insert(pt.Root, pid, ppid)
 }
 
 // find performs an In-Order Depth First Search of the tree.
@@ -116,6 +128,29 @@ func findParent(n *ProcNode, pid uint32) (*ProcNode, bool) {
 	return findParent(n.Right, pid)
 }
 
+// Insert adds a new node PID to root as a child of PPID.
+// If PPID has no children PID will be the immediate child.
+// Otherwise it will iterate over the siblings and add it at the end of the chain.
+func insert(root *ProcNode, pid, ppid uint32) {
+	n := &ProcNode{
+		Pid: pid,
+	}
+
+	parent := find(root, ppid)
+	if parent.Left == nil {
+		parent.Left = n
+		return
+	}
+
+	next := parent.Left
+	for next.Right != nil {
+		next = next.Right
+	}
+	next.Right = &ProcNode{
+		Pid: pid,
+	}
+}
+
 // ProcNode represents a process in the process tree.
 type ProcNode struct {
 	// Pid contais the Process ID.
@@ -124,6 +159,21 @@ type ProcNode struct {
 	Left *ProcNode
 	// Right contains a sibling process.
 	Right *ProcNode
+}
+
+func (n *ProcNode) String() string {
+	var left, right string
+	if n.Left != nil {
+		left = fmt.Sprint(n.Left.Pid)
+	} else {
+		left = "nil"
+	}
+	if n.Right != nil {
+		right = fmt.Sprint(n.Right.Pid)
+	} else {
+		right = "nil"
+	}
+	return fmt.Sprintf("{pid=%d, left=%s, right=%s}", n.Pid, left, right)
 }
 
 // AtomicCounter is an atomic counter that increases the
