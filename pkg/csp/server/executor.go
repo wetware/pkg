@@ -2,10 +2,7 @@ package server
 
 import (
 	"context"
-	"crypto"
 	"crypto/md5"
-	"crypto/rand"
-	"crypto/rsa"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -18,7 +15,6 @@ import (
 	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/google/uuid"
 	"github.com/lthibault/log"
-	"github.com/minio/sha256-simd"
 	"github.com/tetratelabs/wazero"
 	"lukechampine.com/blake3"
 
@@ -47,7 +43,6 @@ func (b ByteCode) Hash() [32]byte {
 // Server is the main Executor implementation.  It spawns WebAssembly-
 // based processes.  The zero-value Server panics.
 type Server struct {
-	PrvKey     crypto.PrivateKey
 	Runtime    wazero.Runtime
 	BcRegistry RegistryServer
 	ProcTree   ProcTree
@@ -69,9 +64,12 @@ func (r Server) Exec(ctx context.Context, call api.Executor_exec) error {
 		return err
 	}
 
-	signature, err := call.Args().Spid()
-	if err != nil {
-		return err
+	// Check for a process with pid=ppid.
+	ppid := call.Args().Ppid()
+	if ppid != 0 {
+		if _, ok := r.ProcTree.Map[ppid]; !ok {
+			return fmt.Errorf("pid %d not found", ppid)
+		}
 	}
 
 	// Cache new bytecodes by registering them every time they are received.
@@ -97,10 +95,13 @@ func (r Server) Exec(ctx context.Context, call api.Executor_exec) error {
 		}
 	}
 
-	p, err := r.mkproc(ctx, signature, bc, caps)
+	p, err := r.mkproc(ctx, ppid, bc, caps)
 	if err != nil {
 		return err
 	}
+
+	// Register new pid.
+	r.ProcTree.Map[p.pid] = p
 
 	return res.SetProcess(api.Process_ServerToClient(p))
 }
@@ -116,9 +117,12 @@ func (r Server) ExecFromCache(ctx context.Context, call api.Executor_execFromCac
 		return err
 	}
 
-	signature, err := call.Args().Spid()
-	if err != nil {
-		return err
+	// Check for a process with pid=ppid.
+	ppid := call.Args().Ppid()
+	if ppid != 0 {
+		if _, ok := r.ProcTree.Map[ppid]; !ok {
+			return fmt.Errorf("pid %d not found", ppid)
+		}
 	}
 
 	md5sum, err := call.Args().Md5sum()
@@ -135,27 +139,20 @@ func (r Server) ExecFromCache(ctx context.Context, call api.Executor_execFromCac
 		return fmt.Errorf("bytecode for md5 sum %s not found", md5sum)
 	}
 
-	p, err := r.mkproc(ctx, signature, bc, caps)
+	p, err := r.mkproc(ctx, ppid, bc, caps)
 	if err != nil {
 		return err
 	}
 
+	// Register new pid.
+	r.ProcTree.Map[p.pid] = p
 	return res.SetProcess(api.Process_ServerToClient(p))
 }
 
-func (r Server) mkproc(ctx context.Context, signature []byte, bytecode []byte, caps capnp.PointerList) (*process, error) {
-
-	// TODO first things first check signature
-	if signature != nil {
-		if err := r.verifySpid(signature); err != nil {
-			return nil, err
-		}
-	}
-
+func (r Server) mkproc(ctx context.Context, ppid uint32, bytecode []byte, caps capnp.PointerList) (*process, error) {
 	pid := r.ProcTree.PIDC.Inc()
-	prv := NewPrvKey()
 
-	mod, err := r.mkmod(ctx, bytecode, pid, prv, caps)
+	mod, err := r.mkmod(ctx, bytecode, pid, caps)
 	if err != nil {
 		return nil, err
 	}
@@ -168,15 +165,13 @@ func (r Server) mkproc(ctx context.Context, signature []byte, bytecode []byte, c
 	done, cancel := r.spawn(fn)
 	proc := &process{
 		pid:    pid,
-		pubKey: &prv.(*rsa.PrivateKey).PublicKey,
 		done:   done,
 		cancel: cancel,
 	}
-	r.ProcTree.Map[pid] = proc
 	return proc, nil
 }
 
-func (r Server) mkmod(ctx context.Context, bytecode []byte, pid uint32, key crypto.PrivateKey, caps capnp.PointerList) (wasm.Module, error) {
+func (r Server) mkmod(ctx context.Context, bytecode []byte, pid uint32, caps capnp.PointerList) (wasm.Module, error) {
 	name := fmt.Sprintf(
 		"%s-%s",
 		ByteCode(bytecode).String(), // TODO standardize hashes, md5...
@@ -219,7 +214,7 @@ func (r Server) mkmod(ctx context.Context, bytecode []byte, pid uint32, key cryp
 	// TODO the private key is being sent unencrypted over the wire.
 	// Send it over an encrypted channel instead.
 	md5sum := md5.Sum(bytecode)
-	inbox, err := r.populateInbox(pid, md5sum[:], key, caps)
+	inbox, err := r.populateInbox(pid, md5sum[:], caps)
 	if err != nil {
 		return nil, err
 	}
@@ -250,27 +245,7 @@ func (r Server) mkmod(ctx context.Context, bytecode []byte, pid uint32, key cryp
 	return mod, nil
 }
 
-func (r Server) verifySpid(signature []byte) error {
-	hash := sha256.New()
-	decrypted, err := csp.DecryptOAEPChunks(hash, rand.Reader, r.PrvKey.(*rsa.PrivateKey), signature, nil)
-	if err != nil {
-		return err
-	}
-
-	spid := &csp.SignedPid{}
-	if err := spid.FromBytes(decrypted); err != nil {
-		return err
-	}
-
-	p, ok := r.ProcTree.Map[spid.Pid]
-	if !ok {
-		return fmt.Errorf("pid %d not found", spid.Pid)
-	}
-
-	return spid.VerifyPid(p.(*process).pubKey)
-}
-
-func (r Server) populateInbox(pid uint32, md5sum []byte, key crypto.PrivateKey, caps capnp.PointerList) (capnp.Client, error) {
+func (r Server) populateInbox(pid uint32, md5sum []byte, caps capnp.PointerList) (capnp.Client, error) {
 	var inbox anyIbox
 	var err error
 
@@ -278,8 +253,6 @@ func (r Server) populateInbox(pid uint32, md5sum []byte, key crypto.PrivateKey, 
 	initArgs := csp.NewArgs(
 		strconv.FormatUint(uint64(pid), 10),
 		string(md5sum),
-		string(PrvPEM(key.(*rsa.PrivateKey))),
-		string(PubPEM(r.PrvKey.(*rsa.PrivateKey).Public())),
 	)
 
 	// The process is provided its own executor by default.

@@ -6,12 +6,6 @@ package ww
 
 import (
 	"context"
-	"crypto"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/sha256"
-	"crypto/x509"
-	"encoding/pem"
 	"io"
 	"net"
 	"os"
@@ -34,50 +28,21 @@ const (
 	CAPS_START_INDEX = 2
 
 	// Argument order
-	ARG_PID      = 0 // PID of the process
-	ARG_MD5      = 1 // md5 sum of the process, used to self-replicate
-	ARG_PROC_KEY = 2 // private key of the process
-	ARG_EXEC_KEY = 3 // public key of the process
+	ARG_PID = 0 // PID of the process
+	ARG_MD5 = 1 // md5 sum of the process, used to self-replicate
 )
 
 // Self contains the info a WASM process will need for:
 type Self struct {
-	Args       []string          // Receiving parameters.
-	Caps       []capnp.Client    // Communication.
-	Closers    io.Closer         // Cleaning up.
-	Md5Sum     []byte            // Self-replicating.
-	Pid        uint32            // Indetifying self.
-	PrvKey     crypto.PrivateKey // Verifying self.
-	ExecPubKey crypto.PublicKey  // Verifying parent executor.
-
-	// cached signature
-	signature []byte
+	Args    []string       // Receiving parameters.
+	Caps    []capnp.Client // Communication.
+	Closers io.Closer      // Cleaning up.
+	Md5Sum  []byte         // Self-replicating.
+	Pid     uint32         // Indetifying self.
 }
 
 func (s *Self) Close() error {
 	return s.Closers.Close()
-}
-
-// Signature returns the signed pid after converting it from uint32 to []byte
-func (s *Self) Signature() []byte {
-	// signature was cached
-	if s.signature != nil {
-		return s.signature
-	}
-
-	spid := csp.SignPid(s.Pid, s.PrvKey)
-	signature := spid.ToBytes()
-
-	// cache signature
-	s.signature = signature
-
-	return signature
-}
-
-// EncryptedSignature returns s.Signature() after encrypting it with the provided public key.
-func (s *Self) EncryptedSignature(pubKey crypto.PublicKey) ([]byte, error) {
-	hash := sha256.New()
-	return csp.EncryptOAEPChunks(hash, rand.Reader, pubKey.(*rsa.PublicKey), s.Signature(), nil)
 }
 
 // closer contains a slice of Closers that will be closed when this type itself is closed
@@ -179,17 +144,6 @@ func Init(ctx context.Context) (Self, error) {
 		return Self{}, err
 	}
 	md5sum := selfArgs[ARG_MD5]
-	prvPem := selfArgs[ARG_PROC_KEY]
-	pubPem := selfArgs[ARG_EXEC_KEY]
-
-	prvKey, err := DecodePrvPEM([]byte(prvPem))
-	if err != nil {
-		return Self{}, err
-	}
-	pubKey, err := DecodePubPEM([]byte(pubPem))
-	if err != nil {
-		return Self{}, err
-	}
 
 	args, err := csp.Args(clients[ARGS_INDEX]).Args(ctx)
 	if err != nil {
@@ -197,13 +151,11 @@ func Init(ctx context.Context) (Self, error) {
 	}
 
 	return Self{
-		Args:       args,
-		Caps:       clients[CAPS_START_INDEX:],
-		Closers:    closers,
-		Md5Sum:     []byte(md5sum),
-		Pid:        uint32(pid64),
-		PrvKey:     prvKey,
-		ExecPubKey: pubKey,
+		Args:    args,
+		Caps:    clients[CAPS_START_INDEX:],
+		Closers: closers,
+		Md5Sum:  []byte(md5sum),
+		Pid:     uint32(pid64),
 	}, nil
 }
 
@@ -214,16 +166,4 @@ func (e errLogger) ReportError(err error) {
 	if err != nil {
 		panic(err)
 	}
-}
-
-// Extract a private key form a PEM certificate
-func DecodePrvPEM(prvPEM []byte) (crypto.PrivateKey, error) {
-	block, _ := pem.Decode(prvPEM)
-	return x509.ParsePKCS1PrivateKey(block.Bytes)
-}
-
-// Extract a public key from a PEM certificate
-func DecodePubPEM(pubPEM []byte) (crypto.PrivateKey, error) {
-	block, _ := pem.Decode(pubPEM)
-	return x509.ParsePKCS1PublicKey(block.Bytes)
 }

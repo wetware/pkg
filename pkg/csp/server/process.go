@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"crypto/rsa"
 	"errors"
 
 	"github.com/tetratelabs/wazero/sys"
@@ -18,7 +17,6 @@ var (
 // process is the main implementation of the Process capability.
 type process struct {
 	pid    uint32
-	pubKey *rsa.PublicKey
 	done   <-chan execResult
 	cancel context.CancelFunc
 	result execResult

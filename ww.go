@@ -54,7 +54,6 @@ func (ww Ww) Exec(ctx context.Context) error {
 		Runtime:    wasmRuntime,
 		BcRegistry: csp.RegistryServer{},
 		ProcTree:   csp.NewProcTree(ctx),
-		PrvKey:     csp.NewPrvKey(),
 	}
 	executor := api.Executor_ServerToClient(r)
 
