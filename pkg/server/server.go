@@ -115,6 +115,7 @@ func (j Joiner) executor() csp.Server {
 	}
 
 	return csp.Server{
+		Profile:    true,
 		Runtime:    r,
 		BcRegistry: csp.RegistryServer{},
 		ProcTree:   csp.NewProcTree(ctx),

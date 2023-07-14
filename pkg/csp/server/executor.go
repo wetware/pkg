@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"runtime/pprof"
 	"strconv"
 	"time"
 
@@ -15,11 +16,14 @@ import (
 	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/google/uuid"
 	"github.com/lthibault/log"
+	"github.com/stealthrocket/wzprof"
 	"github.com/tetratelabs/wazero"
 	"lukechampine.com/blake3"
 
 	wasm "github.com/tetratelabs/wazero/api"
+	"github.com/tetratelabs/wazero/experimental"
 	"github.com/tetratelabs/wazero/experimental/sock"
+	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	api "github.com/wetware/ww/api/process"
 	tools_api "github.com/wetware/ww/experiments/api/tools"
 	"github.com/wetware/ww/experiments/pkg/tools"
@@ -43,9 +47,12 @@ func (b ByteCode) Hash() [32]byte {
 // Server is the main Executor implementation.  It spawns WebAssembly-
 // based processes.  The zero-value Server panics.
 type Server struct {
+	Profile    bool
 	Runtime    wazero.Runtime
 	BcRegistry RegistryServer
 	ProcTree   ProcTree
+
+	profileruntimeset bool
 }
 
 // Executor provides the Executor capability.
@@ -54,6 +61,11 @@ func (r Server) Executor() csp.Executor {
 }
 
 func (r Server) Exec(ctx context.Context, call api.Executor_exec) error {
+	if r.Profile {
+		cpuProfile, _ := os.Create("cpuprofile_exec.prof")
+		pprof.StartCPUProfile(cpuProfile)
+		defer pprof.StopCPUProfile()
+	}
 	res, err := call.AllocResults()
 	if err != nil {
 		return err
@@ -107,6 +119,14 @@ func (r Server) Exec(ctx context.Context, call api.Executor_exec) error {
 }
 
 func (r Server) ExecFromCache(ctx context.Context, call api.Executor_execFromCache) error {
+	ppid := call.Args().Ppid()
+	if r.Profile && ppid == 1 {
+		cpuProfile, _ := os.Create(fmt.Sprintf("cpuprofile_execwithcap.%d.prof", ppid))
+		pprof.StartCPUProfile(cpuProfile)
+		defer pprof.StopCPUProfile()
+	} else if r.Profile && ppid > 1 {
+		return errors.New("stop at first profiled proc")
+	}
 	res, err := call.AllocResults()
 	if err != nil {
 		return err
@@ -118,7 +138,7 @@ func (r Server) ExecFromCache(ctx context.Context, call api.Executor_execFromCac
 	}
 
 	// Check for a process with pid=ppid.
-	ppid := call.Args().Ppid()
+	// ppid := call.Args().Ppid()
 	if ppid != 0 {
 		if _, ok := r.ProcTree.Map[ppid]; !ok {
 			return fmt.Errorf("pid %d not found", ppid)
@@ -152,7 +172,7 @@ func (r Server) ExecFromCache(ctx context.Context, call api.Executor_execFromCac
 func (r Server) mkproc(ctx context.Context, ppid uint32, bytecode []byte, caps capnp.PointerList) (*process, error) {
 	pid := r.ProcTree.PIDC.Inc()
 
-	mod, err := r.mkmod(ctx, bytecode, pid, caps)
+	mod, cpuProf, err := r.mkmod(ctx, bytecode, pid, caps)
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +182,7 @@ func (r Server) mkproc(ctx context.Context, ppid uint32, bytecode []byte, caps c
 		return nil, errors.New("ww: missing export: _start")
 	}
 
-	done, cancel := r.spawn(fn)
+	done, cancel := r.spawn(fn, cpuProf)
 	proc := &process{
 		pid:    pid,
 		done:   done,
@@ -171,24 +191,59 @@ func (r Server) mkproc(ctx context.Context, ppid uint32, bytecode []byte, caps c
 	return proc, nil
 }
 
-func (r Server) mkmod(ctx context.Context, bytecode []byte, pid uint32, caps capnp.PointerList) (wasm.Module, error) {
+func (r Server) mkmod(ctx context.Context, bytecode []byte, pid uint32, caps capnp.PointerList) (wasm.Module, *wzprof.CPUProfiler, error) {
 	name := fmt.Sprintf(
 		"%s-%s",
 		ByteCode(bytecode).String(), // TODO standardize hashes, md5...
 		uuid.New(),
 	)
 
+	// profiling variables
+	var p *wzprof.Profiling
+	var cpuProf *wzprof.CPUProfiler
+	var pprofCtx context.Context
+
+	// set profiling runtime
+	if r.Profile {
+		p = wzprof.ProfilingFor(bytecode)
+		cpuProf = p.CPUProfiler()
+		pprofCtx = context.WithValue(context.Background(),
+			experimental.FunctionListenerFactoryKey{},
+			experimental.MultiFunctionListenerFactory(
+				wzprof.Sample(1.0, cpuProf),
+			))
+		ctx = pprofCtx
+		if !r.profileruntimeset {
+			runtimeCfg := wazero.
+				NewRuntimeConfigCompiler().
+				WithCompilationCache(wazero.NewCompilationCache())
+			r.Runtime = wazero.NewRuntimeWithConfig(ctx, runtimeCfg)
+			_, err := wasi_snapshot_preview1.Instantiate(ctx, r.Runtime)
+			if err != nil {
+				panic(err)
+			}
+			r.profileruntimeset = true
+		}
+	}
+
 	// TODO(perf):  cache compiled modules so that we can instantiate module
 	//              instances for concurrent use.
 	compiled, err := r.Runtime.CompileModule(ctx, bytecode)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
+	}
+
+	if r.Profile {
+		if err = p.Prepare(compiled); err != nil {
+			panic(err)
+		}
+		cpuProf.StartProfile()
 	}
 
 	// TODO(perf): find a way of locating a free port without opening and closing a connection
 	l, err := net.Listen("tcp", ":0")
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	addr := l.Addr().(*net.TCPAddr)
 
@@ -208,7 +263,7 @@ func (r Server) mkmod(ctx context.Context, bytecode []byte, pid uint32, caps cap
 	l.Close()
 	mod, err := r.Runtime.InstantiateModule(sockCtx, compiled, modCfg)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// TODO the private key is being sent unencrypted over the wire.
@@ -216,7 +271,7 @@ func (r Server) mkmod(ctx context.Context, bytecode []byte, pid uint32, caps cap
 	md5sum := md5.Sum(bytecode)
 	inbox, err := r.populateInbox(pid, md5sum[:], caps)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	go func() {
@@ -242,7 +297,7 @@ func (r Server) mkmod(ctx context.Context, bytecode []byte, pid uint32, caps cap
 		}
 	}()
 
-	return mod, nil
+	return mod, cpuProf, nil
 }
 
 func (r Server) populateInbox(pid uint32, md5sum []byte, caps capnp.PointerList) (capnp.Client, error) {
@@ -269,7 +324,7 @@ func (r Server) populateInbox(pid uint32, md5sum []byte, caps capnp.PointerList)
 	return capnp.Client(api.Inbox_ServerToClient(inbox)), nil
 }
 
-func (r Server) spawn(fn wasm.Function) (<-chan execResult, context.CancelFunc) {
+func (r Server) spawn(fn wasm.Function, cpuProf *wzprof.CPUProfiler) (<-chan execResult, context.CancelFunc) {
 	done := make(chan execResult, 1)
 
 	// NOTE:  we use context.Background instead of the context obtained from the
@@ -283,6 +338,14 @@ func (r Server) spawn(fn wasm.Function) (<-chan execResult, context.CancelFunc) 
 		defer cancel()
 
 		vs, err := fn.Call(ctx)
+
+		if cpuProf != nil {
+			prof := cpuProf.StopProfile(1.0)
+			if werr := wzprof.WriteProfile("wasm.prof", prof); werr != nil {
+				defer panic(err)
+			}
+		}
+
 		done <- execResult{
 			Values: vs,
 			Err:    err,
