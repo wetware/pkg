@@ -80,6 +80,7 @@ func testProcTree() csp.ProcTree {
 	}
 
 	return csp.ProcTree{
+		Ctx:  context.Background(),
 		IDC:  csp.AtomicCounter{},
 		PC:   csp.AtomicCounter{},
 		Root: root,
