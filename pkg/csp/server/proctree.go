@@ -8,7 +8,8 @@ type ProcTree struct {
 	// IDC is a couter that increases to assign new PIDs.
 	IDC ProcConter
 	// PC keeps track of the number of processes in the tree.
-	PC   ProcConter
+	PC ProcConter
+	// Root of the process tree.
 	Root *ProcNode
 }
 
