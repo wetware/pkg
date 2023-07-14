@@ -1,14 +1,16 @@
 package server
 
+import "sync/atomic"
+
 // ProcTree represents the process tree of an executor.
 // It is represented a binary tree, in which the left branch of a node
 // represents a child process, while the right branch represents a
 // sibling process (shares the same parent).
 type ProcTree struct {
 	// IDC is a couter that increases to assign new PIDs.
-	IDC ProcConter
+	IDC AtomicCounter
 	// PC keeps track of the number of processes in the tree.
-	PC ProcConter
+	PC AtomicCounter
 	// Root of the process tree.
 	Root *ProcNode
 }
@@ -122,4 +124,19 @@ type ProcNode struct {
 	Left *ProcNode
 	// Right contains a sibling process.
 	Right *ProcNode
+}
+
+// AtomicCounter is an atomic counter that increases the
+type AtomicCounter struct {
+	n uint32
+}
+
+// Increase by 1.
+func (p AtomicCounter) Inc() uint32 {
+	return atomic.AddUint32(&p.n, 1)
+}
+
+// Decrease by 2.
+func (p AtomicCounter) Dec() uint32 {
+	return atomic.AddUint32(&p.n, ^uint32(0))
 }

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"sync/atomic"
 	"time"
 
 	capnp "capnproto.org/go/capnp/v3"
@@ -25,19 +24,6 @@ import (
 	"github.com/wetware/ww/experiments/pkg/tools"
 	csp "github.com/wetware/ww/pkg/csp"
 )
-
-// ProcCounter is an atomic counter that increases the
-type ProcConter struct {
-	n uint32
-}
-
-func (p ProcConter) Inc() uint32 {
-	return atomic.AddUint32(&p.n, 1)
-}
-
-func (p ProcConter) Dec() uint32 {
-	return atomic.AddUint32(&p.n, ^uint32(0))
-}
 
 // ByteCode is a representation of arbitrary executable data.
 type ByteCode []byte
@@ -56,7 +42,7 @@ func (b ByteCode) Hash() [32]byte {
 // Server is the main Executor implementation.  It spawns WebAssembly-
 // based processes.  The zero-value Server panics.
 type Server struct {
-	ProcCounter ProcConter
+	ProcCounter AtomicCounter
 	Runtime     wazero.Runtime
 	BcRegistry  RegistryServer
 }

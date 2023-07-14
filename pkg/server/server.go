@@ -115,7 +115,7 @@ func (j Joiner) executor() csp.Server {
 	}
 
 	return csp.Server{
-		ProcCounter: csp.ProcConter{},
+		ProcCounter: csp.AtomicCounter{},
 		Runtime:     r,
 		BcRegistry:  csp.RegistryServer{},
 	}
