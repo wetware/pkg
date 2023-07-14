@@ -1,6 +1,7 @@
 # Generated files: binary and wasm
 ww
 *.wasm
+*.prof
 
 # Binaries for programs and plugins
 *.exe
