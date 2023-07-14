@@ -98,3 +98,30 @@ func TestProcTree_FindParent(t *testing.T) {
 		t.Fatalf("found parent %d for %d but expected no parent", p.Pid, c)
 	}
 }
+
+func TestProcTree_Pop(t *testing.T) {
+	pt := testProcTree()
+	parent := pt.FindParent(3)
+	sibling := pt.Find(1)
+	child := pt.Find(3)
+	popped := pt.Pop(3)
+	if popped.Pid != child.Pid {
+		t.Fatalf("popped item with PID %d instead of %d", popped.Pid, child.Pid)
+	}
+	if sibling.Right.Pid != 4 {
+		t.Fatalf("new right branch of %d should be 4, not %d", parent.Pid, sibling.Right.Pid)
+	}
+	// this test makes me dizzy
+	parent = sibling.Right
+	child = parent.Left
+	if child.Pid != 5 {
+		t.Fatalf("expected pid 5 got %d", child.Pid)
+	}
+	popped = pt.Pop(child.Pid)
+	if popped.Pid != child.Pid {
+		t.Fatalf("popped item with PID %d instead of %d", popped.Pid, child.Pid)
+	}
+	if parent.Left != nil {
+		t.Fatalf("left branch of %d should be nil, not %d", sibling.Pid, sibling.Left.Pid)
+	}
+}

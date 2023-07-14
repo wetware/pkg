@@ -20,16 +20,32 @@ func (pt ProcTree) Pop(pid uint32) *ProcNode {
 	if parent == nil {
 		return nil
 	}
-	// Find the child.
+
 	child := parent.Left
-	for child != nil && child.Pid != pid {
-		child = child.Right
+	// This case should never occur if FindParent is correct.
+	if child == nil {
+		return nil
 	}
-	// Swap child its closest sibling.
-	if child.Right != nil {
-		parent.Right = child.Right
+
+	// Child is immediate left branch.
+	if child.Pid == pid {
+		result := child
+		parent.Left = child.Right
+		return result
 	}
-	return child
+
+	// Descend throught the rightest branch.
+	sibling := child.Right
+	for sibling != nil && sibling.Pid != pid {
+		child, sibling = sibling, sibling.Right
+	}
+
+	// Bridge left and right siblings.
+	if sibling != nil {
+		child.Right = sibling.Right
+	}
+
+	return sibling
 }
 
 // Find returns a node in the process tree with PID=pid. nil if not found.
