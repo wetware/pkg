@@ -1,11 +1,27 @@
 package server_test
 
 import (
+	"context"
 	"math"
 	"testing"
 
+	api "github.com/wetware/ww/api/process"
 	csp "github.com/wetware/ww/pkg/csp/server"
 )
+
+type testProc struct {
+	pid   uint32
+	alive bool
+}
+
+func (p *testProc) Kill(context.Context, api.Process_kill) error {
+	p.alive = false
+	return nil
+}
+
+func (p *testProc) Wait(ctx context.Context, call api.Process_wait) error {
+	return nil
+}
 
 func testProcTree() csp.ProcTree {
 	/*
@@ -57,10 +73,17 @@ func testProcTree() csp.ProcTree {
 			},
 		},
 	}
+
+	procMap := make(map[uint32]api.Process_Server)
+	for pid := uint32(0); pid <= 11; pid++ {
+		procMap[pid] = &testProc{pid: pid, alive: true}
+	}
+
 	return csp.ProcTree{
 		IDC:  csp.AtomicCounter{},
 		PC:   csp.AtomicCounter{},
 		Root: root,
+		Map:  procMap,
 	}
 }
 
@@ -81,7 +104,6 @@ func TestProcTree_FindParent(t *testing.T) {
 	// child, parent
 	matches := [6][2]uint32{
 		{8, 7},
-		{2, 1},
 		{9, 1},
 		{11, 10},
 		{3, 2},
@@ -157,5 +179,41 @@ func TestProcTree_Pop(t *testing.T) {
 	}
 	if parent.Left != nil {
 		t.Fatalf("left branch of %d should be nil, not %d", sibling.Pid, sibling.Left.Pid)
+	}
+}
+
+func TestProcTree_Kill(t *testing.T) {
+	pt := testProcTree()
+
+	mapCopy := make(map[uint32]api.Process_Server)
+	for k, v := range pt.Map {
+		mapCopy[k] = v
+	}
+
+	pt.Kill(1)
+	if pt.Root.Left == nil || pt.Root.Left.Pid != 10 {
+		t.Fatalf("expected to find 10 at the left of 0, found %s", pt.Root.Left)
+	}
+	killedProcs := []uint32{1, 2, 3, 4, 5, 6, 7, 8, 9}
+	aliveProcs := []uint32{10, 11}
+
+	for _, pid := range killedProcs {
+		if _, found := pt.Map[pid]; found {
+			t.Fatalf("found process %d in map but it should have been deleted", pid)
+		}
+		p := mapCopy[pid]
+		if tp, _ := p.(*testProc); tp.alive {
+			t.Fatalf("killed process %d is still alive", pid)
+		}
+	}
+
+	for _, pid := range aliveProcs {
+		if _, found := pt.Map[pid]; !found {
+			t.Fatalf("failed to find process %d in map", pid)
+		}
+		p := mapCopy[pid]
+		if tp, _ := p.(*testProc); !tp.alive {
+			t.Fatalf("killed process %d should still be alive", pid)
+		}
 	}
 }

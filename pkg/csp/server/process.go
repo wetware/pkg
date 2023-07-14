@@ -21,7 +21,7 @@ type process struct {
 	result execResult
 }
 
-func (p process) Kill(context.Context, api.Process_kill) error {
+func (p *process) Kill(context.Context, api.Process_kill) error {
 	p.cancel()
 	return nil
 }

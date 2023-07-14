@@ -1,18 +1,72 @@
 package server
 
-import "sync/atomic"
+import (
+	"context"
+	"fmt"
+	"sync/atomic"
+
+	api "github.com/wetware/ww/api/process"
+)
 
 // ProcTree represents the process tree of an executor.
 // It is represented a binary tree, in which the left branch of a node
 // represents a child process, while the right branch represents a
 // sibling process (shares the same parent).
 type ProcTree struct {
+	// TODO move context out of tree
+	Ctx context.Context
 	// IDC is a couter that increases to assign new PIDs.
 	IDC AtomicCounter
 	// PC keeps track of the number of processes in the tree.
 	PC AtomicCounter
 	// Root of the process tree.
 	Root *ProcNode
+	// Map of processes associated to their PIDs. MUST be initialized.
+	Map map[uint32]api.Process_Server
+}
+
+// NewProcTree is the default constuctor for ProcTree, but it may
+// also be maually constructed.
+func NewProcTree(ctx context.Context) ProcTree {
+	return ProcTree{
+		Ctx:  ctx,
+		IDC:  AtomicCounter{},
+		PC:   AtomicCounter{},
+		Root: &ProcNode{Pid: 1},
+		Map:  make(map[uint32]api.Process_Server),
+	}
+}
+
+// Kill recursively kills a process and it's children
+func (pt *ProcTree) Kill(pid uint32) {
+	// Can't kill root process
+	if pid == pt.Root.Pid {
+		return
+	}
+
+	n := pt.Pop(pid)
+	p, ok := pt.Map[pid]
+	if ok && p != nil {
+		p.Kill(pt.Ctx, api.Process_kill{})
+		delete(pt.Map, pid)
+	}
+	if n != nil {
+		pt.kill(n.Left)
+	}
+}
+
+// kill recursively kills process n, its siblings and children
+func (pt *ProcTree) kill(n *ProcNode) {
+	if n == nil {
+		return
+	}
+	p, ok := pt.Map[n.Pid]
+	if ok && p != nil {
+		p.Kill(pt.Ctx, api.Process_kill{})
+		delete(pt.Map, n.Pid)
+	}
+	pt.kill(n.Left)
+	pt.kill(n.Right)
 }
 
 // Pop removes the node with PID=pid and replaces it with a sibling

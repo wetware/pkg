@@ -216,7 +216,7 @@ func (r Server) mkmod(ctx context.Context, bytecode []byte, caps capnp.PointerLi
 		}
 	}()
 
-	return mod, nil // FIXME exiting here is releasing caps
+	return mod, nil
 }
 
 func (r Server) populateInbox(caps capnp.PointerList) (capnp.Client, error) {
