@@ -113,10 +113,10 @@ func (j Joiner) executor() csp.Server {
 	if err != nil {
 		panic(err)
 	}
-
 	return csp.Server{
-		ProcCounter: csp.AtomicCounter{},
-		Runtime:     r,
-		BcRegistry:  csp.RegistryServer{},
+		Runtime:    r,
+		BcRegistry: csp.RegistryServer{},
+		ProcTree:   csp.NewProcTree(ctx),
+		PrvKey:     csp.NewPrvKey(),
 	}
 }

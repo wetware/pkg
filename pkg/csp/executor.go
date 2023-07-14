@@ -19,10 +19,15 @@ func (ex Executor) Release() {
 	capnp.Client(ex).Release()
 }
 
-func (ex Executor) Exec(ctx context.Context, src []byte, caps ...capnp.Client) (Proc, capnp.ReleaseFunc) {
+func (ex Executor) Exec(ctx context.Context, src []byte, spid []byte, caps ...capnp.Client) (Proc, capnp.ReleaseFunc) {
 	f, release := api.Executor(ex).Exec(ctx, func(ps api.Executor_exec_Params) error {
 		if err := ps.SetBytecode(src); err != nil {
 			return err
+		}
+		if spid != nil {
+			if err := ps.SetSpid(spid); err != nil {
+				return err
+			}
 		}
 		if caps == nil {
 			return nil
@@ -37,10 +42,15 @@ func (ex Executor) Exec(ctx context.Context, src []byte, caps ...capnp.Client) (
 	return Proc(f.Process()), release
 }
 
-func (ex Executor) ExecFromCache(ctx context.Context, md5sum []byte, caps ...capnp.Client) (Proc, capnp.ReleaseFunc) {
+func (ex Executor) ExecFromCache(ctx context.Context, md5sum []byte, spid []byte, caps ...capnp.Client) (Proc, capnp.ReleaseFunc) {
 	f, release := api.Executor(ex).ExecFromCache(ctx, func(ps api.Executor_execFromCache_Params) error {
 		if err := ps.SetMd5sum(md5sum); err != nil {
 			return err
+		}
+		if spid != nil {
+			if err := ps.SetSpid(spid); err != nil {
+				return err
+			}
 		}
 		if caps == nil {
 			return nil

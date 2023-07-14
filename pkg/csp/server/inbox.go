@@ -29,17 +29,28 @@ func newDecodedInbox(content ...capnp.Client) decodedInbox {
 	}
 }
 
-func newEncodedInbox(content capnp.PointerList) (encodedInbox, error) {
-	// the content needs to be copied because the original capability might be
+func newEncodedInbox(content capnp.PointerList, prepend ...capnp.Client) (encodedInbox, error) {
+	// The content needs to be copied because the original capability might be
 	// released before the contents are used.
 	_, seg, _ := capnp.NewMessage(capnp.SingleSegment(nil))
-	pl, err := capnp.NewPointerList(seg, int32(content.Len()))
+	pl, err := capnp.NewPointerList(seg, int32(content.Len()+len(prepend)))
 	if err != nil {
 		return encodedInbox{}, err
 	}
 
-	for i := 0; i < content.Len(); i++ {
-		ptr, err := content.At(i)
+	delta := len(prepend)
+
+	// Start by adding al prependable caps.
+	for i := 0; i < delta; i++ {
+		_, pSeg, _ := capnp.NewMessage(capnp.SingleSegment(nil))
+		if err = pl.Set(i, prepend[i].EncodeAsPtr(pSeg)); err != nil {
+			return encodedInbox{}, err
+		}
+	}
+
+	// Continue with the pointer list.
+	for i := delta; i < content.Len()+delta; i++ {
+		ptr, err := content.At(i - delta)
 		if err != nil {
 			return encodedInbox{}, err
 		}

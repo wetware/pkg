@@ -15,10 +15,10 @@ import (
 type ProcTree struct {
 	// TODO move context out of tree
 	Ctx context.Context
-	// IDC is a couter that increases to assign new PIDs.
-	IDC AtomicCounter
-	// PC keeps track of the number of processes in the tree.
-	PC AtomicCounter
+	// PIDC is a couter that increases to assign new PIDs.
+	PIDC AtomicCounter
+	// TPC keeps track of the number of processes in the tree.
+	TPC AtomicCounter
 	// Root of the process tree.
 	Root *ProcNode
 	// Map of processes associated to their PIDs. MUST be initialized.
@@ -30,8 +30,8 @@ type ProcTree struct {
 func NewProcTree(ctx context.Context) ProcTree {
 	return ProcTree{
 		Ctx:  ctx,
-		IDC:  AtomicCounter{},
-		PC:   AtomicCounter{},
+		PIDC: NewAtomicCounter(),
+		TPC:  NewAtomicCounter(),
 		Root: &ProcNode{Pid: 1},
 		Map:  make(map[uint32]api.Process_Server),
 	}
@@ -232,15 +232,20 @@ func (n *ProcNode) String() string {
 
 // AtomicCounter is an atomic counter that increases the
 type AtomicCounter struct {
-	n uint32
+	n *uint32
+}
+
+func NewAtomicCounter() AtomicCounter {
+	var n uint32
+	return AtomicCounter{n: &n}
 }
 
 // Increase by 1.
 func (p AtomicCounter) Inc() uint32 {
-	return atomic.AddUint32(&p.n, 1)
+	return atomic.AddUint32(p.n, 1)
 }
 
 // Decrease by 2.
 func (p AtomicCounter) Dec() uint32 {
-	return atomic.AddUint32(&p.n, ^uint32(0))
+	return atomic.AddUint32(p.n, ^uint32(0))
 }

@@ -9,11 +9,9 @@ import (
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/sha512"
+	"crypto/sha256"
 	"crypto/x509"
-	"encoding/binary"
 	"encoding/pem"
-	"errors"
 	"io"
 	"net"
 	"os"
@@ -31,11 +29,10 @@ const (
 	PREOPENED_FD = 3
 
 	// Inbox in which each element will be found by default on the inbox
-	ARGS_INDEX       = 0
-	CAPS_START_INDEX = 1
+	SELF_INDEX       = 0
+	ARGS_INDEX       = 1
+	CAPS_START_INDEX = 2
 
-	// Number of default arguments
-	RESERVED_ARG_N = 4
 	// Argument order
 	ARG_PID      = 0 // PID of the process
 	ARG_MD5      = 1 // md5 sum of the process, used to self-replicate
@@ -68,11 +65,8 @@ func (s *Self) Signature() []byte {
 		return s.signature
 	}
 
-	pidAsData := make([]byte, 4)
-	binary.LittleEndian.PutUint32(pidAsData, s.Pid)
-
-	prv, _ := s.PrvKey.(*rsa.PrivateKey)
-	signature, _ := prv.Sign(rand.Reader, pidAsData, crypto.SHA256)
+	spid := csp.SignPid(s.Pid, s.PrvKey)
+	signature := spid.ToBytes()
 
 	// cache signature
 	s.signature = signature
@@ -82,10 +76,8 @@ func (s *Self) Signature() []byte {
 
 // EncryptedSignature returns s.Signature() after encrypting it with the provided public key.
 func (s *Self) EncryptedSignature(pubKey crypto.PublicKey) ([]byte, error) {
-	pub, _ := pubKey.(*rsa.PublicKey)
-	hash := sha512.New()
-
-	return rsa.EncryptOAEP(hash, rand.Reader, pub, s.Signature(), nil)
+	hash := sha256.New()
+	return csp.EncryptOAEPChunks(hash, rand.Reader, pubKey.(*rsa.PublicKey), s.Signature(), nil)
 }
 
 // closer contains a slice of Closers that will be closed when this type itself is closed
@@ -178,17 +170,17 @@ func Init(ctx context.Context) (Self, error) {
 	if err != nil {
 		return Self{}, err
 	}
-	args, err := csp.Args(clients[ARGS_INDEX]).Args(ctx)
+	selfArgs, err := csp.Args(clients[SELF_INDEX]).Args(ctx)
 	if err != nil {
 		return Self{}, err
 	}
-	pid64, err := strconv.ParseUint(args[ARG_PID], 10, 32)
+	pid64, err := strconv.ParseUint(selfArgs[ARG_PID], 10, 32)
 	if err != nil {
 		return Self{}, err
 	}
-	md5sum := args[ARG_MD5]
-	prvPem := args[ARG_PROC_KEY]
-	pubPem := args[ARG_EXEC_KEY]
+	md5sum := selfArgs[ARG_MD5]
+	prvPem := selfArgs[ARG_PROC_KEY]
+	pubPem := selfArgs[ARG_EXEC_KEY]
 
 	prvKey, err := DecodePrvPEM([]byte(prvPem))
 	if err != nil {
@@ -199,14 +191,14 @@ func Init(ctx context.Context) (Self, error) {
 		return Self{}, err
 	}
 
-	trimmedArgs := make([]string, len(args)-RESERVED_ARG_N)
-	for i := 0; i < len(trimmedArgs); i++ {
-		trimmedArgs[i] = args[i+RESERVED_ARG_N]
+	args, err := csp.Args(clients[ARGS_INDEX]).Args(ctx)
+	if err != nil {
+		return Self{}, err
 	}
 
 	return Self{
-		Args:       trimmedArgs,
-		Caps:       clients[1:],
+		Args:       args,
+		Caps:       clients[CAPS_START_INDEX:],
 		Closers:    closers,
 		Md5Sum:     []byte(md5sum),
 		Pid:        uint32(pid64),
@@ -226,18 +218,12 @@ func (e errLogger) ReportError(err error) {
 
 // Extract a private key form a PEM certificate
 func DecodePrvPEM(prvPEM []byte) (crypto.PrivateKey, error) {
-	block, rest := pem.Decode(prvPEM)
-	if rest != nil {
-		return nil, errors.New("failed to extract private key")
-	}
+	block, _ := pem.Decode(prvPEM)
 	return x509.ParsePKCS1PrivateKey(block.Bytes)
 }
 
 // Extract a public key from a PEM certificate
 func DecodePubPEM(pubPEM []byte) (crypto.PrivateKey, error) {
-	block, rest := pem.Decode(pubPEM)
-	if rest != nil {
-		return nil, errors.New("failed to extract private key")
-	}
+	block, _ := pem.Decode(pubPEM)
 	return x509.ParsePKCS1PublicKey(block.Bytes)
 }

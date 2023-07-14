@@ -8,7 +8,7 @@ import (
 	"encoding/pem"
 )
 
-func NewPubKey() crypto.PublicKey {
+func NewPrvKey() crypto.PrivateKey {
 	key, _ := rsa.GenerateKey(rand.Reader, 4096)
 	return key
 }
