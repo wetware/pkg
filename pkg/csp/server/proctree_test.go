@@ -9,15 +9,15 @@ import (
 
 func testProcTree() csp.ProcTree {
 	/*
-		          0
-		        /    \
-				1     7
-			   / \    /
-		      2   3  8
-			   \   \
-				9   4
-			   /   / \
-			  10  5   6
+                        0
+                      /   \
+                     1     7
+                    / \   /
+                   2   3 8
+                    \   \
+                     9   4
+                    /   / \
+                   10  5   6
 	*/
 	root := &csp.ProcNode{
 		Pid: 0,
