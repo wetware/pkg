@@ -39,6 +39,18 @@ func NewProcTree(ctx context.Context) ProcTree {
 	}
 }
 
+// NextPid returns the next avaiable PID and ensures it does not collide
+// with any existing processes.
+func (pt *ProcTree) NextPid() uint32 {
+	pid := pt.PIDC.Inc()
+	_, col := pt.Map[pid]
+	for col {
+		pid := pt.PIDC.Inc()
+		_, col = pt.Map[pid]
+	}
+	return pid
+}
+
 // Kill recursively kills a process and it's children
 func (pt *ProcTree) Kill(pid uint32) {
 	// Can't kill root process.
@@ -237,6 +249,10 @@ func insert(root *ProcNode, pid, ppid uint32) error {
 	return nil
 }
 
+func (pt ProcTree) AddToMap(pid uint32, p api.Process_Server) {
+	pt.Map[pid] = p
+}
+
 // Trim all orphaned branches.
 func (pt ProcTree) Trim(ctx context.Context) {
 	for pid := range pt.Map {
@@ -285,7 +301,7 @@ func (p AtomicCounter) Inc() uint32 {
 	return atomic.AddUint32(p.n, 1)
 }
 
-// Decrease by 2.
+// Decrease by 1.
 func (p AtomicCounter) Dec() uint32 {
 	return atomic.AddUint32(p.n, ^uint32(0))
 }
