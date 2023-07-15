@@ -30,8 +30,8 @@ type ProcTree struct {
 func NewProcTree(ctx context.Context) ProcTree {
 	return ProcTree{
 		Ctx:  ctx,
-		PIDC: NewAtomicCounter(),
-		TPC:  NewAtomicCounter(),
+		PIDC: NewAtomicCounter(1),
+		TPC:  NewAtomicCounter(0),
 		Root: &ProcNode{Pid: 1},
 		Map:  make(map[uint32]api.Process_Server),
 	}
@@ -39,7 +39,7 @@ func NewProcTree(ctx context.Context) ProcTree {
 
 // Kill recursively kills a process and it's children
 func (pt *ProcTree) Kill(pid uint32) {
-	// Can't kill root process
+	// Can't kill root process.
 	if pid == pt.Root.Pid {
 		return
 	}
@@ -47,9 +47,12 @@ func (pt *ProcTree) Kill(pid uint32) {
 	n := pt.Pop(pid)
 	p, ok := pt.Map[pid]
 	if ok && p != nil {
-		p.Kill(pt.Ctx, api.Process_kill{})
+		pt.TPC.Dec()
+		stop(pt.Ctx, p)
 		delete(pt.Map, pid)
 	}
+
+	// Kill all subprocesses.
 	if n != nil {
 		pt.kill(n.Left)
 	}
@@ -62,11 +65,25 @@ func (pt *ProcTree) kill(n *ProcNode) {
 	}
 	p, ok := pt.Map[n.Pid]
 	if ok && p != nil {
-		p.Kill(pt.Ctx, api.Process_kill{})
+		pt.TPC.Dec()
+		stop(pt.Ctx, p)
 		delete(pt.Map, n.Pid)
 	}
 	pt.kill(n.Left)
 	pt.kill(n.Right)
+}
+
+// stop a process in a specific way based on its implementation type.
+func stop(ctx context.Context, p api.Process_Server) {
+	// *process p calls this function from its Kill implementation
+	// thus we must avoid infinite recursivity. The process is
+	// killed with p.cancel() instead.
+	if ps, ok := p.(*process); ok {
+		ps.cancel()
+	} else {
+		// Generic implementation.
+		p.Kill(ctx, api.Process_kill{})
+	}
 }
 
 // Pop removes the node with PID=pid and replaces it with a sibling
@@ -126,6 +143,7 @@ func (pt ProcTree) FindParent(pid uint32) *ProcNode {
 // Insert creates a node with PID=pid as a child of PID=ppid.
 func (pt ProcTree) Insert(pid, ppid uint32) {
 	insert(pt.Root, pid, ppid)
+	pt.TPC.Inc()
 }
 
 // find performs an In-Order Depth First Search of the tree.
@@ -205,6 +223,15 @@ func insert(root *ProcNode, pid, ppid uint32) {
 	}
 }
 
+// Trim all orphaned branches.
+func (pt ProcTree) Trim(ctx context.Context) {
+	for pid := range pt.Map {
+		if pt.Find(pid) == nil {
+			pt.Kill(pid)
+		}
+	}
+}
+
 // ProcNode represents a process in the process tree.
 type ProcNode struct {
 	// Pid contais the Process ID.
@@ -235,9 +262,8 @@ type AtomicCounter struct {
 	n *uint32
 }
 
-func NewAtomicCounter() AtomicCounter {
-	var n uint32
-	return AtomicCounter{n: &n}
+func NewAtomicCounter(start uint32) AtomicCounter {
+	return AtomicCounter{n: &start}
 }
 
 // Increase by 1.
@@ -248,4 +274,9 @@ func (p AtomicCounter) Inc() uint32 {
 // Decrease by 2.
 func (p AtomicCounter) Dec() uint32 {
 	return atomic.AddUint32(p.n, ^uint32(0))
+}
+
+// Get current value.
+func (p AtomicCounter) Get() uint32 {
+	return atomic.LoadUint32(p.n)
 }

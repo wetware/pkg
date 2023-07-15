@@ -182,12 +182,7 @@ func (r Server) mkproc(ctx context.Context, ppid uint32, bytecode []byte, caps c
 		return nil, errors.New("ww: missing export: _start")
 	}
 
-	done, cancel := r.spawn(fn, cpuProf)
-	proc := &process{
-		pid:    pid,
-		done:   done,
-		cancel: cancel,
-	}
+	proc := r.spawn(fn, pid, cpuProf)
 	return proc, nil
 }
 
@@ -324,7 +319,7 @@ func (r Server) populateInbox(pid uint32, md5sum []byte, caps capnp.PointerList)
 	return capnp.Client(api.Inbox_ServerToClient(inbox)), nil
 }
 
-func (r Server) spawn(fn wasm.Function, cpuProf *wzprof.CPUProfiler) (<-chan execResult, context.CancelFunc) {
+func (r Server) spawn(fn wasm.Function, pid uint32, cpuProf *wzprof.CPUProfiler) *process {
 	done := make(chan execResult, 1)
 
 	// NOTE:  we use context.Background instead of the context obtained from the
@@ -332,10 +327,17 @@ func (r Server) spawn(fn wasm.Function, cpuProf *wzprof.CPUProfiler) (<-chan exe
 	//        the rpc handler has returned. Note also that this context is bound
 	//        to the application lifetime, so processes cannot block a shutdown.
 	ctx, cancel := context.WithCancel(context.Background())
+	killFunc := r.ProcTree.Kill
+	proc := &process{
+		pid:      pid,
+		killFunc: killFunc,
+		done:     done,
+		cancel:   cancel,
+	}
 
 	go func() {
 		defer close(done)
-		defer cancel()
+		defer proc.killFunc(proc.pid)
 
 		vs, err := fn.Call(ctx)
 
@@ -352,7 +354,7 @@ func (r Server) spawn(fn wasm.Function, cpuProf *wzprof.CPUProfiler) (<-chan exe
 		}
 	}()
 
-	return done, cancel
+	return proc
 }
 
 type errLogger struct {

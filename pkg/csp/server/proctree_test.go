@@ -81,8 +81,8 @@ func testProcTree() csp.ProcTree {
 
 	return csp.ProcTree{
 		Ctx:  context.Background(),
-		PIDC: csp.NewAtomicCounter(),
-		TPC:  csp.NewAtomicCounter(),
+		PIDC: csp.NewAtomicCounter(10),
+		TPC:  csp.NewAtomicCounter(10),
 		Root: root,
 		Map:  procMap,
 	}
@@ -153,7 +153,10 @@ func TestProcTree_Insert(t *testing.T) {
 			}
 		}
 	}
-
+	c, e := pt.TPC.Get(), uint32(14)
+	if c != e {
+		t.Fatalf("expected a process count of %d, got %d", e, c)
+	}
 }
 
 func TestProcTree_Pop(t *testing.T) {
@@ -216,5 +219,36 @@ func TestProcTree_Kill(t *testing.T) {
 		if tp, _ := p.(*testProc); !tp.alive {
 			t.Fatalf("killed process %d should still be alive", pid)
 		}
+	}
+	c, e := pt.TPC.Get(), uint32(10-len(killedProcs))
+	if c != e {
+		t.Fatalf("expected a process count of %d, got %d", e, c)
+	}
+}
+
+func TestProcTree_Trim(t *testing.T) {
+	pt := testProcTree()
+	pt.Pop(1)
+	pt.Trim(context.TODO())
+
+	mapCopy := make(map[uint32]api.Process_Server)
+	for k, v := range pt.Map {
+		mapCopy[k] = v
+	}
+
+	killedProcs := []uint32{1, 2, 3, 4, 5, 6, 7, 8, 9}
+	aliveProcs := []uint32{10, 11}
+	for _, pid := range aliveProcs {
+		if _, found := pt.Map[pid]; !found {
+			t.Fatalf("failed to find process %d in map", pid)
+		}
+		p := mapCopy[pid]
+		if tp, _ := p.(*testProc); !tp.alive {
+			t.Fatalf("killed process %d should still be alive", pid)
+		}
+	}
+	c, e := pt.TPC.Get(), uint32(10-len(killedProcs))
+	if c != e {
+		t.Fatalf("expected a process count of %d, got %d", e, c)
 	}
 }
