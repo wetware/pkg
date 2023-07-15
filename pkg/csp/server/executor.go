@@ -344,7 +344,6 @@ func (r Server) spawn(fn wasm.Function, pid uint32, cpuProf *wzprof.CPUProfiler)
 		defer proc.killFunc(proc.pid)
 
 		vs, err := fn.Call(ctx)
-		fmt.Printf("(%d) call to ended\n", pid)
 
 		if cpuProf != nil {
 			prof := cpuProf.StopProfile(1.0)
