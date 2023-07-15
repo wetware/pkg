@@ -2,24 +2,24 @@ package server
 
 import (
 	"context"
-	"crypto/md5"
 
 	api "github.com/wetware/ww/api/process"
+	"github.com/wetware/ww/pkg/csp"
 )
 
 // TODO mikel
 // Make registryServer keep a list of the bcs it has sorted by last usage
 // Set and enforce a limited list size and a limited memory size
-type RegistryServer map[[md5.Size]byte][]byte
+type RegistryServer map[[csp.HashSize]byte][]byte
 
 func (r RegistryServer) put(bc []byte) []byte {
-	md5sum := md5.Sum(bc)
-	if _, found := r[md5sum]; !found {
+	hash := csp.HashFunc(bc)
+	if _, found := r[hash]; !found {
 		cached := make([]byte, len(bc))
 		copy(cached, bc)
-		r[md5sum] = cached
+		r[hash] = cached
 	}
-	return md5sum[:]
+	return hash[:]
 }
 
 func (r RegistryServer) Put(ctx context.Context, call api.BytecodeRegistry_put) error {
@@ -33,11 +33,11 @@ func (r RegistryServer) Put(ctx context.Context, call api.BytecodeRegistry_put) 
 		return err
 	}
 
-	return res.SetMd5sum(r.put(bc))
+	return res.SetHash(r.put(bc))
 }
 
-func (r RegistryServer) get(md5sum []byte) []byte {
-	return r[[md5.Size]byte(md5sum)]
+func (r RegistryServer) get(hash []byte) []byte {
+	return r[[csp.HashSize]byte(hash)]
 }
 
 func (r RegistryServer) Get(ctx context.Context, call api.BytecodeRegistry_get) error {
@@ -46,16 +46,16 @@ func (r RegistryServer) Get(ctx context.Context, call api.BytecodeRegistry_get) 
 		return err
 	}
 
-	md5sum, err := call.Args().Md5sum()
+	hash, err := call.Args().Hash()
 	if err != nil {
 		return err
 	}
 
-	return res.SetBytecode(r.get(md5sum))
+	return res.SetBytecode(r.get(hash))
 }
 
-func (r RegistryServer) has(md5sum []byte) bool {
-	return r.get(md5sum) != nil
+func (r RegistryServer) has(hash []byte) bool {
+	return r.get(hash) != nil
 }
 
 func (r RegistryServer) Has(ctx context.Context, call api.BytecodeRegistry_has) error {
@@ -64,11 +64,11 @@ func (r RegistryServer) Has(ctx context.Context, call api.BytecodeRegistry_has) 
 		return err
 	}
 
-	md5sum, err := call.Args().Md5sum()
+	hash, err := call.Args().Hash()
 	if err != nil {
 		return err
 	}
 
-	res.SetHas(r.has(md5sum))
+	res.SetHas(r.has(hash))
 	return nil
 }

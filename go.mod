@@ -46,6 +46,8 @@ require (
 	github.com/mikelsr/go-libp2p-inproc-transport v0.4.1-0.20230701164203-13bece37c1af
 	github.com/mikelsr/go-libp2p-kad-dht v0.0.0-20230701164624-07654611acce
 	github.com/mikelsr/go-libp2p-pubsub v0.9.4-0.20230701150959-99420a3a381d
+	github.com/mr-tron/base58 v1.2.0
+	github.com/stealthrocket/wzprof v0.1.5
 	github.com/wetware/casm v0.0.0-20230701151120-3c51cd8714eb
 )
 
@@ -120,7 +122,6 @@ require (
 	github.com/mikioh/tcpinfo v0.0.0-20190314235526-30a79bb1804b // indirect
 	github.com/mikioh/tcpopt v0.0.0-20190314235656-172688c1accc // indirect
 	github.com/minio/sha256-simd v1.0.1 // indirect
-	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/multiformats/go-base32 v0.1.0 // indirect
 	github.com/multiformats/go-base36 v0.2.0 // indirect
 	github.com/multiformats/go-multiaddr-dns v0.3.1 // indirect
@@ -145,7 +146,6 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/smartystreets/assertions v1.13.0 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
-	github.com/stealthrocket/wzprof v0.1.5 // indirect
 	github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	go.opencensus.io v0.24.0 // indirect

@@ -28,8 +28,8 @@ const (
 	CAPS_START_INDEX = 2
 
 	// Argument order
-	ARG_PID = 0 // PID of the process
-	ARG_MD5 = 1 // md5 sum of the process, used to self-replicate
+	ARG_PID  = 0 // PID of the process
+	ARG_HASH = 1 // hash of the process, used to self-replicate
 )
 
 // Self contains the info a WASM process will need for:
@@ -37,7 +37,7 @@ type Self struct {
 	Args    []string       // Receiving parameters.
 	Caps    []capnp.Client // Communication.
 	Closers io.Closer      // Cleaning up.
-	Md5Sum  []byte         // Self-replicating.
+	Hash    []byte         // Self-replicating.
 	Pid     uint32         // Indetifying self.
 }
 
@@ -143,7 +143,7 @@ func Init(ctx context.Context) (Self, error) {
 	if err != nil {
 		return Self{}, err
 	}
-	md5sum := selfArgs[ARG_MD5]
+	hash := selfArgs[ARG_HASH]
 
 	args, err := csp.Args(clients[ARGS_INDEX]).Args(ctx)
 	if err != nil {
@@ -154,7 +154,7 @@ func Init(ctx context.Context) (Self, error) {
 		Args:    args,
 		Caps:    clients[CAPS_START_INDEX:],
 		Closers: closers,
-		Md5Sum:  []byte(md5sum),
+		Hash:    []byte(hash),
 		Pid:     uint32(pid64),
 	}, nil
 }

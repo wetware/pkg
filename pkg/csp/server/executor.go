@@ -2,8 +2,6 @@ package server
 
 import (
 	"context"
-	"crypto/md5"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"net"
@@ -16,9 +14,9 @@ import (
 	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/google/uuid"
 	"github.com/lthibault/log"
+	"github.com/mr-tron/base58/base58"
 	"github.com/stealthrocket/wzprof"
 	"github.com/tetratelabs/wazero"
-	"lukechampine.com/blake3"
 
 	wasm "github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/experimental"
@@ -29,20 +27,6 @@ import (
 	"github.com/wetware/ww/experiments/pkg/tools"
 	csp "github.com/wetware/ww/pkg/csp"
 )
-
-// ByteCode is a representation of arbitrary executable data.
-type ByteCode []byte
-
-func (b ByteCode) String() string {
-	hash := b.Hash()
-	return hex.EncodeToString(hash[:])
-}
-
-// Hash returns the BLAKE3-256 hash of the byte code. It is
-// suitbale for use as a secure checksum.
-func (b ByteCode) Hash() [32]byte {
-	return blake3.Sum256(b)
-}
 
 // Server is the main Executor implementation.  It spawns WebAssembly-
 // based processes.  The zero-value Server panics.
@@ -147,18 +131,18 @@ func (r Server) ExecFromCache(ctx context.Context, call api.Executor_execFromCac
 		}
 	}
 
-	md5sum, err := call.Args().Md5sum()
+	hash, err := call.Args().Hash()
 	if err != nil {
 		return err
 	}
 
-	if len(md5sum) != md5.Size {
-		return fmt.Errorf("unexpected md5sum size, got %d expected %d", len(md5sum), md5.Size)
+	if len(hash) != csp.HashSize {
+		return fmt.Errorf("unexpected hash size, got %d expected %d", len(hash), csp.HashSize)
 	}
 
-	bc := r.BcRegistry.get(md5sum)
+	bc := r.BcRegistry.get(hash)
 	if bc == nil {
-		return fmt.Errorf("bytecode for md5 sum %s not found", md5sum)
+		return fmt.Errorf("bytecode for hash %s not found", hash)
 	}
 
 	p, err := r.mkproc(ctx, ppid, bc, caps)
@@ -190,10 +174,11 @@ func (r Server) mkproc(ctx context.Context, ppid uint32, bytecode []byte, caps c
 	return proc, nil
 }
 
-func (r Server) mkmod(ctx context.Context, bytecode []byte, pid uint32, caps capnp.PointerList) (wasm.Module, *wzprof.CPUProfiler, error) {
+func (r Server) mkmod(ctx context.Context, bc []byte, pid uint32, caps capnp.PointerList) (wasm.Module, *wzprof.CPUProfiler, error) {
+	hash := csp.HashFunc(bc)
 	name := fmt.Sprintf(
 		"%s-%s",
-		ByteCode(bytecode).String(), // TODO standardize hashes, md5...
+		base58.FastBase58Encoding(hash[:]),
 		uuid.New(),
 	)
 
@@ -204,7 +189,7 @@ func (r Server) mkmod(ctx context.Context, bytecode []byte, pid uint32, caps cap
 
 	// set profiling runtime
 	if r.Profile {
-		p = wzprof.ProfilingFor(bytecode)
+		p = wzprof.ProfilingFor(bc)
 		cpuProf = p.CPUProfiler()
 		pprofCtx = context.WithValue(context.Background(),
 			experimental.FunctionListenerFactoryKey{},
@@ -227,7 +212,7 @@ func (r Server) mkmod(ctx context.Context, bytecode []byte, pid uint32, caps cap
 
 	// TODO(perf):  cache compiled modules so that we can instantiate module
 	//              instances for concurrent use.
-	compiled, err := r.Runtime.CompileModule(ctx, bytecode)
+	compiled, err := r.Runtime.CompileModule(ctx, bc)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -267,8 +252,7 @@ func (r Server) mkmod(ctx context.Context, bytecode []byte, pid uint32, caps cap
 
 	// TODO the private key is being sent unencrypted over the wire.
 	// Send it over an encrypted channel instead.
-	md5sum := md5.Sum(bytecode)
-	bootContext, err := r.populateBootContext(pid, md5sum[:], caps)
+	bootContext, err := r.populateBootContext(pid, hash[:], caps)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -299,14 +283,14 @@ func (r Server) mkmod(ctx context.Context, bytecode []byte, pid uint32, caps cap
 	return mod, cpuProf, nil
 }
 
-func (r Server) populateBootContext(pid uint32, md5sum []byte, caps capnp.PointerList) (capnp.Client, error) {
+func (r Server) populateBootContext(pid uint32, hash []byte, caps capnp.PointerList) (capnp.Client, error) {
 	var bootContext anyIbox
 	var err error
 
 	// Args that will be present in all processes.
 	initArgs := csp.NewArgs(
 		strconv.FormatUint(uint64(pid), 10),
-		string(md5sum),
+		string(hash),
 	)
 
 	// The process is provided its own executor by default.

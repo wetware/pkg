@@ -37,9 +37,9 @@ func (ex Executor) Exec(ctx context.Context, src []byte, ppid uint32, caps ...ca
 	return Proc(f.Process()), release
 }
 
-func (ex Executor) ExecFromCache(ctx context.Context, md5sum []byte, ppid uint32, caps ...capnp.Client) (Proc, capnp.ReleaseFunc) {
+func (ex Executor) ExecFromCache(ctx context.Context, hash []byte, ppid uint32, caps ...capnp.Client) (Proc, capnp.ReleaseFunc) {
 	f, release := api.Executor(ex).ExecFromCache(ctx, func(ps api.Executor_execFromCache_Params) error {
-		if err := ps.SetMd5sum(md5sum); err != nil {
+		if err := ps.SetHash(hash); err != nil {
 			return err
 		}
 		if caps == nil {
