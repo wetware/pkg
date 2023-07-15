@@ -12,6 +12,7 @@ const HashSize = md5.Size
 
 // HashFunc is the function used for hashing in the default
 // executor implementation.
+// TODO switch to more suitable hashing function, e.g. BLAKE3.
 var HashFunc func([]byte) [HashSize]byte = md5.Sum
 
 type Registry api.BytecodeRegistry
