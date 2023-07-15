@@ -8,17 +8,17 @@ import (
 	api "github.com/wetware/ww/api/process"
 )
 
-// anyBootContext represents any implementation of the capability
+// anyBootContext represents any implementation of the capability.
 type anyIbox interface {
 	Open(context.Context, api.BootContext_open) error
 }
 
-// decodedBootContext holds unencoded capabilities until and encodes them when opened
+// decodedBootContext holds unencoded capabilities until and encodes them when opened.
 type decodedBootContext struct {
 	Content []capnp.Client
 }
 
-// encodedBootContext holds encoded capabilities and returns them as-is when opened
+// encodedBootContext holds encoded capabilities and returns them as-is when opened.
 type encodedBootContext struct {
 	Content capnp.PointerList
 }

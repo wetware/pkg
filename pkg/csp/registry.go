@@ -17,6 +17,7 @@ var HashFunc func([]byte) [HashSize]byte = md5.Sum
 
 type Registry api.BytecodeRegistry
 
+// Put a bytecode in the registry with it's HashFunc as the key.
 func (r Registry) Put(ctx context.Context, bc []byte) ([]byte, error) {
 	f, release := api.BytecodeRegistry(r).Put(ctx, func(br api.BytecodeRegistry_put_Params) error {
 		return br.SetBytecode(bc)
@@ -31,6 +32,7 @@ func (r Registry) Put(ctx context.Context, bc []byte) ([]byte, error) {
 	return res.Hash()
 }
 
+// Get the bytecode associated to the hash produced by HashFunc(bytecode).
 func (r Registry) Get(ctx context.Context, hash []byte) ([]byte, error) {
 	f, release := api.BytecodeRegistry(r).Get(ctx, func(br api.BytecodeRegistry_get_Params) error {
 		return br.SetHash(hash)
@@ -45,6 +47,7 @@ func (r Registry) Get(ctx context.Context, hash []byte) ([]byte, error) {
 	return res.Bytecode()
 }
 
+// Has returns whether there is a match for the hash or not.
 func (r Registry) Has(ctx context.Context, hash []byte) (bool, error) {
 	f, release := api.BytecodeRegistry(r).Get(ctx, func(br api.BytecodeRegistry_get_Params) error {
 		return br.SetHash(hash)

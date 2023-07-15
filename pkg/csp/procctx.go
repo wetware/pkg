@@ -10,7 +10,7 @@ import (
 
 type BootContext api.BootContext
 
-// Open extracts the contents of the BootContext as a list of capnp.Clients
+// Open extracts the contents of the BootContext as a list of capnp.Clients.
 func (i BootContext) Open(ctx context.Context) ([]capnp.Client, error) {
 	bootContext := api.BootContext(i)
 	of, _ := bootContext.Open(context.TODO(), nil)
@@ -29,7 +29,7 @@ func (i BootContext) Open(ctx context.Context) ([]capnp.Client, error) {
 	return ListToClients(list)
 }
 
-// ClientsToNewList encodes a list of capnp.Clients into a new capnp.PointerList
+// ClientsToNewList encodes a list of capnp.Clients into a new capnp.PointerList.
 func ClientsToNewList(caps ...capnp.Client) (capnp.PointerList, error) {
 	_, seg, err := capnp.NewMessage(capnp.SingleSegment(nil))
 	if err != nil {
@@ -43,7 +43,8 @@ func ClientsToNewList(caps ...capnp.Client) (capnp.PointerList, error) {
 	return l, ClientsToExistingList(&l, caps...)
 }
 
-// ClientsToExistingList encodes a list of capnp.Clients into an existing capnp.PointerList
+// ClientsToExistingList encodes a list of capnp.Clients into an existing
+// capnp.PointerList.
 func ClientsToExistingList(pl *capnp.PointerList, caps ...capnp.Client) error {
 	l := *pl
 	for i, cap := range caps {
@@ -59,7 +60,7 @@ func ClientsToExistingList(pl *capnp.PointerList, caps ...capnp.Client) error {
 	return nil
 }
 
-// ListToClients decodes a capnp.PointerList to a list of capnp.Clients
+// ListToClients decodes a capnp.PointerList to a list of capnp.Clients.
 func ListToClients(list capnp.PointerList) ([]capnp.Client, error) {
 	clients := make([]capnp.Client, list.Len())
 

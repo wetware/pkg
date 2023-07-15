@@ -25,6 +25,7 @@ func (p Proc) Release() {
 	capnp.Client(p).Release()
 }
 
+// Kill a process and any sub processes it might have spawned.
 func (p Proc) Kill(ctx context.Context) error {
 	f, release := api.Process(p).Kill(ctx, nil)
 	defer release()
@@ -45,6 +46,7 @@ func (p Proc) Kill(ctx context.Context) error {
 	return nil
 }
 
+// Wait for the process to finish and return any errors.
 func (p Proc) Wait(ctx context.Context) error {
 	f, release := api.Process(p).Wait(ctx, nil)
 	defer release()

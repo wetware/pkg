@@ -130,6 +130,8 @@ func OpenBootContext(ctx context.Context) ([]capnp.Client, io.Closer, error) {
 	return clients, closer, err
 }
 
+// Init creates a Self from the process' BootContext.
+// Should be called at the start of every WW WASM program.
 func Init(ctx context.Context) (Self, error) {
 	clients, closers, err := OpenBootContext(ctx)
 	if err != nil {
