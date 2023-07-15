@@ -8,34 +8,34 @@ import (
 	api "github.com/wetware/ww/api/process"
 )
 
-// anyContext represents any implementation of the capability
+// anyBootContext represents any implementation of the capability
 type anyIbox interface {
-	Open(context.Context, api.Context_open) error
+	Open(context.Context, api.BootContext_open) error
 }
 
-// decodedContext holds unencoded capabilities until and encodes them when opened
-type decodedContext struct {
+// decodedBootContext holds unencoded capabilities until and encodes them when opened
+type decodedBootContext struct {
 	Content []capnp.Client
 }
 
-// encodedContext holds encoded capabilities and returns them as-is when opened
-type encodedContext struct {
+// encodedBootContext holds encoded capabilities and returns them as-is when opened
+type encodedBootContext struct {
 	Content capnp.PointerList
 }
 
-func newDecodedContext(content ...capnp.Client) decodedContext {
-	return decodedContext{
+func newDecodedBootContext(content ...capnp.Client) decodedBootContext {
+	return decodedBootContext{
 		Content: content,
 	}
 }
 
-func newEncodedContext(content capnp.PointerList, prepend ...capnp.Client) (encodedContext, error) {
+func newEncodedBootContext(content capnp.PointerList, prepend ...capnp.Client) (encodedBootContext, error) {
 	// The content needs to be copied because the original capability might be
 	// released before the contents are used.
 	_, seg, _ := capnp.NewMessage(capnp.SingleSegment(nil))
 	pl, err := capnp.NewPointerList(seg, int32(content.Len()+len(prepend)))
 	if err != nil {
-		return encodedContext{}, err
+		return encodedBootContext{}, err
 	}
 
 	delta := len(prepend)
@@ -44,7 +44,7 @@ func newEncodedContext(content capnp.PointerList, prepend ...capnp.Client) (enco
 	for i := 0; i < delta; i++ {
 		_, pSeg, _ := capnp.NewMessage(capnp.SingleSegment(nil))
 		if err = pl.Set(i, prepend[i].EncodeAsPtr(pSeg)); err != nil {
-			return encodedContext{}, err
+			return encodedBootContext{}, err
 		}
 	}
 
@@ -52,22 +52,22 @@ func newEncodedContext(content capnp.PointerList, prepend ...capnp.Client) (enco
 	for i := delta; i < content.Len()+delta; i++ {
 		ptr, err := content.At(i - delta)
 		if err != nil {
-			return encodedContext{}, err
+			return encodedBootContext{}, err
 		}
 		_, pSeg, _ := capnp.NewMessage(capnp.SingleSegment(nil))
 		var client capnp.Client
 		client = client.DecodeFromPtr(ptr)
 		if err = pl.Set(i, client.EncodeAsPtr(pSeg)); err != nil {
-			return encodedContext{}, err
+			return encodedBootContext{}, err
 		}
 	}
 
-	return encodedContext{
+	return encodedBootContext{
 		Content: pl,
 	}, nil
 }
 
-func (di decodedContext) Open(ctx context.Context, call api.Context_open) error {
+func (di decodedBootContext) Open(ctx context.Context, call api.BootContext_open) error {
 	res, err := call.AllocResults()
 	if err != nil {
 		return err
@@ -91,7 +91,7 @@ func (di decodedContext) Open(ctx context.Context, call api.Context_open) error 
 	return res.SetContent(cs)
 }
 
-func (ei encodedContext) Open(ctx context.Context, call api.Context_open) error {
+func (ei encodedBootContext) Open(ctx context.Context, call api.BootContext_open) error {
 	res, err := call.AllocResults()
 	if err != nil {
 		return err

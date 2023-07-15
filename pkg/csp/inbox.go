@@ -8,12 +8,12 @@ import (
 	api "github.com/wetware/ww/api/process"
 )
 
-type Context api.Context
+type BootContext api.BootContext
 
-// Open extracts the contents of the Context as a list of capnp.Clients
-func (i Context) Open(ctx context.Context) ([]capnp.Client, error) {
-	context := api.Context(i)
-	of, _ := context.Open(context.TODO(), nil)
+// Open extracts the contents of the BootContext as a list of capnp.Clients
+func (i BootContext) Open(ctx context.Context) ([]capnp.Client, error) {
+	bootContext := api.BootContext(i)
+	of, _ := bootContext.Open(context.TODO(), nil)
 
 	<-of.Done()
 	or, err := of.Struct()

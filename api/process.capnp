@@ -14,7 +14,7 @@ interface Executor {
     exec @0 (bytecode :Data, ppid :UInt32,  caps :List(Capability)) -> (process :Process);
     # Exec creates an runs a process from the provided bytecode. Optionally, a
     # capability can be passed through the `cap` parameter. This capability will
-    # be available at the process context.
+    # be available at the process bootContext.
     #
     # The Process capability is associated to the created process.
     execFromCache @1 (md5sum :Data, ppid :UInt32, caps :List(Capability)) -> (process :Process);
@@ -41,13 +41,13 @@ interface Process {
     # Kill the process.
 }
 
-interface Context {
-    # Context is used to make other capabilities available to spawning processes.
+interface BootContext {
+    # BootContext is used to make other capabilities available to spawning processes.
     # e.g. if process A spawns process B, it can leave a channel pointing to A
-    # in it's context to stablish a direct communication channel.
+    # in it's bootContext to stablish a direct communication channel.
     # Every process is given a context when created.
     open @0 () -> (content :List(Capability));
-    # Open returns all the capabilities that were left on the context.
+    # Open returns all the capabilities that were left on the bootContext.
     # The receiver must know the order of the content beforehand.
 }
 

@@ -268,7 +268,7 @@ func (r Server) mkmod(ctx context.Context, bytecode []byte, pid uint32, caps cap
 	// TODO the private key is being sent unencrypted over the wire.
 	// Send it over an encrypted channel instead.
 	md5sum := md5.Sum(bytecode)
-	context, err := r.populateContext(pid, md5sum[:], caps)
+	bootContext, err := r.populateBootContext(pid, md5sum[:], caps)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -280,9 +280,9 @@ func (r Server) mkmod(ctx context.Context, bytecode []byte, pid uint32, caps cap
 		}
 		defer tcpConn.Close()
 
-		defer context.Release()
+		defer bootContext.Release()
 		conn := rpc.NewConn(rpc.NewStreamTransport(tcpConn), &rpc.Options{
-			BootstrapClient: context,
+			BootstrapClient: bootContext,
 			ErrorReporter: errLogger{
 				Logger: log.New(log.WithLevel(log.ErrorLevel)).WithField("conn", "host"),
 			},
@@ -299,8 +299,8 @@ func (r Server) mkmod(ctx context.Context, bytecode []byte, pid uint32, caps cap
 	return mod, cpuProf, nil
 }
 
-func (r Server) populateContext(pid uint32, md5sum []byte, caps capnp.PointerList) (capnp.Client, error) {
-	var context anyIbox
+func (r Server) populateBootContext(pid uint32, md5sum []byte, caps capnp.PointerList) (capnp.Client, error) {
+	var bootContext anyIbox
 	var err error
 
 	// Args that will be present in all processes.
@@ -312,15 +312,15 @@ func (r Server) populateContext(pid uint32, md5sum []byte, caps capnp.PointerLis
 	// The process is provided its own executor by default.
 	if caps.Len() <= 0 {
 		executor := capnp.Client(api.Executor_ServerToClient(r))
-		context = newDecodedContext(capnp.Client(initArgs), capnp.Client(csp.NewArgs()), executor)
+		bootContext = newDecodedBootContext(capnp.Client(initArgs), capnp.Client(csp.NewArgs()), executor)
 	} else { // Otherwise it will pass the received capabilities.
-		context, err = newEncodedContext(caps, capnp.Client(initArgs))
+		bootContext, err = newEncodedBootContext(caps, capnp.Client(initArgs))
 		if err != nil {
 			return capnp.Client{}, nil
 		}
 	}
 
-	return capnp.Client(api.Context_ServerToClient(context)), nil
+	return capnp.Client(api.BootContext_ServerToClient(bootContext)), nil
 }
 
 func (r Server) spawn(fn wasm.Function, pid uint32, cpuProf *wzprof.CPUProfiler) *process {

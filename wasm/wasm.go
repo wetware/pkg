@@ -22,7 +22,7 @@ const (
 	// file descriptor for pre-openned TCP socket
 	PREOPENED_FD = 3
 
-	// Context in which each element will be found by default on the context
+	// BootContext in which each element will be found by default on the bootContext
 	SELF_INDEX       = 0
 	ARGS_INDEX       = 1
 	CAPS_START_INDEX = 2
@@ -112,26 +112,26 @@ func BootstrapClient(ctx context.Context) (capnp.Client, io.Closer, error) {
 	return client, closer, err
 }
 
-// OpenContext may be called whenever a process starts. It loads and resolves
+// OpenBootContext may be called whenever a process starts. It loads and resolves
 // any capabilities left by call that created the process. Not required if
 // Init was called.
-func OpenContext(ctx context.Context) ([]capnp.Client, io.Closer, error) {
-	context, closer, err := BootstrapClient(ctx)
+func OpenBootContext(ctx context.Context) ([]capnp.Client, io.Closer, error) {
+	bootContext, closer, err := BootstrapClient(ctx)
 	if err != nil {
 		return nil, closer, err
 	}
 
-	if err := context.Resolve(context.Background()); err != nil {
+	if err := bootContext.Resolve(context.Background()); err != nil {
 		return nil, closer, err
 	}
 
-	clients, err := csp.Context(context).Open(context.TODO())
+	clients, err := csp.BootContext(bootContext).Open(context.TODO())
 
 	return clients, closer, err
 }
 
 func Init(ctx context.Context) (Self, error) {
-	clients, closers, err := OpenContext(ctx)
+	clients, closers, err := OpenBootContext(ctx)
 	if err != nil {
 		return Self{}, err
 	}

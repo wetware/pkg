@@ -1807,32 +1807,32 @@ func (f Process_kill_Results_Future) Struct() (Process_kill_Results, error) {
 	return Process_kill_Results(p.Struct()), err
 }
 
-type Context capnp.Client
+type BootContext capnp.Client
 
-// Context_TypeID is the unique identifier for the type Context.
-const Context_TypeID = 0xb971efdce4919fdf
+// BootContext_TypeID is the unique identifier for the type BootContext.
+const BootContext_TypeID = 0xef622b23fee0980e
 
-func (c Context) Open(ctx context.Context, params func(Context_open_Params) error) (Context_open_Results_Future, capnp.ReleaseFunc) {
+func (c BootContext) Open(ctx context.Context, params func(BootContext_open_Params) error) (BootContext_open_Results_Future, capnp.ReleaseFunc) {
 
 	s := capnp.Send{
 		Method: capnp.Method{
-			InterfaceID:   0xb971efdce4919fdf,
+			InterfaceID:   0xef622b23fee0980e,
 			MethodID:      0,
-			InterfaceName: "process.capnp:Context",
+			InterfaceName: "process.capnp:BootContext",
 			MethodName:    "open",
 		},
 	}
 	if params != nil {
 		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Context_open_Params(s)) }
+		s.PlaceArgs = func(s capnp.Struct) error { return params(BootContext_open_Params(s)) }
 	}
 
 	ans, release := capnp.Client(c).SendCall(ctx, s)
-	return Context_open_Results_Future{Future: ans.Future()}, release
+	return BootContext_open_Results_Future{Future: ans.Future()}, release
 
 }
 
-func (c Context) WaitStreaming() error {
+func (c BootContext) WaitStreaming() error {
 	return capnp.Client(c).WaitStreaming()
 }
 
@@ -1840,14 +1840,14 @@ func (c Context) WaitStreaming() error {
 // purposes.  Its format should not be depended on: in particular, it
 // should not be used to compare clients.  Use IsSame to compare clients
 // for equality.
-func (c Context) String() string {
-	return "Context(" + capnp.Client(c).String() + ")"
+func (c BootContext) String() string {
+	return "BootContext(" + capnp.Client(c).String() + ")"
 }
 
 // AddRef creates a new Client that refers to the same capability as c.
 // If c is nil or has resolved to null, then AddRef returns nil.
-func (c Context) AddRef() Context {
-	return Context(capnp.Client(c).AddRef())
+func (c BootContext) AddRef() BootContext {
+	return BootContext(capnp.Client(c).AddRef())
 }
 
 // Release releases a capability reference.  If this is the last
@@ -1856,28 +1856,28 @@ func (c Context) AddRef() Context {
 //
 // Release will panic if c has already been released, but not if c is
 // nil or resolved to null.
-func (c Context) Release() {
+func (c BootContext) Release() {
 	capnp.Client(c).Release()
 }
 
 // Resolve blocks until the capability is fully resolved or the Context
 // expires.
-func (c Context) Resolve(ctx context.Context) error {
+func (c BootContext) Resolve(ctx context.Context) error {
 	return capnp.Client(c).Resolve(ctx)
 }
 
-func (c Context) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (c BootContext) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Client(c).EncodeAsPtr(seg)
 }
 
-func (Context) DecodeFromPtr(p capnp.Ptr) Context {
-	return Context(capnp.Client{}.DecodeFromPtr(p))
+func (BootContext) DecodeFromPtr(p capnp.Ptr) BootContext {
+	return BootContext(capnp.Client{}.DecodeFromPtr(p))
 }
 
 // IsValid reports whether c is a valid reference to a capability.
 // A reference is invalid if it is nil, has resolved to null, or has
 // been released.
-func (c Context) IsValid() bool {
+func (c BootContext) IsValid() bool {
 	return capnp.Client(c).IsValid()
 }
 
@@ -1885,7 +1885,7 @@ func (c Context) IsValid() bool {
 // same call to NewClient.  This can return false negatives if c or other
 // are not fully resolved: use Resolve if this is an issue.  If either
 // c or other are released, then IsSame panics.
-func (c Context) IsSame(other Context) bool {
+func (c BootContext) IsSame(other BootContext) bool {
 	return capnp.Client(c).IsSame(capnp.Client(other))
 }
 
@@ -1893,209 +1893,209 @@ func (c Context) IsSame(other Context) bool {
 // this client. This affects all future calls, but not calls already
 // waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
 // which is also the default.
-func (c Context) SetFlowLimiter(lim fc.FlowLimiter) {
+func (c BootContext) SetFlowLimiter(lim fc.FlowLimiter) {
 	capnp.Client(c).SetFlowLimiter(lim)
 }
 
 // Get the current flowcontrol.FlowLimiter used to manage flow control
 // for this client.
-func (c Context) GetFlowLimiter() fc.FlowLimiter {
+func (c BootContext) GetFlowLimiter() fc.FlowLimiter {
 	return capnp.Client(c).GetFlowLimiter()
 }
 
-// A Context_Server is a Context with a local implementation.
-type Context_Server interface {
-	Open(context.Context, Context_open) error
+// A BootContext_Server is a BootContext with a local implementation.
+type BootContext_Server interface {
+	Open(context.Context, BootContext_open) error
 }
 
-// Context_NewServer creates a new Server from an implementation of Context_Server.
-func Context_NewServer(s Context_Server) *server.Server {
+// BootContext_NewServer creates a new Server from an implementation of BootContext_Server.
+func BootContext_NewServer(s BootContext_Server) *server.Server {
 	c, _ := s.(server.Shutdowner)
-	return server.New(Context_Methods(nil, s), s, c)
+	return server.New(BootContext_Methods(nil, s), s, c)
 }
 
-// Context_ServerToClient creates a new Client from an implementation of Context_Server.
+// BootContext_ServerToClient creates a new Client from an implementation of BootContext_Server.
 // The caller is responsible for calling Release on the returned Client.
-func Context_ServerToClient(s Context_Server) Context {
-	return Context(capnp.NewClient(Context_NewServer(s)))
+func BootContext_ServerToClient(s BootContext_Server) BootContext {
+	return BootContext(capnp.NewClient(BootContext_NewServer(s)))
 }
 
-// Context_Methods appends Methods to a slice that invoke the methods on s.
+// BootContext_Methods appends Methods to a slice that invoke the methods on s.
 // This can be used to create a more complicated Server.
-func Context_Methods(methods []server.Method, s Context_Server) []server.Method {
+func BootContext_Methods(methods []server.Method, s BootContext_Server) []server.Method {
 	if cap(methods) == 0 {
 		methods = make([]server.Method, 0, 1)
 	}
 
 	methods = append(methods, server.Method{
 		Method: capnp.Method{
-			InterfaceID:   0xb971efdce4919fdf,
+			InterfaceID:   0xef622b23fee0980e,
 			MethodID:      0,
-			InterfaceName: "process.capnp:Context",
+			InterfaceName: "process.capnp:BootContext",
 			MethodName:    "open",
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.Open(ctx, Context_open{call})
+			return s.Open(ctx, BootContext_open{call})
 		},
 	})
 
 	return methods
 }
 
-// Context_open holds the state for a server call to Context.open.
+// BootContext_open holds the state for a server call to BootContext.open.
 // See server.Call for documentation.
-type Context_open struct {
+type BootContext_open struct {
 	*server.Call
 }
 
 // Args returns the call's arguments.
-func (c Context_open) Args() Context_open_Params {
-	return Context_open_Params(c.Call.Args())
+func (c BootContext_open) Args() BootContext_open_Params {
+	return BootContext_open_Params(c.Call.Args())
 }
 
 // AllocResults allocates the results struct.
-func (c Context_open) AllocResults() (Context_open_Results, error) {
+func (c BootContext_open) AllocResults() (BootContext_open_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Context_open_Results(r), err
+	return BootContext_open_Results(r), err
 }
 
-// Context_List is a list of Context.
-type Context_List = capnp.CapList[Context]
+// BootContext_List is a list of BootContext.
+type BootContext_List = capnp.CapList[BootContext]
 
-// NewContext creates a new list of Context.
-func NewContext_List(s *capnp.Segment, sz int32) (Context_List, error) {
+// NewBootContext creates a new list of BootContext.
+func NewBootContext_List(s *capnp.Segment, sz int32) (BootContext_List, error) {
 	l, err := capnp.NewPointerList(s, sz)
-	return capnp.CapList[Context](l), err
+	return capnp.CapList[BootContext](l), err
 }
 
-type Context_open_Params capnp.Struct
+type BootContext_open_Params capnp.Struct
 
-// Context_open_Params_TypeID is the unique identifier for the type Context_open_Params.
-const Context_open_Params_TypeID = 0xf03e4719a4bda3ed
+// BootContext_open_Params_TypeID is the unique identifier for the type BootContext_open_Params.
+const BootContext_open_Params_TypeID = 0xa7600db255bca0c7
 
-func NewContext_open_Params(s *capnp.Segment) (Context_open_Params, error) {
+func NewBootContext_open_Params(s *capnp.Segment) (BootContext_open_Params, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Context_open_Params(st), err
+	return BootContext_open_Params(st), err
 }
 
-func NewRootContext_open_Params(s *capnp.Segment) (Context_open_Params, error) {
+func NewRootBootContext_open_Params(s *capnp.Segment) (BootContext_open_Params, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
-	return Context_open_Params(st), err
+	return BootContext_open_Params(st), err
 }
 
-func ReadRootContext_open_Params(msg *capnp.Message) (Context_open_Params, error) {
+func ReadRootBootContext_open_Params(msg *capnp.Message) (BootContext_open_Params, error) {
 	root, err := msg.Root()
-	return Context_open_Params(root.Struct()), err
+	return BootContext_open_Params(root.Struct()), err
 }
 
-func (s Context_open_Params) String() string {
-	str, _ := text.Marshal(0xf03e4719a4bda3ed, capnp.Struct(s))
+func (s BootContext_open_Params) String() string {
+	str, _ := text.Marshal(0xa7600db255bca0c7, capnp.Struct(s))
 	return str
 }
 
-func (s Context_open_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (s BootContext_open_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Struct(s).EncodeAsPtr(seg)
 }
 
-func (Context_open_Params) DecodeFromPtr(p capnp.Ptr) Context_open_Params {
-	return Context_open_Params(capnp.Struct{}.DecodeFromPtr(p))
+func (BootContext_open_Params) DecodeFromPtr(p capnp.Ptr) BootContext_open_Params {
+	return BootContext_open_Params(capnp.Struct{}.DecodeFromPtr(p))
 }
 
-func (s Context_open_Params) ToPtr() capnp.Ptr {
+func (s BootContext_open_Params) ToPtr() capnp.Ptr {
 	return capnp.Struct(s).ToPtr()
 }
-func (s Context_open_Params) IsValid() bool {
+func (s BootContext_open_Params) IsValid() bool {
 	return capnp.Struct(s).IsValid()
 }
 
-func (s Context_open_Params) Message() *capnp.Message {
+func (s BootContext_open_Params) Message() *capnp.Message {
 	return capnp.Struct(s).Message()
 }
 
-func (s Context_open_Params) Segment() *capnp.Segment {
+func (s BootContext_open_Params) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
 
-// Context_open_Params_List is a list of Context_open_Params.
-type Context_open_Params_List = capnp.StructList[Context_open_Params]
+// BootContext_open_Params_List is a list of BootContext_open_Params.
+type BootContext_open_Params_List = capnp.StructList[BootContext_open_Params]
 
-// NewContext_open_Params creates a new list of Context_open_Params.
-func NewContext_open_Params_List(s *capnp.Segment, sz int32) (Context_open_Params_List, error) {
+// NewBootContext_open_Params creates a new list of BootContext_open_Params.
+func NewBootContext_open_Params_List(s *capnp.Segment, sz int32) (BootContext_open_Params_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
-	return capnp.StructList[Context_open_Params](l), err
+	return capnp.StructList[BootContext_open_Params](l), err
 }
 
-// Context_open_Params_Future is a wrapper for a Context_open_Params promised by a client call.
-type Context_open_Params_Future struct{ *capnp.Future }
+// BootContext_open_Params_Future is a wrapper for a BootContext_open_Params promised by a client call.
+type BootContext_open_Params_Future struct{ *capnp.Future }
 
-func (f Context_open_Params_Future) Struct() (Context_open_Params, error) {
+func (f BootContext_open_Params_Future) Struct() (BootContext_open_Params, error) {
 	p, err := f.Future.Ptr()
-	return Context_open_Params(p.Struct()), err
+	return BootContext_open_Params(p.Struct()), err
 }
 
-type Context_open_Results capnp.Struct
+type BootContext_open_Results capnp.Struct
 
-// Context_open_Results_TypeID is the unique identifier for the type Context_open_Results.
-const Context_open_Results_TypeID = 0xd87ad923ae21029a
+// BootContext_open_Results_TypeID is the unique identifier for the type BootContext_open_Results.
+const BootContext_open_Results_TypeID = 0xe84ba4855da630b6
 
-func NewContext_open_Results(s *capnp.Segment) (Context_open_Results, error) {
+func NewBootContext_open_Results(s *capnp.Segment) (BootContext_open_Results, error) {
 	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Context_open_Results(st), err
+	return BootContext_open_Results(st), err
 }
 
-func NewRootContext_open_Results(s *capnp.Segment) (Context_open_Results, error) {
+func NewRootBootContext_open_Results(s *capnp.Segment) (BootContext_open_Results, error) {
 	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Context_open_Results(st), err
+	return BootContext_open_Results(st), err
 }
 
-func ReadRootContext_open_Results(msg *capnp.Message) (Context_open_Results, error) {
+func ReadRootBootContext_open_Results(msg *capnp.Message) (BootContext_open_Results, error) {
 	root, err := msg.Root()
-	return Context_open_Results(root.Struct()), err
+	return BootContext_open_Results(root.Struct()), err
 }
 
-func (s Context_open_Results) String() string {
-	str, _ := text.Marshal(0xd87ad923ae21029a, capnp.Struct(s))
+func (s BootContext_open_Results) String() string {
+	str, _ := text.Marshal(0xe84ba4855da630b6, capnp.Struct(s))
 	return str
 }
 
-func (s Context_open_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+func (s BootContext_open_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
 	return capnp.Struct(s).EncodeAsPtr(seg)
 }
 
-func (Context_open_Results) DecodeFromPtr(p capnp.Ptr) Context_open_Results {
-	return Context_open_Results(capnp.Struct{}.DecodeFromPtr(p))
+func (BootContext_open_Results) DecodeFromPtr(p capnp.Ptr) BootContext_open_Results {
+	return BootContext_open_Results(capnp.Struct{}.DecodeFromPtr(p))
 }
 
-func (s Context_open_Results) ToPtr() capnp.Ptr {
+func (s BootContext_open_Results) ToPtr() capnp.Ptr {
 	return capnp.Struct(s).ToPtr()
 }
-func (s Context_open_Results) IsValid() bool {
+func (s BootContext_open_Results) IsValid() bool {
 	return capnp.Struct(s).IsValid()
 }
 
-func (s Context_open_Results) Message() *capnp.Message {
+func (s BootContext_open_Results) Message() *capnp.Message {
 	return capnp.Struct(s).Message()
 }
 
-func (s Context_open_Results) Segment() *capnp.Segment {
+func (s BootContext_open_Results) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s Context_open_Results) Content() (capnp.PointerList, error) {
+func (s BootContext_open_Results) Content() (capnp.PointerList, error) {
 	p, err := capnp.Struct(s).Ptr(0)
 	return capnp.PointerList(p.List()), err
 }
 
-func (s Context_open_Results) HasContent() bool {
+func (s BootContext_open_Results) HasContent() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s Context_open_Results) SetContent(v capnp.PointerList) error {
+func (s BootContext_open_Results) SetContent(v capnp.PointerList) error {
 	return capnp.Struct(s).SetPtr(0, v.ToPtr())
 }
 
 // NewContent sets the content field to a newly
 // allocated capnp.PointerList, preferring placement in s's segment.
-func (s Context_open_Results) NewContent(n int32) (capnp.PointerList, error) {
+func (s BootContext_open_Results) NewContent(n int32) (capnp.PointerList, error) {
 	l, err := capnp.NewPointerList(capnp.Struct(s).Segment(), n)
 	if err != nil {
 		return capnp.PointerList{}, err
@@ -2104,21 +2104,21 @@ func (s Context_open_Results) NewContent(n int32) (capnp.PointerList, error) {
 	return l, err
 }
 
-// Context_open_Results_List is a list of Context_open_Results.
-type Context_open_Results_List = capnp.StructList[Context_open_Results]
+// BootContext_open_Results_List is a list of BootContext_open_Results.
+type BootContext_open_Results_List = capnp.StructList[BootContext_open_Results]
 
-// NewContext_open_Results creates a new list of Context_open_Results.
-func NewContext_open_Results_List(s *capnp.Segment, sz int32) (Context_open_Results_List, error) {
+// NewBootContext_open_Results creates a new list of BootContext_open_Results.
+func NewBootContext_open_Results_List(s *capnp.Segment, sz int32) (BootContext_open_Results_List, error) {
 	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Context_open_Results](l), err
+	return capnp.StructList[BootContext_open_Results](l), err
 }
 
-// Context_open_Results_Future is a wrapper for a Context_open_Results promised by a client call.
-type Context_open_Results_Future struct{ *capnp.Future }
+// BootContext_open_Results_Future is a wrapper for a BootContext_open_Results promised by a client call.
+type BootContext_open_Results_Future struct{ *capnp.Future }
 
-func (f Context_open_Results_Future) Struct() (Context_open_Results, error) {
+func (f BootContext_open_Results_Future) Struct() (BootContext_open_Results, error) {
 	p, err := f.Future.Ptr()
-	return Context_open_Results(p.Struct()), err
+	return BootContext_open_Results(p.Struct()), err
 }
 
 type BytecodeRegistry capnp.Client
@@ -2841,90 +2841,92 @@ func (f BytecodeRegistry_has_Results_Future) Struct() (BytecodeRegistry_has_Resu
 	return BytecodeRegistry_has_Results(p.Struct()), err
 }
 
-const schema_9a51e53177277763 = "x\xda\xa4V]lSe\x18~\xdfs:\xcei\xbb" +
-	"\xad|;0\x18\x09.\xfb\x93X\xa5R\x16bF\x82" +
-	"-\x9b\xb3n\x81\xd8\xb3\xe8\xc50h\xba\xeed-l" +
-	"k\xe9\xe9\xc2Fb\x90\x0b\xc2\x05\x99\x09\"1\x9b\x89" +
-	"\xa2H\x80\x84\xbf!\x98l\x04\x12\xe3\xdf\x85\x89\x1a$" +
-	"\x0a\xfe\x84\x88b\x8cQ z\xa1\xc2E\xcd\xfb\x9d\x9f" +
-	"\x9e\xfe\xb0\x0d\xbdiN\xfb=\xe7y\xff\x9e\xe7\xfd\xba" +
-	"\xaa\xc9\x15v\x05\xab>\xaf\x06A=^\xb1 \xb7\xb5" +
-	"j\xe3\xad\xbb\xc3-{\x80\xd5#@\x05J\x00\xad\x1b" +
-	"\xa5M\x08\xa8\xf4J!\xc0\\\x8dg\xe2\xe1\x9a\x03o" +
-	"\x8d\x03Sl\xc0\x98$\x10\xe0E\x0e\xb8\xdc\x95n[" +
-	"3\xb3\xf7e'\xc3\x09\xa9\x87\x00\xd3\x1c\xf0w R" +
-	"{E\xf0M\x00\xab\x16s\xf1\xed+\xb6\x07o\xa8\x93" +
-	"\x00\xa8\\\x95\xee(7$\x09@\xf9A\xfaD\xe9\x95" +
-	"%\x80\\\xdf\xca\x8b\xc7\x8e\xf9\x12\x93F8\x17\x1d\xae" +
-	"\x97\xef\x80+\xd7\x1cX\xb2\xfa\xc1\xbe\xbd\x93\xce0-" +
-	"2O4(S\x98U+\x1e\xd9\x7f\xeaz\xe5\xdb\xc0" +
-	"\x96\xd8\x80g\xe5v\x02l\xe6\x807\xc6\xfe\xac\xde\xf4" +
-	"\xea\xb2\x02\xc0.y\x0b\x01\xc69\xe0\xd2\xc8\xae\xc33" +
-	"\xcf\x07N\x95$zB\x9eQ\xceQz\xadS\xb2\x84" +
-	"J\xaf\x9b2\xbd\xf6\xe6\xbe\x9f\xbe\xbb\xb5m\xba\x04\xbd" +
-	"\xde}F\xe9\"\x88\xd2\xe9\x8e(C\x1c\xdc\xd7u6" +
-	"r\xed\xc3\xe9iP\x97 \x05\x17xv\xee>\x0a\x1e" +
-	"s\x9f\x02\xcc\xfd,\xff5\xddz\xd4\x7f\xbe\x84\xce\xed" +
-	"\x99T\x98\x87\xe8\xaa<\x11e\x0d=\xe5^\xff\xe2\xd2" +
-	"\x91\xd3\xb5O\x9fw\x96\xb2\xdc\xd3Hl-\x1e*\xe5" +
-	"\xe6k\x97\xf53\x89\xe0G\xc0j\xcd6\xb6vz\x96" +
-	"!\xb8r\x17\xfd\x9e\xf7C\x9f=\xf0\xa9\xb3\x8f+=" +
-	"|\\m\xfc\xd5\x17\xce\xb5.m\x88\xef\xbb\xe4\xe4\xde" +
-	"\xec\xf1\x13@\xe3\x80\xf7f\x1e\xdb2u0\xf1\x95\x93" +
-	"a\xb7\xc1\xb0\x8f\x03\x8eGV5\x1f<\xeb\xff\x1a\xd4" +
-	"Z\xb4\xa2OQtT\xa69`Rh8\xd9tu" +
-	"\xc7\x15#;\x83\xe1{\x03p\x83\x03Z\x17\xb4\x1c\xfd" +
-	"\xf2v\xd37%\xcdX\xec=\xa3,\xf7R3\xea\xbc" +
-	"{\x94$=\xe5\x0e\xfd\xb6c\xfc\xb9\xa6\xf8/F\xc2" +
-	"<\x9a\xea]K\xb5F6?z\xba\xee\xe4\x91\x9b\x8e" +
-	".\xb4yk\xe8\xe4\xf7C\x17\xde\xa9\x8b<~\xdbq" +
-	"\xd2`\x9c\xd4\xec\x7f\xe5\xc0\xaf\xeb\xbc\x7f\x14L\xca\xed" +
-	"\xe5\xc91/M\xea\xc7w\xbf\x95\xafw'\xffq\xbc" +
-	"{\xc1x\xf7\xf6K\x1fGvO\xf4\xdcudr\xd8" +
-	"\xdbH'\xca\xc2.\xbc\xfaP\xff]P\xeb\xed\x96\x8c" +
-	"{\xb9z'\xbc!\x98\xca\xa53\xa9\xb8\xa6\xeb\x01W" +
-	"<\x96\x1eN\xafm\x1f\xcbj\xf1T\xbf\xd6\xa3\x0d$" +
-	"\xf5lf,\x90\x1e\xc96\xf7h\xfa\xc8\xa0\x98\xd5U" +
-	"\x97\xe8\x02p!\x00\xabZ\x0b\xa0\xca\"\xaa\x8b\x04\x0c" +
-	"\x0d\xf5\xaf\xd1G\x86\xb0\x0a\x04\xac\x02\xb4)E\x83r" +
-	"}f@\x0f\xc42\x03\xba\xc1\x93\xd5\xc1\xc9\xe37y" +
-	"\x9a\x05\xf4\x11\x08\xab\x01\xa3\"b%\x08\xf48g~" +
-	"\x03Z\xb69\x1a\xcb\xc4\x86\xf0~\xd3\x13\x8a\x19C\x06" +
-	"e\x14Q\xad\x14+\x00l\xc9\xa2\xb5\xac\x98\xda\x08\x02" +
-	"\xeb\x940\xbf}\xd0\xda\x0f\xac\x8d\xceVJ(\xd8B" +
-	"E\xab\xfb\xac\x81\xce\x16KRz$\x1bFi@\xa3" +
-	"\xcfDL\x0fc\x14K\x12\xca\xf7+\xc4\x0b\xd3\xe7\xd5" +
-	"\x83r3\xea\x06P+ET\x97\x0a\x98\xeb3_\x02" +
-	"\x80\x92N\x98\xbc\x9d\xa3Z|$\x9b\xca\x042&q" +
-	"\xd9\x819I- \x91\xb2\xfc\xbe\x05D6\x0b\xbd6" +
-	"\xaa\xc5\x9f\xcc\xa4\x86:b\xf1\x84F1|\x14\xc4\x19" +
-	"\xa3=?\xbd\x9d&\x0b\xb2\xbc9\x8b\xf8\xd1\xe2\x0f\x19" +
-	"\x01h\x80\x0b\xf9\x00-O\xa1\xb5\xb7\xd86?\x08L" +
-	"\xa3\x01Z\x9b\x11\xad\xf5\xccz3 0\x95\x06h9" +
-	"\x1b\xad\xdd\xce:\xbbA`\xeb$\x14m\xaf\xa1\xb5\xaf" +
-	"Xp5\x08\xacE\xf2Q]a\xccY\xe5A=/" +
-	"0\\\xd0\xa60\xd6gS\xa9\xc1\xa2\xc9\x9b\x15t\xa4" +
-	"\xea\x87\xb3\xdah\x96\x0ap\xf1\x02\xacu\x81\xd6\xe6b" +
-	"\x8c\x0a\xa8\x90|\xa9\xb46\\H2{\x9b\xa3\xb1\x8c" +
-	"\x14\x1b\xd2\xd5J\xbb\xcb\x9d\xe4\x91\xb0\x88\xea\x06\x01\x11" +
-	"\x17\xd1z`]d\xc7'DT\xa3\x022\x01\x17\xa1" +
-	"\x00\xc06\xd2\x8fO\x89\xa8\xf6\x97\x98\xc9\x97N'\xfb" +
-	"Q\x06\x01e@_<\x96\xb6\xfd[\xe3\x12\x01\x0b\x1c" +
-	"\x8c\x96\xbc\xc5\x01=_\xa1u\xef\xa2u\xdf\xdb\x15\x92" +
-	"\x05\x0a+\x14\xcbT\xc85*\xfd/\xfd\x98\xb4Q\xf3" +
-	"\xeb\xd6\xe4\xe0\xa0m\xa7y\xed\xc72\xfbg\xbe\xd6+" +
-	".\x89\x8b\xa3\xac'V\xe7k2$\x84,\x17\xbcv" +
-	"\xfc\x8e\xbb\xb6\xf1\x83{8\xae$\xd9DL\xff\x8f\xcb" +
-	"\xb2\xa8G\xdbc\xc9\xb9W\x8e6\x9a\xccv\x98u\x9b" +
-	"\x12)\xe6\xebHq\xc1\x07H\xcde\xf9\xda\xf3\xd7\xc3" +
-	"\xce8\x81\x87\xb3s*,\x9a\xa9\xe7\xdfId2\x17" +
-	"\x99us\xa2\xf5\x0f\x81\x05\xfd\xdc\xb3\x88\xf6]\x8d\xd6" +
-	"_\x17VGgU\x92\x8f\x8a\x0c\xa3\x8f\xf40\xbb\x0e" +
-	"\xed}Y\xbc\xb0\xcb)\xcb\xec\xff\xac\x9d\xb8\x07\xa6P" +
-	"\xf8\x04\x12\x0b\x1d\xdd\x9dw\xaf\xe5h\xdb\xbc\xcf8\x1c" +
-	"\xad\xd2\x8f\x1bDT\x13\xe5\xe5y?\xb6.\xa7\x8c\xb9" +
-	"\xf27Tn\xae\xa4y\xa9\xb6\x9c6\x1a\xf3\xb2\xa5\xcb" +
-	"\x14\x11\x04D\xc0\x7f\x03\x00\x00\xff\xff\xf9\x81U\xb0"
+const schema_9a51e53177277763 = "x\xda\xacVmlS\xe5\x17?\xe7\xde\x8e{\xdb\xae" +
+	"+\xcf.\x8c\x97\x0f\xff\x85\xd1\xfd\x09E\xea\xba\x85\x18" +
+	"\x96\x90\x96\xe1\xac\x9b\x10{\x17\xf90\x0cj\xd7\xdd\xac" +
+	"\x83m\xad\xbd\xb7a31\xc8\x07\xc2\x072\x13D\xa2" +
+	"\x9b\xc1\xe0+\x90\x80\xbc\x08$\x1b\x86\x84\xf8\xc2\x07\x13" +
+	"5\x93\xa8h\x0c\x8a\xc1\x10\xa3\x80\x1a\xa2@\xb4\xe6<" +
+	"\xed\xbd\xbd}\x19\x0c\xe3\x97e\xbd\xcf\xb9\xbfs\xce\xef" +
+	"\xfc~\xe7\xb9M>G\xd8\x11\xf4|Z\x03\x82z\xa8" +
+	"jVv\xb3g\xdd\xb5\xdbC\x8d;\x80\xd5#@\x15" +
+	"J\x00-\xeb\xa4\x0d\x08\xa8tK!\xc0l\xadkl" +
+	"Y\xed\x9e\xd7F\x81)V\xc0\x88$P\xc0\xb3<\xe0" +
+	"|Gj\xe5\x8a\xc9\x9d\xcf\xdb\x11\x0eK]\x140\xc1" +
+	"\x03\xfe\x0cD\xea\xbe\x12\xbcc\xc0j\xc4l|\xcb\x92" +
+	"-\xc1\xcb\xea8\x00*\x17\xa4[\xcaeI\x02P\xbe" +
+	"\x97\xce)\xdd\xb2\x04\x90\xedY~\xe6\xe0Aob<" +
+	"\x97\xceA\x87\xab\xe5[\xe0\xc8\xfa\x02\xf3\x9a\xff\xdf\xb3" +
+	"s\xdc\x9e\xa6Q\xe6\x85\x06eJ\xd3\xb4\xe4\xbe\xddG" +
+	".U\xbf\x0el\x9e\x15\xb0^n\xa3\x80\x8d<\xe0\xd5" +
+	"\x91\xdfk6\xbc\xb8\xb0(`\x9b\xbc\x89\x02Fy\xc0" +
+	"\xb9}\xef\xad?\xeeyj?\xb0\x85\xf9\xdc-\x87\xe5" +
+	"f\x04Gv*\xb3\xed\xad\xc9'\x02G\xcaZ\xd8#" +
+	"O*{\xa9\xf0\x961YBe\xb5\x93\xf7\xd0q\"" +
+	"r\xf1\x83\x89\x09P\xe7!e\x12\xe8|\xa9\xb3\x872" +
+	"\xadp\x1e\x01\xcc\xfe(\xff1\xd1r\xc0\x7f\xba\x0c\xef" +
+	"[\xe7\xb8r\xd9\xc9)qF\x14\xa7\x8b\xe0^\xf9l" +
+	"j\xff\xd1\xbaGO\xdb\xeb\xfe\xd5\xd9@h7\x9dT" +
+	"\xf7\xd5\x97\xce\xeb\xc7\x13\xc1\x0f\x81\xd5\x99u/p-" +
+	"\xa4\xba\xcf\xf8]gC\x9f\xfc\xefc;i\xe8\xe2\xb3" +
+	"\xf1\xb8\xe8\xd5'O\xb6\xcc_\x14\xdf5e\xc7\x0e\xba" +
+	"\xfc\x14\xb0\x92\x07\x9c\x9a|`\xd3\xb1}\x89/\xec\x08" +
+	"\xdd9\x04\x8d\x07\x1c\x8a4\xf9\xf6\x9d\xf0\x7f\x09j\x1d" +
+	"\x9a\xd9\xb7SvTFy@\xcb\xac\xc6\x03\x9f__" +
+	"\xfcuY\xaf\xc7\\\xc7\x95\x09\xeaP9\xe9\xda\xa1T" +
+	"\xb9\xa9\xd7SMoo\xdc\xfe\xe6#Wr#\xc8\xa5" +
+	"\xfb\xc5\xd5Jh78\xda\x1b??3\xfa\xf8\xe2\xf8" +
+	"\x95\\\xc1<[\xa3\xbb\x95z\x8dl\xbc\xff\xe8\x82w" +
+	"\xf6_\xb5\xb1\xe0q\xd7\xd2I\xcd\xcb\xdf\xfd\xbdxY" +
+	"\xcf\xb5\xb2\x0an\xb8\xa6\x14\xa4\xbc\xca_\xae\x88\xd2\xc8" +
+	"+\xa8\xdd\xfd\xc2\x9e\x9fV\xb9\x7f+\x1a\x9e\xc7\xcd\x1b" +
+	"\x9a\xeb\xa6\xe1\xfd\xf0\xee7\xf2\xa5\xce\xfe\x9b\xb6Dg" +
+	"s\x89\xae?\xf7Qd\xfbX\xd7m[q\x07\xdd\x0d" +
+	"t\xa2\xcc\xee\xc0\x0bK{o\x83Zo\xb1\xb4\xcb\xcd" +
+	"\xd5\xbb\xd7\x1d\x82c\xd9T:\x19\xd7t=\xe0\x88\xc7" +
+	"RC\xa9\xd6\xb6\x11C\x8b'{\xb5.\xad\xaf_7" +
+	"\xd2#\x81T\xc6\xf0uizf@4t\xd5!:" +
+	"\x00\x1c\x08\xc0<\xad\x00\xaa,\xa2:G\xc0\xd0`\xef" +
+	"\x0a=3\x88\x1e\x10\xd0\x03hA\x8a9\xc8\xd5\xe9>" +
+	"=\x10K\xf7\xe99\x1cC\x07;\x8e?\x8f\xe3\x13\xd0" +
+	"KAX\x03\x18\x15\x11\xabA\xa0\x7f\xefZ_\x9ff" +
+	"\xf8\xa2\xb1tl\x10\xef\xb5<\xa1\x141\x94\x83\x8c\"" +
+	"\xaa\xd5b\x15\x80\xa5b4\x97\x15S\x1b@`\xed\x12" +
+	"\x16\xb6\x0f\x9a\xfb\x81\xad\xa4\xb3\xe5\x12\x0a\x96v\xd1d" +
+	"\x9f-\xa2\xb3\xb9\x92\x94\xca\x18a\x94\xfa4\xfa\x9b\x88" +
+	"\xe9a\x8cbYA\x05\xbeB\xbc1}F\x1cT\x9a" +
+	"Q'\x80Z-\xa2:_\xc0lO\xfe%\x00(c" +
+	"\"\x8f\xdb>\xac\xc53F2\x1dH\xe7\x81+\x0e\xcc" +
+	"\x0ej\x06\x12(+\xec[@dw\x80\xd7\x86\xb5\xf8" +
+	"C\xe9\xe4\xe0\x9aX<\xa1Q\x0e/%\xb1\xe7h+" +
+	"Lok\x1e\x05Y\xc1\xd0%\xf8y\x9d\xb5%\x93\xc6" +
+	"\x9a\xe4\x90\xa1\x0d\x1b\x81dJ\x1b\xf2E\xeb\x8b\xe9C" +
+	"\xb3\x8eP\xae\x10\x1a\xf4l>h\xd3{h\xae<\xf6" +
+	"\xb4\x1f\x04\xa6\xd1\xa0\xcd\xa5\x8a\xe6\x1ag\xddi\x10\x98" +
+	"J\x836\x97\x02\x9aw\x00k\xef\x04\x81\xad\x92P\xb4" +
+	"<\x89\xe6\xaac\xc1f\x10X\xa3\xe4\xa5\xfe\xc3\x985" +
+	"i\x80zND\xb8\x88\xce0\xd6\x1b\xc9\xe4@\x89B" +
+	"\xee\xccd4\x96\x96b\x83\xbaZm\x11\xd9N6\x08" +
+	"\x8b\xa8\xae\x15\x10q\x0em\x00\xd6A\x8e{PD5" +
+	"* \x13p\x0e\x0a\x00l\x1d=|XD\xb5\xb7\xcc" +
+	"/\xdeT\xaa\xbf\x17e\x10P\x06\xf4\xc6c)\xcb\xa2" +
+	"\xb5\x0e\x11\xb0\xc8\xa4h*X\xec\xd3\x89]\x07g\xd7" +
+	"\xbcZ\xd1\xbc\xd2\x19#v\xab$n\xf8\xe2\x0e\xc5\x0a" +
+	"\x1dr\x19J\xff\x85D\xa2\xf9\x9f\x9b\xfb\x07\x06,\xc7" +
+	"\xcch\x05VX13uWiK|\xae\x15e\xdf" +
+	"\\\xe8)7}d\xd9\xe0\xc5C\xb7\x9cu\x0d\xefO" +
+	"c\xaa\xb2b\x131\xfd_\xee\xc3\x12\x8e\xb6\xc4\xfa\xef" +
+	"\xbeU\xb4\xe1~cM\xbe\xef\xbcDJ\xc5\x10M\xd7" +
+	"\xf3\xdf\xa4\x07\x99\xeb\xc1\xbc\xc7\xd0\xbc\xc2Y\xd0\xcf\x9d" +
+	"\x81h]\xa6h~[\xb0\x05t\xe6\x91\xbcTO\x18" +
+	"\xbd4\xba\x8a\x92)\xb3\x7fW(\xb7\xbd*\xa9\xc6'" +
+	"\xe0\xd68\x05\x0f\x19\xd3\xabY\x9cn-\x96\xee\xe5J" +
+	"\xea\xca\xcf\xa0\xec\xb6\xb1\xaaD\xa3\xe0\x10\xf3\x03\x10\xcd" +
+	"\xcf\x10\xcb!\xd4\xc9\x0c\x1cB\xd9\xc4b\xebw\x16l" +
+	"nZ\xdfr\xf9c6\xeb\xab\xf4p\xad\x88j\xa2\xb2" +
+	"\x8e\xef\xc5\xff\x95$TJDe;\xe4w\xd7\x8c\xe4" +
+	"]I\x94\x0d\x05}\xd3\xc5\x8a\x08\x02\"\xe0?\x01\x00" +
+	"\x00\xff\xffGx^J"
 
 func RegisterSchema(reg *schemas.Registry) {
 	reg.Register(&schemas.Schema{
@@ -2938,8 +2940,8 @@ func RegisterSchema(reg *schemas.Registry) {
 			0x9a8b622632172e24,
 			0xa20ce2af932c2730,
 			0xa21a945a0ef3799e,
+			0xa7600db255bca0c7,
 			0xaf2e5ebaa58175d2,
-			0xb971efdce4919fdf,
 			0xb9b9c4df47b44962,
 			0xbb2aa833b9f708e6,
 			0xbb4f16b0a7d2d09b,
@@ -2948,11 +2950,11 @@ func RegisterSchema(reg *schemas.Registry) {
 			0xd29163211833b55f,
 			0xd668a0b16a37bab6,
 			0xd72ab4a0243047ac,
-			0xd87ad923ae21029a,
 			0xda23f0d3a8250633,
+			0xe84ba4855da630b6,
 			0xe863235b8d7aeca3,
 			0xeea7ae19b02f5d47,
-			0xf03e4719a4bda3ed,
+			0xef622b23fee0980e,
 			0xf20b3dea95929312,
 			0xf9694ae208dbb3e3,
 			0xfb52998547c680f0,
