@@ -8,6 +8,8 @@ import (
 	api "github.com/wetware/ww/api/process"
 )
 
+const INIT_PID = 1
+
 // ProcTree represents the process tree of an executor.
 // It is represented a binary tree, in which the left branch of a node
 // represents a child process, while the right branch represents a
@@ -30,9 +32,9 @@ type ProcTree struct {
 func NewProcTree(ctx context.Context) ProcTree {
 	return ProcTree{
 		Ctx:  ctx,
-		PIDC: NewAtomicCounter(1),
-		TPC:  NewAtomicCounter(0),
-		Root: &ProcNode{Pid: 1},
+		PIDC: NewAtomicCounter(INIT_PID),
+		TPC:  NewAtomicCounter(1),
+		Root: &ProcNode{Pid: INIT_PID},
 		Map:  make(map[uint32]api.Process_Server),
 	}
 }
@@ -75,6 +77,7 @@ func (pt *ProcTree) kill(n *ProcNode) {
 
 // stop a process in a specific way based on its implementation type.
 func stop(ctx context.Context, p api.Process_Server) {
+	fmt.Printf("killing process %d\n", p.(*process).pid)
 	// *process p calls this function from its Kill implementation
 	// thus we must avoid infinite recursivity. The process is
 	// killed with p.cancel() instead.
@@ -141,9 +144,12 @@ func (pt ProcTree) FindParent(pid uint32) *ProcNode {
 }
 
 // Insert creates a node with PID=pid as a child of PID=ppid.
-func (pt ProcTree) Insert(pid, ppid uint32) {
-	insert(pt.Root, pid, ppid)
-	pt.TPC.Inc()
+func (pt ProcTree) Insert(pid, ppid uint32) error {
+	err := insert(pt.Root, pid, ppid)
+	if err == nil {
+		pt.TPC.Inc()
+	}
+	return err
 }
 
 // find performs an In-Order Depth First Search of the tree.
@@ -203,15 +209,22 @@ func findParent(n *ProcNode, pid uint32) (*ProcNode, bool) {
 // Insert adds a new node PID to root as a child of PPID.
 // If PPID has no children PID will be the immediate child.
 // Otherwise it will iterate over the siblings and add it at the end of the chain.
-func insert(root *ProcNode, pid, ppid uint32) {
+func insert(root *ProcNode, pid, ppid uint32) error {
 	n := &ProcNode{
 		Pid: pid,
 	}
 
 	parent := find(root, ppid)
+	if parent == nil {
+		return fmt.Errorf(
+			"could not insert (pid=%d), parent (ppid=%d) no longer alive",
+			pid,
+			ppid,
+		)
+	}
 	if parent.Left == nil {
 		parent.Left = n
-		return
+		return nil
 	}
 
 	next := parent.Left
@@ -221,6 +234,7 @@ func insert(root *ProcNode, pid, ppid uint32) {
 	next.Right = &ProcNode{
 		Pid: pid,
 	}
+	return nil
 }
 
 // Trim all orphaned branches.

@@ -78,7 +78,9 @@ func (r Server) Exec(ctx context.Context, call api.Executor_exec) error {
 
 	// Check for a process with pid=ppid.
 	ppid := call.Args().Ppid()
-	if ppid != 0 {
+	if ppid == 0 {
+		ppid = INIT_PID
+	} else {
 		if _, ok := r.ProcTree.Map[ppid]; !ok {
 			return fmt.Errorf("pid %d not found", ppid)
 		}
@@ -137,9 +139,9 @@ func (r Server) ExecFromCache(ctx context.Context, call api.Executor_execFromCac
 		return err
 	}
 
-	// Check for a process with pid=ppid.
-	// ppid := call.Args().Ppid()
-	if ppid != 0 {
+	if ppid == 0 {
+		ppid = INIT_PID
+	} else {
 		if _, ok := r.ProcTree.Map[ppid]; !ok {
 			return fmt.Errorf("pid %d not found", ppid)
 		}
@@ -183,6 +185,8 @@ func (r Server) mkproc(ctx context.Context, ppid uint32, bytecode []byte, caps c
 	}
 
 	proc := r.spawn(fn, pid, cpuProf)
+	r.ProcTree.Insert(pid, ppid)
+
 	return proc, nil
 }
 
@@ -340,6 +344,7 @@ func (r Server) spawn(fn wasm.Function, pid uint32, cpuProf *wzprof.CPUProfiler)
 		defer proc.killFunc(proc.pid)
 
 		vs, err := fn.Call(ctx)
+		fmt.Printf("(%d) call to ended\n", pid)
 
 		if cpuProf != nil {
 			prof := cpuProf.StopProfile(1.0)

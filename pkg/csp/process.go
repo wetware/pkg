@@ -38,12 +38,9 @@ func (p Proc) Kill(ctx context.Context) error {
 		return ctx.Err()
 	}
 
-	s, err := f.Struct()
+	_, err := f.Struct()
 	if err != nil {
 		return err
-	}
-	if !s.IsValid() {
-		return errors.New("failed to kill process")
 	}
 	return nil
 }

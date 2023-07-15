@@ -107,7 +107,8 @@ func (j Joiner) executor() csp.Server {
 	cache := wazero.NewCompilationCache()
 	runtimeCfg := wazero.
 		NewRuntimeConfigCompiler().
-		WithCompilationCache(cache)
+		WithCompilationCache(cache).
+		WithCloseOnContextDone(true)
 	r := wazero.NewRuntimeWithConfig(ctx, runtimeCfg)
 	_, err := wasi_snapshot_preview1.Instantiate(ctx, r)
 	if err != nil {
@@ -115,7 +116,7 @@ func (j Joiner) executor() csp.Server {
 	}
 
 	return csp.Server{
-		Profile:    true,
+		// Profile:    true,
 		Runtime:    r,
 		BcRegistry: csp.RegistryServer{},
 		ProcTree:   csp.NewProcTree(ctx),
