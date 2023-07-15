@@ -268,7 +268,7 @@ func (r Server) mkmod(ctx context.Context, bytecode []byte, pid uint32, caps cap
 	// TODO the private key is being sent unencrypted over the wire.
 	// Send it over an encrypted channel instead.
 	md5sum := md5.Sum(bytecode)
-	inbox, err := r.populateInbox(pid, md5sum[:], caps)
+	context, err := r.populateContext(pid, md5sum[:], caps)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -280,9 +280,9 @@ func (r Server) mkmod(ctx context.Context, bytecode []byte, pid uint32, caps cap
 		}
 		defer tcpConn.Close()
 
-		defer inbox.Release()
+		defer context.Release()
 		conn := rpc.NewConn(rpc.NewStreamTransport(tcpConn), &rpc.Options{
-			BootstrapClient: inbox,
+			BootstrapClient: context,
 			ErrorReporter: errLogger{
 				Logger: log.New(log.WithLevel(log.ErrorLevel)).WithField("conn", "host"),
 			},
@@ -299,8 +299,8 @@ func (r Server) mkmod(ctx context.Context, bytecode []byte, pid uint32, caps cap
 	return mod, cpuProf, nil
 }
 
-func (r Server) populateInbox(pid uint32, md5sum []byte, caps capnp.PointerList) (capnp.Client, error) {
-	var inbox anyIbox
+func (r Server) populateContext(pid uint32, md5sum []byte, caps capnp.PointerList) (capnp.Client, error) {
+	var context anyIbox
 	var err error
 
 	// Args that will be present in all processes.
@@ -312,15 +312,15 @@ func (r Server) populateInbox(pid uint32, md5sum []byte, caps capnp.PointerList)
 	// The process is provided its own executor by default.
 	if caps.Len() <= 0 {
 		executor := capnp.Client(api.Executor_ServerToClient(r))
-		inbox = newDecodedInbox(capnp.Client(initArgs), capnp.Client(csp.NewArgs()), executor)
+		context = newDecodedContext(capnp.Client(initArgs), capnp.Client(csp.NewArgs()), executor)
 	} else { // Otherwise it will pass the received capabilities.
-		inbox, err = newEncodedInbox(caps, capnp.Client(initArgs))
+		context, err = newEncodedContext(caps, capnp.Client(initArgs))
 		if err != nil {
 			return capnp.Client{}, nil
 		}
 	}
 
-	return capnp.Client(api.Inbox_ServerToClient(inbox)), nil
+	return capnp.Client(api.Context_ServerToClient(context)), nil
 }
 
 func (r Server) spawn(fn wasm.Function, pid uint32, cpuProf *wzprof.CPUProfiler) *process {
