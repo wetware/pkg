@@ -171,17 +171,10 @@ func find(n *ProcNode, pid uint32) *ProcNode {
 		return n
 	}
 
-	// Check left node.
-	if n.Left != nil && n.Left.Pid == pid {
-		return n.Left
-	}
-
 	// Explore left branch.
-	if n.Left != nil {
-		x := find(n.Left, pid)
-		if x != nil {
-			return x
-		}
+	x := find(n.Left, pid)
+	if x != nil {
+		return x
 	}
 
 	// Explore right branch.
@@ -196,11 +189,7 @@ func findParent(n *ProcNode, pid uint32) (*ProcNode, bool) {
 		return nil, n != nil
 	}
 
-	// Child is first node to the left, immediate child.
-	if n.Left != nil && n.Left.Pid == pid {
-		return n, false
-	}
-
+	// Explore left branch.
 	if n.Left != nil {
 		x, childInRight := findParent(n.Left, pid)
 		// Node was a children or grandchildren.
