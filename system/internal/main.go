@@ -4,10 +4,9 @@ package main
 
 import (
 	"fmt"
-	"unsafe"
 )
 
-var hostbuf, guestbuf []byte
+// var hostbuf, guestbuf []byte
 
 // main is just a demo right now.  It is the counterpart to
 // the net.Conn that is the subject of ww.go's demo.  It reads
@@ -31,16 +30,16 @@ func main() {
 	// // -- DEMO
 }
 
-//go:export __init
-func wwinit(host, guest uint32) {
-	hostbuf = make([]byte, int(host))
-	guestbuf = make([]byte, int(guest))
-	initBuffers(bytesToPointer(hostbuf), bytesToPointer(guestbuf))
-}
+// //go:export __init
+// func wwinit(host, guest uint32) {
+// 	hostbuf = make([]byte, int(host))
+// 	guestbuf = make([]byte, int(guest))
+// 	initBuffers(bytesToPointer(hostbuf), bytesToPointer(guestbuf))
+// }
 
-//go:wasm-module ww
-//go:export __init_buffers
-func initBuffers(guestBufPtr, hostBufPtr uintptr)
+// //go:wasm-module ww
+// //go:export __init_buffers
+// func initBuffers(guestBufPtr, hostBufPtr uintptr)
 
 // //go:wasm-module ww
 // //go:export _recv
@@ -85,14 +84,14 @@ func initBuffers(guestBufPtr, hostBufPtr uintptr)
 // 	return
 // }
 
-//go:inline
-func bytesToPointer(b []byte) uintptr {
-	pointer := unsafe.SliceData(b)
-	return uintptr(unsafe.Pointer(pointer))
-}
+// //go:inline
+// func bytesToPointer(b []byte) uintptr {
+// 	pointer := unsafe.SliceData(b)
+// 	return uintptr(unsafe.Pointer(pointer))
+// }
 
-//go:inline
-func stringToPointer(s string) uintptr {
-	pointer := unsafe.StringData(s)
-	return uintptr(unsafe.Pointer(pointer))
-}
+// //go:inline
+// func stringToPointer(s string) uintptr {
+// 	pointer := unsafe.StringData(s)
+// 	return uintptr(unsafe.Pointer(pointer))
+// }
