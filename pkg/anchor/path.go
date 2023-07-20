@@ -1,7 +1,6 @@
 package anchor
 
 import (
-	"errors"
 	"fmt"
 	"path"
 	"strings"
@@ -9,8 +8,6 @@ import (
 
 	"github.com/wetware/ww/pkg/internal/bounded"
 )
-
-var root = Path{}.bind(identity)
 
 // Path represents the location of an anchor. It is a bounded value
 // that enforces the following constraints:  paths are strings that
@@ -27,7 +24,9 @@ var root = Path{}.bind(identity)
 // the root path is the identity function over anchors, or that the
 // Anchor.Walk() method is a nop when the root path is passed in as
 // an argument. The empty string automatically resolves to the root
-// path.
+// path. Zero-value paths are also treated as root, but are used as
+// as a safe default when the path contains an error, and therefore
+// are NOT RECOMMENDED.
 type Path struct {
 	value bounded.Type[string]
 }
@@ -36,103 +35,60 @@ type Path struct {
 // the 'path' argument is valid, or an error if it is not.
 //
 // Callers SHOULD check Path.Err() before proceeding.
-func NewPath(path string) Path {
-	if trimmed(path) == "" {
-		return root
+func NewPath(path string) (p Path) {
+	if path = trimmed(path); path != "" {
+		p = Path{}.bind(func(s string) bounded.Type[string] {
+			return bounded.Value(path)
+		})
 	}
 
-	value := bounded.Value(path)
-	return Path{value: value}.bind(identity) // force validation
+	return
 }
 
-// PathFromParts joins each element of 'parts' into a single path,
+// JoinPath joins each element of 'parts' into a single path,
 // with each element separated by '/'.  Each element of 'parts' is
 // validated before being joined.   An element is valid if it is a
 // valid path, and does not contain the path separator.
 //
 // Callers SHOULD check Path.Err() before proceeding.
-func PathFromParts(parts []string) Path {
-	if err := validateParts(parts); err != nil {
-		return failure(err)
-	}
-
+func JoinPath(parts []string) Path {
 	return NewPath(path.Join(parts...))
-}
-
-func (p Path) Maybe() (string, error) {
-	return p.value.Maybe()
 }
 
 // Err returns a non-nil error if the path is malformed.
 func (p Path) Err() error {
-	_, err := p.Maybe()
+	_, err := p.value.Maybe()
 	return err
 }
 
 // String returns the canonical path string.  If Err() != nil,
-// String() returns the root path.
+// String() returns the zero-value string.
 func (p Path) String() string {
-	path, _ := p.Maybe()
-	return path
-}
-
-// IsRoot returns true if the p is the root path.
-func (p Path) IsRoot() bool {
-	return p.String() == "/"
-}
-
-// IsZero reports whether p is a zero-value path, as distinct from
-// the root path. If p.IsZero() == true, then p.IsRoot() == false.
-// The converse may not be true.
-func (p Path) IsZero() bool {
 	s, err := p.value.Maybe()
-	return s == "" && err == nil
-}
-
-// IsChild returns true if path is a direct child of p.
-// See also:  p.IsSubpath()
-func (p Path) IsChild(path Path) bool {
-	parent := p.String()
-	candidate := path.String()
-	dir, _ := popright(candidate)
-
-	return (parent == dir) != (candidate == "/")
-}
-
-// Child binds the child's name to path.  It fails if the
-// child name contains invalid characters of a separator.
-func (p Path) WithChild(name string) Path {
-	if validName(name) {
-		return p.bind(suffix(name))
+	if err != nil {
+		return ""
 	}
 
-	return failure(errors.New("invalid name"))
+	return path.Clean(path.Join("/", s))
 }
 
-// Returns true if path is a subpath of p.
-func (p Path) IsSubpath(path Path) bool {
-	parent := p.String()
-	candidate := path.String()
-	diff := strings.TrimPrefix(candidate, parent)
-
-	return diff != "" && (parent == "/" || diff[0] == '/')
-}
-
+// Next splits the path into the tail and head components.  It
+// is used to iterate through each path component sequentially,
+// using the following pattern:
+//
+//	for path, name := path.Next(); name != ""; path, name = path.Next() {
+//	    // do something...
+//	}
 func (p Path) Next() (Path, string) {
 	name := p.bind(head).String()
 	return p.bind(tail), trimmed(name)
 }
 
-// func (p Path) index() []byte {
-// 	path := p.String()
-// 	return []byte(path) // TODO(performance):  unsafe.Pointer
-// }
-
 func (p Path) bind(f func(string) bounded.Type[string]) Path {
 	value := p.value.
+		Bind(f).
 		Bind(clean).
-		Bind(validate).
-		Bind(f)
+		Bind(validate)
 
 	return Path{
 		value: value,
@@ -140,21 +96,6 @@ func (p Path) bind(f func(string) bounded.Type[string]) Path {
 }
 
 // Bindable path functions.
-
-// func subpath(path Path) func(string) bounded.Type[string] {
-// 	return suffix(path.String())
-// }
-
-// func trimPrefix(path Path) func(string) bounded.Type[string] {
-// 	return func(s string) bounded.Type[string] {
-// 		suffix := strings.TrimPrefix(path.String(), s)
-// 		return bounded.Value(suffix).Bind(clean)
-// 	}
-// }
-
-func identity(path string) bounded.Type[string] {
-	return bounded.Value(path)
-}
 
 func head(path string) bounded.Type[string] {
 	path, _ = popleft(path)
@@ -166,30 +107,11 @@ func tail(path string) bounded.Type[string] {
 	return bounded.Value(path)
 }
 
-// func last(path string) bounded.Type[string] {
-// 	_, path = popright(path)
-// 	return bounded.Value(path)
-// }
-
-// func parent(path string) bounded.Type[string] {
-// 	path, _ = popright(path)
-// 	return bounded.Value(path)
-// }
-
-func suffix(s string) func(string) bounded.Type[string] {
-	return func(prefix string) bounded.Type[string] {
-		return bounded.Value(path.Join(prefix, s))
-	}
-}
-
 // clean the path through pure lexical analysis, and esure it has
 // exactly one leading separator. Cleaned paths are not guaranteed
 // to be valid, but are guaranteed to compose within the STM index.
 func clean(p string) bounded.Type[string] {
-	// Ensure the path begins with a "/", so that prefixes
-	// compose well in the STM index.
-	p = path.Clean(path.Join("/", p))
-	return bounded.Value(p)
+	return bounded.Value(path.Clean(p))
 }
 
 // validate returns the unmodified path if it contains only
@@ -206,31 +128,10 @@ func validate(path string) bounded.Type[string] {
 	return bounded.Value(path)
 }
 
-func validateParts(path []string) error {
-	// ensure there are no path separators in the components.
-	for i, p := range path {
-		if !validName(p) {
-			return fmt.Errorf("segment %d: invalid name", i)
-		}
-	}
-
-	return nil
-}
-
 // valid returns true if r is a legal character in a path.
 // The separator path '/' returns true.
 func valid(r rune) bool {
 	return unicode.In(r, &pathChars)
-}
-
-func validName(name string) bool {
-	for _, r := range name {
-		if r == '/' || !valid(r) {
-			return false
-		}
-	}
-
-	return true
 }
 
 func failure(err error) Path {
@@ -254,10 +155,6 @@ func popleft(path string) (string, string) {
 	return pop(next, path)
 }
 
-func popright(path string) (string, string) {
-	return pop(prev, path)
-}
-
 func pop(index func(string) int, path string) (string, string) {
 	if i := index(path); i > 0 {
 		return path[:i], path[i:]
@@ -268,15 +165,6 @@ func pop(index func(string) int, path string) (string, string) {
 
 func next(path string) int {
 	return strings.IndexRune(trimmed(path), '/') + 1
-}
-
-func prev(path string) int {
-	i := strings.LastIndex(trimmed(path), "/")
-	if i < 0 {
-		i = 0
-	}
-
-	return i + 1
 }
 
 func trimmed(path string) string {
