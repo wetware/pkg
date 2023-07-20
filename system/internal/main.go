@@ -3,6 +3,7 @@
 package main
 
 import (
+	"fmt"
 	"unsafe"
 )
 
@@ -16,6 +17,7 @@ var hostbuf, guestbuf []byte
 // and guest.  From here, we should hopefully be able to wrap it
 // in an rpc.Conn and have it "just work".
 func main() {
+	fmt.Println("Hello, Wetware!")
 	// // DEMO
 	// buf := make([]byte, 42)
 	// n, err := pipe{}.Read(buf)
