@@ -27,7 +27,7 @@ func (a Anchor) Ls(ctx context.Context) (*Iterator, capnp.ReleaseFunc) {
 func (a Anchor) Walk(ctx context.Context, path string) (Anchor, capnp.ReleaseFunc) {
 	p := NewPath(path)
 
-	if p.IsRoot() {
+	if p == (Path{}) {
 		anchor := a.AddRef()
 		return anchor, anchor.Release
 	}
