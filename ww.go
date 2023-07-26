@@ -71,13 +71,6 @@ func (ww Ww) Exec(ctx context.Context) error {
 	}
 	defer c.Close(ctx)
 
-	// Instantiate Wetware.
-	host, err := system.Instantiate(ctx, r)
-	if err != nil {
-		return err
-	}
-	defer host.Close(ctx)
-
 	// Compile guest module.
 	//
 	// TODO:  the ROM needs to be validated upstream of this call.
@@ -103,14 +96,6 @@ func (ww Ww) Exec(ctx context.Context) error {
 		return err
 	}
 	defer mod.Close(ctx)
-
-	// Bind the host module to the guest module, producing a bidirectional byte-
-	// stream between them.
-	conn, err := host.Bind(ctx, mod)
-	if err != nil {
-		return err
-	}
-	ctx = system.WithConn(ctx, conn)
 
 	// Grab the the main() function and call it with the system context.
 	fn := mod.ExportedFunction("_start")

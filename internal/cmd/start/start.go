@@ -11,13 +11,11 @@ import (
 	"go.uber.org/fx"
 
 	ww_runtime "github.com/wetware/ww/pkg/runtime"
-	"github.com/wetware/ww/pkg/server"
 )
 
 var (
 	app    *fx.App
 	logger log.Logger
-	node   *server.Node
 )
 
 var flags = []cli.Flag{
@@ -72,7 +70,7 @@ func setup() cli.BeforeFunc {
 	return func(c *cli.Context) error {
 		app = fx.New(
 			ww_runtime.NewServer(c.Context, c),
-			fx.Populate(&logger, &node))
+			fx.Populate(&logger))
 
 		return start(c.Context, app)
 	}

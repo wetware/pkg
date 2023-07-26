@@ -6,7 +6,7 @@ import (
 	protoutil "github.com/wetware/casm/pkg/util/proto"
 )
 
-const Version = "0.0.1-beta.30"
+const Version = "0.1.0"
 
 var match = casm.NewMatcher("ww").
 	Then(protoutil.SemVer(Version))
