@@ -1,78 +1,109 @@
 package run
 
 import (
-	"crypto/rand"
-	"errors"
-	"io"
 	"os"
+	"path"
+	"runtime"
 
-	"github.com/stealthrocket/wazergo"
-	"github.com/tetratelabs/wazero"
-	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
+	"capnproto.org/go/capnp/v3"
 	"github.com/urfave/cli/v2"
-	"github.com/wetware/ww/pkg/csp/proc"
+	"github.com/wetware/ww"
 )
+
+var flags = []cli.Flag{
+	&cli.StringFlag{
+		Name:    "ns",
+		Usage:   "namespace",
+		Value:   "ww",
+		EnvVars: []string{"WW_NS"},
+	},
+	&cli.StringSliceFlag{
+		Name:    "dial",
+		Usage:   "multiaddr of server node",
+		EnvVars: []string{"WW_DIAL"},
+	},
+	&cli.StringFlag{
+		Name:    "discover",
+		Aliases: []string{"d"},
+		Usage:   "multiaddr of peer-discovery service",
+		Value:   bootstrapAddr(),
+		EnvVars: []string{"WW_DISCOVER"},
+	},
+	&cli.StringFlag{
+		Name:    "rom",
+		Usage:   "cid of boot rom",
+		EnvVars: []string{"WW_ROM"},
+	},
+	&cli.BoolFlag{
+		Name:    "stdin",
+		Aliases: []string{"s"},
+		Usage:   "load system image from stdin",
+	},
+	&cli.BoolFlag{
+		Name:  "debug",
+		Usage: "enable debug logging",
+	},
+}
 
 func Command() *cli.Command {
 	return &cli.Command{
 		Name:   "run",
 		Usage:  "execute a local webassembly process",
-		Before: setup(),
-		After:  teardown(),
+		Flags:  flags,
 		Action: run(),
-	}
-}
-
-var (
-	r wazero.Runtime
-	h *wazergo.ModuleInstance[*proc.Module]
-)
-
-func setup() cli.BeforeFunc {
-	return func(c *cli.Context) error {
-		r = wazero.NewRuntime(c.Context)
-		h = proc.BindModule(c.Context, r)
-		wasi_snapshot_preview1.MustInstantiate(c.Context, r)
-		return nil
-	}
-}
-
-func teardown() cli.AfterFunc {
-	return func(c *cli.Context) error {
-		return r.Close(c.Context)
 	}
 }
 
 func run() cli.ActionFunc {
 	return func(c *cli.Context) error {
-		b, err := bytecode(c)
+		rom, err := bytecode(c)
 		if err != nil {
 			return err
 		}
 
-		module, err := r.InstantiateWithConfig(c.Context, b, wazero.NewModuleConfig().
-			WithRandSource(rand.Reader).
-			WithStartFunctions(). // disable auto-calling of _start
-			WithStdout(c.App.Writer).
-			WithStderr(c.App.ErrWriter))
-		if err != nil {
-			return err
-		}
-
-		fn := module.ExportedFunction("_start")
-		if fn == nil {
-			return errors.New("ww: missing export: _start")
-		}
-
-		_, err = fn.Call(wazergo.WithModuleInstance(c.Context, h))
-		return err
+		return ww.Ww{
+			NS:     c.String("ns"),
+			Stdin:  c.App.Reader,
+			Stdout: c.App.Writer,
+			Stderr: c.App.ErrWriter,
+			Client: capnp.Client{}, // TODO:  Host client goes here
+		}.Exec(c.Context, rom)
 	}
 }
 
-func bytecode(c *cli.Context) ([]byte, error) {
-	if c.Args().Len() > 0 {
-		return os.ReadFile(c.Args().First()) // file path
+func bytecode(c *cli.Context) (ww.ROM, error) {
+	if c.Bool("stdin") {
+		return ww.Read(c.App.Reader)
 	}
 
-	return io.ReadAll(c.App.Reader) // stdin
+	// file?
+	if c.Args().Len() > 0 {
+		return loadROM(c)
+	}
+
+	// use the default bytecode
+	return ww.DefaultROM(), nil
+}
+
+func loadROM(c *cli.Context) (ww.ROM, error) {
+	f, err := os.Open(c.Args().First())
+	if err != nil {
+		return ww.ROM{}, err
+	}
+	defer f.Close()
+
+	return ww.Read(f)
+}
+
+func bootstrapAddr() string {
+	return path.Join("/ip4/228.8.8.8/udp/8822/multicast", loopback())
+}
+
+func loopback() string {
+	switch runtime.GOOS {
+	case "darwin":
+		return "lo0"
+	default:
+		return "lo"
+	}
 }
