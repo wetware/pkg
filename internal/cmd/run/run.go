@@ -2,46 +2,28 @@ package run
 
 import (
 	"os"
-	"path"
-	"runtime"
 
-	"capnproto.org/go/capnp/v3"
+	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p/core/host"
+	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
+	tcp "github.com/libp2p/go-libp2p/p2p/transport/tcp"
+	"github.com/lthibault/log"
 	"github.com/urfave/cli/v2"
 	"github.com/wetware/ww"
+	"github.com/wetware/ww/client"
 )
 
 var flags = []cli.Flag{
-	&cli.StringFlag{
-		Name:    "ns",
-		Usage:   "namespace",
-		Value:   "ww",
-		EnvVars: []string{"WW_NS"},
-	},
-	&cli.StringSliceFlag{
-		Name:    "dial",
-		Usage:   "multiaddr of server node",
+	&cli.BoolFlag{
+		Name:    "join",
+		Usage:   "connect to cluster",
 		EnvVars: []string{"WW_DIAL"},
 	},
-	&cli.StringFlag{
-		Name:    "discover",
-		Aliases: []string{"d"},
-		Usage:   "multiaddr of peer-discovery service",
-		Value:   bootstrapAddr(),
-		EnvVars: []string{"WW_DISCOVER"},
-	},
-	&cli.StringFlag{
-		Name:    "rom",
-		Usage:   "cid of boot rom",
-		EnvVars: []string{"WW_ROM"},
-	},
 	&cli.BoolFlag{
-		Name:    "stdin",
-		Aliases: []string{"s"},
-		Usage:   "load system image from stdin",
-	},
-	&cli.BoolFlag{
-		Name:  "debug",
-		Usage: "enable debug logging",
+		Name:     "stdin",
+		Aliases:  []string{"s"},
+		Usage:    "load system image from stdin",
+		Category: "ROM",
 	},
 }
 
@@ -56,19 +38,56 @@ func Command() *cli.Command {
 
 func run() cli.ActionFunc {
 	return func(c *cli.Context) error {
+		wetware := ww.Ww{
+			NS:     c.String("ns"),
+			Stdin:  c.App.Reader,
+			Stdout: c.App.Writer,
+			Stderr: c.App.ErrWriter,
+		}
+
 		rom, err := bytecode(c)
 		if err != nil {
 			return err
 		}
 
-		return ww.Ww{
-			NS:     c.String("ns"),
-			Stdin:  c.App.Reader,
-			Stdout: c.App.Writer,
-			Stderr: c.App.ErrWriter,
-			Client: capnp.Client{}, // TODO:  Host client goes here
-		}.Exec(c.Context, rom)
+		// dial into a cluster?
+		if c.Bool("dial") {
+			return dialAndExec(c, wetware, rom)
+		}
+
+		// run without connecting to a cluster
+		return wetware.Exec(c.Context, rom)
 	}
+}
+
+func dialAndExec(c *cli.Context, wetware ww.Ww, rom ww.ROM) error {
+	h, err := clientHost(c)
+	if err != nil {
+		return err
+	}
+	defer h.Close()
+
+	conn, err := client.Config{
+		Logger:   log.New(),
+		NS:       c.String("ns"),
+		Peers:    c.StringSlice("peer"),
+		Discover: c.String("discover"),
+	}.Dial(c.Context, h)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	wetware.Client = conn.Bootstrap(c.Context)
+	return wetware.Exec(c.Context, rom)
+}
+
+func clientHost(c *cli.Context) (host.Host, error) {
+	return libp2p.New(
+		libp2p.NoTransports,
+		libp2p.NoListenAddrs,
+		libp2p.Transport(tcp.NewTCPTransport),
+		libp2p.Transport(quic.NewTransport))
 }
 
 func bytecode(c *cli.Context) (ww.ROM, error) {
@@ -93,17 +112,4 @@ func loadROM(c *cli.Context) (ww.ROM, error) {
 	defer f.Close()
 
 	return ww.Read(f)
-}
-
-func bootstrapAddr() string {
-	return path.Join("/ip4/228.8.8.8/udp/8822/multicast", loopback())
-}
-
-func loopback() string {
-	switch runtime.GOOS {
-	case "darwin":
-		return "lo0"
-	default:
-		return "lo"
-	}
 }

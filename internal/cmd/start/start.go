@@ -14,46 +14,28 @@ import (
 
 var meta map[string]string
 
-// Command constructor
+var flags = []cli.Flag{
+	&cli.StringSliceFlag{
+		Name:    "listen",
+		Aliases: []string{"l"},
+		Usage:   "host listen address",
+		Value: cli.NewStringSlice(
+			"/ip4/0.0.0.0/udp/0/quic",
+			"/ip6/::0/udp/0/quic"),
+		EnvVars: []string{"WW_LISTEN"},
+	},
+	&cli.StringSliceFlag{
+		Name:    "meta",
+		Usage:   "metadata fields in key=value format",
+		EnvVars: []string{"WW_META"},
+	},
+}
+
 func Command() *cli.Command {
 	return &cli.Command{
-		Name:  "start",
-		Usage: "start a host process",
-		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:    "ns",
-				Usage:   "cluster namespace",
-				Value:   "ww",
-				EnvVars: []string{"WW_NS"},
-			},
-			&cli.StringSliceFlag{
-				Name:    "listen",
-				Aliases: []string{"l"},
-				Usage:   "host listen address",
-				Value: cli.NewStringSlice(
-					"/ip4/0.0.0.0/udp/0/quic",
-					"/ip6/::0/udp/0/quic"),
-				EnvVars: []string{"WW_LISTEN"},
-			},
-			&cli.StringSliceFlag{
-				Name:    "join",
-				Aliases: []string{"j"},
-				Usage:   "join cluster via existing peer `ADDR`",
-				EnvVars: []string{"WW_JOIN"},
-			},
-			&cli.StringFlag{
-				Name:    "discover",
-				Aliases: []string{"d"},
-				Usage:   "multiaddr of peer-discovery service",
-				Value:   bootstrapAddr(),
-				EnvVars: []string{"WW_DISCOVER"},
-			},
-			&cli.StringSliceFlag{
-				Name:    "meta",
-				Usage:   "metadata fields in key=value format",
-				EnvVars: []string{"WW_META"},
-			},
-		},
+		Name:   "start",
+		Usage:  "start a host process",
+		Flags:  flags,
 		Before: setup(),
 		Action: start(),
 	}
@@ -64,7 +46,7 @@ func start() cli.ActionFunc {
 		config := server.Config{
 			Logger:   log.New(),
 			NS:       c.String("ns"),
-			Join:     c.StringSlice("join"),
+			Peers:    c.StringSlice("peer"),
 			Discover: c.String("discover"),
 			Meta:     meta,
 		}
