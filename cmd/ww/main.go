@@ -23,6 +23,7 @@ import (
 
 	casm "github.com/wetware/casm/pkg"
 	"github.com/wetware/ww"
+	cmdstart "github.com/wetware/ww/internal/cmd/start"
 	"github.com/wetware/ww/pkg/anchor"
 	"github.com/wetware/ww/pkg/server"
 	"github.com/wetware/ww/system"
@@ -67,7 +68,10 @@ func main() {
 		Copyright:            "2020 The Wetware Project",
 		EnableBashCompletion: true,
 		Flags:                flags,
-		Action:               action(),
+		Commands: []*cli.Command{
+			cmdstart.Command(),
+		},
+		Action: action(),
 	}
 
 	if err := app.RunContext(ctx, os.Args); err != nil {
