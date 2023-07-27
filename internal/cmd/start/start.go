@@ -54,27 +54,31 @@ func Command() *cli.Command {
 				EnvVars: []string{"WW_META"},
 			},
 		},
-		Before: bindMeta(),
-		Action: func(c *cli.Context) error {
-			config := server.Config{
-				Logger:   log.New(),
-				NS:       c.String("ns"),
-				Join:     c.StringSlice("join"),
-				Discover: c.String("discover"),
-				Meta:     meta,
-			}
-
-			err := config.ListenAndServe(c.Context, c.StringSlice("listen")...)
-			if err != context.Canceled {
-				return err
-			}
-
-			return nil
-		},
+		Before: setup(),
+		Action: start(),
 	}
 }
 
-func bindMeta() cli.BeforeFunc {
+func start() cli.ActionFunc {
+	return func(c *cli.Context) error {
+		config := server.Config{
+			Logger:   log.New(),
+			NS:       c.String("ns"),
+			Join:     c.StringSlice("join"),
+			Discover: c.String("discover"),
+			Meta:     meta,
+		}
+
+		err := config.ListenAndServe(c.Context, c.StringSlice("listen")...)
+		if err != context.Canceled {
+			return err
+		}
+
+		return nil
+	}
+}
+
+func setup() cli.BeforeFunc {
 	return func(c *cli.Context) error {
 		metaTags := c.StringSlice("meta")
 
