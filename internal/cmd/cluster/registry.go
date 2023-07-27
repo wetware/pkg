@@ -5,8 +5,8 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	p2pRec "github.com/libp2p/go-libp2p-core/record"
 	"github.com/libp2p/go-libp2p/core/crypto"
+	p2pRec "github.com/libp2p/go-libp2p/core/record"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
 	service "github.com/wetware/ww/pkg/registry"
@@ -73,7 +73,7 @@ func locAction() cli.ActionFunc {
 
 		for loc, ok := locs.Next(); ok; loc, ok = locs.Next() {
 			m, err := loc.Maddrs()
-			if err != nil{
+			if err != nil {
 				return fmt.Errorf("failed to get maddrs from location: %w", err)
 			}
 			fmt.Println(m)
