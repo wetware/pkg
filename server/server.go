@@ -22,7 +22,7 @@ import (
 type Config struct {
 	Logger   log.Logger
 	NS       string
-	Join     []string // static bootstrap peers
+	Peers    []string // static bootstrap peers
 	Discover string   // bootstrap service multiadr
 	Meta     map[string]string
 }

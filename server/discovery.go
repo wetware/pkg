@@ -13,8 +13,8 @@ import (
 func (cfg Config) newBootstrapper(h host.Host) (*bootService, error) {
 	var d discovery.Discovery
 	var err error
-	if len(cfg.Join) > 0 {
-		d, err = boot.NewStaticAddrStrings(cfg.Join...)
+	if len(cfg.Peers) > 0 {
+		d, err = boot.NewStaticAddrStrings(cfg.Peers...)
 	} else {
 		d, err = bootutil.ListenString(h, cfg.Discover,
 			socket.WithLogger(cfg.Logger),
