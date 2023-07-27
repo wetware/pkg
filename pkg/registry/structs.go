@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"capnproto.org/go/capnp/v3"
-	"github.com/libp2p/go-libp2p-core/record"
+	"github.com/libp2p/go-libp2p/core/record"
 	ma "github.com/multiformats/go-multiaddr"
 	api "github.com/wetware/ww/api/registry"
 )
@@ -67,14 +67,14 @@ func (loc Location) SetMaddrs(maddrs []ma.Multiaddr) error {
 }
 
 func (loc Location) SetAnchor(anchor string) error {
-	if err := loc.SetAnchor(anchor); err != nil {
+	if err := loc.Location.SetAnchor(anchor); err != nil {
 		return fmt.Errorf("fail to set anchor in capnp Location: %w", err)
 	}
 	return nil
 }
 
 func (loc Location) SetCustom(custom capnp.Ptr) error {
-	if err := loc.SetCustom(custom); err != nil {
+	if err := loc.Location.SetCustom(custom); err != nil {
 		return fmt.Errorf("fail to set custom in capnp Location: %w", err)
 	}
 	return nil
