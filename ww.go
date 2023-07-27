@@ -3,6 +3,7 @@ package ww
 import (
 	"context"
 	"crypto/rand"
+	_ "embed"
 	"errors"
 	"io"
 	"runtime"
