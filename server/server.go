@@ -36,6 +36,7 @@ func (cfg Config) ListenAndServe(ctx context.Context, addrs ...string) error {
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
 	}
+	defer h.Close()
 
 	return cfg.Serve(ctx, h)
 }
