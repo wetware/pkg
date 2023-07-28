@@ -10,7 +10,9 @@ import (
 
 	"capnproto.org/go/capnp/v3"
 	"github.com/tetratelabs/wazero"
+	"github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
+	"github.com/tetratelabs/wazero/sys"
 )
 
 const Version = "0.1.0"
@@ -54,8 +56,6 @@ func (ww Ww) Exec(ctx context.Context, rom ROM) error {
 	}
 	defer c.Close(ctx)
 
-	// TODO:  serve ww.Client over RPC connection to guest
-
 	// Compile guest module.
 	compiled, err := r.CompileModule(ctx, rom.bytecode)
 	if err != nil {
@@ -80,6 +80,10 @@ func (ww Ww) Exec(ctx context.Context, rom ROM) error {
 	}
 	defer mod.Close(ctx)
 
+	return ww.run(ctx, mod)
+}
+
+func (ww Ww) run(ctx context.Context, mod api.Module) error {
 	// Grab the the main() function and call it with the system context.
 	fn := mod.ExportedFunction("_start")
 	if fn == nil {
@@ -87,6 +91,15 @@ func (ww Ww) Exec(ctx context.Context, rom ROM) error {
 	}
 
 	// TODO(performance):  fn.CallWithStack(ctx, nil)
-	_, err = fn.Call(ctx)
-	return err
+	_, err := fn.Call(ctx)
+	switch err.(*sys.ExitError).ExitCode() {
+	case 0:
+		return nil
+	case sys.ExitCodeContextCanceled:
+		return context.Canceled
+	case sys.ExitCodeDeadlineExceeded:
+		return context.DeadlineExceeded
+	default:
+		return err
+	}
 }
