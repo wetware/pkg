@@ -15,13 +15,13 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/discovery/routing"
+	"go.uber.org/fx"
+
 	casm "github.com/wetware/casm/pkg"
-	"github.com/wetware/casm/pkg/boot"
-	"github.com/wetware/casm/pkg/boot/socket"
-	bootutil "github.com/wetware/casm/pkg/boot/util"
 	"github.com/wetware/casm/pkg/pex"
 	"github.com/wetware/casm/pkg/util/metrics"
-	"go.uber.org/fx"
+	"github.com/wetware/ww/boot"
+	"github.com/wetware/ww/boot/socket"
 )
 
 type bootConfig struct {
@@ -58,7 +58,7 @@ func (c Config) newServerDisc(config bootConfig, lx fx.Lifecycle) (d discovery.D
 		return
 	}
 
-	d, err = bootutil.ListenString(config.host(), config.Flag.String("discover"),
+	d, err = boot.ListenString(config.host(), config.Flag.String("discover"),
 		socket.WithLogger(config.Log),
 		socket.WithRateLimiter(socket.NewPacketLimiter(256, 16)))
 	if c, ok := d.(io.Closer); ok {
@@ -74,7 +74,7 @@ func (c Config) newClientDisc(config bootConfig, lx fx.Lifecycle) (d discovery.D
 		return
 	}
 
-	d, err = bootutil.DialString(config.host(), config.Flag.String("discover"),
+	d, err = boot.DialString(config.host(), config.Flag.String("discover"),
 		socket.WithLogger(config.Log),
 		socket.WithRateLimiter(socket.NewPacketLimiter(256, 16)))
 	if c, ok := d.(io.Closer); ok {

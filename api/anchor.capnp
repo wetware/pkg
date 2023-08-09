@@ -25,14 +25,12 @@ interface Anchor {
     # anchors in the path that do not currently exist are created along
     # the way.
 
-    cell @2 () -> (loader :Loader, storer :Storer, swapper :Swapper);
+    cell @2 () -> (loader :Loader, storer :Storer);
     # Cell returns a set of capabilities that provide access to a boxed
     # value, assigned to the Anchor. Zero or more of these capabilities
     # MAY be witheld, in which case the corresponding return value will
     # be null. The loader and storer capabilities respectively map onto
-    # read and write permissions. The swapper is an extended read/write
-    # capability, which SHALL be witheld if either loader or storer are
-    # witheld.
+    # read and write permissions.
 
     struct Child {
         anchor @0 :Anchor;
@@ -49,8 +47,7 @@ interface Anchor {
         load @0 () -> (value :Value);
         # Load the Anchor's value atomically.  Note that a concurrent
         # thread may change the Anchor's value at any point before or
-        # after a call to load.   To conditionally modify an Anchor's
-        # value, use Swapper.CompareAndSwap.
+        # after a call to load.
     }
 
     interface Storer {
@@ -67,22 +64,6 @@ interface Anchor {
         #
         # As with the Loader interface, a concurrent thread may load
         # or store a value at any point before and after the call to
-        # Store().  Use CompareAndSwap to perform conditional stores
-        # atomically.
-    }
-
-    interface Swapper {
-        # Swapper is an extended read-write interface to an Anchor's
-        # value. It provides methods for replacing values atomically.
-        # Methods of Swapper guarantee that no intermediate state is
-        # observed by concurrent threads throughout the operation.
-
-        swap  @0 (new :Value) -> (old :Value);
-        # Swap replaces the Anchor's current value with the new value,
-        # and returns the value that was replaced.
-
-        compareAndSwap @1 (old :Value, new :Value) -> (swapped :Bool);
-        # CompareAndSwap tests whether the Anchor's current value is
-        # equal to old, and performs a Swap() operation if it is.
+        # Store().
     }
 }

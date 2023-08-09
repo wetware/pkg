@@ -5,9 +5,8 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/discovery"
 	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/wetware/casm/pkg/boot"
-	"github.com/wetware/casm/pkg/boot/socket"
-	bootutil "github.com/wetware/casm/pkg/boot/util"
+	"github.com/wetware/ww/boot"
+	"github.com/wetware/ww/boot/socket"
 )
 
 func (cfg Config) newBootstrapper(h host.Host) (*bootService, error) {
@@ -16,7 +15,7 @@ func (cfg Config) newBootstrapper(h host.Host) (*bootService, error) {
 	if len(cfg.Peers) > 0 {
 		d, err = boot.NewStaticAddrStrings(cfg.Peers...)
 	} else {
-		d, err = bootutil.ListenString(h, cfg.Discover,
+		d, err = boot.ListenString(h, cfg.Discover,
 			socket.WithLogger(cfg.Logger),
 			socket.WithRateLimiter(socket.NewPacketLimiter(256, 16)))
 	}

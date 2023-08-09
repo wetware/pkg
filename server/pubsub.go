@@ -14,8 +14,9 @@ import (
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/libp2p/go-libp2p/p2p/discovery/routing"
 	"github.com/lthibault/log"
-	"github.com/wetware/casm/pkg/boot"
+
 	protoutil "github.com/wetware/casm/pkg/util/proto"
+	"github.com/wetware/ww/boot"
 	ww "github.com/wetware/ww/pkg"
 )
 

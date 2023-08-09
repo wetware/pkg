@@ -10,13 +10,17 @@ all: capnp mocks
 clean: clean-capnp clean-mocks
 
 
-capnp: capnp-anchor capnp-pubsub capnp-cluster capnp-channel capnp-process capnp-registry capnp-bitswap
+capnp: capnp-anchor capnp-boot capnp-pubsub capnp-cluster capnp-channel capnp-process capnp-registry capnp-bitswap
 # N.B.:  compiling capnp schemas requires having capnproto.org/go/capnp/v3 installed
 #        on the GOPATH.
 
 capnp-anchor:
 	@mkdir -p api/anchor
 	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/std -ogo:api/anchor --src-prefix=api api/anchor.capnp
+
+capnp-boot:
+	@mkdir -p api/boot
+	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/std -ogo:api/boot --src-prefix=api api/boot.capnp
 
 capnp-pubsub:
 	@mkdir -p api/pubsub
@@ -42,10 +46,13 @@ capnp-bitswap:
 	@mkdir -p api/bitswap
 	@capnp compile -I$(GOPATH)/src/capnproto.org/go/capnp/std -ogo:api/bitswap --src-prefix=api api/bitswap.capnp
 
-clean-capnp: clean-capnp-anchor clean-capnp-pubsub clean-capnp-cluster clean-capnp-channel clean-capnp-process clean-capnp-registry clean-capnp-bitswap
+clean-capnp: clean-capnp-anchor clean-capnp-boot clean-capnp-pubsub clean-capnp-cluster clean-capnp-channel clean-capnp-process clean-capnp-registry clean-capnp-bitswap
 
 clean-capnp-anchor:
 	@rm -rf api/anchor
+
+clean-capnp-boot:
+	@rm -rf api/boot
 
 clean-capnp-pubsub:
 	@rm -rf api/pubsub
