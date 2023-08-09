@@ -10,7 +10,7 @@ interface Host {
     # Host represents a physical or virtual machine instance
     # participating in the cluster.
 
-    view @0 () -> (view :Capability);
+    view @0 () -> (view :View);
     # View returns the host's partial view of the cluster. A
     # view represents a pointin-time snapshot of the cluster,
     # and makes no guarantee of consistency.

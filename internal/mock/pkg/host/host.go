@@ -8,11 +8,11 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	cluster "github.com/wetware/ww/cluster"
 	anchor "github.com/wetware/ww/pkg/anchor"
 	csp "github.com/wetware/ww/pkg/csp"
 	pubsub "github.com/wetware/ww/pkg/pubsub"
 	service "github.com/wetware/ww/pkg/registry"
+	view "github.com/wetware/ww/pkg/view"
 )
 
 // MockViewProvider is a mock of ViewProvider interface.
@@ -39,10 +39,10 @@ func (m *MockViewProvider) EXPECT() *MockViewProviderMockRecorder {
 }
 
 // View mocks base method.
-func (m *MockViewProvider) View() cluster.View {
+func (m *MockViewProvider) View() view.View {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "View")
-	ret0, _ := ret[0].(cluster.View)
+	ret0, _ := ret[0].(view.View)
 	return ret0
 }
 

@@ -1,4 +1,4 @@
-package cluster_test
+package view_test
 
 import (
 	"context"
@@ -16,10 +16,10 @@ import (
 
 	"github.com/golang/mock/gomock"
 
-	"github.com/wetware/ww/cluster"
 	"github.com/wetware/ww/cluster/routing"
 	mock_cluster "github.com/wetware/ww/internal/mock/cluster"
 	mock_routing "github.com/wetware/ww/internal/mock/cluster/routing"
+	"github.com/wetware/ww/pkg/view"
 )
 
 var recs = []*record{
@@ -61,8 +61,8 @@ func TestView_Lookup(t *testing.T) {
 		Return(snap).
 		Times(1)
 
-	server := cluster.Server{RoutingTable: table}
-	client := cluster.View(server.Client())
+	server := view.Server{RoutingTable: table}
+	client := view.View(server.Client())
 	defer client.Release()
 
 	f, release := client.Lookup(ctx, all())
@@ -102,8 +102,8 @@ func TestView_Iter(t *testing.T) {
 		Return(snap).
 		Times(1)
 
-	server := cluster.Server{RoutingTable: table}
-	client := cluster.View(server.Client())
+	server := view.Server{RoutingTable: table}
+	client := view.View(server.Client())
 	defer client.Release()
 
 	require.True(t, capnp.Client(client).IsValid(),
@@ -146,8 +146,8 @@ func TestView_Iter_paramErr(t *testing.T) {
 	*/
 	table := mock_cluster.NewMockRoutingTable(ctrl)
 
-	server := cluster.Server{RoutingTable: table}
-	client := cluster.View(server.Client())
+	server := view.Server{RoutingTable: table}
+	client := view.View(server.Client())
 	defer client.Release()
 
 	require.True(t, capnp.Client(client).IsValid(),
@@ -161,8 +161,8 @@ func TestView_Iter_paramErr(t *testing.T) {
 	assert.Error(t, it.Err(), "should fail with param error")
 }
 
-func failure(message string) cluster.Query {
-	return func(cluster.QueryParams) error {
+func failure(message string) view.Query {
+	return func(view.QueryParams) error {
 		return errors.New(message)
 	}
 }
@@ -196,8 +196,8 @@ func BenchmarkIterator(b *testing.B) {
 		Return(snap).
 		Times(1)
 
-	server := cluster.Server{RoutingTable: table}
-	client := cluster.View(server.Client())
+	server := view.Server{RoutingTable: table}
+	client := view.View(server.Client())
 	defer client.Release()
 
 	it, release := client.Iter(ctx, all())
@@ -213,8 +213,8 @@ func BenchmarkIterator(b *testing.B) {
 	}
 }
 
-func all() cluster.Query {
-	return cluster.NewQuery(cluster.All())
+func all() view.Query {
+	return view.NewQuery(view.All())
 }
 
 type record struct {

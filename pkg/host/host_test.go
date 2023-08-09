@@ -10,10 +10,10 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/wetware/ww/cluster"
 	"github.com/wetware/ww/cluster/routing"
 	mock_ww "github.com/wetware/ww/internal/mock/pkg/host"
 	"github.com/wetware/ww/pkg/host"
+	"github.com/wetware/ww/pkg/view"
 )
 
 func TestHost_View(t *testing.T) {
@@ -23,12 +23,12 @@ func TestHost_View(t *testing.T) {
 	defer ctrl.Finish()
 
 	rt := mockRoutingTable{}
-	vs := cluster.Server{RoutingTable: rt}
+	vs := view.Server{RoutingTable: rt}
 
 	vp := mock_ww.NewMockViewProvider(ctrl)
 	vp.EXPECT().
 		View().
-		Return(cluster.View(vs.Client())).
+		Return(view.View(vs.Client())).
 		Times(1)
 
 	server := host.Server{ViewProvider: vp}
@@ -37,7 +37,7 @@ func TestHost_View(t *testing.T) {
 	defer release()
 	require.NotZero(t, v)
 
-	f, release := v.Lookup(context.Background(), cluster.NewQuery(cluster.All()))
+	f, release := v.Lookup(context.Background(), view.NewQuery(view.All()))
 	defer release()
 	r, err := f.Await(context.Background())
 	require.NoError(t, err)

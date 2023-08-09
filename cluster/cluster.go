@@ -20,6 +20,7 @@ import (
 
 	"github.com/wetware/ww/cluster/pulse"
 	"github.com/wetware/ww/cluster/routing"
+	"github.com/wetware/ww/pkg/view"
 )
 
 var ErrClosing = errors.New("closing")
@@ -80,7 +81,7 @@ func (r *Router) Loggable() map[string]any {
 	}
 }
 
-func (r *Router) View() View {
+func (r *Router) View() view.View {
 	r.setup()
 
 	r.mu.Lock()
@@ -88,13 +89,13 @@ func (r *Router) View() View {
 
 	if r.wc != nil {
 		if client, ok := r.wc.AddRef(); ok {
-			return View(client)
+			return view.View(client)
 		}
 	}
 
-	client := Server{RoutingTable: r.RoutingTable}.Client()
+	client := view.Server{RoutingTable: r.RoutingTable}.Client()
 	r.wc = client.WeakRef()
-	return View(client)
+	return view.View(client)
 }
 
 func (r *Router) Bootstrap(ctx context.Context, opt ...pubsub.PubOpt) (err error) {

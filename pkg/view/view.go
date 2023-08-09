@@ -1,6 +1,6 @@
-//go:generate mockgen -source=view.go -destination=../../../internal/mock/cluster/view/view.go -package=mock_view
+//go:generate mockgen -source=view.go -destination=../../internal/mock/pkg/view/view.go -package=mock_view
 
-package cluster
+package view
 
 import (
 	api "github.com/wetware/ww/api/cluster"

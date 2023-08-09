@@ -48,7 +48,6 @@ require (
 	go.uber.org/multierr v1.11.0
 	golang.org/x/sync v0.3.0
 	golang.org/x/time v0.3.0
-	gopkg.in/alexcesaro/statsd.v2 v2.0.0
 	lukechampine.com/blake3 v1.2.1
 )
 

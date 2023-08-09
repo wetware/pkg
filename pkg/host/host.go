@@ -13,11 +13,11 @@ import (
 	process_api "github.com/wetware/ww/api/process"
 	pubsub_api "github.com/wetware/ww/api/pubsub"
 	reg_api "github.com/wetware/ww/api/registry"
-	"github.com/wetware/ww/cluster"
 	"github.com/wetware/ww/pkg/anchor"
 	"github.com/wetware/ww/pkg/csp"
 	"github.com/wetware/ww/pkg/pubsub"
 	service "github.com/wetware/ww/pkg/registry"
+	"github.com/wetware/ww/pkg/view"
 )
 
 var Capability = casm.BasicCap{
@@ -40,9 +40,9 @@ func (h Host) Release() {
 	capnp.Client(h).Release()
 }
 
-func (h Host) View(ctx context.Context) (cluster.View, capnp.ReleaseFunc) {
+func (h Host) View(ctx context.Context) (view.View, capnp.ReleaseFunc) {
 	f, release := api.Host(h).View(ctx, nil)
-	return cluster.View(f.View()), release
+	return view.View(f.View()), release
 }
 
 func (h Host) PubSub(ctx context.Context) (pubsub.Router, capnp.ReleaseFunc) {
@@ -72,7 +72,7 @@ func (h Host) Executor(ctx context.Context) (csp.Executor, capnp.ReleaseFunc) {
 *----------------------------*/
 
 type ViewProvider interface {
-	View() cluster.View
+	View() view.View
 }
 
 type PubSubProvider interface {
@@ -111,7 +111,8 @@ func (s Server) Host() Host {
 func (s Server) View(_ context.Context, call api.Host_view) error {
 	res, err := call.AllocResults()
 	if err == nil {
-		err = res.SetView(capnp.Client(s.ViewProvider.View()))
+		view := s.ViewProvider.View()
+		err = res.SetView(api.View(view))
 	}
 
 	return err

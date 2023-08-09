@@ -1,4 +1,4 @@
-package cluster_test
+package view_test
 
 import (
 	"testing"
@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	api "github.com/wetware/ww/api/cluster"
-	"github.com/wetware/ww/cluster"
+	"github.com/wetware/ww/pkg/view"
 )
 
 func TestSelector(t *testing.T) {
@@ -18,17 +18,17 @@ func TestSelector(t *testing.T) {
 
 	for _, tt := range []struct {
 		name     string
-		selector cluster.Selector
+		selector view.Selector
 		which    api.View_Selector_Which
 	}{
 		{
 			name:     "Match",
-			selector: cluster.Match(hostIndex("foo")),
+			selector: view.Match(hostIndex("foo")),
 			which:    api.View_Selector_Which_match,
 		},
 		{
 			name:     "From",
-			selector: cluster.From(hostIndex("foo")),
+			selector: view.From(hostIndex("foo")),
 			which:    api.View_Selector_Which_from,
 		},
 	} {

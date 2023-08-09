@@ -1,5 +1,3 @@
-//go:generate tinygo build -o main.wasm -target=wasi -scheduler=asyncify main.go
-
 package main
 
 import (
