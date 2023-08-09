@@ -11,32 +11,35 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/lthibault/log"
-	ww "github.com/wetware/ww/pkg"
+	"github.com/wetware/ww/util/proto"
 )
 
 var ErrNoPeers = errors.New("no peers")
 
-type Config struct {
+type Dialer struct {
 	Logger   log.Logger
 	NS       string
 	Peers    []string // static bootstrap peers
 	Discover string   // bootstrap service multiadr
 }
 
-func (cfg Config) Dial(ctx context.Context, h host.Host) (*rpc.Conn, error) {
-	if cfg.Logger == nil {
-		cfg.Logger = log.New()
+func (d Dialer) Dial(ctx context.Context, h host.Host) (*rpc.Conn, error) {
+	if d.Logger == nil {
+		d.Logger = log.New()
 	}
-	cfg.Logger = cfg.Logger.WithField("ns", cfg.NS)
+	d.Logger = d.Logger.WithField("ns", d.NS)
 
-	peer, err := cfg.connect(ctx, h)
+	peer, err := d.connect(ctx, h)
 	if err != nil {
 		return nil, fmt.Errorf("connect: %w", err)
 	}
 
-	s, err := h.NewStream(ctx, peer,
-		ww.Subprotocol(cfg.NS),
-		ww.Subprotocol(cfg.NS, "/packed"))
+	// Get a set of Wetware subprotocols that we can try to dial.   These
+	// will negotiate things like Cap'n Proto schema version, Cap'n Proto
+	// bit-packing and LZ4 compression.
+	protos := proto.Namespace(d.NS)
+
+	s, err := h.NewStream(ctx, peer, protos...)
 	if err != nil {
 		return nil, fmt.Errorf("upgrade: %w", err)
 	}
@@ -44,15 +47,15 @@ func (cfg Config) Dial(ctx context.Context, h host.Host) (*rpc.Conn, error) {
 	return rpc.NewConn(transport(s), nil), nil
 }
 
-func (cfg Config) connect(ctx context.Context, h host.Host) (peer.ID, error) {
-	d, err := cfg.newBootstrapper(h)
+func (d Dialer) connect(ctx context.Context, h host.Host) (peer.ID, error) {
+	boot, err := d.newBootstrapper(h)
 	if err != nil {
 		return "", fmt.Errorf("bootstrap: %w", err)
 	}
-	defer d.Close()
+	defer boot.Close()
 
 	var peers <-chan peer.AddrInfo
-	if peers, err = d.FindPeers(ctx, cfg.NS); err != nil {
+	if peers, err = boot.FindPeers(ctx, d.NS); err != nil {
 		return "", fmt.Errorf("discover: %w", err)
 	}
 

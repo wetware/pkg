@@ -9,14 +9,13 @@ import (
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
-	"github.com/libp2p/go-libp2p/core/protocol"
 	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
 	tcp "github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	"github.com/lthibault/log"
-	ww "github.com/wetware/ww/pkg"
 	"github.com/wetware/ww/pkg/anchor"
 	host_cap "github.com/wetware/ww/pkg/host"
 	"github.com/wetware/ww/pkg/pubsub"
+	"github.com/wetware/ww/util/proto"
 )
 
 type Config struct {
@@ -100,10 +99,7 @@ func (cfg Config) Serve(ctx context.Context, h host.Host) error {
 }
 
 func (cfg Config) export(ctx context.Context, h host.Host, s *host_cap.Server) {
-	for _, proto := range []protocol.ID{
-		ww.Subprotocol(cfg.NS),
-		ww.Subprotocol(cfg.NS, "/packed"),
-	} {
+	for _, proto := range proto.Namespace(cfg.NS) {
 		h.SetStreamHandler(proto, cfg.handler(ctx, s))
 	}
 }

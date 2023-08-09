@@ -7,7 +7,7 @@ import (
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	"github.com/libp2p/go-libp2p/core/host"
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
-	ww "github.com/wetware/ww/pkg"
+	"github.com/wetware/ww/util/proto"
 )
 
 func (cfg Config) withRouting(ctx context.Context, h host.Host) (*routedhost.RoutedHost, *dual.DHT, error) {
@@ -38,13 +38,13 @@ func (cfg Config) newDHT(ctx context.Context, h host.Host) (*dual.DHT, error) {
 func lanOpt(ns string) []dht.Option {
 	return []dht.Option{
 		dht.Mode(dht.ModeServer),
-		dht.ProtocolPrefix(ww.Subprotocol(ns)),
+		dht.ProtocolPrefix(proto.Root(ns)),
 		dht.ProtocolExtension("lan")}
 }
 
 func wanOpt(ns string) []dht.Option {
 	return []dht.Option{
 		dht.Mode(dht.ModeAuto),
-		dht.ProtocolPrefix(ww.Subprotocol(ns)),
+		dht.ProtocolPrefix(proto.Root(ns)),
 		dht.ProtocolExtension("wan")}
 }

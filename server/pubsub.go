@@ -15,9 +15,8 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/discovery/routing"
 	"github.com/lthibault/log"
 
-	protoutil "github.com/wetware/casm/pkg/util/proto"
 	"github.com/wetware/ww/boot"
-	ww "github.com/wetware/ww/pkg"
+	"github.com/wetware/ww/util/proto"
 )
 
 func (cfg Config) newPubSub(ctx context.Context, pc pubSubConfig) (*pubsub.PubSub, error) {
@@ -44,12 +43,12 @@ func (cfg Config) protoMatchFunc() pubsub.ProtocolMatchFn {
 	}
 }
 
-func matcher(ns string) protoutil.MatchFunc {
-	proto, version := protoutil.Split(pubsub.GossipSubID_v11)
-	return protoutil.Match(
-		ww.NewMatcher(ns),
-		protoutil.Exactly(string(proto)),
-		protoutil.SemVer(string(version)))
+func matcher(ns string) proto.MatchFunc {
+	base, version := proto.Split(pubsub.GossipSubID_v11)
+	return proto.Match(
+		proto.NewMatcher(ns),
+		proto.Exactly(string(base)),
+		proto.SemVer(string(version)))
 }
 
 func (cfg Config) subProtos() ([]protocol.ID, func(pubsub.GossipSubFeature, protocol.ID) bool) {
@@ -64,17 +63,17 @@ func protoID(ns string) protocol.ID {
 	//        entirely separate capability, negoaiated outside of
 	//        the PubSub cap.
 
-	// /casm/<casm-version>/ww/<version>/<ns>/meshsub/1.1.0
-	return protoutil.Join(
-		ww.Subprotocol(ns),
+	// /ww/<version>/<ns>/meshsub/1.1.0
+	return proto.Join(
+		proto.Root(ns),
 		pubsub.GossipSubID_v11)
 }
 
 func (cfg Config) features() func(pubsub.GossipSubFeature, protocol.ID) bool {
 	supportGossip := matcher(cfg.NS)
 
-	_, version := protoutil.Split(protoID(cfg.NS))
-	supportsPX := protoutil.Suffix(version)
+	_, version := proto.Split(protoID(cfg.NS))
+	supportsPX := proto.Suffix(version)
 
 	return func(feat pubsub.GossipSubFeature, proto protocol.ID) bool {
 		switch feat {

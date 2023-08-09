@@ -67,7 +67,7 @@ func dialAndExec(c *cli.Context, wetware ww.Ww, rom ww.ROM) error {
 	}
 	defer h.Close()
 
-	conn, err := client.Config{
+	conn, err := client.Dialer{
 		Logger:   log.New(),
 		NS:       c.String("ns"),
 		Peers:    c.StringSlice("peer"),

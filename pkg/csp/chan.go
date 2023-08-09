@@ -70,9 +70,9 @@ func (c Chan) Send(ctx context.Context, v Value) error {
 	return Sender(c).Send(ctx, v)
 }
 
-func (c Chan) Recv(ctx context.Context) (Future, capnp.ReleaseFunc) {
-	return Recver(c).Recv(ctx)
-}
+// func (c Chan) Recv(ctx context.Context) (Future, capnp.ReleaseFunc) {
+// 	return Recver(c).Recv(ctx)
+// }
 
 func (c Chan) AddRef() Chan {
 	return Chan(c.Client().AddRef())
@@ -135,10 +135,10 @@ func (r Recver) Client() capnp.Client {
 	return capnp.Client(r)
 }
 
-func (r Recver) Recv(ctx context.Context) (Future, capnp.ReleaseFunc) {
-	f, release := api.Recver(r).Recv(ctx, nil)
-	return Future{Future: casm.Future(f)}, release
-}
+// func (r Recver) Recv(ctx context.Context) (Future, capnp.ReleaseFunc) {
+// 	f, release := api.Recver(r).Recv(ctx, nil)
+// 	return Future{Future: casm.Future(f)}, release
+// }
 
 func (r Recver) AddRef() Recver {
 	return Recver(r.Client().AddRef())
@@ -254,42 +254,42 @@ func Text[T ~string](t T) Value {
 	}
 }
 
-// Future result from a Chan operation. It is a specialized instance
-// of a casm.Future that provides typed methods for common capnp.Ptr
-// types.
-type Future struct{ casm.Future }
+// // Future result from a Chan operation. It is a specialized instance
+// // of a casm.Future that provides typed methods for common capnp.Ptr
+// // types.
+// type Future struct{ casm.Future }
 
-// Value returns a *Future that asynchronously resolves to the  next
-// value produced by the channel.
-func (f Future) Value() *capnp.Future {
-	return f.Field(0, nil)
-}
+// // Value returns a *Future that asynchronously resolves to the  next
+// // value produced by the channel.
+// func (f Future) Value() *capnp.Future {
+// 	return f.Field(0, nil)
+// }
 
-func (f Future) Client() capnp.Client {
-	<-f.Done() // avoids returning *promised* client
-	return f.Value().Client()
-}
+// func (f Future) Client() capnp.Client {
+// 	<-f.Done() // avoids returning *promised* client
+// 	return f.Value().Client()
+// }
 
-func (f Future) Ptr() (capnp.Ptr, error) {
-	return f.Value().Ptr()
-}
+// func (f Future) Ptr() (capnp.Ptr, error) {
+// 	return f.Value().Ptr()
+// }
 
-func (f Future) Struct() (capnp.Struct, error) {
-	ptr, err := f.Ptr()
-	return ptr.Struct(), err
-}
+// func (f Future) Struct() (capnp.Struct, error) {
+// 	ptr, err := f.Ptr()
+// 	return ptr.Struct(), err
+// }
 
-func (f Future) List() (capnp.List, error) {
-	ptr, err := f.Ptr()
-	return ptr.List(), err
-}
+// func (f Future) List() (capnp.List, error) {
+// 	ptr, err := f.Ptr()
+// 	return ptr.List(), err
+// }
 
-func (f Future) Bytes() ([]byte, error) {
-	ptr, err := f.Ptr()
-	return ptr.Data(), err
-}
+// func (f Future) Bytes() ([]byte, error) {
+// 	ptr, err := f.Ptr()
+// 	return ptr.Data(), err
+// }
 
-func (f Future) Text() (string, error) {
-	ptr, err := f.Ptr()
-	return ptr.Text(), err
-}
+// func (f Future) Text() (string, error) {
+// 	ptr, err := f.Ptr()
+// 	return ptr.Text(), err
+// }
