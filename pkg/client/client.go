@@ -7,7 +7,7 @@ import (
 	"capnproto.org/go/capnp/v3"
 
 	casm "github.com/wetware/casm/pkg"
-	"github.com/wetware/casm/pkg/cluster"
+	"github.com/wetware/ww/cluster"
 	"github.com/wetware/ww/pkg/csp"
 	"github.com/wetware/ww/pkg/host"
 	"github.com/wetware/ww/pkg/pubsub"

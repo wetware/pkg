@@ -9,7 +9,7 @@ import (
 	"go.uber.org/fx"
 
 	casm "github.com/wetware/casm/pkg"
-	"github.com/wetware/casm/pkg/cluster"
+	"github.com/wetware/ww/cluster"
 	"github.com/wetware/ww/pkg/anchor"
 	"github.com/wetware/ww/pkg/host"
 	"github.com/wetware/ww/pkg/pubsub"

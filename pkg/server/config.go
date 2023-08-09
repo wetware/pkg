@@ -7,9 +7,9 @@ import (
 	"go.uber.org/fx"
 
 	casm "github.com/wetware/casm/pkg"
-	"github.com/wetware/casm/pkg/cluster"
-	"github.com/wetware/casm/pkg/cluster/pulse"
-	"github.com/wetware/casm/pkg/cluster/routing"
+	"github.com/wetware/ww/cluster"
+	"github.com/wetware/ww/cluster/pulse"
+	"github.com/wetware/ww/cluster/routing"
 )
 
 type ClusterConfig struct {

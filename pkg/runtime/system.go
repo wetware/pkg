@@ -9,8 +9,8 @@ import (
 	"github.com/lthibault/log"
 	"go.uber.org/fx"
 
-	"github.com/wetware/casm/pkg/cluster/pulse"
-	"github.com/wetware/casm/pkg/cluster/routing"
+	"github.com/wetware/ww/cluster/pulse"
+	"github.com/wetware/ww/cluster/routing"
 
 	ds "github.com/ipfs/go-datastore"
 	ds_sync "github.com/ipfs/go-datastore/sync"

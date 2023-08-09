@@ -10,8 +10,8 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/wetware/casm/pkg/cluster"
-	"github.com/wetware/casm/pkg/cluster/routing"
+	"github.com/wetware/ww/cluster"
+	"github.com/wetware/ww/cluster/routing"
 	mock_ww "github.com/wetware/ww/internal/mock/pkg/host"
 	"github.com/wetware/ww/pkg/host"
 )

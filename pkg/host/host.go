@@ -8,12 +8,12 @@ import (
 	"capnproto.org/go/capnp/v3"
 
 	casm "github.com/wetware/casm/pkg"
-	"github.com/wetware/casm/pkg/cluster"
 	anchor_api "github.com/wetware/ww/api/anchor"
 	api "github.com/wetware/ww/api/cluster"
 	process_api "github.com/wetware/ww/api/process"
 	pubsub_api "github.com/wetware/ww/api/pubsub"
 	reg_api "github.com/wetware/ww/api/registry"
+	"github.com/wetware/ww/cluster"
 	"github.com/wetware/ww/pkg/anchor"
 	"github.com/wetware/ww/pkg/csp"
 	"github.com/wetware/ww/pkg/pubsub"

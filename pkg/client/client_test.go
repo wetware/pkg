@@ -10,7 +10,8 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/wetware/casm/pkg/cluster"
+
+	"github.com/wetware/ww/cluster"
 	mock_client "github.com/wetware/ww/internal/mock/pkg/client"
 	"github.com/wetware/ww/pkg/anchor"
 	"github.com/wetware/ww/pkg/client"

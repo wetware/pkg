@@ -8,7 +8,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	cluster "github.com/wetware/casm/pkg/cluster"
+	cluster "github.com/wetware/ww/cluster"
 	anchor "github.com/wetware/ww/pkg/anchor"
 	csp "github.com/wetware/ww/pkg/csp"
 	pubsub "github.com/wetware/ww/pkg/pubsub"
