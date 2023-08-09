@@ -9,9 +9,9 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/discovery"
 	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/wetware/casm/pkg/cluster"
-	"github.com/wetware/casm/pkg/cluster/pulse"
-	"github.com/wetware/casm/pkg/cluster/routing"
+	"github.com/wetware/ww/cluster"
+	"github.com/wetware/ww/cluster/pulse"
+	"github.com/wetware/ww/cluster/routing"
 )
 
 type clusterConfig struct {
