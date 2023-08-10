@@ -1,4 +1,4 @@
-package csp_test
+package csp_server_test
 
 // import (
 // 	"context"
