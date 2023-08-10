@@ -193,7 +193,7 @@ func (e errLogger) ReportError(err error) {
 			e.Logger = slog.Default()
 		}
 
-		e.Warn("rpc connection failed",
+		e.Debug("rpc: connection closed",
 			"error", err)
 	}
 }

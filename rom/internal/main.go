@@ -29,6 +29,17 @@ func main() {
 	for r := it.Next(); r != nil; r = it.Next() {
 		render(r)
 	}
+
+	die(it.Err())
+}
+
+func die(err error) {
+	if err == nil {
+		os.Exit(0)
+	}
+
+	fmt.Fprintln(os.Stderr, err)
+	os.Exit(1)
 }
 
 func query() view.Query {
