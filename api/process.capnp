@@ -7,7 +7,7 @@ $Go.import("github.com/wetware/pkg/api/process");
 
 
 interface Executor {
-    exec @0 (bytecode :Data) -> (process :Process);
+    exec @0 (bytecode :Data, bootstrapClient :Capability) -> (process :Process);
     # exec a WASM based process
 }
 
