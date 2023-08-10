@@ -4,10 +4,17 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"net"
+	"os"
+	"time"
 
+	"capnproto.org/go/capnp/v3"
+	"capnproto.org/go/capnp/v3/rpc"
+	"github.com/lthibault/log"
 	"github.com/stealthrocket/wazergo"
 	"github.com/tetratelabs/wazero"
 	wasm "github.com/tetratelabs/wazero/api"
+	"github.com/tetratelabs/wazero/experimental/sock"
 
 	api "github.com/wetware/pkg/api/process"
 	"github.com/wetware/pkg/cap/csp"
@@ -68,16 +75,46 @@ func (r Runtime) mkmod(ctx context.Context, args api.Executor_exec_Params) (wasm
 
 	// TODO(perf):  cache compiled modules so that we can instantiate module
 	//              instances for concurrent use.
-	module, err := r.Runtime.CompileModule(ctx, bc)
+	compiled, err := r.Runtime.CompileModule(ctx, bc)
 	if err != nil {
 		return nil, err
 	}
 
-	return r.Runtime.InstantiateModule(ctx, module, wazero.
-		NewModuleConfig().
+	// TODO(perf): find a way of locating a free port without opening and
+	//             closing a connection.
+	// Find a free TCP port.
+	l, err := net.Listen("tcp", ":0")
+	if err != nil {
+		return nil, err
+	}
+	addr := l.Addr().(*net.TCPAddr)
+
+	// Enables the creation of non-blocking TCP connections
+	// inside the WASM module. The host will pre-open the TCP
+	// port and pass it to the guest through a file descriptor.
+	sockCfg := sock.NewConfig().WithTCPListener("", addr.Port)
+	sockCtx := sock.WithConfig(ctx, sockCfg)
+	modCfg := wazero.NewModuleConfig().
+		WithStartFunctions(). // don't call _start until later
+		WithSysNanosleep().
+		WithSysNanotime().
+		WithSysWalltime().
+		WithRandSource(rand.Reader).
 		WithName(name).
-		WithStartFunctions(). // disable automatic calling of _start (main)
-		WithRandSource(rand.Reader))
+		WithEnv("ns", name).
+		WithStdin(os.Stdin).
+		WithStdout(os.Stdout).
+		WithStderr(os.Stderr)
+
+	l.Close()
+	mod, err := r.Runtime.InstantiateModule(sockCtx, compiled, modCfg)
+	if err != nil {
+		return nil, err
+	}
+
+	go serveModule(addr, args.BootstrapClient())
+
+	return mod, nil
 }
 
 func (r Runtime) spawn(fn wasm.Function) (<-chan execResult, context.CancelFunc) {
@@ -101,4 +138,59 @@ func (r Runtime) spawn(fn wasm.Function) (<-chan execResult, context.CancelFunc)
 	}()
 
 	return out, cancel
+}
+
+// serveModule ensures the host side of the TCP connection with addr=addr
+// used for CAPNP RPCs is provided by client.
+func serveModule(addr *net.TCPAddr, client capnp.Client) {
+	tcpConn, err := dialWithRetries(addr)
+	if err != nil {
+		panic(err)
+	}
+	defer tcpConn.Close()
+
+	defer client.Release()
+	conn := rpc.NewConn(rpc.NewStreamTransport(tcpConn), &rpc.Options{
+		BootstrapClient: client,
+		ErrorReporter: errLogger{
+			Logger: log.New(log.WithLevel(log.ErrorLevel)).WithField("conn", "host"),
+		},
+	})
+	defer conn.Close()
+
+	select {
+	case <-conn.Done(): // conn is closed by authenticate if auth fails
+		// case <-ctx.Done(): // close conn if the program is exiting
+		// TODO ctx.Done is called prematurely when using cluster run
+		// we should use a new context that cancels when subproc ends
+	}
+}
+
+// dialWithRetries dials addr in waitTime intervals until it either succeeds or
+// exceeds maxRetries retries.
+func dialWithRetries(addr *net.TCPAddr) (net.Conn, error) {
+	maxRetries := 20
+	waitTime := 10 * time.Millisecond
+	var err error
+	var conn net.Conn
+
+	for retries := 0; retries < maxRetries; retries++ {
+		conn, err = net.Dial("tcp", addr.String())
+		if err == nil {
+			break
+		}
+		time.Sleep(waitTime)
+	}
+
+	return conn, err
+}
+
+type errLogger struct {
+	log.Logger
+}
+
+func (e errLogger) ReportError(err error) {
+	if err != nil {
+		e.WithError(err).Warn("rpc connection failed")
+	}
 }

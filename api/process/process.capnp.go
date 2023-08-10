@@ -27,7 +27,7 @@ func (c Executor) Exec(ctx context.Context, params func(Executor_exec_Params) er
 		},
 	}
 	if params != nil {
-		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 2}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Executor_exec_Params(s)) }
 	}
 
@@ -178,12 +178,12 @@ type Executor_exec_Params capnp.Struct
 const Executor_exec_Params_TypeID = 0xf20b3dea95929312
 
 func NewExecutor_exec_Params(s *capnp.Segment) (Executor_exec_Params, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
 	return Executor_exec_Params(st), err
 }
 
 func NewRootExecutor_exec_Params(s *capnp.Segment) (Executor_exec_Params, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
 	return Executor_exec_Params(st), err
 }
 
@@ -232,12 +232,30 @@ func (s Executor_exec_Params) SetBytecode(v []byte) error {
 	return capnp.Struct(s).SetData(0, v)
 }
 
+func (s Executor_exec_Params) BootstrapClient() capnp.Client {
+	p, _ := capnp.Struct(s).Ptr(1)
+	return p.Interface().Client()
+}
+
+func (s Executor_exec_Params) HasBootstrapClient() bool {
+	return capnp.Struct(s).HasPtr(1)
+}
+
+func (s Executor_exec_Params) SetBootstrapClient(c capnp.Client) error {
+	if !c.IsValid() {
+		return capnp.Struct(s).SetPtr(1, capnp.Ptr{})
+	}
+	seg := s.Segment()
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(c))
+	return capnp.Struct(s).SetPtr(1, in.ToPtr())
+}
+
 // Executor_exec_Params_List is a list of Executor_exec_Params.
 type Executor_exec_Params_List = capnp.StructList[Executor_exec_Params]
 
 // NewExecutor_exec_Params creates a new list of Executor_exec_Params.
 func NewExecutor_exec_Params_List(s *capnp.Segment, sz int32) (Executor_exec_Params_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2}, sz)
 	return capnp.StructList[Executor_exec_Params](l), err
 }
 
@@ -247,6 +265,9 @@ type Executor_exec_Params_Future struct{ *capnp.Future }
 func (f Executor_exec_Params_Future) Struct() (Executor_exec_Params, error) {
 	p, err := f.Future.Ptr()
 	return Executor_exec_Params(p.Struct()), err
+}
+func (p Executor_exec_Params_Future) BootstrapClient() capnp.Client {
+	return p.Future.Field(1, nil).Client()
 }
 
 type Executor_exec_Results capnp.Struct
@@ -813,36 +834,39 @@ func (f Process_kill_Results_Future) Struct() (Process_kill_Results, error) {
 	return Process_kill_Results(p.Struct()), err
 }
 
-const schema_9a51e53177277763 = "x\xda|\x921h\x13Q\x18\xc7\xff\xffw/\xbd\x03" +
-	"=\xc3\xebi\xb4\x82\x08\xdaP\xe8\x10\x13\x8a\x8b \x0d" +
-	"\x8a\x04\x0bb\x9e\xbbB<\x0f\x0c&&\xe4.$N" +
-	"\xe2 \xee\x8a\x88\x8a\xe0\"u\x10-\xd5\xa9\xce\xeeR" +
-	"\x05A7\xc5\xc5\xa1\x88[\x079y\xd7\\<\xa9\xe9" +
-	"v\x8f\xef\xfb\xfe\xff\xff\xf7\xfb\xae,Y\x95\x15wN" +
-	"B\xe8rn*^\xef\xdfz\xb6v\xa9\xf4\x0aj\x8f" +
-	"\x15\xfb\x83\xb9A\xe5\xbb~\x04\xd0\xdb\xe4\x9aGa\x03" +
-	"\xdeo\xd6\xbc\xa2\xf9\x8a\x1f\xbf__^)\x9c\x7f\x0b" +
-	"\xb5\x9f@\x8e6\xb0\xe0\x8a#\x04\xbd}b\x11\x8c7" +
-	"\x1e|\x0cW\xafV\xdeA\x15\x08HS?.\x0e\x12" +
-	"2~Q+\xcf>}3\xff\x09\xba\xc0\xb4t\xc8\x94" +
-	"\xe8\x15\x93\xd1\x85\xa9\xe2\xf3\x0f?\x8f~\xde\x16\xe4\xac" +
-	"X\xf5t\x12\xe4\x9c\xb8\xe3=I\x82\xd4.\x1e[\x99" +
-	"y\xb9\xbc\x91\xf1\xb9-\xa6\x8d\xcf\xf4\xbd\xbb\xf7\x7f\x9c" +
-	"\xdc\xf5+\x1b\xb1\xbd\xe5\xd3O|\xbe\xbd\xfe\xe2|]" +
-	"jnfF\x1f\x9a\xd1r\xdc\xedu\xfc \x0cK\xf4" +
-	"\x1b\xdd\xeb\xdd\x13g\x86\x8b\x81\xdf\x8f:\xbd:\xa9\xa5" +
-	"\x95\x03\xc6\xe2LA(5\x0f\xa1rv>\x18\x06~" +
-	"\x95ur\xacb\xa5*[\"%\xd31{!\x08\xfb" +
-	"v+\x0a\xb5\xb4$ \x09(\xf7\x14\xa0\x1d\x8bz\xaf" +
-	"\xe0\xcd\xd10\xd5_\x1c \x15\xb6\xc9\xd6G\xcfk\xcd" +
-	"V+QmYQ8\xa9i\xd0hF\xe3\xa6\xac\xf5" +
-	"\x12\xa0w[\xd4\x07\x04\xe3`\xd8\x8cNw\xae\x04\x00" +
-	"\xe8@\xd0\xc9\x982\xd5;\x9c\xbc\x0d\x10'\x01\x92\xc2" +
-	"dz^U1@\x8a69\xbe\x11\xd3\x9fB\xcd\x98" +
-	"\x9ak\xe7M\x9e*\xf3&\xfb\x7f\x99\xfd\xb3\\\xbd\xd1" +
-	"k\xb4\x19\xee\xcc\xd54Y\xed\x89\xbb]\xbe\x11\x05\xfe" +
-	"h7\x17\x82\xeed\xa0\x09\xab\x91\xe7\x9f\x00\x00\x00\xff" +
-	"\xff8\xaa\xe7q"
+const schema_9a51e53177277763 = "x\xda|RAh\x13Q\x14\x9c\xf9\xbb\xe9.\xe8\x1a" +
+	"~6F+\x88\xa0\x0d\xd5\x1ebB\xf4\"J\x83E" +
+	"\x82\x051\xdf\xbbB\xba.\x18L\x9a\x90\xdd\x90x\x12" +
+	"\x05\xf1\xae\x88\xa0\x08^\xa4\x1eDK\xf5T\xcf\xde\xa5" +
+	"\x0a\xa2\xde\x14/\x1e\x8ax\xebAV\xfe6\x1b#\xb5" +
+	"\xde\xfe\xe7\xcd\x9b\x997\xef\x15\xb3\xac\x98%g\xda\x84" +
+	"P\xc5\xd4D\xb4\xd6\xbb\xf1d\xf5R\xe1\x05\xe4.#" +
+	"\xf2\xfa\xd3\xfd\xd27\xf5\x00\xa0\xbb\xc1U\x97\xc2\x02\xdc" +
+	"_\xac\xbay\xfd\x8a\x1e\xbe][Z\xce\x9d\x7f\x0d\xb9" +
+	"\x87@\x8a\x16Pv\xc4A\x82\xeen1\x0bF\xeb\xf7" +
+	"\xdf\x07+WJo s\x04L]?.\xf6\x11f" +
+	"\xf4\xacZ\x9cz\xfcj\xe6\x03T\x8eIi\xbf.\xd1" +
+	"\xcd\xc7\xad\xe5\x89\xfc\xd3w?\x0e}\xdab\xe4\xacX" +
+	"qUl\xe4\x9c\xb8\xed>\x8a\x8dT/\x1e]\x9e|" +
+	"\xbe\xb4>\xa6sKd\xb4N\xe6\xee\x9d{\xdfO\xed" +
+	"\xf89\xb4\xa8\xd1\xe5\xd6\xa6NO\xf4\xc1\xe8\xeb\xcb\xcf" +
+	"\xf6\x97\xf9\xc6\xc6X\xebG\xddZ\x8c:\xdd\xb6\xe7\x07" +
+	"A\x81^\xbd\xb3\xd89qf0\xeb{\xbd\xb0\xdd\xad" +
+	"\x91\xca4R\xc0\x88\x9cI\x10R\xce@\xc8\x94\x95\xf6" +
+	"\x07\xbeWa\x8d\x1c\xb1\x18\x09\xcb&IA#\xa6." +
+	"\xf8A\xcfj\x86\x812\x0d\x130\x09H\xe74\xa0l" +
+	"\x83*+x}\xd8L\xf9'\x0e\x90\x12[hk\xc3" +
+	"\xef\xd5F\xb3\x19\xb36\x8d0\xd8\x0e\xd4\xaf7\xc2\x11" +
+	"h\\z\x1eP;\x0d\xaa\xbd\x82\x91?h\x84s\xed" +
+	"\xcb>\x00\xda\x10\xb4\xc7D\x99\xf0\x1d\x88\xff:\x10;" +
+	"\x0e$\x09\x93\xc9zeI\x07\x92\xb7\xc8\xd1\x8e\x98\x1c" +
+	"\x85\x9c\xd45\xc7Jk?\x15\xa6\xb5\xf7\x7ff\xf6\xd7" +
+	"p\xb5z\xb7\xdeb\xf0\xff\\5\xc8h\x05\xca\x1e\xcd" +
+	"vD\xcfv\xd8\xa0:&(\xc9\xac>:Y\xba\x09" +
+	"\xa8\xa2AuR0Z\xb8\x16\xfa\xdep`\x07\x82\x0e" +
+	"\x18-\xb4\xdba\x10v\xeb\xec\xcc5\x1b\xfeb\x08f" +
+	"L\x03df\xfb\x0d\xc4\xe1\x0eM\xfe\x0e\x00\x00\xff\xff" +
+	"[a\xf1\xc0"
 
 func RegisterSchema(reg *schemas.Registry) {
 	reg.Register(&schemas.Schema{
