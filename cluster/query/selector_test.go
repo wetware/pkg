@@ -13,9 +13,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/wetware/ww/cluster/query"
-	"github.com/wetware/ww/cluster/routing"
-	mock_routing "github.com/wetware/ww/internal/mock/cluster/routing"
+	"github.com/wetware/pkg/cluster/query"
+	"github.com/wetware/pkg/cluster/routing"
+	test_routing "github.com/wetware/pkg/cluster/routing/test"
 )
 
 func TestSelector(t *testing.T) {
@@ -25,7 +25,7 @@ func TestSelector(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	snap := mock_routing.NewMockSnapshot(ctrl)
+	snap := test_routing.NewMockSnapshot(ctrl)
 
 	/*
 		Test that each selector calls the expected Query method.
@@ -88,7 +88,7 @@ func TestRange(t *testing.T) {
 	// to detect that the range has been exceeded, and return nil.  Once
 	// the range iterator has detected that it is out-of-bounds, it will
 	// cease to call the mock iterator's Next() method. Or so we hope...!
-	iter := mock_routing.NewMockIterator(ctrl)
+	iter := test_routing.NewMockIterator(ctrl)
 	iter.EXPECT().Next().Return(recs[0]).Times(1)
 	iter.EXPECT().Next().Return(recs[1]).Times(1)
 	iter.EXPECT().Next().Return(recs[2]).Times(1)
@@ -99,7 +99,7 @@ func TestRange(t *testing.T) {
 	//        short-circuit it.
 
 	// Next, we construct a query that returns the above iterator.
-	snap := mock_routing.NewMockSnapshot(ctrl)
+	snap := test_routing.NewMockSnapshot(ctrl)
 	snap.EXPECT().
 		LowerBound(gomock.Any()).
 		Return(iter, nil).
@@ -107,7 +107,7 @@ func TestRange(t *testing.T) {
 
 	// We now define an index over id_prefix matching 'foo'.  On its own,
 	// this would match *all* records in the iterator.
-	min := mock_routing.NewMockIndex(ctrl)
+	min := test_routing.NewMockIndex(ctrl)
 	min.EXPECT().
 		String().
 		Return("id").
@@ -119,7 +119,7 @@ func TestRange(t *testing.T) {
 
 	// Now we define an index that designates the upper bound on the range.
 	// This matches the highest-order id that is part of the range.
-	max := mock_routing.NewMockIndex(ctrl)
+	max := test_routing.NewMockIndex(ctrl)
 	max.EXPECT().
 		String().
 		Return("id").
@@ -144,11 +144,11 @@ func TestRange(t *testing.T) {
 }
 
 type mockPeerIndex struct {
-	*mock_routing.MockIndex
+	*test_routing.MockIndex
 	id string
 }
 
-func peerIndex(ix *mock_routing.MockIndex, id string) mockPeerIndex {
+func peerIndex(ix *test_routing.MockIndex, id string) mockPeerIndex {
 	return mockPeerIndex{
 		MockIndex: ix,
 		id:        id,

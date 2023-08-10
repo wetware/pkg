@@ -10,8 +10,8 @@ import (
 	"github.com/libp2p/go-libp2p/core/record"
 	ma "github.com/multiformats/go-multiaddr"
 
-	"github.com/wetware/ww/api/boot"
-	"github.com/wetware/ww/boot/socket"
+	"github.com/wetware/pkg/api/boot"
+	"github.com/wetware/pkg/boot/socket"
 )
 
 func BenchmarkRecord(b *testing.B) {

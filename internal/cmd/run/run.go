@@ -9,8 +9,9 @@ import (
 	tcp "github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	"github.com/lthibault/log"
 	"github.com/urfave/cli/v2"
-	"github.com/wetware/ww"
-	"github.com/wetware/ww/client"
+	ww "github.com/wetware/pkg"
+	"github.com/wetware/pkg/client"
+	"github.com/wetware/pkg/rom"
 )
 
 var flags = []cli.Flag{
@@ -101,7 +102,7 @@ func bytecode(c *cli.Context) (ww.ROM, error) {
 	}
 
 	// use the default bytecode
-	return ww.DefaultROM(), nil
+	return rom.Default(), nil
 }
 
 func loadROM(c *cli.Context) (ww.ROM, error) {

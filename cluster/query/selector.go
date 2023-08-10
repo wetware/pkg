@@ -3,7 +3,7 @@ package query
 import (
 	"fmt"
 
-	"github.com/wetware/ww/cluster/routing"
+	"github.com/wetware/pkg/cluster/routing"
 )
 
 // Selector specifies an iteration strategy over a set of

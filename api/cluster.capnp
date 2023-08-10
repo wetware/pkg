@@ -3,7 +3,7 @@ using Go = import "/go.capnp";
 @0xfcf6ac08e448a6ac;
 
 $Go.package("cluster");
-$Go.import("github.com/wetware/ww/api/cluster");
+$Go.import("github.com/wetware/pkg/api/cluster");
 
 
 interface Host {

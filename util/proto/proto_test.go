@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/wetware/ww/util/proto"
+	"github.com/wetware/pkg/util/proto"
 )
 
 func TestProto(t *testing.T) {

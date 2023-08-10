@@ -5,8 +5,8 @@ import (
 
 	"capnproto.org/go/capnp/v3"
 	"github.com/stretchr/testify/require"
-	boot "github.com/wetware/ww/api/boot"
-	"github.com/wetware/ww/boot/socket"
+	boot "github.com/wetware/pkg/api/boot"
+	"github.com/wetware/pkg/boot/socket"
 )
 
 func TestRecord_Peer(t *testing.T) {

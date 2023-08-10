@@ -7,15 +7,15 @@ import (
 
 	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p/core/host"
+	local_host "github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
 	tcp "github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	"github.com/lthibault/log"
-	"github.com/wetware/ww/pkg/anchor"
-	host_cap "github.com/wetware/ww/pkg/host"
-	"github.com/wetware/ww/pkg/pubsub"
-	"github.com/wetware/ww/util/proto"
+	"github.com/wetware/pkg/cap/anchor"
+	"github.com/wetware/pkg/cap/host"
+	"github.com/wetware/pkg/cap/pubsub"
+	"github.com/wetware/pkg/util/proto"
 )
 
 type Config struct {
@@ -40,7 +40,7 @@ func (cfg Config) ListenAndServe(ctx context.Context, addrs ...string) error {
 	return cfg.Serve(ctx, h)
 }
 
-func (cfg Config) Serve(ctx context.Context, h host.Host) error {
+func (cfg Config) Serve(ctx context.Context, h local_host.Host) error {
 	if cfg.Logger == nil {
 		cfg.Logger = log.New()
 	}
@@ -81,7 +81,7 @@ func (cfg Config) Serve(ctx context.Context, h host.Host) error {
 	defer c.Stop()
 	defer ps.UnregisterTopicValidator(cfg.NS)
 
-	cfg.export(ctx, h, &host_cap.Server{
+	cfg.export(ctx, h, &host.Server{
 		ViewProvider:   c,
 		AnchorProvider: &anchor.Node{},
 		PubSubProvider: &pubsub.Server{
@@ -98,13 +98,13 @@ func (cfg Config) Serve(ctx context.Context, h host.Host) error {
 	return ctx.Err()
 }
 
-func (cfg Config) export(ctx context.Context, h host.Host, s *host_cap.Server) {
+func (cfg Config) export(ctx context.Context, h local_host.Host, s *host.Server) {
 	for _, proto := range proto.Namespace(cfg.NS) {
 		h.SetStreamHandler(proto, cfg.handler(ctx, s))
 	}
 }
 
-func (cfg Config) handler(ctx context.Context, h *host_cap.Server) network.StreamHandler {
+func (cfg Config) handler(ctx context.Context, h *host.Server) network.StreamHandler {
 	return func(s network.Stream) {
 		defer s.Close()
 

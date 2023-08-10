@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/wetware/ww/cluster/routing"
+	"github.com/wetware/pkg/cluster/routing"
 )
 
 // Matcher reports whether a routing record matches some

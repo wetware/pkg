@@ -10,10 +10,10 @@ import (
 	server "capnproto.org/go/capnp/v3/server"
 	stream "capnproto.org/go/capnp/v3/std/capnp/stream"
 	context "context"
-	anchor "github.com/wetware/ww/api/anchor"
-	process "github.com/wetware/ww/api/process"
-	pubsub "github.com/wetware/ww/api/pubsub"
-	registry "github.com/wetware/ww/api/registry"
+	anchor "github.com/wetware/pkg/api/anchor"
+	process "github.com/wetware/pkg/api/process"
+	pubsub "github.com/wetware/pkg/api/pubsub"
+	registry "github.com/wetware/pkg/api/registry"
 	strconv "strconv"
 )
 

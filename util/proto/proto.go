@@ -2,7 +2,7 @@ package proto
 
 import (
 	"github.com/libp2p/go-libp2p/core/protocol"
-	"github.com/wetware/ww"
+	"github.com/wetware/pkg"
 )
 
 // Root returns the protocol ID for the supplied namespace.

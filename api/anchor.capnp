@@ -3,7 +3,7 @@ using Go = import "/go.capnp";
 @0xefb5a91f96d44de3;
 
 $Go.package("anchor");
-$Go.import("github.com/wetware/ww/api/anchor");
+$Go.import("github.com/wetware/pkg/api/anchor");
 
 
 interface Anchor {

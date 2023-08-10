@@ -8,17 +8,10 @@ import (
 	"lukechampine.com/blake3"
 )
 
-//go:embed internal/rom/main.wasm
-var defaultROM []byte
-
 // ROM is an immutable, read-only memory segment containing WASM
 // bytecode.  It is uniquely identified by its hash.
 type ROM struct {
 	bytecode []byte
-}
-
-func DefaultROM() ROM {
-	return ROM{defaultROM}
 }
 
 func Read(r io.Reader) (rom ROM, err error) {

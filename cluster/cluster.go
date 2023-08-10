@@ -1,4 +1,4 @@
-//go:generate mockgen -source=cluster.go -destination=../internal/mock/cluster/cluster.go -package=mock_cluster
+//go:generate mockgen -source=cluster.go -destination=test/cluster.go -package=test_cluster
 
 // Package cluster exports an asynchronously updated model of the swarm.
 package cluster
@@ -18,9 +18,9 @@ import (
 	"github.com/lthibault/jitterbug/v2"
 	"github.com/lthibault/log"
 
-	"github.com/wetware/ww/cluster/pulse"
-	"github.com/wetware/ww/cluster/routing"
-	"github.com/wetware/ww/pkg/view"
+	"github.com/wetware/pkg/cap/view"
+	"github.com/wetware/pkg/cluster/pulse"
+	"github.com/wetware/pkg/cluster/routing"
 )
 
 var ErrClosing = errors.New("closing")

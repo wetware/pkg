@@ -3,7 +3,7 @@ using Go = import "/go.capnp";
 @0x872a451f9aa74ebf;
 
 $Go.package("channel");
-$Go.import("github.com/wetware/ww/api/channel");
+$Go.import("github.com/wetware/pkg/api/channel");
 
 
 interface Closer {

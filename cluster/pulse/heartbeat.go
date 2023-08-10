@@ -6,8 +6,8 @@ import (
 	"capnproto.org/go/capnp/v3"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
-	api "github.com/wetware/ww/api/cluster"
-	"github.com/wetware/ww/cluster/routing"
+	api "github.com/wetware/pkg/api/cluster"
+	"github.com/wetware/pkg/cluster/routing"
 )
 
 const DefaultTTL = time.Second * 10

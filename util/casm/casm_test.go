@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/wetware/ww/util/casm"
+	"github.com/wetware/pkg/util/casm"
 )
 
 func TestIterator(t *testing.T) {

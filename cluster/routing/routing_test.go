@@ -12,7 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/wetware/ww/cluster/routing"
+	"github.com/wetware/pkg/cluster/routing"
 )
 
 var t0 = time.Date(2020, 4, 9, 8, 0, 0, 0, time.UTC)

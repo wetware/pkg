@@ -8,7 +8,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/record"
 	ma "github.com/multiformats/go-multiaddr"
-	"github.com/wetware/ww/api/boot"
+	"github.com/wetware/pkg/api/boot"
 )
 
 // ErrNoListenAddrs is returned if the host has not exported any listen addresses.

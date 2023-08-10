@@ -7,9 +7,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/wetware/ww/cluster/query"
-	"github.com/wetware/ww/cluster/routing"
-	mock_routing "github.com/wetware/ww/internal/mock/cluster/routing"
+	"github.com/wetware/pkg/cluster/query"
+	"github.com/wetware/pkg/cluster/routing"
+	test_routing "github.com/wetware/pkg/cluster/routing/test"
 )
 
 func TestQuery(t *testing.T) {
@@ -40,13 +40,13 @@ func TestQuery(t *testing.T) {
 				reverse lookup test, we'll take a simplified approach.
 			*/
 
-			iter := mock_routing.NewMockIterator(ctrl)
+			iter := test_routing.NewMockIterator(ctrl)
 			iter.EXPECT().
 				Next().
 				Return(recs[0]).
 				Times(1)
 
-			snap := mock_routing.NewMockSnapshot(ctrl)
+			snap := test_routing.NewMockSnapshot(ctrl)
 			snap.EXPECT().
 				Get(gomock.Any()).
 				Return(iter, nil).
@@ -77,7 +77,7 @@ func TestQuery(t *testing.T) {
 				v.Iter()
 			*/
 
-			snap := mock_routing.NewMockSnapshot(ctrl)
+			snap := test_routing.NewMockSnapshot(ctrl)
 			snap.EXPECT().
 				GetReverse(gomock.Any()). // <- what we're actually testing
 				Return(nil, nil).
@@ -107,13 +107,13 @@ func TestQuery(t *testing.T) {
 			*/
 
 			// Iterate through records once, then return nil
-			iter := mock_routing.NewMockIterator(ctrl)
+			iter := test_routing.NewMockIterator(ctrl)
 			for _, r := range recs {
 				iter.EXPECT().Next().Return(r).Times(1)
 			}
 			iter.EXPECT().Next().Return(nil).Times(1)
 
-			snap := mock_routing.NewMockSnapshot(ctrl)
+			snap := test_routing.NewMockSnapshot(ctrl)
 			snap.EXPECT().
 				Get(gomock.Any()).
 				Return(iter, nil).
@@ -147,7 +147,7 @@ func TestQuery(t *testing.T) {
 				which a nil iterator is produced by the Selector.
 			*/
 
-			snap := mock_routing.NewMockSnapshot(ctrl)
+			snap := test_routing.NewMockSnapshot(ctrl)
 			snap.EXPECT().
 				GetReverse(gomock.Any()).
 				Return(nil, nil).

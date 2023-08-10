@@ -3,7 +3,7 @@ using Go = import "/go.capnp";
 @0xfa005a3c690f4a62;
 
 $Go.package("boot");
-$Go.import("github.com/wetware/ww/api/boot");
+$Go.import("github.com/wetware/pkg/api/boot");
 
 
 struct Packet {

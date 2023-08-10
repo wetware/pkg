@@ -13,9 +13,9 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/libp2p/go-libp2p/core/record"
-	"github.com/wetware/ww/boot/socket"
-
 	ma "github.com/multiformats/go-multiaddr"
+
+	"github.com/wetware/pkg/boot/socket"
 )
 
 const P_CIDR = 103

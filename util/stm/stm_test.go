@@ -6,7 +6,7 @@ import (
 	"github.com/hashicorp/go-memdb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/wetware/ww/util/stm"
+	"github.com/wetware/pkg/util/stm"
 )
 
 func TestSTM(t *testing.T) {

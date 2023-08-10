@@ -11,7 +11,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/lthibault/log"
-	"github.com/wetware/ww/util/proto"
+	"github.com/wetware/pkg/util/proto"
 )
 
 var ErrNoPeers = errors.New("no peers")

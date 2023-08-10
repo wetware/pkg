@@ -12,9 +12,9 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 
-	"github.com/wetware/ww/boot/crawl"
-	"github.com/wetware/ww/boot/socket"
-	"github.com/wetware/ww/boot/survey"
+	"github.com/wetware/pkg/boot/crawl"
+	"github.com/wetware/pkg/boot/socket"
+	"github.com/wetware/pkg/boot/survey"
 )
 
 // ErrUnknownBootProto is returned when the multiaddr passed

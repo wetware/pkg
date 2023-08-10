@@ -6,7 +6,7 @@ import (
 
 	ma "github.com/multiformats/go-multiaddr"
 
-	"github.com/wetware/ww/boot/crawl"
+	"github.com/wetware/pkg/boot/crawl"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

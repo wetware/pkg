@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wetware/ww/util/stm"
+	"github.com/wetware/pkg/util/stm"
 )
 
 type clock struct {

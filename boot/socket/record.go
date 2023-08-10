@@ -6,7 +6,7 @@ import (
 	"capnproto.org/go/capnp/v3"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/record"
-	"github.com/wetware/ww/api/boot"
+	"github.com/wetware/pkg/api/boot"
 )
 
 type RecordType = boot.Packet_Which

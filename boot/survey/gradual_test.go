@@ -12,7 +12,7 @@ package survey_test
 // 	"github.com/libp2p/go-libp2p/core/event"
 // 	"github.com/libp2p/go-libp2p/core/host"
 // 	"github.com/stretchr/testify/require"
-// 	"github.com/wetware/ww/api/boot"
+// 	"github.com/wetware/pkg/api/boot"
 // 	mock_net "github.com/wetware/casm/internal/mock/net"
 // 	"github.com/wetware/casm/pkg/boot/survey"
 // )

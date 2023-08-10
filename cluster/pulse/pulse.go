@@ -1,4 +1,4 @@
-//go:generate mockgen -source=pulse.go -destination=../../../internal/mock/cluster/pulse/pulse.go -package=mock_pulse
+//go:generate mockgen -source=pulse.go -destination=test/pulse.go -package=test_pulse
 
 // Package pulse provides ev cluster-management service based on pubsub.
 package pulse
@@ -13,8 +13,8 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	b58 "github.com/mr-tron/base58/base58"
 
-	api "github.com/wetware/ww/api/cluster"
-	"github.com/wetware/ww/cluster/routing"
+	api "github.com/wetware/pkg/api/cluster"
+	"github.com/wetware/pkg/cluster/routing"
 )
 
 type RoutingTable interface {

@@ -1,8 +1,8 @@
 # Wetware
 
-[![Godoc Reference](https://img.shields.io/badge/godoc-reference-blue.svg?style=flat-square)](https://godoc.org/github.com/wetware/ww)
-[![Go Report Card](https://goreportcard.com/badge/github.com/wetware/ww?style=flat-square)](https://goreportcard.com/report/github.com/wetware/ww)
-[![tests](https://github.com/wetware/ww/workflows/Go/badge.svg)](https://github.com/wetware/ww/actions/workflows/go.yml)
+[![Godoc Reference](https://img.shields.io/badge/godoc-reference-blue.svg?style=flat-square)](https://godoc.org/github.com/wetware/pkg)
+[![Go Report Card](https://goreportcard.com/badge/github.com/wetware/pkg?style=flat-square)](https://goreportcard.com/report/github.com/wetware/pkg)
+[![tests](https://github.com/wetware/pkg/workflows/Go/badge.svg)](https://github.com/wetware/pkg/actions/workflows/go.yml)
 [![Matrix](https://img.shields.io/matrix/wetware:matrix.org?color=lightpink&label=support%20chat&logo=matrix&style=flat-square)](https://matrix.to/#/#wetware:matrix.org)
 [![white paper](https://img.shields.io/badge/white%20paper-reading%20time%20--%207%20min-9cf?style=flat-square)](https://hackmd.io/@fCsHyW7yR3C5lGQFbh9KdQ/SJzOIt9k3)
 
@@ -35,6 +35,6 @@ Is your organization using Wetware?  Open a PR to add it to the list!
 
 ## Contributors
 
-<a href="https://github.com/wetware/ww/graphs/contributors">
+<a href="https://github.com/wetware/pkg/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=wetware/ww" />
 </a>

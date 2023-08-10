@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/wetware/ww/cluster"
+	"github.com/wetware/pkg/cluster"
 )
 
 func TestClock(t *testing.T) {

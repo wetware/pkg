@@ -3,7 +3,7 @@ using Go = import "/go.capnp";
 @0xf9d8a0180405d9ed;
 
 $Go.package("pubsub");
-$Go.import("github.com/wetware/ww/api/pubsub");
+$Go.import("github.com/wetware/pkg/api/pubsub");
 
 
 interface Topic {

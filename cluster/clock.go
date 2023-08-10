@@ -1,4 +1,4 @@
-//go:generate mockgen -source=clock.go -destination=../internal/mock/cluster/clock.go -package=mock_cluster
+//go:generate mockgen -source=clock.go -destination=test/clock.go -package=test_cluster
 
 package cluster
 

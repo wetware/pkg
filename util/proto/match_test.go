@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/libp2p/go-libp2p/core/protocol"
-	"github.com/wetware/ww/util/proto"
+	"github.com/wetware/pkg/util/proto"
 
 	"github.com/stretchr/testify/assert"
 )

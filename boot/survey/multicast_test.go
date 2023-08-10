@@ -6,7 +6,7 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/assert"
 
-	_ "github.com/wetware/ww/boot/survey"
+	_ "github.com/wetware/pkg/boot/survey"
 )
 
 func TestMultiaddr(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 	"capnproto.org/go/capnp/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/wetware/ww/cluster/pulse"
+	"github.com/wetware/pkg/cluster/pulse"
 )
 
 func TestHeartbeat_MarshalUnmarshal(t *testing.T) {

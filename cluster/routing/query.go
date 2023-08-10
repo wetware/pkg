@@ -2,7 +2,7 @@ package routing
 
 import (
 	"github.com/hashicorp/go-memdb"
-	"github.com/wetware/ww/util/stm"
+	"github.com/wetware/pkg/util/stm"
 )
 
 type query struct {

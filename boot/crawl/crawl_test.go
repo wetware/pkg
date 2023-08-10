@@ -23,9 +23,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/wetware/ww/boot/crawl"
-	"github.com/wetware/ww/boot/socket"
-	mock_net "github.com/wetware/ww/internal/mock/net"
+	"github.com/wetware/pkg/boot/crawl"
+	"github.com/wetware/pkg/boot/socket"
+	mock_net "github.com/wetware/pkg/test/net"
 )
 
 const (

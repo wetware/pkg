@@ -7,7 +7,7 @@ import (
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	"github.com/libp2p/go-libp2p/core/host"
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
-	"github.com/wetware/ww/util/proto"
+	"github.com/wetware/pkg/util/proto"
 )
 
 func (cfg Config) withRouting(ctx context.Context, h host.Host) (*routedhost.RoutedHost, *dual.DHT, error) {

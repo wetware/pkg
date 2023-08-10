@@ -1,6 +1,6 @@
 package query
 
-import "github.com/wetware/ww/cluster/routing"
+import "github.com/wetware/pkg/cluster/routing"
 
 type Query struct {
 	routing.Snapshot

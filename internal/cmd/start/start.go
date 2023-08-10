@@ -9,7 +9,7 @@ import (
 
 	"github.com/lthibault/log"
 	"github.com/urfave/cli/v2"
-	"github.com/wetware/ww/server"
+	"github.com/wetware/pkg/server"
 )
 
 var meta map[string]string

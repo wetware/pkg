@@ -5,7 +5,7 @@ import (
 
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/assert"
-	"github.com/wetware/ww/boot"
+	"github.com/wetware/pkg/boot"
 )
 
 func TestIsCIDR(t *testing.T) {

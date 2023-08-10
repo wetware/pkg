@@ -8,9 +8,9 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/require"
 
-	"github.com/wetware/ww/cluster/query"
-	"github.com/wetware/ww/cluster/routing"
-	mock_routing "github.com/wetware/ww/internal/mock/cluster/routing"
+	"github.com/wetware/pkg/cluster/query"
+	"github.com/wetware/pkg/cluster/routing"
+	test_routing "github.com/wetware/pkg/cluster/routing/test"
 )
 
 func TestFirst(t *testing.T) {
@@ -24,11 +24,11 @@ func TestFirst(t *testing.T) {
 		{id: peer.ID("foobar")},
 	}
 
-	iter := mock_routing.NewMockIterator(ctrl)
+	iter := test_routing.NewMockIterator(ctrl)
 	iter.EXPECT().Next().Return(recs[0]).Times(1)
 	iter.EXPECT().Next().Return(recs[1]).Times(1) // <- skipped
 
-	snap := mock_routing.NewMockSnapshot(ctrl)
+	snap := test_routing.NewMockSnapshot(ctrl)
 	snap.EXPECT().
 		Get(gomock.Any()). // <- what we're actually testing
 		Return(iter, nil).
@@ -77,14 +77,14 @@ func TestWhere(t *testing.T) {
 		{id: peer.ID("quxbazbar")},
 	}
 
-	iter := mock_routing.NewMockIterator(ctrl)
+	iter := test_routing.NewMockIterator(ctrl)
 	iter.EXPECT().Next().Return(recs[0]).Times(1) // <- skipped
 	iter.EXPECT().Next().Return(recs[1]).Times(1)
 	iter.EXPECT().Next().Return(recs[2]).Times(1) // <-skipped
 	iter.EXPECT().Next().Return(recs[3]).Times(1)
 	iter.EXPECT().Next().Return(nil).Times(1) // <- exhausted
 
-	snap := mock_routing.NewMockSnapshot(ctrl)
+	snap := test_routing.NewMockSnapshot(ctrl)
 	snap.EXPECT().
 		Get(gomock.Any()). // <- what we're actually testing
 		Return(iter, nil).

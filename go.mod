@@ -1,4 +1,4 @@
-module github.com/wetware/ww
+module github.com/wetware/pkg
 
 go 1.20
 

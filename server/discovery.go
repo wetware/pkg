@@ -5,8 +5,8 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/discovery"
 	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/wetware/ww/boot"
-	"github.com/wetware/ww/boot/socket"
+	"github.com/wetware/pkg/boot"
+	"github.com/wetware/pkg/boot/socket"
 )
 
 func (cfg Config) newBootstrapper(h host.Host) (*bootService, error) {

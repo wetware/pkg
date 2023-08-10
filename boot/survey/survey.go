@@ -14,7 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/libp2p/go-libp2p/core/record"
 
-	"github.com/wetware/ww/boot/socket"
+	"github.com/wetware/pkg/boot/socket"
 )
 
 // Surveyor discovers peers through a surveyor/respondent multicast

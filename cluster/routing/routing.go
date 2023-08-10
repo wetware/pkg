@@ -1,4 +1,4 @@
-//go:generate mockgen -source=routing.go -destination=../../../internal/mock/cluster/routing/routing.go -package=mock_routing
+//go:generate mockgen -source=routing.go -destination=test/routing.go -package=test_routing
 
 package routing
 

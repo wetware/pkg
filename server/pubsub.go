@@ -15,8 +15,8 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/discovery/routing"
 	"github.com/lthibault/log"
 
-	"github.com/wetware/ww/boot"
-	"github.com/wetware/ww/util/proto"
+	"github.com/wetware/pkg/boot"
+	"github.com/wetware/pkg/util/proto"
 )
 
 func (cfg Config) newPubSub(ctx context.Context, pc pubSubConfig) (*pubsub.PubSub, error) {

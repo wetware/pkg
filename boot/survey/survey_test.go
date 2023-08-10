@@ -15,9 +15,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/wetware/ww/boot/socket"
-	"github.com/wetware/ww/boot/survey"
-	mock_net "github.com/wetware/ww/internal/mock/net"
+	"github.com/wetware/pkg/boot/socket"
+	"github.com/wetware/pkg/boot/survey"
+	mock_net "github.com/wetware/pkg/test/net"
 	"go.uber.org/multierr"
 )
 

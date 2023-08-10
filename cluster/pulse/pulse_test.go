@@ -13,8 +13,8 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/wetware/ww/cluster/pulse"
-	mock_pulse "github.com/wetware/ww/internal/mock/cluster/pulse"
+	"github.com/wetware/pkg/cluster/pulse"
+	test_pulse "github.com/wetware/pkg/cluster/pulse/test"
 )
 
 var reader = rand.New(rand.NewSource(42))
@@ -40,7 +40,7 @@ func TestValidator(t *testing.T) {
 			Data:  b,
 		}}
 
-		rt := mock_pulse.NewMockRoutingTable(ctrl)
+		rt := test_pulse.NewMockRoutingTable(ctrl)
 		rt.EXPECT().
 			Upsert(gomock.Any()).
 			Return(true).
@@ -57,7 +57,7 @@ func TestValidator(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		rt := mock_pulse.NewMockRoutingTable(ctrl)
+		rt := test_pulse.NewMockRoutingTable(ctrl)
 		validate := pulse.NewValidator(rt)
 
 		msg := &pubsub.Message{Message: &pb.Message{}}
@@ -88,7 +88,7 @@ func TestValidator(t *testing.T) {
 			Data:  b,
 		}}
 
-		rt := mock_pulse.NewMockRoutingTable(ctrl)
+		rt := test_pulse.NewMockRoutingTable(ctrl)
 		rt.EXPECT().
 			Upsert(gomock.Any()).
 			Return(true).

@@ -6,7 +6,7 @@ import (
 
 	"github.com/lthibault/log"
 	"github.com/sirupsen/logrus"
-	"github.com/wetware/ww"
+	"github.com/wetware/pkg"
 )
 
 type Env interface {

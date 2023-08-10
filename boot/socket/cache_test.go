@@ -9,8 +9,8 @@ import (
 	inproc "github.com/lthibault/go-libp2p-inproc-transport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/wetware/ww/api/boot"
-	"github.com/wetware/ww/boot/socket"
+	"github.com/wetware/pkg/api/boot"
+	"github.com/wetware/pkg/boot/socket"
 )
 
 func TestNewCache(t *testing.T) {

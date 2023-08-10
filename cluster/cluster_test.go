@@ -9,8 +9,8 @@ import (
 	"github.com/golang/mock/gomock"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	logtest "github.com/lthibault/log/test"
-	"github.com/wetware/ww/cluster"
-	mock_cluster "github.com/wetware/ww/internal/mock/cluster"
+	"github.com/wetware/pkg/cluster"
+	test_cluster "github.com/wetware/pkg/cluster/test"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -27,12 +27,12 @@ func TestRouter(t *testing.T) {
 		Return(logger).
 		Times(1)
 
-	table := mock_cluster.NewMockRoutingTable(ctrl)
+	table := test_cluster.NewMockRoutingTable(ctrl)
 	table.EXPECT().
 		Advance(gomock.AssignableToTypeOf(time.Time{})).
 		AnyTimes()
 
-	topic := mock_cluster.NewMockTopic(ctrl)
+	topic := test_cluster.NewMockTopic(ctrl)
 	topic.EXPECT().
 		String().
 		Return("casm").
