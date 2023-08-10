@@ -21,20 +21,21 @@ const (
 )
 
 // BootstrapClient bootstraps and resolves the Capnp client attached
-// to the other end of the pre-openned TCP connection
-func BootstrapClient(ctx context.Context) (capnp.Client, io.Closer, error) {
+// to the other end of the pre-openned TCP connection.
+// capnp.Client will be capnp.ErrorClient if an error ocurred.
+func BootstrapClient(ctx context.Context) (capnp.Client, io.Closer) {
 	closer := closer{
 		closers: make([]io.Closer, 0),
 	}
 
 	l, err := preopenedListener(closer)
 	if err != nil {
-		return capnp.Client{}, closer, err
+		return capnp.ErrorClient(err), closer
 	}
 
 	tcpConn, err := l.Accept()
 	if err != nil {
-		return capnp.Client{}, closer, err
+		return capnp.ErrorClient(err), closer
 	}
 
 	closer.add(tcpConn)
@@ -47,8 +48,11 @@ func BootstrapClient(ctx context.Context) (capnp.Client, io.Closer, error) {
 	client := conn.Bootstrap(ctx)
 
 	err = client.Resolve(ctx)
+	if err != nil {
+		return capnp.ErrorClient(err), closer
+	}
 
-	return client, closer, err
+	return client, closer
 }
 
 // closer contains a slice of Closers that will be closed when this type itself is closed

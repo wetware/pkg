@@ -13,11 +13,8 @@ import (
 
 func main() {
 	ctx := context.Background()
-	client, closer, err := ww.BootstrapClient(ctx)
+	client, closer := ww.BootstrapClient(ctx)
 	defer closer.Close()
-	if err != nil {
-		panic(err)
-	}
 
 	host := host.Host(client)
 	defer host.Release()
