@@ -59,6 +59,7 @@ func Command(log Logger) *cli.Command {
 func run(log Logger) cli.ActionFunc {
 	return func(c *cli.Context) error {
 		wetware := ww.Ww{
+			Log:    log,
 			NS:     c.String("ns"),
 			Stdin:  c.App.Reader,
 			Stdout: c.App.Writer,

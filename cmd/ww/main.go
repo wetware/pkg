@@ -8,13 +8,13 @@ package main
 import (
 	"context"
 	_ "embed"
-	"fmt"
 	"os"
 	"os/signal"
 	"path"
 	"runtime"
 	"syscall"
 
+	"github.com/tetratelabs/wazero/sys"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/exp/slog"
 
@@ -92,10 +92,26 @@ func main() {
 		},
 	}
 
-	if err := app.RunContext(ctx, os.Args); err != nil {
-		fmt.Println(err)
-		os.Exit(1) // application error
+	die(app.RunContext(ctx, os.Args))
+}
+
+func die(err error) {
+	if e, ok := err.(*sys.ExitError); ok {
+		switch e.ExitCode() {
+		case sys.ExitCodeContextCanceled:
+			err = context.Canceled
+		case sys.ExitCodeDeadlineExceeded:
+			err = context.DeadlineExceeded
+		default:
+			os.Exit(int(e.ExitCode()))
+		}
 	}
+
+	if err != nil {
+		os.Exit(1)
+	}
+
+	os.Exit(0)
 }
 
 func bootstrapAddr() string {
