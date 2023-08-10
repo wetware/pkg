@@ -64,6 +64,7 @@ func run(log Logger) cli.ActionFunc {
 			Stdin:  c.App.Reader,
 			Stdout: c.App.Writer,
 			Stderr: c.App.ErrWriter,
+			Client: capnp.ErrorClient(errors.New("NOT IMPLEMENTED")),
 		}
 
 		rom, err := bytecode(c)
@@ -76,7 +77,6 @@ func run(log Logger) cli.ActionFunc {
 			return dialAndExec(c, log, wetware, rom)
 		}
 
-		wetware.Client = capnp.ErrorClient(errors.New("NOT IMPLEMENTED"))
 		// run without connecting to a cluster
 		return wetware.Exec(c.Context, rom)
 	}
