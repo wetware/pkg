@@ -16,6 +16,7 @@ import (
 	"syscall"
 
 	"github.com/urfave/cli/v2"
+	"golang.org/x/exp/slog"
 
 	ww "github.com/wetware/pkg"
 	"github.com/wetware/pkg/internal/ls"
@@ -67,6 +68,8 @@ func main() {
 		syscall.SIGKILL)
 	defer cancel()
 
+	log := slog.Default()
+
 	app := &cli.App{
 		Name:                 "wetware",
 		Version:              ww.Version,
@@ -76,10 +79,16 @@ func main() {
 		Copyright:            "2020 The Wetware Project",
 		EnableBashCompletion: true,
 		Flags:                flags,
+		Before: func(c *cli.Context) error {
+			log = log.With(
+				"version", ww.Version,
+				"ns", c.String("ns"))
+			return nil
+		},
 		Commands: []*cli.Command{
-			ls.Command(),
-			run.Command(),
-			start.Command(),
+			ls.Command(log),
+			run.Command(log),
+			start.Command(log),
 		},
 	}
 

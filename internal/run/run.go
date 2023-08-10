@@ -16,6 +16,23 @@ import (
 	"golang.org/x/exp/slog"
 )
 
+// Logger is used for logging by the RPC system. Each method logs
+// messages at a different level, but otherwise has the same semantics:
+//
+//   - Message is a human-readable description of the log event.
+//   - Args is a sequenece of key, value pairs, where the keys must be strings
+//     and the values may be any type.
+//   - The methods may not block for long periods of time.
+//
+// This interface is designed such that it is satisfied by *slog.Logger.
+type Logger interface {
+	Debug(message string, args ...any)
+	Info(message string, args ...any)
+	Warn(message string, args ...any)
+	Error(message string, args ...any)
+	With(args ...any) *slog.Logger
+}
+
 var flags = []cli.Flag{
 	&cli.BoolFlag{
 		Name:    "join",
@@ -30,16 +47,16 @@ var flags = []cli.Flag{
 	},
 }
 
-func Command() *cli.Command {
+func Command(log Logger) *cli.Command {
 	return &cli.Command{
 		Name:   "run",
 		Usage:  "execute a local webassembly process",
 		Flags:  flags,
-		Action: run(),
+		Action: run(log),
 	}
 }
 
-func run() cli.ActionFunc {
+func run(log Logger) cli.ActionFunc {
 	return func(c *cli.Context) error {
 		wetware := ww.Ww{
 			NS:     c.String("ns"),
@@ -55,7 +72,7 @@ func run() cli.ActionFunc {
 
 		// dial into a cluster?
 		if c.Bool("dial") {
-			return dialAndExec(c, wetware, rom)
+			return dialAndExec(c, log, wetware, rom)
 		}
 
 		wetware.Client = capnp.ErrorClient(errors.New("NOT IMPLEMENTED"))
@@ -64,7 +81,7 @@ func run() cli.ActionFunc {
 	}
 }
 
-func dialAndExec(c *cli.Context, wetware ww.Ww, rom ww.ROM) error {
+func dialAndExec(c *cli.Context, log Logger, wetware ww.Ww, rom ww.ROM) error {
 	h, err := clientHost(c)
 	if err != nil {
 		return err
@@ -72,10 +89,12 @@ func dialAndExec(c *cli.Context, wetware ww.Ww, rom ww.ROM) error {
 	defer h.Close()
 
 	conn, err := client.Dialer{
-		Logger:   slog.Default(),
 		NS:       c.String("ns"),
 		Peers:    c.StringSlice("peer"),
 		Discover: c.String("discover"),
+		Logger: log.With(
+			"peers", c.StringSlice("peer"),
+			"discover", c.String("discover")),
 	}.Dial(c.Context, h)
 	if err != nil {
 		return err
