@@ -62,12 +62,6 @@ func (id ID) MarshalText() ([]byte, error) {
 	return b, nil
 }
 
-func (id ID) Loggable() map[string]any {
-	return map[string]any{
-		"server": id,
-	}
-}
-
 // Record is an entry in the routing table.
 type Record interface {
 	Server() ID

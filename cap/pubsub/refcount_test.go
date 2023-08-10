@@ -10,10 +10,11 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
 	inproc "github.com/lthibault/go-libp2p-inproc-transport"
-	logtest "github.com/lthibault/log/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	api "github.com/wetware/pkg/api/pubsub"
+	test_pubsub "github.com/wetware/pkg/cap/pubsub/test"
+	"golang.org/x/exp/slog"
 )
 
 func TestTopicManager(t *testing.T) {
@@ -37,16 +38,10 @@ func TestTopicManager(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		logger := logtest.NewMockLogger(ctrl)
-		logger.EXPECT().
-			WithField("topic", name).
-			Return(logger).
-			Times(1)
-
 		joiner, release := newGossipSub(ctx)
 		defer release()
 
-		topic, err := manager.GetOrCreate(ctx, logger, joiner, name)
+		topic, err := manager.GetOrCreate(ctx, slog.Default(), joiner, name)
 		require.NoError(t, err, "should create new topic")
 		defer topic.Release()
 
@@ -67,18 +62,12 @@ func TestTopicManager(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		logger := logtest.NewMockLogger(ctrl)
-		logger.EXPECT().
-			WithField("topic", name).
-			Return(logger).
-			Times(1) // called on join
-
 		joiner, release := newGossipSub(ctx)
 		defer release()
 
 		var ts []api.Topic
 		for i := 0; i < n; i++ {
-			topic, err := manager.GetOrCreate(ctx, logger, joiner, name)
+			topic, err := manager.GetOrCreate(ctx, slog.Default(), joiner, name)
 			require.NoError(t, err, "should get existing topic")
 			defer topic.Release()
 			ts = append(ts, topic)
@@ -107,11 +96,11 @@ func TestTopicManager(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		logger := logtest.NewMockLogger(ctrl)
-		logger.EXPECT().
-			WithField("topic", name).
-			Return(logger).
-			Times(1)
+		logger := test_pubsub.NewMockLogger(ctrl)
+		// logger.EXPECT().
+		// 	WithField("topic", name).
+		// 	Return(logger).
+		// 	Times(1)
 
 		joiner, release := newGossipSub(ctx)
 		defer release()

@@ -13,7 +13,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/libp2p/go-libp2p/p2p/discovery/routing"
-	"github.com/lthibault/log"
 
 	"github.com/wetware/pkg/boot"
 	"github.com/wetware/pkg/util/proto"
@@ -90,7 +89,7 @@ func (cfg Config) features() func(pubsub.GossipSubFeature, protocol.ID) bool {
 }
 
 type pubSubConfig struct {
-	Logger    log.Logger
+	Logger    Logger
 	NS        string
 	Host      host.Host
 	Discovery discovery.Discovery
@@ -120,7 +119,7 @@ func (cfg *pubSubConfig) NewDiscovery(ctx context.Context) *boot.Namespace {
 }
 
 type loggingDiscovery struct {
-	Logger log.Logger
+	Logger Logger
 	discovery.Discovery
 }
 

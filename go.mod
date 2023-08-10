@@ -12,12 +12,10 @@ require (
 	github.com/libp2p/go-libp2p v0.29.0
 	github.com/libp2p/go-libp2p-kad-dht v0.24.2
 	github.com/libp2p/go-libp2p-pubsub v0.9.3
-	github.com/lthibault/log v1.2.3
 	github.com/miekg/dns v1.1.55 // indirect
 	github.com/multiformats/go-multiaddr v0.10.1
 	github.com/prometheus/common v0.42.0 // indirect
 	github.com/prometheus/procfs v0.9.0 // indirect
-	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/urfave/cli/v2 v2.25.7
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/fx v1.20.0 // indirect
@@ -46,6 +44,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/tetratelabs/wazero v1.3.1
 	go.uber.org/multierr v1.11.0
+	golang.org/x/exp v0.0.0-20230713183714-613f0c0eb8a1
 	golang.org/x/sync v0.3.0
 	golang.org/x/time v0.3.0
 	lukechampine.com/blake3 v1.2.1
@@ -139,7 +138,6 @@ require (
 	go.opentelemetry.io/otel/metric v1.16.0 // indirect
 	go.opentelemetry.io/otel/trace v1.16.0 // indirect
 	go.uber.org/dig v1.17.0 // indirect
-	golang.org/x/exp v0.0.0-20230713183714-613f0c0eb8a1 // indirect
 	golang.org/x/mod v0.12.0 // indirect
 	golang.org/x/text v0.11.0 // indirect
 	golang.org/x/tools v0.11.0 // indirect

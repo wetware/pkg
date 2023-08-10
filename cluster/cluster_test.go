@@ -8,9 +8,9 @@ import (
 
 	"github.com/golang/mock/gomock"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	logtest "github.com/lthibault/log/test"
 	"github.com/wetware/pkg/cluster"
 	test_cluster "github.com/wetware/pkg/cluster/test"
+	"golang.org/x/exp/slog"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -21,11 +21,11 @@ func TestRouter(t *testing.T) {
 
 	var relayCanceled atomic.Bool
 
-	logger := logtest.NewMockLogger(ctrl)
-	logger.EXPECT().
-		With(gomock.Any()).
-		Return(logger).
-		Times(1)
+	// logger := logtest.NewMockLogger(ctrl)
+	// logger.EXPECT().
+	// 	With(gomock.Any()).
+	// 	Return(logger).
+	// 	Times(1)
 
 	table := test_cluster.NewMockRoutingTable(ctrl)
 	table.EXPECT().
@@ -55,7 +55,7 @@ func TestRouter(t *testing.T) {
 		AnyTimes()
 
 	router := cluster.Router{
-		Log:          logger,
+		Log:          slog.Default(),
 		Topic:        topic,
 		RoutingTable: table,
 	}

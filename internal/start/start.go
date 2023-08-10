@@ -7,9 +7,9 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/lthibault/log"
 	"github.com/urfave/cli/v2"
 	"github.com/wetware/pkg/server"
+	"golang.org/x/exp/slog"
 )
 
 var meta map[string]string
@@ -44,7 +44,7 @@ func Command() *cli.Command {
 func start() cli.ActionFunc {
 	return func(c *cli.Context) error {
 		config := server.Config{
-			Logger:   log.New(),
+			Logger:   slog.Default(),
 			NS:       c.String("ns"),
 			Peers:    c.StringSlice("peer"),
 			Discover: c.String("discover"),

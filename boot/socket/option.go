@@ -3,16 +3,32 @@ package socket
 import (
 	"net"
 
-	"github.com/lthibault/log"
+	"golang.org/x/exp/slog"
 )
+
+// Logger is used for logging by the RPC system. Each method logs
+// messages at a different level, but otherwise has the same semantics:
+//
+//   - Message is a human-readable description of the log event.
+//   - Args is a sequenece of key, value pairs, where the keys must be strings
+//     and the values may be any type.
+//   - The methods may not block for long periods of time.
+//
+// This interface is designed such that it is satisfied by *slog.Logger.
+type Logger interface {
+	Debug(message string, args ...any)
+	Info(message string, args ...any)
+	Warn(message string, args ...any)
+	Error(message string, args ...any)
+}
 
 type Option func(*Socket)
 
 // WithLogger sets the logger instance.
 // If l == nil, a default logger is used.
-func WithLogger(l log.Logger) Option {
+func WithLogger(l Logger) Option {
 	if l == nil {
-		l = log.New()
+		l = slog.Default()
 	}
 
 	return func(s *Socket) {
@@ -39,21 +55,26 @@ func WithErrHandler(h func(*Socket, error)) Option {
 	if h == nil {
 		h = func(sock *Socket, err error) {
 			select {
-			case <-sock.Done(): // if sock is closed, log as debug
-				sock.Log().Debug(err)
+			// socket already closed?
+			case <-sock.Done():
+				sock.Log().Debug("got error from after closing socket",
+					"error", err.Error())
 				return
 			default:
 			}
 
 			switch e := err.(type) {
 			case net.Error:
-				sock.Log().Error(err)
+				sock.Log().Error(err.Error(),
+					"timeout", e.Timeout())
 
 			case ProtocolError:
-				sock.Log().With(e).Debug(e.Message)
+				sock.Log().Debug(e.Message,
+					"cause", e.Cause)
 
 			default:
-				sock.Log().WithError(err).Error("socket error")
+				sock.Log().Error("socket error",
+					"error", e.Error())
 			}
 		}
 	}

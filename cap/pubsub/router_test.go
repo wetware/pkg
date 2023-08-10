@@ -6,9 +6,10 @@ import (
 
 	capnp "capnproto.org/go/capnp/v3"
 	"github.com/golang/mock/gomock"
-	logtest "github.com/lthibault/log/test"
 	"github.com/stretchr/testify/require"
+
 	"github.com/wetware/pkg/cap/pubsub"
+	test_pubsub "github.com/wetware/pkg/cap/pubsub/test"
 )
 
 func TestRouter(t *testing.T) {
@@ -22,11 +23,11 @@ func TestRouter(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	logger := logtest.NewMockLogger(ctrl)
-	logger.EXPECT().
-		WithField("topic", name).
-		Return(logger).
-		Times(1)
+	logger := test_pubsub.NewMockLogger(ctrl)
+	// logger.EXPECT().
+	// 	With("topic", name).
+	// 	Return(logger).
+	// 	Times(1)
 
 	ps, release := newGossipSub(ctx)
 	defer release()

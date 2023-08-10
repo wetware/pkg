@@ -11,15 +11,31 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
 	tcp "github.com/libp2p/go-libp2p/p2p/transport/tcp"
-	"github.com/lthibault/log"
 	"github.com/wetware/pkg/cap/anchor"
 	"github.com/wetware/pkg/cap/host"
 	"github.com/wetware/pkg/cap/pubsub"
 	"github.com/wetware/pkg/util/proto"
+	"golang.org/x/exp/slog"
 )
 
+// Logger is used for logging by the RPC system. Each method logs
+// messages at a different level, but otherwise has the same semantics:
+//
+//   - Message is a human-readable description of the log event.
+//   - Args is a sequenece of key, value pairs, where the keys must be strings
+//     and the values may be any type.
+//   - The methods may not block for long periods of time.
+//
+// This interface is designed such that it is satisfied by *slog.Logger.
+type Logger interface {
+	Debug(message string, args ...any)
+	Info(message string, args ...any)
+	Warn(message string, args ...any)
+	Error(message string, args ...any)
+}
+
 type Config struct {
-	Logger   log.Logger
+	Logger   Logger
 	NS       string
 	Peers    []string // static bootstrap peers
 	Discover string   // bootstrap service multiadr
@@ -42,9 +58,9 @@ func (cfg Config) ListenAndServe(ctx context.Context, addrs ...string) error {
 
 func (cfg Config) Serve(ctx context.Context, h local_host.Host) error {
 	if cfg.Logger == nil {
-		cfg.Logger = log.New()
+		cfg.Logger = slog.Default()
 	}
-	cfg.Logger = cfg.Logger.WithField("ns", cfg.NS)
+	// cfg.Logger = cfg.Logger.WithField("ns", cfg.NS)
 
 	d, err := cfg.newBootstrapper(h)
 	if err != nil {

@@ -10,14 +10,30 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/lthibault/log"
 	"github.com/wetware/pkg/util/proto"
+	"golang.org/x/exp/slog"
 )
 
 var ErrNoPeers = errors.New("no peers")
 
+// Logger is used for logging by the RPC system. Each method logs
+// messages at a different level, but otherwise has the same semantics:
+//
+//   - Message is a human-readable description of the log event.
+//   - Args is a sequenece of key, value pairs, where the keys must be strings
+//     and the values may be any type.
+//   - The methods may not block for long periods of time.
+//
+// This interface is designed such that it is satisfied by *slog.Logger.
+type Logger interface {
+	Debug(message string, args ...any)
+	Info(message string, args ...any)
+	Warn(message string, args ...any)
+	Error(message string, args ...any)
+}
+
 type Dialer struct {
-	Logger   log.Logger
+	Logger   Logger
 	NS       string
 	Peers    []string // static bootstrap peers
 	Discover string   // bootstrap service multiadr
@@ -25,9 +41,8 @@ type Dialer struct {
 
 func (d Dialer) Dial(ctx context.Context, h host.Host) (*rpc.Conn, error) {
 	if d.Logger == nil {
-		d.Logger = log.New()
+		d.Logger = slog.Default()
 	}
-	d.Logger = d.Logger.WithField("ns", d.NS)
 
 	peer, err := d.connect(ctx, h)
 	if err != nil {

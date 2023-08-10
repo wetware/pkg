@@ -14,9 +14,9 @@ import (
 	"capnproto.org/go/capnp/v3"
 	"github.com/jpillora/backoff"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"golang.org/x/exp/slog"
 
 	"github.com/lthibault/jitterbug/v2"
-	"github.com/lthibault/log"
 
 	"github.com/wetware/pkg/cap/view"
 	"github.com/wetware/pkg/cluster/pulse"
@@ -24,6 +24,22 @@ import (
 )
 
 var ErrClosing = errors.New("closing")
+
+// Logger is used for logging by the RPC system. Each method logs
+// messages at a different level, but otherwise has the same semantics:
+//
+//   - Message is a human-readable description of the log event.
+//   - Args is a sequenece of key, value pairs, where the keys must be strings
+//     and the values may be any type.
+//   - The methods may not block for long periods of time.
+//
+// This interface is designed such that it is satisfied by *slog.Logger.
+type Logger interface {
+	Debug(message string, args ...any)
+	Info(message string, args ...any)
+	Warn(message string, args ...any)
+	Error(message string, args ...any)
+}
 
 type Topic interface {
 	String() string
@@ -45,7 +61,7 @@ type RoutingTable interface {
 type Router struct {
 	Topic Topic
 
-	Log          log.Logger
+	Log          Logger
 	TTL          time.Duration
 	Meta         pulse.Preparer
 	Clock        Clock
@@ -71,14 +87,6 @@ func (r *Router) String() string {
 func (r *Router) ID() (id routing.ID) {
 	r.setup()
 	return routing.ID(r.id)
-}
-
-func (r *Router) Loggable() map[string]any {
-	return map[string]any{
-		"server": r.ID(),
-		"ttl":    r.TTL,
-		"ns":     r.String(),
-	}
 }
 
 func (r *Router) View() view.View {
@@ -127,7 +135,7 @@ func (r *Router) relay() (err error) {
 		if !r.relaying.Swap(true) {
 			var cancel pubsub.RelayCancelFunc
 			if cancel, err = r.Topic.Relay(); err == nil {
-				r.Log = r.Log.With(r)
+				// r.Log = r.Log.With(r)
 				go r.advance(cancel)
 				go r.heartbeat()
 			}
@@ -147,7 +155,7 @@ func (r *Router) setup() {
 
 	if !r.init.Swap(true) {
 		if r.Log == nil {
-			r.Log = log.New()
+			r.Log = slog.Default()
 		}
 
 		if r.RoutingTable == nil {
@@ -208,12 +216,12 @@ func (r *Router) advance(cancel pubsub.RelayCancelFunc) {
 }
 
 func (r *Router) heartbeat() {
-	backoff := &loggableBackoff{backoff.Backoff{
+	backoff := backoff.Backoff{
 		Factor: 2,
 		Min:    r.TTL / 2,
 		Max:    time.Minute * 15,
 		Jitter: true,
-	}}
+	}
 
 	hb := pulse.NewHeartbeat()
 	hb.SetTTL(r.TTL)
@@ -232,8 +240,8 @@ func (r *Router) heartbeat() {
 		}
 
 		r.Log.
-			With(backoff).
-			WithError(err).
+			// With(backoff).
+			// WithError(err).
 			Warn("failed to announce")
 
 		// back off...
@@ -257,16 +265,6 @@ func (r *Router) emit(ctx context.Context, hb pulse.Heartbeat, opt []pubsub.PubO
 	}
 
 	return r.Topic.Publish(ctx, msg, opt...)
-}
-
-type loggableBackoff struct{ backoff.Backoff }
-
-func (b *loggableBackoff) Loggable() map[string]interface{} {
-	return map[string]interface{}{
-		"attempt": int(b.Attempt()),
-		"dur":     b.ForAttempt(b.Attempt()),
-		"max_dur": b.Max,
-	}
 }
 
 type nopPreparer struct{}

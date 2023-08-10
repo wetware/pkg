@@ -1,3 +1,5 @@
+//go:generate mockgen -source=topic.go -destination=test/topic.go -package=test_pubsub
+
 package pubsub
 
 import (
@@ -6,11 +8,26 @@ import (
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/flowcontrol"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/lthibault/log"
 
 	api "github.com/wetware/pkg/api/pubsub"
 	"github.com/wetware/pkg/util/casm"
 )
+
+// Logger is used for logging by the RPC system. Each method logs
+// messages at a different level, but otherwise has the same semantics:
+//
+//   - Message is a human-readable description of the log event.
+//   - Args is a sequenece of key, value pairs, where the keys must be strings
+//     and the values may be any type.
+//   - The methods may not block for long periods of time.
+//
+// This interface is designed such that it is satisfied by *slog.Logger.
+type Logger interface {
+	Debug(message string, args ...any)
+	Info(message string, args ...any)
+	Warn(message string, args ...any)
+	Error(message string, args ...any)
+}
 
 // Topic is the handle for a pubsub topic.  It is used to publish to
 // the topic, and to manage subscriptions.
@@ -84,7 +101,7 @@ func message(b []byte) func(api.Topic_publish_Params) error {
 */
 
 type topicServer struct {
-	log   log.Logger
+	log   Logger
 	topic *pubsub.Topic
 	leave func(*pubsub.Topic) error
 }
@@ -95,7 +112,7 @@ func (t topicServer) Shutdown() {
 	}
 }
 
-func (t topicServer) Name(_ context.Context, call MethodName) error {
+func (t topicServer) Name(_ context.Context, call api.Topic_name) error {
 	res, err := call.AllocResults()
 	if err == nil {
 		err = res.SetName(t.topic.String())
@@ -103,7 +120,7 @@ func (t topicServer) Name(_ context.Context, call MethodName) error {
 	return err
 }
 
-func (t topicServer) Publish(ctx context.Context, call MethodPublish) error {
+func (t topicServer) Publish(ctx context.Context, call api.Topic_publish) error {
 	b, err := call.Args().Msg()
 	if err != nil {
 		return err
@@ -122,7 +139,7 @@ func (t topicServer) Publish(ctx context.Context, call MethodPublish) error {
 	return t.topic.Publish(ctx, msg)
 }
 
-func (t topicServer) Subscribe(ctx context.Context, call MethodSubscribe) error {
+func (t topicServer) Subscribe(ctx context.Context, call api.Topic_subscribe) error {
 	// Subscribe can't be called with a released client, so there's no need to
 	// check the context before subscribing to the libp2p topic. We will catch
 	// context cancellations in the stream handler.
@@ -140,7 +157,7 @@ func (t topicServer) Subscribe(ctx context.Context, call MethodSubscribe) error 
 	defer t.log.Debug("unregistered subscription handler")
 
 	// forward messages to the callback channel
-	for call.Go(); ctx.Err() == nil; t.log.Trace("message received") {
+	for call.Go(); ctx.Err() == nil; t.log.Debug("message received") {
 		if err = consumer.Consume(ctx, bind(ctx, sub)); err != nil {
 			break
 		}
@@ -149,7 +166,7 @@ func (t topicServer) Subscribe(ctx context.Context, call MethodSubscribe) error 
 	return consumer.WaitStreaming()
 }
 
-func (t topicServer) subscribe(call MethodSubscribe) (*pubsub.Subscription, error) {
+func (t topicServer) subscribe(call api.Topic_subscribe) (*pubsub.Subscription, error) {
 	bufsize := int(call.Args().Buf())
 	return t.topic.Subscribe(pubsub.WithBufferSize(bufsize))
 }

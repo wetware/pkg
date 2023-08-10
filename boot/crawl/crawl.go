@@ -115,32 +115,28 @@ func (c *Crawler) FindPeers(ctx context.Context, ns string, opt ...discovery.Opt
 			switch err := c.sock.SendRequest(ctx, c.sealer, &addr, id, ns); err {
 			case nil:
 				// Packet sent.  Keep crawling.
-				c.sock.Log().
-					WithField("to", &addr).
-					Trace("sent request packet")
+				c.sock.Log().Debug("sent request packet",
+					"to", &addr,
+					"reason", err,
+					"to", &addr)
 				continue
 
 			case context.Canceled:
 				// Graceful abort.  The caller cancels the context when it
 				// has found enough peers.
-				c.sock.Log().
-					Trace("peer discovery finished")
+				c.sock.Log().Info("peer discovery finished")
 
 			case context.DeadlineExceeded:
 				// Timeout.  The caller hasn't found enough peers, but has
 				// timed out.  This isn't always an error.  In most cases,
 				// the caller will know what to do.
-				c.sock.Log().
-					WithField("reason", err).
-					Debug("peer discovery aborted")
+				c.sock.Log().Warn("peer discovery aborted")
 
 			default:
 				// Any other error indicates a failure to send the request
 				// packet.  Something definitely went wrong.
-				c.sock.Log().
-					WithError(err).
-					WithField("to", &addr).
-					Error("failed to send request packet")
+				c.sock.Log().Error("failed to send request packet",
+					"error", err)
 			}
 
 			return

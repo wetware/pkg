@@ -14,6 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/libp2p/go-libp2p/core/record"
 
+	api "github.com/wetware/pkg/api/boot"
 	"github.com/wetware/pkg/boot/socket"
 )
 
@@ -55,7 +56,7 @@ func (s *Surveyor) handler() socket.RequestHandler {
 			return socket.ProtocolError{
 				Message: "invalid ID in request",
 				Cause:   err,
-				Meta:    r.Loggable(),
+				Packet:  api.Packet(r.Record),
 			}
 		}
 

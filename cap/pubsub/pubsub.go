@@ -8,28 +8,10 @@ import (
 	api "github.com/wetware/pkg/api/pubsub"
 )
 
-type (
-	// MethodJoin is the server-side method parameter for JoinServer's
-	// Join method.  See:  NewJoiner.
-	MethodJoin = api.Router_join
-
-	// MethodName is the server-side method parameter for TopicServer's
-	// Join method.  See:  NewJoiner.
-	MethodName = api.Topic_name
-
-	// MethodPublish is the server-side method parameter for TopicServer's
-	// Join method.  See:  NewJoiner.
-	MethodPublish = api.Topic_publish
-
-	// MethodSubscribe is the server-side method parameter for TopicServer's
-	// Join method.  See:  NewJoiner.
-	MethodSubscribe = api.Topic_subscribe
-)
-
 // JoinServer is an interface that allows alternate server implementations
 // for Joiner.  The default implementation is Router.  See: NewJoiner.
 type JoinServer interface {
-	Join(context.Context, MethodJoin) error
+	Join(context.Context, api.Router_join) error
 }
 
 // NewJoiner returns a Joiner (a capability client) from a JoinServer
@@ -45,9 +27,9 @@ func NewJoiner(s JoinServer) Router {
 // TopicServer is an interface that allows alternate server implementations
 // for Topic.  The default implementation is unexported.  See NewTopic.
 type TopicServer interface {
-	Name(context.Context, MethodName) error
-	Publish(context.Context, MethodPublish) error
-	Subscribe(context.Context, MethodSubscribe) error
+	Name(context.Context, api.Topic_name) error
+	Publish(context.Context, api.Topic_publish) error
+	Subscribe(context.Context, api.Topic_subscribe) error
 }
 
 // NewTopic returns a Joiner (a capability client) from a JoinServer

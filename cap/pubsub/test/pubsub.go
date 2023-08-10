@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	pubsub "github.com/wetware/pkg/cap/pubsub"
+	pubsub "github.com/wetware/pkg/api/pubsub"
 )
 
 // MockJoinServer is a mock of JoinServer interface.
@@ -36,7 +36,7 @@ func (m *MockJoinServer) EXPECT() *MockJoinServerMockRecorder {
 }
 
 // Join mocks base method.
-func (m *MockJoinServer) Join(arg0 context.Context, arg1 pubsub.MethodJoin) error {
+func (m *MockJoinServer) Join(arg0 context.Context, arg1 pubsub.Router_join) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Join", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -73,7 +73,7 @@ func (m *MockTopicServer) EXPECT() *MockTopicServerMockRecorder {
 }
 
 // Name mocks base method.
-func (m *MockTopicServer) Name(arg0 context.Context, arg1 pubsub.MethodName) error {
+func (m *MockTopicServer) Name(arg0 context.Context, arg1 pubsub.Topic_name) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Name", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -87,7 +87,7 @@ func (mr *MockTopicServerMockRecorder) Name(arg0, arg1 interface{}) *gomock.Call
 }
 
 // Publish mocks base method.
-func (m *MockTopicServer) Publish(arg0 context.Context, arg1 pubsub.MethodPublish) error {
+func (m *MockTopicServer) Publish(arg0 context.Context, arg1 pubsub.Topic_publish) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Publish", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -101,7 +101,7 @@ func (mr *MockTopicServerMockRecorder) Publish(arg0, arg1 interface{}) *gomock.C
 }
 
 // Subscribe mocks base method.
-func (m *MockTopicServer) Subscribe(arg0 context.Context, arg1 pubsub.MethodSubscribe) error {
+func (m *MockTopicServer) Subscribe(arg0 context.Context, arg1 pubsub.Topic_subscribe) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Subscribe", arg0, arg1)
 	ret0, _ := ret[0].(error)

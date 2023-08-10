@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"capnproto.org/go/capnp/v3/rpc"
-	"github.com/lthibault/log"
+	"golang.org/x/exp/slog"
 
 	"github.com/urfave/cli/v2"
 
@@ -54,7 +54,7 @@ func Command() *cli.Command {
 
 func dial(c *cli.Context, h local.Host) (*rpc.Conn, error) {
 	return client.Dialer{
-		Logger:   log.New(),
+		Logger:   slog.Default(),
 		NS:       c.String("ns"),
 		Peers:    c.StringSlice("peer"),
 		Discover: c.String("discover"),

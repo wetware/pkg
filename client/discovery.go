@@ -16,7 +16,7 @@ func (cfg Dialer) newBootstrapper(h host.Host) (*bootService, error) {
 		d, err = boot.NewStaticAddrStrings(cfg.Peers...)
 	} else {
 		d, err = boot.DialString(h, cfg.Discover,
-			socket.WithLogger(cfg.Logger),
+			// socket.WithLogger(cfg.Logger),
 			socket.WithRateLimiter(socket.NewPacketLimiter(256, 16)))
 	}
 

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net"
 
-	"github.com/lthibault/log"
+	api "github.com/wetware/pkg/api/boot"
 )
 
 var (
@@ -34,15 +34,7 @@ var (
 type ProtocolError struct {
 	Message string
 	Cause   error
-	Meta    log.F
-}
-
-func (pe ProtocolError) Loggable() map[string]interface{} {
-	if pe.Cause != nil {
-		pe.Meta["error"] = pe.Cause
-	}
-
-	return pe.Meta
+	Packet  api.Packet
 }
 
 func (pe ProtocolError) Error() string {
@@ -68,13 +60,6 @@ func (pe ProtocolError) Unwrap() error {
 type ValidationError struct {
 	Cause error
 	From  net.Addr
-}
-
-func (ve ValidationError) Loggable() map[string]interface{} {
-	return log.F{
-		"error": ve.Cause,
-		"from":  ve.From,
-	}
 }
 
 func (ve ValidationError) Error() string {

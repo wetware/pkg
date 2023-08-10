@@ -14,15 +14,6 @@ type Request struct {
 	From net.Addr
 }
 
-func (r Request) Loggable() map[string]interface{} {
-	id, _ := r.Record.Peer()
-	return map[string]interface{}{
-		"ns":   r.NS,
-		"peer": id,
-		"from": r.From,
-	}
-}
-
 func (r Request) IsSurvey() bool {
 	return r.asPacket().Which() == boot.Packet_Which_survey
 }
@@ -39,15 +30,6 @@ type Response struct {
 	Record
 	NS   string
 	From net.Addr
-}
-
-func (r Response) Loggable() map[string]interface{} {
-	id, _ := r.Record.Peer()
-	return map[string]interface{}{
-		"ns":   r.NS,
-		"peer": id,
-		"from": r.From,
-	}
 }
 
 func (r Response) Addrs() ([]ma.Multiaddr, error) {

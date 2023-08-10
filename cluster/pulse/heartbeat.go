@@ -20,13 +20,6 @@ func NewHeartbeat() Heartbeat {
 	return Heartbeat{h}
 }
 
-func (h Heartbeat) Loggable() map[string]any {
-	return map[string]any{
-		"server": h.Server(),
-		"ttl":    h.TTL(),
-	}
-}
-
 func (h Heartbeat) SetTTL(d time.Duration) {
 	ms := d / time.Millisecond
 	h.SetTtl(uint32(ms))

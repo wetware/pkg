@@ -10,8 +10,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	api "github.com/wetware/pkg/api/pubsub"
 	"github.com/wetware/pkg/cap/pubsub"
-	mock_pubsub "github.com/wetware/pkg/cap/pubsub/test"
+	test_pubsub "github.com/wetware/pkg/cap/pubsub/test"
 )
 
 func TestNullSubscription(t *testing.T) {
@@ -39,10 +40,10 @@ func TestSubscribe_cancel(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	server := mock_pubsub.NewMockTopicServer(ctrl)
+	server := test_pubsub.NewMockTopicServer(ctrl)
 	server.EXPECT().
 		Subscribe(gomock.Any(), gomock.Any()).
-		DoAndReturn(func(ctx context.Context, _ pubsub.MethodSubscribe) error {
+		DoAndReturn(func(ctx context.Context, _ api.Topic_subscribe) error {
 			<-ctx.Done()
 			return ctx.Err()
 		}).

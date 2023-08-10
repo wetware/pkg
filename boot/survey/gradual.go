@@ -56,7 +56,8 @@ func (g GradualSurveyor) FindPeers(ctx context.Context, ns string, opt ...discov
 
 				found, err = g.Surveyor.FindPeers(ctxSurv, ns, append(opt, WithDistance(uint8(b.Attempt())))...)
 				if err != nil {
-					g.sock.Log().WithError(err).Debug("retry failed")
+					g.sock.Log().Debug("retry failed",
+						"error", err)
 				}
 
 			case info := <-found:

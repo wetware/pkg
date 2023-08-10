@@ -5,8 +5,8 @@ import (
 
 	capnp "capnproto.org/go/capnp/v3"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/lthibault/log"
 	api "github.com/wetware/pkg/api/pubsub"
+	"golang.org/x/exp/slog"
 )
 
 // Router is a client capability that confers the right to join pubsub
@@ -43,7 +43,7 @@ type TopicJoiner interface {
 
 // Server for the pubsub capability.
 type Server struct {
-	Log         log.Logger
+	Log         Logger
 	TopicJoiner TopicJoiner
 	topics      topicManager
 }
@@ -56,9 +56,9 @@ func (r *Server) Client() capnp.Client {
 	return capnp.Client(r.PubSub())
 }
 
-func (r *Server) Join(ctx context.Context, call MethodJoin) error {
+func (r *Server) Join(ctx context.Context, call api.Router_join) error {
 	if r.Log == nil {
-		r.Log = log.New()
+		r.Log = slog.Default()
 	}
 
 	res, err := call.AllocResults()

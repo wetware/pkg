@@ -6,14 +6,31 @@ import (
 	"io"
 	"net"
 
+	"golang.org/x/exp/slog"
+
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/exp/bufferpool"
 	"capnproto.org/go/capnp/v3/rpc"
-	"github.com/lthibault/log"
 	"github.com/stealthrocket/wazergo"
 	t "github.com/stealthrocket/wazergo/types"
 	wasm "github.com/tetratelabs/wazero"
 )
+
+// Logger is used for logging by the RPC system. Each method logs
+// messages at a different level, but otherwise has the same semantics:
+//
+//   - Message is a human-readable description of the log event.
+//   - Args is a sequenece of key, value pairs, where the keys must be strings
+//     and the values may be any type.
+//   - The methods may not block for long periods of time.
+//
+// This interface is designed such that it is satisfied by *slog.Logger.
+type Logger interface {
+	Debug(message string, args ...any)
+	Info(message string, args ...any)
+	Warn(message string, args ...any)
+	Error(message string, args ...any)
+}
 
 var fs wazergo.HostModule[*Module] = functions{
 	"__host_write": wazergo.F2((*Module).write),
@@ -65,9 +82,9 @@ func WithClient[Client ~capnp.ClientKind](c Client) Option {
 
 // WithLogger sets the error logger for the capnp transport.   If
 // l == nil, logging is disabled.
-func WithLogger(l log.Logger) Option {
+func WithLogger(l Logger) Option {
 	if l == nil {
-		l = log.New(log.WithLevel(log.FatalLevel))
+		l = slog.Default()
 	}
 
 	return wazergo.OptionFunc(func(m *Module) {
@@ -79,7 +96,7 @@ type Module struct {
 	pipe io.ReadWriteCloser
 	conn io.Closer
 
-	logger    log.Logger
+	logger    Logger
 	bootstrap capnp.Client
 }
 
@@ -133,9 +150,9 @@ func (m Module) errReporter() errReporter {
 }
 
 type errReporter struct {
-	log.Logger
+	Logger
 }
 
 func (er errReporter) ReportError(err error) {
-	er.Logger.Error(err)
+	er.Logger.Error(err.Error())
 }

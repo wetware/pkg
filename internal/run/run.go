@@ -9,11 +9,11 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
 	tcp "github.com/libp2p/go-libp2p/p2p/transport/tcp"
-	"github.com/lthibault/log"
 	"github.com/urfave/cli/v2"
 	ww "github.com/wetware/pkg"
 	"github.com/wetware/pkg/client"
 	"github.com/wetware/pkg/rom"
+	"golang.org/x/exp/slog"
 )
 
 var flags = []cli.Flag{
@@ -72,7 +72,7 @@ func dialAndExec(c *cli.Context, wetware ww.Ww, rom ww.ROM) error {
 	defer h.Close()
 
 	conn, err := client.Dialer{
-		Logger:   log.New(),
+		Logger:   slog.Default(),
 		NS:       c.String("ns"),
 		Peers:    c.StringSlice("peer"),
 		Discover: c.String("discover"),

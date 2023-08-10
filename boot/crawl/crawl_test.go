@@ -19,7 +19,6 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/golang/mock/gomock"
-	logtest "github.com/lthibault/log/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -129,7 +128,7 @@ func TestCrawler_request_noadvert(t *testing.T) {
 	h := newTestHost()
 	defer h.Close()
 
-	logger := logtest.NewMockLogger(ctrl)
+	// logger := logtest.NewMockLogger(ctrl)
 
 	conn := mock_net.NewMockPacketConn(ctrl)
 	conn.EXPECT().
@@ -156,7 +155,7 @@ func TestCrawler_request_noadvert(t *testing.T) {
 		AnyTimes()
 
 	c := crawl.New(h, conn, rangeUDP(),
-		socket.WithLogger(logger))
+		/*socket.WithLogger(logger)*/)
 	assert.NoError(t, c.Close(), "should close gracefully")
 }
 
@@ -183,7 +182,7 @@ func TestCrawler_advertise(t *testing.T) {
 	h := newTestHost()
 	defer h.Close()
 
-	logger := logtest.NewMockLogger(ctrl)
+	// logger := logtest.NewMockLogger(ctrl)
 
 	conn := mock_net.NewMockPacketConn(ctrl)
 	conn.EXPECT().
@@ -224,7 +223,7 @@ func TestCrawler_advertise(t *testing.T) {
 		AnyTimes()
 
 	c := crawl.New(h, conn, rangeUDP(),
-		socket.WithLogger(logger))
+		/*socket.WithLogger(logger)*/)
 	defer c.Close()
 
 	ttl, err := c.Advertise(ctx, "casm")
@@ -244,7 +243,7 @@ func TestCrawler_FindPeers_strategy_error(t *testing.T) {
 	h := newTestHost()
 	defer h.Close()
 
-	logger := logtest.NewMockLogger(ctrl)
+	// logger := logtest.NewMockLogger(ctrl)
 
 	conn := mock_net.NewMockPacketConn(ctrl)
 	conn.EXPECT().
@@ -265,7 +264,7 @@ func TestCrawler_FindPeers_strategy_error(t *testing.T) {
 		return nil, errFail
 	}
 
-	c := crawl.New(h, conn, fail, socket.WithLogger(logger))
+	c := crawl.New(h, conn, fail, /*socket.WithLogger(logger)*/)
 	defer func() {
 		assert.NoError(t, c.Close(), "should close gracefully")
 	}()
@@ -288,14 +287,14 @@ func TestCrawler_FindPeers_wait(t *testing.T) {
 		h := newTestHost()
 		defer h.Close()
 
-		logger := logtest.NewMockLogger(ctrl)
-		logger.EXPECT().
-			WithField(gomock.Any(), gomock.Any()).
-			Return(logger).
-			AnyTimes()
-		logger.EXPECT().
-			Trace(gomock.Any()).
-			AnyTimes()
+		// logger := logtest.NewMockLogger(ctrl)
+		// logger.EXPECT().
+		// 	WithField(gomock.Any(), gomock.Any()).
+		// 	Return(logger).
+		// 	AnyTimes()
+		// logger.EXPECT().
+		// 	Trace(gomock.Any()).
+		// 	AnyTimes()
 
 		conn := mock_net.NewMockPacketConn(ctrl)
 		conn.EXPECT().
@@ -315,7 +314,7 @@ func TestCrawler_FindPeers_wait(t *testing.T) {
 			Return(0, context.Canceled).
 			Times(1)
 
-		c := crawl.New(h, conn, rangeUDP(&net.UDPAddr{}), socket.WithLogger(logger))
+		c := crawl.New(h, conn, rangeUDP(&net.UDPAddr{}), /*socket.WithLogger(logger)*/)
 		defer c.Close()
 
 		ch, err := c.FindPeers(context.TODO(), "test")
@@ -344,18 +343,18 @@ func TestCrawler_FindPeers_wait(t *testing.T) {
 
 		errFail := errors.New("fail")
 
-		logger := logtest.NewMockLogger(ctrl)
-		logger.EXPECT().
-			WithField(gomock.Any(), gomock.Any()).
-			Return(logger).
-			AnyTimes()
-		logger.EXPECT().
-			WithError(errFail).
-			Return(logger).
-			Times(1)
-		logger.EXPECT().
-			Error("failed to send request packet").
-			Times(1)
+		// logger := logtest.NewMockLogger(ctrl)
+		// logger.EXPECT().
+		// 	WithField(gomock.Any(), gomock.Any()).
+		// 	Return(logger).
+		// 	AnyTimes()
+		// logger.EXPECT().
+		// 	WithError(errFail).
+		// 	Return(logger).
+		// 	Times(1)
+		// logger.EXPECT().
+		// 	Error("failed to send request packet").
+		// 	Times(1)
 
 		conn := mock_net.NewMockPacketConn(ctrl)
 		conn.EXPECT().
@@ -375,7 +374,7 @@ func TestCrawler_FindPeers_wait(t *testing.T) {
 			Return(0, errFail).
 			Times(1)
 
-		c := crawl.New(h, conn, rangeUDP(&net.UDPAddr{}), socket.WithLogger(logger))
+		c := crawl.New(h, conn, rangeUDP(&net.UDPAddr{}), /*socket.WithLogger(logger)*/)
 		defer c.Close()
 
 		ch, err := c.FindPeers(context.TODO(), "test")
@@ -413,14 +412,14 @@ func TestCrawler_find_peers(t *testing.T) {
 	h := newTestHost()
 	defer h.Close()
 
-	logger := logtest.NewMockLogger(ctrl)
-	logger.EXPECT().
-		WithField(gomock.Any(), gomock.Any()).
-		Return(logger).
-		AnyTimes()
-	logger.EXPECT().
-		Trace(gomock.Any()).
-		AnyTimes()
+	// logger := logtest.NewMockLogger(ctrl)
+	// logger.EXPECT().
+	// 	WithField(gomock.Any(), gomock.Any()).
+	// 	Return(logger).
+	// 	AnyTimes()
+	// logger.EXPECT().
+	// 	Trace(gomock.Any()).
+	// 	AnyTimes()
 
 	conn := mock_net.NewMockPacketConn(ctrl)
 	conn.EXPECT().
@@ -455,7 +454,7 @@ func TestCrawler_find_peers(t *testing.T) {
 		AnyTimes()
 
 	c := crawl.New(h, conn, rangeUDP(addr),
-		socket.WithLogger(logger))
+		/*socket.WithLogger(logger)*/)
 	defer c.Close()
 
 	ctx, cancel := context.WithCancel(context.Background())
