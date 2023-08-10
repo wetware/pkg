@@ -112,7 +112,7 @@ func (r Runtime) mkmod(ctx context.Context, args api.Executor_exec_Params) (wasm
 		return nil, err
 	}
 
-	go serveModule(addr, args.BootstrapClient())
+	go ServeModule(addr, args.BootstrapClient())
 
 	return mod, nil
 }
@@ -140,10 +140,10 @@ func (r Runtime) spawn(fn wasm.Function) (<-chan execResult, context.CancelFunc)
 	return out, cancel
 }
 
-// serveModule ensures the host side of the TCP connection with addr=addr
+// ServeModule ensures the host side of the TCP connection with addr=addr
 // used for CAPNP RPCs is provided by client.
-func serveModule(addr *net.TCPAddr, client capnp.Client) {
-	tcpConn, err := dialWithRetries(addr)
+func ServeModule(addr *net.TCPAddr, client capnp.Client) {
+	tcpConn, err := DialWithRetries(addr)
 	if err != nil {
 		panic(err)
 	}
@@ -166,9 +166,9 @@ func serveModule(addr *net.TCPAddr, client capnp.Client) {
 	}
 }
 
-// dialWithRetries dials addr in waitTime intervals until it either succeeds or
+// DialWithRetries dials addr in waitTime intervals until it either succeeds or
 // exceeds maxRetries retries.
-func dialWithRetries(addr *net.TCPAddr) (net.Conn, error) {
+func DialWithRetries(addr *net.TCPAddr) (net.Conn, error) {
 	maxRetries := 20
 	waitTime := 10 * time.Millisecond
 	var err error
