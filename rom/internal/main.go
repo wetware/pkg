@@ -22,10 +22,10 @@ func main() {
 	host := host.Host(client)
 	defer host.Release()
 
-	view, release := host.View(context.Background())
+	view, release := host.View(ctx)
 	defer release()
 
-	it, release := view.Iter(context.Background(), query())
+	it, release := view.Iter(ctx, query())
 	defer release()
 
 	for r := it.Next(); r != nil; r = it.Next() {
