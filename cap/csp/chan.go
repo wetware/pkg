@@ -70,9 +70,9 @@ func (c Chan) Send(ctx context.Context, v Value) error {
 	return Sender(c).Send(ctx, v)
 }
 
-// func (c Chan) Recv(ctx context.Context) (Future, capnp.ReleaseFunc) {
-// 	return Recver(c).Recv(ctx)
-// }
+func (c Chan) Recv(ctx context.Context) (casm.Future, capnp.ReleaseFunc) {
+	return Recver(c).Recv(ctx)
+}
 
 func (c Chan) AddRef() Chan {
 	return Chan(c.Client().AddRef())
@@ -135,10 +135,10 @@ func (r Recver) Client() capnp.Client {
 	return capnp.Client(r)
 }
 
-// func (r Recver) Recv(ctx context.Context) (Future, capnp.ReleaseFunc) {
-// 	f, release := api.Recver(r).Recv(ctx, nil)
-// 	return Future{Future: casm.Future(f)}, release
-// }
+func (r Recver) Recv(ctx context.Context) (casm.Future, capnp.ReleaseFunc) {
+	f, release := api.Recver(r).Recv(ctx, nil)
+	return casm.Future{Future: f.Value()}, release
+}
 
 func (r Recver) AddRef() Recver {
 	return Recver(r.Client().AddRef())
