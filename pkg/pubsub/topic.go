@@ -8,8 +8,8 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/lthibault/log"
 
-	casm "github.com/wetware/casm/pkg"
 	api "github.com/wetware/ww/api/pubsub"
+	"github.com/wetware/ww/util/casm"
 )
 
 // Topic is the handle for a pubsub topic.  It is used to publish to

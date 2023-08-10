@@ -8,10 +8,10 @@ import (
 	"capnproto.org/go/capnp/v3"
 	"github.com/libp2p/go-libp2p/core/peer"
 
-	casm "github.com/wetware/casm/pkg"
 	api "github.com/wetware/ww/api/cluster"
 	"github.com/wetware/ww/cluster/pulse"
 	"github.com/wetware/ww/cluster/routing"
+	"github.com/wetware/ww/util/casm"
 )
 
 type View api.View

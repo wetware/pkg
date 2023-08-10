@@ -6,11 +6,11 @@ import (
 
 	"capnproto.org/go/capnp/v3"
 	"github.com/libp2p/go-libp2p/core/record"
-	casm "github.com/wetware/casm/pkg"
 	chan_api "github.com/wetware/ww/api/channel"
 	ps_api "github.com/wetware/ww/api/pubsub"
 	api "github.com/wetware/ww/api/registry"
 	"github.com/wetware/ww/pkg/pubsub"
+	"github.com/wetware/ww/util/casm"
 )
 
 type Registry api.Registry

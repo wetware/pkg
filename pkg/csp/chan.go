@@ -5,8 +5,8 @@ import (
 	"errors"
 
 	"capnproto.org/go/capnp/v3"
-	casm "github.com/wetware/casm/pkg"
 	api "github.com/wetware/ww/api/channel"
+	"github.com/wetware/ww/util/casm"
 )
 
 var (

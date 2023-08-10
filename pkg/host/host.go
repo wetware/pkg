@@ -7,7 +7,6 @@ import (
 
 	"capnproto.org/go/capnp/v3"
 
-	casm "github.com/wetware/casm/pkg"
 	anchor_api "github.com/wetware/ww/api/anchor"
 	api "github.com/wetware/ww/api/cluster"
 	process_api "github.com/wetware/ww/api/process"
@@ -19,10 +18,6 @@ import (
 	service "github.com/wetware/ww/pkg/registry"
 	"github.com/wetware/ww/pkg/view"
 )
-
-var Capability = casm.BasicCap{
-	"host/packed",
-	"host"}
 
 /*----------------------------*
 |                             |

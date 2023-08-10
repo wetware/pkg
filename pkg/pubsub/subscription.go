@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"capnproto.org/go/capnp/v3/exp/bufferpool"
-	casm "github.com/wetware/casm/pkg"
 	api "github.com/wetware/ww/api/pubsub"
+	"github.com/wetware/ww/util/casm"
 )
 
 // Subscription is a stateful iterator over a stream of topic messages.
