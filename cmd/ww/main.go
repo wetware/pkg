@@ -18,8 +18,8 @@ import (
 	"github.com/urfave/cli/v2"
 
 	ww "github.com/wetware/pkg"
-	"github.com/wetware/pkg/internal/cmd/ls"
-	"github.com/wetware/pkg/internal/cmd/start"
+	"github.com/wetware/pkg/internal/ls"
+	"github.com/wetware/pkg/internal/start"
 )
 
 var flags = []cli.Flag{
