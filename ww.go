@@ -15,7 +15,10 @@ import (
 	"github.com/tetratelabs/wazero/sys"
 )
 
-const Version = "0.1.0"
+const (
+	Version = "0.1.0"
+	Codec   = 2020
+)
 
 // Ww is the execution context for WebAssembly (WASM) bytecode,
 // allowing it to interact with (1) the local host and (2) the
@@ -71,6 +74,7 @@ func (ww Ww) Exec(ctx context.Context, rom ROM) error {
 		WithSysNanosleep().
 		WithSysNanotime().
 		WithSysWalltime().
+		WithArgs(rom.String()). // TODO(soon):  use content id
 		WithEnv("ns", ww.String()).
 		WithStdin(ww.Stdin). // notice:  we connect stdio to host process' stdio
 		WithStdout(ww.Stdout).

@@ -2,9 +2,10 @@ package ww
 
 import (
 	_ "embed"
-	"encoding/hex"
 	"io"
 
+	"github.com/ipfs/go-cid"
+	"github.com/multiformats/go-multihash"
 	"lukechampine.com/blake3"
 )
 
@@ -19,14 +20,18 @@ func Read(r io.Reader) (rom ROM, err error) {
 	return
 }
 
-func (rom ROM) Hash() [64]byte {
-	return blake3.Sum512(rom.bytecode)
+func (rom ROM) Hash() []byte {
+	// TODO:  compute hash only once, using sync.Once
+	hash := blake3.Sum512(rom.bytecode)
+	encoded, _ := multihash.Encode(hash[:], multihash.BLAKE3) // err always nil
+	return encoded
 }
 
-// String returns the BLAKE3-512 hash of the ROM, truncated to the
-// first 8 bytes.  It is intended as a human-readable symbol.  Use
-// the Hash() method to verify integrity.
+func (rom ROM) CID() cid.Cid {
+	return cid.NewCidV1(Codec, rom.Hash())
+}
+
+// String returns the rom as a string-formatted CID.
 func (rom ROM) String() string {
-	hash := rom.Hash()
-	return hex.Dump(hash[:8])
+	return rom.CID().String()
 }
