@@ -11,10 +11,11 @@ import (
 	"github.com/wetware/pkg/guest/system"
 )
 
+var ctx = context.Background()
+
 func main() {
-	ctx := context.Background()
-	client, closer := system.Boot(ctx)
-	defer closer.Close()
+	client, release := system.Boot(ctx)
+	defer release()
 
 	host := host.Host(client)
 	defer host.Release()

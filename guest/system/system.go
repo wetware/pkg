@@ -13,6 +13,7 @@ import (
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
+	"golang.org/x/exp/slog"
 )
 
 const (
@@ -20,82 +21,93 @@ const (
 	PREOPENED_FD = 3
 )
 
+// Logger is used for logging by the RPC system. Each method logs
+// messages at a different level, but otherwise has the same semantics:
+//
+//   - Message is a human-readable description of the log event.
+//   - Args is a sequenece of key, value pairs, where the keys must be strings
+//     and the values may be any type.
+//   - The methods may not block for long periods of time.
+//
+// This interface is designed such that it is satisfied by *slog.Logger.
+type Logger interface {
+	Debug(message string, args ...any)
+	Info(message string, args ...any)
+	Warn(message string, args ...any)
+	Error(message string, args ...any)
+}
+
 // Boot bootstraps and resolves the Capnp client attached
 // to the other end of the pre-openned TCP connection.
 // capnp.Client will be capnp.ErrorClient if an error ocurred.
-func Boot(ctx context.Context) (capnp.Client, io.Closer) {
-	closer := closer{
-		closers: make([]io.Closer, 0),
+func Boot(ctx context.Context) (capnp.Client, capnp.ReleaseFunc) {
+	var closers []io.Closer
+	release := func() {
+		for i := range closers {
+			// call in reverse order, similar to defer
+			_ = closers[len(closers)-i-1].Close()
+		}
 	}
 
-	l, err := preopenedListener(closer)
+	l, err := preopenedListener(&closers)
 	if err != nil {
-		return capnp.ErrorClient(err), closer
+		defer release()
+		return capnp.ErrorClient(err), func() {}
 	}
+	closers = append(closers, l)
 
 	tcpConn, err := l.Accept()
 	if err != nil {
-		return capnp.ErrorClient(err), closer
+		defer release()
+		return capnp.ErrorClient(err), func() {}
 	}
-
-	closer.add(tcpConn)
+	closers = append(closers, tcpConn)
 
 	conn := rpc.NewConn(rpc.NewStreamTransport(tcpConn), &rpc.Options{
 		ErrorReporter: errLogger{},
 	})
-	closer.add(conn)
+	closers = append(closers, conn)
 
 	client := conn.Bootstrap(ctx)
 
 	err = client.Resolve(ctx)
 	if err != nil {
-		return capnp.ErrorClient(err), closer
+		defer release()
+		return capnp.ErrorClient(err), func() {}
 	}
 
-	return client, closer
-}
-
-// closer contains a slice of Closers that will be closed when this type itself is closed
-type closer struct {
-	closers []io.Closer
-}
-
-func (c closer) Close() error {
-	for _, closer := range c.closers {
-		defer closer.Close()
-	}
-	return nil
-}
-
-// add a new closer to the list
-func (c closer) add(closer io.Closer) {
-	c.closers = append(c.closers, closer)
+	return client, release
 }
 
 // return the a TCP listener from pre-opened tcp connection by using the fd
-func preopenedListener(c closer) (net.Listener, error) {
+func preopenedListener(closers *[]io.Closer) (net.Listener, error) {
 	f := os.NewFile(uintptr(PREOPENED_FD), "")
 
 	if err := syscall.SetNonblock(PREOPENED_FD, false); err != nil {
 		return nil, err
 	}
-
-	c.add(f)
+	*closers = append(*closers, f)
 
 	l, err := net.FileListener(f)
 	if err != nil {
 		return nil, err
 	}
-	c.add(l)
+	*closers = append(*closers, l)
 
 	return l, err
 }
 
 // errLogger panics when an error occurs
-type errLogger struct{}
+type errLogger struct {
+	Logger
+}
 
 func (e errLogger) ReportError(err error) {
 	if err != nil {
-		panic(err)
+		if e.Logger == nil {
+			e.Logger = slog.Default()
+		}
+
+		e.Error(err.Error())
 	}
 }
