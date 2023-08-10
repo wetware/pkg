@@ -1,4 +1,4 @@
-package ww
+package system
 
 /*
  * The contents of this file will be moved to the ww repository
@@ -20,10 +20,10 @@ const (
 	PREOPENED_FD = 3
 )
 
-// BootstrapClient bootstraps and resolves the Capnp client attached
+// Boot bootstraps and resolves the Capnp client attached
 // to the other end of the pre-openned TCP connection.
 // capnp.Client will be capnp.ErrorClient if an error ocurred.
-func BootstrapClient(ctx context.Context) (capnp.Client, io.Closer) {
+func Boot(ctx context.Context) (capnp.Client, io.Closer) {
 	closer := closer{
 		closers: make([]io.Closer, 0),
 	}
