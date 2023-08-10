@@ -8,11 +8,18 @@ import (
 	"github.com/wetware/pkg/cap/host"
 	"github.com/wetware/pkg/cap/view"
 	"github.com/wetware/pkg/cluster/routing"
-	"github.com/wetware/pkg/system"
+	ww "github.com/wetware/pkg/wasm"
 )
 
 func main() {
-	host := system.Boot[host.Host](context.Background())
+	ctx := context.Background()
+	client, closer, err := ww.BootstrapClient(ctx)
+	defer closer.Close()
+	if err != nil {
+		panic(err)
+	}
+
+	host := host.Host(client)
 	defer host.Release()
 
 	view, release := host.View(context.Background())
