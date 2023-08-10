@@ -74,5 +74,5 @@ func query(c *cli.Context) view.Query {
 }
 
 func render(c *cli.Context, r routing.Record) {
-	fmt.Fprintf(c.App.Writer, "/%s", r.Server())
+	fmt.Fprintf(c.App.Writer, "/%s\n", r.Server())
 }
