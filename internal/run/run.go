@@ -58,13 +58,13 @@ func Command(log Logger) *cli.Command {
 
 func run(log Logger) cli.ActionFunc {
 	return func(c *cli.Context) error {
-		wetware := ww.Ww{
+		wetware := ww.Ww[capnp.Client]{ // TODO:  replace capnp.Client with Authenticator
 			Log:    log,
 			NS:     c.String("ns"),
 			Stdin:  c.App.Reader,
 			Stdout: c.App.Writer,
 			Stderr: c.App.ErrWriter,
-			Client: capnp.ErrorClient(errors.New("NOT IMPLEMENTED")),
+			Client: bootstrap[capnp.Client](c),
 		}
 
 		rom, err := bytecode(c)
@@ -82,7 +82,12 @@ func run(log Logger) cli.ActionFunc {
 	}
 }
 
-func dialAndExec(c *cli.Context, log Logger, wetware ww.Ww, rom ww.ROM) error {
+func bootstrap[T ~capnp.ClientKind](c *cli.Context) T {
+	client := capnp.ErrorClient(errors.New("NOT IMPLEMENTED"))
+	return T(client)
+}
+
+func dialAndExec[T ~capnp.ClientKind](c *cli.Context, log Logger, wetware ww.Ww[T], rom ww.ROM) error {
 	h, err := clientHost(c)
 	if err != nil {
 		return err
@@ -102,7 +107,6 @@ func dialAndExec(c *cli.Context, log Logger, wetware ww.Ww, rom ww.ROM) error {
 	}
 	defer conn.Close()
 
-	wetware.Client = conn.Bootstrap(c.Context)
 	return wetware.Exec(c.Context, rom)
 }
 

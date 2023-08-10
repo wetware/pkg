@@ -142,16 +142,16 @@ func (r Runtime) spawn(fn wasm.Function) (<-chan execResult, context.CancelFunc)
 
 // ServeModule ensures the host side of the TCP connection with addr=addr
 // used for CAPNP RPCs is provided by client.
-func ServeModule(addr *net.TCPAddr, client capnp.Client) {
+func ServeModule[T ~capnp.ClientKind](addr *net.TCPAddr, t T) {
 	tcpConn, err := DialWithRetries(addr)
 	if err != nil {
 		panic(err)
 	}
 	defer tcpConn.Close()
 
-	defer client.Release()
+	defer capnp.Client(t).Release()
 	conn := rpc.NewConn(rpc.NewStreamTransport(tcpConn), &rpc.Options{
-		BootstrapClient: client,
+		BootstrapClient: capnp.Client(t),
 		ErrorReporter:   errLogger{},
 	})
 	defer conn.Close()

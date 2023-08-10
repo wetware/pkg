@@ -44,19 +44,19 @@ type Logger interface {
 // Ww is the execution context for WebAssembly (WASM) bytecode,
 // allowing it to interact with (1) the local host and (2) the
 // cluster environment.
-type Ww struct {
+type Ww[T ~capnp.ClientKind] struct {
 	Log    Logger
 	NS     string
 	Stdin  io.Reader
 	Stdout io.Writer
 	Stderr io.Writer
-	Client capnp.Client
+	Client T
 }
 
 // String returns the cluster namespace in which the wetware is
 // executing. If ww.NS has been assigned a non-empty string, it
 // returns the string unchanged.  Else, it defaults to "ww".
-func (ww *Ww) String() string {
+func (ww *Ww[T]) String() string {
 	if ww.NS != "" {
 		return ww.NS
 	}
@@ -67,7 +67,7 @@ func (ww *Ww) String() string {
 // Exec compiles and runs the ww instance's ROM in a WASM runtime.
 // It returns any error produced by the compilation or execution of
 // the ROM.
-func (ww Ww) Exec(ctx context.Context, rom ROM) error {
+func (ww Ww[T]) Exec(ctx context.Context, rom ROM) error {
 	// Spawn a new runtime.
 	r := wazero.NewRuntimeWithConfig(ctx, wazero.
 		NewRuntimeConfigCompiler().
@@ -124,7 +124,7 @@ func (ww Ww) Exec(ctx context.Context, rom ROM) error {
 	return ww.run(ctx, mod)
 }
 
-func (ww Ww) run(ctx context.Context, mod api.Module) error {
+func (ww Ww[T]) run(ctx context.Context, mod api.Module) error {
 	if ww.Log == nil {
 		ww.Log = slog.Default()
 	}
