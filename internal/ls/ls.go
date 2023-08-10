@@ -45,7 +45,7 @@ func Command(log Logger) *cli.Command {
 			}
 			defer h.Close()
 
-			conn, err := dial(c, h)
+			conn, err := dial(c, log, h)
 			if err != nil {
 				return err
 			}
@@ -69,12 +69,14 @@ func Command(log Logger) *cli.Command {
 	}
 }
 
-func dial(c *cli.Context, h local.Host) (*rpc.Conn, error) {
+func dial(c *cli.Context, log Logger, h local.Host) (*rpc.Conn, error) {
 	return client.Dialer{
-		Logger:   slog.Default(),
 		NS:       c.String("ns"),
 		Peers:    c.StringSlice("peer"),
 		Discover: c.String("discover"),
+		Logger: log.With(
+			"peers", c.StringSlice("peer"),
+			"discover", c.String("discover")),
 	}.Dial(c.Context, h)
 }
 
