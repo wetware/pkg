@@ -27,9 +27,6 @@ import (
 	"github.com/wetware/pkg/client"
 	"github.com/wetware/pkg/rom"
 	"github.com/wetware/pkg/rom/ls"
-
-	cmdrun "github.com/wetware/pkg/internal/cmd/run"
-	cmdstart "github.com/wetware/pkg/internal/cmd/start"
 )
 
 var flags = []cli.Flag{
@@ -85,10 +82,6 @@ func main() {
 		Copyright:            "2020 The Wetware Project",
 		EnableBashCompletion: true,
 		Flags:                flags,
-		Commands: []*cli.Command{
-			cmdrun.Command(),
-			cmdstart.Command(),
-		},
 		Action: func(c *cli.Context) error {
 			wetware := ww.Ww{
 				NS:     c.String("ns"),
