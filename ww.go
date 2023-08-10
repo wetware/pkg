@@ -6,13 +6,17 @@ import (
 	_ "embed"
 	"errors"
 	"io"
+	"net"
 	"runtime"
 
 	"capnproto.org/go/capnp/v3"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
+	"github.com/tetratelabs/wazero/experimental/sock"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"github.com/tetratelabs/wazero/sys"
+
+	csp_server "github.com/wetware/pkg/cap/csp/server"
 )
 
 const (
@@ -66,8 +70,21 @@ func (ww Ww) Exec(ctx context.Context, rom ROM) error {
 	}
 	defer compiled.Close(ctx)
 
+	l, err := net.Listen("tcp", ":0")
+	if err != nil {
+		return err
+	}
+	addr := l.Addr().(*net.TCPAddr)
+
+	// Enables the creation of non-blocking TCP connections
+	// inside the WASM module. The host will pre-open the TCP
+	// port and pass it to the guest through a file descriptor.
+	sockCfg := sock.NewConfig().WithTCPListener("", addr.Port)
+	sockCtx := sock.WithConfig(ctx, sockCfg)
+	l.Close()
+
 	// Instantiate the guest module, and configure host exports.
-	mod, err := r.InstantiateModule(ctx, compiled, wazero.NewModuleConfig().
+	mod, err := r.InstantiateModule(sockCtx, compiled, wazero.NewModuleConfig().
 		WithOsyield(runtime.Gosched).
 		WithRandSource(rand.Reader).
 		WithStartFunctions(). // don't automatically call _start while instanitating.
@@ -82,6 +99,7 @@ func (ww Ww) Exec(ctx context.Context, rom ROM) error {
 	if err != nil {
 		return err
 	}
+	go csp_server.ServeModule(addr, ww.Client)
 	defer mod.Close(ctx)
 
 	return ww.run(ctx, mod)

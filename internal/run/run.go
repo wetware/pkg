@@ -1,8 +1,10 @@
 package run
 
 import (
+	"errors"
 	"os"
 
+	"capnproto.org/go/capnp/v3"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/host"
 	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
@@ -56,6 +58,7 @@ func run() cli.ActionFunc {
 			return dialAndExec(c, wetware, rom)
 		}
 
+		wetware.Client = capnp.ErrorClient(errors.New("NOT IMPLEMENTED"))
 		// run without connecting to a cluster
 		return wetware.Exec(c.Context, rom)
 	}
