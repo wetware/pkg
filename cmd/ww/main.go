@@ -19,6 +19,7 @@ import (
 
 	ww "github.com/wetware/pkg"
 	"github.com/wetware/pkg/internal/ls"
+	"github.com/wetware/pkg/internal/run"
 	"github.com/wetware/pkg/internal/start"
 )
 
@@ -77,6 +78,7 @@ func main() {
 		Flags:                flags,
 		Commands: []*cli.Command{
 			ls.Command(),
+			run.Command(),
 			start.Command(),
 		},
 	}
