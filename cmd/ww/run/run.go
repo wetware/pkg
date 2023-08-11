@@ -12,8 +12,8 @@ import (
 	"github.com/urfave/cli/v2"
 	ww "github.com/wetware/pkg"
 	"github.com/wetware/pkg/cap/host"
-	"github.com/wetware/pkg/client"
 	"github.com/wetware/pkg/rom"
+	"github.com/wetware/pkg/system"
 	"golang.org/x/exp/slog"
 )
 
@@ -59,12 +59,20 @@ func Command(log Logger) *cli.Command {
 
 func run(log Logger) cli.ActionFunc {
 	return func(c *cli.Context) error {
-		client, err := dial(c, log)
+		h, err := clientHost(c)
+		if err != nil {
+			return err
+		}
+		defer h.Close()
+
+		// dial into the cluster;  if -dial=false, client is null.
+		client, err := dial[host.Host](c, log, h)
 		if err != nil {
 			return err
 		}
 		defer client.Release()
 
+		// set up the local wetware environment.
 		wetware := ww.Ww[host.Host]{
 			Log:    log,
 			NS:     c.String("ns"),
@@ -74,66 +82,28 @@ func run(log Logger) cli.ActionFunc {
 			Client: client,
 		}
 
+		// fetch the ROM and run it
 		rom, err := bytecode(c)
 		if err != nil {
 			return err
 		}
 
-		// run without connecting to a cluster
 		return wetware.Exec(c.Context, rom)
 	}
 }
 
-func dial(c *cli.Context, log Logger) (host.Host, error) {
+func dial[T ~capnp.ClientKind](c *cli.Context, log Logger, h local.Host) (T, error) {
 	// dial into a cluster?
 	if c.Bool("dial") {
-		return bootstrap(c, log)
+		return system.Boot[T](c, log, h)
 	}
 
-	// we're not connected to the cluster;  return an
-	// auth.Provider that immediately fails with a helpful
-	// message.
-	return failure(errors.New("disconnected"))
+	// we're not connecting to the cluster
+	return failure[T](errors.New("disconnected"))
 }
 
-func failure(err error) (host.Host, error) {
-	return host.Host(capnp.ErrorClient(err)), err
-}
-
-// bootstrap a connection with a cluster peer; this is a synchronous operation.
-func bootstrap(c *cli.Context, log Logger) (host.Host, error) {
-	h, err := clientHost(c)
-	if err != nil {
-		return failure(err)
-	}
-
-	conn, err := client.Dialer{
-		NS:       c.String("ns"),
-		Peers:    c.StringSlice("peer"),
-		Discover: c.String("discover"),
-		Logger: log.With(
-			"peers", c.StringSlice("peer"),
-			"discover", c.String("discover")),
-	}.Dial(c.Context, h)
-	if err != nil {
-		return failure(err)
-	}
-
-	// This goroutine is automatically terminated when either c.Context
-	// expires or when the connection is closed, whichever happens first.
-	// This goroutine ensures the connection is closed when the application
-	// exits.
-	go func() {
-		defer conn.Close()
-
-		select {
-		case <-conn.Done():
-		case <-c.Context.Done():
-		}
-	}()
-
-	client := conn.Bootstrap(c.Context)
-	return host.Host(client), client.Resolve(c.Context)
+func failure[T ~capnp.ClientKind](err error) (T, error) {
+	return T(capnp.ErrorClient(err)), err
 }
 
 func clientHost(c *cli.Context) (local.Host, error) {
