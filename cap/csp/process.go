@@ -25,12 +25,26 @@ func (p Proc) Release() {
 	capnp.Client(p).Release()
 }
 
-// func (p Proc) Kill(ctx context.Context) error {
-// 	f, release := api.Process(p).Kill(ctx, nil)
-// 	defer release()
+// Kill a process and any sub processes it might have spawned.
+func (p Proc) Kill(ctx context.Context) error {
+	f, release := api.Process(p).Kill(ctx, nil)
+	defer release()
 
-// 	return casm.Future(f).Await(ctx)
-// }
+	select {
+	case <-f.Done():
+	case <-ctx.Done():
+	}
+
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
+	_, err := f.Struct()
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
 func (p Proc) Wait(ctx context.Context) error {
 	f, release := api.Process(p).Wait(ctx, nil)
