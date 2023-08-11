@@ -19,15 +19,8 @@ var (
 )
 
 func main() {
-
 	host, release := system.Boot[host.Host](ctx)
 	defer release()
-
-	// TODO(performance):  remove this once we've addressed any
-	// promise pipelining bugs in Cap'n Proto.
-	if err := capnp.Client(host).Resolve(ctx); err != nil {
-		die(err)
-	}
 
 	view, release := host.View(ctx)
 	defer release()
