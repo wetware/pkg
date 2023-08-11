@@ -48,19 +48,11 @@ func Boot[T ~capnp.ClientKind](ctx context.Context) (T, capnp.ReleaseFunc) {
 	closers = append(closers, tcpConn)
 
 	conn := rpc.NewConn(rpc.NewStreamTransport(tcpConn), &rpc.Options{
-		ErrorReporter: errLogger{},
+		ErrorReporter: warn{},
 	})
 	closers = append(closers, conn)
 
 	client := conn.Bootstrap(ctx)
-
-	// TODO(performance):  remove this once we've addressed any
-	// promise pipelining bugs in Cap'n Proto.
-	if err = client.Resolve(ctx); err != nil {
-		defer release()
-		return failure[T](err)
-	}
-
 	return T(client), release
 }
 
@@ -86,18 +78,18 @@ func preopenedListener(closers *[]io.Closer) (net.Listener, error) {
 	return l, err
 }
 
-// errLogger panics when an error occurs
-type errLogger struct {
+// warn panics when an error occurs
+type warn struct {
 	Logger
 }
 
-func (e errLogger) ReportError(err error) {
+func (e warn) ReportError(err error) {
 	if err != nil {
 		if e.Logger == nil {
 			e.Logger = slog.Default()
 		}
 
-		e.Debug("rpc: connection closed",
+		e.Warn("rpc: connection closed",
 			"error", err)
 	}
 }
