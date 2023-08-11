@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"time"
@@ -25,6 +26,7 @@ import (
 // based processes.  The zero-value Runtime panics.
 type Runtime struct {
 	Runtime    wazero.Runtime
+	Cache      BytecodeCache
 	HostModule *wazergo.ModuleInstance[*proc.Module]
 }
 
@@ -39,7 +41,17 @@ func (r Runtime) Exec(ctx context.Context, call api.Executor_exec) error {
 		return err
 	}
 
-	p, err := r.mkproc(ctx, call.Args())
+	bc, err := call.Args().Bytecode()
+	if err != nil {
+		return err
+	}
+
+	// Cache new bytecodes every time they are received.
+	r.Cache.put(bc)
+
+	client := call.Args().BootstrapClient()
+
+	p, err := r.mkproc(ctx, bc, client)
 	if err != nil {
 		return err
 	}
@@ -47,8 +59,38 @@ func (r Runtime) Exec(ctx context.Context, call api.Executor_exec) error {
 	return res.SetProcess(api.Process_ServerToClient(p))
 }
 
-func (r Runtime) mkproc(ctx context.Context, args api.Executor_exec_Params) (*process, error) {
-	mod, err := r.mkmod(ctx, args)
+func (r Runtime) ExecCached(ctx context.Context, call api.Executor_execCached) error {
+	res, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	hash, err := call.Args().Hash()
+	if err != nil {
+		return err
+	}
+
+	if len(hash) != csp.HashSize {
+		return fmt.Errorf("unexpected hash size, got %d expected %d", len(hash), csp.HashSize)
+	}
+
+	bc := r.Cache.get(hash)
+	if bc == nil {
+		return fmt.Errorf("bytecode for hash %s not found", hash)
+	}
+
+	client := call.Args().BootstrapClient()
+
+	p, err := r.mkproc(ctx, bc, client)
+	if err != nil {
+		return err
+	}
+
+	return res.SetProcess(api.Process_ServerToClient(p))
+}
+
+func (r Runtime) mkproc(ctx context.Context, bc []byte, client capnp.Client) (*process, error) {
+	mod, err := r.mkmod(ctx, bc, client)
 	if err != nil {
 		return nil, err
 	}
@@ -65,12 +107,7 @@ func (r Runtime) mkproc(ctx context.Context, args api.Executor_exec_Params) (*pr
 	}, nil
 }
 
-func (r Runtime) mkmod(ctx context.Context, args api.Executor_exec_Params) (wasm.Module, error) {
-	bc, err := args.Bytecode()
-	if err != nil {
-		return nil, err
-	}
-
+func (r Runtime) mkmod(ctx context.Context, bc []byte, client capnp.Client) (wasm.Module, error) {
 	name := csp.ByteCode(bc).String()
 
 	// TODO(perf):  cache compiled modules so that we can instantiate module
@@ -112,7 +149,7 @@ func (r Runtime) mkmod(ctx context.Context, args api.Executor_exec_Params) (wasm
 		return nil, err
 	}
 
-	go ServeModule(addr, args.BootstrapClient())
+	go ServeModule(addr, client)
 
 	return mod, nil
 }

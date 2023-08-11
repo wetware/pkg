@@ -36,6 +36,26 @@ func (c Executor) Exec(ctx context.Context, params func(Executor_exec_Params) er
 
 }
 
+func (c Executor) ExecCached(ctx context.Context, params func(Executor_execCached_Params) error) (Executor_execCached_Results_Future, capnp.ReleaseFunc) {
+
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0xaf2e5ebaa58175d2,
+			MethodID:      1,
+			InterfaceName: "process.capnp:Executor",
+			MethodName:    "execCached",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 2}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Executor_execCached_Params(s)) }
+	}
+
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return Executor_execCached_Results_Future{Future: ans.Future()}, release
+
+}
+
 func (c Executor) WaitStreaming() error {
 	return capnp.Client(c).WaitStreaming()
 }
@@ -110,6 +130,8 @@ func (c Executor) GetFlowLimiter() fc.FlowLimiter {
 // A Executor_Server is a Executor with a local implementation.
 type Executor_Server interface {
 	Exec(context.Context, Executor_exec) error
+
+	ExecCached(context.Context, Executor_execCached) error
 }
 
 // Executor_NewServer creates a new Server from an implementation of Executor_Server.
@@ -128,7 +150,7 @@ func Executor_ServerToClient(s Executor_Server) Executor {
 // This can be used to create a more complicated Server.
 func Executor_Methods(methods []server.Method, s Executor_Server) []server.Method {
 	if cap(methods) == 0 {
-		methods = make([]server.Method, 0, 1)
+		methods = make([]server.Method, 0, 2)
 	}
 
 	methods = append(methods, server.Method{
@@ -140,6 +162,18 @@ func Executor_Methods(methods []server.Method, s Executor_Server) []server.Metho
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
 			return s.Exec(ctx, Executor_exec{call})
+		},
+	})
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xaf2e5ebaa58175d2,
+			MethodID:      1,
+			InterfaceName: "process.capnp:Executor",
+			MethodName:    "execCached",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.ExecCached(ctx, Executor_execCached{call})
 		},
 	})
 
@@ -161,6 +195,23 @@ func (c Executor_exec) Args() Executor_exec_Params {
 func (c Executor_exec) AllocResults() (Executor_exec_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
 	return Executor_exec_Results(r), err
+}
+
+// Executor_execCached holds the state for a server call to Executor.execCached.
+// See server.Call for documentation.
+type Executor_execCached struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c Executor_execCached) Args() Executor_execCached_Params {
+	return Executor_execCached_Params(c.Call.Args())
+}
+
+// AllocResults allocates the results struct.
+func (c Executor_execCached) AllocResults() (Executor_execCached_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Executor_execCached_Results(r), err
 }
 
 // Executor_List is a list of Executor.
@@ -352,6 +403,189 @@ func (f Executor_exec_Results_Future) Struct() (Executor_exec_Results, error) {
 	return Executor_exec_Results(p.Struct()), err
 }
 func (p Executor_exec_Results_Future) Process() Process {
+	return Process(p.Future.Field(0, nil).Client())
+}
+
+type Executor_execCached_Params capnp.Struct
+
+// Executor_execCached_Params_TypeID is the unique identifier for the type Executor_execCached_Params.
+const Executor_execCached_Params_TypeID = 0xb9b9c4df47b44962
+
+func NewExecutor_execCached_Params(s *capnp.Segment) (Executor_execCached_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
+	return Executor_execCached_Params(st), err
+}
+
+func NewRootExecutor_execCached_Params(s *capnp.Segment) (Executor_execCached_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
+	return Executor_execCached_Params(st), err
+}
+
+func ReadRootExecutor_execCached_Params(msg *capnp.Message) (Executor_execCached_Params, error) {
+	root, err := msg.Root()
+	return Executor_execCached_Params(root.Struct()), err
+}
+
+func (s Executor_execCached_Params) String() string {
+	str, _ := text.Marshal(0xb9b9c4df47b44962, capnp.Struct(s))
+	return str
+}
+
+func (s Executor_execCached_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Executor_execCached_Params) DecodeFromPtr(p capnp.Ptr) Executor_execCached_Params {
+	return Executor_execCached_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Executor_execCached_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Executor_execCached_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Executor_execCached_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Executor_execCached_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Executor_execCached_Params) Hash() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return []byte(p.Data()), err
+}
+
+func (s Executor_execCached_Params) HasHash() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Executor_execCached_Params) SetHash(v []byte) error {
+	return capnp.Struct(s).SetData(0, v)
+}
+
+func (s Executor_execCached_Params) BootstrapClient() capnp.Client {
+	p, _ := capnp.Struct(s).Ptr(1)
+	return p.Interface().Client()
+}
+
+func (s Executor_execCached_Params) HasBootstrapClient() bool {
+	return capnp.Struct(s).HasPtr(1)
+}
+
+func (s Executor_execCached_Params) SetBootstrapClient(c capnp.Client) error {
+	if !c.IsValid() {
+		return capnp.Struct(s).SetPtr(1, capnp.Ptr{})
+	}
+	seg := s.Segment()
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(c))
+	return capnp.Struct(s).SetPtr(1, in.ToPtr())
+}
+
+// Executor_execCached_Params_List is a list of Executor_execCached_Params.
+type Executor_execCached_Params_List = capnp.StructList[Executor_execCached_Params]
+
+// NewExecutor_execCached_Params creates a new list of Executor_execCached_Params.
+func NewExecutor_execCached_Params_List(s *capnp.Segment, sz int32) (Executor_execCached_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2}, sz)
+	return capnp.StructList[Executor_execCached_Params](l), err
+}
+
+// Executor_execCached_Params_Future is a wrapper for a Executor_execCached_Params promised by a client call.
+type Executor_execCached_Params_Future struct{ *capnp.Future }
+
+func (f Executor_execCached_Params_Future) Struct() (Executor_execCached_Params, error) {
+	p, err := f.Future.Ptr()
+	return Executor_execCached_Params(p.Struct()), err
+}
+func (p Executor_execCached_Params_Future) BootstrapClient() capnp.Client {
+	return p.Future.Field(1, nil).Client()
+}
+
+type Executor_execCached_Results capnp.Struct
+
+// Executor_execCached_Results_TypeID is the unique identifier for the type Executor_execCached_Results.
+const Executor_execCached_Results_TypeID = 0xa21a945a0ef3799e
+
+func NewExecutor_execCached_Results(s *capnp.Segment) (Executor_execCached_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Executor_execCached_Results(st), err
+}
+
+func NewRootExecutor_execCached_Results(s *capnp.Segment) (Executor_execCached_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Executor_execCached_Results(st), err
+}
+
+func ReadRootExecutor_execCached_Results(msg *capnp.Message) (Executor_execCached_Results, error) {
+	root, err := msg.Root()
+	return Executor_execCached_Results(root.Struct()), err
+}
+
+func (s Executor_execCached_Results) String() string {
+	str, _ := text.Marshal(0xa21a945a0ef3799e, capnp.Struct(s))
+	return str
+}
+
+func (s Executor_execCached_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Executor_execCached_Results) DecodeFromPtr(p capnp.Ptr) Executor_execCached_Results {
+	return Executor_execCached_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Executor_execCached_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Executor_execCached_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Executor_execCached_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Executor_execCached_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Executor_execCached_Results) Process() Process {
+	p, _ := capnp.Struct(s).Ptr(0)
+	return Process(p.Interface().Client())
+}
+
+func (s Executor_execCached_Results) HasProcess() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Executor_execCached_Results) SetProcess(v Process) error {
+	if !v.IsValid() {
+		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
+	}
+	seg := s.Segment()
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
+	return capnp.Struct(s).SetPtr(0, in.ToPtr())
+}
+
+// Executor_execCached_Results_List is a list of Executor_execCached_Results.
+type Executor_execCached_Results_List = capnp.StructList[Executor_execCached_Results]
+
+// NewExecutor_execCached_Results creates a new list of Executor_execCached_Results.
+func NewExecutor_execCached_Results_List(s *capnp.Segment, sz int32) (Executor_execCached_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[Executor_execCached_Results](l), err
+}
+
+// Executor_execCached_Results_Future is a wrapper for a Executor_execCached_Results promised by a client call.
+type Executor_execCached_Results_Future struct{ *capnp.Future }
+
+func (f Executor_execCached_Results_Future) Struct() (Executor_execCached_Results, error) {
+	p, err := f.Future.Ptr()
+	return Executor_execCached_Results(p.Struct()), err
+}
+func (p Executor_execCached_Results_Future) Process() Process {
 	return Process(p.Future.Field(0, nil).Client())
 }
 
@@ -834,51 +1068,805 @@ func (f Process_kill_Results_Future) Struct() (Process_kill_Results, error) {
 	return Process_kill_Results(p.Struct()), err
 }
 
-const schema_9a51e53177277763 = "x\xda|RAh\x13Q\x14\x9c\xf9\xbb\xe9.\xe8\x1a" +
-	"~6F+\x88\xa0\x0d\xd5\x1ebB\xf4\"J\x83E" +
-	"\x82\x051\xdf\xbbB\xba.\x18L\x9a\x90\xdd\x90x\x12" +
-	"\x05\xf1\xae\x88\xa0\x08^\xa4\x1eDK\xf5T\xcf\xde\xa5" +
-	"\x0a\xa2\xde\x14/\x1e\x8ax\xebAV\xfe6\x1b#\xb5" +
-	"\xde\xfe\xe7\xcd\x9b\x997\xef\x15\xb3\xac\x98%g\xda\x84" +
-	"P\xc5\xd4D\xb4\xd6\xbb\xf1d\xf5R\xe1\x05\xe4.#" +
-	"\xf2\xfa\xd3\xfd\xd27\xf5\x00\xa0\xbb\xc1U\x97\xc2\x02\xdc" +
-	"_\xac\xbay\xfd\x8a\x1e\xbe][Z\xce\x9d\x7f\x0d\xb9" +
-	"\x87@\x8a\x16Pv\xc4A\x82\xeen1\x0bF\xeb\xf7" +
-	"\xdf\x07+WJo s\x04L]?.\xf6\x11f" +
-	"\xf4\xacZ\x9cz\xfcj\xe6\x03T\x8eIi\xbf.\xd1" +
-	"\xcd\xc7\xad\xe5\x89\xfc\xd3w?\x0e}\xdab\xe4\xacX" +
-	"qUl\xe4\x9c\xb8\xed>\x8a\x8dT/\x1e]\x9e|" +
-	"\xbe\xb4>\xa6sKd\xb4N\xe6\xee\x9d{\xdfO\xed" +
-	"\xf89\xb4\xa8\xd1\xe5\xd6\xa6NO\xf4\xc1\xe8\xeb\xcb\xcf" +
-	"\xf6\x97\xf9\xc6\xc6X\xebG\xddZ\x8c:\xdd\xb6\xe7\x07" +
-	"A\x81^\xbd\xb3\xd89qf0\xeb{\xbd\xb0\xdd\xad" +
-	"\x91\xca4R\xc0\x88\x9cI\x10R\xce@\xc8\x94\x95\xf6" +
-	"\x07\xbeWa\x8d\x1c\xb1\x18\x09\xcb&IA#\xa6." +
-	"\xf8A\xcfj\x86\x812\x0d\x130\x09H\xe74\xa0l" +
-	"\x83*+x}\xd8L\xf9'\x0e\x90\x12[hk\xc3" +
-	"\xef\xd5F\xb3\x19\xb36\x8d0\xd8\x0e\xd4\xaf7\xc2\x11" +
-	"h\\z\x1eP;\x0d\xaa\xbd\x82\x91?h\x84s\xed" +
-	"\xcb>\x00\xda\x10\xb4\xc7D\x99\xf0\x1d\x88\xff:\x10;" +
-	"\x0e$\x09\x93\xc9zeI\x07\x92\xb7\xc8\xd1\x8e\x98\x1c" +
-	"\x85\x9c\xd45\xc7Jk?\x15\xa6\xb5\xf7\x7ff\xf6\xd7" +
-	"p\xb5z\xb7\xdeb\xf0\xff\\5\xc8h\x05\xca\x1e\xcd" +
-	"vD\xcfv\xd8\xa0:&(\xc9\xac>:Y\xba\x09" +
-	"\xa8\xa2AuR0Z\xb8\x16\xfa\xdep`\x07\x82\x0e" +
-	"\x18-\xb4\xdba\x10v\xeb\xec\xcc5\x1b\xfeb\x08f" +
-	"L\x03df\xfb\x0d\xc4\xe1\x0eM\xfe\x0e\x00\x00\xff\xff" +
-	"[a\xf1\xc0"
+type BytecodeCache capnp.Client
+
+// BytecodeCache_TypeID is the unique identifier for the type BytecodeCache.
+const BytecodeCache_TypeID = 0xe64ce403f6090174
+
+func (c BytecodeCache) Put(ctx context.Context, params func(BytecodeCache_put_Params) error) (BytecodeCache_put_Results_Future, capnp.ReleaseFunc) {
+
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0xe64ce403f6090174,
+			MethodID:      0,
+			InterfaceName: "process.capnp:BytecodeCache",
+			MethodName:    "put",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(BytecodeCache_put_Params(s)) }
+	}
+
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return BytecodeCache_put_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c BytecodeCache) Get(ctx context.Context, params func(BytecodeCache_get_Params) error) (BytecodeCache_get_Results_Future, capnp.ReleaseFunc) {
+
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0xe64ce403f6090174,
+			MethodID:      1,
+			InterfaceName: "process.capnp:BytecodeCache",
+			MethodName:    "get",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(BytecodeCache_get_Params(s)) }
+	}
+
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return BytecodeCache_get_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c BytecodeCache) Has(ctx context.Context, params func(BytecodeCache_has_Params) error) (BytecodeCache_has_Results_Future, capnp.ReleaseFunc) {
+
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0xe64ce403f6090174,
+			MethodID:      2,
+			InterfaceName: "process.capnp:BytecodeCache",
+			MethodName:    "has",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(BytecodeCache_has_Params(s)) }
+	}
+
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return BytecodeCache_has_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c BytecodeCache) WaitStreaming() error {
+	return capnp.Client(c).WaitStreaming()
+}
+
+// String returns a string that identifies this capability for debugging
+// purposes.  Its format should not be depended on: in particular, it
+// should not be used to compare clients.  Use IsSame to compare clients
+// for equality.
+func (c BytecodeCache) String() string {
+	return "BytecodeCache(" + capnp.Client(c).String() + ")"
+}
+
+// AddRef creates a new Client that refers to the same capability as c.
+// If c is nil or has resolved to null, then AddRef returns nil.
+func (c BytecodeCache) AddRef() BytecodeCache {
+	return BytecodeCache(capnp.Client(c).AddRef())
+}
+
+// Release releases a capability reference.  If this is the last
+// reference to the capability, then the underlying resources associated
+// with the capability will be released.
+//
+// Release will panic if c has already been released, but not if c is
+// nil or resolved to null.
+func (c BytecodeCache) Release() {
+	capnp.Client(c).Release()
+}
+
+// Resolve blocks until the capability is fully resolved or the Context
+// expires.
+func (c BytecodeCache) Resolve(ctx context.Context) error {
+	return capnp.Client(c).Resolve(ctx)
+}
+
+func (c BytecodeCache) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Client(c).EncodeAsPtr(seg)
+}
+
+func (BytecodeCache) DecodeFromPtr(p capnp.Ptr) BytecodeCache {
+	return BytecodeCache(capnp.Client{}.DecodeFromPtr(p))
+}
+
+// IsValid reports whether c is a valid reference to a capability.
+// A reference is invalid if it is nil, has resolved to null, or has
+// been released.
+func (c BytecodeCache) IsValid() bool {
+	return capnp.Client(c).IsValid()
+}
+
+// IsSame reports whether c and other refer to a capability created by the
+// same call to NewClient.  This can return false negatives if c or other
+// are not fully resolved: use Resolve if this is an issue.  If either
+// c or other are released, then IsSame panics.
+func (c BytecodeCache) IsSame(other BytecodeCache) bool {
+	return capnp.Client(c).IsSame(capnp.Client(other))
+}
+
+// Update the flowcontrol.FlowLimiter used to manage flow control for
+// this client. This affects all future calls, but not calls already
+// waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
+// which is also the default.
+func (c BytecodeCache) SetFlowLimiter(lim fc.FlowLimiter) {
+	capnp.Client(c).SetFlowLimiter(lim)
+}
+
+// Get the current flowcontrol.FlowLimiter used to manage flow control
+// for this client.
+func (c BytecodeCache) GetFlowLimiter() fc.FlowLimiter {
+	return capnp.Client(c).GetFlowLimiter()
+}
+
+// A BytecodeCache_Server is a BytecodeCache with a local implementation.
+type BytecodeCache_Server interface {
+	Put(context.Context, BytecodeCache_put) error
+
+	Get(context.Context, BytecodeCache_get) error
+
+	Has(context.Context, BytecodeCache_has) error
+}
+
+// BytecodeCache_NewServer creates a new Server from an implementation of BytecodeCache_Server.
+func BytecodeCache_NewServer(s BytecodeCache_Server) *server.Server {
+	c, _ := s.(server.Shutdowner)
+	return server.New(BytecodeCache_Methods(nil, s), s, c)
+}
+
+// BytecodeCache_ServerToClient creates a new Client from an implementation of BytecodeCache_Server.
+// The caller is responsible for calling Release on the returned Client.
+func BytecodeCache_ServerToClient(s BytecodeCache_Server) BytecodeCache {
+	return BytecodeCache(capnp.NewClient(BytecodeCache_NewServer(s)))
+}
+
+// BytecodeCache_Methods appends Methods to a slice that invoke the methods on s.
+// This can be used to create a more complicated Server.
+func BytecodeCache_Methods(methods []server.Method, s BytecodeCache_Server) []server.Method {
+	if cap(methods) == 0 {
+		methods = make([]server.Method, 0, 3)
+	}
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xe64ce403f6090174,
+			MethodID:      0,
+			InterfaceName: "process.capnp:BytecodeCache",
+			MethodName:    "put",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Put(ctx, BytecodeCache_put{call})
+		},
+	})
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xe64ce403f6090174,
+			MethodID:      1,
+			InterfaceName: "process.capnp:BytecodeCache",
+			MethodName:    "get",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Get(ctx, BytecodeCache_get{call})
+		},
+	})
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xe64ce403f6090174,
+			MethodID:      2,
+			InterfaceName: "process.capnp:BytecodeCache",
+			MethodName:    "has",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Has(ctx, BytecodeCache_has{call})
+		},
+	})
+
+	return methods
+}
+
+// BytecodeCache_put holds the state for a server call to BytecodeCache.put.
+// See server.Call for documentation.
+type BytecodeCache_put struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c BytecodeCache_put) Args() BytecodeCache_put_Params {
+	return BytecodeCache_put_Params(c.Call.Args())
+}
+
+// AllocResults allocates the results struct.
+func (c BytecodeCache_put) AllocResults() (BytecodeCache_put_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return BytecodeCache_put_Results(r), err
+}
+
+// BytecodeCache_get holds the state for a server call to BytecodeCache.get.
+// See server.Call for documentation.
+type BytecodeCache_get struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c BytecodeCache_get) Args() BytecodeCache_get_Params {
+	return BytecodeCache_get_Params(c.Call.Args())
+}
+
+// AllocResults allocates the results struct.
+func (c BytecodeCache_get) AllocResults() (BytecodeCache_get_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return BytecodeCache_get_Results(r), err
+}
+
+// BytecodeCache_has holds the state for a server call to BytecodeCache.has.
+// See server.Call for documentation.
+type BytecodeCache_has struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c BytecodeCache_has) Args() BytecodeCache_has_Params {
+	return BytecodeCache_has_Params(c.Call.Args())
+}
+
+// AllocResults allocates the results struct.
+func (c BytecodeCache_has) AllocResults() (BytecodeCache_has_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 8, PointerCount: 0})
+	return BytecodeCache_has_Results(r), err
+}
+
+// BytecodeCache_List is a list of BytecodeCache.
+type BytecodeCache_List = capnp.CapList[BytecodeCache]
+
+// NewBytecodeCache creates a new list of BytecodeCache.
+func NewBytecodeCache_List(s *capnp.Segment, sz int32) (BytecodeCache_List, error) {
+	l, err := capnp.NewPointerList(s, sz)
+	return capnp.CapList[BytecodeCache](l), err
+}
+
+type BytecodeCache_put_Params capnp.Struct
+
+// BytecodeCache_put_Params_TypeID is the unique identifier for the type BytecodeCache_put_Params.
+const BytecodeCache_put_Params_TypeID = 0x91b6120f2a2e3ebe
+
+func NewBytecodeCache_put_Params(s *capnp.Segment) (BytecodeCache_put_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return BytecodeCache_put_Params(st), err
+}
+
+func NewRootBytecodeCache_put_Params(s *capnp.Segment) (BytecodeCache_put_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return BytecodeCache_put_Params(st), err
+}
+
+func ReadRootBytecodeCache_put_Params(msg *capnp.Message) (BytecodeCache_put_Params, error) {
+	root, err := msg.Root()
+	return BytecodeCache_put_Params(root.Struct()), err
+}
+
+func (s BytecodeCache_put_Params) String() string {
+	str, _ := text.Marshal(0x91b6120f2a2e3ebe, capnp.Struct(s))
+	return str
+}
+
+func (s BytecodeCache_put_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (BytecodeCache_put_Params) DecodeFromPtr(p capnp.Ptr) BytecodeCache_put_Params {
+	return BytecodeCache_put_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s BytecodeCache_put_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s BytecodeCache_put_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s BytecodeCache_put_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s BytecodeCache_put_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s BytecodeCache_put_Params) Bytecode() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return []byte(p.Data()), err
+}
+
+func (s BytecodeCache_put_Params) HasBytecode() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s BytecodeCache_put_Params) SetBytecode(v []byte) error {
+	return capnp.Struct(s).SetData(0, v)
+}
+
+// BytecodeCache_put_Params_List is a list of BytecodeCache_put_Params.
+type BytecodeCache_put_Params_List = capnp.StructList[BytecodeCache_put_Params]
+
+// NewBytecodeCache_put_Params creates a new list of BytecodeCache_put_Params.
+func NewBytecodeCache_put_Params_List(s *capnp.Segment, sz int32) (BytecodeCache_put_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[BytecodeCache_put_Params](l), err
+}
+
+// BytecodeCache_put_Params_Future is a wrapper for a BytecodeCache_put_Params promised by a client call.
+type BytecodeCache_put_Params_Future struct{ *capnp.Future }
+
+func (f BytecodeCache_put_Params_Future) Struct() (BytecodeCache_put_Params, error) {
+	p, err := f.Future.Ptr()
+	return BytecodeCache_put_Params(p.Struct()), err
+}
+
+type BytecodeCache_put_Results capnp.Struct
+
+// BytecodeCache_put_Results_TypeID is the unique identifier for the type BytecodeCache_put_Results.
+const BytecodeCache_put_Results_TypeID = 0xf51e7dd3fc20b968
+
+func NewBytecodeCache_put_Results(s *capnp.Segment) (BytecodeCache_put_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return BytecodeCache_put_Results(st), err
+}
+
+func NewRootBytecodeCache_put_Results(s *capnp.Segment) (BytecodeCache_put_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return BytecodeCache_put_Results(st), err
+}
+
+func ReadRootBytecodeCache_put_Results(msg *capnp.Message) (BytecodeCache_put_Results, error) {
+	root, err := msg.Root()
+	return BytecodeCache_put_Results(root.Struct()), err
+}
+
+func (s BytecodeCache_put_Results) String() string {
+	str, _ := text.Marshal(0xf51e7dd3fc20b968, capnp.Struct(s))
+	return str
+}
+
+func (s BytecodeCache_put_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (BytecodeCache_put_Results) DecodeFromPtr(p capnp.Ptr) BytecodeCache_put_Results {
+	return BytecodeCache_put_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s BytecodeCache_put_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s BytecodeCache_put_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s BytecodeCache_put_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s BytecodeCache_put_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s BytecodeCache_put_Results) Hash() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return []byte(p.Data()), err
+}
+
+func (s BytecodeCache_put_Results) HasHash() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s BytecodeCache_put_Results) SetHash(v []byte) error {
+	return capnp.Struct(s).SetData(0, v)
+}
+
+// BytecodeCache_put_Results_List is a list of BytecodeCache_put_Results.
+type BytecodeCache_put_Results_List = capnp.StructList[BytecodeCache_put_Results]
+
+// NewBytecodeCache_put_Results creates a new list of BytecodeCache_put_Results.
+func NewBytecodeCache_put_Results_List(s *capnp.Segment, sz int32) (BytecodeCache_put_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[BytecodeCache_put_Results](l), err
+}
+
+// BytecodeCache_put_Results_Future is a wrapper for a BytecodeCache_put_Results promised by a client call.
+type BytecodeCache_put_Results_Future struct{ *capnp.Future }
+
+func (f BytecodeCache_put_Results_Future) Struct() (BytecodeCache_put_Results, error) {
+	p, err := f.Future.Ptr()
+	return BytecodeCache_put_Results(p.Struct()), err
+}
+
+type BytecodeCache_get_Params capnp.Struct
+
+// BytecodeCache_get_Params_TypeID is the unique identifier for the type BytecodeCache_get_Params.
+const BytecodeCache_get_Params_TypeID = 0xf694129c75eba87c
+
+func NewBytecodeCache_get_Params(s *capnp.Segment) (BytecodeCache_get_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return BytecodeCache_get_Params(st), err
+}
+
+func NewRootBytecodeCache_get_Params(s *capnp.Segment) (BytecodeCache_get_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return BytecodeCache_get_Params(st), err
+}
+
+func ReadRootBytecodeCache_get_Params(msg *capnp.Message) (BytecodeCache_get_Params, error) {
+	root, err := msg.Root()
+	return BytecodeCache_get_Params(root.Struct()), err
+}
+
+func (s BytecodeCache_get_Params) String() string {
+	str, _ := text.Marshal(0xf694129c75eba87c, capnp.Struct(s))
+	return str
+}
+
+func (s BytecodeCache_get_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (BytecodeCache_get_Params) DecodeFromPtr(p capnp.Ptr) BytecodeCache_get_Params {
+	return BytecodeCache_get_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s BytecodeCache_get_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s BytecodeCache_get_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s BytecodeCache_get_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s BytecodeCache_get_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s BytecodeCache_get_Params) Hash() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return []byte(p.Data()), err
+}
+
+func (s BytecodeCache_get_Params) HasHash() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s BytecodeCache_get_Params) SetHash(v []byte) error {
+	return capnp.Struct(s).SetData(0, v)
+}
+
+// BytecodeCache_get_Params_List is a list of BytecodeCache_get_Params.
+type BytecodeCache_get_Params_List = capnp.StructList[BytecodeCache_get_Params]
+
+// NewBytecodeCache_get_Params creates a new list of BytecodeCache_get_Params.
+func NewBytecodeCache_get_Params_List(s *capnp.Segment, sz int32) (BytecodeCache_get_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[BytecodeCache_get_Params](l), err
+}
+
+// BytecodeCache_get_Params_Future is a wrapper for a BytecodeCache_get_Params promised by a client call.
+type BytecodeCache_get_Params_Future struct{ *capnp.Future }
+
+func (f BytecodeCache_get_Params_Future) Struct() (BytecodeCache_get_Params, error) {
+	p, err := f.Future.Ptr()
+	return BytecodeCache_get_Params(p.Struct()), err
+}
+
+type BytecodeCache_get_Results capnp.Struct
+
+// BytecodeCache_get_Results_TypeID is the unique identifier for the type BytecodeCache_get_Results.
+const BytecodeCache_get_Results_TypeID = 0xb2c6f1c55b7403f4
+
+func NewBytecodeCache_get_Results(s *capnp.Segment) (BytecodeCache_get_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return BytecodeCache_get_Results(st), err
+}
+
+func NewRootBytecodeCache_get_Results(s *capnp.Segment) (BytecodeCache_get_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return BytecodeCache_get_Results(st), err
+}
+
+func ReadRootBytecodeCache_get_Results(msg *capnp.Message) (BytecodeCache_get_Results, error) {
+	root, err := msg.Root()
+	return BytecodeCache_get_Results(root.Struct()), err
+}
+
+func (s BytecodeCache_get_Results) String() string {
+	str, _ := text.Marshal(0xb2c6f1c55b7403f4, capnp.Struct(s))
+	return str
+}
+
+func (s BytecodeCache_get_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (BytecodeCache_get_Results) DecodeFromPtr(p capnp.Ptr) BytecodeCache_get_Results {
+	return BytecodeCache_get_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s BytecodeCache_get_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s BytecodeCache_get_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s BytecodeCache_get_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s BytecodeCache_get_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s BytecodeCache_get_Results) Bytecode() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return []byte(p.Data()), err
+}
+
+func (s BytecodeCache_get_Results) HasBytecode() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s BytecodeCache_get_Results) SetBytecode(v []byte) error {
+	return capnp.Struct(s).SetData(0, v)
+}
+
+// BytecodeCache_get_Results_List is a list of BytecodeCache_get_Results.
+type BytecodeCache_get_Results_List = capnp.StructList[BytecodeCache_get_Results]
+
+// NewBytecodeCache_get_Results creates a new list of BytecodeCache_get_Results.
+func NewBytecodeCache_get_Results_List(s *capnp.Segment, sz int32) (BytecodeCache_get_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[BytecodeCache_get_Results](l), err
+}
+
+// BytecodeCache_get_Results_Future is a wrapper for a BytecodeCache_get_Results promised by a client call.
+type BytecodeCache_get_Results_Future struct{ *capnp.Future }
+
+func (f BytecodeCache_get_Results_Future) Struct() (BytecodeCache_get_Results, error) {
+	p, err := f.Future.Ptr()
+	return BytecodeCache_get_Results(p.Struct()), err
+}
+
+type BytecodeCache_has_Params capnp.Struct
+
+// BytecodeCache_has_Params_TypeID is the unique identifier for the type BytecodeCache_has_Params.
+const BytecodeCache_has_Params_TypeID = 0xc25a17a8499cfe55
+
+func NewBytecodeCache_has_Params(s *capnp.Segment) (BytecodeCache_has_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return BytecodeCache_has_Params(st), err
+}
+
+func NewRootBytecodeCache_has_Params(s *capnp.Segment) (BytecodeCache_has_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return BytecodeCache_has_Params(st), err
+}
+
+func ReadRootBytecodeCache_has_Params(msg *capnp.Message) (BytecodeCache_has_Params, error) {
+	root, err := msg.Root()
+	return BytecodeCache_has_Params(root.Struct()), err
+}
+
+func (s BytecodeCache_has_Params) String() string {
+	str, _ := text.Marshal(0xc25a17a8499cfe55, capnp.Struct(s))
+	return str
+}
+
+func (s BytecodeCache_has_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (BytecodeCache_has_Params) DecodeFromPtr(p capnp.Ptr) BytecodeCache_has_Params {
+	return BytecodeCache_has_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s BytecodeCache_has_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s BytecodeCache_has_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s BytecodeCache_has_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s BytecodeCache_has_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s BytecodeCache_has_Params) Hash() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return []byte(p.Data()), err
+}
+
+func (s BytecodeCache_has_Params) HasHash() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s BytecodeCache_has_Params) SetHash(v []byte) error {
+	return capnp.Struct(s).SetData(0, v)
+}
+
+// BytecodeCache_has_Params_List is a list of BytecodeCache_has_Params.
+type BytecodeCache_has_Params_List = capnp.StructList[BytecodeCache_has_Params]
+
+// NewBytecodeCache_has_Params creates a new list of BytecodeCache_has_Params.
+func NewBytecodeCache_has_Params_List(s *capnp.Segment, sz int32) (BytecodeCache_has_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[BytecodeCache_has_Params](l), err
+}
+
+// BytecodeCache_has_Params_Future is a wrapper for a BytecodeCache_has_Params promised by a client call.
+type BytecodeCache_has_Params_Future struct{ *capnp.Future }
+
+func (f BytecodeCache_has_Params_Future) Struct() (BytecodeCache_has_Params, error) {
+	p, err := f.Future.Ptr()
+	return BytecodeCache_has_Params(p.Struct()), err
+}
+
+type BytecodeCache_has_Results capnp.Struct
+
+// BytecodeCache_has_Results_TypeID is the unique identifier for the type BytecodeCache_has_Results.
+const BytecodeCache_has_Results_TypeID = 0xf9602cd2c3f65e0f
+
+func NewBytecodeCache_has_Results(s *capnp.Segment) (BytecodeCache_has_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 0})
+	return BytecodeCache_has_Results(st), err
+}
+
+func NewRootBytecodeCache_has_Results(s *capnp.Segment) (BytecodeCache_has_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 0})
+	return BytecodeCache_has_Results(st), err
+}
+
+func ReadRootBytecodeCache_has_Results(msg *capnp.Message) (BytecodeCache_has_Results, error) {
+	root, err := msg.Root()
+	return BytecodeCache_has_Results(root.Struct()), err
+}
+
+func (s BytecodeCache_has_Results) String() string {
+	str, _ := text.Marshal(0xf9602cd2c3f65e0f, capnp.Struct(s))
+	return str
+}
+
+func (s BytecodeCache_has_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (BytecodeCache_has_Results) DecodeFromPtr(p capnp.Ptr) BytecodeCache_has_Results {
+	return BytecodeCache_has_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s BytecodeCache_has_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s BytecodeCache_has_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s BytecodeCache_has_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s BytecodeCache_has_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s BytecodeCache_has_Results) Has() bool {
+	return capnp.Struct(s).Bit(0)
+}
+
+func (s BytecodeCache_has_Results) SetHas(v bool) {
+	capnp.Struct(s).SetBit(0, v)
+}
+
+// BytecodeCache_has_Results_List is a list of BytecodeCache_has_Results.
+type BytecodeCache_has_Results_List = capnp.StructList[BytecodeCache_has_Results]
+
+// NewBytecodeCache_has_Results creates a new list of BytecodeCache_has_Results.
+func NewBytecodeCache_has_Results_List(s *capnp.Segment, sz int32) (BytecodeCache_has_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 0}, sz)
+	return capnp.StructList[BytecodeCache_has_Results](l), err
+}
+
+// BytecodeCache_has_Results_Future is a wrapper for a BytecodeCache_has_Results promised by a client call.
+type BytecodeCache_has_Results_Future struct{ *capnp.Future }
+
+func (f BytecodeCache_has_Results_Future) Struct() (BytecodeCache_has_Results, error) {
+	p, err := f.Future.Ptr()
+	return BytecodeCache_has_Results(p.Struct()), err
+}
+
+const schema_9a51e53177277763 = "x\xda\xacT]h#U\x14>g\xee\x9dL\xc4\xcd" +
+	"\x86\x9bY\xbb\xa6\xec\xaa[S\xd4\xb0\x1b\x13\xaa\xe0." +
+	"jb\xcbRZ\x04s\x17\xfbR\xd9\xc5\xe9t\xd8\x09" +
+	"\xa6\x9b\x90\x99\x90.(\xa2 \x8b\x0f>\xa8+\x82." +
+	"\"\xc2\xb2}\xf0g\xad\xab\xd0\x95\xfa\xa0V_\xa5U" +
+	"\x04\xa5\x88\xd5\xfa\xa0X\xfck\xa1 \x8e\xdc\x9bL2" +
+	"i\x12)\xeaK\xc8p\xbf\xfb\x9d\xef|\xe7\xbb'm" +
+	"*9\x9a\x89d5P\xf8\x83j\xc8\xfb\xe0\xdeT2" +
+	"\x1a{\xefY`\x07\x10@E\x0d`\xe8)r\x0c\x01" +
+	"\xf5gH\x16\xd0{\xe5\xec\xef{'\xcf\xf7\xbf\x06l" +
+	"\x7f\x13\xf069!\x00\x8b\x12\xb0\\}\xe2\xe2\xd5S" +
+	"\xa9\xb7\x80\xed%\x9eY\xbb\xa5\x96Y\xe7/\x01\xa0\xbe" +
+	"J\xae\xea\xebD\x03\xd0\xbf%\xe7\xf4;\xa9\x06\xe0\xfd" +
+	"A\xdc\x87\x96~\xfdd>X\xee \x1d\x16l\x83T" +
+	"\xb0M\x8d]\x19\xfd\xe6\xe3\x85\x85F9E\x00\xc6\xe8" +
+	"\xb8\x00L\xd0\x1a\xa0\xf7\xf2g\xcb\x97.\xf7=\xf0~" +
+	"P\xcf\xbbt@\xea\x91\x0c\x13\x7f]\x18\x9b\xdb?\xf9" +
+	"a\xb0\xc4*\x95\x1d\xadK\xc0\xc6\x8b\x9f;\xf3vf" +
+	"\x09X\x1f\x02\x08YC\xaa\xda\x8f@\xbd\xd7G\xd3\x89" +
+	"W\xaf$\xbf\x04\xde\x87\xfe\xd1\xcf\xb4_\\\xdd\x94W" +
+	"\x87B\x83s+\xbf\xdc\xfcUG\xafqu^?\xa4" +
+	"\x8a^\x0f\xaa\xe7\xf4\x19\xf1\xcfs\xf1\x9a-\xf2\xfd\xfd" +
+	"?t\x80'\xd45\xdd\x90\xe0\x93\xea\xa7\xfa\x17\x12<" +
+	"z\xf2\xf6\xcb\xf17/m\x04D-\xaa1!*\xf6" +
+	"\xfcs/\xfcx\xcf\xb5\xbf\x05\x1d\xb9\xa8JQo\xa8" +
+	"\xc2\x11{\xe1\xa6?W\x1e\xbba3\xd80\x0bIO" +
+	"\xe3!\xa1\xfa\xd1\xb9\x9f\xaa\x17b\xe7\xb7\x82\x80\xa3!" +
+	"\xe9\xc8}\x12\x10=\xb5\xf5\xd1\xf2\xe1\x87\xb7\x81\x1fh" +
+	"\xf6m\xd4\x19\x0a\x12\xf0\xdd;_\x87\xd7\xc6\x0b\xdb\x01" +
+	"uO\x87b\x08i\xaf\\)\x99\x96\xe3\xa4\x88i\x94" +
+	"\xcf\x94\x8f\x0d\x9fu-\xb34m\x8d\x18\xa6m\xa5\xca" +
+	"U7\x91\xcd\x1b\x15c\xc6\xe1\x94P\x00\x8a\x00,2" +
+	"\x0e\xc0\xf7\x10\xe4\xd7+\xe8M5.\x00\x00F@\xc1" +
+	"\x08`\x93\x93\xd69\x8f\xcfZf\xd5-UR\xd6\xac" +
+	"eJ\xe2\xe9\xc4\x09\xcb\xa9\x16]l\xa3\x1d\x06\xe0a" +
+	"\x82|\x9f\x82\x8f7(\x90\xb5F\x06\x88,@\x8e>" +
+	"y\xb6\xce\x9eG\xe4a\xa2\x024\x0dG?j,\x93" +
+	"\x04\x85\x0dj\xd8\x8a'\xfa\xcf\x82\xc5'AaL\x8b" +
+	"\x0aq9\xf4|\x8d@\xac\xe9\x1c\xe6\xb1\xa3\x9bv\x87" +
+	"N[n\xa3\x17\x07\xfeg\x8b\xea\xbeKO|\xda\xdb" +
+	"\x92\x00<A\x90\xa7\x15d\x88\xfb\xc4\xb0\xd9\x91'\x01" +
+	"\xf8a\x82\xfc.\x05\xa3\xb6\xe1\xd8\xcd\"S\xa5\x92\xeb" +
+	"\xb8\x15\x03\xcb#\xc5\x82u\xc6\x05\x8cQ\x02\x88\xb1\x80" +
+	"\x00\xd2E\x80\xecH+\xba\xffa:]\xe3d\x1bN" +
+	"\xb78%[\xcc\xed\xfaw\x90\xe5\x1b\x9f\x8f\x14\x8a\xc5" +
+	"\xba\xe9\xc4uz\x81jF\xc1m\x82zM\xc6\x9a-" +
+	"\xb8#\x8d\xc9\x84A\xc1pg\xbe\xf2\x95\x1b\xe5w+" +
+	"^\xfe[B\x7f\xdb\x04\xe2\xe5o\x01\xf4w\x14\x8b\x8b" +
+	"\xb3\x88\x16\x15zr\x18\x15\xda\xdbc\xa5\xectJ3" +
+	"mKT\xdb#\xab\xf9\xfb\x1d\xfd-\xc1\xf8\x00(\xec" +
+	"\xb8\xa8\xe6\xef\x05\xf4\xb72;*\xce\x8eh\xa84\xb7" +
+	"(\xfa\xbb\x81\x1d\x12g\xd7iZ\xb9\xea\xe6P;m" +
+	"\x89_\xdbp\xda\xd5t\xb3ZN\x0c\x9d\x7f\x8e\x8c\x00" +
+	"\x91\x19'\x18V\xe1\xf4\xad\x04\xf9\x1d\x81\xb0fDX" +
+	"\xd3\x04\xf9\xdd=\x1e\xc6n2K{\xed\xaan/q" +
+	"\xb7\xe9\xea|\xd7\xff&\xaa\xb4W\xee\xbbI\x1bh\xb1" +
+	"\x89I \x82\x82\xd8;\xf72\xd2\x8da\xfc\x1d\x00\x00" +
+	"\xff\xff\x9c\x97,\x0d"
 
 func RegisterSchema(reg *schemas.Registry) {
 	reg.Register(&schemas.Schema{
 		String: schema_9a51e53177277763,
 		Nodes: []uint64{
+			0x91b6120f2a2e3ebe,
+			0xa21a945a0ef3799e,
 			0xaf2e5ebaa58175d2,
+			0xb2c6f1c55b7403f4,
+			0xb9b9c4df47b44962,
 			0xbb4f16b0a7d2d09b,
+			0xc25a17a8499cfe55,
 			0xc53168b273d497ee,
 			0xd72ab4a0243047ac,
 			0xda23f0d3a8250633,
+			0xe64ce403f6090174,
 			0xeea7ae19b02f5d47,
 			0xf20b3dea95929312,
+			0xf51e7dd3fc20b968,
+			0xf694129c75eba87c,
+			0xf9602cd2c3f65e0f,
 			0xf9694ae208dbb3e3,
 		},
 		Compressed: true,
