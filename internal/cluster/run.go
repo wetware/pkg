@@ -12,18 +12,18 @@ import (
 
 const killTimeout = 30 * time.Second
 
-func run() *cli.Command {
+func run(log Logger) *cli.Command {
 	return &cli.Command{
 		Name:      "run",
 		Usage:     "compile and run a WASM module",
 		ArgsUsage: "<path> (defaults to stdin)",
-		Before:    setup(),
+		Before:    setup(log),
 		After:     teardown(),
-		Action:    runAction(),
+		Action:    runAction(log),
 	}
 }
 
-func runAction() cli.ActionFunc {
+func runAction(log Logger) cli.ActionFunc {
 	return func(c *cli.Context) error {
 		ctx := c.Context
 

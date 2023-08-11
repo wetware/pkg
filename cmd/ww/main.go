@@ -19,6 +19,7 @@ import (
 	"golang.org/x/exp/slog"
 
 	ww "github.com/wetware/pkg"
+	"github.com/wetware/pkg/internal/cluster"
 	"github.com/wetware/pkg/internal/ls"
 	"github.com/wetware/pkg/internal/run"
 	"github.com/wetware/pkg/internal/start"
@@ -89,6 +90,7 @@ func main() {
 			ls.Command(log),
 			run.Command(log),
 			start.Command(log),
+			cluster.Command(log),
 		},
 	}
 
