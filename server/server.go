@@ -64,7 +64,6 @@ func (cfg Config) Serve(ctx context.Context, h local_host.Host) error {
 	if cfg.Logger == nil {
 		cfg.Logger = slog.Default()
 	}
-	// cfg.Logger = cfg.Logger.WithField("ns", cfg.NS)
 
 	d, err := cfg.newBootstrapper(h)
 	if err != nil {
@@ -141,6 +140,7 @@ func (cfg Config) handler(ctx context.Context, h *host.Server) network.StreamHan
 		defer s.Close()
 
 		conn := rpc.NewConn(transport(s), &rpc.Options{
+			ErrorReporter:   debug{cfg.Logger},
 			BootstrapClient: h.Client(), // serve a host
 		})
 		defer conn.Close()
@@ -152,15 +152,45 @@ func (cfg Config) handler(ctx context.Context, h *host.Server) network.StreamHan
 	}
 }
 
-// func (cfg Config) authProvider(h *host.Server) capnp.Client {
-// 	policy := auth.AllowAll(h) // TODO(soon):  implement server-side auth here
-// 	return capnp.Client(policy)
-// }
-
 func transport(s network.Stream) rpc.Transport {
 	if strings.HasSuffix(string(s.Protocol()), "/packed") {
 		return rpc.NewPackedStreamTransport(s)
 	}
 
 	return rpc.NewStreamTransport(s)
+}
+
+var (
+	_ rpc.ErrorReporter = (*debug)(nil)
+	_ rpc.ErrorReporter = (*warn)(nil)
+)
+
+type debug struct {
+	Logger
+}
+
+func (d debug) ReportError(err error) {
+	if err != nil {
+		if d.Logger == nil {
+			d.Logger = slog.Default()
+		}
+
+		d.Logger.Debug("rpc:  connection closed",
+			"error", err)
+	}
+}
+
+type warn struct {
+	Logger
+}
+
+func (w warn) ReportError(err error) {
+	if err != nil {
+		if w.Logger == nil {
+			w.Logger = slog.Default()
+		}
+
+		w.Logger.Warn("rpc:  connection closed",
+			"error", err)
+	}
 }
