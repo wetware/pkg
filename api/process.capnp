@@ -9,13 +9,13 @@ $Go.import("github.com/wetware/pkg/api/process");
 interface Executor {
     # Executor has the ability to create and run WASM processes given the
     # WASM bytecode.
-    exec @0 (bytecode :Data, bootstrapClient :Capability) -> (process :Process);
+    exec @0 (bytecode :Data, ppid :UInt32, bootstrapClient :Capability) -> (process :Process);
     # Exec creates an runs a process from the provided bytecode. Optionally, a
     # capability can be passed through the `cap` parameter. This capability will
     # be available at the process bootContext.
     #
     # The Process capability is associated to the created process.
-    execCached @1 (hash :Data, bootstrapClient :Capability) -> (process :Process);
+    execCached @1 (hash :Data, ppid :UInt32, bootstrapClient :Capability) -> (process :Process);
     # Same as Exec, but the bytecode is directly from the BytecodeRegistry.
     # Provides a significant performance improvement for medium to large
     # WASM streams.

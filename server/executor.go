@@ -24,5 +24,6 @@ func (cfg Config) newExecutor(ctx context.Context, ec executorConfig) (csp_serve
 	return csp_server.Runtime{
 		Runtime: r,
 		Cache:   ec.Cache,
+		Tree:    csp_server.NewProcTree(ctx),
 	}, nil
 }

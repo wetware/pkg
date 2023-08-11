@@ -9,17 +9,20 @@ import (
 
 // process is the main implementation of the Process capability.
 type process struct {
-	done   <-chan execResult
-	cancel context.CancelFunc
-	result execResult
+	pid      uint32
+	done     <-chan execResult
+	killFunc func(uint32) // killFunc must call cancel()
+	cancel   context.CancelFunc
+	result   execResult
 }
 
-func (p process) Kill(context.Context, api.Process_kill) error {
-	p.cancel()
+func (p *process) Kill(ctx context.Context, call api.Process_kill) error {
+	p.killFunc(p.pid)
 	return nil
 }
 
 func (p *process) Wait(ctx context.Context, call api.Process_wait) error {
+	call.Go()
 	select {
 	case res, ok := <-p.done:
 		if ok {
