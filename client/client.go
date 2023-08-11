@@ -60,7 +60,7 @@ func (d Dialer) Dial(ctx context.Context, h host.Host) (*rpc.Conn, error) {
 	}
 
 	return rpc.NewConn(transport(s), &rpc.Options{
-		ErrorReporter: warn{d.Logger},
+		ErrorReporter: debug{d.Logger},
 	}), nil
 }
 
