@@ -3068,116 +3068,824 @@ func (p View_reverse_Results_Future) View() View {
 	return View(p.Future.Field(0, nil).Client())
 }
 
-const schema_fcf6ac08e448a6ac = "x\xda\xacWml\x1cW\x15\xbd\xe7\xbdq\xc6)\xde" +
-	"\x8f\xb7\xb3\x91B\"\xe3\xc4uP\x1cd+\xa9[\x10" +
-	"\x16\x95\xb7\xa6&\xb6I$?\xbb-\xb4ji\xd7\xeb" +
-	"i\xbc\xb0\x1f\xce\xcc\xac\xed\x95\x1aB\xa0\x16IK\x03" +
-	"\x05\x8a\x9aH-\x12J*\x02\x15\x11AmU\x0a\x16" +
-	"\xea\x1fDq@\x94\xf2\x11\x04\x14\xa1\xb4\xfc\x81P\x02" +
-	"Mip3\xe8\xcd\xec\xec\x8c\xd7\x1bGH\xfc[\xcf" +
-	"\x9c\xb9\xf7\xbes\xcf=\xf7y\xe7\xfc\xba\x8c\xb6+\xf6" +
-	"\xf9\xcd\xc4&2hY\xe7.>w\xe1\xb5\xeb\xb7?" +
-	"\xfcY\x12\x06\x884\x9d\xc88\x15\xbbL\x9a\xfb\xcf\xdc" +
-	"\xc57\xdes\xf4\xafG\xc2\x17}\x8f\xc46\x814\xf7" +
-	"x\xd7\xf2]}o\xb4?D\"\xce\xdd\xa7\x9f\x1a>" +
-	"\xdf\xfa\xf4\xa5e\"\x18\x95\xd8q\xe3@l\x1f\x91q" +
-	"6\xf6cc(\xae\x13\xb9=\xc3\xaf\xfe\xe3s\xe7:" +
-	"\x1e\x8e\x84\xe9\x89\xa7T\x98\x1f>y\xea\xd9\x9f\x15\x9f" +
-	"?Jb3\x88Z\xa0^m\x88\xf7\x83`\xb4\xc7\x07" +
-	"\x08\xee\x9b\xaf\xecY8\xfa\xe5\x8f\x7f\xd1\xff\xd4\x07\xdc" +
-	"\x1cg\x0ap\x8b\x07\xd0\x7fy\xef\xd4\xf2\xe2\x03\x8f\xad" +
-	"*$\x1b?n\xe4U\xfa>3\xbe\x1b\xc6M\x09U" +
-	"\x09\xfbZ\xcb\x0boo9\xf4d4\\{\xa2S\x85" +
-	"\xdb\x96P\xe1\xce?_\x99\xf8\xe8\x8b\xda\x89\x08\x15#" +
-	"\x09E\xc5\x96\xb7\xde\xff\xb8\xbe\xdf9E2\x0e\x16&" +
-	"ja\x0a\xd2\x93x\xd1O`\xecJ\xfc\x85\xe0N," +
-	"]\x9a\xdcr\xb3\xf1m\x92\x06X\xc8\xd5\x10t\x06\xcd" +
-	"\xd8\x90\xbchlM*t{r\x8e\xe0>\xf4\x8b\xd4" +
-	"so}\x9d\x9dQh\xac@s\"\xa3\x9a\xfc\xb3\xb1" +
-	"\xe0\xa1\x0f%O\x13\xdcn-\xf1\x1d~\xdf\xc6\xc5\xe8" +
-	"\x11\xde-\xbc#l\x15\xea\x08\xe3{~\xdb\xfd\xb7\xf4" +
-	"\xc4b\x84\xed!\xe15\xed]C\x1f;\xb1p\xf7\x0b" +
-	"/E?\xed\x11\x1e\x99\xbb\xbcOO^z\xe5\xbdK" +
-	"Z\xcf\xd2\xeaJ4\xc0\x90\xe2%\xe3\x1e\xa1>\xbaS" +
-	"t\x80\xe0\x16\xcen\x7f\xe6?W>\xbd\x14\x8d\x97O" +
-	"mR\xf1\xf6\xa7T\xbc-\x07&\xce,\x0e\xfe\xfcl" +
-	"\x03\x0f>i\x8f\xa6^6\x9eH\xa9_\xc7R\x8a4" +
-	"\xed\xfa\xf8\x0f\x1e\xbfx\xe2\xd7\xab\x933\"c\xbfq" +
-	"\xd98`(t\xd5P\xa4\x15\xb6\xbf\xef\xdf\xb7\xfd\xa9" +
-	"\xfb\\-\xb7\x8a\xd8\xf7+\xe3:\x95\xfb\x0f\x1e\xe0B" +
-	"|\xfd\x9b\x95\xb7\x0f\xff>Z\x9cL\xa7\x14\xe0\xce\xb4" +
-	"*\xee\xef\xbf\xe9x\xf6\xd6\xa5\xd1\xd7\"<U\xd3L" +
-	"\xf1t\xec[\xcb-\x95\xceg\xa2o\xeeI_\xa7\xde" +
-	"\x18\xcb\xdf\xdc\x9d\xca\xbe\xfaz4\xe8\x90\x1ft\xaf\x17" +
-	"\x94\x7f\xe8\x1bgrO}\xe5\x02\x09\x83\x87g \x18" +
-	"\xc5\xf4\xef\x8cjZ\xd5_I\xef6\x9eP\xbf\xaed" +
-	"n\xfc\xc9\xed'\x1f\xfb\x97\x1f\x8b\xabw\x0b\xe9\xcb\x04" +
-	"\xe3H\xfa4\xb9\xe4\xd2\x84\x9b+Tl\xc7\xb4zY" +
-	".;S\x9a\xe9\x1f.\xdbN\xafU.;]\x03c" +
-	"Y+[\xb4\xeb\x00\x1e\x05\x98\xfb\xf2\xb6cU\xbb\x14" +
-	"\x86G@\xf0Aw\xe4\xb99'7\"Zm\xf7`" +
-	"(C\xb1m4T\xb0\xd8vW(\x0b\xb1\xed\x86\xb0" +
-	"\xa7bk\x7f\xd83\xd1>yp8[\x9a*\x98\x96" +
-	";a\x16\xcc\x9cS\xb6\x88\xc8\xfdp\xb9d;V6" +
-	"O\xbc\xe4t\x8c\x94\xa6\xcc\xf9\x81q3W\xb6\xa6\xdc" +
-	"\xbd\xd9\xea\xa49n\xe6H/[S\xb2\x8d\xb7\x10\xd5" +
-	"\x9b\x8a\x80g!\xfb\x89\x89!\x1d\x08\xc8\x8a\xb4\xed\x83" +
-	";\x88\x89\x1e\x1d\xacn0\x08\x14)\xb6\x0e\x12\x13\x1b" +
-	"\xf4\x81B\xb9\xfc\xa9\xcaL\x06\x89\xbccZ\x19\x1c\xb4" +
-	"\xccY\xd3\xb2\xcd\x0c\xc6\x80F\xf2\xee\xc8\x9bs\xbd5" +
-	"\x80\xc7]\x11vSL\xed\xa0\xbd\x96\x99\x9b\x0d:!" +
-	"5\xae\x11i \x12\xb1~\"\xd9\xca!\xd3\x0c\x03\x96" +
-	"wZ$C\xde\x08H\x12\x9avn6o\xceu\x8d" +
-	"\x9bv\xa5\xe0\xd8\x14\x8d\xb8#\x8c\x98P \x88\xa8\xb8" +
-	" \"\xf1\x10\xc4\xe3\xb63\x06\xc8\xb4\xc7l\xe0k\x08" +
-	"\x0cU<\xaa\xd8[\xd0\x81\xba\xdc\x11\x8c\x8c\xa8*\xd6" +
-	"\x8b\x8a\xd9`5 \xf0\x0e\x91U\xdf\xdd\xae\x83\xd7\xb7" +
-	"\x03\x02K\x12#\xa3\xc4\xc4-:\xb4\xba\x09!p\\" +
-	"q\xd3\xa8\xd7-\xaf\xfc\x0c\x06f*\x93\x13\x95\xc9\x0c" +
-	"\x12J\xce\x19\xb8\x81h\x89(\x03\xd7\x9c7s\x15_" +
-	"BM[\xe5\xb1\x15\x80<\xc6\xf4\x82\xb3\xa2\x07\xa3D" +
-	"\xb2\x8dCnd+\xa2A\xb8/W\x0e\x9d\xfc\xfe'" +
-	"zO7\x12\xc7\x1a\x1b\xd18c\x01\xc0\xccZ\xce\xa4" +
-	"\x99uH\xd1\x9b\xac\xa7\xccv\x12\xc9\xbb9\xe44\x83" +
-	"\x00\xd2P\x0fM\xa5\x85\xfb8d\x81\x01,\x0dF$" +
-	"\xf2\xaa\x9bS\x1cr\x86Ap\xa4\xc1\x89DQ=\x9c" +
-	"\xe6\x90\x0f2\xe8\x8eS@+1\xb4\x12\x06l\xd3\x9a" +
-	"5-\xac'\x86\xf5\x84\xc4t\xd9v\xd0F\x0cm\x84" +
-	"D\xd1t\xb2\x88\x13\xc68\xbcg\xf1\xd5\xc7\xf1\x04\xeb" +
-	"Ma\x87\x95\xcd\x97<I\xb4r\xad\xcdu\xbd\xa2\xbb" +
-	"o \x92]\x1cr'C\x0cW\\\xbf\xea\x9eMD" +
-	"r;\x87\xbc\x91\xa1\xa3\x90/\xe6\x9d ?w\xcaH" +
-	"\x86\x86\xd0\xa0\xe5hN\xcf\x05t\xa7l\xa9\x8cma" +
-	"\xc6!ES\x86C\xee\x89f\x1cQu\xdc\xca!\xc7" +
-	"\x18b\xec\x1d\xd7gj\xaf\"e\x98C\xde\xc6\xa0g" +
-	"\x0b\x05Z\xd7Q\xcc:\xb9\xe9\xd5%$\xee\xb7\xca\xc5" +
-	"5*k\xea\x8f\xd7\xd2MD\x93\x10\xeeG~Z\xcd" +
-	"\x95\xf5\x0b\xef4\xea\xa6\xa9$\x1b\xad\x977\x1a\xf8\xb5" +
-	"\xa6\\\x81 \xdc\xcesG\xd7\x9f\xff@\xea\xfcU\xc4" +
-	"\xea1\xed\xd9*\x91?\xecA\xb0\x03Jx\xf3\xbe\x9e" +
-	"bpk4\x1fR)\x1e\xe0\x90\x87\x15\xcdWj4" +
-	"/(\xecg8\xe4\x17\x18b\\\x91\xaf\x14yDa" +
-	"\x1f\xe4\x90_b\x88i\xcbn\x1a\x1a\x91xD==" +
-	"\xcc!\xbf\xca00c\x99\xf7\xe7\xe7\x01b\x00!1" +
-	"c\x9aV\xa0\xcd@\xb71b\x885\xd5m\xed\x8f5" +
-	"]\xd8c\x89\xaf\xec\xd0\xff\xe0\x85Q\x96\xbc\xb5\x83\xa9" +
-	"\x86\x99\xdd\x11\xcel\xb3\x91\x15\x0c\xb5\x99\xedl6\xb3" +
-	"\xe3D\xb2\xc0!\xe7Y\xf3\xc3\xd7\x86F\xb7\xcd\xfd\xc1" +
-	"ow\xbaf\x1f\x04Gm\x85\xe0Z\xb9\xc6$y\x9b" +
-	"\xb2\xb66\x1b\xc7w\xb0\xe9\xf8\xee\x08\xc7\xf7`\xa9\xec" +
-	"L\xe7K\xfbh]\xe2\x93\x15\xdb\xb9\xf6\"\xf2R\xfa" +
-	"k\xd3_\x82\xb6\xc7w\xc0X\xf7h\x18\xbb\xeer\xbb" +
-	"&\x89\xe4N\x7f\xa6];\\\xffH\x86\xb7\x8a [" +
-	"p!\xd0K\x8e\x1dxW2\xbco\x10V\xb8Xt" +
-	"n\xfc\x95Q\x9b\x1c\\u\xe3\xfa0\x08\xb7\xbf<\xbb" +
-	"\xf9\xf5\xef\x8d\xfd\xb1Q\x15z\xe4\xa0\xeaZP\x9f\xc5" +
-	"\x00\xb0:g@\xc4Zd]\xab.\xcb\x7f\x9f\x0c/" +
-	"Mk\xf4\xdc\xbbbp\xd33O\xcd\xdb\xe0\xc1\xbfJ" +
-	"(}\xf7Gs}\xc7\xef=&\x84\xda\xc4-zB" +
-	"]CVnI\xd6x\xc2\xe0\x92\xd2V/mh0" +
-	"\xb4\xe1z\x1fGFC\xbf\x15\xac\xb6\xae\xa4j\xee\x98" +
-	"?\x0f\x07\xa7\xfd\xab\x0fDxw\xac\xb1\xfb\xffh\xfb" +
-	"\x7f\x03\x00\x00\xff\xffH\x09\x09C"
+type AuthProvider capnp.Client
+
+// AuthProvider_TypeID is the unique identifier for the type AuthProvider.
+const AuthProvider_TypeID = 0x9c8a0c56d217e9de
+
+func (c AuthProvider) Provide(ctx context.Context, params func(AuthProvider_provide_Params) error) (AuthProvider_provide_Results_Future, capnp.ReleaseFunc) {
+
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0x9c8a0c56d217e9de,
+			MethodID:      0,
+			InterfaceName: "cluster.capnp:AuthProvider",
+			MethodName:    "provide",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(AuthProvider_provide_Params(s)) }
+	}
+
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return AuthProvider_provide_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c AuthProvider) WaitStreaming() error {
+	return capnp.Client(c).WaitStreaming()
+}
+
+// String returns a string that identifies this capability for debugging
+// purposes.  Its format should not be depended on: in particular, it
+// should not be used to compare clients.  Use IsSame to compare clients
+// for equality.
+func (c AuthProvider) String() string {
+	return "AuthProvider(" + capnp.Client(c).String() + ")"
+}
+
+// AddRef creates a new Client that refers to the same capability as c.
+// If c is nil or has resolved to null, then AddRef returns nil.
+func (c AuthProvider) AddRef() AuthProvider {
+	return AuthProvider(capnp.Client(c).AddRef())
+}
+
+// Release releases a capability reference.  If this is the last
+// reference to the capability, then the underlying resources associated
+// with the capability will be released.
+//
+// Release will panic if c has already been released, but not if c is
+// nil or resolved to null.
+func (c AuthProvider) Release() {
+	capnp.Client(c).Release()
+}
+
+// Resolve blocks until the capability is fully resolved or the Context
+// expires.
+func (c AuthProvider) Resolve(ctx context.Context) error {
+	return capnp.Client(c).Resolve(ctx)
+}
+
+func (c AuthProvider) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Client(c).EncodeAsPtr(seg)
+}
+
+func (AuthProvider) DecodeFromPtr(p capnp.Ptr) AuthProvider {
+	return AuthProvider(capnp.Client{}.DecodeFromPtr(p))
+}
+
+// IsValid reports whether c is a valid reference to a capability.
+// A reference is invalid if it is nil, has resolved to null, or has
+// been released.
+func (c AuthProvider) IsValid() bool {
+	return capnp.Client(c).IsValid()
+}
+
+// IsSame reports whether c and other refer to a capability created by the
+// same call to NewClient.  This can return false negatives if c or other
+// are not fully resolved: use Resolve if this is an issue.  If either
+// c or other are released, then IsSame panics.
+func (c AuthProvider) IsSame(other AuthProvider) bool {
+	return capnp.Client(c).IsSame(capnp.Client(other))
+}
+
+// Update the flowcontrol.FlowLimiter used to manage flow control for
+// this client. This affects all future calls, but not calls already
+// waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
+// which is also the default.
+func (c AuthProvider) SetFlowLimiter(lim fc.FlowLimiter) {
+	capnp.Client(c).SetFlowLimiter(lim)
+}
+
+// Get the current flowcontrol.FlowLimiter used to manage flow control
+// for this client.
+func (c AuthProvider) GetFlowLimiter() fc.FlowLimiter {
+	return capnp.Client(c).GetFlowLimiter()
+}
+
+// A AuthProvider_Server is a AuthProvider with a local implementation.
+type AuthProvider_Server interface {
+	Provide(context.Context, AuthProvider_provide) error
+}
+
+// AuthProvider_NewServer creates a new Server from an implementation of AuthProvider_Server.
+func AuthProvider_NewServer(s AuthProvider_Server) *server.Server {
+	c, _ := s.(server.Shutdowner)
+	return server.New(AuthProvider_Methods(nil, s), s, c)
+}
+
+// AuthProvider_ServerToClient creates a new Client from an implementation of AuthProvider_Server.
+// The caller is responsible for calling Release on the returned Client.
+func AuthProvider_ServerToClient(s AuthProvider_Server) AuthProvider {
+	return AuthProvider(capnp.NewClient(AuthProvider_NewServer(s)))
+}
+
+// AuthProvider_Methods appends Methods to a slice that invoke the methods on s.
+// This can be used to create a more complicated Server.
+func AuthProvider_Methods(methods []server.Method, s AuthProvider_Server) []server.Method {
+	if cap(methods) == 0 {
+		methods = make([]server.Method, 0, 1)
+	}
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0x9c8a0c56d217e9de,
+			MethodID:      0,
+			InterfaceName: "cluster.capnp:AuthProvider",
+			MethodName:    "provide",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Provide(ctx, AuthProvider_provide{call})
+		},
+	})
+
+	return methods
+}
+
+// AuthProvider_provide holds the state for a server call to AuthProvider.provide.
+// See server.Call for documentation.
+type AuthProvider_provide struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c AuthProvider_provide) Args() AuthProvider_provide_Params {
+	return AuthProvider_provide_Params(c.Call.Args())
+}
+
+// AllocResults allocates the results struct.
+func (c AuthProvider_provide) AllocResults() (AuthProvider_provide_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 3})
+	return AuthProvider_provide_Results(r), err
+}
+
+// AuthProvider_List is a list of AuthProvider.
+type AuthProvider_List = capnp.CapList[AuthProvider]
+
+// NewAuthProvider creates a new list of AuthProvider.
+func NewAuthProvider_List(s *capnp.Segment, sz int32) (AuthProvider_List, error) {
+	l, err := capnp.NewPointerList(s, sz)
+	return capnp.CapList[AuthProvider](l), err
+}
+
+type AuthProvider_provide_Params capnp.Struct
+
+// AuthProvider_provide_Params_TypeID is the unique identifier for the type AuthProvider_provide_Params.
+const AuthProvider_provide_Params_TypeID = 0xc0054a1048274361
+
+func NewAuthProvider_provide_Params(s *capnp.Segment) (AuthProvider_provide_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return AuthProvider_provide_Params(st), err
+}
+
+func NewRootAuthProvider_provide_Params(s *capnp.Segment) (AuthProvider_provide_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return AuthProvider_provide_Params(st), err
+}
+
+func ReadRootAuthProvider_provide_Params(msg *capnp.Message) (AuthProvider_provide_Params, error) {
+	root, err := msg.Root()
+	return AuthProvider_provide_Params(root.Struct()), err
+}
+
+func (s AuthProvider_provide_Params) String() string {
+	str, _ := text.Marshal(0xc0054a1048274361, capnp.Struct(s))
+	return str
+}
+
+func (s AuthProvider_provide_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (AuthProvider_provide_Params) DecodeFromPtr(p capnp.Ptr) AuthProvider_provide_Params {
+	return AuthProvider_provide_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s AuthProvider_provide_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s AuthProvider_provide_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s AuthProvider_provide_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s AuthProvider_provide_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s AuthProvider_provide_Params) Account() Signer {
+	p, _ := capnp.Struct(s).Ptr(0)
+	return Signer(p.Interface().Client())
+}
+
+func (s AuthProvider_provide_Params) HasAccount() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s AuthProvider_provide_Params) SetAccount(v Signer) error {
+	if !v.IsValid() {
+		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
+	}
+	seg := s.Segment()
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
+	return capnp.Struct(s).SetPtr(0, in.ToPtr())
+}
+
+// AuthProvider_provide_Params_List is a list of AuthProvider_provide_Params.
+type AuthProvider_provide_Params_List = capnp.StructList[AuthProvider_provide_Params]
+
+// NewAuthProvider_provide_Params creates a new list of AuthProvider_provide_Params.
+func NewAuthProvider_provide_Params_List(s *capnp.Segment, sz int32) (AuthProvider_provide_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[AuthProvider_provide_Params](l), err
+}
+
+// AuthProvider_provide_Params_Future is a wrapper for a AuthProvider_provide_Params promised by a client call.
+type AuthProvider_provide_Params_Future struct{ *capnp.Future }
+
+func (f AuthProvider_provide_Params_Future) Struct() (AuthProvider_provide_Params, error) {
+	p, err := f.Future.Ptr()
+	return AuthProvider_provide_Params(p.Struct()), err
+}
+func (p AuthProvider_provide_Params_Future) Account() Signer {
+	return Signer(p.Future.Field(0, nil).Client())
+}
+
+type AuthProvider_provide_Results capnp.Struct
+
+// AuthProvider_provide_Results_TypeID is the unique identifier for the type AuthProvider_provide_Results.
+const AuthProvider_provide_Results_TypeID = 0xb85d303fbd29edc8
+
+func NewAuthProvider_provide_Results(s *capnp.Segment) (AuthProvider_provide_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 3})
+	return AuthProvider_provide_Results(st), err
+}
+
+func NewRootAuthProvider_provide_Results(s *capnp.Segment) (AuthProvider_provide_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 3})
+	return AuthProvider_provide_Results(st), err
+}
+
+func ReadRootAuthProvider_provide_Results(msg *capnp.Message) (AuthProvider_provide_Results, error) {
+	root, err := msg.Root()
+	return AuthProvider_provide_Results(root.Struct()), err
+}
+
+func (s AuthProvider_provide_Results) String() string {
+	str, _ := text.Marshal(0xb85d303fbd29edc8, capnp.Struct(s))
+	return str
+}
+
+func (s AuthProvider_provide_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (AuthProvider_provide_Results) DecodeFromPtr(p capnp.Ptr) AuthProvider_provide_Results {
+	return AuthProvider_provide_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s AuthProvider_provide_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s AuthProvider_provide_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s AuthProvider_provide_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s AuthProvider_provide_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s AuthProvider_provide_Results) View() View {
+	p, _ := capnp.Struct(s).Ptr(0)
+	return View(p.Interface().Client())
+}
+
+func (s AuthProvider_provide_Results) HasView() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s AuthProvider_provide_Results) SetView(v View) error {
+	if !v.IsValid() {
+		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
+	}
+	seg := s.Segment()
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
+	return capnp.Struct(s).SetPtr(0, in.ToPtr())
+}
+
+func (s AuthProvider_provide_Results) PubSub() pubsub.Router {
+	p, _ := capnp.Struct(s).Ptr(1)
+	return pubsub.Router(p.Interface().Client())
+}
+
+func (s AuthProvider_provide_Results) HasPubSub() bool {
+	return capnp.Struct(s).HasPtr(1)
+}
+
+func (s AuthProvider_provide_Results) SetPubSub(v pubsub.Router) error {
+	if !v.IsValid() {
+		return capnp.Struct(s).SetPtr(1, capnp.Ptr{})
+	}
+	seg := s.Segment()
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
+	return capnp.Struct(s).SetPtr(1, in.ToPtr())
+}
+
+func (s AuthProvider_provide_Results) Root() anchor.Anchor {
+	p, _ := capnp.Struct(s).Ptr(2)
+	return anchor.Anchor(p.Interface().Client())
+}
+
+func (s AuthProvider_provide_Results) HasRoot() bool {
+	return capnp.Struct(s).HasPtr(2)
+}
+
+func (s AuthProvider_provide_Results) SetRoot(v anchor.Anchor) error {
+	if !v.IsValid() {
+		return capnp.Struct(s).SetPtr(2, capnp.Ptr{})
+	}
+	seg := s.Segment()
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
+	return capnp.Struct(s).SetPtr(2, in.ToPtr())
+}
+
+// AuthProvider_provide_Results_List is a list of AuthProvider_provide_Results.
+type AuthProvider_provide_Results_List = capnp.StructList[AuthProvider_provide_Results]
+
+// NewAuthProvider_provide_Results creates a new list of AuthProvider_provide_Results.
+func NewAuthProvider_provide_Results_List(s *capnp.Segment, sz int32) (AuthProvider_provide_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 3}, sz)
+	return capnp.StructList[AuthProvider_provide_Results](l), err
+}
+
+// AuthProvider_provide_Results_Future is a wrapper for a AuthProvider_provide_Results promised by a client call.
+type AuthProvider_provide_Results_Future struct{ *capnp.Future }
+
+func (f AuthProvider_provide_Results_Future) Struct() (AuthProvider_provide_Results, error) {
+	p, err := f.Future.Ptr()
+	return AuthProvider_provide_Results(p.Struct()), err
+}
+func (p AuthProvider_provide_Results_Future) View() View {
+	return View(p.Future.Field(0, nil).Client())
+}
+
+func (p AuthProvider_provide_Results_Future) PubSub() pubsub.Router {
+	return pubsub.Router(p.Future.Field(1, nil).Client())
+}
+
+func (p AuthProvider_provide_Results_Future) Root() anchor.Anchor {
+	return anchor.Anchor(p.Future.Field(2, nil).Client())
+}
+
+type Signer capnp.Client
+
+// Signer_TypeID is the unique identifier for the type Signer.
+const Signer_TypeID = 0xf1f2e144cec1f2bc
+
+func (c Signer) Sign(ctx context.Context, params func(Signer_sign_Params) error) (Signer_sign_Results_Future, capnp.ReleaseFunc) {
+
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0xf1f2e144cec1f2bc,
+			MethodID:      0,
+			InterfaceName: "cluster.capnp:Signer",
+			MethodName:    "sign",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Signer_sign_Params(s)) }
+	}
+
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return Signer_sign_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c Signer) WaitStreaming() error {
+	return capnp.Client(c).WaitStreaming()
+}
+
+// String returns a string that identifies this capability for debugging
+// purposes.  Its format should not be depended on: in particular, it
+// should not be used to compare clients.  Use IsSame to compare clients
+// for equality.
+func (c Signer) String() string {
+	return "Signer(" + capnp.Client(c).String() + ")"
+}
+
+// AddRef creates a new Client that refers to the same capability as c.
+// If c is nil or has resolved to null, then AddRef returns nil.
+func (c Signer) AddRef() Signer {
+	return Signer(capnp.Client(c).AddRef())
+}
+
+// Release releases a capability reference.  If this is the last
+// reference to the capability, then the underlying resources associated
+// with the capability will be released.
+//
+// Release will panic if c has already been released, but not if c is
+// nil or resolved to null.
+func (c Signer) Release() {
+	capnp.Client(c).Release()
+}
+
+// Resolve blocks until the capability is fully resolved or the Context
+// expires.
+func (c Signer) Resolve(ctx context.Context) error {
+	return capnp.Client(c).Resolve(ctx)
+}
+
+func (c Signer) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Client(c).EncodeAsPtr(seg)
+}
+
+func (Signer) DecodeFromPtr(p capnp.Ptr) Signer {
+	return Signer(capnp.Client{}.DecodeFromPtr(p))
+}
+
+// IsValid reports whether c is a valid reference to a capability.
+// A reference is invalid if it is nil, has resolved to null, or has
+// been released.
+func (c Signer) IsValid() bool {
+	return capnp.Client(c).IsValid()
+}
+
+// IsSame reports whether c and other refer to a capability created by the
+// same call to NewClient.  This can return false negatives if c or other
+// are not fully resolved: use Resolve if this is an issue.  If either
+// c or other are released, then IsSame panics.
+func (c Signer) IsSame(other Signer) bool {
+	return capnp.Client(c).IsSame(capnp.Client(other))
+}
+
+// Update the flowcontrol.FlowLimiter used to manage flow control for
+// this client. This affects all future calls, but not calls already
+// waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
+// which is also the default.
+func (c Signer) SetFlowLimiter(lim fc.FlowLimiter) {
+	capnp.Client(c).SetFlowLimiter(lim)
+}
+
+// Get the current flowcontrol.FlowLimiter used to manage flow control
+// for this client.
+func (c Signer) GetFlowLimiter() fc.FlowLimiter {
+	return capnp.Client(c).GetFlowLimiter()
+}
+
+// A Signer_Server is a Signer with a local implementation.
+type Signer_Server interface {
+	Sign(context.Context, Signer_sign) error
+}
+
+// Signer_NewServer creates a new Server from an implementation of Signer_Server.
+func Signer_NewServer(s Signer_Server) *server.Server {
+	c, _ := s.(server.Shutdowner)
+	return server.New(Signer_Methods(nil, s), s, c)
+}
+
+// Signer_ServerToClient creates a new Client from an implementation of Signer_Server.
+// The caller is responsible for calling Release on the returned Client.
+func Signer_ServerToClient(s Signer_Server) Signer {
+	return Signer(capnp.NewClient(Signer_NewServer(s)))
+}
+
+// Signer_Methods appends Methods to a slice that invoke the methods on s.
+// This can be used to create a more complicated Server.
+func Signer_Methods(methods []server.Method, s Signer_Server) []server.Method {
+	if cap(methods) == 0 {
+		methods = make([]server.Method, 0, 1)
+	}
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xf1f2e144cec1f2bc,
+			MethodID:      0,
+			InterfaceName: "cluster.capnp:Signer",
+			MethodName:    "sign",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Sign(ctx, Signer_sign{call})
+		},
+	})
+
+	return methods
+}
+
+// Signer_sign holds the state for a server call to Signer.sign.
+// See server.Call for documentation.
+type Signer_sign struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c Signer_sign) Args() Signer_sign_Params {
+	return Signer_sign_Params(c.Call.Args())
+}
+
+// AllocResults allocates the results struct.
+func (c Signer_sign) AllocResults() (Signer_sign_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Signer_sign_Results(r), err
+}
+
+// Signer_List is a list of Signer.
+type Signer_List = capnp.CapList[Signer]
+
+// NewSigner creates a new list of Signer.
+func NewSigner_List(s *capnp.Segment, sz int32) (Signer_List, error) {
+	l, err := capnp.NewPointerList(s, sz)
+	return capnp.CapList[Signer](l), err
+}
+
+type Signer_sign_Params capnp.Struct
+
+// Signer_sign_Params_TypeID is the unique identifier for the type Signer_sign_Params.
+const Signer_sign_Params_TypeID = 0xb2250c16d3064727
+
+func NewSigner_sign_Params(s *capnp.Segment) (Signer_sign_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Signer_sign_Params(st), err
+}
+
+func NewRootSigner_sign_Params(s *capnp.Segment) (Signer_sign_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Signer_sign_Params(st), err
+}
+
+func ReadRootSigner_sign_Params(msg *capnp.Message) (Signer_sign_Params, error) {
+	root, err := msg.Root()
+	return Signer_sign_Params(root.Struct()), err
+}
+
+func (s Signer_sign_Params) String() string {
+	str, _ := text.Marshal(0xb2250c16d3064727, capnp.Struct(s))
+	return str
+}
+
+func (s Signer_sign_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Signer_sign_Params) DecodeFromPtr(p capnp.Ptr) Signer_sign_Params {
+	return Signer_sign_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Signer_sign_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Signer_sign_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Signer_sign_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Signer_sign_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Signer_sign_Params) Challenge() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return []byte(p.Data()), err
+}
+
+func (s Signer_sign_Params) HasChallenge() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Signer_sign_Params) SetChallenge(v []byte) error {
+	return capnp.Struct(s).SetData(0, v)
+}
+
+// Signer_sign_Params_List is a list of Signer_sign_Params.
+type Signer_sign_Params_List = capnp.StructList[Signer_sign_Params]
+
+// NewSigner_sign_Params creates a new list of Signer_sign_Params.
+func NewSigner_sign_Params_List(s *capnp.Segment, sz int32) (Signer_sign_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[Signer_sign_Params](l), err
+}
+
+// Signer_sign_Params_Future is a wrapper for a Signer_sign_Params promised by a client call.
+type Signer_sign_Params_Future struct{ *capnp.Future }
+
+func (f Signer_sign_Params_Future) Struct() (Signer_sign_Params, error) {
+	p, err := f.Future.Ptr()
+	return Signer_sign_Params(p.Struct()), err
+}
+
+type Signer_sign_Results capnp.Struct
+
+// Signer_sign_Results_TypeID is the unique identifier for the type Signer_sign_Results.
+const Signer_sign_Results_TypeID = 0xf00b0072c6dcfae7
+
+func NewSigner_sign_Results(s *capnp.Segment) (Signer_sign_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Signer_sign_Results(st), err
+}
+
+func NewRootSigner_sign_Results(s *capnp.Segment) (Signer_sign_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Signer_sign_Results(st), err
+}
+
+func ReadRootSigner_sign_Results(msg *capnp.Message) (Signer_sign_Results, error) {
+	root, err := msg.Root()
+	return Signer_sign_Results(root.Struct()), err
+}
+
+func (s Signer_sign_Results) String() string {
+	str, _ := text.Marshal(0xf00b0072c6dcfae7, capnp.Struct(s))
+	return str
+}
+
+func (s Signer_sign_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Signer_sign_Results) DecodeFromPtr(p capnp.Ptr) Signer_sign_Results {
+	return Signer_sign_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Signer_sign_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Signer_sign_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Signer_sign_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Signer_sign_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Signer_sign_Results) Signed() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return []byte(p.Data()), err
+}
+
+func (s Signer_sign_Results) HasSigned() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Signer_sign_Results) SetSigned(v []byte) error {
+	return capnp.Struct(s).SetData(0, v)
+}
+
+// Signer_sign_Results_List is a list of Signer_sign_Results.
+type Signer_sign_Results_List = capnp.StructList[Signer_sign_Results]
+
+// NewSigner_sign_Results creates a new list of Signer_sign_Results.
+func NewSigner_sign_Results_List(s *capnp.Segment, sz int32) (Signer_sign_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[Signer_sign_Results](l), err
+}
+
+// Signer_sign_Results_Future is a wrapper for a Signer_sign_Results promised by a client call.
+type Signer_sign_Results_Future struct{ *capnp.Future }
+
+func (f Signer_sign_Results_Future) Struct() (Signer_sign_Results, error) {
+	p, err := f.Future.Ptr()
+	return Signer_sign_Results(p.Struct()), err
+}
+
+const schema_fcf6ac08e448a6ac = "x\xda\xacW{l\x1cW\xf5>\xe7\xdeq\xc6i\xec" +
+	"\xdd\xbd\xbe\xeb\xfdE\xa9\xf2s\xea\xda46\xb2\x95\xd4" +
+	"\x0d\xa8\x16\x917n\x8c\x1f\xc4\x92\xc7nB\x15\x15\xda" +
+	"\xf1zj/\xec\xc3\x99\x99\xf5Cj0\x81ZJR" +
+	"\x12(`h\"TT\x94T\xa4\x14\xa2\x06\xa5%\xb4" +
+	"\xb5J\xff\x00Z\x9c\xa2\xa6\xe5\x91\xaa4\x14\xa5\xad\x90" +
+	"hH\x0cIIp3\xe8\xcecg\xbc\xbb\xb1%\xc4" +
+	"\x7f\xf6\xce7\xe7\xf9\x9d\xef\x9c\xd9\xd0'\xc7\xa5\x8d\x95" +
+	"\xdf]\x0bd\xe0\x1e,[a\xcd>{\xe1\xdd[\xd7" +
+	"?\xfc\x15`\x1c\x01$\x19\x80?\x1d\xba\x06\x92\xf5\x8f" +
+	"\xc4\xfc\xc5\xff?\xf8\xb7}\xfe\x83\x96\x99\xd0\x1a\x04\xc9" +
+	":\\\xb7\xb0\xb3\xe5\xe2\xda\xfd\xc0B\xd4z\xea\x89\xae" +
+	"\xf3\xe5O]Y\x00@\xbe;t\x98O\x87\x86\x01\xf8" +
+	"\xefB\xbf\xe2\xbda\x19\xc0j\xea:w\xe9\xabgk" +
+	"\x1e\x0e\x98\xd9\x14\xae\x12f^x\xec\xd83\xaf\xa6O" +
+	"\x1d\x04v3\x02\x94\xa1x\xb46\xdc\x8a\x80\xbc>\xdc" +
+	"\x06h]~c\xdb\xf4\xc1o\xde\xf3u\xe7U\x07\xd0" +
+	"\x11&\x02\xd0m\x03\xe4\xd7\xef\x1bZ\x98}p\xa6(" +
+	"\x90d\xf80\xdf%\xdc\xb7\xa4\xc3\x9d\xc87GD$" +
+	"o\xff\xf5\xff\xce\xec\xa8\xd8\xff\xbd\"t}\xe4M\xbe" +
+	"Q@xS\xa4\x93o\xb7\xc1\xe4;e\xcf]]\xb7" +
+	"\xe7\xb1\xa0\xef\xcd\x91Z\xe1\xbb#\"|\x9f?\x95\x1b" +
+	"\xf8\xccK\xd2\x91@\xdd\x92\x11Q\xb7u\x1f~\xe2Q" +
+	"y\x97y\x0c\x94\x10\x12\xdfO\x19\x11\x90\xde\xc8K\x8e" +
+	"\x03\xaeD\xde\x07\xb4\x06\xe6\xae\x0c\xae\xdb\xcc\x7f\x04\x0a" +
+	"G\xe2\x17\xb6\x03e\x82\x12\xdf\xc4\xe6\xf9\x16&\xd0\x9b" +
+	"\xd98\xa0\xb5\xff\xb5\xaag?\xfc>9!\xd0\xb8\x08" +
+	"M\x01\xf8!\xf6\x17~\xd4F?\xce\x8e\x03Z\xb7u" +
+	"\xaex=VQ\x7f\x02Xu>\x85;\xabn\x12)" +
+	"l\xa9\x12)\xfc\xfa\x83\x86\x17\xda6|\xeegn\x03" +
+	"\xa8\x00hU;\x05`W\x95\xb0\xd0 \x85\x7fB\xef" +
+	"_=\x1b,\xc2Jn\x17\x81qa\xa1\x7f\xdb\x1f\x1b" +
+	">\x88\x0e\xcc\x06\x9b\xcbm\x8e\xa8w\xdd\xd6\x15\xe9)" +
+	"{qQsy\xbfx\xb5\xc1~uU\xc7g\x8fL" +
+	"\xdf\xfb\xdc+A\xdb\xdd\xdcnn\xaf\x0d8z\xe5\x8d" +
+	"\x8f\xcdIMs\xc5\xc9J\x88<\xcd_\xe1\x93\\\xbc" +
+	"\x94\xe35\x08h\xa5N\xaf?\xf9\xef\xeb_\x9a\x0b\xda" +
+	"\x9b\x8e\xae\x11\xf6\x0eD\x85\xbdu\xbb\x07N\xcc\xb6\xff" +
+	"\xf6tA\xa9\x9d\xbe\xfc8z\x86\x9f\x8a\x8a\xbfNF" +
+	"E_\xa4[C\xcf?:\x7f\xe4\xf7\xc5\xce\x09\x00?" +
+	"P}\x8d\x1f\xaa\x16\xe8\x99j\xd1\x97\xd4\xfa\x8f\xff\xeb" +
+	"\xee?7\x9cu}\x0b\x8b-\x97\xaa\xedJ_\xb5\x01" +
+	"\x17B+/\xe7\xae\xee}+\x18\\:V%\x00\xb9" +
+	"\x98\x08\xee\xef\x7f\xa8yf\xeb\\\xcf\xbb\xc1a\x8b\x11" +
+	"Q\xc8CO.\x94\xe5jO\x06\x9fL\xc6n\x12O" +
+	"\xf8\xc2\x0f;\xab\xd4s\xef\x05\x8d\xaa\x8e\xd1\xa4m\x94" +
+	"~\xea\x07'\x12O|\xeb\x020N\xfd\x1c\x00\xf9\xbe" +
+	"\xd8\x9b|&&\xe2\x7f$\xd6\xc9O\x89\xbf\xce\xbd\x7f" +
+	"\xed\xad_\xea\xab.\x06\xb8\xf2\xb8c\xeb\x98m\xeb\xf9" +
+	"\xf9_\xbc\xba\xf5\x9d\xf9KE\xc3\xf3r\xecI\xfe\x9a" +
+	"m\xebt\xac\x93_\x16\x7f]\x8f\xdf\xf1\xf2\xf6\xa33" +
+	"\xfft\xe2\x12\xb4\xe2\x7f\x8a]\x03\xe4\xef\xc4\x8e\x83\x05" +
+	"\x16\x0cX\x89T\xce05\xbd\x99$\xd4\xd1\xcchk" +
+	"W\xd60\x9b\xf5l\xd6\xack\xebSu5m\xe4\x01" +
+	"4\x08\xd0\x86\x93\x86\xa9O\xd6\x09\x0c\x0d\x80\xd0\x01\xed" +
+	"HRm\\Y\x8d\xc1\xcc\x1b\xda\xfd\xa9a\xf5=\xfe" +
+	"\xc0\xb1\xfa\x9d>\xc5X\xfd\xed>?\xd8-\xad~\xff" +
+	"\xd9\xda\xc1\xa9.53\x94\xd2tk@Ki\x093" +
+	"\xab\x03\x80uW6c\x98\xba\x9a\x04\x9a1k\xba3" +
+	"C\xdaD[\xbf\x96\xc8\xeaCV\xaf:9\xa8\xf5k" +
+	"\x09\x90\xb3\xfa\x90RA\xcb\x00\xf2\x04A\xafgLi" +
+	"\x05\xc2:dD\xafX\x01\x0a\xdc\xd9\x08\x845\xc9H" +
+	"\xf2\xe2\x89\x1e\xbb\xd9-\xed@X\xb5\xdc\x96\xcaf\xbf" +
+	"\x98\x1b\x8dc8ijz\x1c\xa7tmL\xd3\x0d-" +
+	"\x8e}\x88\x85\xc5\xdb\x91\xd4\xc6\x9b]\x80]\xbb4\x1a" +
+	"%1n\xa2\xcd\xba\x96\x18\xf3:\xa1HT\x02\x90\x10" +
+	"\x80U\xb6\x02(\xe5\x14\x95(\xc16\xdd\xce\x16#~" +
+	"\xdd\x001\x02X\xb2scIm\xbc\xae_3r)" +
+	"\xd3\x80\xa0\xc5F\xdfbX\x80\x90\x05\x89\x8a,`\x0f" +
+	"={\xd40\xfb\x10\x95\xa8]YO\x86\xd1[\x16\xec" +
+	"\x11Q\xbdi\x191?:\xe8\x8d\x1f\x9b\x14UO\x8b" +
+	"\xcazk\x0f=\x1db\xaaxo\xbb\x8c4\xbf\xf9\xd0" +
+	"\xd3?\xd6\xdd\x03\x84m\x91Q\xca+\x1ez\x0b\x82m" +
+	"\xea\xb1\xbbe\x87\x1f\xc7\xb6\xd1\xdc\xe0@n0\x8ea" +
+	"A\xe78Z\x1ei\x01 \x8e\x966\xa1%r\x0e\x85" +
+	"\x16\xb7\xca\x1d\x84-9s\xa4O\xcf\x8e%\x87\xa8\xa6" +
+	"\x8b,%;KOM\xd1\x93l\xc6\x04\x0f\xca\xe4\xa9" +
+	"Q\x1b\\\xba\xefv\xe9=\x8fv\xf9\xe5\x94\xb9\xa8\xa1" +
+	"=\x00J\x05Ee5Y\x14\x1a2\xebLn\xcf\xd1" +
+	"\x9f\x7f\xbe\xf9xa\x17HaW\x0b\x07\xd6\x03h\xaa" +
+	"n\x0ej\xaa\x09\"\x8bH\xde\xa5Z\x0b\xa0\xdcKQ" +
+	"\x19!\xc8\x10\xa3(~\xd4\x04\xb1\xee\xa7\xa8\xa4\x08\"" +
+	"\x89\"\x01`IA\x8d!\x8a\xca(AF1\x8a\x14" +
+	"\x80\xa5\xc5\x8f#\x14\x95\x87\x08\xca\xa6\x99\xc2r X" +
+	"\x0e\xd8fh\xfa\x98\xa6\xe3J \xb8\x120<\x925" +
+	"L\xac\x00\x82\x15\x80\xe1\xb4f\xaa\x18\x02\xec\xa3h\xff" +
+	"\x16*N\xc7f\xbf=\xd25\xba\x9a\xcc\xd8\xfc*\xa7" +
+	"R\x85e\xd9A7\xdc\x0e\xa0\xd4QT6\x10\xac\xc4" +
+	"\xeb\x96\x13u\xd3\x1a\x00e=E\xe5\x0e\x825\xa9d" +
+	":iz\xfe\xa9\x99\xc5\x88\xaf.\x05\x83\x11\xf4iK" +
+	"\x8alf\xed^W\xf8\x1e;D\x99\xe2\x14\x95mA" +
+	"\x8f\xdd\"\x8e\xad\x14\x95>\x82\x95\xe4#\xcb\xa9T\xaf" +
+	"(J\x17E\xe5n\x82\xb2\x9aJ\xc1\x8a\x9a\xb4j&" +
+	"F\x8aC\x08?\xa0g\xd3KD\xe6\xf2f 9\x9c" +
+	"\xd1\xf4f#9\x9cq\xe4\xc2\x80EC\xdb\x1f`M" +
+	"bDM\xa5\xb4\xcc0\xa0\x86\x95@\xb02`N*" +
+	"\xe4\xb4\xa67\xbb|u\xc4\x80\x9a\x86H\xda\xb5\xdb\xd1" +
+	"\xe8\xe7\x9c\xa7Fw\xab\x9f2#\xa48\xe3\x1b\xc8\x86" +
+	";\x87\xc8\xac\xd6\xec\xd8\xcd\xef\xfd\xb4\xefm\xf7\x81=" +
+	"\x97\xc8\xac\xda\xb3\x07W\x9e\xffd\xd5\xf9B\x82\x97\\" +
+	"8\xcb\xcdN`\xc8\x91Y\x9f\xfe\xcdd\"+_\xf8" +
+	"h)\xd3\xf9\xb1,\xdceK\x15\xcd\xd5\xee`\x14\xed" +
+	"\xbe\x80N\xa9\x89D6\x97\x11\xc9\xe5\xb7\xf5R\xc9\x89" +
+	"u\xbb\x9c&/S\xac \x95\xed%\x08\xe0H\xb3g" +
+	"l\xb7h\xdf\x843\xb0\x95h\xb9<\xde#\\<H" +
+	"Q\xd9+x|\xdd\xe5\xf1\xb4\xc0~\x99\xa2\xf25\x82" +
+	"\x95T\xb0[\x8c\xfc>\x81}\x88\xa2\xf2\x0d\x82\x95\xd2" +
+	"\x82\x15E\x09\x80\x1d\x10\xbf\xee\xa5\xa8|\x9b`\xdb\xa8" +
+	"\xae=\x90\x9c@\x04\x82\x08\x18\x1e\xd54\xdd\x1b~O" +
+	"\x18\\j\x96\x10\x06\xf7\x9f%wf\x9e\xac\xff\xdd\xe6" +
+	"\x0aV\xc9>\x12p\xa8@\x14\x1b}Q,\xa5\x89\x8c" +
+	"\xa0+\x8a\xb5\xa5DQ\xccc\x8a\xa22AJ'\xef" +
+	"\xaa\x92lh\xbb\xbc\xbf\xad\x11W\x9f\x01M\xb1\xc3\xbd" +
+	"o\x96%\xa4\xca\xbek\xdc#\xa7P\x1f\xdbK\xeac" +
+	"\xa3\xaf\x8fS\x99\xac9\x92\xcc\x0c\xc3\x8a\xf0\x17r\x86" +
+	"\xb9\xfc\xd9`\xbbt\x8e\x1c_\x83\xca\xf3\x15k\xe8\xf1" +
+	"m\xe7\xb5b\xe3 \x80\xb2\xc1\x11\x10\xcb\xf0\x8f5\x8c" +
+	"\xf87\xa0\xe7\xcd;\xdf\xe4\x8cix\xcb!\xe2_\x87" +
+	"\x80\x8b\xd6Dpn\x1caq'\x07ox\x1f\xddH" +
+	"\x7f\xf26\xe5@\xa2\xe2\x88\xcb\xcf\xa2\x07(\xf6\xe9\x15" +
+	"b\xa9b-\x17\x97\xee<\x8f\xf8'\xee\x12=\xb7\x0f" +
+	"\xc2E\x97\x88\xf7\xd1\x8e\x99\xa7_\x1co9|\xdf!" +
+	"\xc6\x1a\xedK$,\x8e\xc6\x92gHp\x9d,\x17\x9d" +
+	"\x00iCE\x9b\x04=Kaa\xca\x8f\xc6\xfb\xc4E" +
+	"\xfb\xeb\x05V]\xccG#\x0c\x95\xbc\xb0\xfcz{\x07" +
+	"n`\x03\xb5\x97\xda@=\xfe\xb2\xc9o EP\xad" +
+	"\xcf\x99\xce\xa9\x11\xe7lF\xe6\x7fw\xb8\xbd\xfe_\x90" +
+	"\xf0?\x01\x00\x00\xff\xff\xacO\xe5$"
 
 func RegisterSchema(reg *schemas.Registry) {
 	reg.Register(&schemas.Schema{
@@ -3190,13 +3898,17 @@ func RegisterSchema(reg *schemas.Registry) {
 			0x8eb96dceb6a99ebd,
 			0x8f58928e854cd4f5,
 			0x957cbefc645fd307,
+			0x9c8a0c56d217e9de,
 			0x9e8120f9bb059602,
 			0xa404c24b5375b9e4,
 			0xa97471079836f720,
 			0xab133d2062f6cc53,
 			0xb2029ff7b712d18a,
+			0xb2250c16d3064727,
+			0xb85d303fbd29edc8,
 			0xbe186003ae0f0429,
 			0xbe5314ed29d84c52,
+			0xc0054a1048274361,
 			0xcabb5c85a457450b,
 			0xcc2d04cc26d4f6a5,
 			0xcc7efefbb528cd6c,
@@ -3208,6 +3920,8 @@ func RegisterSchema(reg *schemas.Registry) {
 			0xe5b5227505fcaa99,
 			0xe6df611247a8fc13,
 			0xee93a663b2a23c03,
+			0xf00b0072c6dcfae7,
+			0xf1f2e144cec1f2bc,
 			0xf495a555c9344000,
 		},
 		Compressed: true,

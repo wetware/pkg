@@ -5,13 +5,17 @@ import (
 	"fmt"
 	"strings"
 
-	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/libp2p/go-libp2p"
 	local_host "github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
 	tcp "github.com/libp2p/go-libp2p/p2p/transport/tcp"
+
+	"capnproto.org/go/capnp/v3"
+	"capnproto.org/go/capnp/v3/rpc"
+
 	"github.com/wetware/pkg/cap/anchor"
+	"github.com/wetware/pkg/cap/auth"
 	"github.com/wetware/pkg/cap/host"
 	"github.com/wetware/pkg/cap/pubsub"
 	"github.com/wetware/pkg/util/proto"
@@ -125,7 +129,7 @@ func (cfg Config) handler(ctx context.Context, h *host.Server) network.StreamHan
 		defer s.Close()
 
 		conn := rpc.NewConn(transport(s), &rpc.Options{
-			BootstrapClient: h.Client(),
+			BootstrapClient: cfg.authProvider(h),
 		})
 		defer conn.Close()
 
@@ -134,6 +138,11 @@ func (cfg Config) handler(ctx context.Context, h *host.Server) network.StreamHan
 		case <-conn.Done():
 		}
 	}
+}
+
+func (cfg Config) authProvider(h *host.Server) capnp.Client {
+	policy := auth.AllowAll(h) // TODO(soon):  implement server-side auth here
+	return capnp.Client(policy)
 }
 
 func transport(s network.Stream) rpc.Transport {

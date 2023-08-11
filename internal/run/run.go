@@ -1,16 +1,23 @@
 package run
 
 import (
+	"context"
 	"errors"
 	"os"
 
 	"capnproto.org/go/capnp/v3"
 	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p/core/host"
+	local "github.com/libp2p/go-libp2p/core/host"
 	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
 	tcp "github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	"github.com/urfave/cli/v2"
 	ww "github.com/wetware/pkg"
+	"github.com/wetware/pkg/api/anchor"
+	api "github.com/wetware/pkg/api/cluster"
+	"github.com/wetware/pkg/api/pubsub"
+	"github.com/wetware/pkg/cap/auth"
+	"github.com/wetware/pkg/cap/host"
+	"github.com/wetware/pkg/cap/view"
 	"github.com/wetware/pkg/client"
 	"github.com/wetware/pkg/rom"
 	"golang.org/x/exp/slog"
@@ -35,7 +42,7 @@ type Logger interface {
 
 var flags = []cli.Flag{
 	&cli.BoolFlag{
-		Name:    "join",
+		Name:    "dial",
 		Usage:   "connect to cluster",
 		EnvVars: []string{"WW_DIAL"},
 	},
@@ -58,13 +65,19 @@ func Command(log Logger) *cli.Command {
 
 func run(log Logger) cli.ActionFunc {
 	return func(c *cli.Context) error {
-		wetware := ww.Ww[capnp.Client]{ // TODO:  replace capnp.Client with Authenticator
+		client, err := dial(c, log)
+		if err != nil {
+			return err
+		}
+		defer client.Release()
+
+		wetware := ww.Ww[host.Host]{
 			Log:    log,
 			NS:     c.String("ns"),
 			Stdin:  c.App.Reader,
 			Stdout: c.App.Writer,
 			Stderr: c.App.ErrWriter,
-			Client: bootstrap[capnp.Client](c),
+			Client: client,
 		}
 
 		rom, err := bytecode(c)
@@ -72,27 +85,32 @@ func run(log Logger) cli.ActionFunc {
 			return err
 		}
 
-		// dial into a cluster?
-		if c.Bool("dial") {
-			return dialAndExec(c, log, wetware, rom)
-		}
-
 		// run without connecting to a cluster
 		return wetware.Exec(c.Context, rom)
 	}
 }
 
-func bootstrap[T ~capnp.ClientKind](c *cli.Context) T {
-	client := capnp.ErrorClient(errors.New("NOT IMPLEMENTED"))
-	return T(client)
+func dial(c *cli.Context, log Logger) (host.Host, error) {
+	// dial into a cluster?
+	if c.Bool("dial") {
+		return authenticate(c, log)
+	}
+
+	// we're not connected to the cluster;  return an
+	// auth.Provider that immediately fails with a helpful
+	// message.
+	return failure(errors.New("disconnected"))
 }
 
-func dialAndExec[T ~capnp.ClientKind](c *cli.Context, log Logger, wetware ww.Ww[T], rom ww.ROM) error {
+func failure(err error) (host.Host, error) {
+	return host.Host(capnp.ErrorClient(err)), err
+}
+
+func authenticate(c *cli.Context, log Logger) (host.Host, error) {
 	h, err := clientHost(c)
 	if err != nil {
-		return err
+		return failure(err)
 	}
-	defer h.Close()
 
 	conn, err := client.Dialer{
 		NS:       c.String("ns"),
@@ -103,14 +121,39 @@ func dialAndExec[T ~capnp.ClientKind](c *cli.Context, log Logger, wetware ww.Ww[
 			"discover", c.String("discover")),
 	}.Dial(c.Context, h)
 	if err != nil {
-		return err
+		return failure(err)
 	}
-	defer conn.Close()
 
-	return wetware.Exec(c.Context, rom)
+	go func() {
+		defer conn.Close()
+
+		select {
+		case <-conn.Done():
+		case <-c.Context.Done():
+		}
+	}()
+
+	client := conn.Bootstrap(c.Context)
+
+	// TODO(performance):  remove when we've addressed all issues with
+	// promise pipelining
+	if err := client.Resolve(c.Context); err != nil {
+		return failure(err)
+	}
+
+	// XXX:  pass in the appropriate signer
+	sess, release := auth.Provider(client).Provide(c.Context, auth.Signer{})
+	defer release()
+
+	return proxyHost{
+		view:   sess.View().AddRef(),
+		pubsub: sess.PubSub().AddRef(),
+		root:   sess.Root().AddRef(),
+		// TODO(soon):  add remaining capabilities
+	}.Host(), nil
 }
 
-func clientHost(c *cli.Context) (host.Host, error) {
+func clientHost(c *cli.Context) (local.Host, error) {
 	return libp2p.New(
 		libp2p.NoTransports,
 		libp2p.NoListenAddrs,
@@ -140,4 +183,55 @@ func loadROM(c *cli.Context) (ww.ROM, error) {
 	defer f.Close()
 
 	return ww.Read(f)
+}
+
+type proxyHost struct {
+	view   view.View
+	pubsub pubsub.Router
+	root   anchor.Anchor
+	// registry ...
+	// executor ...
+}
+
+func (p proxyHost) Shutdown() {
+	p.view.Release()
+}
+
+func (p proxyHost) Host() host.Host {
+	return host.Host(api.Host_ServerToClient(p))
+}
+
+func (p proxyHost) View(ctx context.Context, call api.Host_view) error {
+	res, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	return res.SetView(api.View(p.view).AddRef())
+}
+
+func (p proxyHost) PubSub(ctx context.Context, call api.Host_pubSub) error {
+	res, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	return res.SetPubSub(pubsub.Router(p.pubsub).AddRef())
+}
+
+func (p proxyHost) Root(ctx context.Context, call api.Host_root) error {
+	res, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	return res.SetRoot(anchor.Anchor(p.root).AddRef())
+}
+
+func (p proxyHost) Registry(ctx context.Context, call api.Host_registry) error {
+	return errors.New("proxyHost.Registry: NOT IMPLEMENTED") // TODO(soon)
+}
+
+func (p proxyHost) Executor(ctx context.Context, call api.Host_executor) error {
+	return errors.New("proxyHost.Executor: NOT IMPLEMENTED") // TODO(soon)
 }

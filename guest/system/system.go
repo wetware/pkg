@@ -21,26 +21,10 @@ const (
 	PREOPENED_FD = 3
 )
 
-// Logger is used for logging by the RPC system. Each method logs
-// messages at a different level, but otherwise has the same semantics:
-//
-//   - Message is a human-readable description of the log event.
-//   - Args is a sequenece of key, value pairs, where the keys must be strings
-//     and the values may be any type.
-//   - The methods may not block for long periods of time.
-//
-// This interface is designed such that it is satisfied by *slog.Logger.
-type Logger interface {
-	Debug(message string, args ...any)
-	Info(message string, args ...any)
-	Warn(message string, args ...any)
-	Error(message string, args ...any)
-}
-
 // Boot bootstraps and resolves the Capnp client attached
 // to the other end of the pre-openned TCP connection.
 // capnp.Client will be capnp.ErrorClient if an error ocurred.
-func Boot(ctx context.Context) (capnp.Client, capnp.ReleaseFunc) {
+func Boot[T ~capnp.ClientKind](ctx context.Context) (T, capnp.ReleaseFunc) {
 	var closers []io.Closer
 	release := func() {
 		for i := range closers {
@@ -52,14 +36,14 @@ func Boot(ctx context.Context) (capnp.Client, capnp.ReleaseFunc) {
 	l, err := preopenedListener(&closers)
 	if err != nil {
 		defer release()
-		return capnp.ErrorClient(err), func() {}
+		return failure[T](err)
 	}
 	closers = append(closers, l)
 
 	tcpConn, err := l.Accept()
 	if err != nil {
 		defer release()
-		return capnp.ErrorClient(err), func() {}
+		return failure[T](err)
 	}
 	closers = append(closers, tcpConn)
 
@@ -70,13 +54,18 @@ func Boot(ctx context.Context) (capnp.Client, capnp.ReleaseFunc) {
 
 	client := conn.Bootstrap(ctx)
 
-	err = client.Resolve(ctx)
-	if err != nil {
+	// TODO(performance):  remove this once we've addressed any
+	// promise pipelining bugs in Cap'n Proto.
+	if err = client.Resolve(ctx); err != nil {
 		defer release()
-		return capnp.ErrorClient(err), func() {}
+		return failure[T](err)
 	}
 
-	return client, release
+	return T(client), release
+}
+
+func failure[T ~capnp.ClientKind](err error) (T, capnp.ReleaseFunc) {
+	return T(capnp.ErrorClient(err)), func() {}
 }
 
 // return the a TCP listener from pre-opened tcp connection by using the fd

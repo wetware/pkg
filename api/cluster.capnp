@@ -130,3 +130,17 @@ interface View {
     using PeerID = Text;
 }
 
+
+interface AuthProvider {
+    provide @0 (account :Signer) -> (
+        view :import "cluster.capnp".View,
+        pubSub :import "pubsub.capnp".Router,
+        root :import "anchor.capnp".Anchor,
+        # TODO(soon) ...
+    );
+}
+
+
+interface Signer {
+    sign @0 (challenge :Data) -> (signed :Data);
+}
