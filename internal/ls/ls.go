@@ -39,8 +39,6 @@ func Command(log Logger) *cli.Command {
 	return &cli.Command{
 		Name: "ls",
 		Action: func(c *cli.Context) error {
-			ctx := c.Context
-
 			h, err := clientHost(c)
 			if err != nil {
 				return err
@@ -53,13 +51,17 @@ func Command(log Logger) *cli.Command {
 			}
 			defer conn.Close()
 
-			client := conn.Bootstrap(ctx)
+			client := conn.Bootstrap(c.Context)
 			defer client.Release()
 
-			view, release := host.Host(client).View(ctx)
+			client.Resolve(c.Context) // DEBUG
+
+			view, release := host.Host(client).View(c.Context)
 			defer release()
 
-			it, release := view.Iter(ctx, query(c))
+			// capnp.Client(view).Resolve(c.Context) // DEBUG
+
+			it, release := view.Iter(c.Context, query(c))
 			defer release()
 
 			for r := it.Next(); r != nil; r = it.Next() {

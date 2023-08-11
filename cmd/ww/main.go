@@ -8,6 +8,7 @@ package main
 import (
 	"context"
 	_ "embed"
+	"fmt"
 	"os"
 	"os/signal"
 	"path"
@@ -108,6 +109,7 @@ func die(err error) {
 	}
 
 	if err != nil {
+		fmt.Println(err)
 		os.Exit(1)
 	}
 
