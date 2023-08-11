@@ -39,6 +39,8 @@ func Command(log Logger) *cli.Command {
 	return &cli.Command{
 		Name: "ls",
 		Action: func(c *cli.Context) error {
+			ctx := c.Context
+
 			h, err := clientHost(c)
 			if err != nil {
 				return err
@@ -51,13 +53,13 @@ func Command(log Logger) *cli.Command {
 			}
 			defer conn.Close()
 
-			peer := host.Host(conn.Bootstrap(c.Context))
-			defer peer.Release()
+			client := conn.Bootstrap(ctx)
+			defer client.Release()
 
-			view, release := peer.View(c.Context)
+			view, release := host.Host(client).View(ctx)
 			defer release()
 
-			it, release := view.Iter(c.Context, query(c))
+			it, release := view.Iter(ctx, query(c))
 			defer release()
 
 			for r := it.Next(); r != nil; r = it.Next() {
