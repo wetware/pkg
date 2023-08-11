@@ -59,7 +59,9 @@ func (d Dialer) Dial(ctx context.Context, h host.Host) (*rpc.Conn, error) {
 		return nil, fmt.Errorf("upgrade: %w", err)
 	}
 
-	return rpc.NewConn(transport(s), nil), nil
+	return rpc.NewConn(transport(s), &rpc.Options{
+		ErrorReporter: warn{d.Logger},
+	}), nil
 }
 
 func (d Dialer) connect(ctx context.Context, h host.Host) (peer.ID, error) {
@@ -94,4 +96,39 @@ func transport(s network.Stream) rpc.Transport {
 	}
 
 	return rpc.NewStreamTransport(s)
+}
+
+var (
+	_ rpc.ErrorReporter = (*debug)(nil)
+	_ rpc.ErrorReporter = (*warn)(nil)
+)
+
+type debug struct {
+	Logger
+}
+
+func (d debug) ReportError(err error) {
+	if err != nil {
+		if d.Logger == nil {
+			d.Logger = slog.Default()
+		}
+
+		d.Logger.Debug("rpc:  connection closed",
+			"error", err)
+	}
+}
+
+type warn struct {
+	Logger
+}
+
+func (w warn) ReportError(err error) {
+	if err != nil {
+		if w.Logger == nil {
+			w.Logger = slog.Default()
+		}
+
+		w.Logger.Warn("rpc:  connection closed",
+			"error", err)
+	}
 }
