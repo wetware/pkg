@@ -3,9 +3,6 @@ package ls
 import (
 	"fmt"
 
-	"capnproto.org/go/capnp/v3/rpc"
-	"golang.org/x/exp/slog"
-
 	"github.com/urfave/cli/v2"
 
 	"github.com/libp2p/go-libp2p"
@@ -14,8 +11,8 @@ import (
 	tcp "github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	"github.com/wetware/pkg/cap/host"
 	"github.com/wetware/pkg/cap/view"
-	"github.com/wetware/pkg/client"
 	"github.com/wetware/pkg/cluster/routing"
+	"github.com/wetware/pkg/system"
 )
 
 // Logger is used for logging by the RPC system. Each method logs
@@ -32,7 +29,6 @@ type Logger interface {
 	Info(message string, args ...any)
 	Warn(message string, args ...any)
 	Error(message string, args ...any)
-	With(args ...any) *slog.Logger
 }
 
 func Command(log Logger) *cli.Command {
@@ -45,21 +41,13 @@ func Command(log Logger) *cli.Command {
 			}
 			defer h.Close()
 
-			conn, err := dial(c, log, h)
+			host, err := system.Boot[host.Host](c, log, h)
 			if err != nil {
 				return err
 			}
-			defer conn.Close()
 
-			client := conn.Bootstrap(c.Context)
-			defer client.Release()
-
-			client.Resolve(c.Context) // DEBUG
-
-			view, release := host.Host(client).View(c.Context)
+			view, release := host.View(c.Context)
 			defer release()
-
-			// capnp.Client(view).Resolve(c.Context) // DEBUG
 
 			it, release := view.Iter(c.Context, query(c))
 			defer release()
@@ -71,17 +59,6 @@ func Command(log Logger) *cli.Command {
 			return it.Err()
 		},
 	}
-}
-
-func dial(c *cli.Context, log Logger, h local.Host) (*rpc.Conn, error) {
-	return client.Dialer{
-		NS:       c.String("ns"),
-		Peers:    c.StringSlice("peer"),
-		Discover: c.String("discover"),
-		Logger: log.With(
-			"peers", c.StringSlice("peer"),
-			"discover", c.String("discover")),
-	}.Dial(c.Context, h)
 }
 
 func clientHost(c *cli.Context) (local.Host, error) {
