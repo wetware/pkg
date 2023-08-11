@@ -10,6 +10,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
 	tcp "github.com/libp2p/go-libp2p/p2p/transport/tcp"
+	"github.com/tetratelabs/wazero"
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
@@ -101,6 +102,16 @@ func (cfg Config) Serve(ctx context.Context, h local_host.Host) error {
 	defer c.Stop()
 	defer ps.UnregisterTopicValidator(cfg.NS)
 
+	e, err := cfg.newExecutor(ctx, executorConfig{
+		RuntimeCfg: wazero.
+			NewRuntimeConfigCompiler().
+			WithCompilationCache(wazero.NewCompilationCache()).
+			WithCloseOnContextDone(true),
+	})
+	if err != nil {
+		return fmt.Errorf("executor: %w", err)
+	}
+
 	cfg.export(ctx, h, &host.Server{
 		ViewProvider:   c,
 		AnchorProvider: &anchor.Node{},
@@ -108,6 +119,7 @@ func (cfg Config) Serve(ctx context.Context, h local_host.Host) error {
 			Log:         cfg.Logger,
 			TopicJoiner: ps,
 		},
+		ExecutorProvider: e,
 	})
 
 	if err := c.Bootstrap(ctx); err != nil {
