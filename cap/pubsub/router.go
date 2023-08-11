@@ -24,7 +24,7 @@ func (ps Router) Join(ctx context.Context, topic string) (Topic, capnp.ReleaseFu
 }
 
 func (ps Router) AddRef() Router {
-	return Router(capnp.Client(ps).AddRef())
+	return Router(api.Router(ps).AddRef())
 }
 
 func (ps Router) Release() {

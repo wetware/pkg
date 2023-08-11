@@ -3,7 +3,7 @@ package ls
 import (
 	"fmt"
 
-	"capnproto.org/go/capnp/v3/rpc"
+	"capnproto.org/go/capnp/v3"
 	"golang.org/x/exp/slog"
 
 	"github.com/urfave/cli/v2"
@@ -12,10 +12,10 @@ import (
 	local "github.com/libp2p/go-libp2p/core/host"
 	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
 	tcp "github.com/libp2p/go-libp2p/p2p/transport/tcp"
+	"github.com/wetware/pkg/cap/auth"
 	"github.com/wetware/pkg/cap/host"
 	"github.com/wetware/pkg/cap/view"
 	"github.com/wetware/pkg/client"
-	"github.com/wetware/pkg/cluster/routing"
 )
 
 // Logger is used for logging by the RPC system. Each method logs
@@ -39,38 +39,43 @@ func Command(log Logger) *cli.Command {
 	return &cli.Command{
 		Name: "ls",
 		Action: func(c *cli.Context) error {
-			h, err := clientHost(c)
+			host, err := authenticate(c, log)
 			if err != nil {
 				return err
 			}
-			defer h.Close()
+			defer host.Release()
 
-			conn, err := dial(c, log, h)
-			if err != nil {
-				return err
-			}
-			defer conn.Close()
-
-			peer := host.Host(conn.Bootstrap(c.Context))
-			defer peer.Release()
-
-			view, release := peer.View(c.Context)
+			// the view will be a null client if authentication succeeded,
+			// but you don't have permission to access the capability.
+			// Authentication errors are reported as RPC exceptions.
+			view, release := host.View(c.Context)
 			defer release()
 
+			// TODO(performance):  remove this block once we
+			// are confident that promise pipelining works.
+			if err := capnp.Client(view).Resolve(c.Context); err != nil {
+				return fmt.Errorf("resolve: %w", err)
+			}
+
+			// optimistically iterate through the view.  Under the hood
+			// this uses Cap'n Proto streaming RPC semantics, along with
+			// BBR flow control.
 			it, release := view.Iter(c.Context, query(c))
 			defer release()
 
-			for r := it.Next(); r != nil; r = it.Next() {
-				render(c, r)
-			}
-
-			return it.Err()
+			// render a view of the iterator.
+			return render(c, it)
 		},
 	}
 }
 
-func dial(c *cli.Context, log Logger, h local.Host) (*rpc.Conn, error) {
-	return client.Dialer{
+func authenticate(c *cli.Context, log Logger) (host.Host, error) {
+	h, err := clientHost(c)
+	if err != nil {
+		return failure(err)
+	}
+
+	conn, err := client.Dialer{
 		NS:       c.String("ns"),
 		Peers:    c.StringSlice("peer"),
 		Discover: c.String("discover"),
@@ -78,6 +83,40 @@ func dial(c *cli.Context, log Logger, h local.Host) (*rpc.Conn, error) {
 			"peers", c.StringSlice("peer"),
 			"discover", c.String("discover")),
 	}.Dial(c.Context, h)
+	if err != nil {
+		defer h.Close()
+		return failure(err)
+	}
+
+	go func() {
+		defer h.Close()
+		defer conn.Close()
+
+		select {
+		case <-c.Done():
+		case <-conn.Done():
+		}
+	}()
+
+	client := conn.Bootstrap(c.Context)
+
+	// TODO(performance):  remove when we've addressed all issues with
+	// promise pipelining
+	if err := client.Resolve(c.Context); err != nil {
+		return failure(err)
+	}
+
+	// XXX:  pass in the appropriate signer
+	sess, release := auth.Provider(client).Provide(c.Context, auth.Signer{})
+	defer release()
+
+	view := sess.View()
+	err = capnp.Client(view).Resolve(c.Context) // DEBUG
+	return sess.Host(), err
+}
+
+func failure(err error) (host.Host, error) {
+	return host.Host(capnp.ErrorClient(err)), err
 }
 
 func clientHost(c *cli.Context) (local.Host, error) {
@@ -88,10 +127,22 @@ func clientHost(c *cli.Context) (local.Host, error) {
 		libp2p.Transport(quic.NewTransport))
 }
 
+func signer(c *cli.Context) auth.Signer {
+	return auth.Signer{}
+}
+
 func query(c *cli.Context) view.Query {
 	return view.NewQuery(view.All())
 }
 
-func render(c *cli.Context, r routing.Record) {
-	fmt.Fprintf(c.App.Writer, "/%s\n", r.Server())
+func render(c *cli.Context, it view.Iterator) error {
+	// range over the iterator; this will block when waiting
+	// for data from the network.
+	//
+	// TODO(performance):  ensure we're doing some kind of sensible batching
+	for r := it.Next(); r != nil; r = it.Next() {
+		fmt.Fprintf(c.App.Writer, "/%s\n", r.Server())
+	}
+
+	return it.Err()
 }

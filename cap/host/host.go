@@ -7,11 +7,7 @@ import (
 
 	"capnproto.org/go/capnp/v3"
 
-	anchor_api "github.com/wetware/pkg/api/anchor"
 	api "github.com/wetware/pkg/api/cluster"
-	process_api "github.com/wetware/pkg/api/process"
-	pubsub_api "github.com/wetware/pkg/api/pubsub"
-	reg_api "github.com/wetware/pkg/api/registry"
 	"github.com/wetware/pkg/cap/anchor"
 	"github.com/wetware/pkg/cap/csp"
 	"github.com/wetware/pkg/cap/pubsub"
@@ -88,11 +84,11 @@ type ExecutorProvider interface {
 
 // Server provides the Host capability.
 type Server struct {
-	ViewProvider     ViewProvider
-	PubSubProvider   PubSubProvider
-	AnchorProvider   AnchorProvider
-	RegistryProvider RegistryProvider
-	ExecutorProvider ExecutorProvider
+	ViewProvider   ViewProvider
+	PubSubProvider PubSubProvider
+	// AnchorProvider   AnchorProvider
+	// RegistryProvider RegistryProvider
+	// ExecutorProvider ExecutorProvider
 }
 
 func (s Server) Client() capnp.Client {
@@ -114,38 +110,46 @@ func (s Server) View(_ context.Context, call api.Host_view) error {
 }
 
 func (s Server) PubSub(_ context.Context, call api.Host_pubSub) error {
-	res, err := call.AllocResults()
-	if err == nil {
-		err = res.SetPubSub(pubsub_api.Router(s.PubSubProvider.PubSub()))
-	}
+	return nil // TODO:  re-enable these one-by-one
 
-	return err
+	// res, err := call.AllocResults()
+	// if err == nil {
+	// 	err = res.SetPubSub(pubsub_api.Router(s.PubSubProvider.PubSub()))
+	// }
+
+	// return err
 }
 
 func (s Server) Root(_ context.Context, call api.Host_root) error {
-	res, err := call.AllocResults()
-	if err == nil {
-		err = res.SetRoot(anchor_api.Anchor(s.AnchorProvider.Anchor()))
-	}
+	return nil // TODO:  re-enable these one-by-one
 
-	return err
+	// res, err := call.AllocResults()
+	// if err == nil {
+	// 	err = res.SetRoot(anchor_api.Anchor(s.AnchorProvider.Anchor()))
+	// }
+
+	// return err
 }
 
 func (s Server) Registry(_ context.Context, call api.Host_registry) error {
-	res, err := call.AllocResults()
-	if err == nil {
-		registry := s.RegistryProvider.Registry()
-		err = res.SetRegistry(reg_api.Registry(registry))
-	}
+	return nil // TODO:  re-enable these one-by-one
 
-	return err
+	// res, err := call.AllocResults()
+	// if err == nil {
+	// 	registry := s.RegistryProvider.Registry()
+	// 	err = res.SetRegistry(reg_api.Registry(registry))
+	// }
+
+	// return err
 }
 
 func (s Server) Executor(_ context.Context, call api.Host_executor) error {
-	res, err := call.AllocResults()
-	if err == nil {
-		e := s.ExecutorProvider.Executor()
-		err = res.SetExecutor(process_api.Executor(e))
-	}
-	return err
+	return nil // TODO:  re-enable these one-by-one
+
+	// res, err := call.AllocResults()
+	// if err == nil {
+	// 	e := s.ExecutorProvider.Executor()
+	// 	err = res.SetExecutor(process_api.Executor(e))
+	// }
+	// return err
 }

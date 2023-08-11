@@ -14,10 +14,9 @@ import (
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
 
-	"github.com/wetware/pkg/cap/anchor"
+	"github.com/wetware/pkg/api/cluster"
 	"github.com/wetware/pkg/cap/auth"
 	"github.com/wetware/pkg/cap/host"
-	"github.com/wetware/pkg/cap/pubsub"
 	"github.com/wetware/pkg/util/proto"
 	"golang.org/x/exp/slog"
 )
@@ -37,6 +36,20 @@ type Logger interface {
 	Warn(message string, args ...any)
 	Error(message string, args ...any)
 }
+
+type debug struct{ Logger }
+
+func (d debug) ReportError(err error) {
+	d.Logger.Debug("rpc: protocol violation", // capnp protocol error
+		"error", err)
+}
+
+// type warn struct{ Logger }
+
+// func (w warn) ReportError(err error) {
+// 	w.Logger.Warn("rpc: protocol violation", // capnp protocol error
+// 		"error", err)
+// }
 
 type Config struct {
 	Logger   Logger
@@ -101,14 +114,24 @@ func (cfg Config) Serve(ctx context.Context, h local_host.Host) error {
 	defer c.Stop()
 	defer ps.UnregisterTopicValidator(cfg.NS)
 
-	cfg.export(ctx, h, &host.Server{
-		ViewProvider:   c,
-		AnchorProvider: &anchor.Node{},
-		PubSubProvider: &pubsub.Server{
-			Log:         cfg.Logger,
-			TopicJoiner: ps,
-		},
-	})
+	// configure the local server
+	server := &host.Server{
+		ViewProvider: c,
+
+		// TODO:  re-enable one-by-one
+
+		// PubSubProvider: &pubsub.Server{
+		// 	Log:         cfg.Logger,
+		// 	TopicJoiner: ps,
+		// },
+
+		// AnchorProvider: new(anchor.Node).AddRef(),
+	}
+
+	// Export an auth policy that gates access to the local server.
+	// This is where auth configuration should go.
+	policy := auth.AllowAll(server.Host()) // FIXME:  insecure
+	cfg.export(ctx, h, policy)
 
 	if err := c.Bootstrap(ctx); err != nil {
 		return fmt.Errorf("bootstrap: %w", err)
@@ -118,18 +141,19 @@ func (cfg Config) Serve(ctx context.Context, h local_host.Host) error {
 	return ctx.Err()
 }
 
-func (cfg Config) export(ctx context.Context, h local_host.Host, s *host.Server) {
+func (cfg Config) export(ctx context.Context, h local_host.Host, auth cluster.AuthProvider) {
 	for _, proto := range proto.Namespace(cfg.NS) {
-		h.SetStreamHandler(proto, cfg.handler(ctx, s))
+		h.SetStreamHandler(proto, cfg.handler(ctx, auth))
 	}
 }
 
-func (cfg Config) handler(ctx context.Context, h *host.Server) network.StreamHandler {
+func (cfg Config) handler(ctx context.Context, auth cluster.AuthProvider) network.StreamHandler {
 	return func(s network.Stream) {
 		defer s.Close()
 
 		conn := rpc.NewConn(transport(s), &rpc.Options{
-			BootstrapClient: cfg.authProvider(h),
+			BootstrapClient: capnp.Client(auth),
+			ErrorReporter:   debug{cfg.Logger}, // TODO:  create more log levels
 		})
 		defer conn.Close()
 
@@ -138,11 +162,6 @@ func (cfg Config) handler(ctx context.Context, h *host.Server) network.StreamHan
 		case <-conn.Done():
 		}
 	}
-}
-
-func (cfg Config) authProvider(h *host.Server) capnp.Client {
-	policy := auth.AllowAll(h) // TODO(soon):  implement server-side auth here
-	return capnp.Client(policy)
 }
 
 func transport(s network.Stream) rpc.Transport {

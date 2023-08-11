@@ -8,17 +8,18 @@ import (
 	"github.com/wetware/pkg/api/pubsub"
 	"github.com/wetware/pkg/cap/host"
 	"go.uber.org/multierr"
+	"golang.org/x/exp/slog"
 )
 
 // AllowAll is a policy that grants unrestricted access to h.
 // Callers SHOULD NOT use AllowAll if they can avoid it.
-func AllowAll(h api.Host_Server) api.AuthProvider {
+func AllowAll(h host.Host) api.AuthProvider {
 	return Policy(just{h})
 }
 
 // DenyAll is a policy that does not grant access to h.  It is
 // RECOMMENDED to use DenyAll by default.
-func DenyAll(api.Host_Server) api.AuthProvider {
+func DenyAll() api.AuthProvider {
 	return Policy(nothing{}) // null client
 }
 
@@ -35,7 +36,7 @@ func Policy(s api.AuthProvider_Server) api.AuthProvider {
 
 // just{h} === Just(h)
 type just struct {
-	api.Host_Server
+	host.Host
 }
 
 func (j just) Provide(ctx context.Context, call api.AuthProvider_provide) error {
@@ -44,16 +45,16 @@ func (j just) Provide(ctx context.Context, call api.AuthProvider_provide) error 
 		return err
 	}
 
-	client := api.Host_ServerToClient(j)
-	host := host.Host(client)
-
-	view, release := host.View(ctx)
+	slog.Default().Info("view")
+	view, release := j.View(ctx)
 	defer release()
 
-	root, release := host.Root(ctx)
+	slog.Default().Info("root")
+	root, release := j.Root(ctx)
 	defer release()
 
-	router, release := host.PubSub(ctx)
+	slog.Default().Info("pubsub")
+	router, release := j.PubSub(ctx)
 	defer release()
 
 	return multierr.Combine(

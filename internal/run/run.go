@@ -1,7 +1,6 @@
 package run
 
 import (
-	"context"
 	"errors"
 	"os"
 
@@ -12,12 +11,8 @@ import (
 	tcp "github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	"github.com/urfave/cli/v2"
 	ww "github.com/wetware/pkg"
-	"github.com/wetware/pkg/api/anchor"
-	api "github.com/wetware/pkg/api/cluster"
-	"github.com/wetware/pkg/api/pubsub"
 	"github.com/wetware/pkg/cap/auth"
 	"github.com/wetware/pkg/cap/host"
-	"github.com/wetware/pkg/cap/view"
 	"github.com/wetware/pkg/client"
 	"github.com/wetware/pkg/rom"
 	"golang.org/x/exp/slog"
@@ -106,6 +101,7 @@ func failure(err error) (host.Host, error) {
 	return host.Host(capnp.ErrorClient(err)), err
 }
 
+// authenticate implements the client-side auth flow.
 func authenticate(c *cli.Context, log Logger) (host.Host, error) {
 	h, err := clientHost(c)
 	if err != nil {
@@ -125,6 +121,7 @@ func authenticate(c *cli.Context, log Logger) (host.Host, error) {
 	}
 
 	go func() {
+		defer h.Close()
 		defer conn.Close()
 
 		select {
@@ -145,12 +142,7 @@ func authenticate(c *cli.Context, log Logger) (host.Host, error) {
 	sess, release := auth.Provider(client).Provide(c.Context, auth.Signer{})
 	defer release()
 
-	return proxyHost{
-		view:   sess.View().AddRef(),
-		pubsub: sess.PubSub().AddRef(),
-		root:   sess.Root().AddRef(),
-		// TODO(soon):  add remaining capabilities
-	}.Host(), nil
+	return sess.Host(), nil
 }
 
 func clientHost(c *cli.Context) (local.Host, error) {
@@ -183,55 +175,4 @@ func loadROM(c *cli.Context) (ww.ROM, error) {
 	defer f.Close()
 
 	return ww.Read(f)
-}
-
-type proxyHost struct {
-	view   view.View
-	pubsub pubsub.Router
-	root   anchor.Anchor
-	// registry ...
-	// executor ...
-}
-
-func (p proxyHost) Shutdown() {
-	p.view.Release()
-}
-
-func (p proxyHost) Host() host.Host {
-	return host.Host(api.Host_ServerToClient(p))
-}
-
-func (p proxyHost) View(ctx context.Context, call api.Host_view) error {
-	res, err := call.AllocResults()
-	if err != nil {
-		return err
-	}
-
-	return res.SetView(api.View(p.view).AddRef())
-}
-
-func (p proxyHost) PubSub(ctx context.Context, call api.Host_pubSub) error {
-	res, err := call.AllocResults()
-	if err != nil {
-		return err
-	}
-
-	return res.SetPubSub(pubsub.Router(p.pubsub).AddRef())
-}
-
-func (p proxyHost) Root(ctx context.Context, call api.Host_root) error {
-	res, err := call.AllocResults()
-	if err != nil {
-		return err
-	}
-
-	return res.SetRoot(anchor.Anchor(p.root).AddRef())
-}
-
-func (p proxyHost) Registry(ctx context.Context, call api.Host_registry) error {
-	return errors.New("proxyHost.Registry: NOT IMPLEMENTED") // TODO(soon)
-}
-
-func (p proxyHost) Executor(ctx context.Context, call api.Host_executor) error {
-	return errors.New("proxyHost.Executor: NOT IMPLEMENTED") // TODO(soon)
 }
