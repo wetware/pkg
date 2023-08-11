@@ -1,5 +1,6 @@
-all: defaultROM
-	@go generate ./...
+all: install
 
-defaultROM:
-	@GOOS=wasip1 GOARCH=wasm gotip build -o rom/internal/main.wasm rom/internal/main.go
+install:
+	go generate ./...
+	GOOS=wasip1 GOARCH=wasm gotip build -o rom/internal/main.wasm rom/internal/main.go
+	go install ./cmd/...
