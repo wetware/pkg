@@ -12,11 +12,9 @@ import (
 	tcp "github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	"github.com/tetratelabs/wazero"
 
-	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
 
 	"github.com/wetware/pkg/cap/anchor"
-	"github.com/wetware/pkg/cap/auth"
 	"github.com/wetware/pkg/cap/host"
 	"github.com/wetware/pkg/cap/pubsub"
 	"github.com/wetware/pkg/util/proto"
@@ -141,7 +139,7 @@ func (cfg Config) handler(ctx context.Context, h *host.Server) network.StreamHan
 		defer s.Close()
 
 		conn := rpc.NewConn(transport(s), &rpc.Options{
-			BootstrapClient: cfg.authProvider(h),
+			BootstrapClient: h.Client(), // serve a host
 		})
 		defer conn.Close()
 
@@ -152,10 +150,10 @@ func (cfg Config) handler(ctx context.Context, h *host.Server) network.StreamHan
 	}
 }
 
-func (cfg Config) authProvider(h *host.Server) capnp.Client {
-	policy := auth.AllowAll(h) // TODO(soon):  implement server-side auth here
-	return capnp.Client(policy)
-}
+// func (cfg Config) authProvider(h *host.Server) capnp.Client {
+// 	policy := auth.AllowAll(h) // TODO(soon):  implement server-side auth here
+// 	return capnp.Client(policy)
+// }
 
 func transport(s network.Stream) rpc.Transport {
 	if strings.HasSuffix(string(s.Protocol()), "/packed") {
