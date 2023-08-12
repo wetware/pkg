@@ -5,43 +5,69 @@ import (
 	"testing"
 	"time"
 
-	"github.com/libp2p/go-libp2p/core/peer"
+	"capnproto.org/go/capnp/v3"
 
-	"github.com/golang/mock/gomock"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	api "github.com/wetware/pkg/api/cluster"
 	"github.com/wetware/pkg/cap/host"
-	test_host "github.com/wetware/pkg/cap/host/test"
 	"github.com/wetware/pkg/cap/view"
 	"github.com/wetware/pkg/cluster/routing"
 )
 
-func TestHost_View(t *testing.T) {
+func TestHost_login(t *testing.T) {
 	t.Parallel()
+	t.Helper()
 
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+	t.Run("EmptySession", func(t *testing.T) {
+		t.Parallel()
 
-	rt := mockRoutingTable{}
-	vs := view.Server{RoutingTable: rt}
+		policy := host.AuthDisabled(host.Session{
+			// Don't pass any capabilities
+		})
 
-	vp := test_host.NewMockViewProvider(ctrl)
-	vp.EXPECT().
-		View().
-		Return(view.View(vs.Client())).
-		Times(1)
+		host := host.Host(policy.Client())
+		defer host.Release()
 
-	server := host.Server{ViewProvider: vp}
-	v, release := server.Host().View(context.Background())
-	require.NotNil(t, release)
-	defer release()
-	require.NotZero(t, v)
+		sess, err := host.Login(context.Background(), api.Signer{})
+		require.NoError(t, err, "login should succeed")
 
-	f, release := v.Lookup(context.Background(), view.NewQuery(view.All()))
-	defer release()
-	r, err := f.Await(context.Background())
-	require.NoError(t, err)
-	require.NotNil(t, r)
+		// ensure all clients are null
+		for name, c := range map[string]capnp.Client{
+			"view":   capnp.Client(sess.View),
+			"pubsub": capnp.Client(sess.Router),
+			// "foo": capnp.Client(sess.Foo),
+		} {
+			assert.Equal(t, capnp.Client{}, c, "%s should be null", name)
+		}
+	})
+
+	t.Run("ProvideView", func(t *testing.T) {
+		t.Parallel()
+
+		rt := mockRoutingTable{}
+		vs := view.Server{RoutingTable: rt}
+
+		policy := host.AuthDisabled(host.Session{
+			View: vs.View(),
+		})
+
+		host := host.Host(policy.Client())
+		defer host.Release()
+
+		sess, err := host.Login(context.Background(), api.Signer{})
+		require.NoError(t, err, "login should succeed")
+
+		all := view.NewQuery(view.All())
+		f, release := sess.View.Lookup(context.Background(), all)
+		defer release()
+
+		r, err := f.Await(context.Background())
+		require.NoError(t, err, "should resolve record")
+		require.NotNil(t, r, "record should not be nil")
+	})
 }
 
 type mockRoutingTable struct{}

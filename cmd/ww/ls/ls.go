@@ -9,6 +9,7 @@ import (
 	local "github.com/libp2p/go-libp2p/core/host"
 	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
 	tcp "github.com/libp2p/go-libp2p/p2p/transport/tcp"
+	api "github.com/wetware/pkg/api/cluster"
 	"github.com/wetware/pkg/cap/host"
 	"github.com/wetware/pkg/cap/view"
 	"github.com/wetware/pkg/cluster/routing"
@@ -45,11 +46,14 @@ func Command(log Logger) *cli.Command {
 			if err != nil {
 				return err
 			}
+			defer host.Release()
 
-			view, release := host.View(c.Context)
-			defer release()
+			sess, err := host.Login(c.Context, api.Signer{})
+			if err != nil {
+				return err
+			}
 
-			it, release := view.Iter(c.Context, query(c))
+			it, release := sess.View.Iter(c.Context, query(c))
 			defer release()
 
 			for r := it.Next(); r != nil; r = it.Next() {

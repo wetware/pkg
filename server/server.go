@@ -10,11 +10,9 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
 	tcp "github.com/libp2p/go-libp2p/p2p/transport/tcp"
-	"github.com/tetratelabs/wazero"
 
 	"capnproto.org/go/capnp/v3/rpc"
 
-	"github.com/wetware/pkg/cap/anchor"
 	"github.com/wetware/pkg/cap/host"
 	"github.com/wetware/pkg/cap/pubsub"
 	"github.com/wetware/pkg/util/proto"
@@ -99,25 +97,33 @@ func (cfg Config) Serve(ctx context.Context, h local_host.Host) error {
 	defer c.Stop()
 	defer ps.UnregisterTopicValidator(cfg.NS)
 
-	e, err := cfg.newExecutor(ctx, executorConfig{
-		RuntimeCfg: wazero.
-			NewRuntimeConfigCompiler().
-			WithCompilationCache(wazero.NewCompilationCache()).
-			WithCloseOnContextDone(true),
-	})
-	if err != nil {
-		return fmt.Errorf("executor: %w", err)
+	// e, err := cfg.newExecutor(ctx, executorConfig{
+	// 	RuntimeCfg: wazero.
+	// 		NewRuntimeConfigCompiler().
+	// 		WithCompilationCache(wazero.NewCompilationCache()).
+	// 		WithCloseOnContextDone(true),
+	// })
+	// if err != nil {
+	// 	return fmt.Errorf("executor: %w", err)
+	// }
+
+	router := pubsub.Server{
+		Log:         cfg.Logger,
+		TopicJoiner: ps,
 	}
 
-	cfg.export(ctx, h, &host.Server{
-		ViewProvider:   c,
-		AnchorProvider: &anchor.Node{},
-		PubSubProvider: &pubsub.Server{
-			Log:         cfg.Logger,
-			TopicJoiner: ps,
-		},
-		ExecutorProvider: e,
-	})
+	rootSess := &host.Session{
+		View:   c.View(),
+		Router: router.PubSub(),
+		// AnchorProvider: &anchor.Node{},
+		// PubSubProvider: &pubsub.Server{
+		// 	Log:         cfg.Logger,
+		// 	TopicJoiner: ps,
+		// },
+		// ExecutorProvider: e,
+	}
+
+	cfg.export(ctx, h, host.AuthDisabled(*rootSess))
 
 	if err := c.Bootstrap(ctx); err != nil {
 		return fmt.Errorf("bootstrap: %w", err)
@@ -127,13 +133,13 @@ func (cfg Config) Serve(ctx context.Context, h local_host.Host) error {
 	return ctx.Err()
 }
 
-func (cfg Config) export(ctx context.Context, h local_host.Host, s *host.Server) {
+func (cfg Config) export(ctx context.Context, h local_host.Host, s host.AuthPolicy) {
 	for _, proto := range proto.Namespace(cfg.NS) {
 		h.SetStreamHandler(proto, cfg.handler(ctx, s))
 	}
 }
 
-func (cfg Config) handler(ctx context.Context, h *host.Server) network.StreamHandler {
+func (cfg Config) handler(ctx context.Context, h host.AuthPolicy) network.StreamHandler {
 	return func(s network.Stream) {
 		defer s.Close()
 

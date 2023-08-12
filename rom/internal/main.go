@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	api "github.com/wetware/pkg/api/cluster"
 	"github.com/wetware/pkg/cap/host"
 	"github.com/wetware/pkg/cap/view"
 	"github.com/wetware/pkg/cluster/routing"
@@ -17,10 +18,12 @@ func main() {
 	host, release := system.Boot[host.Host](ctx)
 	defer release()
 
-	view, release := host.View(ctx)
-	defer release()
+	sess, err := host.Login(ctx, api.Signer{})
+	if err != nil {
+		die(err)
+	}
 
-	it, release := view.Iter(ctx, query())
+	it, release := sess.View.Iter(ctx, query())
 	defer release()
 
 	for r := it.Next(); r != nil; r = it.Next() {

@@ -5,42 +5,54 @@ using Go = import "/go.capnp";
 $Go.package("cluster");
 $Go.import("github.com/wetware/pkg/api/cluster");
 
+using PeerID = Text;
+
+
+interface Signer {
+    sign @0 (nonce :Data) -> (envelope :Data);
+}
+
 
 interface Host {
     # Host represents a physical or virtual machine instance
     # participating in the cluster.
 
-    view @0 () -> (view :View);
-    # View returns the host's partial view of the cluster. A
-    # view represents a pointin-time snapshot of the cluster,
-    # and makes no guarantee of consistency.
-    #
-    # The returned :Capability SHALL be a CASM :View type.
+    login @0 (account :Signer) -> (
+    # login creates a session for the supplied user.  Any auth
+    # errors are reported as exceptions.  Witheld capabilities
+    # are represented as null clients.
 
-    pubSub @1 () -> (pubSub :import "pubsub.capnp".Router);
-    # PubSub returns an interface to the host's pubsub overlay.
-    # Callers can use this to connect to arbitrary topics.
-    #
-    # Note that the PubSub capability confers the ability to join
-    # any topic that can be designated by name. Attempts to limit
-    # access to topics based on name amounts to ambient authority,
-    # and therefore strongly discouraged. A better approach is to
-    # wrap PubSub in a capability that resolves sturdy references
-    # to Topic capabilities.
+        view :View,
+        # View returns the host's partial view of the cluster. A
+        # view represents a pointin-time snapshot of the cluster,
+        # and makes no guarantee of consistency.
+        #
+        # The returned :Capability SHALL be a CASM :View type.
 
-    root @2 () -> (root :import "anchor.capnp".Anchor);
-    # Root returns the host's root Anchor, which confers access to
-    # all shared memory on the host.
+        pubSub :import "pubsub.capnp".Router,
+        # PubSub returns an interface to the host's pubsub overlay.
+        # Callers can use this to connect to arbitrary topics.
+        #
+        # Note that the PubSub capability confers the ability to join
+        # any topic that can be designated by name. Attempts to limit
+        # access to topics based on name amounts to ambient authority,
+        # and therefore strongly discouraged. A better approach is to
+        # wrap PubSub in a capability that resolves sturdy references
+        # to Topic capabilities.
 
-    registry @3 () -> (registry :import "registry.capnp".Registry);
-    # Registry returns a Service Registry capability, which is used for 
-    # discovering and providing service. This way, applications can find each other.
+        root :import "anchor.capnp".Anchor,
+        # Root returns the host's root Anchor, which confers access to
+        # all shared memory on the host.
 
-    executor @4 () -> (executor :import "process.capnp".Executor);
-    # Executor provides a way of spawning and running WASM-based
-    # processes.
+        registry :import "registry.capnp".Registry,
+        # Registry returns a Service Registry capability, which is used for 
+        # discovering and providing service. This way, applications can find each other.
+
+        executor :import "process.capnp".Executor,
+        # Executor provides a way of spawning and running WASM-based
+        # processes.
+    );
 }
-
 
 struct Heartbeat {
     # Heartbeat messages are used to implement an unstructured p2p
@@ -126,21 +138,4 @@ interface View {
             just    @1 :Record;
         }
     }
-
-    using PeerID = Text;
-}
-
-
-interface AuthProvider {
-    provide @0 (account :Signer) -> (
-        view :import "cluster.capnp".View,
-        pubSub :import "pubsub.capnp".Router,
-        root :import "anchor.capnp".Anchor,
-        # TODO(soon) ...
-    );
-}
-
-
-interface Signer {
-    sign @0 (challenge :Data) -> (signed :Data);
 }
