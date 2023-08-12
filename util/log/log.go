@@ -3,6 +3,9 @@
 package log
 
 import (
+	"errors"
+	"io"
+
 	"capnproto.org/go/capnp/v3/exc"
 	"golang.org/x/exp/slog"
 )
@@ -28,12 +31,17 @@ type ErrorReporter struct{ Logger }
 
 func (log ErrorReporter) ReportError(err error) {
 	if err != nil {
+
 		if log.Logger == nil {
 			log.Logger = slog.Default()
 		}
 
 		switch t := exc.TypeOf(err); t {
 		case exc.Failed:
+			if errors.Is(err, io.EOF) {
+				return
+			}
+
 			log.Error(err.Error(),
 				"exception", t)
 
