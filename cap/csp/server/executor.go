@@ -153,7 +153,9 @@ func ServeModule[T ~capnp.ClientKind](addr *net.TCPAddr, t T) {
 	defer capnp.Client(t).Release()
 	conn := rpc.NewConn(rpc.NewStreamTransport(tcpConn), &rpc.Options{
 		BootstrapClient: capnp.Client(t),
-		ErrorReporter:   errLogger{},
+		ErrorReporter: log.ErrorReporter{
+			Logger: slog.Default(),
+		},
 	})
 	defer conn.Close()
 
@@ -182,18 +184,4 @@ func DialWithRetries(addr *net.TCPAddr) (net.Conn, error) {
 	}
 
 	return conn, err
-}
-
-type errLogger struct {
-	log.Logger
-}
-
-func (e errLogger) ReportError(err error) {
-	if err != nil {
-		if e.Logger == nil {
-			e.Logger = slog.Default()
-		}
-
-		e.Debug(err.Error())
-	}
 }

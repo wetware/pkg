@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"strings"
 
-	"capnproto.org/go/capnp/v3/exc"
 	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/wetware/pkg/util/log"
 	"github.com/wetware/pkg/util/proto"
+
 	"golang.org/x/exp/slog"
 )
 
@@ -46,7 +46,9 @@ func (d Dialer) Dial(ctx context.Context, h host.Host) (*rpc.Conn, error) {
 	}
 
 	conn := rpc.NewConn(transport(s), &rpc.Options{
-		ErrorReporter: logger{d.Logger},
+		ErrorReporter: log.ErrorReporter{
+			Logger: d.Logger,
+		},
 	})
 	return conn, nil
 }
@@ -83,36 +85,4 @@ func transport(s network.Stream) rpc.Transport {
 	}
 
 	return rpc.NewStreamTransport(s)
-}
-
-type logger struct{ log.Logger }
-
-func (log logger) ReportError(err error) {
-	if err != nil {
-		if log.Logger == nil {
-			log.Logger = slog.Default()
-		}
-
-		switch t := exc.TypeOf(err); t {
-		case exc.Failed:
-			log.Error(err.Error(),
-				"exception", t)
-
-		case exc.Overloaded:
-			log.Warn(err.Error(),
-				"exception", t)
-
-		case exc.Disconnected:
-			log.Debug(err.Error(),
-				"exception", t)
-
-		case exc.Unimplemented:
-			log.Warn(err.Error(),
-				"exception", t)
-
-		default:
-			log.Info(err.Error())
-		}
-
-	}
 }

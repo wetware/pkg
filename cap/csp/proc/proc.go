@@ -50,7 +50,9 @@ func (f functions) Instantiate(ctx context.Context, opts ...Option) (*Module, er
 
 	module.conn = rpc.NewConn(rpc.NewStreamTransport(rwc), &rpc.Options{
 		BootstrapClient: module.bootstrap,
-		ErrorReporter:   module.errReporter(),
+		ErrorReporter: log.ErrorReporter{
+			Logger: slog.Default(),
+		},
 	})
 
 	return module, nil
@@ -126,18 +128,4 @@ func (m Module) read(ctx context.Context, b t.Bytes, n t.Pointer[t.Uint32]) t.Er
 
 func (m Module) close(ctx context.Context) t.Error {
 	return t.Err[t.None](m.pipe.Close())
-}
-
-func (m Module) errReporter() errReporter {
-	return errReporter{
-		Logger: m.logger,
-	}
-}
-
-type errReporter struct {
-	log.Logger
-}
-
-func (er errReporter) ReportError(err error) {
-	er.Logger.Error(err.Error())
 }
