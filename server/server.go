@@ -140,7 +140,10 @@ func (cfg Config) handler(ctx context.Context, h *host.Server) network.StreamHan
 		defer s.Close()
 
 		conn := rpc.NewConn(transport(s), &rpc.Options{
+<<<<<<< HEAD
 			ErrorReporter:   debug{cfg.Logger},
+=======
+>>>>>>> 8b8a688 (Rebase v0.1.0)
 			BootstrapClient: h.Client(), // serve a host
 		})
 		defer conn.Close()
@@ -152,6 +155,14 @@ func (cfg Config) handler(ctx context.Context, h *host.Server) network.StreamHan
 	}
 }
 
+<<<<<<< HEAD
+=======
+// func (cfg Config) authProvider(h *host.Server) capnp.Client {
+// 	policy := auth.AllowAll(h) // TODO(soon):  implement server-side auth here
+// 	return capnp.Client(policy)
+// }
+
+>>>>>>> 8b8a688 (Rebase v0.1.0)
 func transport(s network.Stream) rpc.Transport {
 	if strings.HasSuffix(string(s.Protocol()), "/packed") {
 		return rpc.NewPackedStreamTransport(s)
