@@ -13,6 +13,7 @@ import (
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
+	"github.com/wetware/pkg/util/log"
 	"golang.org/x/exp/slog"
 )
 
@@ -20,10 +21,6 @@ const (
 	// file descriptor for pre-openned TCP socket
 	PREOPENED_FD = 3
 )
-
-var options = rpc.Options{
-	ErrorReporter: warn,
-}
 
 // Boot bootstraps and resolves the Capnp client attached
 // to the other end of the pre-openned TCP connection.
@@ -51,7 +48,11 @@ func Boot[T ~capnp.ClientKind](ctx context.Context) (T, capnp.ReleaseFunc) {
 	}
 	closers = append(closers, tcpConn)
 
-	conn := rpc.NewConn(rpc.NewStreamTransport(tcpConn), &options)
+	conn := rpc.NewConn(rpc.NewStreamTransport(tcpConn), &rpc.Options{
+		ErrorReporter: log.ErrorReporter{
+			Logger: slog.Default().WithGroup("guest"),
+		},
+	})
 	closers = append(closers, conn)
 
 	client := conn.Bootstrap(ctx)
@@ -78,31 +79,4 @@ func preopenedListener(closers *[]io.Closer) (net.Listener, error) {
 	*closers = append(*closers, l)
 
 	return l, err
-}
-
-const (
-	fail  = logLevel(slog.LevelError)
-	warn  = logLevel(slog.LevelWarn)
-	info  = logLevel(slog.LevelInfo)
-	debug = logLevel(slog.LevelDebug)
-)
-
-type logLevel slog.Level
-
-func (r logLevel) ReportError(err error) {
-	if err != nil {
-		switch message := err.Error(); slog.Level(r) {
-		case slog.LevelDebug:
-			slog.Default().Debug(message)
-
-		case slog.LevelInfo:
-			slog.Default().Info(message)
-
-		case slog.LevelWarn:
-			slog.Default().Warn(message)
-
-		case slog.LevelError:
-			slog.Default().Error(message)
-		}
-	}
 }
