@@ -1,47 +1,24 @@
 package cluster
 
 import (
-	"context"
-	"log"
 	"path"
 	"runtime"
 	"time"
 
-	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/libp2p/go-libp2p"
 	local "github.com/libp2p/go-libp2p/core/host"
 	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	"github.com/urfave/cli/v2"
-	"go.uber.org/fx"
-	"golang.org/x/exp/slog"
 
 	"github.com/wetware/pkg/cap/host"
-	"github.com/wetware/pkg/client"
+	"github.com/wetware/pkg/system"
 )
 
-// Logger is used for logging by the RPC system. Each method logs
-// messages at a different level, but otherwise has the same semantics:
-//
-//   - Message is a human-readable description of the log event.
-//   - Args is a sequenece of key, value pairs, where the keys must be strings
-//     and the values may be any type.
-//   - The methods may not block for long periods of time.
-//
-// This interface is designed such that it is satisfied by *slog.Logger.
-type Logger interface {
-	Debug(message string, args ...any)
-	Info(message string, args ...any)
-	Warn(message string, args ...any)
-	Error(message string, args ...any)
-	With(args ...any) *slog.Logger
-}
-
 var (
-	app    *fx.App
-	h      host.Host
-	logger log.Logger
-	dialer client.Dialer
+	h        host.Host
+	releases *[]func()
+	closes   *[]func() error
 )
 
 var flags = []cli.Flag{
@@ -72,67 +49,49 @@ var flags = []cli.Flag{
 	},
 }
 
-func Command(log Logger) *cli.Command {
+func Command() *cli.Command {
 	return &cli.Command{
 		Name:    "cluster",
 		Usage:   "cli client for wetware clusters",
 		Aliases: []string{"client"}, // TODO(soon):  deprecate
 		Flags:   flags,
 		Subcommands: []*cli.Command{
-			run(log),
+			run(),
 		},
 	}
 }
 
-func setup(log Logger) cli.BeforeFunc {
+func setup() cli.BeforeFunc {
 	return func(c *cli.Context) (err error) {
+		*releases = make([]func(), 0)
+		*closes = make([]func() error, 0)
 
-		ctx, cancel := context.WithTimeout(
-			c.Context,
-			c.Duration("timeout"))
-		defer cancel()
-
-		ch, err := clientHost(c)
+		h, err := clientHost(c)
 		if err != nil {
 			return err
 		}
-		defer ch.Close()
+		*closes = append(*closes, h.Close)
 
-		conn, err := dial(c, log, ch)
+		host, err := system.Boot[host.Host](c, h)
 		if err != nil {
 			return err
 		}
-		defer conn.Close()
+		*releases = append(*releases, host.Release)
 
-		h = host.Host(conn.Bootstrap(c.Context))
-		defer h.Release()
-
-		return app.Start(ctx)
+		return nil
 	}
 }
 
 func teardown() cli.AfterFunc {
 	return func(c *cli.Context) (err error) {
-		ctx, cancel := context.WithTimeout(
-			context.Background(),
-			app.StopTimeout())
-		defer cancel()
-
-		h.Release()
-
-		return app.Stop(ctx)
+		for _, close := range *closes {
+			defer close()
+		}
+		for _, release := range *releases {
+			defer release()
+		}
+		return nil
 	}
-}
-
-func dial(c *cli.Context, log Logger, h local.Host) (*rpc.Conn, error) {
-	return client.Dialer{
-		NS:       c.String("ns"),
-		Peers:    c.StringSlice("peer"),
-		Discover: c.String("discover"),
-		Logger: log.With(
-			"peers", c.StringSlice("peer"),
-			"discover", c.String("discover")),
-	}.Dial(c.Context, h)
 }
 
 func clientHost(c *cli.Context) (local.Host, error) {
