@@ -18,28 +18,13 @@ import (
 	csp_server "github.com/wetware/pkg/cap/csp/server"
 	"github.com/wetware/pkg/cap/host"
 	"github.com/wetware/pkg/cap/pubsub"
+	"github.com/wetware/pkg/util/log"
 	"github.com/wetware/pkg/util/proto"
 	"golang.org/x/exp/slog"
 )
 
-// Logger is used for logging by the RPC system. Each method logs
-// messages at a different level, but otherwise has the same semantics:
-//
-//   - Message is a human-readable description of the log event.
-//   - Args is a sequenece of key, value pairs, where the keys must be strings
-//     and the values may be any type.
-//   - The methods may not block for long periods of time.
-//
-// This interface is designed such that it is satisfied by *slog.Logger.
-type Logger interface {
-	Debug(message string, args ...any)
-	Info(message string, args ...any)
-	Warn(message string, args ...any)
-	Error(message string, args ...any)
-}
-
 type Config struct {
-	Logger   Logger
+	Logger   log.Logger
 	NS       string
 	Peers    []string // static bootstrap peers
 	Discover string   // bootstrap service multiadr
@@ -125,6 +110,9 @@ func (cfg Config) Serve(ctx context.Context, h local_host.Host) error {
 		return fmt.Errorf("bootstrap: %w", err)
 	}
 
+	cfg.Logger.Info("wetware started")
+	defer cfg.Logger.Warn("wetware stopped")
+
 	<-ctx.Done()
 	return ctx.Err()
 }
@@ -140,7 +128,7 @@ func (cfg Config) handler(ctx context.Context, h *host.Server) network.StreamHan
 		defer s.Close()
 
 		conn := rpc.NewConn(transport(s), &rpc.Options{
-			ErrorReporter:   debug{cfg.Logger},
+			ErrorReporter:   log.ErrorReporter{Logger: cfg.Logger},
 			BootstrapClient: h.Client(), // serve a host
 		})
 		defer conn.Close()
@@ -158,39 +146,4 @@ func transport(s network.Stream) rpc.Transport {
 	}
 
 	return rpc.NewStreamTransport(s)
-}
-
-var (
-	_ rpc.ErrorReporter = (*debug)(nil)
-	_ rpc.ErrorReporter = (*warn)(nil)
-)
-
-type debug struct {
-	Logger
-}
-
-func (d debug) ReportError(err error) {
-	if err != nil {
-		if d.Logger == nil {
-			d.Logger = slog.Default()
-		}
-
-		d.Logger.Debug("rpc:  connection closed",
-			"error", err)
-	}
-}
-
-type warn struct {
-	Logger
-}
-
-func (w warn) ReportError(err error) {
-	if err != nil {
-		if w.Logger == nil {
-			w.Logger = slog.Default()
-		}
-
-		w.Logger.Warn("rpc:  connection closed",
-			"error", err)
-	}
 }

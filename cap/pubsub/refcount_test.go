@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	api "github.com/wetware/pkg/api/pubsub"
-	test_pubsub "github.com/wetware/pkg/cap/pubsub/test"
+	test_log "github.com/wetware/pkg/util/log/test"
 	"golang.org/x/exp/slog"
 )
 
@@ -96,7 +96,7 @@ func TestTopicManager(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		logger := test_pubsub.NewMockLogger(ctrl)
+		logger := test_log.NewMockLogger(ctrl)
 		// logger.EXPECT().
 		// 	WithField("topic", name).
 		// 	Return(logger).

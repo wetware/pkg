@@ -14,23 +14,8 @@ import (
 	"github.com/stealthrocket/wazergo"
 	t "github.com/stealthrocket/wazergo/types"
 	wasm "github.com/tetratelabs/wazero"
+	"github.com/wetware/pkg/util/log"
 )
-
-// Logger is used for logging by the RPC system. Each method logs
-// messages at a different level, but otherwise has the same semantics:
-//
-//   - Message is a human-readable description of the log event.
-//   - Args is a sequenece of key, value pairs, where the keys must be strings
-//     and the values may be any type.
-//   - The methods may not block for long periods of time.
-//
-// This interface is designed such that it is satisfied by *slog.Logger.
-type Logger interface {
-	Debug(message string, args ...any)
-	Info(message string, args ...any)
-	Warn(message string, args ...any)
-	Error(message string, args ...any)
-}
 
 var fs wazergo.HostModule[*Module] = functions{
 	"__host_write": wazergo.F2((*Module).write),
@@ -65,7 +50,9 @@ func (f functions) Instantiate(ctx context.Context, opts ...Option) (*Module, er
 
 	module.conn = rpc.NewConn(rpc.NewStreamTransport(rwc), &rpc.Options{
 		BootstrapClient: module.bootstrap,
-		ErrorReporter:   module.errReporter(),
+		ErrorReporter: log.ErrorReporter{
+			Logger: slog.Default(),
+		},
 	})
 
 	return module, nil
@@ -82,7 +69,7 @@ func WithClient[Client ~capnp.ClientKind](c Client) Option {
 
 // WithLogger sets the error logger for the capnp transport.   If
 // l == nil, logging is disabled.
-func WithLogger(l Logger) Option {
+func WithLogger(l log.Logger) Option {
 	if l == nil {
 		l = slog.Default()
 	}
@@ -96,7 +83,7 @@ type Module struct {
 	pipe io.ReadWriteCloser
 	conn io.Closer
 
-	logger    Logger
+	logger    log.Logger
 	bootstrap capnp.Client
 }
 
@@ -141,18 +128,4 @@ func (m Module) read(ctx context.Context, b t.Bytes, n t.Pointer[t.Uint32]) t.Er
 
 func (m Module) close(ctx context.Context) t.Error {
 	return t.Err[t.None](m.pipe.Close())
-}
-
-func (m Module) errReporter() errReporter {
-	return errReporter{
-		Logger: m.logger,
-	}
-}
-
-type errReporter struct {
-	Logger
-}
-
-func (er errReporter) ReportError(err error) {
-	er.Logger.Error(err.Error())
 }
