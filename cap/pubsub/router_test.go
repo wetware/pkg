@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/wetware/pkg/cap/pubsub"
-	test_pubsub "github.com/wetware/pkg/cap/pubsub/test"
+	test_log "github.com/wetware/pkg/util/log/test"
 )
 
 func TestRouter(t *testing.T) {
@@ -23,7 +23,7 @@ func TestRouter(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	logger := test_pubsub.NewMockLogger(ctrl)
+	logger := test_log.NewMockLogger(ctrl)
 	// logger.EXPECT().
 	// 	With("topic", name).
 	// 	Return(logger).

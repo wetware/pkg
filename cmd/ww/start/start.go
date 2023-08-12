@@ -13,23 +13,6 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-// Logger is used for logging by the RPC system. Each method logs
-// messages at a different level, but otherwise has the same semantics:
-//
-//   - Message is a human-readable description of the log event.
-//   - Args is a sequenece of key, value pairs, where the keys must be strings
-//     and the values may be any type.
-//   - The methods may not block for long periods of time.
-//
-// This interface is designed such that it is satisfied by *slog.Logger.
-type Logger interface {
-	Debug(message string, args ...any)
-	Info(message string, args ...any)
-	Warn(message string, args ...any)
-	Error(message string, args ...any)
-	With(args ...any) *slog.Logger
-}
-
 var meta map[string]string
 
 var flags = []cli.Flag{
@@ -49,69 +32,61 @@ var flags = []cli.Flag{
 	},
 }
 
-func Command(log Logger) *cli.Command {
+func Command() *cli.Command {
 	return &cli.Command{
-		Name:   "start",
-		Usage:  "start a host process",
-		Flags:  flags,
-		Before: setup(),
-		Action: start(log),
-	}
-}
+		Name:  "start",
+		Usage: "start a host process",
+		Flags: flags,
+		Before: func(c *cli.Context) error {
+			// Parse and asign meta tags
 
-func start(log Logger) cli.ActionFunc {
-	return func(c *cli.Context) error {
-		h, err := libp2p.New(
-			libp2p.NoTransports,
-			libp2p.Transport(tcp.NewTCPTransport),
-			libp2p.Transport(quic.NewTransport),
-			libp2p.ListenAddrStrings(c.StringSlice("listen")...))
-		if err != nil {
-			return fmt.Errorf("listen: %w", err)
-		}
-		defer h.Close()
+			metaTags := c.StringSlice("meta")
+			for _, tag := range metaTags {
+				pair := strings.SplitN(tag, "=", 2)
+				if len(pair) != 2 {
+					return fmt.Errorf("invalid meta tag: %s", tag)
+				}
 
-		config := server.Config{
-			NS:       c.String("ns"),
-			Peers:    c.StringSlice("peer"),
-			Discover: c.String("discover"),
-			Meta:     meta,
-			Logger: log.With(
-				"peer", h.ID(),
-				"meta", meta,
-				"peers", c.StringSlice("peer"),
-				"discover", c.String("discover")),
-		}
+				if meta == nil {
+					meta = make(map[string]string, len(metaTags))
+				}
 
-		config.Logger.Info("wetware started")
-		defer config.Logger.Warn("wetware stopped")
-
-		err = config.Serve(c.Context, h)
-		if err != context.Canceled {
-			return err
-		}
-
-		return nil
-	}
-}
-
-func setup() cli.BeforeFunc {
-	return func(c *cli.Context) error {
-		metaTags := c.StringSlice("meta")
-
-		for _, tag := range metaTags {
-			pair := strings.SplitN(tag, "=", 2)
-			if len(pair) != 2 {
-				return fmt.Errorf("invalid meta tag: %s", tag)
+				meta[pair[0]] = pair[1]
 			}
 
-			if meta == nil {
-				meta = make(map[string]string, len(metaTags))
+			return nil
+		},
+		Action: func(c *cli.Context) error {
+			// Configure a WASM runtime and execute a ROM.
+
+			h, err := libp2p.New(
+				libp2p.NoTransports,
+				libp2p.Transport(tcp.NewTCPTransport),
+				libp2p.Transport(quic.NewTransport),
+				libp2p.ListenAddrStrings(c.StringSlice("listen")...))
+			if err != nil {
+				return fmt.Errorf("listen: %w", err)
+			}
+			defer h.Close()
+
+			config := server.Config{
+				NS:       c.String("ns"),
+				Peers:    c.StringSlice("peer"),
+				Discover: c.String("discover"),
+				Meta:     meta,
+				Logger: slog.Default().
+					With(
+						"id", h.ID(),
+						/*"peers", c.StringSlice("peer"),*/
+						/*"discover", c.String("discover")*/),
 			}
 
-			meta[pair[0]] = pair[1]
-		}
+			err = config.Serve(c.Context, h)
+			if err != context.Canceled {
+				return err
+			}
 
-		return nil
+			return nil
+		},
 	}
 }

@@ -70,8 +70,6 @@ func main() {
 		syscall.SIGKILL)
 	defer cancel()
 
-	log := slog.Default()
-
 	app := &cli.App{
 		Name:                 "wetware",
 		Version:              ww.Version,
@@ -82,16 +80,19 @@ func main() {
 		EnableBashCompletion: true,
 		Flags:                flags,
 		Before: func(c *cli.Context) error {
-			log = log.With(
-				"version", ww.Version,
-				"ns", c.String("ns"))
+			// set up logging
+			slog.SetDefault(logger(c).
+				With(
+					"version", ww.Version,
+					"ns", c.String("ns")))
+
 			return nil
 		},
 		Commands: []*cli.Command{
-			ls.Command(log),
-			run.Command(log),
-			start.Command(log),
-			cluster.Command(log),
+			ls.Command(),
+			run.Command(),
+			start.Command(),
+			cluster.Command(),
 		},
 	}
 
@@ -116,6 +117,26 @@ func die(err error) {
 	}
 
 	os.Exit(0)
+}
+
+func logger(c *cli.Context) *slog.Logger {
+	var h = &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}
+
+	// enable debug logs?
+	if c.Bool("debug") {
+		h.Level = slog.LevelDebug
+	}
+
+	// enable json logging?
+	if c.Bool("json") {
+		handler := slog.NewJSONHandler(c.App.ErrWriter, h)
+		return slog.New(handler)
+	}
+
+	handler := slog.NewTextHandler(c.App.ErrWriter, h)
+	return slog.New(handler)
 }
 
 func bootstrapAddr() string {

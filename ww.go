@@ -25,27 +25,10 @@ const (
 	Codec   = 2020
 )
 
-// Logger is used for logging by the RPC system. Each method logs
-// messages at a different level, but otherwise has the same semantics:
-//
-//   - Message is a human-readable description of the log event.
-//   - Args is a sequenece of key, value pairs, where the keys must be strings
-//     and the values may be any type.
-//   - The methods may not block for long periods of time.
-//
-// This interface is designed such that it is satisfied by *slog.Logger.
-type Logger interface {
-	Debug(message string, args ...any)
-	Info(message string, args ...any)
-	Warn(message string, args ...any)
-	Error(message string, args ...any)
-}
-
 // Ww is the execution context for WebAssembly (WASM) bytecode,
 // allowing it to interact with (1) the local host and (2) the
 // cluster environment.
 type Ww[T ~capnp.ClientKind] struct {
-	Log    Logger
 	NS     string
 	Stdin  io.Reader
 	Stdout io.Writer
@@ -125,10 +108,6 @@ func (ww Ww[T]) Exec(ctx context.Context, rom ROM) error {
 }
 
 func (ww Ww[T]) run(ctx context.Context, mod api.Module) error {
-	if ww.Log == nil {
-		ww.Log = slog.Default()
-	}
-
 	// Grab the the main() function and call it with the system context.
 	fn := mod.ExportedFunction("_start")
 	if fn == nil {
@@ -144,9 +123,10 @@ func (ww Ww[T]) run(ctx context.Context, mod api.Module) error {
 	case sys.ExitCodeDeadlineExceeded:
 		return context.DeadlineExceeded
 	default:
-		ww.Log.Debug("process failed",
-			"error", err,
-			"module", mod.Name())
+		slog.Default().Debug(err.Error(),
+			"version", Version,
+			"ns", ww.String(),
+			"rom", mod.Name())
 	}
 
 	return nil

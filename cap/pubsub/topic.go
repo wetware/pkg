@@ -11,23 +11,8 @@ import (
 
 	api "github.com/wetware/pkg/api/pubsub"
 	"github.com/wetware/pkg/util/casm"
+	"github.com/wetware/pkg/util/log"
 )
-
-// Logger is used for logging by the RPC system. Each method logs
-// messages at a different level, but otherwise has the same semantics:
-//
-//   - Message is a human-readable description of the log event.
-//   - Args is a sequenece of key, value pairs, where the keys must be strings
-//     and the values may be any type.
-//   - The methods may not block for long periods of time.
-//
-// This interface is designed such that it is satisfied by *slog.Logger.
-type Logger interface {
-	Debug(message string, args ...any)
-	Info(message string, args ...any)
-	Warn(message string, args ...any)
-	Error(message string, args ...any)
-}
 
 // Topic is the handle for a pubsub topic.  It is used to publish to
 // the topic, and to manage subscriptions.
@@ -101,7 +86,7 @@ func message(b []byte) func(api.Topic_publish_Params) error {
 */
 
 type topicServer struct {
-	log   Logger
+	log   log.Logger
 	topic *pubsub.Topic
 	leave func(*pubsub.Topic) error
 }
