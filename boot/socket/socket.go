@@ -13,6 +13,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/record"
 	ctxutil "github.com/lthibault/util/ctx"
+	"github.com/wetware/pkg/util/log"
 )
 
 func init() { close(closedChan) }
@@ -24,7 +25,7 @@ type RequestHandler func(Request) error
 // Socket is a a packet-oriented network interface that exchanges
 // signed messages.
 type Socket struct {
-	log  Logger
+	log  log.Logger
 	done chan struct{}
 	conn recordConn
 
@@ -73,7 +74,7 @@ func (s *Socket) Done() <-chan struct{} {
 	return s.done
 }
 
-func (s *Socket) Log() Logger { return s.log }
+func (s *Socket) Log() log.Logger { return s.log }
 
 func (s *Socket) Close() (err error) {
 	s.mu.Lock()

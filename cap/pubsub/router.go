@@ -6,6 +6,7 @@ import (
 	capnp "capnproto.org/go/capnp/v3"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	api "github.com/wetware/pkg/api/pubsub"
+	"github.com/wetware/pkg/util/log"
 	"golang.org/x/exp/slog"
 )
 
@@ -43,7 +44,7 @@ type TopicJoiner interface {
 
 // Server for the pubsub capability.
 type Server struct {
-	Log         Logger
+	Log         log.Logger
 	TopicJoiner TopicJoiner
 	topics      topicManager
 }
