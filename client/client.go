@@ -10,30 +10,16 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/wetware/pkg/util/log"
 	"github.com/wetware/pkg/util/proto"
+
 	"golang.org/x/exp/slog"
 )
 
 var ErrNoPeers = errors.New("no peers")
 
-// Logger is used for logging by the RPC system. Each method logs
-// messages at a different level, but otherwise has the same semantics:
-//
-//   - Message is a human-readable description of the log event.
-//   - Args is a sequenece of key, value pairs, where the keys must be strings
-//     and the values may be any type.
-//   - The methods may not block for long periods of time.
-//
-// This interface is designed such that it is satisfied by *slog.Logger.
-type Logger interface {
-	Debug(message string, args ...any)
-	Info(message string, args ...any)
-	Warn(message string, args ...any)
-	Error(message string, args ...any)
-}
-
 type Dialer struct {
-	Logger   Logger
+	Logger   log.Logger
 	NS       string
 	Peers    []string // static bootstrap peers
 	Discover string   // bootstrap service multiadr
@@ -59,9 +45,12 @@ func (d Dialer) Dial(ctx context.Context, h host.Host) (*rpc.Conn, error) {
 		return nil, fmt.Errorf("upgrade: %w", err)
 	}
 
-	return rpc.NewConn(transport(s), &rpc.Options{
-		ErrorReporter: debug{d.Logger},
-	}), nil
+	conn := rpc.NewConn(transport(s), &rpc.Options{
+		ErrorReporter: log.ErrorReporter{
+			Logger: d.Logger,
+		},
+	})
+	return conn, nil
 }
 
 func (d Dialer) connect(ctx context.Context, h host.Host) (peer.ID, error) {
@@ -96,39 +85,4 @@ func transport(s network.Stream) rpc.Transport {
 	}
 
 	return rpc.NewStreamTransport(s)
-}
-
-var (
-	_ rpc.ErrorReporter = (*debug)(nil)
-	_ rpc.ErrorReporter = (*warn)(nil)
-)
-
-type debug struct {
-	Logger
-}
-
-func (d debug) ReportError(err error) {
-	if err != nil {
-		if d.Logger == nil {
-			d.Logger = slog.Default()
-		}
-
-		d.Logger.Debug("rpc:  connection closed",
-			"error", err)
-	}
-}
-
-type warn struct {
-	Logger
-}
-
-func (w warn) ReportError(err error) {
-	if err != nil {
-		if w.Logger == nil {
-			w.Logger = slog.Default()
-		}
-
-		w.Logger.Warn("rpc:  connection closed",
-			"error", err)
-	}
 }

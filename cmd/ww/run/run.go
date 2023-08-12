@@ -12,27 +12,9 @@ import (
 	"github.com/urfave/cli/v2"
 	ww "github.com/wetware/pkg"
 	"github.com/wetware/pkg/cap/host"
-	"github.com/wetware/pkg/client"
 	"github.com/wetware/pkg/rom"
-	"golang.org/x/exp/slog"
+	"github.com/wetware/pkg/system"
 )
-
-// Logger is used for logging by the RPC system. Each method logs
-// messages at a different level, but otherwise has the same semantics:
-//
-//   - Message is a human-readable description of the log event.
-//   - Args is a sequenece of key, value pairs, where the keys must be strings
-//     and the values may be any type.
-//   - The methods may not block for long periods of time.
-//
-// This interface is designed such that it is satisfied by *slog.Logger.
-type Logger interface {
-	Debug(message string, args ...any)
-	Info(message string, args ...any)
-	Warn(message string, args ...any)
-	Error(message string, args ...any)
-	With(args ...any) *slog.Logger
-}
 
 var flags = []cli.Flag{
 	&cli.BoolFlag{
@@ -48,92 +30,57 @@ var flags = []cli.Flag{
 	},
 }
 
-func Command(log Logger) *cli.Command {
+func Command() *cli.Command {
 	return &cli.Command{
-		Name:   "run",
-		Usage:  "execute a local webassembly process",
-		Flags:  flags,
-		Action: run(log),
+		Name:  "run",
+		Usage: "execute a local webassembly process",
+		Flags: flags,
+		Action: func(c *cli.Context) error {
+			h, err := clientHost(c)
+			if err != nil {
+				return err
+			}
+			defer h.Close()
+
+			// dial into the cluster;  if -dial=false, client is null.
+			client, err := dial[host.Host](c, h)
+			if err != nil {
+				return err
+			}
+			defer client.Release()
+
+			// set up the local wetware environment.
+			wetware := ww.Ww[host.Host]{
+				NS:     c.String("ns"),
+				Stdin:  c.App.Reader,
+				Stdout: c.App.Writer,
+				Stderr: c.App.ErrWriter,
+				Client: client,
+			}
+
+			// fetch the ROM and run it
+			rom, err := bytecode(c)
+			if err != nil {
+				return err
+			}
+
+			return wetware.Exec(c.Context, rom)
+		},
 	}
 }
 
-func run(log Logger) cli.ActionFunc {
-	return func(c *cli.Context) error {
-		client, err := dial(c, log)
-		if err != nil {
-			return err
-		}
-		defer client.Release()
-
-		wetware := ww.Ww[host.Host]{
-			Log:    log,
-			NS:     c.String("ns"),
-			Stdin:  c.App.Reader,
-			Stdout: c.App.Writer,
-			Stderr: c.App.ErrWriter,
-			Client: client,
-		}
-
-		rom, err := bytecode(c)
-		if err != nil {
-			return err
-		}
-
-		// run without connecting to a cluster
-		return wetware.Exec(c.Context, rom)
-	}
-}
-
-func dial(c *cli.Context, log Logger) (host.Host, error) {
+func dial[T ~capnp.ClientKind](c *cli.Context, h local.Host) (T, error) {
 	// dial into a cluster?
 	if c.Bool("dial") {
-		return bootstrap(c, log)
+		return system.Boot[T](c, h)
 	}
 
-	// we're not connected to the cluster;  return an
-	// auth.Provider that immediately fails with a helpful
-	// message.
-	return failure(errors.New("disconnected"))
+	// we're not connecting to the cluster
+	return failure[T](errors.New("disconnected"))
 }
 
-func failure(err error) (host.Host, error) {
-	return host.Host(capnp.ErrorClient(err)), err
-}
-
-// bootstrap a connection with a cluster peer; this is a synchronous operation.
-func bootstrap(c *cli.Context, log Logger) (host.Host, error) {
-	h, err := clientHost(c)
-	if err != nil {
-		return failure(err)
-	}
-
-	conn, err := client.Dialer{
-		NS:       c.String("ns"),
-		Peers:    c.StringSlice("peer"),
-		Discover: c.String("discover"),
-		Logger: log.With(
-			"peers", c.StringSlice("peer"),
-			"discover", c.String("discover")),
-	}.Dial(c.Context, h)
-	if err != nil {
-		return failure(err)
-	}
-
-	// This goroutine is automatically terminated when either c.Context
-	// expires or when the connection is closed, whichever happens first.
-	// This goroutine ensures the connection is closed when the application
-	// exits.
-	go func() {
-		defer conn.Close()
-
-		select {
-		case <-conn.Done():
-		case <-c.Context.Done():
-		}
-	}()
-
-	client := conn.Bootstrap(c.Context)
-	return host.Host(client), client.Resolve(c.Context)
+func failure[T ~capnp.ClientKind](err error) (T, error) {
+	return T(capnp.ErrorClient(err)), err
 }
 
 func clientHost(c *cli.Context) (local.Host, error) {

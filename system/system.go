@@ -6,10 +6,11 @@ import (
 	local "github.com/libp2p/go-libp2p/core/host"
 	"github.com/urfave/cli/v2"
 	"github.com/wetware/pkg/client"
+	"golang.org/x/exp/slog"
 )
 
-func Boot[T ~capnp.ClientKind](c *cli.Context, log Logger, h local.Host) (T, error) {
-	conn, err := dial(c, log, h)
+func Boot[T ~capnp.ClientKind](c *cli.Context, h local.Host) (T, error) {
+	conn, err := dial(c, h)
 	if err != nil {
 		return T{}, err
 	}
@@ -27,8 +28,9 @@ func Boot[T ~capnp.ClientKind](c *cli.Context, log Logger, h local.Host) (T, err
 	return T(client), client.Resolve(c.Context)
 }
 
-func dial(c *cli.Context, log Logger, h local.Host) (*rpc.Conn, error) {
+func dial(c *cli.Context, h local.Host) (*rpc.Conn, error) {
 	return client.Dialer{
+		Logger:   slog.Default(),
 		NS:       c.String("ns"),
 		Peers:    c.StringSlice("peer"),
 		Discover: c.String("discover"),

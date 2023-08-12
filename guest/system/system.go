@@ -13,6 +13,7 @@ import (
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
+	"github.com/wetware/pkg/util/log"
 	"golang.org/x/exp/slog"
 )
 
@@ -48,7 +49,9 @@ func Boot[T ~capnp.ClientKind](ctx context.Context) (T, capnp.ReleaseFunc) {
 	closers = append(closers, tcpConn)
 
 	conn := rpc.NewConn(rpc.NewStreamTransport(tcpConn), &rpc.Options{
-		ErrorReporter: warn{},
+		ErrorReporter: log.ErrorReporter{
+			Logger: slog.Default().WithGroup("guest"),
+		},
 	})
 	closers = append(closers, conn)
 
@@ -76,20 +79,4 @@ func preopenedListener(closers *[]io.Closer) (net.Listener, error) {
 	*closers = append(*closers, l)
 
 	return l, err
-}
-
-// warn panics when an error occurs
-type warn struct {
-	Logger
-}
-
-func (e warn) ReportError(err error) {
-	if err != nil {
-		if e.Logger == nil {
-			e.Logger = slog.Default()
-		}
-
-		e.Warn("rpc: connection closed",
-			"error", err)
-	}
 }
