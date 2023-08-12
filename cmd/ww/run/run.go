@@ -17,22 +17,22 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-// Logger is used for logging by the RPC system. Each method logs
-// messages at a different level, but otherwise has the same semantics:
-//
-//   - Message is a human-readable description of the log event.
-//   - Args is a sequenece of key, value pairs, where the keys must be strings
-//     and the values may be any type.
-//   - The methods may not block for long periods of time.
-//
-// This interface is designed such that it is satisfied by *slog.Logger.
-type Logger interface {
-	Debug(message string, args ...any)
-	Info(message string, args ...any)
-	Warn(message string, args ...any)
-	Error(message string, args ...any)
-	With(args ...any) *slog.Logger
-}
+// // Logger is used for logging by the RPC system. Each method logs
+// // messages at a different level, but otherwise has the same semantics:
+// //
+// //   - Message is a human-readable description of the log event.
+// //   - Args is a sequenece of key, value pairs, where the keys must be strings
+// //     and the values may be any type.
+// //   - The methods may not block for long periods of time.
+// //
+// // This interface is designed such that it is satisfied by *slog.Logger.
+// type Logger interface {
+// 	Debug(message string, args ...any)
+// 	Info(message string, args ...any)
+// 	Warn(message string, args ...any)
+// 	Error(message string, args ...any)
+// 	With(args ...any) *slog.Logger
+// }
 
 var flags = []cli.Flag{
 	&cli.BoolFlag{
@@ -48,54 +48,52 @@ var flags = []cli.Flag{
 	},
 }
 
-func Command(log Logger) *cli.Command {
+func Command() *cli.Command {
 	return &cli.Command{
-		Name:   "run",
-		Usage:  "execute a local webassembly process",
-		Flags:  flags,
-		Action: run(log),
+		Name:  "run",
+		Usage: "execute a local webassembly process",
+		Flags: flags,
+		Action: func(c *cli.Context) error {
+			h, err := clientHost(c)
+			if err != nil {
+				return err
+			}
+			defer h.Close()
+
+			// dial into the cluster;  if -dial=false, client is null.
+			client, err := dial[host.Host](c, h)
+			if err != nil {
+				return err
+			}
+			defer client.Release()
+
+			// set up the local wetware environment.
+			wetware := ww.Ww[host.Host]{
+				Log: slog.Default().
+					WithGroup("cmd").
+					WithGroup("rim"),
+				NS:     c.String("ns"),
+				Stdin:  c.App.Reader,
+				Stdout: c.App.Writer,
+				Stderr: c.App.ErrWriter,
+				Client: client,
+			}
+
+			// fetch the ROM and run it
+			rom, err := bytecode(c)
+			if err != nil {
+				return err
+			}
+
+			return wetware.Exec(c.Context, rom)
+		},
 	}
 }
 
-func run(log Logger) cli.ActionFunc {
-	return func(c *cli.Context) error {
-		h, err := clientHost(c)
-		if err != nil {
-			return err
-		}
-		defer h.Close()
-
-		// dial into the cluster;  if -dial=false, client is null.
-		client, err := dial[host.Host](c, log, h)
-		if err != nil {
-			return err
-		}
-		defer client.Release()
-
-		// set up the local wetware environment.
-		wetware := ww.Ww[host.Host]{
-			Log:    log,
-			NS:     c.String("ns"),
-			Stdin:  c.App.Reader,
-			Stdout: c.App.Writer,
-			Stderr: c.App.ErrWriter,
-			Client: client,
-		}
-
-		// fetch the ROM and run it
-		rom, err := bytecode(c)
-		if err != nil {
-			return err
-		}
-
-		return wetware.Exec(c.Context, rom)
-	}
-}
-
-func dial[T ~capnp.ClientKind](c *cli.Context, log Logger, h local.Host) (T, error) {
+func dial[T ~capnp.ClientKind](c *cli.Context, h local.Host) (T, error) {
 	// dial into a cluster?
 	if c.Bool("dial") {
-		return system.Boot[T](c, log, h)
+		return system.Boot[T](c, h)
 	}
 
 	// we're not connecting to the cluster

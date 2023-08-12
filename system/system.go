@@ -8,8 +8,8 @@ import (
 	"github.com/wetware/pkg/client"
 )
 
-func Boot[T ~capnp.ClientKind](c *cli.Context, log Logger, h local.Host) (T, error) {
-	conn, err := dial(c, log, h)
+func Boot[T ~capnp.ClientKind](c *cli.Context, h local.Host) (T, error) {
+	conn, err := dial(c, h)
 	if err != nil {
 		return T{}, err
 	}
@@ -27,7 +27,7 @@ func Boot[T ~capnp.ClientKind](c *cli.Context, log Logger, h local.Host) (T, err
 	return T(client), client.Resolve(c.Context)
 }
 
-func dial(c *cli.Context, log Logger, h local.Host) (*rpc.Conn, error) {
+func dial(c *cli.Context, h local.Host) (*rpc.Conn, error) {
 	return client.Dialer{
 		NS:       c.String("ns"),
 		Peers:    c.StringSlice("peer"),

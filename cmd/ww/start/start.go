@@ -49,69 +49,62 @@ var flags = []cli.Flag{
 	},
 }
 
-func Command(log Logger) *cli.Command {
+func Command() *cli.Command {
 	return &cli.Command{
-		Name:   "start",
-		Usage:  "start a host process",
-		Flags:  flags,
-		Before: setup(),
-		Action: start(log),
-	}
-}
+		Name:  "start",
+		Usage: "start a host process",
+		Flags: flags,
+		Before: func(c *cli.Context) error {
+			// Parse and asign meta tags
 
-func start(log Logger) cli.ActionFunc {
-	return func(c *cli.Context) error {
-		h, err := libp2p.New(
-			libp2p.NoTransports,
-			libp2p.Transport(tcp.NewTCPTransport),
-			libp2p.Transport(quic.NewTransport),
-			libp2p.ListenAddrStrings(c.StringSlice("listen")...))
-		if err != nil {
-			return fmt.Errorf("listen: %w", err)
-		}
-		defer h.Close()
+			metaTags := c.StringSlice("meta")
+			for _, tag := range metaTags {
+				pair := strings.SplitN(tag, "=", 2)
+				if len(pair) != 2 {
+					return fmt.Errorf("invalid meta tag: %s", tag)
+				}
 
-		config := server.Config{
-			NS:       c.String("ns"),
-			Peers:    c.StringSlice("peer"),
-			Discover: c.String("discover"),
-			Meta:     meta,
-			Logger: log.With(
-				"peer", h.ID(),
-				"meta", meta,
-				"peers", c.StringSlice("peer"),
-				"discover", c.String("discover")),
-		}
+				if meta == nil {
+					meta = make(map[string]string, len(metaTags))
+				}
 
-		config.Logger.Info("wetware started")
-		defer config.Logger.Warn("wetware stopped")
-
-		err = config.Serve(c.Context, h)
-		if err != context.Canceled {
-			return err
-		}
-
-		return nil
-	}
-}
-
-func setup() cli.BeforeFunc {
-	return func(c *cli.Context) error {
-		metaTags := c.StringSlice("meta")
-
-		for _, tag := range metaTags {
-			pair := strings.SplitN(tag, "=", 2)
-			if len(pair) != 2 {
-				return fmt.Errorf("invalid meta tag: %s", tag)
+				meta[pair[0]] = pair[1]
 			}
 
-			if meta == nil {
-				meta = make(map[string]string, len(metaTags))
+			return nil
+		},
+		Action: func(c *cli.Context) error {
+			// Configure a WASM runtime and execute a ROM.
+
+			h, err := libp2p.New(
+				libp2p.NoTransports,
+				libp2p.Transport(tcp.NewTCPTransport),
+				libp2p.Transport(quic.NewTransport),
+				libp2p.ListenAddrStrings(c.StringSlice("listen")...))
+			if err != nil {
+				return fmt.Errorf("listen: %w", err)
+			}
+			defer h.Close()
+
+			config := server.Config{
+				NS:       c.String("ns"),
+				Peers:    c.StringSlice("peer"),
+				Discover: c.String("discover"),
+				Meta:     meta,
+				Logger: slog.Default().
+					WithGroup(h.ID().String()).
+					With(
+						// "meta", meta,
+						"peers", c.StringSlice("peer"),
+						"discover", c.String("discover")),
 			}
 
-			meta[pair[0]] = pair[1]
-		}
+			err = config.Serve(c.Context, h)
+			if err != context.Canceled {
+				return err
+			}
 
-		return nil
+			return nil
+		},
 	}
 }

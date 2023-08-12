@@ -123,6 +123,9 @@ func (cfg Config) Serve(ctx context.Context, h local_host.Host) error {
 		return fmt.Errorf("bootstrap: %w", err)
 	}
 
+	cfg.Logger.Info("wetware started")
+	defer cfg.Logger.Warn("wetware stopped")
+
 	<-ctx.Done()
 	return ctx.Err()
 }
