@@ -21,6 +21,10 @@ const (
 	PREOPENED_FD = 3
 )
 
+var options = rpc.Options{
+	ErrorReporter: warn,
+}
+
 // Boot bootstraps and resolves the Capnp client attached
 // to the other end of the pre-openned TCP connection.
 // capnp.Client will be capnp.ErrorClient if an error ocurred.
@@ -47,9 +51,7 @@ func Boot[T ~capnp.ClientKind](ctx context.Context) (T, capnp.ReleaseFunc) {
 	}
 	closers = append(closers, tcpConn)
 
-	conn := rpc.NewConn(rpc.NewStreamTransport(tcpConn), &rpc.Options{
-		ErrorReporter: warn{},
-	})
+	conn := rpc.NewConn(rpc.NewStreamTransport(tcpConn), &options)
 	closers = append(closers, conn)
 
 	client := conn.Bootstrap(ctx)
@@ -78,18 +80,29 @@ func preopenedListener(closers *[]io.Closer) (net.Listener, error) {
 	return l, err
 }
 
-// warn panics when an error occurs
-type warn struct {
-	Logger
-}
+const (
+	fail  = logLevel(slog.LevelError)
+	warn  = logLevel(slog.LevelWarn)
+	info  = logLevel(slog.LevelInfo)
+	debug = logLevel(slog.LevelDebug)
+)
 
-func (e warn) ReportError(err error) {
+type logLevel slog.Level
+
+func (r logLevel) ReportError(err error) {
 	if err != nil {
-		if e.Logger == nil {
-			e.Logger = slog.Default()
-		}
+		switch message := err.Error(); slog.Level(r) {
+		case slog.LevelDebug:
+			slog.Default().Debug(message)
 
-		e.Warn("rpc: connection closed",
-			"error", err)
+		case slog.LevelInfo:
+			slog.Default().Info(message)
+
+		case slog.LevelWarn:
+			slog.Default().Warn(message)
+
+		case slog.LevelError:
+			slog.Default().Error(message)
+		}
 	}
 }

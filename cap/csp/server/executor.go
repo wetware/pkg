@@ -19,6 +19,7 @@ import (
 	api "github.com/wetware/pkg/api/process"
 	"github.com/wetware/pkg/cap/csp"
 	"github.com/wetware/pkg/cap/csp/proc"
+	"github.com/wetware/pkg/util/log"
 )
 
 // Runtime is the main Executor implementation.  It spawns WebAssembly-
@@ -184,7 +185,7 @@ func DialWithRetries(addr *net.TCPAddr) (net.Conn, error) {
 }
 
 type errLogger struct {
-	Logger
+	log.Logger
 }
 
 func (e errLogger) ReportError(err error) {
@@ -193,7 +194,6 @@ func (e errLogger) ReportError(err error) {
 			e.Logger = slog.Default()
 		}
 
-		e.Debug("rpc: connection closed",
-			"error", err)
+		e.Debug(err.Error())
 	}
 }

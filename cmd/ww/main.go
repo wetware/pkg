@@ -82,8 +82,9 @@ func main() {
 		Before: func(c *cli.Context) error {
 			// set up logging
 			slog.SetDefault(logger(c).
-				WithGroup(c.String("ns")).
-				With("version", ww.Version))
+				With(
+					"version", ww.Version,
+					"ns", c.String("ns")))
 
 			return nil
 		},

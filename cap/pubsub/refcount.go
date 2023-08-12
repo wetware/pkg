@@ -7,6 +7,7 @@ import (
 	capnp "capnproto.org/go/capnp/v3"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	api "github.com/wetware/pkg/api/pubsub"
+	"github.com/wetware/pkg/util/log"
 )
 
 // topicManager is responsible for refcounting *pubsub.Topic instances.
@@ -15,7 +16,7 @@ type topicManager struct {
 	topics map[string]*capnp.WeakClient
 }
 
-func (tm *topicManager) GetOrCreate(ctx context.Context, log Logger, ps TopicJoiner, name string) (api.Topic, error) {
+func (tm *topicManager) GetOrCreate(ctx context.Context, log log.Logger, ps TopicJoiner, name string) (api.Topic, error) {
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
 
@@ -42,7 +43,7 @@ func (tm *topicManager) lookup(name string) (t api.Topic) {
 }
 
 // join a topic and add it to the map.  Caller MUST hold mu.
-func (tm *topicManager) join(log Logger, ps TopicJoiner, name string) (topic api.Topic, err error) {
+func (tm *topicManager) join(log log.Logger, ps TopicJoiner, name string) (topic api.Topic, err error) {
 	var t *pubsub.Topic
 	if t, err = ps.Join(name); err == nil {
 		// log = log.With("topic", name)
@@ -54,7 +55,7 @@ func (tm *topicManager) join(log Logger, ps TopicJoiner, name string) (topic api
 }
 
 // returns a capability for the supplied topic.  Caller MUST hold mu.
-func (tm *topicManager) asCapability(log Logger, t *pubsub.Topic) api.Topic {
+func (tm *topicManager) asCapability(log log.Logger, t *pubsub.Topic) api.Topic {
 	if tm.topics == nil {
 		tm.topics = make(map[string]*capnp.WeakClient)
 	}
@@ -65,7 +66,7 @@ func (tm *topicManager) asCapability(log Logger, t *pubsub.Topic) api.Topic {
 	return topic
 }
 
-func (tm *topicManager) newClient(log Logger, t *pubsub.Topic) api.Topic {
+func (tm *topicManager) newClient(log log.Logger, t *pubsub.Topic) api.Topic {
 	server := &topicServer{
 		log:   log,
 		topic: t,
