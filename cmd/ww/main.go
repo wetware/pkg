@@ -20,10 +20,10 @@ import (
 	"golang.org/x/exp/slog"
 
 	ww "github.com/wetware/pkg"
-	"github.com/wetware/pkg/internal/cluster"
-	"github.com/wetware/pkg/internal/ls"
-	"github.com/wetware/pkg/internal/run"
-	"github.com/wetware/pkg/internal/start"
+	"github.com/wetware/pkg/cmd/ww/cluster"
+	"github.com/wetware/pkg/cmd/ww/ls"
+	"github.com/wetware/pkg/cmd/ww/run"
+	"github.com/wetware/pkg/cmd/ww/start"
 )
 
 var flags = []cli.Flag{
