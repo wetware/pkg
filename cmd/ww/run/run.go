@@ -5,15 +5,14 @@ import (
 	"os"
 
 	"capnproto.org/go/capnp/v3"
-	"github.com/libp2p/go-libp2p"
 	local "github.com/libp2p/go-libp2p/core/host"
-	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
-	tcp "github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	"github.com/urfave/cli/v2"
 	ww "github.com/wetware/pkg"
 	"github.com/wetware/pkg/cap/host"
+	"github.com/wetware/pkg/client"
 	"github.com/wetware/pkg/rom"
 	"github.com/wetware/pkg/system"
+	"golang.org/x/exp/slog"
 )
 
 var flags = []cli.Flag{
@@ -36,7 +35,7 @@ func Command() *cli.Command {
 		Usage: "execute a local webassembly process",
 		Flags: flags,
 		Action: func(c *cli.Context) error {
-			h, err := clientHost(c)
+			h, err := client.NewHost()
 			if err != nil {
 				return err
 			}
@@ -72,7 +71,12 @@ func Command() *cli.Command {
 func dial[T ~capnp.ClientKind](c *cli.Context, h local.Host) (T, error) {
 	// dial into a cluster?
 	if c.Bool("dial") {
-		return system.Boot[T](c, h)
+		return system.Bootstrap[T](c.Context, h, client.Dialer{
+			Logger:   slog.Default(),
+			NS:       c.String("ns"),
+			Peers:    c.StringSlice("peer"),
+			Discover: c.String("discover"),
+		})
 	}
 
 	// we're not connecting to the cluster
@@ -81,14 +85,6 @@ func dial[T ~capnp.ClientKind](c *cli.Context, h local.Host) (T, error) {
 
 func failure[T ~capnp.ClientKind](err error) (T, error) {
 	return T(capnp.ErrorClient(err)), err
-}
-
-func clientHost(c *cli.Context) (local.Host, error) {
-	return libp2p.New(
-		libp2p.NoTransports,
-		libp2p.NoListenAddrs,
-		libp2p.Transport(tcp.NewTCPTransport),
-		libp2p.Transport(quic.NewTransport))
 }
 
 func bytecode(c *cli.Context) (rom.ROM, error) {

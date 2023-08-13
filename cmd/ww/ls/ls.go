@@ -4,13 +4,11 @@ import (
 	"fmt"
 
 	"github.com/urfave/cli/v2"
+	"golang.org/x/exp/slog"
 
-	"github.com/libp2p/go-libp2p"
-	local "github.com/libp2p/go-libp2p/core/host"
-	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
-	tcp "github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	"github.com/wetware/pkg/cap/host"
 	"github.com/wetware/pkg/cap/view"
+	"github.com/wetware/pkg/client"
 	"github.com/wetware/pkg/cluster/routing"
 	"github.com/wetware/pkg/system"
 )
@@ -19,16 +17,22 @@ func Command() *cli.Command {
 	return &cli.Command{
 		Name: "ls",
 		Action: func(c *cli.Context) error {
-			h, err := clientHost(c)
+			h, err := client.NewHost()
 			if err != nil {
 				return err
 			}
 			defer h.Close()
 
-			host, err := system.Boot[host.Host](c, h)
+			host, err := system.Bootstrap[host.Host](c.Context, h, client.Dialer{
+				Logger:   slog.Default(),
+				NS:       c.String("ns"),
+				Peers:    c.StringSlice("peer"),
+				Discover: c.String("discover"),
+			})
 			if err != nil {
 				return err
 			}
+			defer host.Release()
 
 			view, release := host.View(c.Context)
 			defer release()
@@ -43,14 +47,6 @@ func Command() *cli.Command {
 			return it.Err()
 		},
 	}
-}
-
-func clientHost(c *cli.Context) (local.Host, error) {
-	return libp2p.New(
-		libp2p.NoTransports,
-		libp2p.NoListenAddrs,
-		libp2p.Transport(tcp.NewTCPTransport),
-		libp2p.Transport(quic.NewTransport))
 }
 
 func query(c *cli.Context) view.Query {

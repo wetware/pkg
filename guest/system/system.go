@@ -13,7 +13,7 @@ import (
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
-	"github.com/wetware/pkg/util/log"
+	"github.com/wetware/pkg/system"
 	"golang.org/x/exp/slog"
 )
 
@@ -49,7 +49,7 @@ func Boot[T ~capnp.ClientKind](ctx context.Context) (T, capnp.ReleaseFunc) {
 	closers = append(closers, tcpConn)
 
 	conn := rpc.NewConn(rpc.NewStreamTransport(tcpConn), &rpc.Options{
-		ErrorReporter: log.ErrorReporter{
+		ErrorReporter: system.ErrorReporter{
 			Logger: slog.Default().WithGroup("guest"),
 		},
 	})
