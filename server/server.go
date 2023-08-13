@@ -123,10 +123,8 @@ func (cfg Config) export(ctx context.Context, h local_host.Host, s *host.Server)
 
 func (cfg Config) handler(ctx context.Context, h *host.Server) network.StreamHandler {
 	return func(s network.Stream) {
-		defer s.Close()
-
 		conn := rpc.NewConn(transport(s), &rpc.Options{
-			ErrorReporter:   log.ErrorReporter{Logger: cfg.Logger},
+			ErrorReporter:   &log.ErrorReporter{Logger: cfg.Logger},
 			BootstrapClient: h.Client(), // serve a host
 		})
 		defer conn.Close()

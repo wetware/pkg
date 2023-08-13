@@ -9,7 +9,7 @@ import (
 	"github.com/wetware/pkg/boot/socket"
 )
 
-func (cfg Dialer) newBootstrapper(h host.Host) (*bootService, error) {
+func (cfg DialConfig) newBootstrapper(h host.Host) (*bootService, error) {
 	var d discovery.Discoverer
 	var err error
 	if len(cfg.Peers) > 0 {

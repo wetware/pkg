@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/libp2p/go-libp2p"
-	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
-	tcp "github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	"github.com/urfave/cli/v2"
 	"github.com/wetware/pkg/server"
 	"golang.org/x/exp/slog"
@@ -58,12 +55,7 @@ func Command() *cli.Command {
 		},
 		Action: func(c *cli.Context) error {
 			// Configure a WASM runtime and execute a ROM.
-
-			h, err := libp2p.New(
-				libp2p.NoTransports,
-				libp2p.Transport(tcp.NewTCPTransport),
-				libp2p.Transport(quic.NewTransport),
-				libp2p.ListenAddrStrings(c.StringSlice("listen")...))
+			h, err := server.NewHost(c.StringSlice("listen")...)
 			if err != nil {
 				return fmt.Errorf("listen: %w", err)
 			}

@@ -50,7 +50,7 @@ func (f functions) Instantiate(ctx context.Context, opts ...Option) (*Module, er
 
 	module.conn = rpc.NewConn(rpc.NewStreamTransport(rwc), &rpc.Options{
 		BootstrapClient: module.bootstrap,
-		ErrorReporter: log.ErrorReporter{
+		ErrorReporter: &log.ErrorReporter{
 			Logger: slog.Default(),
 		},
 	})

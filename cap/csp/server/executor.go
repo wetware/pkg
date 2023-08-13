@@ -8,7 +8,6 @@ import (
 	"os"
 	"time"
 
-	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/stealthrocket/wazergo"
 	"github.com/tetratelabs/wazero"
@@ -88,6 +87,7 @@ func (r Runtime) mkmod(ctx context.Context, args api.Executor_exec_Params) (wasm
 	if err != nil {
 		return nil, err
 	}
+	defer l.Close()
 	addr := l.Addr().(*net.TCPAddr)
 
 	// Enables the creation of non-blocking TCP connections
@@ -106,14 +106,33 @@ func (r Runtime) mkmod(ctx context.Context, args api.Executor_exec_Params) (wasm
 		WithStdin(os.Stdin).
 		WithStdout(os.Stdout).
 		WithStderr(os.Stderr)
-
-	l.Close()
 	mod, err := r.Runtime.InstantiateModule(sockCtx, compiled, modCfg)
 	if err != nil {
 		return nil, err
 	}
 
-	go ServeModule(addr, args.BootstrapClient())
+	raw, err := DialWithRetries(addr)
+	if err != nil {
+		panic(err)
+	}
+	conn := rpc.NewConn(rpc.NewStreamTransport(raw), &rpc.Options{
+		BootstrapClient: args.BootstrapClient(),
+		ErrorReporter: &log.ErrorReporter{
+			Logger: slog.Default(),
+		},
+	})
+	defer raw.Close()
+
+	go func() {
+		defer conn.Close()
+
+		select {
+		case <-conn.Done(): // conn is closed by authenticate if auth fails
+			// case <-ctx.Done(): // close conn if the program is exiting
+			// TODO ctx.Done is called prematurely when using cluster run
+			// we should use a new context that cancels when subproc ends
+		}
+	}()
 
 	return mod, nil
 }
@@ -139,32 +158,6 @@ func (r Runtime) spawn(fn wasm.Function) (<-chan execResult, context.CancelFunc)
 	}()
 
 	return out, cancel
-}
-
-// ServeModule ensures the host side of the TCP connection with addr=addr
-// used for CAPNP RPCs is provided by client.
-func ServeModule[T ~capnp.ClientKind](addr *net.TCPAddr, t T) {
-	tcpConn, err := DialWithRetries(addr)
-	if err != nil {
-		panic(err)
-	}
-	defer tcpConn.Close()
-
-	defer capnp.Client(t).Release()
-	conn := rpc.NewConn(rpc.NewStreamTransport(tcpConn), &rpc.Options{
-		BootstrapClient: capnp.Client(t),
-		ErrorReporter: log.ErrorReporter{
-			Logger: slog.Default(),
-		},
-	})
-	defer conn.Close()
-
-	select {
-	case <-conn.Done(): // conn is closed by authenticate if auth fails
-		// case <-ctx.Done(): // close conn if the program is exiting
-		// TODO ctx.Done is called prematurely when using cluster run
-		// we should use a new context that cancels when subproc ends
-	}
 }
 
 // DialWithRetries dials addr in waitTime intervals until it either succeeds or

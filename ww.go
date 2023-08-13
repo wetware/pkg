@@ -5,19 +5,17 @@ import (
 	"crypto/rand"
 	_ "embed"
 	"errors"
+	"fmt"
 	"io"
-	"net"
 	"runtime"
 
 	"capnproto.org/go/capnp/v3"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
-	"github.com/tetratelabs/wazero/experimental/sock"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"github.com/tetratelabs/wazero/sys"
+	"github.com/wetware/pkg/system"
 	"golang.org/x/exp/slog"
-
-	csp_server "github.com/wetware/pkg/cap/csp/server"
 )
 
 const (
@@ -29,11 +27,11 @@ const (
 // allowing it to interact with (1) the local host and (2) the
 // cluster environment.
 type Ww[T ~capnp.ClientKind] struct {
-	NS     string
-	Stdin  io.Reader
-	Stdout io.Writer
-	Stderr io.Writer
-	Client T
+	NS              string
+	Stdin           io.Reader
+	Stdout          io.Writer
+	Stderr          io.Writer
+	BootstrapClient T
 }
 
 // String returns the cluster namespace in which the wetware is
@@ -57,35 +55,33 @@ func (ww Ww[T]) Exec(ctx context.Context, rom ROM) error {
 		WithCloseOnContextDone(true))
 	defer r.Close(ctx)
 
-	// Instantiate WASI.
+	/* Set up host modules:
+
+	First, WASI ... */
 	c, err := wasi_snapshot_preview1.Instantiate(ctx, r)
 	if err != nil {
-		return err
+		return fmt.Errorf("wasi: %w", err)
 	}
 	defer c.Close(ctx)
 
-	// Compile guest module.
+	// ... then, wetware.
+	sys, ctx := system.Instantiate(ctx, r, ww.BootstrapClient)
+	if ctx.Err() != nil {
+		return fmt.Errorf("ww: %w", ctx.Err())
+	}
+	defer sys.Close(ctx)
+
+	// Build the guest module.
+	//
+	// First, compile guest module ...
 	compiled, err := r.CompileModule(ctx, rom.bytecode)
 	if err != nil {
 		return err
 	}
 	defer compiled.Close(ctx)
 
-	l, err := net.Listen("tcp", ":0")
-	if err != nil {
-		return err
-	}
-	addr := l.Addr().(*net.TCPAddr)
-
-	// Enables the creation of non-blocking TCP connections
-	// inside the WASM module. The host will pre-open the TCP
-	// port and pass it to the guest through a file descriptor.
-	sockCfg := sock.NewConfig().WithTCPListener("", addr.Port)
-	sockCtx := sock.WithConfig(ctx, sockCfg)
-	l.Close()
-
 	// Instantiate the guest module, and configure host exports.
-	mod, err := r.InstantiateModule(sockCtx, compiled, wazero.NewModuleConfig().
+	mod, err := r.InstantiateModule(ctx, compiled, wazero.NewModuleConfig().
 		WithOsyield(runtime.Gosched).
 		WithRandSource(rand.Reader).
 		WithStartFunctions(). // don't automatically call _start while instanitating.
@@ -101,7 +97,6 @@ func (ww Ww[T]) Exec(ctx context.Context, rom ROM) error {
 	if err != nil {
 		return err
 	}
-	go csp_server.ServeModule(addr, ww.Client)
 	defer mod.Close(ctx)
 
 	return ww.run(ctx, mod)

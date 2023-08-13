@@ -18,14 +18,14 @@ import (
 
 var ErrNoPeers = errors.New("no peers")
 
-type Dialer struct {
+type DialConfig struct {
 	Logger   log.Logger
 	NS       string
 	Peers    []string // static bootstrap peers
 	Discover string   // bootstrap service multiadr
 }
 
-func (d Dialer) Dial(ctx context.Context, h host.Host) (*rpc.Conn, error) {
+func (d DialConfig) DialVat(ctx context.Context, h host.Host) (*rpc.Conn, error) {
 	if d.Logger == nil {
 		d.Logger = slog.Default()
 	}
@@ -46,14 +46,14 @@ func (d Dialer) Dial(ctx context.Context, h host.Host) (*rpc.Conn, error) {
 	}
 
 	conn := rpc.NewConn(transport(s), &rpc.Options{
-		ErrorReporter: log.ErrorReporter{
+		ErrorReporter: &log.ErrorReporter{
 			Logger: d.Logger,
 		},
 	})
 	return conn, nil
 }
 
-func (d Dialer) connect(ctx context.Context, h host.Host) (peer.ID, error) {
+func (d DialConfig) connect(ctx context.Context, h host.Host) (peer.ID, error) {
 	boot, err := d.newBootstrapper(h)
 	if err != nil {
 		return "", fmt.Errorf("bootstrap: %w", err)

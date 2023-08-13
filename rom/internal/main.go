@@ -11,11 +11,14 @@ import (
 	"github.com/wetware/pkg/guest/system"
 )
 
-var ctx = context.Background()
-
 func main() {
-	host, release := system.Boot[host.Host](ctx)
-	defer release()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	host, err := system.Boot[host.Host](ctx)
+	if err != nil {
+		dief("boot: %w", err)
+	}
 
 	view, release := host.View(ctx)
 	defer release()
@@ -37,6 +40,10 @@ func die(err error) {
 
 	fmt.Fprintln(os.Stdout, err)
 	os.Exit(1)
+}
+
+func dief(format string, args ...any) {
+	die(fmt.Errorf(format, args...))
 }
 
 func query() view.Query {

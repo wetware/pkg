@@ -9,6 +9,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"runtime"
 	"syscall"
 
 	"capnproto.org/go/capnp/v3"
@@ -25,58 +26,46 @@ const (
 // Boot bootstraps and resolves the Capnp client attached
 // to the other end of the pre-openned TCP connection.
 // capnp.Client will be capnp.ErrorClient if an error ocurred.
-func Boot[T ~capnp.ClientKind](ctx context.Context) (T, capnp.ReleaseFunc) {
-	var closers []io.Closer
-	release := func() {
-		for i := range closers {
-			// call in reverse order, similar to defer
-			_ = closers[len(closers)-i-1].Close()
-		}
-	}
-
-	l, err := preopenedListener(&closers)
+func Boot[T ~capnp.ClientKind](ctx context.Context) (T, error) {
+	sock, err := socket(ctx)
 	if err != nil {
-		defer release()
-		return failure[T](err)
+		return T{}, err
 	}
-	closers = append(closers, l)
 
-	tcpConn, err := l.Accept()
-	if err != nil {
-		defer release()
-		return failure[T](err)
-	}
-	closers = append(closers, tcpConn)
-
-	conn := rpc.NewConn(rpc.NewStreamTransport(tcpConn), &rpc.Options{
-		ErrorReporter: log.ErrorReporter{
-			Logger: slog.Default().WithGroup("guest"),
+	conn := rpc.NewConn(rpc.NewStreamTransport(sock), &rpc.Options{
+		ErrorReporter: &log.ErrorReporter{
+			Logger: slog.Default(),
 		},
 	})
-	closers = append(closers, conn)
+	go func() {
+		defer conn.Close()
+
+		select {
+		case <-ctx.Done():
+		case <-conn.Done():
+		}
+	}()
 
 	client := conn.Bootstrap(ctx)
-	return T(client), release
+	return T(client), client.Resolve(ctx)
 }
 
-func failure[T ~capnp.ClientKind](err error) (T, capnp.ReleaseFunc) {
-	return T(capnp.ErrorClient(err)), func() {}
-}
-
-// return the a TCP listener from pre-opened tcp connection by using the fd
-func preopenedListener(closers *[]io.Closer) (net.Listener, error) {
+func socket(ctx context.Context) (net.Conn, error) {
 	f := os.NewFile(uintptr(PREOPENED_FD), "")
+	runtime.SetFinalizer(f, func(c io.Closer) error {
+		return c.Close()
+	})
 
 	if err := syscall.SetNonblock(PREOPENED_FD, false); err != nil {
 		return nil, err
 	}
-	*closers = append(*closers, f)
 
 	l, err := net.FileListener(f)
 	if err != nil {
+		defer f.Close()
 		return nil, err
 	}
-	*closers = append(*closers, l)
+	defer l.Close()
 
-	return l, err
+	return l.Accept()
 }
