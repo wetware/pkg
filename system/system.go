@@ -32,12 +32,12 @@ func (c Closer) Close(ctx context.Context) (err error) {
 	return err
 }
 
-type HostModule[T ~capnp.ClientKind] interface {
+type Module[T ~capnp.ClientKind] interface {
 	Instantiate(ctx context.Context, r wazero.Runtime, t T) (api.Closer, context.Context, error)
 }
 
 func Init[T ~capnp.ClientKind](ctx context.Context, r wazero.Runtime, t T) (c Closer, out context.Context, err error) {
-	for name, module := range map[string]HostModule[T]{
+	for name, module := range map[string]Module[T]{
 		"wasi": wasi[T]{},
 		"ww":   wetware[T]{},
 		// "view": view.HostModule[T]{},
