@@ -4,22 +4,23 @@ import (
 	"context"
 
 	api "github.com/wetware/pkg/api/process"
-	"github.com/wetware/pkg/cap/csp"
+	"github.com/wetware/pkg/rom"
 )
 
 // TODO mikel
 // Make BytecodeCache keep a list of the bcs it has sorted by last usage
 // Set and enforce a limited list size and a limited memory size
-type BytecodeCache map[[csp.HashSize]byte][]byte
+type BytecodeCache map[string][]byte
 
-func (c BytecodeCache) put(bc []byte) []byte {
-	hash := csp.HashFunc(bc)
-	if _, found := c[hash]; !found {
+func (c BytecodeCache) put(bc []byte) string {
+	rom := rom.ROM{Bytecode: bc}
+	cid := rom.CID().String()
+	if _, found := c[cid]; !found {
 		cached := make([]byte, len(bc))
 		copy(cached, bc)
-		c[hash] = cached
+		c[cid] = cached
 	}
-	return hash[:]
+	return cid
 }
 
 func (c BytecodeCache) Put(ctx context.Context, call api.BytecodeCache_put) error {
@@ -33,11 +34,11 @@ func (c BytecodeCache) Put(ctx context.Context, call api.BytecodeCache_put) erro
 		return err
 	}
 
-	return res.SetHash(c.put(bc))
+	return res.SetCid(c.put(bc))
 }
 
-func (c BytecodeCache) get(hash []byte) []byte {
-	return c[[csp.HashSize]byte(hash)]
+func (c BytecodeCache) get(cid string) []byte {
+	return c[cid]
 }
 
 func (c BytecodeCache) Get(ctx context.Context, call api.BytecodeCache_get) error {
@@ -46,16 +47,16 @@ func (c BytecodeCache) Get(ctx context.Context, call api.BytecodeCache_get) erro
 		return err
 	}
 
-	hash, err := call.Args().Hash()
+	cid, err := call.Args().Cid()
 	if err != nil {
 		return err
 	}
 
-	return res.SetBytecode(c.get(hash))
+	return res.SetBytecode(c.get(cid))
 }
 
-func (c BytecodeCache) has(hash []byte) bool {
-	return c.get(hash) != nil
+func (c BytecodeCache) has(cid string) bool {
+	return c.get(cid) != nil
 }
 
 func (c BytecodeCache) Has(ctx context.Context, call api.BytecodeCache_has) error {
@@ -64,11 +65,11 @@ func (c BytecodeCache) Has(ctx context.Context, call api.BytecodeCache_has) erro
 		return err
 	}
 
-	hash, err := call.Args().Hash()
+	cid, err := call.Args().Cid()
 	if err != nil {
 		return err
 	}
 
-	res.SetHas(c.has(hash))
+	res.SetHas(c.has(cid))
 	return nil
 }

@@ -66,18 +66,14 @@ func (r Runtime) ExecCached(ctx context.Context, call api.Executor_execCached) e
 		return err
 	}
 
-	hash, err := call.Args().Hash()
+	cid, err := call.Args().Cid()
 	if err != nil {
 		return err
 	}
 
-	if len(hash) != csp.HashSize {
-		return fmt.Errorf("unexpected hash size, got %d expected %d", len(hash), csp.HashSize)
-	}
-
-	bc := r.Cache.get(hash)
+	bc := r.Cache.get(cid)
 	if bc == nil {
-		return fmt.Errorf("bytecode for hash %s not found", hash)
+		return fmt.Errorf("bytecode for cid %s not found", cid)
 	}
 
 	client := call.Args().BootstrapClient()

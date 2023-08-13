@@ -2,23 +2,14 @@ package csp
 
 import (
 	"context"
-	"crypto/md5"
 
 	api "github.com/wetware/pkg/api/process"
 )
 
-// HashSize is the size of the hash produced by HashFunc.
-const HashSize = md5.Size
-
-// HashFunc is the function used for hashing in the default
-// executor implementation.
-// TODO switch to more suitable hashing function, e.g. BLAKE3.
-var HashFunc func([]byte) [HashSize]byte = md5.Sum
-
 type Cache api.BytecodeCache
 
-// Put a bytecode in the Cache with it's HashFunc as the key.
-func (c Cache) Put(ctx context.Context, bc []byte) ([]byte, error) {
+// Put a bytecode in the Cache with it's CidFunc as the key.
+func (c Cache) Put(ctx context.Context, bc []byte) (string, error) {
 	f, release := api.BytecodeCache(c).Put(ctx, func(params api.BytecodeCache_put_Params) error {
 		return params.SetBytecode(bc)
 	})
@@ -27,15 +18,15 @@ func (c Cache) Put(ctx context.Context, bc []byte) ([]byte, error) {
 	<-f.Done()
 	res, err := f.Struct()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	return res.Hash()
+	return res.Cid()
 }
 
-// Get the bytecode associated to the hash produced by HashFunc(bytecode).
-func (c Cache) Get(ctx context.Context, hash []byte) ([]byte, error) {
+// Get the bytecode associated to the cid produced by CidFunc(bytecode).
+func (c Cache) Get(ctx context.Context, cid string) ([]byte, error) {
 	f, release := api.BytecodeCache(c).Get(ctx, func(params api.BytecodeCache_get_Params) error {
-		return params.SetHash(hash)
+		return params.SetCid(cid)
 	})
 	defer release()
 
@@ -47,10 +38,10 @@ func (c Cache) Get(ctx context.Context, hash []byte) ([]byte, error) {
 	return res.Bytecode()
 }
 
-// Has returns whether there is a match for the hash or not.
-func (c Cache) Has(ctx context.Context, hash []byte) (bool, error) {
+// Has returns whether there is a match for the cid or not.
+func (c Cache) Has(ctx context.Context, cid string) (bool, error) {
 	f, release := api.BytecodeCache(c).Get(ctx, func(params api.BytecodeCache_get_Params) error {
-		return params.SetHash(hash)
+		return params.SetCid(cid)
 	})
 	defer release()
 
