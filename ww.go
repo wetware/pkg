@@ -18,11 +18,11 @@ import (
 	"golang.org/x/exp/slog"
 
 	csp_server "github.com/wetware/pkg/cap/csp/server"
+	"github.com/wetware/pkg/rom"
 )
 
 const (
 	Version = "0.1.0"
-	Codec   = 2020
 )
 
 // Ww is the execution context for WebAssembly (WASM) bytecode,
@@ -50,7 +50,7 @@ func (ww *Ww[T]) String() string {
 // Exec compiles and runs the ww instance's ROM in a WASM runtime.
 // It returns any error produced by the compilation or execution of
 // the ROM.
-func (ww Ww[T]) Exec(ctx context.Context, rom ROM) error {
+func (ww Ww[T]) Exec(ctx context.Context, rom rom.ROM) error {
 	// Spawn a new runtime.
 	r := wazero.NewRuntimeWithConfig(ctx, wazero.
 		NewRuntimeConfigCompiler().
@@ -65,7 +65,7 @@ func (ww Ww[T]) Exec(ctx context.Context, rom ROM) error {
 	defer c.Close(ctx)
 
 	// Compile guest module.
-	compiled, err := r.CompileModule(ctx, rom.bytecode)
+	compiled, err := r.CompileModule(ctx, rom.Bytecode)
 	if err != nil {
 		return err
 	}

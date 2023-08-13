@@ -91,9 +91,9 @@ func clientHost(c *cli.Context) (local.Host, error) {
 		libp2p.Transport(quic.NewTransport))
 }
 
-func bytecode(c *cli.Context) (ww.ROM, error) {
+func bytecode(c *cli.Context) (rom.ROM, error) {
 	if c.Bool("stdin") {
-		return ww.Read(c.App.Reader)
+		return rom.Read(c.App.Reader)
 	}
 
 	// file?
@@ -105,12 +105,12 @@ func bytecode(c *cli.Context) (ww.ROM, error) {
 	return rom.Default(), nil
 }
 
-func loadROM(c *cli.Context) (ww.ROM, error) {
+func loadROM(c *cli.Context) (rom.ROM, error) {
 	f, err := os.Open(c.Args().First())
 	if err != nil {
-		return ww.ROM{}, err
+		return rom.ROM{}, err
 	}
 	defer f.Close()
 
-	return ww.Read(f)
+	return rom.Read(f)
 }

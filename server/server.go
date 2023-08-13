@@ -15,6 +15,7 @@ import (
 	"capnproto.org/go/capnp/v3/rpc"
 
 	"github.com/wetware/pkg/cap/anchor"
+	csp_server "github.com/wetware/pkg/cap/csp/server"
 	"github.com/wetware/pkg/cap/host"
 	"github.com/wetware/pkg/cap/pubsub"
 	"github.com/wetware/pkg/util/log"
@@ -85,6 +86,7 @@ func (cfg Config) Serve(ctx context.Context, h local_host.Host) error {
 	defer ps.UnregisterTopicValidator(cfg.NS)
 
 	e, err := cfg.newExecutor(ctx, executorConfig{
+		Cache: make(csp_server.BytecodeCache),
 		RuntimeCfg: wazero.
 			NewRuntimeConfigCompiler().
 			WithCompilationCache(wazero.NewCompilationCache()).

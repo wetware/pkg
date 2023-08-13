@@ -10,6 +10,7 @@ import (
 )
 
 type executorConfig struct {
+	Cache      csp_server.BytecodeCache
 	RuntimeCfg wazero.RuntimeConfig
 }
 
@@ -22,5 +23,6 @@ func (cfg Config) newExecutor(ctx context.Context, ec executorConfig) (csp_serve
 
 	return csp_server.Runtime{
 		Runtime: r,
+		Cache:   ec.Cache,
 	}, nil
 }
