@@ -77,6 +77,7 @@ func (wetware[T]) Instantiate(ctx context.Context, r wazero.Runtime, t T) (api.C
 
 // module for wetware Host
 var module wazergo.HostModule[*Socket] = functions{
+	// TODO(soon):  socket exports
 	// "answer": F0((*Module).Answer),
 	// "double": F1((*Module).Double),
 }
