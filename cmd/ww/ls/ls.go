@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/urfave/cli/v2"
+	"golang.org/x/exp/slog"
 
 	"github.com/wetware/pkg/cap/host"
 	"github.com/wetware/pkg/cap/view"
@@ -23,11 +24,15 @@ func Command() *cli.Command {
 			defer h.Close()
 
 			host, err := system.Bootstrap[host.Host](c.Context, h, client.Dialer{
-				// ...
+				Logger:   slog.Default(),
+				NS:       c.String("ns"),
+				Peers:    c.StringSlice("peer"),
+				Discover: c.String("discover"),
 			})
 			if err != nil {
 				return err
 			}
+			defer host.Release()
 
 			view, release := host.View(c.Context)
 			defer release()

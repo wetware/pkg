@@ -12,6 +12,7 @@ import (
 	"github.com/wetware/pkg/client"
 	"github.com/wetware/pkg/rom"
 	"github.com/wetware/pkg/system"
+	"golang.org/x/exp/slog"
 )
 
 var flags = []cli.Flag{
@@ -71,7 +72,10 @@ func dial[T ~capnp.ClientKind](c *cli.Context, h local.Host) (T, error) {
 	// dial into a cluster?
 	if c.Bool("dial") {
 		return system.Bootstrap[T](c.Context, h, client.Dialer{
-			// ...
+			Logger:   slog.Default(),
+			NS:       c.String("ns"),
+			Peers:    c.StringSlice("peer"),
+			Discover: c.String("discover"),
 		})
 	}
 
