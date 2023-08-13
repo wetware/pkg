@@ -1,82 +1,54 @@
 package system
 
-/*
- * The contents of this file will be moved to the ww repository
- */
-
 import (
 	"context"
 	"io"
 	"net"
 	"os"
+	"runtime"
 	"syscall"
 
-	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/wetware/pkg/system"
 	"golang.org/x/exp/slog"
 )
 
 const (
-	// file descriptor for pre-openned TCP socket
+	// file descriptor for first pre-openned file descriptor.
 	PREOPENED_FD = 3
 )
 
-// Boot bootstraps and resolves the Capnp client attached
-// to the other end of the pre-openned TCP connection.
-// capnp.Client will be capnp.ErrorClient if an error ocurred.
-func Boot[T ~capnp.ClientKind](ctx context.Context) (T, capnp.ReleaseFunc) {
-	var closers []io.Closer
-	release := func() {
-		for i := range closers {
-			// call in reverse order, similar to defer
-			_ = closers[len(closers)-i-1].Close()
-		}
-	}
+// FDSockDialer binds to a pre-opened file descriptor (usually a TCP socket),
+// and provides an *rcp.Conn to the host.
+type FDSockDialer struct{}
 
-	l, err := preopenedListener(&closers)
-	if err != nil {
-		defer release()
-		return failure[T](err)
-	}
-	closers = append(closers, l)
-
-	tcpConn, err := l.Accept()
-	if err != nil {
-		defer release()
-		return failure[T](err)
-	}
-	closers = append(closers, tcpConn)
-
-	conn := rpc.NewConn(rpc.NewStreamTransport(tcpConn), &rpc.Options{
-		ErrorReporter: system.ErrorReporter{
-			Logger: slog.Default().WithGroup("guest"),
-		},
-	})
-	closers = append(closers, conn)
-
-	client := conn.Bootstrap(ctx)
-	return T(client), release
-}
-
-func failure[T ~capnp.ClientKind](err error) (T, capnp.ReleaseFunc) {
-	return T(capnp.ErrorClient(err)), func() {}
-}
-
-// return the a TCP listener from pre-opened tcp connection by using the fd
-func preopenedListener(closers *[]io.Closer) (net.Listener, error) {
+func (s FDSockDialer) DialRPC(context.Context) (*rpc.Conn, error) {
 	f := os.NewFile(uintptr(PREOPENED_FD), "")
-
 	if err := syscall.SetNonblock(PREOPENED_FD, false); err != nil {
 		return nil, err
 	}
-	*closers = append(*closers, f)
+
+	// Make sure we eventually release the file descriptor.
+	runtime.SetFinalizer(f, func(c io.Closer) error {
+		return c.Close()
+	})
 
 	l, err := net.FileListener(f)
 	if err != nil {
 		return nil, err
 	}
-	*closers = append(*closers, l)
+	defer l.Close()
 
-	return l, err
+	raw, err := l.Accept()
+	if err != nil {
+		return nil, err
+	}
+
+	conn := rpc.NewConn(rpc.NewStreamTransport(raw), &rpc.Options{
+		ErrorReporter: system.ErrorReporter{
+			Logger: slog.Default().WithGroup("guest"),
+		},
+	})
+
+	return conn, nil
 }
