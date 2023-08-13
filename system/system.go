@@ -76,7 +76,7 @@ func (wetware[T]) Instantiate(ctx context.Context, r wazero.Runtime, t T) (api.C
 }
 
 // module for wetware Host
-var module wazergo.HostModule[*Host] = functions{
+var module wazergo.HostModule[*Socket] = functions{
 	// "answer": F0((*Module).Answer),
 	// "double": F1((*Module).Double),
 }
@@ -84,7 +84,7 @@ var module wazergo.HostModule[*Host] = functions{
 // Instantiate the system host module.  If instantiation fails, the
 // returned context is expired, and the ctx.Err() method returns the
 // offending error.
-func Instantiate[T ~capnp.ClientKind](ctx context.Context, r wazero.Runtime, t T) (*wazergo.ModuleInstance[*Host], context.Context, error) {
+func Instantiate[T ~capnp.ClientKind](ctx context.Context, r wazero.Runtime, t T) (*wazergo.ModuleInstance[*Socket], context.Context, error) {
 	l, err := net.Listen("tcp", ":0") // TODO:  localhost?
 	if err != nil {
 		return nil, ctx, fmt.Errorf("net: listen: %w", err)
@@ -114,22 +114,22 @@ func Instantiate[T ~capnp.ClientKind](ctx context.Context, r wazero.Runtime, t T
 
 }
 
-type Option = wazergo.Option[*Host]
+type Option = wazergo.Option[*Socket]
 
 func logger(log log.Logger) Option {
-	return wazergo.OptionFunc(func(h *Host) {
+	return wazergo.OptionFunc(func(h *Socket) {
 		h.Logger = log
 	})
 }
 
 func transport(addr net.Addr) Option {
-	return wazergo.OptionFunc(func(h *Host) {
+	return wazergo.OptionFunc(func(h *Socket) {
 		h.Addr = addr
 	})
 }
 
 func bootstrap[T ~capnp.ClientKind](t T) Option {
-	return wazergo.OptionFunc(func(h *Host) {
+	return wazergo.OptionFunc(func(h *Socket) {
 		h.BootstrapClient = capnp.Client(t)
 	})
 }
@@ -137,18 +137,18 @@ func bootstrap[T ~capnp.ClientKind](t T) Option {
 // The `functions` type impements `Module[*Module]`, providing the
 // module name, map of exported functions, and the ability to create
 // instances of the module type
-type functions wazergo.Functions[*Host]
+type functions wazergo.Functions[*Socket]
 
 func (f functions) Name() string {
 	return "ww"
 }
 
-func (f functions) Functions() wazergo.Functions[*Host] {
-	return (wazergo.Functions[*Host])(f)
+func (f functions) Functions() wazergo.Functions[*Socket] {
+	return (wazergo.Functions[*Socket])(f)
 }
 
-func (f functions) Instantiate(ctx context.Context, opts ...Option) (out *Host, err error) {
-	wazergo.Configure(new(Host), append(opts, wazergo.OptionFunc(func(h *Host) {
+func (f functions) Instantiate(ctx context.Context, opts ...Option) (out *Socket, err error) {
+	wazergo.Configure(new(Socket), append(opts, wazergo.OptionFunc(func(h *Socket) {
 		var b = backoff.Backoff{
 			Min:    time.Millisecond * 1,
 			Max:    time.Minute,
@@ -178,7 +178,7 @@ func (f functions) Instantiate(ctx context.Context, opts ...Option) (out *Host, 
 	return
 }
 
-type Host struct {
+type Socket struct {
 	Addr            net.Addr
 	Logger          log.Logger
 	BootstrapClient capnp.Client
@@ -186,21 +186,21 @@ type Host struct {
 	conn *rpc.Conn
 }
 
-func (h *Host) Close(context.Context) error {
-	h.BootstrapClient.Release()
+func (sock *Socket) Close(context.Context) error {
+	sock.BootstrapClient.Release()
 
-	return h.conn.Close()
+	return sock.conn.Close()
 }
 
-func (h *Host) dial(ctx context.Context) error {
-	raw, err := dial(ctx, h.Addr)
+func (sock *Socket) dial(ctx context.Context) error {
+	raw, err := dial(ctx, sock.Addr)
 	if err != nil {
 		return err
 	}
 
-	h.conn = rpc.NewConn(rpc.NewStreamTransport(raw), &rpc.Options{
-		ErrorReporter:   ErrorReporter{Logger: h.Logger},
-		BootstrapClient: h.BootstrapClient,
+	sock.conn = rpc.NewConn(rpc.NewStreamTransport(raw), &rpc.Options{
+		ErrorReporter:   ErrorReporter{Logger: sock.Logger},
+		BootstrapClient: sock.BootstrapClient,
 	})
 
 	return nil
