@@ -27,6 +27,10 @@ import (
 
 type Host api.Host
 
+func (h Host) Resolve(ctx context.Context) error {
+	return capnp.Client(h).Resolve(ctx)
+}
+
 func (h Host) AddRef() Host {
 	return Host(capnp.Client(h).AddRef())
 }
