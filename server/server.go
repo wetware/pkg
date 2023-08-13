@@ -17,7 +17,8 @@ import (
 	"github.com/wetware/pkg/cap/anchor"
 	"github.com/wetware/pkg/cap/host"
 	"github.com/wetware/pkg/cap/pubsub"
-	"github.com/wetware/pkg/util/log"
+	"github.com/wetware/pkg/log"
+	"github.com/wetware/pkg/system"
 	"github.com/wetware/pkg/util/proto"
 	"golang.org/x/exp/slog"
 )
@@ -124,7 +125,7 @@ func (cfg Config) export(ctx context.Context, h local_host.Host, s *host.Server)
 func (cfg Config) handler(ctx context.Context, h *host.Server) network.StreamHandler {
 	return func(s network.Stream) {
 		conn := rpc.NewConn(transport(s), &rpc.Options{
-			ErrorReporter:   &log.ErrorReporter{Logger: cfg.Logger},
+			ErrorReporter:   &system.ErrorReporter{Logger: cfg.Logger},
 			BootstrapClient: h.Client(), // serve a host
 		})
 		defer conn.Close()

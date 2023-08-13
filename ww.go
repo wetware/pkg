@@ -5,14 +5,12 @@ import (
 	"crypto/rand"
 	_ "embed"
 	"errors"
-	"fmt"
 	"io"
 	"runtime"
 
 	"capnproto.org/go/capnp/v3"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
-	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"github.com/tetratelabs/wazero/sys"
 	"github.com/wetware/pkg/system"
 	"golang.org/x/exp/slog"
@@ -55,25 +53,15 @@ func (ww Ww[T]) Exec(ctx context.Context, rom ROM) error {
 		WithCloseOnContextDone(true))
 	defer r.Close(ctx)
 
-	/* Set up host modules:
-
-	First, WASI ... */
-	c, err := wasi_snapshot_preview1.Instantiate(ctx, r)
+	// Initialize  system modules.
+	sys, ctx, err := system.Init[T](ctx, r, ww.BootstrapClient)
 	if err != nil {
-		return fmt.Errorf("wasi: %w", err)
-	}
-	defer c.Close(ctx)
-
-	// ... then, wetware.
-	sys, ctx := system.Instantiate(ctx, r, ww.BootstrapClient)
-	if ctx.Err() != nil {
-		return fmt.Errorf("ww: %w", ctx.Err())
+		return err
 	}
 	defer sys.Close(ctx)
 
 	// Build the guest module.
-	//
-	// First, compile guest module ...
+	// Start by compiling the ROM bytecode.
 	compiled, err := r.CompileModule(ctx, rom.bytecode)
 	if err != nil {
 		return err

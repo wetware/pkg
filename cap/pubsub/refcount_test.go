@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	api "github.com/wetware/pkg/api/pubsub"
-	test_log "github.com/wetware/pkg/util/log/test"
+	test_log "github.com/wetware/pkg/log/test"
 	"golang.org/x/exp/slog"
 )
 

@@ -14,7 +14,8 @@ import (
 	"github.com/stealthrocket/wazergo"
 	t "github.com/stealthrocket/wazergo/types"
 	wasm "github.com/tetratelabs/wazero"
-	"github.com/wetware/pkg/util/log"
+	"github.com/wetware/pkg/log"
+	"github.com/wetware/pkg/system"
 )
 
 var fs wazergo.HostModule[*Module] = functions{
@@ -50,7 +51,7 @@ func (f functions) Instantiate(ctx context.Context, opts ...Option) (*Module, er
 
 	module.conn = rpc.NewConn(rpc.NewStreamTransport(rwc), &rpc.Options{
 		BootstrapClient: module.bootstrap,
-		ErrorReporter: &log.ErrorReporter{
+		ErrorReporter: &system.ErrorReporter{
 			Logger: slog.Default(),
 		},
 	})

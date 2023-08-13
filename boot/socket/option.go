@@ -3,7 +3,7 @@ package socket
 import (
 	"net"
 
-	"github.com/wetware/pkg/util/log"
+	"github.com/wetware/pkg/log"
 
 	"golang.org/x/exp/slog"
 )

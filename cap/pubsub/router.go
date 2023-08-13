@@ -6,7 +6,7 @@ import (
 	capnp "capnproto.org/go/capnp/v3"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	api "github.com/wetware/pkg/api/pubsub"
-	"github.com/wetware/pkg/util/log"
+	"github.com/wetware/pkg/log"
 	"golang.org/x/exp/slog"
 )
 

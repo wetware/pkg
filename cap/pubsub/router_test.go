@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/wetware/pkg/cap/pubsub"
-	test_log "github.com/wetware/pkg/util/log/test"
+	test_log "github.com/wetware/pkg/log/test"
 )
 
 func TestRouter(t *testing.T) {

@@ -15,7 +15,7 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/discovery/routing"
 
 	"github.com/wetware/pkg/boot"
-	"github.com/wetware/pkg/util/log"
+	"github.com/wetware/pkg/log"
 	"github.com/wetware/pkg/util/proto"
 )
 

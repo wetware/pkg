@@ -10,8 +10,8 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	api "github.com/wetware/pkg/api/pubsub"
+	"github.com/wetware/pkg/log"
 	"github.com/wetware/pkg/util/casm"
-	"github.com/wetware/pkg/util/log"
 )
 
 // Topic is the handle for a pubsub topic.  It is used to publish to

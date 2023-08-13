@@ -13,7 +13,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/record"
 	ctxutil "github.com/lthibault/util/ctx"
-	"github.com/wetware/pkg/util/log"
+	"github.com/wetware/pkg/log"
 )
 
 func init() { close(closedChan) }

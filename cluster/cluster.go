@@ -21,7 +21,7 @@ import (
 	"github.com/wetware/pkg/cap/view"
 	"github.com/wetware/pkg/cluster/pulse"
 	"github.com/wetware/pkg/cluster/routing"
-	"github.com/wetware/pkg/util/log"
+	"github.com/wetware/pkg/log"
 )
 
 var ErrClosing = errors.New("closing")

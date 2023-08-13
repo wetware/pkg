@@ -2,8 +2,6 @@ package client
 
 import (
 	"context"
-	"io"
-	"runtime"
 
 	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/libp2p/go-libp2p"
@@ -28,12 +26,5 @@ func NewHost() (local.Host, error) {
 
 // Dial a cluster.
 func Dial(ctx context.Context, h local.Host, d VatDialer) (*rpc.Conn, error) {
-	conn, err := d.DialVat(ctx, h)
-	if err == nil {
-		runtime.SetFinalizer(conn, func(c io.Closer) error {
-			return c.Close()
-		})
-	}
-
-	return conn, err
+	return d.DialVat(ctx, h)
 }

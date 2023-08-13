@@ -18,7 +18,7 @@ import (
 	api "github.com/wetware/pkg/api/process"
 	"github.com/wetware/pkg/cap/csp"
 	"github.com/wetware/pkg/cap/csp/proc"
-	"github.com/wetware/pkg/util/log"
+	"github.com/wetware/pkg/system"
 )
 
 // Runtime is the main Executor implementation.  It spawns WebAssembly-
@@ -117,7 +117,7 @@ func (r Runtime) mkmod(ctx context.Context, args api.Executor_exec_Params) (wasm
 	}
 	conn := rpc.NewConn(rpc.NewStreamTransport(raw), &rpc.Options{
 		BootstrapClient: args.BootstrapClient(),
-		ErrorReporter: &log.ErrorReporter{
+		ErrorReporter: &system.ErrorReporter{
 			Logger: slog.Default(),
 		},
 	})

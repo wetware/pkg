@@ -14,7 +14,6 @@ import (
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
-	"github.com/wetware/pkg/util/log"
 	"golang.org/x/exp/slog"
 )
 
@@ -33,18 +32,15 @@ func Boot[T ~capnp.ClientKind](ctx context.Context) (T, error) {
 	}
 
 	conn := rpc.NewConn(rpc.NewStreamTransport(sock), &rpc.Options{
-		ErrorReporter: &log.ErrorReporter{
+		ErrorReporter: &ErrorReporter{
 			Logger: slog.Default(),
 		},
 	})
-	go func() {
-		defer conn.Close()
-
-		select {
-		case <-ctx.Done():
-		case <-conn.Done():
-		}
-	}()
+	runtime.SetFinalizer(conn, func(c io.Closer) {
+		slog.Default().Debug("finalizer called",
+			"conn", conn,
+			"error", c.Close())
+	})
 
 	client := conn.Bootstrap(ctx)
 	return T(client), client.Resolve(ctx)
