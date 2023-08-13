@@ -26,8 +26,11 @@ import (
 // Runtime is the main Executor implementation.  It spawns WebAssembly-
 // based processes.  The zero-value Runtime panics.
 type Runtime struct {
-	Runtime    wazero.Runtime
-	Cache      BytecodeCache
+	Runtime wazero.Runtime
+	Cache   BytecodeCache
+	Tree    ProcTree
+
+	// HostModule is unused for now.
 	HostModule *wazergo.ModuleInstance[*proc.Module]
 }
 
@@ -51,8 +54,14 @@ func (r Runtime) Exec(ctx context.Context, call api.Executor_exec) error {
 	r.Cache.put(bc)
 
 	client := call.Args().BootstrapClient()
+	ppid := r.Tree.PpidOrInit(call.Args().Ppid())
+	args := procArgs{
+		bc:     bc,
+		client: client,
+		ppid:   ppid,
+	}
 
-	p, err := r.mkproc(ctx, bc, client)
+	p, err := r.mkproc(ctx, args)
 	if err != nil {
 		return err
 	}
@@ -77,8 +86,14 @@ func (r Runtime) ExecCached(ctx context.Context, call api.Executor_execCached) e
 	}
 
 	client := call.Args().BootstrapClient()
+	ppid := r.Tree.PpidOrInit(call.Args().Ppid())
+	args := procArgs{
+		bc:     bc,
+		client: client,
+		ppid:   ppid,
+	}
 
-	p, err := r.mkproc(ctx, bc, client)
+	p, err := r.mkproc(ctx, args)
 	if err != nil {
 		return err
 	}
@@ -86,8 +101,10 @@ func (r Runtime) ExecCached(ctx context.Context, call api.Executor_execCached) e
 	return res.SetProcess(api.Process_ServerToClient(p))
 }
 
-func (r Runtime) mkproc(ctx context.Context, bc []byte, client capnp.Client) (*process, error) {
-	mod, err := r.mkmod(ctx, bc, client)
+func (r Runtime) mkproc(ctx context.Context, args procArgs) (*process, error) {
+	pid := r.Tree.NextPid()
+
+	mod, err := r.mkmod(ctx, args)
 	if err != nil {
 		return nil, err
 	}
@@ -97,19 +114,21 @@ func (r Runtime) mkproc(ctx context.Context, bc []byte, client capnp.Client) (*p
 		return nil, errors.New("ww: missing export: _start")
 	}
 
-	done, cancel := r.spawn(fn)
-	return &process{
-		done:   done,
-		cancel: cancel,
-	}, nil
+	proc := r.spawn(fn, pid)
+
+	// Register new process.
+	r.Tree.Insert(proc.pid, args.ppid)
+	r.Tree.AddToMap(proc.pid, proc)
+
+	return proc, nil
 }
 
-func (r Runtime) mkmod(ctx context.Context, bc []byte, client capnp.Client) (wasm.Module, error) {
-	name := csp.ByteCode(bc).String()
+func (r Runtime) mkmod(ctx context.Context, args procArgs) (wasm.Module, error) {
+	name := csp.ByteCode(args.bc).String()
 
 	// TODO(perf):  cache compiled modules so that we can instantiate module
 	//              instances for concurrent use.
-	compiled, err := r.Runtime.CompileModule(ctx, bc)
+	compiled, err := r.Runtime.CompileModule(ctx, args.bc)
 	if err != nil {
 		return nil, err
 	}
@@ -146,32 +165,46 @@ func (r Runtime) mkmod(ctx context.Context, bc []byte, client capnp.Client) (was
 		return nil, err
 	}
 
-	go ServeModule(addr, client)
+	go ServeModule(addr, args.client)
 
 	return mod, nil
 }
 
-func (r Runtime) spawn(fn wasm.Function) (<-chan execResult, context.CancelFunc) {
-	out := make(chan execResult, 1)
+func (r Runtime) spawn(fn wasm.Function, pid uint32) *process {
+	done := make(chan execResult, 1)
 
 	// NOTE:  we use context.Background instead of the context obtained from the
 	//        rpc handler. This ensures that a process can continue to run after
 	//        the rpc handler has returned. Note also that this context is bound
 	//        to the application lifetime, so processes cannot block a shutdown.
 	ctx, cancel := context.WithCancel(context.Background())
+	killFunc := r.Tree.Kill
+	proc := &process{
+		pid:      pid,
+		killFunc: killFunc,
+		done:     done,
+		cancel:   cancel,
+	}
 
 	go func() {
-		defer close(out)
-		defer cancel()
+		defer close(done)
+		defer proc.killFunc(proc.pid)
 
-		vs, err := fn.Call(wazergo.WithModuleInstance(ctx, r.HostModule))
-		out <- execResult{
+		vs, err := fn.Call(ctx)
+
+		done <- execResult{
 			Values: vs,
 			Err:    err,
 		}
 	}()
 
-	return out, cancel
+	return proc
+}
+
+type procArgs struct {
+	bc     []byte
+	client capnp.Client
+	ppid   uint32
 }
 
 // ServeModule ensures the host side of the TCP connection with addr=addr
