@@ -53,10 +53,10 @@ func (ex Executor) Exec(ctx context.Context, bc []byte, ppid uint32, client capn
 
 // ExecFromCache behaves the same way as Exec, but expects the bytecode to be already
 // cached at the executor.
-func (ex Executor) ExecFromCache(ctx context.Context, hash []byte, ppid uint32, client capnp.Client) (Proc, capnp.ReleaseFunc) {
+func (ex Executor) ExecFromCache(ctx context.Context, cid string, ppid uint32, client capnp.Client) (Proc, capnp.ReleaseFunc) {
 	f, release := api.Executor(ex).ExecCached(ctx,
 		func(ps api.Executor_execCached_Params) error {
-			if err := ps.SetHash(hash); err != nil {
+			if err := ps.SetCid(cid); err != nil {
 				return err
 			}
 
