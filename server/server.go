@@ -18,6 +18,7 @@ import (
 	csp_server "github.com/wetware/pkg/cap/csp/server"
 	"github.com/wetware/pkg/cap/host"
 	"github.com/wetware/pkg/cap/pubsub"
+	"github.com/wetware/pkg/system"
 	"github.com/wetware/pkg/util/log"
 	"github.com/wetware/pkg/util/proto"
 	"golang.org/x/exp/slog"
@@ -128,7 +129,7 @@ func (cfg Config) handler(ctx context.Context, h *host.Server) network.StreamHan
 		defer s.Close()
 
 		conn := rpc.NewConn(transport(s), &rpc.Options{
-			ErrorReporter:   log.ErrorReporter{Logger: cfg.Logger},
+			ErrorReporter:   system.ErrorReporter{Logger: cfg.Logger},
 			BootstrapClient: h.Client(), // serve a host
 		})
 		defer conn.Close()

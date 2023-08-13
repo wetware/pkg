@@ -20,7 +20,7 @@ import (
 	api "github.com/wetware/pkg/api/process"
 	"github.com/wetware/pkg/cap/csp"
 	"github.com/wetware/pkg/cap/csp/proc"
-	"github.com/wetware/pkg/util/log"
+	"github.com/wetware/pkg/system"
 )
 
 // Runtime is the main Executor implementation.  It spawns WebAssembly-
@@ -186,7 +186,7 @@ func ServeModule[T ~capnp.ClientKind](addr *net.TCPAddr, t T) {
 	defer capnp.Client(t).Release()
 	conn := rpc.NewConn(rpc.NewStreamTransport(tcpConn), &rpc.Options{
 		BootstrapClient: capnp.Client(t),
-		ErrorReporter: log.ErrorReporter{
+		ErrorReporter: system.ErrorReporter{
 			Logger: slog.Default(),
 		},
 	})

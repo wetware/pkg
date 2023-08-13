@@ -10,6 +10,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/wetware/pkg/system"
 	"github.com/wetware/pkg/util/log"
 	"github.com/wetware/pkg/util/proto"
 
@@ -46,7 +47,7 @@ func (d Dialer) Dial(ctx context.Context, h host.Host) (*rpc.Conn, error) {
 	}
 
 	conn := rpc.NewConn(transport(s), &rpc.Options{
-		ErrorReporter: log.ErrorReporter{
+		ErrorReporter: system.ErrorReporter{
 			Logger: d.Logger,
 		},
 	})
