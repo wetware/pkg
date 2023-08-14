@@ -8,6 +8,7 @@ import (
 
 	capnp "capnproto.org/go/capnp/v3"
 	"github.com/urfave/cli/v2"
+	"github.com/wetware/pkg/cap/csp"
 )
 
 const killTimeout = 30 * time.Second
@@ -37,8 +38,14 @@ func runAction() cli.ActionFunc {
 		executor, release := h.Executor(ctx)
 		defer release()
 
-		client := capnp.Client(h.AddRef())
-		proc, release := executor.Exec(ctx, src, 0, client)
+		bCtx, err := csp.NewBootContext().
+			WithArgs(c.Args().Slice()...).
+			WithCaps(capnp.Client(h.AddRef()))
+		if err != nil {
+			return err
+		}
+
+		proc, release := executor.Exec(ctx, src, 0, bCtx.Cap())
 		defer release()
 
 		waitChan := make(chan error, 1)

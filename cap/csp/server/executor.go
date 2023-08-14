@@ -53,15 +53,21 @@ func (r Runtime) Exec(ctx context.Context, call api.Executor_exec) error {
 	// Cache new bytecodes every time they are received.
 	r.Cache.put(bc)
 
-	client := call.Args().BootstrapClient()
-	ppid := r.Tree.PpidOrInit(call.Args().Ppid())
-	args := procArgs{
-		bc:     bc,
-		client: client,
-		ppid:   ppid,
+	var bCtx api.BootContext
+	if call.Args().HasBctx() {
+		bCtx = call.Args().Bctx()
+	} else {
+		bCtx = csp.NewBootContext().Cap()
 	}
 
-	p, err := r.mkproc(ctx, args)
+	ppid := r.Tree.PpidOrInit(call.Args().Ppid())
+	pArgs := procArgs{
+		bc:   bc,
+		ppid: ppid,
+		bCtx: bCtx,
+	}
+
+	p, err := r.mkproc(ctx, pArgs)
 	if err != nil {
 		return err
 	}
@@ -85,15 +91,21 @@ func (r Runtime) ExecCached(ctx context.Context, call api.Executor_execCached) e
 		return fmt.Errorf("bytecode for cid %s not found", cid)
 	}
 
-	client := call.Args().BootstrapClient()
-	ppid := r.Tree.PpidOrInit(call.Args().Ppid())
-	args := procArgs{
-		bc:     bc,
-		client: client,
-		ppid:   ppid,
+	var bCtx api.BootContext
+	if call.Args().HasBctx() {
+		bCtx = call.Args().Bctx()
+	} else {
+		bCtx = csp.NewBootContext().Cap()
 	}
 
-	p, err := r.mkproc(ctx, args)
+	ppid := r.Tree.PpidOrInit(call.Args().Ppid())
+	pArgs := procArgs{
+		bc:   bc,
+		ppid: ppid,
+		bCtx: bCtx,
+	}
+
+	p, err := r.mkproc(ctx, pArgs)
 	if err != nil {
 		return err
 	}
@@ -165,7 +177,7 @@ func (r Runtime) mkmod(ctx context.Context, args procArgs) (wasm.Module, error) 
 		return nil, err
 	}
 
-	go ServeModule(addr, args.client)
+	go ServeModule(addr, args.bCtx)
 
 	return mod, nil
 }
@@ -202,9 +214,9 @@ func (r Runtime) spawn(fn wasm.Function, pid uint32) *process {
 }
 
 type procArgs struct {
-	bc     []byte
-	client capnp.Client
-	ppid   uint32
+	bc   []byte
+	ppid uint32
+	bCtx api.BootContext
 }
 
 // ServeModule ensures the host side of the TCP connection with addr=addr
