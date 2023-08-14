@@ -38,7 +38,7 @@ func (ex Executor) Release() {
 // Exec spawns a new process from WASM bytecode bc. If the caller is a WASM process
 // spawned in this same executor, it should use its PID as ppid to mark the
 // new process as a subprocess.
-func (ex Executor) Exec(ctx context.Context, bc []byte, ppid uint32, client capnp.Client) (Proc, capnp.ReleaseFunc) {
+func (ex Executor) Exec(ctx context.Context, bc []byte, ppid uint32, bCtx api.BootContext) (Proc, capnp.ReleaseFunc) {
 	f, release := api.Executor(ex).Exec(ctx,
 		func(ps api.Executor_exec_Params) error {
 			if err := ps.SetBytecode(bc); err != nil {
@@ -46,14 +46,14 @@ func (ex Executor) Exec(ctx context.Context, bc []byte, ppid uint32, client capn
 			}
 
 			ps.SetPpid(ppid)
-			return ps.SetBootstrapClient(client)
+			return ps.SetBctx(bCtx)
 		})
 	return Proc(f.Process()), release
 }
 
 // ExecFromCache behaves the same way as Exec, but expects the bytecode to be already
 // cached at the executor.
-func (ex Executor) ExecFromCache(ctx context.Context, cid string, ppid uint32, client capnp.Client) (Proc, capnp.ReleaseFunc) {
+func (ex Executor) ExecFromCache(ctx context.Context, cid string, ppid uint32, bCtx api.BootContext) (Proc, capnp.ReleaseFunc) {
 	f, release := api.Executor(ex).ExecCached(ctx,
 		func(ps api.Executor_execCached_Params) error {
 			if err := ps.SetCid(cid); err != nil {
@@ -61,7 +61,7 @@ func (ex Executor) ExecFromCache(ctx context.Context, cid string, ppid uint32, c
 			}
 
 			ps.SetPpid(ppid)
-			return ps.SetBootstrapClient(client)
+			return ps.SetBctx(bCtx)
 		})
 	return Proc(f.Process()), release
 }
