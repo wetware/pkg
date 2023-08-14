@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"capnproto.org/go/capnp/v3"
+	"github.com/ipfs/go-cid"
 	api "github.com/wetware/pkg/api/process"
 	"github.com/wetware/pkg/cap/csp"
 )
@@ -11,7 +12,7 @@ import (
 type Self struct {
 	Args []string
 	Caps []capnp.Client
-	CID  string
+	CID  cid.Cid
 	PID  uint32
 }
 

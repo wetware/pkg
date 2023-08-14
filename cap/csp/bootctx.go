@@ -6,13 +6,14 @@ import (
 
 	capnp "capnproto.org/go/capnp/v3"
 
+	"github.com/ipfs/go-cid"
 	api "github.com/wetware/pkg/api/process"
 )
 
 // BootContext implements api.BootContext.
 type BootContext struct {
 	pid  uint32
-	cid  string
+	cid  cid.Cid
 	args capnp.TextList
 	caps capnp.PointerList
 }
@@ -49,7 +50,7 @@ func (b *BootContext) Cid(ctx context.Context, call api.BootContext_cid) error {
 		return err
 	}
 
-	return res.SetCid(b.cid)
+	return res.SetCid(b.cid.Bytes())
 }
 
 func (b *BootContext) Args(ctx context.Context, call api.BootContext_args) error {
@@ -76,8 +77,12 @@ func (b *BootContext) SetPid(ctx context.Context, call api.BootContext_setPid) e
 }
 
 func (b *BootContext) SetCid(ctx context.Context, call api.BootContext_setCid) error {
-	var err error
-	b.cid, err = call.Args().Cid()
+	raw, err := call.Args().Cid()
+	if err != nil {
+		return nil
+	}
+
+	_, b.cid, err = cid.CidFromBytes(raw)
 	return err
 }
 
@@ -86,7 +91,7 @@ func (b *BootContext) WithPid(pid uint32) *BootContext {
 	return b
 }
 
-func (b *BootContext) WithCid(cid string) *BootContext {
+func (b *BootContext) WithCid(cid cid.Cid) *BootContext {
 	b.cid = cid
 	return b
 }
@@ -151,16 +156,23 @@ func (b BootCtx) Pid(ctx context.Context) (uint32, error) {
 	return res.Pid(), nil
 }
 
-func (b BootCtx) Cid(ctx context.Context) (string, error) {
+func (b BootCtx) Cid(ctx context.Context) (cid.Cid, error) {
 	f, release := api.BootContext(b).Cid(ctx, nil)
 	defer release()
 	<-f.Done()
 
 	res, err := f.Struct()
 	if err != nil {
-		return "", err
+		return cid.Cid{}, err
 	}
-	return res.Cid()
+
+	raw, err := res.Cid()
+	if err != nil {
+		return cid.Cid{}, err
+	}
+
+	_, cid, err := cid.CidFromBytes(raw)
+	return cid, err
 }
 
 func (b BootCtx) Args(ctx context.Context) ([]string, error) {
@@ -231,9 +243,9 @@ func (b BootCtx) SetPid(ctx context.Context, pid uint32) error {
 	return err
 }
 
-func (b BootCtx) SetCid(ctx context.Context, cid string) error {
+func (b BootCtx) SetCid(ctx context.Context, cid cid.Cid) error {
 	f, release := api.BootContext(b).SetCid(ctx, func(bc api.BootContext_setCid_Params) error {
-		return bc.SetCid(cid)
+		return bc.SetCid(cid.Bytes())
 	})
 	defer release()
 	<-f.Done()
