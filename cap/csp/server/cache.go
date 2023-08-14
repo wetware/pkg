@@ -3,6 +3,7 @@ package csp_server
 import (
 	"context"
 
+	"github.com/ipfs/go-cid"
 	api "github.com/wetware/pkg/api/process"
 	"github.com/wetware/pkg/rom"
 )
@@ -12,13 +13,14 @@ import (
 // Set and enforce a limited list size and a limited memory size
 type BytecodeCache map[string][]byte
 
-func (c BytecodeCache) put(bc []byte) string {
+func (c BytecodeCache) put(bc []byte) cid.Cid {
 	rom := rom.ROM{Bytecode: bc}
-	cid := rom.CID().String()
-	if _, found := c[cid]; !found {
+	cid := rom.CID()
+	key := cid.String()
+	if _, found := c[key]; !found {
 		cached := make([]byte, len(bc))
 		copy(cached, bc)
-		c[cid] = cached
+		c[key] = cached
 	}
 	return cid
 }
@@ -34,11 +36,12 @@ func (c BytecodeCache) Put(ctx context.Context, call api.BytecodeCache_put) erro
 		return err
 	}
 
-	return res.SetCid(c.put(bc))
+	cid := c.put(bc)
+	return res.SetCid(cid.Bytes())
 }
 
-func (c BytecodeCache) get(cid string) []byte {
-	return c[cid]
+func (c BytecodeCache) get(cid cid.Cid) []byte {
+	return c[cid.String()]
 }
 
 func (c BytecodeCache) Get(ctx context.Context, call api.BytecodeCache_get) error {
@@ -47,7 +50,12 @@ func (c BytecodeCache) Get(ctx context.Context, call api.BytecodeCache_get) erro
 		return err
 	}
 
-	cid, err := call.Args().Cid()
+	b, err := call.Args().Cid()
+	if err != nil {
+		return err
+	}
+
+	_, cid, err := cid.CidFromBytes(b)
 	if err != nil {
 		return err
 	}
@@ -55,7 +63,11 @@ func (c BytecodeCache) Get(ctx context.Context, call api.BytecodeCache_get) erro
 	return res.SetBytecode(c.get(cid))
 }
 
-func (c BytecodeCache) has(cid string) bool {
+func (c BytecodeCache) has(cid cid.Cid) bool {
+	if cid.ByteLen() == 0 {
+		return false
+	}
+
 	return c.get(cid) != nil
 }
 
@@ -65,7 +77,12 @@ func (c BytecodeCache) Has(ctx context.Context, call api.BytecodeCache_has) erro
 		return err
 	}
 
-	cid, err := call.Args().Cid()
+	b, err := call.Args().Cid()
+	if err != nil {
+		return err
+	}
+
+	_, cid, err := cid.CidFromBytes(b)
 	if err != nil {
 		return err
 	}

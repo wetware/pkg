@@ -15,7 +15,7 @@ interface Executor {
     # be available at the process bootContext.
     #
     # The Process capability is associated to the created process.
-    execCached @1 (cid :Text, ppid :UInt32, bctx :BootContext) -> (process :Process);
+    execCached @1 (cid :Data, ppid :UInt32, bctx :BootContext) -> (process :Process);
     # Same as Exec, but the bytecode is directly from the BytecodeRegistry.
     # Provides a significant performance improvement for medium to large
     # WASM streams.
@@ -24,11 +24,11 @@ interface Executor {
 interface BytecodeCache {
     # BytecodeCache is used to store WASM byte code. May be implemented with
     # anchors or any other means.
-    put @0 (bytecode :Data) -> (cid :Text);
+    put @0 (bytecode :Data) -> (cid :Data);
     # Put stores the bytecode and returns the cid of the submitted bytecode.
-    get @1 (cid :Text) -> (bytecode :Data);
+    get @1 (cid :Data) -> (bytecode :Data);
     # Get returns the bytecode matching a cid if there's a match, null otherwise.
-    has @2 (cid :Text) -> (has :Bool);
+    has @2 (cid :Data) -> (has :Bool);
     # Has returns true if a bytecode identified by the cid has been previously stored.
 }
 
@@ -45,7 +45,7 @@ interface BootContext {
     # passed by the parent process.
     pid  @0 () -> (pid :UInt32);
     # PID of the process.
-    cid  @1 () -> (cid :Text);
+    cid  @1 () -> (cid :Data);
     # CID of the process bytecode.
     args @2 () -> (args :List(Text));
     # CLI arguments.
@@ -53,5 +53,5 @@ interface BootContext {
     # Capabilities.
 
     setPid @4 (pid :UInt32) -> ();
-    setCid @5 (cid :Text) -> ();
+    setCid @5 (cid :Data) -> ();
 }

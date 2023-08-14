@@ -11,6 +11,7 @@ import (
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
+	"github.com/ipfs/go-cid"
 	"github.com/stealthrocket/wazergo"
 	"github.com/tetratelabs/wazero"
 	wasm "github.com/tetratelabs/wazero/api"
@@ -84,7 +85,11 @@ func (r Runtime) ExecCached(ctx context.Context, call api.Executor_execCached) e
 		return err
 	}
 
-	cid, err := call.Args().Cid()
+	b, err := call.Args().Cid()
+	if err != nil {
+		return err
+	}
+	_, cid, err := cid.CidFromBytes(b)
 	if err != nil {
 		return err
 	}

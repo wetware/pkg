@@ -7,6 +7,7 @@ import (
 	capnp "capnproto.org/go/capnp/v3"
 	"lukechampine.com/blake3"
 
+	"github.com/ipfs/go-cid"
 	api "github.com/wetware/pkg/api/process"
 )
 
@@ -53,10 +54,10 @@ func (ex Executor) Exec(ctx context.Context, bc []byte, ppid uint32, bCtx api.Bo
 
 // ExecFromCache behaves the same way as Exec, but expects the bytecode to be already
 // cached at the executor.
-func (ex Executor) ExecFromCache(ctx context.Context, cid string, ppid uint32, bCtx api.BootContext) (Proc, capnp.ReleaseFunc) {
+func (ex Executor) ExecFromCache(ctx context.Context, cid cid.Cid, ppid uint32, bCtx api.BootContext) (Proc, capnp.ReleaseFunc) {
 	f, release := api.Executor(ex).ExecCached(ctx,
 		func(ps api.Executor_execCached_Params) error {
-			if err := ps.SetCid(cid); err != nil {
+			if err := ps.SetCid(cid.Bytes()); err != nil {
 				return err
 			}
 
