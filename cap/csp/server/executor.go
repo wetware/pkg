@@ -51,13 +51,16 @@ func (r Runtime) Exec(ctx context.Context, call api.Executor_exec) error {
 	}
 
 	// Cache new bytecodes every time they are received.
-	r.Cache.put(bc)
+	cid := r.Cache.put(bc)
 
 	var bCtx api.BootContext
 	if call.Args().HasBctx() {
 		bCtx = call.Args().Bctx()
 	} else {
 		bCtx = csp.NewBootContext().Cap()
+	}
+	if err = csp.BootCtx(bCtx).SetCid(ctx, cid); err != nil {
+		return err
 	}
 
 	ppid := r.Tree.PpidOrInit(call.Args().Ppid())
@@ -97,6 +100,9 @@ func (r Runtime) ExecCached(ctx context.Context, call api.Executor_execCached) e
 	} else {
 		bCtx = csp.NewBootContext().Cap()
 	}
+	if err = csp.BootCtx(bCtx).SetCid(ctx, cid); err != nil {
+		return err
+	}
 
 	ppid := r.Tree.PpidOrInit(call.Args().Ppid())
 	pArgs := procArgs{
@@ -115,6 +121,9 @@ func (r Runtime) ExecCached(ctx context.Context, call api.Executor_execCached) e
 
 func (r Runtime) mkproc(ctx context.Context, args procArgs) (*process, error) {
 	pid := r.Tree.NextPid()
+	if err := csp.BootCtx(args.bCtx).SetPid(ctx, pid); err != nil {
+		return nil, err
+	}
 
 	mod, err := r.mkmod(ctx, args)
 	if err != nil {

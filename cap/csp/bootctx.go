@@ -11,6 +11,8 @@ import (
 
 // BootContext implements api.BootContext.
 type BootContext struct {
+	pid  uint32
+	cid  string
 	args capnp.TextList
 	caps capnp.PointerList
 }
@@ -31,6 +33,25 @@ func (b *BootContext) Empty() *BootContext {
 	return b
 }
 
+func (b *BootContext) Pid(ctx context.Context, call api.BootContext_pid) error {
+	res, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	res.SetPid(b.pid)
+	return nil
+}
+
+func (b *BootContext) Cid(ctx context.Context, call api.BootContext_cid) error {
+	res, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	return res.SetCid(b.cid)
+}
+
 func (b *BootContext) Args(ctx context.Context, call api.BootContext_args) error {
 	res, err := call.AllocResults()
 	if err != nil {
@@ -47,6 +68,27 @@ func (b *BootContext) Caps(ctx context.Context, call api.BootContext_caps) error
 	}
 
 	return res.SetCaps(b.caps)
+}
+
+func (b *BootContext) SetPid(ctx context.Context, call api.BootContext_setPid) error {
+	b.pid = call.Args().Pid()
+	return nil
+}
+
+func (b *BootContext) SetCid(ctx context.Context, call api.BootContext_setCid) error {
+	var err error
+	b.cid, err = call.Args().Cid()
+	return err
+}
+
+func (b *BootContext) WithPid(pid uint32) *BootContext {
+	b.pid = pid
+	return b
+}
+
+func (b *BootContext) WithCid(cid string) *BootContext {
+	b.cid = cid
+	return b
 }
 
 func (b *BootContext) WithArgs(args ...string) *BootContext {
@@ -96,6 +138,30 @@ func (b *BootContext) Cap() api.BootContext {
 
 // BootCtx is a wrapper for api.BootContext RPCs.
 type BootCtx api.BootContext
+
+func (b BootCtx) Pid(ctx context.Context) (uint32, error) {
+	f, release := api.BootContext(b).Pid(ctx, nil)
+	defer release()
+	<-f.Done()
+
+	res, err := f.Struct()
+	if err != nil {
+		return 0, err
+	}
+	return res.Pid(), nil
+}
+
+func (b BootCtx) Cid(ctx context.Context) (string, error) {
+	f, release := api.BootContext(b).Cid(ctx, nil)
+	defer release()
+	<-f.Done()
+
+	res, err := f.Struct()
+	if err != nil {
+		return "", err
+	}
+	return res.Cid()
+}
 
 func (b BootCtx) Args(ctx context.Context) ([]string, error) {
 	f, release := api.BootContext(b).Args(ctx, nil)
@@ -151,4 +217,27 @@ func (b BootCtx) Caps(ctx context.Context) ([]capnp.Client, error) {
 		caps[i] = cap
 	}
 	return caps, nil
+}
+
+func (b BootCtx) SetPid(ctx context.Context, pid uint32) error {
+	f, release := api.BootContext(b).SetPid(ctx, func(bc api.BootContext_setPid_Params) error {
+		bc.SetPid(pid)
+		return nil
+	})
+	defer release()
+	<-f.Done()
+
+	_, err := f.Struct()
+	return err
+}
+
+func (b BootCtx) SetCid(ctx context.Context, cid string) error {
+	f, release := api.BootContext(b).SetCid(ctx, func(bc api.BootContext_setCid_Params) error {
+		return bc.SetCid(cid)
+	})
+	defer release()
+	<-f.Done()
+
+	_, err := f.Struct()
+	return err
 }

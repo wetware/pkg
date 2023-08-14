@@ -43,6 +43,15 @@ interface Process {
 interface BootContext {
     # Every process is given a BootContext containing the arguments and capabilitis
     # passed by the parent process.
-    args @0() -> (args :List(Text));
-    caps @1() -> (caps :List(Capability));
+    pid  @0 () -> (pid :UInt32);
+    # PID of the process.
+    cid  @1 () -> (cid :Text);
+    # CID of the process bytecode.
+    args @2 () -> (args :List(Text));
+    # CLI arguments.
+    caps @3 () -> (caps :List(Capability));
+    # Capabilities.
+
+    setPid @4 (pid :UInt32) -> ();
+    setCid @5 (cid :Text) -> ();
 }
