@@ -3,35 +3,44 @@ package system
 import (
 	"context"
 	"io"
-	"runtime"
+	"net"
+	"os"
+	"syscall"
 
-	local "github.com/libp2p/go-libp2p/core/host"
-
-	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
 )
 
-type Dialer interface {
-	DialRPC(context.Context, local.Host) (*rpc.Conn, error)
+func load() file {
+	return file{os.NewFile(uintptr(PREOPENED_FD), "")}
 }
 
-func Bootstrap[T ~capnp.ClientKind](ctx context.Context) T {
-	conn, err := FDSockDialer{}.DialRPC(ctx)
+func stream(sock io.ReadWriteCloser) rpc.Transport {
+	return rpc.NewStreamTransport(sock)
+}
+
+type file struct{ *os.File }
+
+func (file) Network() string  { return "" }
+func (f file) String() string { return f.Name() }
+func (f file) FD() int        { return int(f.File.Fd()) }
+
+type fileDialer struct{}
+
+func (fileDialer) Dial(ctx context.Context, addr net.Addr) (net.Conn, error) {
+	return dial(addr.(file).File)
+}
+
+// dial pre-opened file descriptor
+func dial(f *os.File) (net.Conn, error) {
+	if err := syscall.SetNonblock(int(f.Fd()), false); err != nil {
+		return nil, err
+	}
+
+	l, err := net.FileListener(f)
 	if err != nil {
-		return failure[T](err)
+		return nil, err
 	}
-	runtime.SetFinalizer(conn, func(c io.Closer) error {
-		return c.Close()
-	})
+	defer l.Close()
 
-	client := conn.Bootstrap(ctx)
-	if err := client.Resolve(ctx); err != nil {
-		return failure[T](err)
-	}
-
-	return T(client)
-}
-
-func failure[T ~capnp.ClientKind](err error) T {
-	return T(capnp.ErrorClient(err))
+	return l.Accept()
 }

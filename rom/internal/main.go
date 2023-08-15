@@ -14,8 +14,8 @@ import (
 var ctx = context.Background()
 
 func main() {
-	host := system.Bootstrap[host.Host](ctx)
-	defer host.Release()
+	host, release := system.Bootstrap[host.Host](ctx)
+	defer release()
 
 	view, release := host.View(ctx)
 	defer release()

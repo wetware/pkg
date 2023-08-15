@@ -4,38 +4,34 @@ import (
 	"context"
 	"net"
 
-	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
-	"github.com/wetware/pkg/util/log"
+	"golang.org/x/exp/slog"
 )
 
 // NetSock is a system socket that uses the host's IP stack.
 type NetSock struct {
-	Addr            net.Addr
-	Logger          log.Logger
-	BootstrapClient capnp.Client
+	Addr net.Addr
+	Opt  rpc.Options
 
 	conn *rpc.Conn
 }
 
 func (sock *NetSock) Close(context.Context) error {
-	sock.BootstrapClient.Release()
-
+	slog.Warn("sock.Close(ctx): ...")
 	return sock.conn.Close()
 }
 
 func (sock *NetSock) dial(ctx context.Context) error {
-	raw, err := dial(ctx, sock.Addr)
-	if err != nil {
-		return err
+	conn, err := dial(ctx, sock.Addr)
+	if err == nil {
+		sock.conn = sock.upgrade(conn)
 	}
 
-	sock.conn = rpc.NewConn(rpc.NewStreamTransport(raw), &rpc.Options{
-		ErrorReporter:   ErrorReporter{Logger: sock.Logger},
-		BootstrapClient: sock.BootstrapClient,
-	})
+	return err
+}
 
-	return nil
+func (sock *NetSock) upgrade(conn net.Conn) *rpc.Conn {
+	return rpc.NewConn(rpc.NewStreamTransport(conn), &sock.Opt)
 }
 
 func dial(ctx context.Context, addr net.Addr) (net.Conn, error) {

@@ -10,36 +10,36 @@ import (
 )
 
 type Self struct {
-	Args []string
-	Caps []capnp.Client
-	CID  cid.Cid
-	PID  uint32
+	Args    []string
+	Caps    []capnp.Client
+	CID     cid.Cid
+	PID     uint32
+	Boot    api.BootContext
+	Release capnp.ReleaseFunc
 }
 
-func Init(ctx context.Context) (Self, error) {
-	var (
-		s   Self
-		err error
-	)
+func Init(ctx context.Context) (s Self, err error) {
+	s.Boot, s.Release = Bootstrap[api.BootContext](ctx)
 
-	b := Bootstrap[api.BootContext](ctx)
-	bCtx := csp.BootCtx(b)
-
-	s.Args, err = bCtx.Args(ctx)
+	s.Args, err = s.BootContext().Args(ctx)
 	if err != nil {
 		return s, err
 	}
 
-	s.Caps, err = bCtx.Caps(ctx)
+	s.Caps, err = s.BootContext().Caps(ctx)
 	if err != nil {
 		return s, err
 	}
 
-	s.CID, err = bCtx.Cid(ctx)
+	s.CID, err = s.BootContext().Cid(ctx)
 	if err != nil {
 		return s, err
 	}
 
-	s.PID, err = bCtx.Pid(ctx)
+	s.PID, err = s.BootContext().Pid(ctx)
 	return s, err
+}
+
+func (s Self) BootContext() csp.BootCtx {
+	return csp.BootCtx(s.Boot)
 }

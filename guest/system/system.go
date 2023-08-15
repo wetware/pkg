@@ -4,51 +4,80 @@ import (
 	"context"
 	"io"
 	"net"
-	"os"
-	"runtime"
-	"syscall"
+	"time"
 
-	"capnproto.org/go/capnp/v3/rpc"
-	"github.com/wetware/pkg/system"
+	"github.com/jpillora/backoff"
 	"golang.org/x/exp/slog"
+
+	"capnproto.org/go/capnp/v3"
+	"capnproto.org/go/capnp/v3/rpc"
 )
 
-const (
-	// file descriptor for first pre-openned file descriptor.
-	PREOPENED_FD = 3
-)
+// file descriptor for first pre-openned file descriptor.
+const PREOPENED_FD = 3
 
-// FDSockDialer binds to a pre-opened file descriptor (usually a TCP socket),
-// and provides an *rcp.Conn to the host.
-type FDSockDialer struct{}
+type Dialer interface {
+	Dial(context.Context, net.Addr) (net.Conn, error)
+}
 
-func (s FDSockDialer) DialRPC(context.Context) (*rpc.Conn, error) {
-	f := os.NewFile(uintptr(PREOPENED_FD), "")
-	if err := syscall.SetNonblock(PREOPENED_FD, false); err != nil {
-		return nil, err
-	}
+func Bootstrap[T ~capnp.ClientKind](ctx context.Context) (T, capnp.ReleaseFunc) {
+	f := load()
 
-	// Make sure we eventually release the file descriptor.
-	runtime.SetFinalizer(f, func(c io.Closer) error {
-		return c.Close()
-	})
-
-	l, err := net.FileListener(f)
+	conn, err := connect(ctx, f, fileDialer{})
 	if err != nil {
-		return nil, err
-	}
-	defer l.Close()
-
-	raw, err := l.Accept()
-	if err != nil {
-		return nil, err
+		defer f.Close()
+		panic(err)
 	}
 
-	conn := rpc.NewConn(rpc.NewStreamTransport(raw), &rpc.Options{
-		ErrorReporter: system.ErrorReporter{
-			Logger: slog.Default().WithGroup("guest"),
-		},
-	})
+	client := conn.Bootstrap(ctx)
+	if err := client.Resolve(ctx); err != nil {
+		defer f.Close()
+		panic(err)
+	}
 
-	return conn, nil
+	return T(client), func() {
+		defer f.Close()
+		defer conn.Close()
+		defer client.Release()
+	}
+}
+
+func connect(ctx context.Context, addr net.Addr, d Dialer) (_ *rpc.Conn, err error) {
+	opt := rpc.Options{
+		// TODO:  ErrorReporter{Logger: slog.Default()}
+	}
+
+	b := backoff.Backoff{
+		Jitter: true,
+		Min:    time.Microsecond * 100,
+		Max:    time.Millisecond * 100,
+	}
+
+	var conn net.Conn
+	for {
+		conn, err = d.Dial(ctx, addr)
+		if err == nil {
+			break
+		}
+
+		slog.Debug("dial failed",
+			"addr", addr,
+			"error", err,
+			"attempt", b.Attempt(),
+			"backoff", b.ForAttempt(b.Attempt()))
+
+		select {
+		case <-time.After(b.Duration()):
+		case <-ctx.Done():
+			err = ctx.Err()
+			return
+		}
+
+	}
+
+	return upgrade(conn, &opt), nil
+}
+
+func upgrade(pipe io.ReadWriteCloser, opt *rpc.Options) *rpc.Conn {
+	return rpc.NewConn(stream(pipe), opt)
 }

@@ -6,19 +6,16 @@ import (
 	_ "embed"
 	"errors"
 	"io"
-	"net"
 	"runtime"
 
 	"capnproto.org/go/capnp/v3"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
-	"github.com/tetratelabs/wazero/experimental/sock"
-	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"github.com/tetratelabs/wazero/sys"
 	"golang.org/x/exp/slog"
 
-	csp_server "github.com/wetware/pkg/cap/csp/server"
 	"github.com/wetware/pkg/rom"
+	"github.com/wetware/pkg/system"
 )
 
 const (
@@ -57,12 +54,14 @@ func (ww Ww[T]) Exec(ctx context.Context, rom rom.ROM) error {
 		WithCloseOnContextDone(true))
 	defer r.Close(ctx)
 
-	// Instantiate WASI.
-	c, err := wasi_snapshot_preview1.Instantiate(ctx, r)
+	// Instantiate the local system.  The phrase "local system" refers
+	// to a collection of host modules that ROMs may expect.  There are
+	// to such
+	sock, ctx, err := system.Instantiate[T](ctx, r, ww.Client)
 	if err != nil {
 		return err
 	}
-	defer c.Close(ctx)
+	defer sock.Close(ctx)
 
 	// Compile guest module.
 	compiled, err := r.CompileModule(ctx, rom.Bytecode)
@@ -71,21 +70,8 @@ func (ww Ww[T]) Exec(ctx context.Context, rom rom.ROM) error {
 	}
 	defer compiled.Close(ctx)
 
-	l, err := net.Listen("tcp", ":0")
-	if err != nil {
-		return err
-	}
-	addr := l.Addr().(*net.TCPAddr)
-
-	// Enables the creation of non-blocking TCP connections
-	// inside the WASM module. The host will pre-open the TCP
-	// port and pass it to the guest through a file descriptor.
-	sockCfg := sock.NewConfig().WithTCPListener("", addr.Port)
-	sockCtx := sock.WithConfig(ctx, sockCfg)
-	l.Close()
-
 	// Instantiate the guest module, and configure host exports.
-	mod, err := r.InstantiateModule(sockCtx, compiled, wazero.NewModuleConfig().
+	mod, err := r.InstantiateModule(ctx, compiled, wazero.NewModuleConfig().
 		WithOsyield(runtime.Gosched).
 		WithRandSource(rand.Reader).
 		WithStartFunctions(). // don't automatically call _start while instanitating.
@@ -101,7 +87,6 @@ func (ww Ww[T]) Exec(ctx context.Context, rom rom.ROM) error {
 	if err != nil {
 		return err
 	}
-	go csp_server.ServeModule(addr, ww.Client)
 	defer mod.Close(ctx)
 
 	return ww.run(ctx, mod)
