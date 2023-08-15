@@ -2,6 +2,7 @@ package system
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"time"
@@ -45,7 +46,7 @@ func Instantiate[T ~capnp.ClientKind](ctx context.Context, r wazero.Runtime, t T
 		defer c.Close(ctx)
 		return nil, ctx, fmt.Errorf("net: listen: %w", err)
 	}
-	defer l.Close()
+	l.Close()
 
 	// Instantiate the host module and bind it to the context.
 	addr := l.Addr()
@@ -120,6 +121,13 @@ func (f functions) Instantiate(ctx context.Context, opts ...Option) (out *NetSoc
 
 		// retry in a loop until context is canceled; back-off exponentially.
 		for err = sock.dial(ctx); err != nil; err = sock.dial(ctx) {
+			if errors.Is(err, context.Canceled) {
+				err = context.Canceled
+				return
+			} else if errors.Is(err, context.DeadlineExceeded) {
+				return
+			}
+
 			slog.Warn("failed to dial host socket",
 				"error", err,
 				"attempt", b.Attempt(),
