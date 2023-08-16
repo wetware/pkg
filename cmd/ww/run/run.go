@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"capnproto.org/go/capnp/v3"
+	"capnproto.org/go/capnp/v3/rpc"
 	local "github.com/libp2p/go-libp2p/core/host"
 	"github.com/urfave/cli/v2"
 	ww "github.com/wetware/pkg"
@@ -49,12 +50,15 @@ func Command() *cli.Command {
 			defer client.Release()
 
 			// set up the local wetware environment.
-			wetware := ww.Ww[host.Host]{
-				NS:     c.String("ns"),
-				Stdin:  c.App.Reader,
-				Stdout: c.App.Writer,
-				Stderr: c.App.ErrWriter,
-				Client: client,
+			wetware := ww.Ww{
+				NS:   c.String("ns"),
+				Sock: system.Socket{},
+				Opt: rpc.Options{
+					BootstrapClient: capnp.Client(client),
+					ErrorReporter: system.ErrorReporter{
+						Logger: slog.Default(),
+					},
+				},
 			}
 
 			// fetch the ROM and run it

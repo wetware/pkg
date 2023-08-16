@@ -5,12 +5,13 @@ import (
 	"crypto/rand"
 	_ "embed"
 	"errors"
-	"io"
+	"os"
 	"runtime"
 
-	"capnproto.org/go/capnp/v3"
+	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
+	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"github.com/tetratelabs/wazero/sys"
 	"golang.org/x/exp/slog"
 
@@ -25,18 +26,16 @@ const (
 // Ww is the execution context for WebAssembly (WASM) bytecode,
 // allowing it to interact with (1) the local host and (2) the
 // cluster environment.
-type Ww[T ~capnp.ClientKind] struct {
-	NS     string
-	Stdin  io.Reader
-	Stdout io.Writer
-	Stderr io.Writer
-	Client T
+type Ww struct {
+	NS   string
+	Sock system.Socket
+	Opt  rpc.Options
 }
 
 // String returns the cluster namespace in which the wetware is
 // executing. If ww.NS has been assigned a non-empty string, it
 // returns the string unchanged.  Else, it defaults to "ww".
-func (ww *Ww[T]) String() string {
+func (ww *Ww) String() string {
 	if ww.NS != "" {
 		return ww.NS
 	}
@@ -47,21 +46,25 @@ func (ww *Ww[T]) String() string {
 // Exec compiles and runs the ww instance's ROM in a WASM runtime.
 // It returns any error produced by the compilation or execution of
 // the ROM.
-func (ww Ww[T]) Exec(ctx context.Context, rom rom.ROM) error {
+func (ww *Ww) Exec(ctx context.Context, rom rom.ROM) error {
 	// Spawn a new runtime.
 	r := wazero.NewRuntimeWithConfig(ctx, wazero.
 		NewRuntimeConfigCompiler().
 		WithCloseOnContextDone(true))
 	defer r.Close(ctx)
 
-	// Instantiate the local system.  The phrase "local system" refers
-	// to a collection of host modules that ROMs may expect.  There are
-	// to such
-	sock, ctx, err := system.Instantiate[T](ctx, r, ww.Client)
+	// instantiate WASI
+	c, err := wasi_snapshot_preview1.Instantiate(ctx, r)
 	if err != nil {
 		return err
 	}
-	defer sock.Close(ctx)
+	defer c.Close(ctx)
+
+	sys, ctx, err := system.Instantiate(ctx, r, &ww.Sock)
+	if err != nil {
+		return err
+	}
+	defer sys.Close(ctx)
 
 	// Compile guest module.
 	compiled, err := r.CompileModule(ctx, rom.Bytecode)
@@ -70,29 +73,44 @@ func (ww Ww[T]) Exec(ctx context.Context, rom rom.ROM) error {
 	}
 	defer compiled.Close(ctx)
 
-	// Instantiate the guest module, and configure host exports.
+	// Bind the socket to the guest module's config, set other
+	// configuration options, then instantiate the guest module.
 	mod, err := r.InstantiateModule(ctx, compiled, wazero.NewModuleConfig().
+		// system & runtime options
 		WithOsyield(runtime.Gosched).
 		WithRandSource(rand.Reader).
-		WithStartFunctions(). // don't automatically call _start while instanitating.
+		WithStartFunctions(). // don't automatically call _start
 		WithSysNanosleep().
 		WithSysNanotime().
 		WithSysWalltime().
-		WithArgs(rom.String()). // TODO(soon):  use content id
-		WithEnv("ns", ww.String()).
+
+		// process options
+		WithStdin(os.Stdin).
+		WithStdout(os.Stdout).
+		WithStderr(os.Stderr).
 		WithName(rom.String()).
-		WithStdin(ww.Stdin). // notice:  we connect stdio to host process' stdio
-		WithStdout(ww.Stdout).
-		WithStderr(ww.Stderr))
+		WithArgs(rom.String()).     // positional args
+		WithEnv("ns", ww.String())) // keyword args
 	if err != nil {
 		return err
 	}
 	defer mod.Close(ctx)
 
+	// We are now ready to start the system RPC conn...
+	conn := rpc.NewConn(&ww.Sock, &ww.Opt)
+	go func() {
+		defer conn.Close()
+		select {
+		case <-ctx.Done():
+		case <-conn.Done():
+		}
+	}()
+
+	// ... and run the module.
 	return ww.run(ctx, mod)
 }
 
-func (ww Ww[T]) run(ctx context.Context, mod api.Module) error {
+func (ww *Ww) run(ctx context.Context, mod api.Module) error {
 	// Grab the the main() function and call it with the system context.
 	fn := mod.ExportedFunction("_start")
 	if fn == nil {
