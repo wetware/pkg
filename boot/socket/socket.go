@@ -14,6 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/record"
 	ctxutil "github.com/lthibault/util/ctx"
 	"github.com/wetware/pkg/util/log"
+	"github.com/wetware/pkg/util/multicast"
 )
 
 func init() { close(closedChan) }
@@ -48,7 +49,9 @@ type Socket struct {
 // these condiitions
 func New(conn net.PacketConn, opt ...Option) *Socket {
 	sock := &Socket{
-		conn: recordConn{PacketConn: conn},
+		conn: recordConn{Socket: &multicast.Socket{
+			PacketConn: conn,
+		}},
 		time: time.Now(),
 		tick: time.NewTicker(time.Millisecond * 500),
 		done: make(chan struct{}),

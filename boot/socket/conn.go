@@ -6,6 +6,7 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/record"
+	"github.com/wetware/pkg/util/multicast"
 	"golang.org/x/time/rate"
 )
 
@@ -48,7 +49,8 @@ func NewRateLimiter(r rate.Limit, burst int, f func(int) int) *RateLimiter {
 // by a socket.
 //
 // NOTE:  limit and burst are expressed in *bits* per second and *bits*,
-//        respectively.  Do not confuse this with bytes.
+//
+//	respectively.  Do not confuse this with bytes.
 func NewBandwidthLimiter(r rate.Limit, burst int) *RateLimiter {
 	return NewRateLimiter(r, burst, func(n int) int { return n * 8 })
 }
@@ -71,7 +73,7 @@ func (r *RateLimiter) Reserve(ctx context.Context, n int) (err error) {
 type recordConn struct {
 	lim      *RateLimiter
 	validate RecordValidator
-	net.PacketConn
+	*multicast.Socket
 }
 
 // Send writes the message m to addr.  Send does not support write
@@ -90,7 +92,7 @@ func (conn recordConn) Send(ctx context.Context, e *record.Envelope, addr net.Ad
 		return err
 	}
 
-	_, err = conn.WriteTo(b, addr)
+	_, err = conn.Socket.WriteTo(b, addr)
 	return err
 }
 
@@ -100,7 +102,7 @@ func (conn recordConn) Send(ctx context.Context, e *record.Envelope, addr net.Ad
 // Callers MUST NOT make concurrent calls to Recv.
 func (conn recordConn) Scan(p *Record) (net.Addr, error) {
 	var buf [maxDatagramSize]byte
-	n, addr, err := conn.ReadFrom(buf[:])
+	n, addr, err := conn.Socket.ReadFrom(buf[:])
 	if err != nil {
 		return nil, err
 	}
