@@ -33,7 +33,7 @@ func TestMulticast(t *testing.T) {
 		return nil
 	})
 	g.Go(func() error {
-		buf, err := sock.Recv(ctx)
+		buf, _, err := sock.Recv(ctx)
 		if err != nil {
 			return err
 		}

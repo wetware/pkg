@@ -40,19 +40,19 @@ func (sock Socket) Send(ctx context.Context, message []byte) error {
 	return err
 }
 
-func (sock Socket) Recv(ctx context.Context) ([]byte, error) {
+func (sock Socket) Recv(ctx context.Context) ([]byte, net.Addr, error) {
 	t, _ := ctx.Deadline()
 	if err := sock.SetReadDeadline(t); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	buf := bufferpool.Default.Get(MaxDatagramSize)
 
-	n, _, err := sock.ReadFrom(buf)
+	n, from, err := sock.ReadFrom(buf)
 	if err != nil {
 		defer bufferpool.Default.Put(buf)
-		return nil, err
+		return nil, nil, err
 	}
 
-	return buf[:n], nil
+	return buf[:n], from, nil
 }
