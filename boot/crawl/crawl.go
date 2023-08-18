@@ -43,23 +43,16 @@ type Crawler struct {
 	iter Strategy
 }
 
-func New(h host.Host, conn net.PacketConn, s Strategy, opt ...socket.Option) *Crawler {
+func New(h host.Host, sock *socket.Socket, s Strategy) *Crawler {
 	c := &Crawler{
 		host: h,
 		iter: s,
-		sock: socket.New(conn, withDefault(h, opt)...),
+		sock: sock,
 	}
 
 	go c.sock.Bind(c.handler())
 
 	return c
-}
-
-func withDefault(h host.Host, opt []socket.Option) []socket.Option {
-	return append([]socket.Option{
-		socket.WithRateLimiter(socket.NewPacketLimiter(32, 8)),
-		socket.WithValidator(socket.BasicValidator(h.ID())),
-	}, opt...)
 }
 
 func (c *Crawler) Close() error {

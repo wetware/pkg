@@ -154,7 +154,8 @@ func TestCrawler_request_noadvert(t *testing.T) {
 		DoAndReturn(blockUntilClosed(sync)).
 		AnyTimes()
 
-	c := crawl.New(h, conn, rangeUDP(),
+	sock := socket.New(conn)
+	c := crawl.New(h, sock, rangeUDP(),
 		/*socket.WithLogger(logger)*/)
 	assert.NoError(t, c.Close(), "should close gracefully")
 }
@@ -222,7 +223,8 @@ func TestCrawler_advertise(t *testing.T) {
 		DoAndReturn(blockUntilClosed(syncClose)).
 		AnyTimes()
 
-	c := crawl.New(h, conn, rangeUDP(),
+	sock := socket.New(conn)
+	c := crawl.New(h, sock, rangeUDP(),
 		/*socket.WithLogger(logger)*/)
 	defer c.Close()
 
@@ -264,7 +266,8 @@ func TestCrawler_FindPeers_strategy_error(t *testing.T) {
 		return nil, errFail
 	}
 
-	c := crawl.New(h, conn, fail, /*socket.WithLogger(logger)*/)
+sock := socket.New(conn)
+	c := crawl.New(h, sock, fail, /*socket.WithLogger(logger)*/)
 	defer func() {
 		assert.NoError(t, c.Close(), "should close gracefully")
 	}()
@@ -314,7 +317,8 @@ func TestCrawler_FindPeers_wait(t *testing.T) {
 			Return(0, context.Canceled).
 			Times(1)
 
-		c := crawl.New(h, conn, rangeUDP(&net.UDPAddr{}), /*socket.WithLogger(logger)*/)
+		sock := socket.New(conn)
+		c := crawl.New(h, sock, rangeUDP(&net.UDPAddr{}), /*socket.WithLogger(logger)*/)
 		defer c.Close()
 
 		ch, err := c.FindPeers(context.TODO(), "test")
@@ -374,7 +378,8 @@ func TestCrawler_FindPeers_wait(t *testing.T) {
 			Return(0, errFail).
 			Times(1)
 
-		c := crawl.New(h, conn, rangeUDP(&net.UDPAddr{}), /*socket.WithLogger(logger)*/)
+		sock := socket.New(conn)
+		c := crawl.New(h, sock, rangeUDP(&net.UDPAddr{}), /*socket.WithLogger(logger)*/)
 		defer c.Close()
 
 		ch, err := c.FindPeers(context.TODO(), "test")
@@ -453,7 +458,8 @@ func TestCrawler_find_peers(t *testing.T) {
 		DoAndReturn(blockUntilClosed(syncClose)).
 		AnyTimes()
 
-	c := crawl.New(h, conn, rangeUDP(addr),
+	sock := socket.New(conn)
+	c := crawl.New(h, sock, rangeUDP(addr),
 		/*socket.WithLogger(logger)*/)
 	defer c.Close()
 

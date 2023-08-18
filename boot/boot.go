@@ -234,5 +234,13 @@ func (c crawlerFactory) New(addr ma.Multiaddr, opt []socket.Option) (*crawl.Craw
 		return nil, err
 	}
 
-	return crawl.New(c.Host, conn, c.Strategy, opt...), nil
+	sock := socket.New(conn, withDefault(c.Host, opt)...)
+	return crawl.New(c.Host, sock, c.Strategy), nil
+}
+
+func withDefault(h host.Host, opt []socket.Option) []socket.Option {
+	return append([]socket.Option{
+		socket.WithRateLimiter(socket.NewPacketLimiter(32, 8)),
+		socket.WithValidator(socket.BasicValidator(h.ID())),
+	}, opt...)
 }
