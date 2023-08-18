@@ -106,7 +106,8 @@ func DialMulticast(h host.Host, maddr ma.Multiaddr, opt ...socket.Option) (*surv
 		return nil, err
 	}
 
-	return survey.New(h, conn, opt...), nil
+	sock := socket.New(conn, withDefault(h, opt)...)
+	return survey.New(h, sock), nil
 }
 
 func DialPortRange(h host.Host, maddr ma.Multiaddr, opt ...socket.Option) (*crawl.Crawler, error) {

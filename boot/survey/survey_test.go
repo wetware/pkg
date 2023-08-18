@@ -39,7 +39,8 @@ func TestClose(t *testing.T) {
 		ReadFrom(gomock.Any()).
 		AnyTimes()
 
-	err := survey.New(h, conn).Close()
+	sock := socket.New(conn)
+	err := survey.New(h, sock).Close()
 	assert.NoError(t, err, "surveyor should close gracefully")
 }
 
@@ -90,7 +91,8 @@ func TestAdvertise(t *testing.T) {
 		Return(addr).
 		AnyTimes()
 
-	surveyor := survey.New(tt[0].h, conn)
+	sock := socket.New(conn)
+	surveyor := survey.New(tt[0].h, sock)
 	defer surveyor.Close()
 
 	surveyor.Advertise(context.Background(), ns)
@@ -145,7 +147,8 @@ func TestFindPeers(t *testing.T) {
 		Close().
 		Times(1)
 
-	surveyor := survey.New(tt[0].h, conn)
+	sock := socket.New(conn)
+	surveyor := survey.New(tt[0].h, sock)
 	defer surveyor.Close()
 
 	peers, err := surveyor.FindPeers(context.Background(), ns, discovery.Limit(1))

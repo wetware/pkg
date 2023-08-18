@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
-	"net"
 	"time"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -27,22 +26,15 @@ type Surveyor struct {
 
 // New surveyor.  The supplied PacketConn SHOULD be bound to a multicast
 // group.  Use of JoinMulticastGroup to construct conn is RECOMMENDED.
-func New(h host.Host, conn net.PacketConn, opt ...socket.Option) *Surveyor {
+func New(h host.Host, sock *socket.Socket) *Surveyor {
 	s := &Surveyor{
 		host: h,
-		sock: socket.New(conn, withDefault(h, opt)...),
+		sock: sock,
 	}
 
 	go s.sock.Bind(s.handler())
 
 	return s
-}
-
-func withDefault(h host.Host, opt []socket.Option) []socket.Option {
-	return append([]socket.Option{
-		socket.WithRateLimiter(socket.NewPacketLimiter(16, 8)),
-		socket.WithValidator(socket.BasicValidator(h.ID())),
-	}, opt...)
 }
 
 func (s *Surveyor) Close() error {
