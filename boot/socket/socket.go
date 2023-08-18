@@ -70,7 +70,34 @@ func New(conn net.PacketConn, opt ...Option) *Socket {
 // requests.  Bind MUST NOT be called more than once.
 func (s *Socket) Bind(h RequestHandler) {
 	go s.tickloop()
-	go s.serve(h)
+
+	var (
+		r    Record
+		addr net.Addr
+		err  error
+	)
+
+	for {
+		if addr, err = s.conn.Scan(&r); err == nil {
+			err = s.handle(h, r, addr)
+		}
+
+		if err != nil && !errors.Is(err, ErrIgnore) {
+			select {
+			case <-s.done:
+				return
+			default:
+			}
+
+			s.handleError(s, err)
+
+			// socket closed?
+			if ne, ok := err.(net.Error); ok && !ne.Timeout() {
+				defer s.Close()
+				return
+			}
+		}
+	}
 }
 
 func (s *Socket) Done() <-chan struct{} {
@@ -200,36 +227,6 @@ func (s *Socket) tickloop() {
 		}
 
 		s.mu.Unlock()
-	}
-}
-
-func (s *Socket) serve(h RequestHandler) {
-	var (
-		r    Record
-		addr net.Addr
-		err  error
-	)
-
-	for {
-		if addr, err = s.conn.Scan(&r); err == nil {
-			err = s.handle(h, r, addr)
-		}
-
-		if err != nil && !errors.Is(err, ErrIgnore) {
-			select {
-			case <-s.done:
-				return
-			default:
-			}
-
-			s.handleError(s, err)
-
-			// socket closed?
-			if ne, ok := err.(net.Error); ok && !ne.Timeout() {
-				defer s.Close()
-				return
-			}
-		}
 	}
 }
 

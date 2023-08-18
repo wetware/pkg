@@ -33,7 +33,7 @@ func New(h host.Host, conn net.PacketConn, opt ...socket.Option) *Surveyor {
 		sock: socket.New(conn, withDefault(h, opt)...),
 	}
 
-	s.sock.Bind(s.handler())
+	go s.sock.Bind(s.handler())
 
 	return s
 }

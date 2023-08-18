@@ -50,7 +50,7 @@ func New(h host.Host, conn net.PacketConn, s Strategy, opt ...socket.Option) *Cr
 		sock: socket.New(conn, withDefault(h, opt)...),
 	}
 
-	c.sock.Bind(c.handler())
+	go c.sock.Bind(c.handler())
 
 	return c
 }
