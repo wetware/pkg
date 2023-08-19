@@ -38,6 +38,20 @@ type Server struct {
 	*cluster.Router
 }
 
+func (s Server) Serve(ctx context.Context, h local.Host, cfg Config) error {
+	cfg.export(ctx, h, s)
+
+	if err := s.Bootstrap(ctx); err != nil {
+		return fmt.Errorf("bootstrap: %w", err)
+	}
+
+	cfg.Logger.Info("wetware started")
+	defer cfg.Logger.Warn("wetware stopped")
+
+	<-ctx.Done()
+	return ctx.Err()
+}
+
 type Config struct {
 	Logger   log.Logger
 	NS       string
@@ -67,17 +81,7 @@ func (cfg Config) Serve(ctx context.Context, h local.Host) error {
 	}
 	defer server.Close()
 
-	cfg.export(ctx, h, server)
-
-	if err := server.Bootstrap(ctx); err != nil {
-		return fmt.Errorf("bootstrap: %w", err)
-	}
-
-	cfg.Logger.Info("wetware started")
-	defer cfg.Logger.Warn("wetware stopped")
-
-	<-ctx.Done()
-	return ctx.Err()
+	return server.Serve(ctx, h, cfg)
 }
 
 func (cfg Config) NewServer(ctx context.Context, h local.Host) (*Server, error) {
