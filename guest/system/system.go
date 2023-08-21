@@ -5,7 +5,6 @@ import (
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
-	"github.com/stealthrocket/wazergo/types"
 )
 
 var conn *rpc.Conn
@@ -19,11 +18,7 @@ func Bootstrap[T ~capnp.ClientKind](ctx context.Context) (T, capnp.ReleaseFunc) 
 	return T(client), client.Release
 }
 
-func Poll() error {
-	errno := pollHost()
-	if errno != 0 {
-		return types.Errno(errno)
-	}
-
-	return nil
+func Poll() int32 {
+	status := pollHost()
+	return status
 }

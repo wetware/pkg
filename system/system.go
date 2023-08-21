@@ -62,6 +62,8 @@ func (host *Host) Close(ctx context.Context) error {
 }
 
 func (host *Host) Poll(ctx context.Context) types.Error {
-	slog.Info("host.Poll called by guest")
-	return types.OK
+	slog.Info("host.Poll called by guest",
+		"error", context.Canceled)
+
+	return types.Err[types.None](context.Canceled)
 }
