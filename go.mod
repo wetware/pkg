@@ -34,9 +34,11 @@ require (
 	github.com/ipfs/go-cid v0.4.1
 	github.com/jpillora/backoff v1.0.0
 	github.com/libp2p/go-buffer-pool v0.1.0
+	github.com/lmittmann/tint v1.0.0
 	github.com/lthibault/go-libp2p-inproc-transport v0.4.0
 	github.com/lthibault/jitterbug/v2 v2.2.2
 	github.com/lthibault/util v0.0.12
+	github.com/mattn/go-isatty v0.0.19
 	github.com/mr-tron/base58 v1.2.0
 	github.com/multiformats/go-multihash v0.2.3
 	github.com/stealthrocket/wazergo v0.19.1
@@ -97,7 +99,6 @@ require (
 	github.com/libp2p/go-reuseport v0.4.0 // indirect
 	github.com/libp2p/go-yamux/v4 v4.0.1 // indirect
 	github.com/marten-seemann/tcp v0.0.0-20210406111302-dfbc87cc63fd // indirect
-	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/mikioh/tcpinfo v0.0.0-20190314235526-30a79bb1804b // indirect
 	github.com/mikioh/tcpopt v0.0.0-20190314235656-172688c1accc // indirect
