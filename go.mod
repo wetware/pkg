@@ -1,6 +1,6 @@
 module github.com/wetware/pkg
 
-go 1.20
+go 1.21
 
 require (
 	capnproto.org/go/capnp/v3 v3.0.0-alpha.28
@@ -17,7 +17,6 @@ require (
 	github.com/prometheus/common v0.44.0 // indirect
 	github.com/prometheus/procfs v0.11.1 // indirect
 	github.com/urfave/cli/v2 v2.25.7
-	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/fx v1.20.0 // indirect
 	go.uber.org/zap v1.25.0 // indirect
 	golang.org/x/crypto v0.12.0 // indirect
@@ -122,7 +121,6 @@ require (
 	github.com/prometheus/client_golang v1.16.0 // indirect
 	github.com/prometheus/client_model v0.4.0 // indirect
 	github.com/quic-go/qpack v0.4.0 // indirect
-	github.com/quic-go/qtls-go1-19 v0.3.2 // indirect
 	github.com/quic-go/qtls-go1-20 v0.3.2 // indirect
 	github.com/quic-go/quic-go v0.37.6 // indirect
 	github.com/quic-go/webtransport-go v0.5.3 // indirect
