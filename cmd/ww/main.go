@@ -15,7 +15,10 @@ import (
 	"path"
 	"runtime"
 	"syscall"
+	"time"
 
+	"github.com/lmittmann/tint"
+	"github.com/mattn/go-isatty"
 	"github.com/tetratelabs/wazero/sys"
 	"github.com/urfave/cli/v2"
 
@@ -131,12 +134,19 @@ func logger(c *cli.Context) *slog.Logger {
 
 	// enable json logging?
 	if c.Bool("json") {
-		handler := slog.NewJSONHandler(c.App.ErrWriter, h)
+		handler := slog.NewJSONHandler(os.Stderr, h)
 		return slog.New(handler)
 	}
 
-	handler := slog.NewTextHandler(c.App.ErrWriter, h)
-	return slog.New(handler)
+	return slog.New(tint.NewHandler(os.Stderr, &tint.Options{
+		Level:      h.Level,
+		TimeFormat: time.Kitchen,
+		NoColor:    colorDisabled(),
+	}))
+}
+
+func colorDisabled() bool {
+	return !isatty.IsTerminal(os.Stderr.Fd())
 }
 
 func bootstrapAddr() string {
