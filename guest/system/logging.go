@@ -1,9 +1,8 @@
 package system
 
 import (
+	"log/slog"
 	"os"
-
-	"golang.org/x/exp/slog"
 )
 
 func init() {

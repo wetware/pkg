@@ -6,7 +6,7 @@ import (
 	"io"
 	"net"
 
-	"golang.org/x/exp/slog"
+	"log/slog"
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/exp/bufferpool"

@@ -3,6 +3,7 @@ package system
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net"
 	"time"
 
@@ -15,7 +16,6 @@ import (
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"github.com/wetware/pkg/util/log"
 	"go.uber.org/multierr"
-	"golang.org/x/exp/slog"
 )
 
 type Closer struct {

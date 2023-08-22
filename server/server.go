@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"strings"
 
 	"github.com/libp2p/go-libp2p"
@@ -25,7 +26,6 @@ import (
 	"github.com/wetware/pkg/system"
 	"github.com/wetware/pkg/util/log"
 	"github.com/wetware/pkg/util/proto"
-	"golang.org/x/exp/slog"
 )
 
 type ClientProvider interface {

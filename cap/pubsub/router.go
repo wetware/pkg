@@ -3,11 +3,12 @@ package pubsub
 import (
 	"context"
 
+	"log/slog"
+
 	capnp "capnproto.org/go/capnp/v3"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	api "github.com/wetware/pkg/api/pubsub"
 	"github.com/wetware/pkg/util/log"
-	"golang.org/x/exp/slog"
 )
 
 // Router is a client capability that confers the right to join pubsub

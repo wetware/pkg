@@ -11,10 +11,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	"log/slog"
+
 	"capnproto.org/go/capnp/v3"
 	"github.com/jpillora/backoff"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"golang.org/x/exp/slog"
 
 	"github.com/lthibault/jitterbug/v2"
 

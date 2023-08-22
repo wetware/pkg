@@ -3,6 +3,7 @@ package start
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/libp2p/go-libp2p"
@@ -10,7 +11,6 @@ import (
 	tcp "github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	"github.com/urfave/cli/v2"
 	"github.com/wetware/pkg/server"
-	"golang.org/x/exp/slog"
 )
 
 var meta map[string]string

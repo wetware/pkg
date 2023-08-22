@@ -2,6 +2,7 @@ package run
 
 import (
 	"errors"
+	"log/slog"
 	"os"
 
 	"capnproto.org/go/capnp/v3"
@@ -12,7 +13,6 @@ import (
 	"github.com/wetware/pkg/client"
 	"github.com/wetware/pkg/rom"
 	"github.com/wetware/pkg/system"
-	"golang.org/x/exp/slog"
 )
 
 var flags = []cli.Flag{

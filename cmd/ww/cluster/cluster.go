@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"log/slog"
 	"path"
 	"runtime"
 	"time"
@@ -10,7 +11,6 @@ import (
 	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	"github.com/urfave/cli/v2"
-	"golang.org/x/exp/slog"
 
 	"github.com/wetware/pkg/cap/host"
 	"github.com/wetware/pkg/client"

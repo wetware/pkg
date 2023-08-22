@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"capnproto.org/go/capnp/v3/rpc"
@@ -13,8 +14,6 @@ import (
 	"github.com/wetware/pkg/system"
 	"github.com/wetware/pkg/util/log"
 	"github.com/wetware/pkg/util/proto"
-
-	"golang.org/x/exp/slog"
 )
 
 var ErrNoPeers = errors.New("no peers")

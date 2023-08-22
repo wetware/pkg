@@ -3,10 +3,10 @@ package system
 import (
 	"context"
 	"errors"
+	"log/slog"
 
 	"capnproto.org/go/capnp/v3/exc"
 	"github.com/wetware/pkg/util/log"
-	"golang.org/x/exp/slog"
 )
 
 // ErrorReporter handles Cap'n Proto RPC errors.

@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"log/slog"
+
 	capnp "capnproto.org/go/capnp/v3"
 	"github.com/golang/mock/gomock"
 	"github.com/libp2p/go-libp2p"
@@ -14,7 +16,6 @@ import (
 	"github.com/stretchr/testify/require"
 	api "github.com/wetware/pkg/api/pubsub"
 	test_log "github.com/wetware/pkg/util/log/test"
-	"golang.org/x/exp/slog"
 )
 
 func TestTopicManager(t *testing.T) {

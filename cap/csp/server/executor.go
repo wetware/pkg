@@ -9,6 +9,8 @@ import (
 	"os"
 	"time"
 
+	"log/slog"
+
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/ipfs/go-cid"
@@ -16,7 +18,6 @@ import (
 	"github.com/tetratelabs/wazero"
 	wasm "github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/experimental/sock"
-	"golang.org/x/exp/slog"
 
 	api "github.com/wetware/pkg/api/process"
 	"github.com/wetware/pkg/cap/csp"

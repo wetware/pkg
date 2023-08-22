@@ -9,13 +9,14 @@ import (
 	"net"
 	"runtime"
 
+	"log/slog"
+
 	"capnproto.org/go/capnp/v3"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/experimental/sock"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"github.com/tetratelabs/wazero/sys"
-	"golang.org/x/exp/slog"
 
 	csp_server "github.com/wetware/pkg/cap/csp/server"
 	"github.com/wetware/pkg/rom"

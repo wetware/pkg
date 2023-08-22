@@ -1,11 +1,10 @@
 package socket
 
 import (
+	"log/slog"
 	"net"
 
 	"github.com/wetware/pkg/util/log"
-
-	"golang.org/x/exp/slog"
 )
 
 type Option func(*Socket)

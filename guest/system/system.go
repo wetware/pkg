@@ -3,6 +3,7 @@ package system
 import (
 	"context"
 	"io"
+	"log/slog"
 	"net"
 	"os"
 	"runtime"
@@ -10,7 +11,6 @@ import (
 
 	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/wetware/pkg/system"
-	"golang.org/x/exp/slog"
 )
 
 const (

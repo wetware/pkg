@@ -9,6 +9,7 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 	"path"
@@ -17,7 +18,6 @@ import (
 
 	"github.com/tetratelabs/wazero/sys"
 	"github.com/urfave/cli/v2"
-	"golang.org/x/exp/slog"
 
 	ww "github.com/wetware/pkg"
 	"github.com/wetware/pkg/cmd/ww/cluster"

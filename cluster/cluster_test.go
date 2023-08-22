@@ -6,11 +6,12 @@ import (
 	"testing"
 	"time"
 
+	"log/slog"
+
 	"github.com/golang/mock/gomock"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/wetware/pkg/cluster"
 	test_cluster "github.com/wetware/pkg/cluster/test"
-	"golang.org/x/exp/slog"
 
 	"github.com/stretchr/testify/assert"
 )
