@@ -10,6 +10,7 @@ import (
 	"log/slog"
 
 	"capnproto.org/go/capnp/v3"
+	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
@@ -92,10 +93,10 @@ func (ww Ww[T]) Exec(ctx context.Context, rom rom.ROM) error {
 	}
 	defer mod.Close(ctx)
 
-	// conn := rpc.NewConn(sock.Transport(), &rpc.Options{
-	// 	BootstrapClient: capnp.Client(ww.Client),
-	// })
-	// defer conn.Close()
+	conn := rpc.NewConn(sock.Transport(), &rpc.Options{
+		BootstrapClient: capnp.Client(ww.Client),
+	})
+	defer conn.Close()
 
 	return ww.run(ctx, mod)
 }
