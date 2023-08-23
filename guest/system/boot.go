@@ -5,15 +5,8 @@ import (
 	"io"
 	"runtime"
 
-	local "github.com/libp2p/go-libp2p/core/host"
-
 	"capnproto.org/go/capnp/v3"
-	"capnproto.org/go/capnp/v3/rpc"
 )
-
-type Dialer interface {
-	DialRPC(context.Context, local.Host) (*rpc.Conn, error)
-}
 
 func Bootstrap[T ~capnp.ClientKind](ctx context.Context) T {
 	conn, err := FDSockDialer{}.DialRPC(ctx)
