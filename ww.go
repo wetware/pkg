@@ -76,7 +76,7 @@ func (ww Ww[T]) Exec(ctx context.Context, rom rom.ROM) error {
 
 	// Instantiate the guest module, and configure host exports.
 	mod, err := r.InstantiateModule(ctx, compiled, wazero.NewModuleConfig().
-		WithOsyield(sock.Sched(ctx)). // runtime.Gosched
+		WithOsyield(sock.Poll(ctx)). // runtime.Gosched
 		WithRandSource(rand.Reader).
 		WithStartFunctions(). // don't automatically call _start while instanitating.
 		WithSysNanosleep().

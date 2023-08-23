@@ -16,7 +16,7 @@ func (sock *Socket) Close() error {
 	return nil
 }
 
-func (sock *Socket) Sched(ctx context.Context) func() {
+func (sock *Socket) Poll(ctx context.Context) func() {
 	slog.Info("Guest called runtime.Gosched()!") // and we picked it up on the host side!
 
 	return runtime.Gosched
