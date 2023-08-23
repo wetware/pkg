@@ -22,7 +22,7 @@ func Init(ctx context.Context) (Self, error) {
 		err error
 	)
 
-	b := Bootstrap[api.BootContext](ctx)
+	b, _ := Bootstrap[api.BootContext](ctx) // TODO:  what to do with release func?
 	bCtx := csp.BootCtx(b)
 
 	s.Args, err = bCtx.Args(ctx)
