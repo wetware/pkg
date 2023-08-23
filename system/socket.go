@@ -3,6 +3,7 @@ package system
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"runtime"
 
 	"capnproto.org/go/capnp/v3/rpc"
@@ -16,7 +17,8 @@ func (sock *Socket) Close() error {
 }
 
 func (sock *Socket) Sched(ctx context.Context) func() {
-	// TODO:  this needs to pass input into the guest
+	slog.Info("Guest called runtime.Gosched()!") // and we picked it up on the host side!
+
 	return runtime.Gosched
 }
 
