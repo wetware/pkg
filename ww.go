@@ -4,18 +4,13 @@ import (
 	"context"
 	"crypto/rand"
 	_ "embed"
-	"errors"
 	"io"
 	"runtime"
-
-	"log/slog"
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/tetratelabs/wazero"
-	"github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
-	"github.com/tetratelabs/wazero/sys"
 
 	"github.com/wetware/pkg/rom"
 	"github.com/wetware/pkg/system"
@@ -65,12 +60,14 @@ func (ww Ww[T]) Exec(ctx context.Context, rom rom.ROM) error {
 	defer c.Close(ctx)
 
 	// Instantiate Wetware host module.
-
 	sock, err := system.Instantiate(ctx, r)
+	if err != nil {
+		return err
+	}
 	defer sock.Close()
 
 	// Compile guest module.
-	compiled, err := r.CompileModule(ctx, rom.Bytecode)
+	compiled, err := r.CompileModule(sock.Ctx(), rom.Bytecode)
 	if err != nil {
 		return err
 	}
@@ -100,30 +97,5 @@ func (ww Ww[T]) Exec(ctx context.Context, rom rom.ROM) error {
 	})
 	defer conn.Close()
 
-	return ww.run(sock.Ctx(), mod)
-}
-
-func (ww Ww[T]) run(ctx context.Context, mod api.Module) error {
-	// Grab the the main() function and call it with the system context.
-	fn := mod.ExportedFunction("_start")
-	if fn == nil {
-		return errors.New("missing export: _start")
-	}
-
-	// TODO(performance):  fn.CallWithStack(ctx, nil)
-	_, err := fn.Call(ctx)
-	switch err.(*sys.ExitError).ExitCode() {
-	case 0:
-	case sys.ExitCodeContextCanceled:
-		return context.Canceled
-	case sys.ExitCodeDeadlineExceeded:
-		return context.DeadlineExceeded
-	default:
-		slog.Default().Debug(err.Error(),
-			"version", Version,
-			"ns", ww.String(),
-			"rom", mod.Name())
-	}
-
-	return nil
+	return sock.Bind(mod)
 }

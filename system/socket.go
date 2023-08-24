@@ -2,11 +2,13 @@ package system
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/stealthrocket/wazergo"
 	"github.com/stealthrocket/wazergo/types"
 	"github.com/tetratelabs/wazero/api"
+	"github.com/tetratelabs/wazero/sys"
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
@@ -18,6 +20,26 @@ type Socket struct {
 	context  context.Context
 	instance *wazergo.ModuleInstance[*Module]
 	recv     <-chan segment
+}
+
+func (sock *Socket) Bind(mod api.Module) error {
+	// Grab the the main() function and call it with the system context.
+	fn := mod.ExportedFunction("_start")
+	if fn == nil {
+		return errors.New("missing export: _start")
+	}
+
+	_, err := fn.Call(sock.Ctx())
+	switch err.(*sys.ExitError).ExitCode() {
+	case 0:
+		return nil
+	case sys.ExitCodeContextCanceled:
+		return context.Canceled
+	case sys.ExitCodeDeadlineExceeded:
+		return context.DeadlineExceeded
+	}
+
+	return err
 }
 
 func (sock *Socket) Close() error {
