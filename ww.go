@@ -6,6 +6,7 @@ import (
 	_ "embed"
 	"errors"
 	"io"
+	"runtime"
 
 	"log/slog"
 
@@ -63,6 +64,11 @@ func (ww Ww[T]) Exec(ctx context.Context, rom rom.ROM) error {
 	}
 	defer c.Close(ctx)
 
+	// Instantiate Wetware host module.
+
+	sock, err := system.Instantiate(ctx, r)
+	defer sock.Close()
+
 	// Compile guest module.
 	compiled, err := r.CompileModule(ctx, rom.Bytecode)
 	if err != nil {
@@ -70,13 +76,9 @@ func (ww Ww[T]) Exec(ctx context.Context, rom rom.ROM) error {
 	}
 	defer compiled.Close(ctx)
 
-	// Instantiate wetware socket.
-	sock := &system.Socket{}
-	defer sock.Close()
-
 	// Instantiate the guest module, and configure host exports.
-	mod, err := r.InstantiateModule(ctx, compiled, wazero.NewModuleConfig().
-		WithOsyield(sock.Poll(ctx)). // runtime.Gosched
+	mod, err := r.InstantiateModule(sock.Ctx(), compiled, wazero.NewModuleConfig().
+		WithOsyield(runtime.Gosched). // runtime.Gosched
 		WithRandSource(rand.Reader).
 		WithStartFunctions(). // don't automatically call _start while instanitating.
 		WithSysNanosleep().
@@ -93,12 +95,12 @@ func (ww Ww[T]) Exec(ctx context.Context, rom rom.ROM) error {
 	}
 	defer mod.Close(ctx)
 
-	conn := rpc.NewConn(sock.Transport(), &rpc.Options{
+	conn := rpc.NewConn(sock.RPCTransport(), &rpc.Options{
 		BootstrapClient: capnp.Client(ww.Client),
 	})
 	defer conn.Close()
 
-	return ww.run(ctx, mod)
+	return ww.run(sock.Ctx(), mod)
 }
 
 func (ww Ww[T]) run(ctx context.Context, mod api.Module) error {

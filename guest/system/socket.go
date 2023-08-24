@@ -2,68 +2,20 @@ package system
 
 import (
 	"context"
-	"runtime"
-	"time"
 
 	"capnproto.org/go/capnp/v3"
-	"capnproto.org/go/capnp/v3/rpc"
 	"capnproto.org/go/capnp/v3/rpc/transport"
 	rpccp "capnproto.org/go/capnp/v3/std/capnp/rpc"
+	"github.com/stealthrocket/wazergo/types"
 )
 
-var (
-	recv = make(chan segment, 1)
-	send = make(chan segment, 1)
-	poll = make(chan struct{}, 1)
-	done = make(chan struct{})
-)
-
-func init() {
-	go func() {
-		ticker := time.NewTicker(time.Millisecond)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-poll:
-				runtime.Gosched()
-			case <-ticker.C:
-				// __poll()  // TODO:  activate?
-			case <-done:
-				return
-			}
-		}
-	}()
+type socket struct {
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
-func Bootstrap[T ~capnp.ClientKind](ctx context.Context) (T, capnp.ReleaseFunc) {
-	conn := rpc.NewConn(socket{}, nil)
-
-	client := conn.Bootstrap(ctx)
-	if err := client.Resolve(ctx); err != nil {
-		defer conn.Close()
-		return failure[T](err)
-	}
-
-	return T(client), func() {
-		client.Release()
-		conn.Close()
-	}
-}
-
-func failure[T ~capnp.ClientKind](err error) (T, capnp.ReleaseFunc) {
-	return T(capnp.ErrorClient(err)), func() {}
-}
-
-type socket struct{}
-
-func (socket) Close() error {
-	select {
-	case <-done:
-	default:
-		close(done)
-	}
-
+func (sock socket) Close() error {
+	sock.cancel()
 	return nil
 }
 
@@ -76,32 +28,25 @@ func (socket) NewMessage() (transport.OutgoingMessage, error) {
 	return outgoing(message), err
 }
 
-func (socket) RecvMessage() (transport.IncomingMessage, error) {
-	select {
-	case seg := <-recv:
-		defer free(seg)
-
-		msg, err := capnp.Unmarshal(exports[seg])
-		if err != nil {
-			return nil, err
-		}
-		message, err := rpccp.ReadRootMessage(msg)
-		if err != nil {
-			return nil, err
-		}
-		return incoming(message), nil
-
-	case <-done:
-		return nil, rpc.ErrConnClosed
+func (sock socket) RecvMessage() (transport.IncomingMessage, error) {
+	buf, err := input.Recv(sock.ctx)
+	if err != nil {
+		return nil, err
 	}
-}
 
-// TODO:  export so that the host can trigger a poll on write
-func __poll() {
-	select {
-	case poll <- struct{}{}:
-	default:
+	msg, err := capnp.Unmarshal(buf)
+	if err != nil {
+		defer msg.Release()
+		return nil, err
 	}
+
+	message, err := rpccp.ReadRootMessage(msg)
+	if err != nil {
+		defer msg.Release()
+		return nil, err
+	}
+
+	return incoming(message), nil
 }
 
 type incoming rpccp.Message
@@ -130,15 +75,10 @@ func (msg outgoing) Send() error {
 		return err
 	}
 
-	for {
-		select {
-		case send <- export(b):
-			__poll()
-			return nil
-		case <-done:
-			return rpc.ErrConnClosed
-		default:
-			__poll()
-		}
+	seg := export(b)
+	if status := send(seg.offset, seg.length); status != 0 {
+		return types.Errno(status)
 	}
+
+	return nil
 }
