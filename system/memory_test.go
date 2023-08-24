@@ -8,16 +8,32 @@ import (
 
 func TestSegment(t *testing.T) {
 	t.Parallel()
+	t.Helper()
 
 	seg := segment{
 		offset: 42,
 		length: 9001,
 	}
 
-	buf := make([]byte, seg.ObjectSize())
-	seg.StoreObject(nil, buf)
+	t.Run("LoadStoreObject", func(t *testing.T) {
+		t.Parallel()
 
-	got := segment{}.LoadObject(nil, buf)
-	require.Equal(t, seg, got,
-		"loaded object should equal stored object")
+		buf := make([]byte, seg.ObjectSize())
+		seg.StoreObject(nil, buf)
+		got := segment{}.LoadObject(nil, buf)
+
+		require.Equal(t, seg, got,
+			"loaded object should equal stored object")
+	})
+
+	t.Run("LoadStoreValue", func(t *testing.T) {
+		t.Parallel()
+
+		stack := make([]uint64, 1)
+		seg.StoreValue(nil, stack)
+		got := segment{}.LoadValue(nil, stack)
+
+		require.Equal(t, seg, got,
+			"loaded object should equal stored object")
+	})
 }

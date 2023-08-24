@@ -42,16 +42,20 @@ func (seg segment) LoadObject(memory api.Memory, object []byte) segment {
 	}
 }
 
-func (seg segment) LoadValue(memory api.Memory, stack []uint64) segment {
-	return segment{
-		offset: api.DecodeU32(stack[0]),
-		length: api.DecodeU32(stack[1]),
-	}
-}
-
 func (seg segment) StoreObject(memory api.Memory, object []byte) {
 	binary.LittleEndian.PutUint32(object[:4], seg.offset)
 	binary.LittleEndian.PutUint32(object[4:], seg.length)
+}
+
+func (seg segment) StoreValue(memory api.Memory, stack []uint64) {
+	stack[0] = api.EncodeU32(seg.offset)<<32 | api.EncodeU32(seg.length)
+}
+
+func (seg segment) LoadValue(memory api.Memory, stack []uint64) segment {
+	return segment{
+		offset: api.DecodeU32(stack[0] >> 32),
+		length: api.DecodeU32(stack[0]),
+	}
 }
 
 func (seg segment) ObjectSize() int {
