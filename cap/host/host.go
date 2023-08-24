@@ -8,11 +8,13 @@ import (
 	"capnproto.org/go/capnp/v3"
 
 	anchor_api "github.com/wetware/pkg/api/anchor"
+	capstore_api "github.com/wetware/pkg/api/capstore"
 	api "github.com/wetware/pkg/api/cluster"
 	process_api "github.com/wetware/pkg/api/process"
 	pubsub_api "github.com/wetware/pkg/api/pubsub"
 	reg_api "github.com/wetware/pkg/api/registry"
 	"github.com/wetware/pkg/cap/anchor"
+	"github.com/wetware/pkg/cap/capstore"
 	"github.com/wetware/pkg/cap/csp"
 	"github.com/wetware/pkg/cap/pubsub"
 	service "github.com/wetware/pkg/cap/registry"
@@ -90,6 +92,10 @@ type ExecutorProvider interface {
 	Executor() csp.Executor
 }
 
+type CapStoreProvider interface {
+	CapStore() capstore.CapStore
+}
+
 // Server provides the Host capability.
 type Server struct {
 	ViewProvider     ViewProvider
@@ -97,6 +103,7 @@ type Server struct {
 	AnchorProvider   AnchorProvider
 	RegistryProvider RegistryProvider
 	ExecutorProvider ExecutorProvider
+	CapStoreProvider CapStoreProvider
 }
 
 func (s Server) Client() capnp.Client {
@@ -150,6 +157,15 @@ func (s Server) Executor(_ context.Context, call api.Host_executor) error {
 	if err == nil {
 		e := s.ExecutorProvider.Executor()
 		err = res.SetExecutor(process_api.Executor(e))
+	}
+	return err
+}
+
+func (s Server) CapStore(_ context.Context, call api.Host_capStore) error {
+	res, err := call.AllocResults()
+	if err == nil {
+		c := s.CapStoreProvider.CapStore()
+		err = res.SetCapStore(capstore_api.CapStore(c))
 	}
 	return err
 }

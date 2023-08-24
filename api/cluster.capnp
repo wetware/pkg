@@ -39,6 +39,9 @@ interface Host {
     executor @4 () -> (executor :import "process.capnp".Executor);
     # Executor provides a way of spawning and running WASM-based
     # processes.
+
+    capStore @5 () -> (capStore :import "capstore.capnp".CapStore);
+    # CapStore returns a Capability Storage.
 }
 
 
