@@ -19,6 +19,7 @@ import (
 	"capnproto.org/go/capnp/v3/rpc"
 
 	"github.com/wetware/pkg/cap/anchor"
+	capstore_server "github.com/wetware/pkg/cap/capstore/server"
 	csp_server "github.com/wetware/pkg/cap/csp/server"
 	"github.com/wetware/pkg/cap/host"
 	"github.com/wetware/pkg/cap/pubsub"
@@ -147,6 +148,7 @@ func (cfg Config) NewServer(ctx context.Context, h local.Host) (*Server, error) 
 			TopicJoiner: ps,
 		},
 		ExecutorProvider: e,
+		CapStoreProvider: &capstore_server.CapStore{},
 	}
 
 	return &Server{
