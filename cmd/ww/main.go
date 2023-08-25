@@ -22,11 +22,11 @@ import (
 	"github.com/tetratelabs/wazero/sys"
 	"github.com/urfave/cli/v2"
 
-	ww "github.com/wetware/pkg"
 	"github.com/wetware/pkg/cmd/ww/cluster"
 	"github.com/wetware/pkg/cmd/ww/ls"
 	"github.com/wetware/pkg/cmd/ww/run"
 	"github.com/wetware/pkg/cmd/ww/start"
+	"github.com/wetware/pkg/util/proto"
 )
 
 var flags = []cli.Flag{
@@ -75,7 +75,7 @@ func main() {
 
 	app := &cli.App{
 		Name:                 "wetware",
-		Version:              ww.Version,
+		Version:              proto.Version,
 		HelpName:             "ww",
 		Usage:                "simple, secure clusters",
 		UsageText:            "ww [global options] command [command options] [arguments...]",
@@ -86,7 +86,7 @@ func main() {
 			// set up logging
 			slog.SetDefault(logger(c).
 				With(
-					"version", ww.Version,
+					"version", proto.Version,
 					"ns", c.String("ns")))
 
 			return nil

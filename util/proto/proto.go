@@ -2,12 +2,13 @@ package proto
 
 import (
 	"github.com/libp2p/go-libp2p/core/protocol"
-	"github.com/wetware/pkg"
 )
+
+const Version = "0.1.0"
 
 // Root returns the protocol ID for the supplied namespace.
 func Root(ns string) protocol.ID {
-	return Join("ww", ww.Version, protocol.ID(ns))
+	return Join("ww", Version, protocol.ID(ns))
 }
 
 // Namespace returns the subprotocol family for the
@@ -24,6 +25,6 @@ func Namespace(ns string) []protocol.ID {
 // that matches the pattern:  /ww/<version>/<ns>
 func NewMatcher(ns string) MatchFunc {
 	return Match(
-		Exactly("ww"), SemVer(ww.Version), Exactly(ns),
+		Exactly("ww"), SemVer(Version), Exactly(ns),
 	)
 }
