@@ -20,8 +20,8 @@ import (
 
 	csp_server "github.com/wetware/pkg/cap/csp/server"
 	"github.com/wetware/pkg/rom"
+	"github.com/wetware/pkg/util/proto"
 )
-
 
 // Ww is the execution context for WebAssembly (WASM) bytecode,
 // allowing it to interact with (1) the local host and (2) the
@@ -122,7 +122,7 @@ func (ww Ww[T]) run(ctx context.Context, mod api.Module) error {
 		return context.DeadlineExceeded
 	default:
 		slog.Default().Debug(err.Error(),
-			"version", Version,
+			"version", proto.Version,
 			"ns", ww.String(),
 			"rom", mod.Name())
 	}
