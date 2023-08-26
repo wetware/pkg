@@ -4,13 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"strings"
-	"time"
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/discovery"
 	local "github.com/libp2p/go-libp2p/core/host"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"go.uber.org/multierr"
 
 	"capnproto.org/go/capnp/v3"
@@ -46,7 +43,7 @@ func (conf Config) Client() (host.Host, io.Closer) {
 	pubsub, err := pubsub.NewGossipSub(context.TODO(), h,
 		pubsub.WithPeerExchange(true),
 		// pubsub.WithRawTracer(conf.tracer()),
-		pubsub.WithDiscovery(trimPrefix{ns}),
+		pubsub.WithDiscovery(ns),
 		pubsub.WithProtocolMatchFn(conf.protoMatchFunc()),
 		pubsub.WithGossipSubProtocols(conf.subProtos()),
 		pubsub.WithPeerOutboundQueueSize(1024),
@@ -79,22 +76,6 @@ func (conf Config) Client() (host.Host, io.Closer) {
 	}
 
 	return server.Host(), closer
-}
-
-// Trims the "floodsub:" prefix from the namespace.  This is needed because
-// clients do not use pubsub, and will search for the exact namespace string.
-type trimPrefix struct {
-	discovery.Discovery
-}
-
-func (b trimPrefix) FindPeers(ctx context.Context, ns string, opt ...discovery.Option) (<-chan peer.AddrInfo, error) {
-	ns = strings.TrimPrefix(ns, "floodsub:")
-	return b.Discovery.FindPeers(ctx, ns, opt...)
-}
-
-func (b trimPrefix) Advertise(ctx context.Context, ns string, opt ...discovery.Option) (time.Duration, error) {
-	ns = strings.TrimPrefix(ns, "floodsub:")
-	return b.Discovery.Advertise(ctx, ns, opt...)
 }
 
 // closer is a stack of io.Closers
