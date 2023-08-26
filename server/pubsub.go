@@ -1,16 +1,10 @@
 package server
 
 import (
-	"context"
 	"fmt"
-	"strings"
-	"time"
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/libp2p/go-libp2p/core/discovery"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
-	"golang.org/x/exp/slog"
 
 	"github.com/wetware/pkg/util/proto"
 )
@@ -71,34 +65,4 @@ func (config Config) features() func(pubsub.GossipSubFeature, protocol.ID) bool 
 			return false
 		}
 	}
-}
-
-type withLogging struct {
-	discovery.Discovery
-}
-
-func (b withLogging) FindPeers(ctx context.Context, ns string, opt ...discovery.Option) (<-chan peer.AddrInfo, error) {
-	slog.Debug("bootstrapping namespace")
-	return b.Discovery.FindPeers(ctx, ns, opt...)
-}
-
-func (b withLogging) Advertise(ctx context.Context, ns string, opt ...discovery.Option) (time.Duration, error) {
-	slog.Debug("advertising namespace")
-	return b.Discovery.Advertise(ctx, ns, opt...)
-}
-
-// Trims the "floodsub:" prefix from the namespace.  This is needed because
-// clients do not use pubsub, and will search for the exact namespace string.
-type trimPrefix struct {
-	discovery.Discovery
-}
-
-func (b trimPrefix) FindPeers(ctx context.Context, ns string, opt ...discovery.Option) (<-chan peer.AddrInfo, error) {
-	ns = strings.TrimPrefix(ns, "floodsub:")
-	return b.Discovery.FindPeers(ctx, ns, opt...)
-}
-
-func (b trimPrefix) Advertise(ctx context.Context, ns string, opt ...discovery.Option) (time.Duration, error) {
-	ns = strings.TrimPrefix(ns, "floodsub:")
-	return b.Discovery.Advertise(ctx, ns, opt...)
 }

@@ -1,112 +1,127 @@
 package run
 
-// import (
-// 	"errors"
-// 	"log/slog"
-// 	"os"
+import (
+	"fmt"
+	"os"
 
-// 	"capnproto.org/go/capnp/v3"
-// 	local "github.com/libp2p/go-libp2p/core/host"
-// 	"github.com/urfave/cli/v2"
-// 	ww "github.com/wetware/pkg"
-// 	"github.com/wetware/pkg/cap/host"
-// 	"github.com/wetware/pkg/client"
-// 	"github.com/wetware/pkg/rom"
-// 	"github.com/wetware/pkg/system"
-// )
+	local "github.com/libp2p/go-libp2p/core/host"
+	"github.com/urfave/cli/v2"
 
-// var flags = []cli.Flag{
-// 	&cli.BoolFlag{
-// 		Name:    "dial",
-// 		Usage:   "connect to cluster",
-// 		EnvVars: []string{"WW_DIAL"},
-// 	},
-// 	&cli.BoolFlag{
-// 		Name:     "stdin",
-// 		Aliases:  []string{"s"},
-// 		Usage:    "load system image from stdin",
-// 		Category: "ROM",
-// 	},
-// }
+	ww "github.com/wetware/pkg"
+	"github.com/wetware/pkg/auth"
+	"github.com/wetware/pkg/boot"
+	"github.com/wetware/pkg/cap/host"
+	"github.com/wetware/pkg/client"
+	"github.com/wetware/pkg/rom"
+	"github.com/wetware/pkg/util/proto"
+)
 
-// func Command() *cli.Command {
-// 	return &cli.Command{
-// 		Name:  "run",
-// 		Usage: "execute a local webassembly process",
-// 		Flags: flags,
-// 		Action: func(c *cli.Context) error {
-// 			h, err := client.NewHost()
-// 			if err != nil {
-// 				return err
-// 			}
-// 			defer h.Close()
+var flags = []cli.Flag{
+	&cli.BoolFlag{
+		Name:    "dial",
+		Usage:   "connect to cluster",
+		EnvVars: []string{"WW_DIAL"},
+	},
+	&cli.BoolFlag{
+		Name:     "stdin",
+		Aliases:  []string{"s"},
+		Usage:    "load system image from stdin",
+		Category: "ROM",
+	},
+}
 
-// 			// dial into the cluster;  if -dial=false, client is null.
-// 			client, err := dial[host.Host](c, h)
-// 			if err != nil {
-// 				return err
-// 			}
-// 			defer client.Release()
+func Command() *cli.Command {
+	return &cli.Command{
+		Name:   "run",
+		Usage:  "execute a local webassembly process",
+		Flags:  flags,
+		Action: run,
+	}
+}
 
-// 			// set up the local wetware environment.
-// 			wetware := ww.Ww[host.Host]{
-// 				NS:     c.String("ns"),
-// 				Stdin:  c.App.Reader,
-// 				Stdout: c.App.Writer,
-// 				Stderr: c.App.ErrWriter,
-// 				Client: client,
-// 			}
+func run(c *cli.Context) error {
+	h, err := client.DialP2P()
+	if err != nil {
+		return err
+	}
+	defer h.Close()
 
-// 			// fetch the ROM and run it
-// 			rom, err := bytecode(c)
-// 			if err != nil {
-// 				return err
-// 			}
+	d, err := boot.DialString(h, c.String("discover"))
+	if err != nil {
+		return fmt.Errorf("discovery: %w", err)
+	}
 
-// 			return wetware.Exec(c.Context, rom)
-// 		},
-// 	}
-// }
+	ns := boot.Namespace{
+		Name:      c.String("ns"),
+		Bootstrap: d,
+		Ambient:   d,
+	}
 
-// func dial[T ~capnp.ClientKind](c *cli.Context, h local.Host) (T, error) {
-// 	// dial into a cluster?
-// 	if c.Bool("dial") {
-// 		return system.Bootstrap[T](c.Context, h, client.Config{
-// 			Logger:   slog.Default(),
-// 			NS:       c.String("ns"),
-// 			Peers:    c.StringSlice("peer"),
-// 			Discover: c.String("discover"),
-// 		})
-// 	}
+	dialer := client.BootConfig{
+		Net:   ns,
+		Host:  h,
+		Peers: c.StringSlice("peer"),
+		RPC:   nil, // client doesn't export a capabiltity (yet)
+	}
 
-// 	// we're not connecting to the cluster
-// 	return failure[T](errors.New("disconnected"))
-// }
+	// dial into the cluster;  if -dial=false, client is null.
+	sess, err := client.Config[host.Host]{
+		PeerDialer: dialer,
+		Auth:       auth.AllowAll[host.Host],
+	}.Dial(c.Context, addr(c, h))
+	if err != nil {
+		return err
+	}
+	defer sess.Close()
 
-// func failure[T ~capnp.ClientKind](err error) (T, error) {
-// 	return T(capnp.ErrorClient(err)), err
-// }
+	// set up the local wetware environment.
+	wetware := ww.Ww[host.Host]{
+		NS:     c.String("ns"),
+		Stdin:  c.App.Reader,
+		Stdout: c.App.Writer,
+		Stderr: c.App.ErrWriter,
+		Client: sess.Client(),
+	}
 
-// func bytecode(c *cli.Context) (rom.ROM, error) {
-// 	if c.Bool("stdin") {
-// 		return rom.Read(c.App.Reader)
-// 	}
+	// fetch the ROM and run it
+	rom, err := bytecode(c)
+	if err != nil {
+		return err
+	}
 
-// 	// file?
-// 	if c.Args().Len() > 0 {
-// 		return loadROM(c)
-// 	}
+	return wetware.Exec(c.Context, rom)
+}
 
-// 	// use the default bytecode
-// 	return rom.Default(), nil
-// }
+func addr(c *cli.Context, h local.Host) *client.Addr {
+	return &client.Addr{
+		Addr: &ww.Addr{
+			NS:  c.String("ns"),
+			Vat: h.ID(),
+		},
+		Protos: proto.Namespace(c.String("ns")),
+	}
+}
 
-// func loadROM(c *cli.Context) (rom.ROM, error) {
-// 	f, err := os.Open(c.Args().First())
-// 	if err != nil {
-// 		return rom.ROM{}, err
-// 	}
-// 	defer f.Close()
+func bytecode(c *cli.Context) (rom.ROM, error) {
+	if c.Bool("stdin") {
+		return rom.Read(c.App.Reader)
+	}
 
-// 	return rom.Read(f)
-// }
+	// file?
+	if c.Args().Len() > 0 {
+		return loadROM(c)
+	}
+
+	// use the default bytecode
+	return rom.Default(), nil
+}
+
+func loadROM(c *cli.Context) (rom.ROM, error) {
+	f, err := os.Open(c.Args().First())
+	if err != nil {
+		return rom.ROM{}, err
+	}
+	defer f.Close()
+
+	return rom.Read(f)
+}

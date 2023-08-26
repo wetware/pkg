@@ -34,7 +34,7 @@ type ClientProvider[T ~capnp.ClientKind] interface {
 }
 
 type RPCDialer interface {
-	DialRPC(context.Context, net.Addr, *rpc.Options) (*rpc.Conn, error)
+	DialRPC(context.Context, net.Addr) (*rpc.Conn, error)
 }
 
 type Vat[T ~capnp.ClientKind] struct {
@@ -107,7 +107,7 @@ func (vat Vat[T]) Dial(pid rpc.PeerID, opt *rpc.Options) (*rpc.Conn, error) {
 	opt.Network = vat
 
 	addr := pid.Value.(net.Addr)
-	return vat.Dialer.DialRPC(context.TODO(), addr, opt)
+	return vat.Dialer.DialRPC(context.TODO(), addr)
 }
 
 // Accept the next incoming connection on the network, using the

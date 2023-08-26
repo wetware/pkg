@@ -9,9 +9,9 @@ import (
 )
 
 type Namespace struct {
-	Name      string
-	Bootstrap discovery.Discovery
-	Ambient   discovery.Discovery
+	Name                string
+	BootOpt, AmbientOpt []discovery.Option
+	Bootstrap, Ambient  discovery.Discovery
 }
 
 func (n Namespace) Network() string {

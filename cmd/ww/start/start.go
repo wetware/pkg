@@ -3,12 +3,10 @@ package start
 import (
 	"fmt"
 
-	"github.com/libp2p/go-libp2p"
 	local "github.com/libp2p/go-libp2p/core/host"
-	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
-	tcp "github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	"github.com/urfave/cli/v2"
 	ww "github.com/wetware/pkg"
+	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/boot"
 	"github.com/wetware/pkg/cap/host"
 	"github.com/wetware/pkg/client"
@@ -34,49 +32,56 @@ var flags = []cli.Flag{
 
 func Command() *cli.Command {
 	return &cli.Command{
-		Name:  "start",
-		Usage: "start a host process",
-		Flags: flags,
-		Action: func(c *cli.Context) error {
-			h, err := libp2p.New(
-				libp2p.NoTransports,
-				libp2p.Transport(tcp.NewTCPTransport),
-				libp2p.Transport(quic.NewTransport),
-				libp2p.ListenAddrStrings(c.StringSlice("listen")...))
-			if err != nil {
-				return fmt.Errorf("listen: %w", err)
-			}
-			defer h.Close()
-
-			discovery, err := newDiscoveryService(c, h)
-			if err != nil {
-				return fmt.Errorf("discovery: %w", err)
-			}
-
-			boot := boot.Config{
-				Peers:     c.StringSlice("peer"),
-				Discovery: discovery,
-			}
-
-			dialer := client.Config{
-				PeerDialer: boot,
-			}
-
-			export := server.Config{
-				NS:        c.String("ns"),
-				Host:      h,
-				Meta:      c.StringSlice("meta"),
-				Discovery: discovery,
-			}
-
-			return ww.Vat[host.Host]{
-				Addr:   addr(c, h),
-				Host:   h,
-				Dialer: dialer,
-				Export: export,
-			}.ListenAndServe(c.Context)
-		},
+		Name:   "start",
+		Usage:  "start a host process",
+		Flags:  flags,
+		Action: serve,
 	}
+}
+
+func serve(c *cli.Context) error {
+	h, err := server.ListenP2P(c.StringSlice("listen")...)
+	if err != nil {
+		return fmt.Errorf("listen: %w", err)
+	}
+	defer h.Close()
+
+	d, err := boot.ListenString(h, c.String("discover"))
+	if err != nil {
+		return fmt.Errorf("discovery: %w", err)
+	}
+
+	ns := boot.Namespace{
+		Name:      c.String("ns"),
+		Bootstrap: d,
+		Ambient:   d,
+	}
+
+	boot := server.BootConfig{
+		Net:   ns,
+		Host:  h,
+		Peers: c.StringSlice("peer"),
+		RPC:   nil, // server doesn't export a capabiltity (yet)
+	}
+
+	dialer := client.Config[host.Host]{
+		PeerDialer: boot,
+		Auth:       auth.AllowAll[host.Host],
+	}
+
+	export := server.Config{
+		NS:        c.String("ns"),
+		Meta:      c.StringSlice("meta"),
+		Host:      h,
+		Discovery: d,
+	}
+
+	return ww.Vat[host.Host]{
+		Addr:   addr(c, h),
+		Host:   h,
+		Dialer: dialer,
+		Export: export,
+	}.ListenAndServe(c.Context)
 }
 
 // local address on
@@ -85,8 +90,4 @@ func addr(c *cli.Context, h local.Host) *ww.Addr {
 		NS:  c.String("ns"),
 		Vat: h.ID(),
 	}
-}
-
-func newDiscoveryService(c *cli.Context, h local.Host) (boot.Service, error) {
-	return boot.ListenString(h, c.String("discover"))
 }

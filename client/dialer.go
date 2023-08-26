@@ -2,18 +2,15 @@ package client
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
-	"strings"
 
+	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
-	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/protocol"
+	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/util/proto"
 )
-
-var ErrNoPeers = errors.New("no peers")
 
 type Addr struct {
 	net.Addr
@@ -22,14 +19,30 @@ type Addr struct {
 
 // PeerDialer can resolve
 type PeerDialer interface {
-	DialPeer(context.Context, *Addr) (network.Stream, error)
+	DialPeer(context.Context, *Addr) (*rpc.Conn, error)
 }
 
-type Config struct {
+type Config[T ~capnp.ClientKind] struct {
 	PeerDialer PeerDialer
+	Auth       auth.Policy[T]
+	Opts       *rpc.Options
 }
 
-func (d Config) DialRPC(ctx context.Context, addr net.Addr, opts *rpc.Options) (*rpc.Conn, error) {
+func (d Config[T]) Dial(ctx context.Context, addr *Addr) (auth.Session[T], error) {
+	conn, err := d.DialRPC(ctx, addr)
+	if err != nil {
+		return auth.DenyAll[T](), fmt.Errorf("dial: %w", err)
+	}
+
+	client := conn.Bootstrap(ctx)
+	if err := client.Resolve(ctx); err != nil {
+		return auth.DenyAll[T](), fmt.Errorf("bootstrap: %w", err)
+	}
+
+	return d.Auth.Login(ctx, T(client)), nil
+}
+
+func (d Config[T]) DialRPC(ctx context.Context, addr net.Addr) (*rpc.Conn, error) {
 	peer := &Addr{
 		Addr:   addr,
 		Protos: proto.Namespace(addr.Network()),
@@ -38,43 +51,5 @@ func (d Config) DialRPC(ctx context.Context, addr net.Addr, opts *rpc.Options) (
 		// bit-packing and LZ4 compression.
 	}
 
-	s, err := d.PeerDialer.DialPeer(ctx, peer)
-	if err != nil {
-		return nil, fmt.Errorf("dial %v: %w", addr, err)
-	}
-
-	conn := rpc.NewConn(transport(s), opts)
-	return conn, nil
-}
-
-// boot, err := d.newBootstrapper(h)
-// if err != nil {
-// 	return "", fmt.Errorf("bootstrap: %w", err)
-// }
-// defer boot.Close()
-
-// var peers <-chan peer.AddrInfo
-// if peers, err = boot.FindPeers(ctx, d.NS); err != nil {
-// 	return "", fmt.Errorf("discover: %w", err)
-// }
-
-// for info := range peers {
-// 	if err = h.Connect(ctx, info); err == nil {
-// 		return info.ID, nil
-// 	}
-// }
-
-// // no peers?
-// if err == nil {
-// 	err = ErrNoPeers
-// }
-
-// return "", err
-
-func transport(s network.Stream) rpc.Transport {
-	if strings.HasSuffix(string(s.Protocol()), "/packed") {
-		return rpc.NewPackedStreamTransport(s)
-	}
-
-	return rpc.NewStreamTransport(s)
+	return d.PeerDialer.DialPeer(ctx, peer)
 }

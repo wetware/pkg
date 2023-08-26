@@ -22,6 +22,8 @@ import (
 	"github.com/tetratelabs/wazero/sys"
 	"github.com/urfave/cli/v2"
 
+	"github.com/wetware/pkg/cmd/ww/ls"
+	"github.com/wetware/pkg/cmd/ww/run"
 	"github.com/wetware/pkg/cmd/ww/start"
 	"github.com/wetware/pkg/util/proto"
 )
@@ -89,8 +91,8 @@ func main() {
 			return nil
 		},
 		Commands: []*cli.Command{
-			// ls.Command(),
-			// run.Command(),
+			ls.Command(),
+			run.Command(),
 			start.Command(),
 			// cluster.Command(),
 		},
