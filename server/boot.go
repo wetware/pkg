@@ -28,7 +28,7 @@ type BootConfig struct {
 	RPC   *rpc.Options
 }
 
-func (conf BootConfig) DialPeer(ctx context.Context, addr *client.Addr) (conn *rpc.Conn, err error) {
+func (conf BootConfig) Bootstrap(ctx context.Context, addr *client.Addr) (conn *rpc.Conn, err error) {
 	var d discovery.Discovery
 	if d, err = conf.discovery(); err != nil {
 		return nil, fmt.Errorf("discovery: %w", err)

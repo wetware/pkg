@@ -51,8 +51,8 @@ func list(c *cli.Context) error {
 
 	// dial into the cluster;  if -dial=false, client is null.
 	sess, err := client.Config[host.Host]{
-		PeerDialer: boot,
-		Auth:       auth.AllowAll[host.Host],
+		Bootstrapper: boot,
+		Auth:         auth.AllowAll[host.Host],
 	}.Dial(c.Context, addr(c, h))
 	if err != nil {
 		return err

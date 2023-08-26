@@ -57,7 +57,7 @@ func run(c *cli.Context) error {
 		Ambient:   d,
 	}
 
-	dialer := client.BootConfig{
+	boot := client.BootConfig{
 		Net:   ns,
 		Host:  h,
 		Peers: c.StringSlice("peer"),
@@ -66,8 +66,8 @@ func run(c *cli.Context) error {
 
 	// dial into the cluster;  if -dial=false, client is null.
 	sess, err := client.Config[host.Host]{
-		PeerDialer: dialer,
-		Auth:       auth.AllowAll[host.Host],
+		Bootstrapper: boot,
+		Auth:         auth.AllowAll[host.Host],
 	}.Dial(c.Context, addr(c, h))
 	if err != nil {
 		return err

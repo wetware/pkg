@@ -65,8 +65,8 @@ func serve(c *cli.Context) error {
 	}
 
 	dialer := client.Config[host.Host]{
-		PeerDialer: boot,
-		Auth:       auth.AllowAll[host.Host],
+		Bootstrapper: boot,
+		Auth:         auth.AllowAll[host.Host],
 	}
 
 	export := server.Config{

@@ -17,15 +17,15 @@ type Addr struct {
 	Protos []protocol.ID
 }
 
-// PeerDialer can resolve
-type PeerDialer interface {
-	DialPeer(context.Context, *Addr) (*rpc.Conn, error)
+// Bootstrapper can resolve
+type Bootstrapper interface {
+	Bootstrap(context.Context, *Addr) (*rpc.Conn, error)
 }
 
 type Config[T ~capnp.ClientKind] struct {
-	PeerDialer PeerDialer
-	Auth       auth.Policy[T]
-	Opts       *rpc.Options
+	Bootstrapper Bootstrapper
+	Auth         auth.Policy[T]
+	Opts         *rpc.Options
 }
 
 func (d Config[T]) Dial(ctx context.Context, addr *Addr) (auth.Session[T], error) {
@@ -51,5 +51,5 @@ func (d Config[T]) DialRPC(ctx context.Context, addr net.Addr) (*rpc.Conn, error
 		// bit-packing and LZ4 compression.
 	}
 
-	return d.PeerDialer.DialPeer(ctx, peer)
+	return d.Bootstrapper.Bootstrap(ctx, peer)
 }
