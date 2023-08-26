@@ -1,38 +1,21 @@
 package server
 
 import (
-	"io"
-
 	"github.com/libp2p/go-libp2p/core/discovery"
-	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/wetware/pkg/boot"
-	"github.com/wetware/pkg/boot/socket"
+	"github.com/libp2p/go-libp2p/core/routing"
+	disc_util "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 )
 
-func (cfg Config) newBootstrapper(h host.Host) (*bootService, error) {
-	var d discovery.Discovery
-	var err error
-	if len(cfg.Peers) > 0 {
-		d, err = boot.NewStaticAddrStrings(cfg.Peers...)
-	} else {
-		d, err = boot.ListenString(h, cfg.Discover,
-			socket.WithLogger(cfg.Logger),
-			socket.WithRateLimiter(socket.NewPacketLimiter(256, 16)))
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &bootService{Discovery: d}, nil
+// bootstrap discovery is the lowest-level peer discovery.  It is an
+// abstraction over an out-of-band protocol that delivers a small number
+// of peers.  The simplest example of this is boot.StaticAddrs.
+func (conf Config) bootstrap() discovery.Discovery {
+	return trimPrefix{withLogging{conf.Discovery}}
 }
 
-type bootService struct{ discovery.Discovery }
-
-func (d bootService) Close() (err error) {
-	if c, ok := d.Discovery.(io.Closer); ok {
-		err = c.Close()
-	}
-
-	return
+// ambient peer discovery represents the ability of a peer to enumerate
+// peers via gossip.  This is generally much more efficient than bootstrap
+// discovery.  Most implementations rely on the DHT.
+func (conf Config) ambient(r routing.ContentRouting) discovery.Discovery {
+	return disc_util.NewRoutingDiscovery(r)
 }

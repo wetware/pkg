@@ -10,16 +10,16 @@ import (
 	"github.com/wetware/pkg/util/proto"
 )
 
-func (cfg Config) withRouting(ctx context.Context, h host.Host) (*routedhost.RoutedHost, *dual.DHT, error) {
-	dht, err := cfg.newDHT(ctx, h)
+func (conf Config) withRouting() (*routedhost.RoutedHost, *dual.DHT, error) {
+	dht, err := conf.newDHT(context.TODO(), conf.Host)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return routedhost.Wrap(h, dht), dht, nil
+	return routedhost.Wrap(conf.Host, dht), dht, nil
 }
 
-func (cfg Config) newDHT(ctx context.Context, h host.Host) (*dual.DHT, error) {
+func (conf Config) newDHT(ctx context.Context, h host.Host) (*dual.DHT, error) {
 	// TODO:  Use dht.BootstrapPeersFunc to get bootstrap peers from PeX?
 	//        This might allow us to greatly simplify our architecture and
 	//        runtime initialization.  In particular:
@@ -31,8 +31,8 @@ func (cfg Config) newDHT(ctx context.Context, h host.Host) (*dual.DHT, error) {
 	//             eliminated entirely.
 
 	return dual.New(ctx, h,
-		dual.LanDHTOption(lanOpt(cfg.NS)...),
-		dual.WanDHTOption(wanOpt(cfg.NS)...))
+		dual.LanDHTOption(lanOpt(conf.NS)...),
+		dual.WanDHTOption(wanOpt(conf.NS)...))
 }
 
 func lanOpt(ns string) []dht.Option {

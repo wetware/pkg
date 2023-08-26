@@ -2,24 +2,93 @@
 package boot
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"strconv"
 
 	"github.com/libp2p/go-libp2p/core/discovery"
 	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 
 	"github.com/wetware/pkg/boot/crawl"
 	"github.com/wetware/pkg/boot/socket"
 	"github.com/wetware/pkg/boot/survey"
+	"github.com/wetware/pkg/client"
 )
 
-// ErrUnknownBootProto is returned when the multiaddr passed
-// to Parse does not contain a recognized boot protocol.
-var ErrUnknownBootProto = errors.New("unknown boot protocol")
+var (
+	// ErrUnknownBootProto is returned when the multiaddr passed
+	// to Parse does not contain a recognized boot protocol.
+	ErrUnknownBootProto = errors.New("unknown boot protocol")
+
+	ErrNoPeers = errors.New("no peers")
+)
+
+type Service interface {
+	discovery.Discovery
+	io.Closer
+}
+
+type Config struct {
+	Host      host.Host
+	Peers     []string
+	Discovery discovery.Discovery
+	Opts      []discovery.Option
+}
+
+func (conf Config) DialPeer(ctx context.Context, addr *client.Addr) (s network.Stream, err error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	var d discovery.Discoverer
+	if d, err = conf.discovery(); err != nil {
+		return nil, fmt.Errorf("discover: %w", err)
+	}
+
+	var peers <-chan peer.AddrInfo
+	if peers, err = d.FindPeers(ctx, addr.Network(), conf.Opts...); err != nil {
+		return nil, fmt.Errorf("find peers: %w", err)
+	}
+
+	err = ErrNoPeers
+	for info := range peers {
+		if s, err = conf.dial(ctx, addr, info); err == nil {
+			break
+		}
+	}
+
+	return s, err
+}
+
+func (conf Config) discovery() (_ discovery.Discovery, err error) {
+	if len(conf.Peers) == 0 {
+		return conf.Discovery, nil
+	}
+
+	maddrs := make([]ma.Multiaddr, len(conf.Peers))
+	for i, s := range conf.Peers {
+		if maddrs[i], err = ma.NewMultiaddr(s); err != nil {
+			return
+		}
+	}
+
+	infos, err := peer.AddrInfosFromP2pAddrs(maddrs...)
+	return StaticAddrs(infos), err
+}
+
+func (conf Config) dial(ctx context.Context, addr *client.Addr, info peer.AddrInfo) (network.Stream, error) {
+	if err := conf.Host.Connect(ctx, info); err != nil {
+		return nil, err
+	}
+
+	return conf.Host.NewStream(ctx, info.ID, addr.Protos...)
+}
 
 func DialString(h host.Host, s string, opt ...socket.Option) (discovery.Discoverer, error) {
 	maddr, err := ma.NewMultiaddr(s)
@@ -57,7 +126,7 @@ func Dial(h host.Host, maddr ma.Multiaddr, opt ...socket.Option) (discovery.Disc
 	return nil, ErrUnknownBootProto
 }
 
-func ListenString(h host.Host, s string, opt ...socket.Option) (discovery.Discovery, error) {
+func ListenString(h host.Host, s string, opt ...socket.Option) (Service, error) {
 	maddr, err := ma.NewMultiaddr(s)
 	if err != nil {
 		return nil, err
@@ -66,7 +135,7 @@ func ListenString(h host.Host, s string, opt ...socket.Option) (discovery.Discov
 	return Listen(h, maddr, opt...)
 }
 
-func Listen(h host.Host, maddr ma.Multiaddr, opt ...socket.Option) (discovery.Discovery, error) {
+func Listen(h host.Host, maddr ma.Multiaddr, opt ...socket.Option) (Service, error) {
 	switch {
 	case IsCIDR(maddr):
 		return ListenCIDR(h, maddr, opt...)

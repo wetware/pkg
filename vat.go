@@ -3,6 +3,8 @@ package ww
 import (
 	"context"
 	"fmt"
+	"io"
+	"log/slog"
 	"net"
 
 	"capnproto.org/go/capnp/v3"
@@ -11,10 +13,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/pkg/errors"
 
-	"github.com/wetware/pkg/server"
 	"github.com/wetware/pkg/system"
-	"golang.org/x/exp/slog"
-	"golang.org/x/sync/errgroup"
 )
 
 type Addr struct {
@@ -31,7 +30,7 @@ func (addr Addr) String() string {
 }
 
 type ClientProvider[T ~capnp.ClientKind] interface {
-	Client() T
+	Client() (T, io.Closer)
 }
 
 type RPCDialer interface {
@@ -39,13 +38,12 @@ type RPCDialer interface {
 }
 
 type Vat[T ~capnp.ClientKind] struct {
-	Ctx    context.Context
 	Addr   *Addr
 	Host   host.Host
 	Dialer RPCDialer
 	Export ClientProvider[T]
 
-	in <-chan *rpc.Conn
+	in chan *rpc.Conn
 }
 
 func (vat Vat[T]) String() string {
@@ -60,54 +58,45 @@ func (vat Vat[T]) LocalID() rpc.PeerID {
 }
 
 func (vat Vat[T]) Serve(ctx context.Context) error {
-	config := server.Config{
-		Logger: slog.Default(),
-		NS:     vat.Addr.NS,
+	t, closer := vat.Export.Client()
+	defer closer.Close()
+
+	// is t an ErrorClient?
+	if err := failure(t); err != nil {
+		return err
 	}
 
-	server, err := config.NewServer(ctx, vat.Host)
-	if err != nil {
-		return fmt.Errorf("new server: %w", err)
+	opts := &rpc.Options{
+		BootstrapClient: capnp.Client(t),
+		ErrorReporter: &system.ErrorReporter{
+			Logger: slog.Default(),
+		},
 	}
 
-	in := make(chan *rpc.Conn)
-	vat.in = in
+	slog.Info("wetware started")
+	defer slog.Warn("wetware stopped")
 
-	g, ctx := errgroup.WithContext(ctx)
-	g.Go(func() error {
-		defer close(in)
-
-		client := capnp.Client(vat.Export.Client())
-		defer client.Release()
-
-		reporter := &system.ErrorReporter{
-			Logger: config.Logger,
+	for {
+		conn, err := vat.Accept(ctx, opts)
+		if err != nil {
+			return fmt.Errorf("accept: %w", err)
 		}
 
-		opts := &rpc.Options{
-			BootstrapClient: client.AddRef(),
-			ErrorReporter:   reporter,
+		select {
+		case vat.in <- conn:
+		case <-ctx.Done():
+			defer conn.Close()
+			return ctx.Err()
 		}
+	}
+}
 
-		for {
-			conn, err := vat.Accept(ctx, opts)
-			if err != nil {
-				return fmt.Errorf("accept: %w", err)
-			}
+func failure[T ~capnp.ClientKind](t T) error {
+	if err, ok := capnp.Client(t).State().Brand.Value.(error); ok {
+		return err
+	}
 
-			select {
-			case in <- conn:
-			case <-ctx.Done():
-				go conn.Close()
-			}
-		}
-	})
-	g.Go(func() error {
-		err := server.Serve(ctx, vat.Host, config)
-		return fmt.Errorf("serve: %w", err)
-	})
-
-	return g.Wait()
+	return nil
 }
 
 // Connect to another peer by ID. The supplied Options are used
@@ -118,7 +107,7 @@ func (vat Vat[T]) Dial(pid rpc.PeerID, opt *rpc.Options) (*rpc.Conn, error) {
 	opt.Network = vat
 
 	addr := pid.Value.(net.Addr)
-	return vat.Dialer.DialRPC(vat.Ctx, addr, opt)
+	return vat.Dialer.DialRPC(context.TODO(), addr, opt)
 }
 
 // Accept the next incoming connection on the network, using the

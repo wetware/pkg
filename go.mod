@@ -45,6 +45,7 @@ require (
 	github.com/stealthrocket/wazergo v0.19.1
 	github.com/stretchr/testify v1.8.4
 	github.com/tetratelabs/wazero v1.3.1
+	github.com/thejerf/suture/v4 v4.0.2
 	go.uber.org/multierr v1.11.0
 	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63
 	golang.org/x/sync v0.3.0

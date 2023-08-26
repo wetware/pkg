@@ -1,19 +1,19 @@
 package start
 
 import (
-	"context"
 	"fmt"
-	"log/slog"
-	"strings"
 
 	"github.com/libp2p/go-libp2p"
+	local "github.com/libp2p/go-libp2p/core/host"
 	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
 	tcp "github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	"github.com/urfave/cli/v2"
+	ww "github.com/wetware/pkg"
+	"github.com/wetware/pkg/boot"
+	"github.com/wetware/pkg/cap/host"
+	"github.com/wetware/pkg/client"
 	"github.com/wetware/pkg/server"
 )
-
-var meta map[string]string
 
 var flags = []cli.Flag{
 	&cli.StringSliceFlag{
@@ -37,28 +37,7 @@ func Command() *cli.Command {
 		Name:  "start",
 		Usage: "start a host process",
 		Flags: flags,
-		Before: func(c *cli.Context) error {
-			// Parse and asign meta tags
-
-			metaTags := c.StringSlice("meta")
-			for _, tag := range metaTags {
-				pair := strings.SplitN(tag, "=", 2)
-				if len(pair) != 2 {
-					return fmt.Errorf("invalid meta tag: %s", tag)
-				}
-
-				if meta == nil {
-					meta = make(map[string]string, len(metaTags))
-				}
-
-				meta[pair[0]] = pair[1]
-			}
-
-			return nil
-		},
 		Action: func(c *cli.Context) error {
-			// Configure a WASM runtime and execute a ROM.
-
 			h, err := libp2p.New(
 				libp2p.NoTransports,
 				libp2p.Transport(tcp.NewTCPTransport),
@@ -69,24 +48,45 @@ func Command() *cli.Command {
 			}
 			defer h.Close()
 
-			config := server.Config{
-				NS:       c.String("ns"),
-				Peers:    c.StringSlice("peer"),
-				Discover: c.String("discover"),
-				Meta:     meta,
-				Logger: slog.Default().
-					With(
-						"id", h.ID(),
-						/*"peers", c.StringSlice("peer"),*/
-						/*"discover", c.String("discover")*/),
+			discovery, err := newDiscoveryService(c, h)
+			if err != nil {
+				return fmt.Errorf("discovery: %w", err)
 			}
 
-			err = config.Serve(c.Context, h)
-			if err != context.Canceled {
-				return err
+			boot := boot.Config{
+				Peers:     c.StringSlice("peer"),
+				Discovery: discovery,
 			}
 
-			return nil
+			dialer := client.Config{
+				PeerDialer: boot,
+			}
+
+			export := server.Config{
+				NS:        c.String("ns"),
+				Host:      h,
+				Meta:      c.StringSlice("meta"),
+				Discovery: discovery,
+			}
+
+			return ww.Vat[host.Host]{
+				Addr:   addr(c, h),
+				Host:   h,
+				Dialer: dialer,
+				Export: export,
+			}.ListenAndServe(c.Context)
 		},
 	}
+}
+
+// local address on
+func addr(c *cli.Context, h local.Host) *ww.Addr {
+	return &ww.Addr{
+		NS:  c.String("ns"),
+		Vat: h.ID(),
+	}
+}
+
+func newDiscoveryService(c *cli.Context, h local.Host) (boot.Service, error) {
+	return boot.ListenString(h, c.String("discover"))
 }

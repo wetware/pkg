@@ -7,12 +7,9 @@ import (
 
 	"capnproto.org/go/capnp/v3"
 
-	anchor_api "github.com/wetware/pkg/api/anchor"
-	capstore_api "github.com/wetware/pkg/api/capstore"
+	"github.com/tetratelabs/wazero"
 	api "github.com/wetware/pkg/api/cluster"
-	process_api "github.com/wetware/pkg/api/process"
 	pubsub_api "github.com/wetware/pkg/api/pubsub"
-	reg_api "github.com/wetware/pkg/api/registry"
 	"github.com/wetware/pkg/cap/anchor"
 	"github.com/wetware/pkg/cap/capstore"
 	"github.com/wetware/pkg/cap/csp"
@@ -98,23 +95,22 @@ type CapStoreProvider interface {
 
 // Server provides the Host capability.
 type Server struct {
-	ViewProvider     ViewProvider
-	PubSubProvider   PubSubProvider
-	AnchorProvider   AnchorProvider
-	RegistryProvider RegistryProvider
-	ExecutorProvider ExecutorProvider
-	CapStoreProvider CapStoreProvider
+	ViewProvider  ViewProvider
+	TopicJoiner   pubsub.TopicJoiner
+	RuntimeConfig wazero.RuntimeConfig
+
+	pubsub *pubsub.Server
 }
 
-func (s Server) Client() capnp.Client {
-	return capnp.Client(s.Host())
-}
+func (s *Server) Host() Host {
+	s.pubsub = &pubsub.Server{
+		TopicJoiner: s.TopicJoiner,
+	}
 
-func (s Server) Host() Host {
 	return Host(api.Host_ServerToClient(s))
 }
 
-func (s Server) View(_ context.Context, call api.Host_view) error {
+func (s *Server) View(_ context.Context, call api.Host_view) error {
 	res, err := call.AllocResults()
 	if err == nil {
 		view := s.ViewProvider.View()
@@ -124,48 +120,53 @@ func (s Server) View(_ context.Context, call api.Host_view) error {
 	return err
 }
 
-func (s Server) PubSub(_ context.Context, call api.Host_pubSub) error {
+func (s *Server) PubSub(_ context.Context, call api.Host_pubSub) error {
 	res, err := call.AllocResults()
 	if err == nil {
-		err = res.SetPubSub(pubsub_api.Router(s.PubSubProvider.PubSub()))
+		router := pubsub_api.Router_ServerToClient(s.pubsub)
+		err = res.SetPubSub(router)
 	}
 
 	return err
 }
 
-func (s Server) Root(_ context.Context, call api.Host_root) error {
-	res, err := call.AllocResults()
-	if err == nil {
-		err = res.SetRoot(anchor_api.Anchor(s.AnchorProvider.Anchor()))
-	}
+func (s *Server) Root(_ context.Context, call api.Host_root) error {
+	panic("NOT IMPLEMENTED")
+	// res, err := call.AllocResults()
+	// if err == nil {
+	// 	err = res.SetRoot(anchor_api.Anchor(s.AnchorProvider.Anchor()))
+	// }
 
-	return err
+	// return err
 }
 
-func (s Server) Registry(_ context.Context, call api.Host_registry) error {
-	res, err := call.AllocResults()
-	if err == nil {
-		registry := s.RegistryProvider.Registry()
-		err = res.SetRegistry(reg_api.Registry(registry))
-	}
+func (s *Server) Registry(_ context.Context, call api.Host_registry) error {
+	panic("NOT IMPLEMENTED")
+	// res, err := call.AllocResults()
+	// if err == nil {
+	// 	registry := s.RegistryProvider.Registry()
+	// 	err = res.SetRegistry(reg_api.Registry(registry))
+	// }
 
-	return err
+	// return err
 }
 
-func (s Server) Executor(_ context.Context, call api.Host_executor) error {
-	res, err := call.AllocResults()
-	if err == nil {
-		e := s.ExecutorProvider.Executor()
-		err = res.SetExecutor(process_api.Executor(e))
-	}
-	return err
+func (s *Server) Executor(_ context.Context, call api.Host_executor) error {
+	panic("NOT IMPLEMENTED")
+	// res, err := call.AllocResults()
+	// if err == nil {
+	// 	e := s.ExecutorProvider.Executor()
+	// 	err = res.SetExecutor(process_api.Executor(e))
+	// }
+	// return err
 }
 
-func (s Server) CapStore(_ context.Context, call api.Host_capStore) error {
-	res, err := call.AllocResults()
-	if err == nil {
-		c := s.CapStoreProvider.CapStore()
-		err = res.SetCapStore(capstore_api.CapStore(c))
-	}
-	return err
+func (s *Server) CapStore(_ context.Context, call api.Host_capStore) error {
+	panic("NOT IMPLEMENTED")
+	// res, err := call.AllocResults()
+	// if err == nil {
+	// 	c := s.CapStoreProvider.CapStore()
+	// 	err = res.SetCapStore(capstore_api.CapStore(c))
+	// }
+	// return err
 }
