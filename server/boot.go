@@ -41,7 +41,7 @@ func (conf BootConfig) Bootstrap(ctx context.Context, addr *client.Addr) (conn *
 
 	err = boot.ErrNoPeers
 	for info := range peers {
-		if conn, err = conf.dial(ctx, addr, info); err == nil {
+		if conn, err = conf.connect(ctx, addr, info); err == nil {
 			err = fmt.Errorf("%s: %w", info.ID.ShortString(), err)
 			break
 		}
@@ -68,7 +68,7 @@ func (conf BootConfig) discovery() (_ discovery.Discovery, err error) {
 	return boot.StaticAddrs(infos), err
 }
 
-func (conf BootConfig) dial(ctx context.Context, addr *client.Addr, info peer.AddrInfo) (*rpc.Conn, error) {
+func (conf BootConfig) connect(ctx context.Context, addr *client.Addr, info peer.AddrInfo) (*rpc.Conn, error) {
 	if err := conf.Host.Connect(ctx, info); err != nil {
 		return nil, fmt.Errorf("connect: %w", err)
 	}
