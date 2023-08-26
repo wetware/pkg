@@ -4,14 +4,17 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
+	"time"
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/discovery"
 	local "github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"go.uber.org/multierr"
 
 	"capnproto.org/go/capnp/v3"
 	"github.com/tetratelabs/wazero"
-	"go.uber.org/multierr"
 
 	"github.com/wetware/pkg/boot"
 	"github.com/wetware/pkg/cap/host"
@@ -43,7 +46,7 @@ func (conf Config) Client() (host.Host, io.Closer) {
 	pubsub, err := pubsub.NewGossipSub(context.TODO(), h,
 		pubsub.WithPeerExchange(true),
 		// pubsub.WithRawTracer(conf.tracer()),
-		pubsub.WithDiscovery(ns),
+		pubsub.WithDiscovery(trimPrefix{ns}),
 		pubsub.WithProtocolMatchFn(conf.protoMatchFunc()),
 		pubsub.WithGossipSubProtocols(conf.subProtos()),
 		pubsub.WithPeerOutboundQueueSize(1024),
@@ -63,6 +66,10 @@ func (conf Config) Client() (host.Host, io.Closer) {
 	}
 	closer = closer.push(cluster)
 
+	if err := cluster.Bootstrap(context.TODO()); err != nil {
+		return failuref("bootstrap: %w", err)
+	}
+
 	server := host.Server{
 		ViewProvider: cluster,
 		TopicJoiner:  pubsub,
@@ -74,18 +81,34 @@ func (conf Config) Client() (host.Host, io.Closer) {
 	return server.Host(), closer
 }
 
-func failure(err error) (host.Host, io.Closer) {
-	return host.Host(capnp.ErrorClient(err)), io.NopCloser(nil)
+// Trims the "floodsub:" prefix from the namespace.  This is needed because
+// clients do not use pubsub, and will search for the exact namespace string.
+type trimPrefix struct {
+	discovery.Discovery
 }
 
-func failuref(format string, args ...any) (host.Host, io.Closer) {
-	return failure(fmt.Errorf(format, args...))
+func (b trimPrefix) FindPeers(ctx context.Context, ns string, opt ...discovery.Option) (<-chan peer.AddrInfo, error) {
+	ns = strings.TrimPrefix(ns, "floodsub:")
+	return b.Discovery.FindPeers(ctx, ns, opt...)
+}
+
+func (b trimPrefix) Advertise(ctx context.Context, ns string, opt ...discovery.Option) (time.Duration, error) {
+	ns = strings.TrimPrefix(ns, "floodsub:")
+	return b.Discovery.Advertise(ctx, ns, opt...)
 }
 
 // closer is a stack of io.Closers
 type closer struct {
 	closer io.Closer
 	next   *closer
+}
+
+func failure(err error) (host.Host, io.Closer) {
+	return host.Host(capnp.ErrorClient(err)), io.NopCloser(nil)
+}
+
+func failuref(format string, args ...any) (host.Host, io.Closer) {
+	return failure(fmt.Errorf(format, args...))
 }
 
 func (tail *closer) push(c io.Closer) *closer {

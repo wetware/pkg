@@ -6,34 +6,42 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/discovery"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"golang.org/x/exp/slog"
 )
 
 type Namespace struct {
-	Name                string
-	BootOpt, AmbientOpt []discovery.Option
-	Bootstrap, Ambient  discovery.Discovery
+	Name               string
+	Bootstrap, Ambient discovery.Discovery
 }
 
 func (n Namespace) Network() string {
-	return n.Name
+	return "floodsub:" + n.Name
 }
 
 func (n Namespace) Advertise(ctx context.Context, ns string, opt ...discovery.Option) (time.Duration, error) {
-	if n.Match(ns) {
-		return n.Bootstrap.Advertise(ctx, ns, opt...)
-	}
+	logger := slog.Default().With(
+		"ns", n.Name,
+		"net", ns)
 
-	return n.Ambient.Advertise(ctx, ns, opt...)
+	ttl, err := n.Ambient.Advertise(ctx, ns, opt...)
+	if err != nil {
+		logger.With("error", err)
+	}
+	defer logger.Debug("advertised")
+
+	return ttl, err
 }
 
 func (n Namespace) FindPeers(ctx context.Context, ns string, opt ...discovery.Option) (<-chan peer.AddrInfo, error) {
-	if n.Match(ns) {
-		return n.Bootstrap.FindPeers(ctx, ns, opt...)
+	logger := slog.Default().With(
+		"ns", n.Name,
+		"match", ns)
+
+	peers, err := n.Ambient.FindPeers(ctx, ns, opt...)
+	if err != nil {
+		logger.With("error", err)
 	}
+	defer logger.Debug("crawled")
 
-	return n.Ambient.FindPeers(ctx, ns, opt...)
-}
-
-func (n Namespace) Match(ns string) bool {
-	return ns == "floodsub:"+n.Name
+	return peers, err
 }
