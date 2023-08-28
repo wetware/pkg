@@ -34,7 +34,7 @@ func (conf Config) Client() (host.Host, io.Closer) {
 	}
 	closer = closer.push(dht)
 
-	ns := &boot.Namespace{
+	d := &boot.Namespace{
 		Name:      conf.NS,
 		Bootstrap: conf.bootstrap(),
 		Ambient:   conf.ambient(dht),
@@ -43,7 +43,7 @@ func (conf Config) Client() (host.Host, io.Closer) {
 	pubsub, err := pubsub.NewGossipSub(context.TODO(), h,
 		pubsub.WithPeerExchange(true),
 		// pubsub.WithRawTracer(conf.tracer()),
-		pubsub.WithDiscovery(ns),
+		pubsub.WithDiscovery(d),
 		pubsub.WithProtocolMatchFn(conf.protoMatchFunc()),
 		pubsub.WithGossipSubProtocols(conf.subProtos()),
 		pubsub.WithPeerOutboundQueueSize(1024),
@@ -53,7 +53,7 @@ func (conf Config) Client() (host.Host, io.Closer) {
 	}
 
 	cluster, err := cluster.Config{
-		Net:    ns,
+		NS:     conf.NS,
 		Host:   h,
 		PubSub: pubsub,
 		Meta:   conf.Meta,

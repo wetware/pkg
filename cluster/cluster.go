@@ -36,7 +36,7 @@ type Network interface {
 }
 
 type Config struct {
-	Net          Network
+	NS           string
 	Host         local.Host
 	PubSub       *pubsub.PubSub
 	RoutingTable RoutingTable
@@ -49,13 +49,13 @@ func (conf Config) Join(ctx context.Context) (*Router, error) {
 	}
 
 	err := conf.PubSub.RegisterTopicValidator(
-		conf.Net.Network(),
+		conf.NS,
 		pulse.NewValidator(conf.RoutingTable))
 	if err != nil {
 		return nil, err
 	}
 
-	t, err := conf.PubSub.Join(conf.Net.Network())
+	t, err := conf.PubSub.Join(conf.NS)
 	if err != nil {
 		return nil, err
 	}
