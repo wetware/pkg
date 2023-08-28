@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
+	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/util/proto"
@@ -19,7 +21,7 @@ type Addr struct {
 
 // Bootstrapper can resolve
 type Bootstrapper interface {
-	Bootstrap(context.Context, *Addr) (*rpc.Conn, error)
+	Bootstrap(context.Context, *Addr) (network.Stream, error)
 }
 
 type Config[T ~capnp.ClientKind] struct {
@@ -51,5 +53,19 @@ func (d Config[T]) DialRPC(ctx context.Context, addr net.Addr) (*rpc.Conn, error
 		// bit-packing and LZ4 compression.
 	}
 
-	return d.Bootstrapper.Bootstrap(ctx, peer)
+	s, err := d.Bootstrapper.Bootstrap(ctx, peer)
+	if err != nil {
+		return nil, err
+	}
+
+	conn := rpc.NewConn(transport(s), nil)
+	return conn, nil
+}
+
+func transport(s network.Stream) rpc.Transport {
+	if strings.HasSuffix(string(s.Protocol()), "/packed") {
+		return rpc.NewPackedStreamTransport(s)
+	}
+
+	return rpc.NewStreamTransport(s)
 }

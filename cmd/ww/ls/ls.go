@@ -36,17 +36,12 @@ func list(c *cli.Context) error {
 	}
 	defer d.Close()
 
-	ns := boot.Namespace{
-		Name:      c.String("ns"),
-		Bootstrap: d,
-		Ambient:   d,
-	}
-
 	boot := client.BootConfig{
-		Net:   ns,
-		Host:  h,
-		Peers: c.StringSlice("peer"),
-		RPC:   nil, // client doesn't export a capabiltity (yet)
+		NS:        c.String("ns"),
+		Discovery: d,
+		Host:      h,
+		Peers:     c.StringSlice("peer"),
+		RPC:       nil, // client doesn't export a capabiltity (yet)
 	}
 
 	// dial into the cluster;  if -dial=false, client is null.

@@ -51,17 +51,11 @@ func serve(c *cli.Context) error {
 		return fmt.Errorf("discovery: %w", err)
 	}
 
-	ns := boot.Namespace{
-		Name:      c.String("ns"),
-		Bootstrap: d,
-		Ambient:   d,
-	}
-
 	boot := server.BootConfig{
-		Net:   ns,
-		Host:  h,
-		Peers: c.StringSlice("peer"),
-		RPC:   nil, // server doesn't export a capabiltity (yet)
+		NS:        c.String("ns"),
+		Host:      h,
+		Discovery: d,
+		Peers:     c.StringSlice("peer"),
 	}
 
 	dialer := client.Config[host.Host]{
