@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net"
 
+	"log/slog"
+
 	"github.com/libp2p/go-libp2p/core/discovery"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -37,9 +39,17 @@ func (conf BootConfig) Bootstrap(ctx context.Context, addr net.Addr, protos ...p
 }
 
 func (conf BootConfig) connect(ctx context.Context, addr net.Addr, protos []protocol.ID, info peer.AddrInfo) (network.Stream, error) {
+	slog.Debug("peer discovered",
+		"proto", protos,
+		"peer", info)
+
 	if err := conf.Host.Connect(ctx, info); err != nil {
 		return nil, fmt.Errorf("connect: %w", err)
 	}
+
+	slog.Debug("connected to peer",
+		"proto", protos,
+		"peer", info)
 
 	return conf.Host.NewStream(ctx, info.ID, protos...)
 }

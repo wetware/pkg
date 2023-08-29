@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net"
 
 	"github.com/libp2p/go-libp2p/core/discovery"
@@ -37,9 +38,17 @@ func (conf BootConfig) Bootstrap(ctx context.Context, addr net.Addr, protos ...p
 }
 
 func (conf BootConfig) dial(ctx context.Context, addr net.Addr, protos []protocol.ID, info peer.AddrInfo) (network.Stream, error) {
+	slog.Debug("peer discovered",
+		"proto", protos,
+		"peer", info)
+
 	if err := conf.Host.Connect(ctx, info); err != nil {
 		return nil, fmt.Errorf("connect: %w", err)
 	}
+
+	slog.Debug("connected to peer",
+		"proto", protos,
+		"peer", info)
 
 	return conf.Host.NewStream(ctx, info.ID, protos...)
 }
