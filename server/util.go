@@ -7,7 +7,7 @@ import (
 	tcp "github.com/libp2p/go-libp2p/p2p/transport/tcp"
 )
 
-func NetConfig(opt ...p2p.Option) []p2p.Option {
+func DefaultP2POpts(opt ...p2p.Option) []p2p.Option {
 	return append([]p2p.Option{
 		p2p.NoTransports,
 		p2p.Transport(tcp.NewTCPTransport),
@@ -16,5 +16,5 @@ func NetConfig(opt ...p2p.Option) []p2p.Option {
 }
 
 func ListenP2P(listen ...string) (local.Host, error) {
-	return p2p.New(NetConfig(p2p.ListenAddrStrings(listen...))...)
+	return p2p.New(DefaultP2POpts(p2p.ListenAddrStrings(listen...))...)
 }

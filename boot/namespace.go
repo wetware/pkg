@@ -8,6 +8,8 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/discovery"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
+	"github.com/wetware/pkg/util/proto"
 )
 
 type Namespace struct {
@@ -15,8 +17,8 @@ type Namespace struct {
 	Bootstrap, Ambient discovery.Discovery
 }
 
-func (n Namespace) Network() string {
-	return n.Name
+func (n Namespace) Protocols() []protocol.ID {
+	return proto.Namespace(n.Name)
 }
 
 func (n Namespace) Advertise(ctx context.Context, net string, opt ...discovery.Option) (ttl time.Duration, err error) {

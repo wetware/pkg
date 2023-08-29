@@ -5,6 +5,8 @@ import (
 	"os"
 
 	local "github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
+	ma "github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
 
 	ww "github.com/wetware/pkg"
@@ -13,7 +15,6 @@ import (
 	"github.com/wetware/pkg/cap/host"
 	"github.com/wetware/pkg/client"
 	"github.com/wetware/pkg/rom"
-	"github.com/wetware/pkg/util/proto"
 )
 
 var flags = []cli.Flag{
@@ -46,7 +47,7 @@ func run(c *cli.Context) error {
 	}
 	defer h.Close()
 
-	d, err := boot.DialString(h, c.String("discover"))
+	bootstrap, err := newBootstrap(c, h)
 	if err != nil {
 		return fmt.Errorf("discovery: %w", err)
 	}
@@ -54,7 +55,7 @@ func run(c *cli.Context) error {
 	boot := client.BootConfig{
 		NS:         c.String("ns"),
 		Host:       h,
-		Discoverer: d,
+		Discoverer: bootstrap,
 	}
 
 	// dial into the cluster
@@ -64,7 +65,12 @@ func run(c *cli.Context) error {
 		Opts:         nil, // TODO:  export something from the client side
 	}
 
-	sess, err := dialer.Dial(c.Context, addr(c, h))
+	addr := addr{
+		NS:   c.String("ns"),
+		Peer: h.ID(),
+	}
+
+	sess, err := dialer.Dial(c.Context, addr)
 	if err != nil {
 		return err
 	}
@@ -88,14 +94,13 @@ func run(c *cli.Context) error {
 	return wetware.Exec(c.Context, rom)
 }
 
-func addr(c *cli.Context, h local.Host) *ww.Addr {
-	ns := c.String("ns")
-	return &ww.Addr{
-		NS:    ns,
-		Peer:  h.ID(),
-		Proto: proto.Namespace(ns),
-	}
+type addr struct {
+	NS   string
+	Peer peer.ID
 }
+
+func (a addr) Network() string { return a.NS }
+func (a addr) String() string  { return a.Peer.String() }
 
 func bytecode(c *cli.Context) (rom.ROM, error) {
 	if c.Bool("stdin") {
@@ -119,4 +124,23 @@ func loadROM(c *cli.Context) (rom.ROM, error) {
 	defer f.Close()
 
 	return rom.Read(f)
+}
+
+func newBootstrap(c *cli.Context, h local.Host) (_ boot.Service, err error) {
+	// use discovery service?
+	if len(c.StringSlice("peer")) == 0 {
+		serviceAddr := c.String("discover")
+		return boot.DialString(h, serviceAddr)
+	}
+
+	// fast path; direct dial a peer
+	maddrs := make([]ma.Multiaddr, len(c.StringSlice("peer")))
+	for i, s := range c.StringSlice("peer") {
+		if maddrs[i], err = ma.NewMultiaddr(s); err != nil {
+			return
+		}
+	}
+
+	infos, err := peer.AddrInfosFromP2pAddrs(maddrs...)
+	return boot.StaticAddrs(infos), err
 }

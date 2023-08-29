@@ -17,8 +17,6 @@ import (
 	"github.com/jpillora/backoff"
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/libp2p/go-libp2p/core/discovery"
-	local "github.com/libp2p/go-libp2p/core/host"
 
 	"github.com/lthibault/jitterbug/v2"
 
@@ -29,49 +27,6 @@ import (
 )
 
 var ErrClosing = errors.New("closing")
-
-type Network interface {
-	Network() string
-	discovery.Discovery
-}
-
-type Config struct {
-	NS           string
-	Host         local.Host
-	PubSub       *pubsub.PubSub
-	RoutingTable RoutingTable
-	Meta         []string
-}
-
-func (conf Config) Join(ctx context.Context) (*Router, error) {
-	if conf.RoutingTable == nil {
-		conf.RoutingTable = routing.New(time.Now())
-	}
-
-	err := conf.PubSub.RegisterTopicValidator(
-		conf.NS,
-		pulse.NewValidator(conf.RoutingTable))
-	if err != nil {
-		return nil, err
-	}
-
-	t, err := conf.PubSub.Join(conf.NS)
-	if err != nil {
-		return nil, err
-	}
-
-	meta, err := conf.preparer()
-	if err != nil {
-		return nil, err
-	}
-
-	return &Router{
-		PubSub:       conf.PubSub,
-		Topic:        t,
-		Meta:         meta,
-		RoutingTable: conf.RoutingTable,
-	}, nil
-}
 
 type Topic interface {
 	String() string
@@ -91,8 +46,7 @@ type RoutingTable interface {
 // It maintains a global view of the cluster with PA/EL guarantees,
 // and periodically announces its presence to others.
 type Router struct {
-	PubSub *pubsub.PubSub
-	Topic  Topic
+	Topic Topic
 
 	Log          log.Logger
 	TTL          time.Duration
@@ -107,16 +61,12 @@ type Router struct {
 	wc             *capnp.WeakClient
 }
 
-func (r *Router) Network() string {
-	return r.TTL.String()
-}
-
 func (r *Router) Close() error {
 	if r.relaying.Swap(true) {
 		r.Clock.Stop()
 	}
 
-	return r.PubSub.UnregisterTopicValidator(r.Network())
+	return nil
 }
 
 func (r *Router) String() string {

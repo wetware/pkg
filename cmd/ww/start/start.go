@@ -2,20 +2,28 @@ package start
 
 import (
 	"fmt"
+	"os"
 
+	dht "github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/libp2p/go-libp2p-kad-dht/dual"
+	"github.com/libp2p/go-libp2p/core/discovery"
 	local "github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
+	disc_util "github.com/libp2p/go-libp2p/p2p/discovery/routing"
+	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	ma "github.com/multiformats/go-multiaddr"
+
 	"github.com/urfave/cli/v2"
 
 	ww "github.com/wetware/pkg"
-	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/boot"
-	"github.com/wetware/pkg/cap/host"
-	"github.com/wetware/pkg/client"
+	"github.com/wetware/pkg/cluster/pulse"
+	"github.com/wetware/pkg/cluster/routing"
 	"github.com/wetware/pkg/server"
 	"github.com/wetware/pkg/util/proto"
 )
+
+var meta tags
 
 var flags = []cli.Flag{
 	&cli.StringSliceFlag{
@@ -39,8 +47,27 @@ func Command() *cli.Command {
 		Name:   "start",
 		Usage:  "start a host process",
 		Flags:  flags,
+		Before: setup,
 		Action: serve,
 	}
+}
+
+func setup(c *cli.Context) error {
+	deduped := make(map[routing.MetaField]struct{})
+	for _, tag := range c.StringSlice("meta") {
+		field, err := routing.ParseField(tag)
+		if err != nil {
+			return err
+		}
+
+		deduped[field] = struct{}{}
+	}
+
+	for tag := range deduped {
+		meta = append(meta, tag)
+	}
+
+	return nil
 }
 
 func serve(c *cli.Context) error {
@@ -50,52 +77,53 @@ func serve(c *cli.Context) error {
 	}
 	defer h.Close()
 
-	d, err := newDiscovery(c, h)
+	dht, err := newDHT(c, h)
+	if err != nil {
+		return fmt.Errorf("dht: %w", err)
+	}
+	defer dht.Close()
+
+	bootstrap, err := newBootstrap(c, h)
 	if err != nil {
 		return fmt.Errorf("discovery: %w", err)
 	}
-	defer d.Close()
+	defer bootstrap.Close()
 
-	boot := server.BootConfig{
-		NS:        c.String("ns"),
-		Host:      h,
-		Discovery: d,
-	}
-
-	dialer := client.Dialer[host.Host]{
-		Bootstrapper: boot,
-		Auth:         auth.AllowAll[host.Host],
-		Opts:         nil, // TODO:  export something from the client side
-	}
-
-	server := server.Config{
-		NS:    boot.NS,
-		Proto: proto.Namespace(boot.NS),
-		Meta:  c.StringSlice("meta"),
-		Host:  h,
-		Boot:  boot,
-		Auth:  auth.AllowAll[host.Host],
+	ns := boot.Namespace{
+		Name:      c.String("ns"),
+		Bootstrap: bootstrap,
+		Ambient:   ambient(dht),
 	}
 
 	return ww.Vat{
-		Addr:   addr(c, h),
-		Dialer: dialer,
-		// Export: export,
-		Server: server,
+		NS:   ns,
+		Host: routedhost.Wrap(h, dht),
+		Meta: meta,
 	}.ListenAndServe(c.Context)
 }
 
-// local address
-func addr(c *cli.Context, h local.Host) *ww.Addr {
+func newDHT(c *cli.Context, h local.Host) (*dual.DHT, error) {
 	ns := c.String("ns")
-	return &ww.Addr{
-		NS:    ns,
-		Peer:  h.ID(),
-		Proto: proto.Namespace(ns),
-	}
+	return dual.New(c.Context, h,
+		dual.LanDHTOption(lanOpt(ns)...),
+		dual.WanDHTOption(wanOpt(ns)...))
 }
 
-func newDiscovery(c *cli.Context, h local.Host) (_ boot.Service, err error) {
+func lanOpt(ns string) []dht.Option {
+	return []dht.Option{
+		dht.Mode(dht.ModeServer),
+		dht.ProtocolPrefix(proto.Root(ns)),
+		dht.ProtocolExtension("lan")}
+}
+
+func wanOpt(ns string) []dht.Option {
+	return []dht.Option{
+		dht.Mode(dht.ModeAuto),
+		dht.ProtocolPrefix(proto.Root(ns)),
+		dht.ProtocolExtension("wan")}
+}
+
+func newBootstrap(c *cli.Context, h local.Host) (_ boot.Service, err error) {
 	// use discovery service?
 	if len(c.StringSlice("peer")) == 0 {
 		serviceAddr := c.String("discover")
@@ -112,4 +140,24 @@ func newDiscovery(c *cli.Context, h local.Host) (_ boot.Service, err error) {
 
 	infos, err := peer.AddrInfosFromP2pAddrs(maddrs...)
 	return boot.StaticAddrs(infos), err
+}
+
+func ambient(dht *dual.DHT) discovery.Discovery {
+	return disc_util.NewRoutingDiscovery(dht)
+}
+
+type tags []routing.MetaField
+
+func (tags tags) Prepare(h pulse.Heartbeat) error {
+	if err := h.SetMeta(tags); err != nil {
+		return err
+	}
+
+	// hostname may change over time
+	host, err := os.Hostname()
+	if err != nil {
+		return err
+	}
+
+	return h.SetHost(host)
 }

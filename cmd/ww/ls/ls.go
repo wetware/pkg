@@ -8,14 +8,12 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
 
-	ww "github.com/wetware/pkg"
 	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/boot"
 	"github.com/wetware/pkg/cap/host"
 	"github.com/wetware/pkg/cap/view"
 	"github.com/wetware/pkg/client"
 	"github.com/wetware/pkg/cluster/routing"
-	"github.com/wetware/pkg/util/proto"
 )
 
 func Command() *cli.Command {
@@ -32,16 +30,16 @@ func list(c *cli.Context) error {
 	}
 	defer h.Close()
 
-	d, err := newDiscovery(c, h)
+	bootstrap, err := newBootstrap(c, h)
 	if err != nil {
 		return fmt.Errorf("discovery: %w", err)
 	}
-	defer d.Close()
+	defer bootstrap.Close()
 
 	boot := client.BootConfig{
 		NS:         c.String("ns"),
 		Host:       h,
-		Discoverer: d,
+		Discoverer: bootstrap,
 	}
 
 	// dial into the cluster
@@ -51,7 +49,12 @@ func list(c *cli.Context) error {
 		Opts:         nil, // TODO:  export something from the client side
 	}
 
-	sess, err := dialer.Dial(c.Context, addr(c, h))
+	addr := addr{
+		NS:   c.String("ns"),
+		Peer: h.ID(),
+	}
+
+	sess, err := dialer.Dial(c.Context, addr)
 	if err != nil {
 		return err
 	}
@@ -73,14 +76,14 @@ func list(c *cli.Context) error {
 	return it.Err()
 }
 
-func addr(c *cli.Context, h local.Host) *ww.Addr {
-	ns := c.String("ns")
-	return &ww.Addr{
-		NS:    ns,
-		Peer:  h.ID(),
-		Proto: proto.Namespace(ns),
-	}
+type addr struct {
+	NS   string
+	Peer peer.ID
 }
+
+func (a addr) Network() string { return a.NS }
+func (a addr) String() string  { return a.Peer.String() }
+
 func query(c *cli.Context) view.Query {
 	return view.NewQuery(view.All())
 }
@@ -89,7 +92,7 @@ func render(c *cli.Context, r routing.Record) {
 	fmt.Fprintf(c.App.Writer, "/%s\n", r.Server())
 }
 
-func newDiscovery(c *cli.Context, h local.Host) (_ boot.Service, err error) {
+func newBootstrap(c *cli.Context, h local.Host) (_ boot.Service, err error) {
 	// use discovery service?
 	if len(c.StringSlice("peer")) == 0 {
 		serviceAddr := c.String("discover")

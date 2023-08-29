@@ -3,64 +3,44 @@ package ww
 import (
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
-	"net"
+	"strings"
 
-	"capnproto.org/go/capnp/v3"
-	"capnproto.org/go/capnp/v3/rpc"
+	local "github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/protocol"
+
+	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/pkg/errors"
-	"github.com/wetware/pkg/server"
+
+	"github.com/wetware/pkg/boot"
+	"github.com/wetware/pkg/cluster/pulse"
 )
 
-type Addr struct {
-	NS    string
-	Peer  peer.ID
-	Proto []protocol.ID
-}
-
-func (addr Addr) Network() string {
-	return addr.NS
-}
-
-func (addr Addr) String() string {
-	return addr.Peer.String()
-}
-
-type ClientProvider[T ~capnp.ClientKind] interface {
-	Client() (T, io.Closer)
-}
-
-type Dialer interface {
-	DialRPC(context.Context, net.Addr, ...protocol.ID) (*rpc.Conn, error)
-}
+var _ rpc.Network = (*Vat)(nil)
 
 type Vat struct {
-	Addr   *Addr
-	Dialer Dialer
-	Server server.Config
-	// Export ClientProvider[T]
+	NS   boot.Namespace
+	Host local.Host
+	Meta pulse.Preparer
 
-	in chan *rpc.Conn
+	ch chan network.Stream
 }
 
 func (vat Vat) String() string {
-	return fmt.Sprintf("%s:%s", vat.Addr.NS, vat.Addr.Peer)
+	return fmt.Sprintf("%s:%s", vat.NS, vat.Host.ID())
 }
 
 func (vat Vat) Logger() *slog.Logger {
 	return slog.Default().With(
-		"ns", vat.Addr.NS,
-		"peer", vat.Addr.Peer,
-		"proto", vat.Addr.Proto)
+		"ns", vat.NS,
+		"peer", vat.Host.ID())
 }
 
 // Return the identifier for caller on this network.
 func (vat Vat) LocalID() rpc.PeerID {
 	return rpc.PeerID{
-		Value: vat.Addr,
+		Value: vat.Host.ID(),
 	}
 }
 
@@ -68,11 +48,21 @@ func (vat Vat) LocalID() rpc.PeerID {
 // for the connection, with the values for RemotePeerID and Network
 // overridden by the Network.
 func (vat Vat) Dial(pid rpc.PeerID, opt *rpc.Options) (*rpc.Conn, error) {
+	ctx := context.TODO()
+
 	opt.RemotePeerID = pid
 	opt.Network = vat
 
-	addr := pid.Value.(*Addr)
-	return vat.Dialer.DialRPC(context.TODO(), addr, vat.Addr.Proto...)
+	peer := pid.Value.(peer.ID)
+	protos := vat.NS.Protocols()
+
+	s, err := vat.Host.NewStream(ctx, peer, protos...)
+	if err != nil {
+		return nil, err
+	}
+
+	conn := rpc.NewConn(transport(s), nil)
+	return conn, nil
 }
 
 // Accept the next incoming connection on the network, using the
@@ -80,12 +70,16 @@ func (vat Vat) Dial(pid rpc.PeerID, opt *rpc.Options) (*rpc.Conn, error) {
 // want to invoke this in a loop when launching a server.
 func (vat Vat) Accept(ctx context.Context, opt *rpc.Options) (*rpc.Conn, error) {
 	select {
-	case conn, ok := <-vat.in:
-		if ok {
-			return conn, nil
+	case s, ok := <-vat.ch:
+		if !ok {
+			return nil, errors.New("closed")
 		}
 
-		return nil, rpc.ErrConnClosed
+		opt.RemotePeerID.Value = s.Conn().RemotePeer()
+		opt.Network = vat
+
+		conn := rpc.NewConn(transport(s), opt)
+		return conn, nil
 
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -113,4 +107,12 @@ func (vat Vat) DialIntroduced(capID rpc.ThirdPartyCapID, introducedBy *rpc.Conn)
 // SHOULD return the existing connection immediately.
 func (vat Vat) AcceptIntroduced(recipientID rpc.RecipientID, introducedBy *rpc.Conn) (*rpc.Conn, error) {
 	return nil, errors.New("NOT IMPLEMENTED")
+}
+
+func transport(s network.Stream) rpc.Transport {
+	if strings.HasSuffix(string(s.Protocol()), "/packed") {
+		return rpc.NewPackedStreamTransport(s)
+	}
+
+	return rpc.NewStreamTransport(s)
 }
