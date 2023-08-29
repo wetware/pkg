@@ -79,7 +79,6 @@ func serve(c *cli.Context) error {
 
 	return ww.Vat{
 		Addr:   addr(c, h),
-		Host:   h,
 		Dialer: dialer,
 		// Export: export,
 		Server: server,
