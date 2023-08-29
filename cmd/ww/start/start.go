@@ -68,19 +68,21 @@ func serve(c *cli.Context) error {
 		Opts:         nil, // TODO:  export something from the client side
 	}
 
-	export := server.Config{
-		NS:   c.String("ns"),
-		Meta: c.StringSlice("meta"),
-		Host: h,
-		Boot: boot,
-		Auth: auth.AllowAll[host.Host],
+	server := server.Config{
+		NS:    boot.NS,
+		Proto: proto.Namespace(boot.NS),
+		Meta:  c.StringSlice("meta"),
+		Host:  h,
+		Boot:  boot,
+		Auth:  auth.AllowAll[host.Host],
 	}
 
-	return ww.Vat[host.Host]{
+	return ww.Vat{
 		Addr:   addr(c, h),
 		Host:   h,
 		Dialer: dialer,
-		Export: export,
+		// Export: export,
+		Server: server,
 	}.ListenAndServe(c.Context)
 }
 

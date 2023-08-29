@@ -3,13 +3,15 @@ package server
 import (
 	"context"
 	"fmt"
-	"io"
-
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	local "github.com/libp2p/go-libp2p/core/host"
-	"go.uber.org/multierr"
 
 	"capnproto.org/go/capnp/v3"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	local "github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
+	"golang.org/x/exp/slog"
+
 	"github.com/tetratelabs/wazero"
 
 	"github.com/wetware/pkg/auth"
@@ -19,21 +21,27 @@ import (
 )
 
 type Config struct {
-	NS   string
-	Host local.Host
-	Boot BootConfig
-	Auth auth.Policy[host.Host]
-	Meta []string
+	NS    string
+	Proto []protocol.ID
+	Host  local.Host
+	Boot  BootConfig
+	Auth  auth.Policy[host.Host]
+	Meta  []string
 }
 
-func (conf Config) Client() (host.Host, io.Closer) {
-	var closer *closer
+func (conf Config) Logger() *slog.Logger {
+	return slog.Default().With(
+		"ns", conf.NS,
+		"peer", conf.Host.ID(),
+		"proto", conf.Proto)
+}
 
+func (conf Config) Serve(ctx context.Context) error {
 	h, dht, err := conf.withRouting()
 	if err != nil {
-		return failuref("dht: %w", err)
+		return fmt.Errorf("dht: %w", err)
 	}
-	closer = closer.push(dht)
+	defer dht.Close()
 
 	d := &boot.Namespace{
 		Name:      conf.NS,
@@ -50,7 +58,7 @@ func (conf Config) Client() (host.Host, io.Closer) {
 		pubsub.WithPeerOutboundQueueSize(1024),
 		pubsub.WithValidateQueueSize(1024))
 	if err != nil {
-		return failuref("pubsub: %w", err)
+		return fmt.Errorf("pubsub: %w", err)
 	}
 
 	cluster, err := cluster.Config{
@@ -60,12 +68,12 @@ func (conf Config) Client() (host.Host, io.Closer) {
 		Meta:   conf.Meta,
 	}.Join(context.TODO())
 	if err != nil {
-		return failuref("cluster: %w", err)
+		return fmt.Errorf("cluster: %w", err)
 	}
-	closer = closer.push(cluster)
+	defer cluster.Close()
 
 	if err := cluster.Bootstrap(context.TODO()); err != nil {
-		return failuref("bootstrap: %w", err)
+		return fmt.Errorf("bootstrap: %w", err)
 	}
 
 	server := host.Server{
@@ -76,36 +84,33 @@ func (conf Config) Client() (host.Host, io.Closer) {
 			WithCloseOnContextDone(true),
 	}
 
-	return server.Host(), closer
+	host := server.Host()
+	defer host.Release()
+
+	release := conf.bind(ctx, h, host)
+	defer release()
+
+	conf.Logger().Info("wetware started")
+	defer conf.Logger().Warn("wetware stopped")
+
+	<-ctx.Done()
+	return ctx.Err()
 }
 
-// closer is a stack of io.Closers
-type closer struct {
-	closer io.Closer
-	next   *closer
-}
+func (conf Config) bind(ctx context.Context, h local.Host, host host.Host) capnp.ReleaseFunc {
+	for _, id := range conf.Proto {
+		h.SetStreamHandler(id, conf.handler(ctx, h.ID(), host))
+	}
 
-func failure(err error) (host.Host, io.Closer) {
-	return host.Host(capnp.ErrorClient(err)), io.NopCloser(nil)
-}
-
-func failuref(format string, args ...any) (host.Host, io.Closer) {
-	return failure(fmt.Errorf(format, args...))
-}
-
-func (tail *closer) push(c io.Closer) *closer {
-	return &closer{
-		closer: c,
-		next:   tail,
+	return func() {
+		for _, id := range conf.Proto {
+			h.RemoveStreamHandler(id)
+		}
 	}
 }
 
-func (tail *closer) Close() error {
-	if tail == nil {
-		return nil
-	}
+func (conf Config) handler(ctx context.Context, id peer.ID, h host.Host) network.StreamHandler {
+	return func(s network.Stream) {
 
-	return multierr.Combine(
-		tail.closer.Close(),
-		tail.next.Close())
+	}
 }

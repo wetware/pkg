@@ -5,22 +5,21 @@ import (
 	"log/slog"
 
 	"github.com/thejerf/suture/v4"
-
-	"capnproto.org/go/capnp/v3/rpc"
 )
 
-func (vat Vat[T]) ListenAndServe(ctx context.Context) error {
-	vat.in = make(chan *rpc.Conn)
+func (vat Vat) ListenAndServe(ctx context.Context) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	app := suture.New(vat.String(), suture.Spec{
 		EventHook: vat.OnEvent,
 	})
-	app.Add(vat)
+	app.Add(vat.Server)
 
 	return app.Serve(ctx)
 }
 
-func (vat Vat[T]) OnEvent(event suture.Event) {
+func (vat Vat) OnEvent(event suture.Event) {
 	switch e := event.(type) {
 
 	case suture.EventStopTimeout:
