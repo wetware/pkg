@@ -78,7 +78,7 @@ func serve(c *cli.Context) error {
 	return ww.Vat[host.Host]{
 		Addr:   addr(c, h),
 		Host:   h,
-		Dialer: dialer, // TODO:  3PH
+		Dialer: dialer,
 		Export: export,
 	}.ListenAndServe(c.Context)
 }
@@ -86,8 +86,8 @@ func serve(c *cli.Context) error {
 // local address on
 func addr(c *cli.Context, h local.Host) *ww.Addr {
 	return &ww.Addr{
-		NS:  c.String("ns"),
-		Vat: h.ID(),
+		NS:   c.String("ns"),
+		Peer: h.ID(),
 	}
 }
 

@@ -11,14 +11,16 @@ import (
 	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/pkg/errors"
 
 	"github.com/wetware/pkg/system"
 )
 
 type Addr struct {
-	NS  string
-	Vat peer.ID
+	NS    string
+	Peer  peer.ID
+	Proto []protocol.ID
 }
 
 func (addr Addr) Network() string {
@@ -26,7 +28,7 @@ func (addr Addr) Network() string {
 }
 
 func (addr Addr) String() string {
-	return addr.Vat.String()
+	return addr.Peer.String()
 }
 
 type ClientProvider[T ~capnp.ClientKind] interface {
@@ -34,7 +36,7 @@ type ClientProvider[T ~capnp.ClientKind] interface {
 }
 
 type Dialer interface {
-	DialRPC(context.Context, net.Addr) (*rpc.Conn, error)
+	DialRPC(context.Context, net.Addr, ...protocol.ID) (*rpc.Conn, error)
 }
 
 type Vat[T ~capnp.ClientKind] struct {
@@ -47,7 +49,7 @@ type Vat[T ~capnp.ClientKind] struct {
 }
 
 func (vat Vat[T]) String() string {
-	return fmt.Sprintf("%s:%s", vat.Addr.NS, vat.Addr.Vat)
+	return fmt.Sprintf("%s:%s", vat.Addr.NS, vat.Addr.Peer)
 }
 
 // Return the identifier for caller on this network.
@@ -106,8 +108,8 @@ func (vat Vat[T]) Dial(pid rpc.PeerID, opt *rpc.Options) (*rpc.Conn, error) {
 	opt.RemotePeerID = pid
 	opt.Network = vat
 
-	addr := pid.Value.(net.Addr)
-	return vat.Dialer.DialRPC(context.TODO(), addr)
+	addr := pid.Value.(*Addr)
+	return vat.Dialer.DialRPC(context.TODO(), addr, vat.Addr.Proto...)
 }
 
 // Accept the next incoming connection on the network, using the

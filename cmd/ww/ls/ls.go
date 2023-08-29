@@ -73,13 +73,11 @@ func list(c *cli.Context) error {
 	return it.Err()
 }
 
-func addr(c *cli.Context, h local.Host) *client.Addr {
-	return &client.Addr{
-		Addr: &ww.Addr{
-			NS:  c.String("ns"),
-			Vat: h.ID(),
-		},
-		Protos: proto.Namespace(c.String("ns")),
+func addr(c *cli.Context, h local.Host) *ww.Addr {
+	return &ww.Addr{
+		NS:    c.String("ns"),
+		Peer:  h.ID(),
+		Proto: proto.Namespace(c.String("ns")),
 	}
 }
 
