@@ -18,13 +18,13 @@ import (
 )
 
 type Addr struct {
-	NS    string
-	Peer  peer.ID
-	Proto []protocol.ID
+	Cluster string
+	Peer    peer.ID
+	Proto   []protocol.ID
 }
 
 func (addr Addr) Network() string {
-	return addr.NS
+	return addr.Cluster
 }
 
 func (addr Addr) String() string {
@@ -49,7 +49,7 @@ type Vat[T ~capnp.ClientKind] struct {
 }
 
 func (vat Vat[T]) String() string {
-	return fmt.Sprintf("%s:%s", vat.Addr.NS, vat.Addr.Peer)
+	return fmt.Sprintf("%s:%s", vat.Addr.Cluster, vat.Addr.Peer)
 }
 
 // Return the identifier for caller on this network.

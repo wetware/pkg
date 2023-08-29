@@ -14,6 +14,7 @@ import (
 	"github.com/wetware/pkg/cap/host"
 	"github.com/wetware/pkg/client"
 	"github.com/wetware/pkg/server"
+	"github.com/wetware/pkg/util/proto"
 )
 
 var flags = []cli.Flag{
@@ -85,9 +86,11 @@ func serve(c *cli.Context) error {
 
 // local address
 func addr(c *cli.Context, h local.Host) *ww.Addr {
+	ns := c.String("ns")
 	return &ww.Addr{
-		NS:   c.String("ns"),
-		Peer: h.ID(),
+		Cluster: ns,
+		Peer:    h.ID(),
+		Proto:   proto.Namespace(ns),
 	}
 }
 

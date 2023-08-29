@@ -89,10 +89,11 @@ func run(c *cli.Context) error {
 }
 
 func addr(c *cli.Context, h local.Host) *ww.Addr {
+	ns := c.String("ns")
 	return &ww.Addr{
-		NS:    c.String("ns"),
-		Peer:  h.ID(),
-		Proto: proto.Namespace(c.String("ns")),
+		Cluster: ns,
+		Peer:    h.ID(),
+		Proto:   proto.Namespace(ns),
 	}
 }
 
