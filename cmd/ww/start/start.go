@@ -4,7 +4,10 @@ import (
 	"fmt"
 
 	local "github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
+	ma "github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
+
 	ww "github.com/wetware/pkg"
 	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/boot"
@@ -46,34 +49,36 @@ func serve(c *cli.Context) error {
 	}
 	defer h.Close()
 
-	d, err := boot.ListenString(h, c.String("discover"))
+	d, err := newDiscovery(c, h)
 	if err != nil {
 		return fmt.Errorf("discovery: %w", err)
 	}
+	defer d.Close()
 
 	boot := server.BootConfig{
 		NS:        c.String("ns"),
 		Host:      h,
 		Discovery: d,
-		Peers:     c.StringSlice("peer"),
 	}
 
-	dialer := client.Config[host.Host]{
+	dialer := client.Dialer[host.Host]{
 		Bootstrapper: boot,
 		Auth:         auth.AllowAll[host.Host],
+		Opts:         nil, // TODO:  export something from the client side
 	}
 
 	export := server.Config{
-		NS:        c.String("ns"),
-		Meta:      c.StringSlice("meta"),
-		Host:      h,
-		Discovery: d,
+		NS:   c.String("ns"),
+		Meta: c.StringSlice("meta"),
+		Host: h,
+		Boot: boot,
+		Auth: auth.AllowAll[host.Host],
 	}
 
 	return ww.Vat[host.Host]{
 		Addr:   addr(c, h),
 		Host:   h,
-		Dialer: dialer,
+		Dialer: dialer, // TODO:  3PH
 		Export: export,
 	}.ListenAndServe(c.Context)
 }
@@ -84,4 +89,23 @@ func addr(c *cli.Context, h local.Host) *ww.Addr {
 		NS:  c.String("ns"),
 		Vat: h.ID(),
 	}
+}
+
+func newDiscovery(c *cli.Context, h local.Host) (_ boot.Service, err error) {
+	// use discovery service?
+	if len(c.StringSlice("peer")) == 0 {
+		serviceAddr := c.String("discover")
+		return boot.ListenString(h, serviceAddr)
+	}
+
+	// fast path; direct dial a peer
+	maddrs := make([]ma.Multiaddr, len(c.StringSlice("peer")))
+	for i, s := range c.StringSlice("peer") {
+		if maddrs[i], err = ma.NewMultiaddr(s); err != nil {
+			return
+		}
+	}
+
+	infos, err := peer.AddrInfosFromP2pAddrs(maddrs...)
+	return boot.StaticAddrs(infos), err
 }

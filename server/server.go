@@ -6,23 +6,24 @@ import (
 	"io"
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/libp2p/go-libp2p/core/discovery"
 	local "github.com/libp2p/go-libp2p/core/host"
 	"go.uber.org/multierr"
 
 	"capnproto.org/go/capnp/v3"
 	"github.com/tetratelabs/wazero"
 
+	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/boot"
 	"github.com/wetware/pkg/cap/host"
 	"github.com/wetware/pkg/cluster"
 )
 
 type Config struct {
-	NS        string
-	Host      local.Host
-	Meta      []string
-	Discovery discovery.Discovery
+	NS   string
+	Host local.Host
+	Boot BootConfig
+	Auth auth.Policy[host.Host]
+	Meta []string
 }
 
 func (conf Config) Client() (host.Host, io.Closer) {

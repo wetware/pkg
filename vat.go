@@ -33,14 +33,14 @@ type ClientProvider[T ~capnp.ClientKind] interface {
 	Client() (T, io.Closer)
 }
 
-type RPCDialer interface {
+type Dialer interface {
 	DialRPC(context.Context, net.Addr) (*rpc.Conn, error)
 }
 
 type Vat[T ~capnp.ClientKind] struct {
 	Addr   *Addr
 	Host   host.Host
-	Dialer RPCDialer
+	Dialer Dialer
 	Export ClientProvider[T]
 
 	in chan *rpc.Conn

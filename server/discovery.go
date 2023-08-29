@@ -10,7 +10,7 @@ import (
 // abstraction over an out-of-band protocol that delivers a small number
 // of peers.  The simplest example of this is boot.StaticAddrs.
 func (conf Config) bootstrap() discovery.Discovery {
-	return conf.Discovery
+	return conf.Boot.Discovery
 }
 
 // ambient peer discovery represents the ability of a peer to enumerate

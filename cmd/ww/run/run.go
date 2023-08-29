@@ -52,18 +52,19 @@ func run(c *cli.Context) error {
 	}
 
 	boot := client.BootConfig{
-		NS:        c.String("ns"),
-		Discovery: d,
-		Host:      h,
-		Peers:     c.StringSlice("peer"),
-		RPC:       nil, // client doesn't export a capabiltity (yet)
+		NS:         c.String("ns"),
+		Host:       h,
+		Discoverer: d,
 	}
 
-	// dial into the cluster;  if -dial=false, client is null.
-	sess, err := client.Config[host.Host]{
+	// dial into the cluster
+	dialer := client.Dialer[host.Host]{
 		Bootstrapper: boot,
 		Auth:         auth.AllowAll[host.Host],
-	}.Dial(c.Context, addr(c, h))
+		Opts:         nil, // TODO:  export something from the client side
+	}
+
+	sess, err := dialer.Dial(c.Context, addr(c, h))
 	if err != nil {
 		return err
 	}

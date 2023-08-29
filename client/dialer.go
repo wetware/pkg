@@ -24,13 +24,13 @@ type Bootstrapper interface {
 	Bootstrap(context.Context, *Addr) (network.Stream, error)
 }
 
-type Config[T ~capnp.ClientKind] struct {
+type Dialer[T ~capnp.ClientKind] struct {
 	Bootstrapper Bootstrapper
 	Auth         auth.Policy[T]
 	Opts         *rpc.Options
 }
 
-func (d Config[T]) Dial(ctx context.Context, addr *Addr) (auth.Session[T], error) {
+func (d Dialer[T]) Dial(ctx context.Context, addr *Addr) (auth.Session[T], error) {
 	conn, err := d.DialRPC(ctx, addr)
 	if err != nil {
 		return auth.DenyAll[T](), fmt.Errorf("dial: %w", err)
@@ -44,7 +44,7 @@ func (d Config[T]) Dial(ctx context.Context, addr *Addr) (auth.Session[T], error
 	return d.Auth.Login(ctx, T(client)), nil
 }
 
-func (d Config[T]) DialRPC(ctx context.Context, addr net.Addr) (*rpc.Conn, error) {
+func (d Dialer[T]) DialRPC(ctx context.Context, addr net.Addr) (*rpc.Conn, error) {
 	peer := &Addr{
 		Addr:   addr,
 		Protos: proto.Namespace(addr.Network()),
