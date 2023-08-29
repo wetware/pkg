@@ -83,7 +83,7 @@ func serve(c *cli.Context) error {
 	}.ListenAndServe(c.Context)
 }
 
-// local address on
+// local address
 func addr(c *cli.Context, h local.Host) *ww.Addr {
 	return &ww.Addr{
 		NS:   c.String("ns"),
