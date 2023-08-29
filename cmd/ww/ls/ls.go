@@ -76,9 +76,9 @@ func list(c *cli.Context) error {
 func addr(c *cli.Context, h local.Host) *ww.Addr {
 	ns := c.String("ns")
 	return &ww.Addr{
-		Cluster: ns,
-		Peer:    h.ID(),
-		Proto:   proto.Namespace(ns),
+		NS:    ns,
+		Peer:  h.ID(),
+		Proto: proto.Namespace(ns),
 	}
 }
 func query(c *cli.Context) view.Query {
