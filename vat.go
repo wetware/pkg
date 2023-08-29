@@ -52,6 +52,13 @@ func (vat Vat[T]) String() string {
 	return fmt.Sprintf("%s:%s", vat.Addr.NS, vat.Addr.Peer)
 }
 
+func (vat Vat[T]) Logger() *slog.Logger {
+	return slog.Default().With(
+		"ns", vat.Addr.NS,
+		"peer", vat.Addr.Peer,
+		"proto", vat.Addr.Proto)
+}
+
 // Return the identifier for caller on this network.
 func (vat Vat[T]) LocalID() rpc.PeerID {
 	return rpc.PeerID{
@@ -68,17 +75,19 @@ func (vat Vat[T]) Serve(ctx context.Context) error {
 		return err
 	}
 
-	opts := &rpc.Options{
-		BootstrapClient: capnp.Client(t),
-		ErrorReporter: &system.ErrorReporter{
-			Logger: slog.Default(),
-		},
+	logger := &system.ErrorReporter{
+		Logger: vat.Logger(),
 	}
 
-	slog.Info("wetware started")
-	defer slog.Warn("wetware stopped")
+	logger.Info("wetware started")
+	defer logger.Warn("wetware stopped")
 
 	for {
+		opts := &rpc.Options{
+			BootstrapClient: capnp.Client(t).AddRef(),
+			ErrorReporter:   logger,
+		}
+
 		conn, err := vat.Accept(ctx, opts)
 		if err != nil {
 			return fmt.Errorf("accept: %w", err)
