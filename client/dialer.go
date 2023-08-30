@@ -19,7 +19,7 @@ import (
 
 type Dialer[T ~capnp.ClientKind] struct {
 	Host    local.Host
-	Account auth.Signer[T]
+	Account auth.Signer
 }
 
 func (d Dialer[T]) DialDiscover(ctx context.Context, ds discovery.Discoverer, ns string) auth.Session[T] {

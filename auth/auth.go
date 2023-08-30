@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"capnproto.org/go/capnp/v3"
-	"github.com/libp2p/go-libp2p/core/record"
 )
 
 type Session[T ~capnp.ClientKind] struct {
@@ -17,25 +16,13 @@ func (sess Session[T]) Close() error {
 	return nil
 }
 
-func (sess Session[T]) Authenticate(ctx context.Context, account Signer[T]) Session[T] {
+func (sess Session[T]) Authenticate(ctx context.Context, account Signer) Session[T] {
 	return sess
 }
 
-type Signer[T ~capnp.ClientKind] func([]byte) (*record.Envelope, error)
+type Policy[T ~capnp.ClientKind] func(context.Context, Signer) Session[T]
 
-// Sign([]byte) (*record.Envelope, error)
-func (sign Signer[T]) Client() capnp.Client {
-	if sign == nil {
-		return capnp.Client{}
-	}
-
-	// TODO:  api.Signer_ServerToClient(...)
-	panic("NOT IMPLEMENTED")
-}
-
-type Policy[T ~capnp.ClientKind] func(context.Context, Signer[T]) Session[T]
-
-func (auth Policy[T]) Authenticate(ctx context.Context, account Signer[T]) Session[T] {
+func (auth Policy[T]) Authenticate(ctx context.Context, account Signer) Session[T] {
 	return auth(ctx, account)
 }
 
