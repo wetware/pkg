@@ -7,7 +7,7 @@ import (
 	tcp "github.com/libp2p/go-libp2p/p2p/transport/tcp"
 )
 
-func NetConfig(opt ...p2p.Option) []p2p.Option {
+func DefaultP2POpts(opt ...p2p.Option) []p2p.Option {
 	return append([]p2p.Option{
 		p2p.NoTransports,
 		p2p.NoListenAddrs,
@@ -17,5 +17,5 @@ func NetConfig(opt ...p2p.Option) []p2p.Option {
 }
 
 func DialP2P() (local.Host, error) {
-	return p2p.New(NetConfig()...)
+	return p2p.New(DefaultP2POpts()...)
 }

@@ -2,38 +2,55 @@ package auth
 
 import (
 	"context"
+	"fmt"
 
 	"capnproto.org/go/capnp/v3"
+	"github.com/libp2p/go-libp2p/core/record"
 )
 
-type Session[T ~capnp.ClientKind] interface {
-	Client() T
-	Close() error
+type Session[T ~capnp.ClientKind] struct {
+	Client T
 }
 
-type Policy[T ~capnp.ClientKind] func(context.Context, T) Session[T]
+func (sess Session[T]) Close() error {
+	capnp.Client(sess.Client).Release()
+	return nil
+}
 
-func (allow Policy[T]) Login(ctx context.Context, t T) Session[T] {
-	return allow(ctx, t)
+func (sess Session[T]) Authenticate(ctx context.Context, account Signer[T]) Session[T] {
+	return sess
+}
+
+type Signer[T ~capnp.ClientKind] func([]byte) (*record.Envelope, error)
+
+// Sign([]byte) (*record.Envelope, error)
+func (sign Signer[T]) Client() capnp.Client {
+	if sign == nil {
+		return capnp.Client{}
+	}
+
+	// TODO:  api.Signer_ServerToClient(...)
+	panic("NOT IMPLEMENTED")
+}
+
+type Policy[T ~capnp.ClientKind] func(context.Context, Signer[T]) Session[T]
+
+func (auth Policy[T]) Authenticate(ctx context.Context, account Signer[T]) Session[T] {
+	return auth(ctx, account)
 }
 
 func AllowAll[T ~capnp.ClientKind](ctx context.Context, t T) Session[T] {
-	return maybe[T]{t} // just(t)
+	return Session[T]{t} // just(t)
 }
 
 func DenyAll[T ~capnp.ClientKind]() Session[T] {
-	return maybe[T]{} // nothing
+	return Session[T]{} // nothing
 }
 
-type maybe[T ~capnp.ClientKind] struct {
-	T T
+func Failf[T ~capnp.ClientKind](format string, args ...any) Session[T] {
+	return Fail[T](fmt.Errorf(format, args...))
 }
 
-func (t maybe[T]) Client() T {
-	return t.T
-}
-
-func (t maybe[T]) Close() error {
-	capnp.Client(t.T).Release()
-	return nil
+func Fail[T ~capnp.ClientKind](err error) Session[T] {
+	return Session[T]{T(capnp.ErrorClient(err))}
 }

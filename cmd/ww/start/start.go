@@ -15,7 +15,6 @@ import (
 
 	"github.com/urfave/cli/v2"
 
-	ww "github.com/wetware/pkg"
 	"github.com/wetware/pkg/boot"
 	"github.com/wetware/pkg/cluster/pulse"
 	"github.com/wetware/pkg/cluster/routing"
@@ -95,11 +94,11 @@ func serve(c *cli.Context) error {
 		Ambient:   ambient(dht),
 	}
 
-	return ww.Vat{
+	return server.Vat{
 		NS:   ns,
 		Host: routedhost.Wrap(h, dht),
 		Meta: meta,
-	}.ListenAndServe(c.Context)
+	}.Serve(c.Context)
 }
 
 func newDHT(c *cli.Context, h local.Host) (*dual.DHT, error) {

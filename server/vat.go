@@ -1,4 +1,4 @@
-package ww
+package server
 
 import (
 	"context"
@@ -53,10 +53,10 @@ func (vat Vat) Dial(pid rpc.PeerID, opt *rpc.Options) (*rpc.Conn, error) {
 	opt.RemotePeerID = pid
 	opt.Network = vat
 
-	peer := pid.Value.(peer.ID)
+	peer := pid.Value.(peer.AddrInfo)
 	protos := vat.NS.Protocols()
 
-	s, err := vat.Host.NewStream(ctx, peer, protos...)
+	s, err := vat.Host.NewStream(ctx, peer.ID, protos...)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +75,10 @@ func (vat Vat) Accept(ctx context.Context, opt *rpc.Options) (*rpc.Conn, error) 
 			return nil, errors.New("closed")
 		}
 
-		opt.RemotePeerID.Value = s.Conn().RemotePeer()
+		opt.RemotePeerID.Value = peer.AddrInfo{
+			ID:    s.Conn().RemotePeer(),
+			Addrs: vat.Host.Peerstore().Addrs(s.Conn().RemotePeer()),
+		}
 		opt.Network = vat
 
 		conn := rpc.NewConn(transport(s), opt)

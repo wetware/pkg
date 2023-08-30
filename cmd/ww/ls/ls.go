@@ -8,7 +8,6 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
 
-	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/boot"
 	"github.com/wetware/pkg/cap/host"
 	"github.com/wetware/pkg/cap/view"
@@ -36,34 +35,16 @@ func list(c *cli.Context) error {
 	}
 	defer bootstrap.Close()
 
-	boot := client.BootConfig{
-		NS:         c.String("ns"),
-		Host:       h,
-		Discoverer: bootstrap,
-	}
-
-	// dial into the cluster
-	dialer := client.Dialer[host.Host]{
-		Bootstrapper: boot,
-		Auth:         auth.AllowAll[host.Host],
-		Opts:         nil, // TODO:  export something from the client side
-	}
-
-	addr := addr{
-		NS:   c.String("ns"),
-		Peer: h.ID(),
-	}
-
-	sess, err := dialer.Dial(c.Context, addr)
+	sess := client.Dialer[host.Host]{
+		Host:    h,
+		Account: nil, // TODO:  pass a signer
+	}.DialDiscover(c.Context, bootstrap, c.String("ns"))
 	if err != nil {
 		return err
 	}
 	defer sess.Close()
 
-	host := sess.Client()
-	defer host.Release()
-
-	view, release := host.View(c.Context)
+	view, release := sess.Client.View(c.Context)
 	defer release()
 
 	it, release := view.Iter(c.Context, query(c))
@@ -75,14 +56,6 @@ func list(c *cli.Context) error {
 
 	return it.Err()
 }
-
-type addr struct {
-	NS   string
-	Peer peer.ID
-}
-
-func (a addr) Network() string { return a.NS }
-func (a addr) String() string  { return a.Peer.String() }
 
 func query(c *cli.Context) view.Query {
 	return view.NewQuery(view.All())

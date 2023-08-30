@@ -10,7 +10,6 @@ import (
 	"github.com/urfave/cli/v2"
 
 	ww "github.com/wetware/pkg"
-	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/boot"
 	"github.com/wetware/pkg/cap/host"
 	"github.com/wetware/pkg/client"
@@ -52,25 +51,10 @@ func run(c *cli.Context) error {
 		return fmt.Errorf("discovery: %w", err)
 	}
 
-	boot := client.BootConfig{
-		NS:         c.String("ns"),
-		Host:       h,
-		Discoverer: bootstrap,
-	}
-
-	// dial into the cluster
-	dialer := client.Dialer[host.Host]{
-		Bootstrapper: boot,
-		Auth:         auth.AllowAll[host.Host],
-		Opts:         nil, // TODO:  export something from the client side
-	}
-
-	addr := addr{
-		NS:   c.String("ns"),
-		Peer: h.ID(),
-	}
-
-	sess, err := dialer.Dial(c.Context, addr)
+	sess := client.Dialer[host.Host]{
+		Host:    h,
+		Account: nil, // TODO:  pass a signer
+	}.DialDiscover(c.Context, bootstrap, c.String("ns"))
 	if err != nil {
 		return err
 	}
@@ -82,7 +66,7 @@ func run(c *cli.Context) error {
 		Stdin:  c.App.Reader,
 		Stdout: c.App.Writer,
 		Stderr: c.App.ErrWriter,
-		Client: sess.Client(),
+		Client: sess.Client,
 	}
 
 	// fetch the ROM and run it
@@ -93,14 +77,6 @@ func run(c *cli.Context) error {
 
 	return wetware.Exec(c.Context, rom)
 }
-
-type addr struct {
-	NS   string
-	Peer peer.ID
-}
-
-func (a addr) Network() string { return a.NS }
-func (a addr) String() string  { return a.Peer.String() }
 
 func bytecode(c *cli.Context) (rom.ROM, error) {
 	if c.Bool("stdin") {
