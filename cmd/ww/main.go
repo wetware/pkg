@@ -22,7 +22,6 @@ import (
 	"github.com/tetratelabs/wazero/sys"
 	"github.com/urfave/cli/v2"
 
-	"github.com/wetware/pkg/cmd/ww/cluster"
 	"github.com/wetware/pkg/cmd/ww/ls"
 	"github.com/wetware/pkg/cmd/ww/run"
 	"github.com/wetware/pkg/cmd/ww/start"
@@ -65,6 +64,13 @@ var flags = []cli.Flag{
 	},
 }
 
+var commands = []*cli.Command{
+	ls.Command(),
+	run.Command(),
+	start.Command(),
+	// cluster.Command(),
+}
+
 func main() {
 	ctx, cancel := signal.NotifyContext(
 		context.Background(),
@@ -82,24 +88,36 @@ func main() {
 		Copyright:            "2020 The Wetware Project",
 		EnableBashCompletion: true,
 		Flags:                flags,
-		Before: func(c *cli.Context) error {
-			// set up logging
-			slog.SetDefault(logger(c).
-				With(
-					"version", proto.Version,
-					"ns", c.String("ns")))
-
-			return nil
-		},
-		Commands: []*cli.Command{
-			ls.Command(),
-			run.Command(),
-			start.Command(),
-			cluster.Command(),
-		},
+		Before:               setup,
+		Commands:             commands,
 	}
 
 	die(app.RunContext(ctx, os.Args))
+}
+
+func setup(c *cli.Context) error {
+	var h = &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}
+
+	// enable debug logs?
+	if c.Bool("debug") {
+		h.Level = slog.LevelDebug
+	}
+
+	// enable json logging?
+	if c.Bool("json") {
+		handler := slog.NewJSONHandler(os.Stderr, h)
+		slog.SetDefault(slog.New(handler))
+	} else {
+		slog.SetDefault(slog.New(tint.NewHandler(os.Stderr, &tint.Options{
+			Level:      h.Level,
+			TimeFormat: time.Kitchen,
+			NoColor:    colorDisabled(),
+		})))
+	}
+
+	return nil
 }
 
 func die(err error) {
@@ -120,29 +138,6 @@ func die(err error) {
 	}
 
 	os.Exit(0)
-}
-
-func logger(c *cli.Context) *slog.Logger {
-	var h = &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-	}
-
-	// enable debug logs?
-	if c.Bool("debug") {
-		h.Level = slog.LevelDebug
-	}
-
-	// enable json logging?
-	if c.Bool("json") {
-		handler := slog.NewJSONHandler(os.Stderr, h)
-		return slog.New(handler)
-	}
-
-	return slog.New(tint.NewHandler(os.Stderr, &tint.Options{
-		Level:      h.Level,
-		TimeFormat: time.Kitchen,
-		NoColor:    colorDisabled(),
-	}))
 }
 
 func colorDisabled() bool {

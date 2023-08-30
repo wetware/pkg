@@ -60,7 +60,7 @@ func TestRouter(t *testing.T) {
 		Topic:        topic,
 		RoutingTable: table,
 	}
-	defer router.Stop()
+	defer router.Close()
 
 	err := router.Bootstrap(context.Background())
 	assert.NoError(t, err, "bootstrap should succeed")
@@ -71,7 +71,7 @@ func TestRouter(t *testing.T) {
 		t.Error("Call to Bootstrap() should trigger call to Publish()")
 	}
 
-	router.Stop()
+	router.Close()
 	assert.Eventually(t, relayCanceled.Load,
 		time.Millisecond*100, time.Millisecond*10,
 		"should cancel topic relay")

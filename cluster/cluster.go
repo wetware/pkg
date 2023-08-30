@@ -15,6 +15,7 @@ import (
 
 	"capnproto.org/go/capnp/v3"
 	"github.com/jpillora/backoff"
+
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	"github.com/lthibault/jitterbug/v2"
@@ -60,10 +61,12 @@ type Router struct {
 	wc             *capnp.WeakClient
 }
 
-func (r *Router) Stop() {
+func (r *Router) Close() error {
 	if r.relaying.Swap(true) {
 		r.Clock.Stop()
 	}
+
+	return nil
 }
 
 func (r *Router) String() string {

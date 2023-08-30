@@ -9,13 +9,14 @@ import (
 
 	"capnproto.org/go/capnp/v3"
 	"github.com/jpillora/backoff"
+	"go.uber.org/multierr"
+
 	"github.com/stealthrocket/wazergo"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/experimental/sock"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"github.com/wetware/pkg/util/log"
-	"go.uber.org/multierr"
 )
 
 type Closer struct {

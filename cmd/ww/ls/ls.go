@@ -3,51 +3,57 @@ package ls
 import (
 	"fmt"
 
-	"log/slog"
-
+	local "github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
+	ma "github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
 
-	"github.com/wetware/pkg/cap/host"
+	"github.com/wetware/pkg/boot"
 	"github.com/wetware/pkg/cap/view"
 	"github.com/wetware/pkg/client"
 	"github.com/wetware/pkg/cluster/routing"
-	"github.com/wetware/pkg/system"
 )
 
 func Command() *cli.Command {
 	return &cli.Command{
-		Name: "ls",
-		Action: func(c *cli.Context) error {
-			h, err := client.NewHost()
-			if err != nil {
-				return err
-			}
-			defer h.Close()
-
-			host, err := system.Bootstrap[host.Host](c.Context, h, client.Dialer{
-				Logger:   slog.Default(),
-				NS:       c.String("ns"),
-				Peers:    c.StringSlice("peer"),
-				Discover: c.String("discover"),
-			})
-			if err != nil {
-				return err
-			}
-			defer host.Release()
-
-			view, release := host.View(c.Context)
-			defer release()
-
-			it, release := view.Iter(c.Context, query(c))
-			defer release()
-
-			for r := it.Next(); r != nil; r = it.Next() {
-				render(c, r)
-			}
-
-			return it.Err()
-		},
+		Name:   "ls",
+		Action: list,
 	}
+}
+
+func list(c *cli.Context) error {
+	h, err := client.DialP2P()
+	if err != nil {
+		return fmt.Errorf("dial: %w", err)
+	}
+	defer h.Close()
+
+	bootstrap, err := newBootstrap(c, h)
+	if err != nil {
+		return fmt.Errorf("discovery: %w", err)
+	}
+	defer bootstrap.Close()
+
+	host, err := client.Dialer{
+		Host: h,
+		// Account: nil, // TODO:  pass a signer
+	}.DialDiscover(c.Context, bootstrap, c.String("ns"))
+	if err != nil {
+		return err
+	}
+	defer host.Release()
+
+	view, release := host.View(c.Context)
+	defer release()
+
+	it, release := view.Iter(c.Context, query(c))
+	defer release()
+
+	for r := it.Next(); r != nil; r = it.Next() {
+		render(c, r)
+	}
+
+	return it.Err()
 }
 
 func query(c *cli.Context) view.Query {
@@ -56,4 +62,23 @@ func query(c *cli.Context) view.Query {
 
 func render(c *cli.Context, r routing.Record) {
 	fmt.Fprintf(c.App.Writer, "/%s\n", r.Server())
+}
+
+func newBootstrap(c *cli.Context, h local.Host) (_ boot.Service, err error) {
+	// use discovery service?
+	if len(c.StringSlice("peer")) == 0 {
+		serviceAddr := c.String("discover")
+		return boot.DialString(h, serviceAddr)
+	}
+
+	// fast path; direct dial a peer
+	maddrs := make([]ma.Multiaddr, len(c.StringSlice("peer")))
+	for i, s := range c.StringSlice("peer") {
+		if maddrs[i], err = ma.NewMultiaddr(s); err != nil {
+			return
+		}
+	}
+
+	infos, err := peer.AddrInfosFromP2pAddrs(maddrs...)
+	return boot.StaticAddrs(infos), err
 }

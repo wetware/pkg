@@ -1,18 +1,19 @@
 package run
 
 import (
-	"errors"
-	"log/slog"
+	"fmt"
 	"os"
 
-	"capnproto.org/go/capnp/v3"
 	local "github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
+	ma "github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
+
 	ww "github.com/wetware/pkg"
+	"github.com/wetware/pkg/boot"
 	"github.com/wetware/pkg/cap/host"
 	"github.com/wetware/pkg/client"
 	"github.com/wetware/pkg/rom"
-	"github.com/wetware/pkg/system"
 )
 
 var flags = []cli.Flag{
@@ -31,60 +32,50 @@ var flags = []cli.Flag{
 
 func Command() *cli.Command {
 	return &cli.Command{
-		Name:  "run",
-		Usage: "execute a local webassembly process",
-		Flags: flags,
-		Action: func(c *cli.Context) error {
-			h, err := client.NewHost()
-			if err != nil {
-				return err
-			}
-			defer h.Close()
-
-			// dial into the cluster;  if -dial=false, client is null.
-			client, err := dial[host.Host](c, h)
-			if err != nil {
-				return err
-			}
-			defer client.Release()
-
-			// set up the local wetware environment.
-			wetware := ww.Ww[host.Host]{
-				NS:     c.String("ns"),
-				Stdin:  c.App.Reader,
-				Stdout: c.App.Writer,
-				Stderr: c.App.ErrWriter,
-				Client: client,
-			}
-
-			// fetch the ROM and run it
-			rom, err := bytecode(c)
-			if err != nil {
-				return err
-			}
-
-			return wetware.Exec(c.Context, rom)
-		},
+		Name:   "run",
+		Usage:  "execute a local webassembly process",
+		Flags:  flags,
+		Action: run,
 	}
 }
 
-func dial[T ~capnp.ClientKind](c *cli.Context, h local.Host) (T, error) {
-	// dial into a cluster?
-	if c.Bool("dial") {
-		return system.Bootstrap[T](c.Context, h, client.Dialer{
-			Logger:   slog.Default(),
-			NS:       c.String("ns"),
-			Peers:    c.StringSlice("peer"),
-			Discover: c.String("discover"),
-		})
+func run(c *cli.Context) error {
+	h, err := client.DialP2P()
+	if err != nil {
+		return err
+	}
+	defer h.Close()
+
+	bootstrap, err := newBootstrap(c, h)
+	if err != nil {
+		return fmt.Errorf("discovery: %w", err)
 	}
 
-	// we're not connecting to the cluster
-	return failure[T](errors.New("disconnected"))
-}
+	client, err := client.Dialer{
+		Host: h,
+		// Account: nil, // TODO:  pass a signer
+	}.DialDiscover(c.Context, bootstrap, c.String("ns"))
+	if err != nil {
+		return err
+	}
+	defer client.Release()
 
-func failure[T ~capnp.ClientKind](err error) (T, error) {
-	return T(capnp.ErrorClient(err)), err
+	// set up the local wetware environment.
+	wetware := ww.Ww[host.Host]{
+		NS:     c.String("ns"),
+		Stdin:  c.App.Reader,
+		Stdout: c.App.Writer,
+		Stderr: c.App.ErrWriter,
+		Client: client,
+	}
+
+	// fetch the ROM and run it
+	rom, err := bytecode(c)
+	if err != nil {
+		return err
+	}
+
+	return wetware.Exec(c.Context, rom)
 }
 
 func bytecode(c *cli.Context) (rom.ROM, error) {
@@ -109,4 +100,23 @@ func loadROM(c *cli.Context) (rom.ROM, error) {
 	defer f.Close()
 
 	return rom.Read(f)
+}
+
+func newBootstrap(c *cli.Context, h local.Host) (_ boot.Service, err error) {
+	// use discovery service?
+	if len(c.StringSlice("peer")) == 0 {
+		serviceAddr := c.String("discover")
+		return boot.DialString(h, serviceAddr)
+	}
+
+	// fast path; direct dial a peer
+	maddrs := make([]ma.Multiaddr, len(c.StringSlice("peer")))
+	for i, s := range c.StringSlice("peer") {
+		if maddrs[i], err = ma.NewMultiaddr(s); err != nil {
+			return
+		}
+	}
+
+	infos, err := peer.AddrInfosFromP2pAddrs(maddrs...)
+	return boot.StaticAddrs(infos), err
 }
