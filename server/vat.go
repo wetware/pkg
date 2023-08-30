@@ -61,7 +61,7 @@ func (vat Vat) Dial(pid rpc.PeerID, opt *rpc.Options) (*rpc.Conn, error) {
 		return nil, err
 	}
 
-	conn := rpc.NewConn(transport(s), nil)
+	conn := rpc.NewConn(transport(s), opt)
 	return conn, nil
 }
 
