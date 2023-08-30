@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	"github.com/libp2p/go-libp2p/core/discovery"
 	local "github.com/libp2p/go-libp2p/core/host"
@@ -19,7 +18,6 @@ import (
 	"github.com/wetware/pkg/cluster/pulse"
 	"github.com/wetware/pkg/cluster/routing"
 	"github.com/wetware/pkg/server"
-	"github.com/wetware/pkg/util/proto"
 )
 
 var meta tags
@@ -76,7 +74,7 @@ func serve(c *cli.Context) error {
 	}
 	defer h.Close()
 
-	dht, err := newDHT(c, h)
+	dht, err := server.NewDHT(c.Context, h, c.String("ns"))
 	if err != nil {
 		return fmt.Errorf("dht: %w", err)
 	}
@@ -99,27 +97,6 @@ func serve(c *cli.Context) error {
 		Host: routedhost.Wrap(h, dht),
 		Meta: meta,
 	}.Serve(c.Context)
-}
-
-func newDHT(c *cli.Context, h local.Host) (*dual.DHT, error) {
-	ns := c.String("ns")
-	return dual.New(c.Context, h,
-		dual.LanDHTOption(lanOpt(ns)...),
-		dual.WanDHTOption(wanOpt(ns)...))
-}
-
-func lanOpt(ns string) []dht.Option {
-	return []dht.Option{
-		dht.Mode(dht.ModeServer),
-		dht.ProtocolPrefix(proto.Root(ns)),
-		dht.ProtocolExtension("lan")}
-}
-
-func wanOpt(ns string) []dht.Option {
-	return []dht.Option{
-		dht.Mode(dht.ModeAuto),
-		dht.ProtocolPrefix(proto.Root(ns)),
-		dht.ProtocolExtension("wan")}
 }
 
 func newBootstrap(c *cli.Context, h local.Host) (_ boot.Service, err error) {
