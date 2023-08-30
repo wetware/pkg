@@ -2,42 +2,71 @@ package auth
 
 import (
 	"context"
-	"fmt"
 
 	"capnproto.org/go/capnp/v3"
+
+	"github.com/wetware/pkg/api/pubsub"
+	"github.com/wetware/pkg/cap/anchor"
+	"github.com/wetware/pkg/cap/host"
+	"github.com/wetware/pkg/cap/view"
 )
 
-type Session[T ~capnp.ClientKind] struct {
-	Client T
+type Session struct {
+	Release capnp.ReleaseFunc
+
+	View   view.View
+	Root   anchor.Anchor
+	PubSub pubsub.Router
 }
 
-func (sess Session[T]) Close() error {
-	capnp.Client(sess.Client).Release()
-	return nil
+func (sess Session) Host() host.Host {
+
+	panic("NOT IMPLEMENTED") // host.Server{}
+	return host.Host{}
 }
 
-func (sess Session[T]) Authenticate(ctx context.Context, account Signer) Session[T] {
+func (sess Session) Authenticate(ctx context.Context, account Signer) Session {
 	return sess
 }
 
-type Policy[T ~capnp.ClientKind] func(context.Context, Signer) Session[T]
+type Policy func(context.Context, Signer) (Session, error)
 
-func (auth Policy[T]) Authenticate(ctx context.Context, account Signer) Session[T] {
+// func (auth Policy) Client() capnp.Client {
+// 	term := api.Terminal_ServerToClient(auth)
+// 	return capnp.Client(term)
+// }
+
+func (auth Policy) Authenticate(ctx context.Context, account Signer) (Session, error) {
 	return auth(ctx, account)
 }
 
-func AllowAll[T ~capnp.ClientKind](ctx context.Context, t T) Session[T] {
-	return Session[T]{t} // just(t)
+// func (auth Policy) Login(ctx context.Context, call api.Terminal_login) error {
+// 	account := call.Args().Account()
+
+// 	sess, err := auth(ctx, func(n *Nonce) (*record.Envelope, error) {
+
+// 	})
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	res, err := call.AllocResults()
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	res.SetPubSub()
+// }
+
+func AllowAll(ctx context.Context, h host.Host) Session {
+	h = h.AddRef()
+
+	return Session{
+		Release: h.Release,
+		// View: ,
+	} // just(t)
 }
 
-func DenyAll[T ~capnp.ClientKind]() Session[T] {
-	return Session[T]{} // nothing
-}
-
-func Failf[T ~capnp.ClientKind](format string, args ...any) Session[T] {
-	return Fail[T](fmt.Errorf(format, args...))
-}
-
-func Fail[T ~capnp.ClientKind](err error) Session[T] {
-	return Session[T]{T(capnp.ErrorClient(err))}
+func DenyAll() Session {
+	return Session{} // nothing
 }

@@ -51,14 +51,14 @@ func run(c *cli.Context) error {
 		return fmt.Errorf("discovery: %w", err)
 	}
 
-	sess := client.Dialer[host.Host]{
-		Host:    h,
-		Account: nil, // TODO:  pass a signer
+	client, err := client.Dialer{
+		Host: h,
+		// Account: nil, // TODO:  pass a signer
 	}.DialDiscover(c.Context, bootstrap, c.String("ns"))
 	if err != nil {
 		return err
 	}
-	defer sess.Close()
+	defer client.Release()
 
 	// set up the local wetware environment.
 	wetware := ww.Ww[host.Host]{
@@ -66,7 +66,7 @@ func run(c *cli.Context) error {
 		Stdin:  c.App.Reader,
 		Stdout: c.App.Writer,
 		Stderr: c.App.ErrWriter,
-		Client: sess.Client,
+		Client: client,
 	}
 
 	// fetch the ROM and run it

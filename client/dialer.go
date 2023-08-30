@@ -5,72 +5,68 @@ import (
 	"fmt"
 	"strings"
 
-	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
+
 	"github.com/libp2p/go-libp2p/core/discovery"
 	local "github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
-	"github.com/wetware/pkg/auth"
+
 	"github.com/wetware/pkg/boot"
+	"github.com/wetware/pkg/cap/host"
 	"github.com/wetware/pkg/util/proto"
 )
 
-type Dialer[T ~capnp.ClientKind] struct {
-	Host    local.Host
-	Account auth.Signer
+type Dialer struct {
+	Host local.Host
+	// Account auth.Signer
 }
 
-func (d Dialer[T]) DialDiscover(ctx context.Context, ds discovery.Discoverer, ns string) auth.Session[T] {
+func (d Dialer) DialDiscover(ctx context.Context, ds discovery.Discoverer, ns string) (host.Host, error) {
 	peers, err := ds.FindPeers(ctx, ns)
 	if err != nil {
-		return auth.Failf[T]("find peers: %w", err)
+		return host.Host{}, fmt.Errorf("find peers: %w", err)
 	}
 
-	var sess = auth.Fail[T](boot.ErrNoPeers)
+	err = boot.ErrNoPeers
 	for info := range peers {
-		if err := d.Host.Connect(ctx, info); err != nil {
-			sess = auth.Fail[T](err)
+		if err = d.Host.Connect(ctx, info); err != nil {
 			continue
 		}
 
 		return d.Dial(ctx, info, proto.Namespace(ns)...)
 	}
 
-	return sess
+	return host.Host{}, err
 }
 
-func (d Dialer[T]) Dial(ctx context.Context, addr peer.AddrInfo, protos ...protocol.ID) auth.Session[T] {
+func (d Dialer) Dial(ctx context.Context, addr peer.AddrInfo, protos ...protocol.ID) (host.Host, error) {
 	conn, err := d.DialRPC(ctx, addr, protos...)
 	if err != nil {
-		return auth.Failf[T]("dial: %w", err)
+		return host.Host{}, fmt.Errorf("dial: %w", err)
 	}
 
 	client := conn.Bootstrap(ctx)
 	if err := client.Resolve(ctx); err != nil {
-		return auth.Failf[T]("bootstrap: %w", err)
+		return host.Host{}, fmt.Errorf("bootstrap: %w", err)
 	}
 
-	return auth.Session[T]{
-		Client: T(client),
-	}
+	return host.Host(client), nil
 }
 
-func (d Dialer[T]) DialRPC(ctx context.Context, addr peer.AddrInfo, protos ...protocol.ID) (*rpc.Conn, error) {
+func (d Dialer) DialRPC(ctx context.Context, addr peer.AddrInfo, protos ...protocol.ID) (*rpc.Conn, error) {
 	s, err := d.DialP2P(ctx, addr, protos...)
 	if err != nil {
 		return nil, err
 	}
 
-	conn := rpc.NewConn(transport(s), &rpc.Options{
-		BootstrapClient: d.Account.Client(),
-	})
+	conn := rpc.NewConn(transport(s), nil)
 
 	return conn, nil
 }
 
-func (d Dialer[T]) DialP2P(ctx context.Context, addr peer.AddrInfo, protos ...protocol.ID) (network.Stream, error) {
+func (d Dialer) DialP2P(ctx context.Context, addr peer.AddrInfo, protos ...protocol.ID) (network.Stream, error) {
 	if len(addr.Addrs) > 0 {
 		if err := d.Host.Connect(ctx, addr); err != nil {
 			return nil, fmt.Errorf("dial %s: %w", addr.ID, err)

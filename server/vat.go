@@ -23,17 +23,18 @@ type Vat struct {
 	NS   boot.Namespace
 	Host local.Host
 	Meta pulse.Preparer
+	// Auth auth.Policy
 
 	ch chan network.Stream
 }
 
 func (vat Vat) String() string {
-	return fmt.Sprintf("%s:%s", vat.NS, vat.Host.ID())
+	return fmt.Sprintf("%s:%s", vat.NS.Name, vat.Host.ID())
 }
 
 func (vat Vat) Logger() *slog.Logger {
 	return slog.Default().With(
-		"ns", vat.NS,
+		"ns", vat.NS.Name,
 		"peer", vat.Host.ID())
 }
 

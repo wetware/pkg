@@ -57,6 +57,10 @@ func (sign Signer) Client() capnp.Client {
 	return capnp.Client(client)
 }
 
+func (sign Signer) Account() api.Signer {
+	return api.Signer(sign.Client())
+}
+
 type signOnce struct {
 	called bool
 	sign   Signer

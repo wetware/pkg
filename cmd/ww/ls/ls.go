@@ -9,7 +9,6 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/wetware/pkg/boot"
-	"github.com/wetware/pkg/cap/host"
 	"github.com/wetware/pkg/cap/view"
 	"github.com/wetware/pkg/client"
 	"github.com/wetware/pkg/cluster/routing"
@@ -35,16 +34,16 @@ func list(c *cli.Context) error {
 	}
 	defer bootstrap.Close()
 
-	sess := client.Dialer[host.Host]{
-		Host:    h,
-		Account: nil, // TODO:  pass a signer
+	host, err := client.Dialer{
+		Host: h,
+		// Account: nil, // TODO:  pass a signer
 	}.DialDiscover(c.Context, bootstrap, c.String("ns"))
 	if err != nil {
 		return err
 	}
-	defer sess.Close()
+	defer host.Release()
 
-	view, release := sess.Client.View(c.Context)
+	view, release := host.View(c.Context)
 	defer release()
 
 	it, release := view.Iter(c.Context, query(c))

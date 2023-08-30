@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"capnproto.org/go/capnp/v3"
+	"capnproto.org/go/capnp/v3/rpc"
 	p2p "github.com/libp2p/go-libp2p"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	local "github.com/libp2p/go-libp2p/core/host"
@@ -13,11 +15,14 @@ import (
 	"github.com/libp2p/go-libp2p/core/protocol"
 	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
 	tcp "github.com/libp2p/go-libp2p/p2p/transport/tcp"
+	"github.com/tetratelabs/wazero"
 	"golang.org/x/exp/slog"
 
+	"github.com/wetware/pkg/cap/host"
 	"github.com/wetware/pkg/cluster"
 	"github.com/wetware/pkg/cluster/pulse"
 	"github.com/wetware/pkg/cluster/routing"
+	"github.com/wetware/pkg/system"
 	"github.com/wetware/pkg/util/proto"
 )
 
@@ -74,23 +79,65 @@ func (vat Vat) Serve(ctx context.Context) error {
 	}
 	defer r.Close()
 
-	// FIXME:  register libp2p stream handlers here
+	// register stream handlers
+	release := vat.bind(ctx)
+	defer release()
 
+	// join the cluster
 	if err = r.Bootstrap(ctx); err != nil {
 		return err
 	}
 
+	logger := vat.Logger().With("id", r.ID())
+	logger.Info("wetware started")
+	defer logger.Warn("wetware started")
+
+	server := host.Server{
+		ViewProvider: r,
+		TopicJoiner:  pubsub,
+		RuntimeConfig: wazero.
+			NewRuntimeConfigCompiler().
+			WithCloseOnContextDone(true),
+	}
+
+	host := server.Host()
+	defer host.Release()
+
 	for {
-		// XXX:  pass in a non-nil signer.  A nil signer
-		// safely defaults to capnp.Client{}
-		conn, err := vat.Accept(ctx, nil)
+		conn, err := vat.Accept(ctx, &rpc.Options{
+			BootstrapClient: capnp.Client(host.AddRef()),
+			ErrorReporter: system.ErrorReporter{
+				Logger: logger,
+			},
+		})
 		if err != nil {
 			return err
 		}
 
-		remote := conn.RemotePeerID().Value.(peer.ID)
+		remote := conn.RemotePeerID().Value.(peer.AddrInfo)
 		slog.Info("accepted peer connection",
-			"remote", remote)
+			"remote", remote.ID)
+	}
+}
+
+func (vat Vat) bind(ctx context.Context) capnp.ReleaseFunc {
+	for _, id := range vat.NS.Protocols() {
+		vat.Host.SetStreamHandler(id, vat.handler(ctx))
+	}
+
+	return func() {
+		for _, id := range vat.NS.Protocols() {
+			vat.Host.RemoveStreamHandler(id)
+		}
+	}
+}
+
+func (vat Vat) handler(ctx context.Context) network.StreamHandler {
+	return func(s network.Stream) {
+		select {
+		case vat.ch <- s:
+		case <-ctx.Done():
+		}
 	}
 }
 
