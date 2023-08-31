@@ -14,6 +14,7 @@ import (
 	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/pkg/errors"
 
+	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/cluster/pulse"
 	"github.com/wetware/pkg/util/proto"
 )
@@ -25,8 +26,9 @@ type Vat struct {
 	Host               local.Host
 	Bootstrap, Ambient discovery.Discovery
 	Meta               pulse.Preparer
-	// Auth auth.Policy
+	Auth               auth.Policy
 
+	// initialized in Serve()
 	ch chan network.Stream
 }
 
@@ -34,14 +36,14 @@ func (vat Vat) String() string {
 	return fmt.Sprintf("%s:%s", vat.NS, vat.Host.ID())
 }
 
-func (vat Vat) Logger() *slog.Logger {
+func (vat *Vat) Logger() *slog.Logger {
 	return slog.Default().With(
 		"ns", vat.NS,
 		"peer", vat.Host.ID())
 }
 
 // Return the identifier for caller on this network.
-func (vat Vat) LocalID() rpc.PeerID {
+func (vat *Vat) LocalID() rpc.PeerID {
 	return rpc.PeerID{
 		Value: vat.Host.ID(),
 	}
@@ -50,7 +52,7 @@ func (vat Vat) LocalID() rpc.PeerID {
 // Connect to another peer by ID. The supplied Options are used
 // for the connection, with the values for RemotePeerID and Network
 // overridden by the Network.
-func (vat Vat) Dial(pid rpc.PeerID, opt *rpc.Options) (*rpc.Conn, error) {
+func (vat *Vat) Dial(pid rpc.PeerID, opt *rpc.Options) (*rpc.Conn, error) {
 	ctx := context.TODO()
 
 	opt.RemotePeerID = pid
@@ -71,7 +73,7 @@ func (vat Vat) Dial(pid rpc.PeerID, opt *rpc.Options) (*rpc.Conn, error) {
 // Accept the next incoming connection on the network, using the
 // supplied Options for the connection. Generally, callers will
 // want to invoke this in a loop when launching a server.
-func (vat Vat) Accept(ctx context.Context, opt *rpc.Options) (*rpc.Conn, error) {
+func (vat *Vat) Accept(ctx context.Context, opt *rpc.Options) (*rpc.Conn, error) {
 	select {
 	case s, ok := <-vat.ch:
 		if !ok {
@@ -95,14 +97,14 @@ func (vat Vat) Accept(ctx context.Context, opt *rpc.Options) (*rpc.Conn, error) 
 // Introduce the two connections, in preparation for a third party
 // handoff. Afterwards, a Provide messsage should be sent to
 // provider, and a ThirdPartyCapId should be sent to recipient.
-func (vat Vat) Introduce(provider, recipient *rpc.Conn) (rpc.IntroductionInfo, error) {
+func (vat *Vat) Introduce(provider, recipient *rpc.Conn) (rpc.IntroductionInfo, error) {
 	return rpc.IntroductionInfo{}, errors.New("NOT IMPLEMENTED")
 }
 
 // Given a ThirdPartyCapID, received from introducedBy, connect
 // to the third party. The caller should then send an Accept
 // message over the returned Connection.
-func (vat Vat) DialIntroduced(capID rpc.ThirdPartyCapID, introducedBy *rpc.Conn) (*rpc.Conn, rpc.ProvisionID, error) {
+func (vat *Vat) DialIntroduced(capID rpc.ThirdPartyCapID, introducedBy *rpc.Conn) (*rpc.Conn, rpc.ProvisionID, error) {
 	return nil, rpc.ProvisionID{}, errors.New("NOT IMPLEMENTED")
 }
 
@@ -111,7 +113,7 @@ func (vat Vat) DialIntroduced(capID rpc.ThirdPartyCapID, introducedBy *rpc.Conn)
 // return the connection formed. If there is already an
 // established connection to the relevant Peer, this
 // SHOULD return the existing connection immediately.
-func (vat Vat) AcceptIntroduced(recipientID rpc.RecipientID, introducedBy *rpc.Conn) (*rpc.Conn, error) {
+func (vat *Vat) AcceptIntroduced(recipientID rpc.RecipientID, introducedBy *rpc.Conn) (*rpc.Conn, error) {
 	return nil, errors.New("NOT IMPLEMENTED")
 }
 

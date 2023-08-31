@@ -2,71 +2,25 @@ package auth
 
 import (
 	"context"
+	"fmt"
 
-	"capnproto.org/go/capnp/v3"
-
-	"github.com/wetware/pkg/api/pubsub"
-	"github.com/wetware/pkg/cap/anchor"
-	"github.com/wetware/pkg/cap/host"
-	"github.com/wetware/pkg/cap/view"
+	"github.com/libp2p/go-libp2p/core/peer"
+	api "github.com/wetware/pkg/api/auth"
 )
 
-type Session struct {
-	Release capnp.ReleaseFunc
+type Policy func(context.Context, peer.ID) (api.Session, error)
 
-	View   view.View
-	Root   anchor.Anchor
-	PubSub pubsub.Router
+func Deny(reason string, args ...any) Policy {
+	return func(context.Context, peer.ID) (api.Session, error) {
+		return api.Session{}, fmt.Errorf(reason, args...)
+	}
 }
 
-func (sess Session) Host() host.Host {
+func (auth Policy) Authenticate(ctx context.Context, account peer.ID) (api.Session, error) {
+	if auth == nil {
+		// Default to denying all auth requests.
+		return Deny("no policy").Authenticate(ctx, account)
+	}
 
-	panic("NOT IMPLEMENTED") // host.Server{}
-	return host.Host{}
-}
-
-func (sess Session) Authenticate(ctx context.Context, account Signer) Session {
-	return sess
-}
-
-type Policy func(context.Context, Signer) (Session, error)
-
-// func (auth Policy) Client() capnp.Client {
-// 	term := api.Terminal_ServerToClient(auth)
-// 	return capnp.Client(term)
-// }
-
-func (auth Policy) Authenticate(ctx context.Context, account Signer) (Session, error) {
 	return auth(ctx, account)
-}
-
-// func (auth Policy) Login(ctx context.Context, call api.Terminal_login) error {
-// 	account := call.Args().Account()
-
-// 	sess, err := auth(ctx, func(n *Nonce) (*record.Envelope, error) {
-
-// 	})
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	res, err := call.AllocResults()
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	res.SetPubSub()
-// }
-
-func AllowAll(ctx context.Context, h host.Host) Session {
-	h = h.AddRef()
-
-	return Session{
-		Release: h.Release,
-		// View: ,
-	} // just(t)
-}
-
-func DenyAll() Session {
-	return Session{} // nothing
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/crypto"
 	local "github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/record"
-	api "github.com/wetware/pkg/api/cluster"
+	api "github.com/wetware/pkg/api/auth"
 )
 
 type Nonce [16]byte
@@ -59,6 +59,12 @@ func (sign Signer) Client() capnp.Client {
 
 func (sign Signer) Account() api.Signer {
 	return api.Signer(sign.Client())
+}
+
+func (sign Signer) Bind(ctx context.Context) func(api.Terminal_login_Params) error {
+	return func(call api.Terminal_login_Params) error {
+		return call.SetAccount(api.Signer(sign.Client()))
+	}
 }
 
 type signOnce struct {
