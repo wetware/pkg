@@ -86,16 +86,12 @@ func serve(c *cli.Context) error {
 	}
 	defer bootstrap.Close()
 
-	ns := boot.Namespace{
-		Name:      c.String("ns"),
+	return server.Vat{
+		NS:        c.String("ns"),
+		Host:      routedhost.Wrap(h, dht),
 		Bootstrap: bootstrap,
 		Ambient:   ambient(dht),
-	}
-
-	return server.Vat{
-		NS:   ns,
-		Host: routedhost.Wrap(h, dht),
-		Meta: meta,
+		Meta:      meta,
 	}.Serve(c.Context)
 }
 

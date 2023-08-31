@@ -12,6 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/tetratelabs/wazero"
+	"github.com/wetware/pkg/boot"
 	"github.com/wetware/pkg/cap/host"
 	"github.com/wetware/pkg/cluster"
 	"github.com/wetware/pkg/cluster/pulse"
@@ -28,12 +29,18 @@ func (vat Vat) Serve(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	d := &boot.Namespace{
+		Name:      vat.NS,
+		Bootstrap: vat.Bootstrap,
+		Ambient:   vat.Ambient,
+	}
+
 	pubsub, err := pubsub.NewGossipSub(ctx, vat.Host,
 		pubsub.WithPeerExchange(true),
 		// pubsub.WithRawTracer(vat.tracer()),
-		pubsub.WithDiscovery(vat.NS),
-		pubsub.WithProtocolMatchFn(protoMatchFunc(vat.NS.Name)),
-		pubsub.WithGossipSubProtocols(subProtos(vat.NS.Name)),
+		pubsub.WithDiscovery(d),
+		pubsub.WithProtocolMatchFn(protoMatchFunc(vat.NS)),
+		pubsub.WithGossipSubProtocols(subProtos(vat.NS)),
 		pubsub.WithPeerOutboundQueueSize(1024),
 		pubsub.WithValidateQueueSize(1024))
 	if err != nil {
@@ -43,14 +50,14 @@ func (vat Vat) Serve(ctx context.Context) error {
 	rt := routing.New(time.Now())
 
 	err = pubsub.RegisterTopicValidator(
-		vat.NS.Name,
+		vat.NS,
 		pulse.NewValidator(rt))
 	if err != nil {
 		return err
 	}
-	defer pubsub.UnregisterTopicValidator(vat.NS.Name)
+	defer pubsub.UnregisterTopicValidator(vat.NS)
 
-	t, err := pubsub.Join(vat.NS.Name)
+	t, err := pubsub.Join(vat.NS)
 	if err != nil {
 		return err
 	}
@@ -104,12 +111,12 @@ func (vat Vat) Serve(ctx context.Context) error {
 }
 
 func (vat Vat) bind(ctx context.Context) capnp.ReleaseFunc {
-	for _, id := range vat.NS.Protocols() {
+	for _, id := range proto.Namespace(vat.NS) {
 		vat.Host.SetStreamHandler(id, vat.handler(ctx))
 	}
 
 	return func() {
-		for _, id := range vat.NS.Protocols() {
+		for _, id := range proto.Namespace(vat.NS) {
 			vat.Host.RemoveStreamHandler(id)
 		}
 	}

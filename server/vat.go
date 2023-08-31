@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/libp2p/go-libp2p/core/discovery"
 	local "github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -13,28 +14,29 @@ import (
 	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/pkg/errors"
 
-	"github.com/wetware/pkg/boot"
 	"github.com/wetware/pkg/cluster/pulse"
+	"github.com/wetware/pkg/util/proto"
 )
 
 var _ rpc.Network = (*Vat)(nil)
 
 type Vat struct {
-	NS   boot.Namespace
-	Host local.Host
-	Meta pulse.Preparer
+	NS                 string
+	Host               local.Host
+	Bootstrap, Ambient discovery.Discovery
+	Meta               pulse.Preparer
 	// Auth auth.Policy
 
 	ch chan network.Stream
 }
 
 func (vat Vat) String() string {
-	return fmt.Sprintf("%s:%s", vat.NS.Name, vat.Host.ID())
+	return fmt.Sprintf("%s:%s", vat.NS, vat.Host.ID())
 }
 
 func (vat Vat) Logger() *slog.Logger {
 	return slog.Default().With(
-		"ns", vat.NS.Name,
+		"ns", vat.NS,
 		"peer", vat.Host.ID())
 }
 
@@ -55,7 +57,7 @@ func (vat Vat) Dial(pid rpc.PeerID, opt *rpc.Options) (*rpc.Conn, error) {
 	opt.Network = vat
 
 	peer := pid.Value.(peer.AddrInfo)
-	protos := vat.NS.Protocols()
+	protos := proto.Namespace(vat.NS)
 
 	s, err := vat.Host.NewStream(ctx, peer.ID, protos...)
 	if err != nil {
