@@ -8,10 +8,11 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
 
+	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/boot"
 	"github.com/wetware/pkg/cap/view"
-	"github.com/wetware/pkg/client"
 	"github.com/wetware/pkg/cluster/routing"
+	"github.com/wetware/pkg/vat"
 )
 
 func Command() *cli.Command {
@@ -22,7 +23,7 @@ func Command() *cli.Command {
 }
 
 func list(c *cli.Context) error {
-	h, err := client.DialP2P()
+	h, err := vat.DialP2P()
 	if err != nil {
 		return fmt.Errorf("dial: %w", err)
 	}
@@ -34,9 +35,9 @@ func list(c *cli.Context) error {
 	}
 	defer bootstrap.Close()
 
-	host, err := client.Dialer{
-		Host: h,
-		// Account: nil, // TODO:  pass a signer
+	host, err := vat.Dialer{
+		Host:    h,
+		Account: auth.SignerFromHost(h),
 	}.DialDiscover(c.Context, bootstrap, c.String("ns"))
 	if err != nil {
 		return err

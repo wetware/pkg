@@ -2,99 +2,115 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
+	"errors"
 	"fmt"
+	"time"
 
 	"capnproto.org/go/capnp/v3"
-	api "github.com/wetware/pkg/api/auth"
-	"github.com/wetware/pkg/cap/view"
-)
+	"golang.org/x/exp/slog"
 
-type Session interface {
-	Err() error
-	Close() error
-	View() view.View
-}
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/record"
+	api "github.com/wetware/pkg/api/cluster"
+	"github.com/wetware/pkg/cap/host"
+)
 
 type Terminal api.Terminal
 
-func (t Terminal) Login(ctx context.Context, account Signer) (Session, error) {
-	if account == nil {
-		return authFailure("no account specified"), nil
-	}
+func (t Terminal) AddRef() Terminal {
+	return Terminal(capnp.Client(t).AddRef())
+}
 
+func (t Terminal) Release() {
+	capnp.Client(t).Release()
+}
+
+func (t Terminal) Login(ctx context.Context, account Signer) (host.Host, error) {
 	f, release := api.Terminal(t).Login(ctx, account.Bind(ctx))
+	defer release()
 
 	res, err := f.Struct()
 	if err != nil {
-		defer release()
-		return nil, err
+		return host.Host{}, err
 	}
 
-	stat, err := res.Status()
+	return host.Host(res.Host()).AddRef(), nil
+}
+
+type TerminalServer struct {
+	Host   host.Host
+	Policy Policy
+}
+
+func (term TerminalServer) Login(ctx context.Context, call api.Terminal_login) error {
+	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+	defer cancel()
+
+	res, err := call.AllocResults()
 	if err != nil {
-		defer release()
-		return nil, err
+		return err
 	}
 
-	switch stat.Which() {
-	case api.Terminal_Status_Which_success:
-		sess, err := stat.Success()
-		if err != nil {
-			defer release()
-			return nil, err
-		}
-		return session{Session: sess, release: release}, nil
-
-	case api.Terminal_Status_Which_failure:
-		defer release()
-		reason, err := stat.Failure()
-		return authFailure(reason), err
-
-	default:
-		defer release()
-		return nil, fmt.Errorf("unrecognized status: %d", stat.Which())
+	account, err := term.Negotiate(ctx, call.Args().Account())
+	if err != nil {
+		return fmt.Errorf("auth: %w", err)
 	}
 
+	host, release := term.Policy.Authenticate(ctx, term.Host, account)
+	defer release()
+
+	return res.SetHost(host.AddRef())
 }
 
-type session struct {
-	api.Session
-	release capnp.ReleaseFunc
+func (term TerminalServer) Negotiate(ctx context.Context, account api.Signer) (peer.ID, error) {
+	var n Nonce
+	if _, err := rand.Read(n[:]); err != nil {
+		panic(err) // unreachable
+	}
+
+	f, release := account.Sign(ctx, nonce(n))
+	defer release()
+
+	res, err := f.Struct()
+	if err != nil {
+		return "", err
+	}
+
+	b, err := res.Signed()
+	if err != nil {
+		return "", err
+	}
+
+	var u Nonce
+	e, err := record.ConsumeTypedEnvelope(b, &u)
+	if err != nil {
+		return "", err
+	}
+
+	// Derive the peer.ID from the signed nonce.  This gives us the
+	// identity of the account that is trying to log in.
+	id, err := peer.IDFromPublicKey(e.PublicKey)
+	if err != nil {
+		return "", err
+	}
+
+	// Make sure the record is for the nonce we sent.  If it isn't,
+	// we should assume it's an attack.
+	if u != n {
+		slog.Warn("login failed",
+			"error", "nonce mismatch",
+			"want", n,
+			"got", u)
+
+		return "", errors.New("nonce mismatch")
+	}
+
+	return id, nil
 }
 
-func (sess session) Err() error {
-	return nil
+func nonce(n Nonce) func(s api.Signer_sign_Params) error {
+	return func(call api.Signer_sign_Params) error {
+		return call.SetChallenge(n[:])
+	}
 }
-
-func (sess session) Close() error {
-	sess.release()
-	return nil
-}
-
-func (sess session) View() view.View {
-	return view.View(sess.Session.View())
-}
-
-type authFailure string
-
-func (f authFailure) Err() error {
-	return f
-}
-
-func (f authFailure) Error() string {
-	return string(f)
-}
-
-func (authFailure) Close() error {
-	return nil
-}
-
-func (f authFailure) Client() capnp.Client {
-	return capnp.ErrorClient(f)
-}
-
-func (f authFailure) View() view.View {
-	return view.View(f.Client())
-}
-
-// func (f authFailure)

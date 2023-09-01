@@ -1,4 +1,3 @@
-//go:generate capnp compile -I$GOPATH/src/capnproto.org/go/capnp/std -ogo:auth auth.capnp
 //go:generate capnp compile -I$GOPATH/src/capnproto.org/go/capnp/std -ogo:anchor anchor.capnp
 //go:generate capnp compile -I$GOPATH/src/capnproto.org/go/capnp/std -ogo:bitswap bitswap.capnp
 //go:generate capnp compile -I$GOPATH/src/capnproto.org/go/capnp/std -ogo:boot boot.capnp

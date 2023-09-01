@@ -5,6 +5,15 @@ using Go = import "/go.capnp";
 $Go.package("cluster");
 $Go.import("github.com/wetware/pkg/api/cluster");
 
+interface Signer {
+    sign @0 (challenge :Data) -> (signed :Data);
+}
+
+
+interface Terminal {
+    login @0 (account :Signer) -> (host :Host);
+}
+
 
 interface Host {
     # Host represents a physical or virtual machine instance
@@ -134,16 +143,3 @@ interface View {
 }
 
 
-interface Terminal {
-    login @0 (account :Signer) -> (
-        view :import "cluster.capnp".View,
-        pubSub :import "pubsub.capnp".Router,
-        root :import "anchor.capnp".Anchor,
-        # TODO(soon) ...
-    );
-}
-
-
-interface Signer {
-    sign @0 (challenge :Data) -> (signed :Data);
-}

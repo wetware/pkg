@@ -95,18 +95,14 @@ type CapStoreProvider interface {
 
 // Server provides the Host capability.
 type Server struct {
-	ViewProvider  ViewProvider
-	TopicJoiner   pubsub.TopicJoiner
-	RuntimeConfig wazero.RuntimeConfig
+	ViewProvider   ViewProvider
+	PubSubProvider PubSubProvider
+	RuntimeConfig  wazero.RuntimeConfig
 
 	pubsub *pubsub.Server
 }
 
 func (s *Server) Host() Host {
-	s.pubsub = &pubsub.Server{
-		TopicJoiner: s.TopicJoiner,
-	}
-
 	return Host(api.Host_ServerToClient(s))
 }
 

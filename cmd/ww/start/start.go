@@ -14,10 +14,11 @@ import (
 
 	"github.com/urfave/cli/v2"
 
+	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/boot"
 	"github.com/wetware/pkg/cluster/pulse"
 	"github.com/wetware/pkg/cluster/routing"
-	"github.com/wetware/pkg/server"
+	"github.com/wetware/pkg/vat"
 )
 
 var meta tags
@@ -68,13 +69,13 @@ func setup(c *cli.Context) error {
 }
 
 func serve(c *cli.Context) error {
-	h, err := server.ListenP2P(c.StringSlice("listen")...)
+	h, err := vat.ListenP2P(c.StringSlice("listen")...)
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
 	}
 	defer h.Close()
 
-	dht, err := server.NewDHT(c.Context, h, c.String("ns"))
+	dht, err := vat.NewDHT(c.Context, h, c.String("ns"))
 	if err != nil {
 		return fmt.Errorf("dht: %w", err)
 	}
@@ -86,12 +87,13 @@ func serve(c *cli.Context) error {
 	}
 	defer bootstrap.Close()
 
-	return server.Vat{
+	return vat.Config{
 		NS:        c.String("ns"),
 		Host:      routedhost.Wrap(h, dht),
 		Bootstrap: bootstrap,
 		Ambient:   ambient(dht),
 		Meta:      meta,
+		Auth:      auth.AllowAll, // FIXME:  auth.Deny() is flaky
 	}.Serve(c.Context)
 }
 

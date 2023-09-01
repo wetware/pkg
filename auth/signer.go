@@ -9,7 +9,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/crypto"
 	local "github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/record"
-	api "github.com/wetware/pkg/api/auth"
+	api "github.com/wetware/pkg/api/cluster"
 )
 
 type Nonce [16]byte
@@ -35,6 +35,17 @@ func (n *Nonce) UnmarshalRecord(buf []byte) error {
 }
 
 type Signer func(*Nonce) (*record.Envelope, error)
+
+func SignerFromHost(h local.Host) Signer {
+	privKey := h.Peerstore().PrivKey(h.ID())
+	return SignerFromPrivKey(privKey)
+}
+
+func SignerFromPrivKey(privKey crypto.PrivKey) Signer {
+	return func(n *Nonce) (*record.Envelope, error) {
+		return record.Seal(n, privKey)
+	}
+}
 
 func AccountFromPrivKey[T ~capnp.ClientKind](pk crypto.PrivKey) Signer {
 	return func(n *Nonce) (*record.Envelope, error) {

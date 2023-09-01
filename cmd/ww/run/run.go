@@ -10,10 +10,11 @@ import (
 	"github.com/urfave/cli/v2"
 
 	ww "github.com/wetware/pkg"
+	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/boot"
 	"github.com/wetware/pkg/cap/host"
-	"github.com/wetware/pkg/client"
 	"github.com/wetware/pkg/rom"
+	"github.com/wetware/pkg/vat"
 )
 
 var flags = []cli.Flag{
@@ -40,7 +41,7 @@ func Command() *cli.Command {
 }
 
 func run(c *cli.Context) error {
-	h, err := client.DialP2P()
+	h, err := vat.DialP2P()
 	if err != nil {
 		return err
 	}
@@ -51,9 +52,9 @@ func run(c *cli.Context) error {
 		return fmt.Errorf("discovery: %w", err)
 	}
 
-	client, err := client.Dialer{
-		Host: h,
-		// Account: nil, // TODO:  pass a signer
+	client, err := vat.Dialer{
+		Host:    h,
+		Account: auth.SignerFromHost(h),
 	}.DialDiscover(c.Context, bootstrap, c.String("ns"))
 	if err != nil {
 		return err
