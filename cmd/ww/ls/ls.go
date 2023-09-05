@@ -42,9 +42,6 @@ func list(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	// defer sess.Message().Release()
-
-	// view := view.View(sess.View())
 
 	it, release := sess.View.Iter(c.Context, query(c))
 	defer release()
