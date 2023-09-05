@@ -4,12 +4,20 @@ package host
 
 import (
 	"context"
+	"crypto/rand"
+	"errors"
+	"fmt"
+	"time"
 
 	"capnproto.org/go/capnp/v3"
+	"golang.org/x/exp/slog"
 
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/record"
 	"github.com/tetratelabs/wazero"
 	api "github.com/wetware/pkg/api/cluster"
 	pubsub_api "github.com/wetware/pkg/api/pubsub"
+	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/cap/anchor"
 	"github.com/wetware/pkg/cap/capstore"
 	"github.com/wetware/pkg/cap/csp"
@@ -95,6 +103,7 @@ type CapStoreProvider interface {
 
 // Server provides the Host capability.
 type Server struct {
+	Auth           auth.Policy
 	ViewProvider   ViewProvider
 	PubSubProvider PubSubProvider
 	RuntimeConfig  wazero.RuntimeConfig
@@ -102,8 +111,84 @@ type Server struct {
 	pubsub *pubsub.Server
 }
 
-func (s *Server) Host() Host {
-	return Host(api.Host_ServerToClient(s))
+func (s *Server) Host() api.Host {
+	return api.Host_ServerToClient(s)
+}
+
+func (s *Server) Export() capnp.Client {
+	return capnp.NewClient(api.Terminal_NewServer(s))
+}
+
+func (s *Server) Login(ctx context.Context, call api.Terminal_login) error {
+	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+	defer cancel()
+
+	res, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	account, err := s.Negotiate(ctx, call.Args().Account())
+	if err != nil {
+		return fmt.Errorf("auth: %w", err)
+	}
+
+	host, release := s.Auth.Authenticate(ctx, s.Host(), account)
+	defer release()
+
+	return res.SetHost(host.AddRef())
+}
+
+func (s *Server) Negotiate(ctx context.Context, account api.Signer) (peer.ID, error) {
+	var n auth.Nonce
+	if _, err := rand.Read(n[:]); err != nil {
+		panic(err) // unreachable
+	}
+
+	f, release := account.Sign(ctx, nonce(n))
+	defer release()
+
+	res, err := f.Struct()
+	if err != nil {
+		return "", err
+	}
+
+	b, err := res.Signed()
+	if err != nil {
+		return "", err
+	}
+
+	var u auth.Nonce
+	e, err := record.ConsumeTypedEnvelope(b, &u)
+	if err != nil {
+		return "", err
+	}
+
+	// Derive the peer.ID from the signed nonce.  This gives us the
+	// identity of the account that is trying to log in.
+	id, err := peer.IDFromPublicKey(e.PublicKey)
+	if err != nil {
+		return "", err
+	}
+
+	// Make sure the record is for the nonce we sent.  If it isn't,
+	// we should assume it's an attack.
+	if u != n {
+		slog.Warn("login failed",
+			"error", "nonce mismatch",
+			"want", n,
+			"got", u)
+
+		return "", errors.New("nonce mismatch")
+	}
+
+	return id, nil
+}
+
+func nonce(n auth.Nonce) func(s api.Signer_sign_Params) error {
+	return func(call api.Signer_sign_Params) error {
+		return call.SetChallenge(n[:])
+	}
 }
 
 func (s *Server) View(_ context.Context, call api.Host_view) error {

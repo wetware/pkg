@@ -96,6 +96,7 @@ func (svr server) Serve(ctx context.Context) error {
 	defer r.Close()
 
 	server := &host.Server{
+		Auth:           svr.Auth,
 		ViewProvider:   r,
 		PubSubProvider: &pubsub.Server{TopicJoiner: ps},
 		RuntimeConfig: wazero.NewRuntimeConfig().
@@ -116,10 +117,8 @@ func (svr server) Serve(ctx context.Context) error {
 	defer logger.Warn("wetware started")
 
 	for {
-		term := svr.Auth.Export(server.Host())
-
 		opts := &rpc.Options{
-			BootstrapClient: capnp.Client(term),
+			BootstrapClient: server.Export(),
 			ErrorReporter:   logger,
 		}
 
@@ -160,7 +159,7 @@ func (svr server) Join(ctx context.Context, r *cluster.Router, server *host.Serv
 	}
 
 	if svr.OnJoin != nil {
-		svr.OnJoin(server.Host())
+		svr.OnJoin(host.Host(server.Host()))
 	}
 
 	return release, nil

@@ -13,6 +13,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 
+	api "github.com/wetware/pkg/api/cluster"
 	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/boot"
 	"github.com/wetware/pkg/cap/host"
@@ -54,10 +55,21 @@ func (d Dialer) Dial(ctx context.Context, addr peer.AddrInfo, protos ...protocol
 		return host.Host{}, fmt.Errorf("bootstrap: %w", err)
 	}
 
-	term := auth.Terminal(client)
+	term := api.Terminal(client)
 	defer term.Release()
 
-	return term.Login(ctx, d.Account)
+	f, release := term.Login(ctx, func(call api.Terminal_login_Params) error {
+		return call.SetAccount(d.Account.Account())
+	})
+	defer release()
+
+	res, err := f.Struct()
+	if err != nil {
+		return host.Host{}, err
+	}
+
+	h := host.Host(res.Host())
+	return h.AddRef(), nil
 }
 
 func (d Dialer) DialRPC(ctx context.Context, addr peer.AddrInfo, protos ...protocol.ID) (*rpc.Conn, error) {
