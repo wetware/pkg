@@ -12,7 +12,6 @@ import (
 	inproc "github.com/lthibault/go-libp2p-inproc-transport"
 	"github.com/stretchr/testify/require"
 	"github.com/wetware/pkg/auth"
-	"github.com/wetware/pkg/cap/host"
 	"github.com/wetware/pkg/vat"
 )
 
@@ -40,10 +39,8 @@ func TestServer(t *testing.T) {
 		Bootstrap: nopDiscovery{},
 		Ambient:   nopDiscovery{},
 		Auth:      auth.AllowAll,
-		OnJoin: func(root host.Host) {
+		OnJoin: func(root auth.Session) {
 			defer cancel()
-			defer root.Release()
-
 			require.NotZero(t, root, "must return non-null Host")
 		},
 	}.Serve(ctx)
