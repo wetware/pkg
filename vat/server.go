@@ -15,12 +15,10 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/pkg/errors"
-	"github.com/tetratelabs/wazero"
 
 	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/boot"
 	"github.com/wetware/pkg/cap/host"
-	"github.com/wetware/pkg/cap/pubsub"
 	"github.com/wetware/pkg/cluster"
 	"github.com/wetware/pkg/cluster/pulse"
 	"github.com/wetware/pkg/cluster/routing"
@@ -96,11 +94,11 @@ func (svr server) Serve(ctx context.Context) error {
 	defer r.Close()
 
 	server := &host.Server{
-		Auth:           svr.Auth,
-		ViewProvider:   r,
-		PubSubProvider: &pubsub.Server{TopicJoiner: ps},
-		RuntimeConfig: wazero.NewRuntimeConfig().
-			WithCloseOnContextDone(true),
+		Auth:         svr.Auth,
+		ViewProvider: r,
+		// PubSubProvider: &pubsub.Server{TopicJoiner: ps},
+		// RuntimeConfig: wazero.NewRuntimeConfig().
+		// 	WithCloseOnContextDone(true),
 	}
 
 	release, err := svr.Join(ctx, r, server)
@@ -156,10 +154,6 @@ func (svr server) Join(ctx context.Context, r *cluster.Router, server *host.Serv
 	if err := r.Bootstrap(ctx); err != nil {
 		defer release()
 		return nil, err
-	}
-
-	if svr.OnJoin != nil {
-		svr.OnJoin(host.Host(server.Host()))
 	}
 
 	return release, nil

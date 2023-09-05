@@ -5,8 +5,6 @@ import (
 
 	"capnproto.org/go/capnp/v3"
 	"github.com/ipfs/go-cid"
-	api "github.com/wetware/pkg/api/process"
-	"github.com/wetware/pkg/cap/csp"
 )
 
 type Self struct {
@@ -17,29 +15,35 @@ type Self struct {
 }
 
 func Init(ctx context.Context) (Self, error) {
-	var (
-		s   Self
-		err error
-	)
+	// var (
+	// 	s   Self
+	// 	err error
+	// )
 
-	b := Bootstrap[api.BootContext](ctx)
-	bCtx := csp.BootCtx(b)
+	// b, err := Bootstrap(ctx)
+	// if err != nil {
+	// 	return Self{}, err
+	// }
 
-	s.Args, err = bCtx.Args(ctx)
-	if err != nil {
-		return s, err
-	}
+	panic("NOT IMPLEMENTED")
 
-	s.Caps, err = bCtx.Caps(ctx)
-	if err != nil {
-		return s, err
-	}
+	// bCtx := csp.BootCtx(b)
 
-	s.CID, err = bCtx.Cid(ctx)
-	if err != nil {
-		return s, err
-	}
+	// s.Args, err = bCtx.Args(ctx)
+	// if err != nil {
+	// 	return s, err
+	// }
 
-	s.PID, err = bCtx.Pid(ctx)
-	return s, err
+	// s.Caps, err = bCtx.Caps(ctx)
+	// if err != nil {
+	// 	return s, err
+	// }
+
+	// s.CID, err = bCtx.Cid(ctx)
+	// if err != nil {
+	// 	return s, err
+	// }
+
+	// s.PID, err = bCtx.Pid(ctx)
+	// return s, err
 }

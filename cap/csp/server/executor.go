@@ -19,7 +19,9 @@ import (
 	wasm "github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/experimental/sock"
 
-	api "github.com/wetware/pkg/api/process"
+	api "github.com/wetware/pkg/api/cluster"
+	proc_api "github.com/wetware/pkg/api/process"
+	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/cap/csp"
 	"github.com/wetware/pkg/cap/csp/proc"
 	"github.com/wetware/pkg/system"
@@ -38,10 +40,10 @@ type Runtime struct {
 
 // Executor provides the Executor capability.
 func (r Runtime) Executor() csp.Executor {
-	return csp.Executor(api.Executor_ServerToClient(r))
+	return csp.Executor(proc_api.Executor_ServerToClient(r))
 }
 
-func (r Runtime) Exec(ctx context.Context, call api.Executor_exec) error {
+func (r Runtime) Exec(ctx context.Context, call proc_api.Executor_exec) error {
 	res, err := call.AllocResults()
 	if err != nil {
 		return err
@@ -55,7 +57,7 @@ func (r Runtime) Exec(ctx context.Context, call api.Executor_exec) error {
 	// Cache new bytecodes every time they are received.
 	cid := r.Cache.put(bc)
 
-	var bCtx api.BootContext
+	var bCtx proc_api.BootContext
 	if call.Args().HasBctx() {
 		bCtx = call.Args().Bctx()
 	} else {
@@ -77,10 +79,10 @@ func (r Runtime) Exec(ctx context.Context, call api.Executor_exec) error {
 		return err
 	}
 
-	return res.SetProcess(api.Process_ServerToClient(p))
+	return res.SetProcess(proc_api.Process_ServerToClient(p))
 }
 
-func (r Runtime) ExecCached(ctx context.Context, call api.Executor_execCached) error {
+func (r Runtime) ExecCached(ctx context.Context, call proc_api.Executor_execCached) error {
 	res, err := call.AllocResults()
 	if err != nil {
 		return err
@@ -100,7 +102,7 @@ func (r Runtime) ExecCached(ctx context.Context, call api.Executor_execCached) e
 		return fmt.Errorf("bytecode for cid %s not found", cid)
 	}
 
-	var bCtx api.BootContext
+	var bCtx proc_api.BootContext
 	if call.Args().HasBctx() {
 		bCtx = call.Args().Bctx()
 	} else {
@@ -122,7 +124,7 @@ func (r Runtime) ExecCached(ctx context.Context, call api.Executor_execCached) e
 		return err
 	}
 
-	return res.SetProcess(api.Process_ServerToClient(p))
+	return res.SetProcess(proc_api.Process_ServerToClient(p))
 }
 
 func (r Runtime) mkproc(ctx context.Context, args procArgs) (*process, error) {
@@ -192,7 +194,7 @@ func (r Runtime) mkmod(ctx context.Context, args procArgs) (wasm.Module, error) 
 		return nil, err
 	}
 
-	go ServeModule(addr, args.bCtx)
+	// go ServeModule(addr, args.bCtx) // XXX
 
 	return mod, nil
 }
@@ -231,21 +233,20 @@ func (r Runtime) spawn(fn wasm.Function, pid uint32) *process {
 type procArgs struct {
 	bc   []byte
 	ppid uint32
-	bCtx api.BootContext
+	bCtx proc_api.BootContext
 }
 
 // ServeModule ensures the host side of the TCP connection with addr=addr
 // used for CAPNP RPCs is provided by client.
-func ServeModule[T ~capnp.ClientKind](addr *net.TCPAddr, t T) {
+func ServeModule(addr *net.TCPAddr, sess auth.Session) {
 	tcpConn, err := DialWithRetries(addr)
 	if err != nil {
 		panic(err)
 	}
 	defer tcpConn.Close()
 
-	defer capnp.Client(t).Release()
 	conn := rpc.NewConn(rpc.NewStreamTransport(tcpConn), &rpc.Options{
-		BootstrapClient: capnp.Client(t),
+		BootstrapClient: capnp.NewClient(api.Terminal_NewServer(sess)),
 		ErrorReporter: system.ErrorReporter{
 			Logger: slog.Default(),
 		},

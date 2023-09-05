@@ -7,7 +7,10 @@ import (
 
 	local "github.com/libp2p/go-libp2p/core/host"
 
-	"capnproto.org/go/capnp/v3"
+	api "github.com/wetware/pkg/api/cluster"
+	"github.com/wetware/pkg/auth"
+	"github.com/wetware/pkg/cap/view"
+
 	"capnproto.org/go/capnp/v3/rpc"
 )
 
@@ -15,10 +18,10 @@ type Dialer interface {
 	DialRPC(context.Context, local.Host) (*rpc.Conn, error)
 }
 
-func Bootstrap[T ~capnp.ClientKind](ctx context.Context) T {
+func Bootstrap(ctx context.Context) (auth.Session, error) {
 	conn, err := FDSockDialer{}.DialRPC(ctx)
 	if err != nil {
-		return failure[T](err)
+		return auth.Session{}, err
 	}
 	runtime.SetFinalizer(conn, func(c io.Closer) error {
 		return c.Close()
@@ -26,12 +29,24 @@ func Bootstrap[T ~capnp.ClientKind](ctx context.Context) T {
 
 	client := conn.Bootstrap(ctx)
 	if err := client.Resolve(ctx); err != nil {
-		return failure[T](err)
+		return auth.Session{}, err
+	}
+	term := api.Terminal(client)
+
+	f, release := term.Login(ctx, nil)
+	defer release()
+
+	res, err := f.Struct()
+	if err != nil {
+		return auth.Session{}, err
 	}
 
-	return T(client)
-}
+	sess, err := res.Session()
+	if err != nil {
+		return auth.Session{}, err
+	}
 
-func failure[T ~capnp.ClientKind](err error) T {
-	return T(capnp.ErrorClient(err))
+	return auth.Session{
+		View: view.View(sess.View()).AddRef(),
+	}, nil
 }

@@ -35,19 +35,18 @@ func list(c *cli.Context) error {
 	}
 	defer bootstrap.Close()
 
-	host, err := vat.Dialer{
+	sess, err := vat.Dialer{
 		Host:    h,
 		Account: auth.SignerFromHost(h),
 	}.DialDiscover(c.Context, bootstrap, c.String("ns"))
 	if err != nil {
 		return err
 	}
-	defer host.Release()
+	// defer sess.Message().Release()
 
-	view, release := host.View(c.Context)
-	defer release()
+	// view := view.View(sess.View())
 
-	it, release := view.Iter(c.Context, query(c))
+	it, release := sess.View.Iter(c.Context, query(c))
 	defer release()
 
 	for r := it.Next(); r != nil; r = it.Next() {

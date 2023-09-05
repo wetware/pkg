@@ -93,7 +93,7 @@ func serve(c *cli.Context) error {
 		Bootstrap: bootstrap,
 		Ambient:   ambient(dht),
 		Meta:      meta,
-		Auth:      auth.AllowAll, // FIXME:  auth.Deny() is flaky
+		Auth:      auth.AllowAll,
 	}.Serve(c.Context)
 }
 

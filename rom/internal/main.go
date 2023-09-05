@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 
-	"github.com/wetware/pkg/cap/host"
 	"github.com/wetware/pkg/cap/view"
 	"github.com/wetware/pkg/cluster/routing"
 	"github.com/wetware/pkg/guest/system"
@@ -14,13 +14,12 @@ import (
 var ctx = context.Background()
 
 func main() {
-	host := system.Bootstrap[host.Host](ctx)
-	defer host.Release()
+	sess, err := system.Bootstrap(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	view, release := host.View(ctx)
-	defer release()
-
-	it, release := view.Iter(ctx, query())
+	it, release := sess.View.Iter(ctx, query())
 	defer release()
 
 	for r := it.Next(); r != nil; r = it.Next() {

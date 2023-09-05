@@ -12,7 +12,6 @@ import (
 	ww "github.com/wetware/pkg"
 	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/boot"
-	"github.com/wetware/pkg/cap/host"
 	"github.com/wetware/pkg/rom"
 	"github.com/wetware/pkg/vat"
 )
@@ -52,22 +51,22 @@ func run(c *cli.Context) error {
 		return fmt.Errorf("discovery: %w", err)
 	}
 
-	client, err := vat.Dialer{
+	sess, err := vat.Dialer{
 		Host:    h,
 		Account: auth.SignerFromHost(h),
 	}.DialDiscover(c.Context, bootstrap, c.String("ns"))
 	if err != nil {
 		return err
 	}
-	defer client.Release()
+	// defer sess.Terminate()
 
 	// set up the local wetware environment.
-	wetware := ww.Ww[host.Host]{
+	wetware := ww.Ww{
 		NS:     c.String("ns"),
 		Stdin:  c.App.Reader,
 		Stdout: c.App.Writer,
 		Stderr: c.App.ErrWriter,
-		Client: client,
+		Root:   sess,
 	}
 
 	// fetch the ROM and run it

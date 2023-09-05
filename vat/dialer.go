@@ -16,7 +16,7 @@ import (
 	api "github.com/wetware/pkg/api/cluster"
 	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/boot"
-	"github.com/wetware/pkg/cap/host"
+	"github.com/wetware/pkg/cap/view"
 	"github.com/wetware/pkg/system"
 	"github.com/wetware/pkg/util/proto"
 )
@@ -26,10 +26,10 @@ type Dialer struct {
 	Account auth.Signer
 }
 
-func (d Dialer) DialDiscover(ctx context.Context, disc discovery.Discoverer, ns string) (host.Host, error) {
+func (d Dialer) DialDiscover(ctx context.Context, disc discovery.Discoverer, ns string) (auth.Session, error) {
 	peers, err := disc.FindPeers(ctx, ns)
 	if err != nil {
-		return host.Host{}, fmt.Errorf("find peers: %w", err)
+		return auth.Session{}, fmt.Errorf("find peers: %w", err)
 	}
 
 	err = boot.ErrNoPeers
@@ -41,18 +41,18 @@ func (d Dialer) DialDiscover(ctx context.Context, disc discovery.Discoverer, ns 
 		return d.Dial(ctx, info, proto.Namespace(ns)...)
 	}
 
-	return host.Host{}, err
+	return auth.Session{}, err
 }
 
-func (d Dialer) Dial(ctx context.Context, addr peer.AddrInfo, protos ...protocol.ID) (host.Host, error) {
+func (d Dialer) Dial(ctx context.Context, addr peer.AddrInfo, protos ...protocol.ID) (auth.Session, error) {
 	conn, err := d.DialRPC(ctx, addr, protos...)
 	if err != nil {
-		return host.Host{}, fmt.Errorf("dial: %w", err)
+		return auth.Session{}, fmt.Errorf("dial: %w", err)
 	}
 
 	client := conn.Bootstrap(ctx)
 	if err := client.Resolve(ctx); err != nil {
-		return host.Host{}, fmt.Errorf("bootstrap: %w", err)
+		return auth.Session{}, fmt.Errorf("bootstrap: %w", err)
 	}
 
 	term := api.Terminal(client)
@@ -65,11 +65,17 @@ func (d Dialer) Dial(ctx context.Context, addr peer.AddrInfo, protos ...protocol
 
 	res, err := f.Struct()
 	if err != nil {
-		return host.Host{}, err
+		return auth.Session{}, err
 	}
 
-	h := host.Host(res.Host())
-	return h.AddRef(), nil
+	sess, err := res.Session()
+	if err != nil {
+		return auth.Session{}, err
+	}
+
+	return auth.Session{
+		View: view.View(sess.View()).AddRef(),
+	}, nil
 }
 
 func (d Dialer) DialRPC(ctx context.Context, addr peer.AddrInfo, protos ...protocol.ID) (*rpc.Conn, error) {

@@ -14,9 +14,7 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/record"
-	"github.com/tetratelabs/wazero"
 	api "github.com/wetware/pkg/api/cluster"
-	pubsub_api "github.com/wetware/pkg/api/pubsub"
 	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/cap/anchor"
 	"github.com/wetware/pkg/cap/capstore"
@@ -103,16 +101,8 @@ type CapStoreProvider interface {
 
 // Server provides the Host capability.
 type Server struct {
-	Auth           auth.Policy
-	ViewProvider   ViewProvider
-	PubSubProvider PubSubProvider
-	RuntimeConfig  wazero.RuntimeConfig
-
-	pubsub *pubsub.Server
-}
-
-func (s *Server) Host() api.Host {
-	return api.Host_ServerToClient(s)
+	Auth         auth.Policy
+	ViewProvider ViewProvider
 }
 
 func (s *Server) Export() capnp.Client {
@@ -133,10 +123,7 @@ func (s *Server) Login(ctx context.Context, call api.Terminal_login) error {
 		return fmt.Errorf("auth: %w", err)
 	}
 
-	host, release := s.Auth.Authenticate(ctx, s.Host(), account)
-	defer release()
-
-	return res.SetHost(host.AddRef())
+	return s.Auth(ctx, s, account, res)
 }
 
 func (s *Server) Negotiate(ctx context.Context, account api.Signer) (peer.ID, error) {
@@ -191,63 +178,7 @@ func nonce(n auth.Nonce) func(s api.Signer_sign_Params) error {
 	}
 }
 
-func (s *Server) View(_ context.Context, call api.Host_view) error {
-	res, err := call.AllocResults()
-	if err == nil {
-		view := s.ViewProvider.View()
-		err = res.SetView(api.View(view))
-	}
-
-	return err
-}
-
-func (s *Server) PubSub(_ context.Context, call api.Host_pubSub) error {
-	res, err := call.AllocResults()
-	if err == nil {
-		router := pubsub_api.Router_ServerToClient(s.pubsub)
-		err = res.SetPubSub(router)
-	}
-
-	return err
-}
-
-func (s *Server) Root(_ context.Context, call api.Host_root) error {
-	panic("NOT IMPLEMENTED")
-	// res, err := call.AllocResults()
-	// if err == nil {
-	// 	err = res.SetRoot(anchor_api.Anchor(s.AnchorProvider.Anchor()))
-	// }
-
-	// return err
-}
-
-func (s *Server) Registry(_ context.Context, call api.Host_registry) error {
-	panic("NOT IMPLEMENTED")
-	// res, err := call.AllocResults()
-	// if err == nil {
-	// 	registry := s.RegistryProvider.Registry()
-	// 	err = res.SetRegistry(reg_api.Registry(registry))
-	// }
-
-	// return err
-}
-
-func (s *Server) Executor(_ context.Context, call api.Host_executor) error {
-	panic("NOT IMPLEMENTED")
-	// res, err := call.AllocResults()
-	// if err == nil {
-	// 	e := s.ExecutorProvider.Executor()
-	// 	err = res.SetExecutor(process_api.Executor(e))
-	// }
-	// return err
-}
-
-func (s *Server) CapStore(_ context.Context, call api.Host_capStore) error {
-	panic("NOT IMPLEMENTED")
-	// res, err := call.AllocResults()
-	// if err == nil {
-	// 	c := s.CapStoreProvider.CapStore()
-	// 	err = res.SetCapStore(capstore_api.CapStore(c))
-	// }
-	// return err
+func (s *Server) BindView(sess api.Session) error {
+	view := s.ViewProvider.View()
+	return sess.SetView(api.View(view))
 }

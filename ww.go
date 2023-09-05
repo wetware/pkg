@@ -11,13 +11,13 @@ import (
 
 	"log/slog"
 
-	"capnproto.org/go/capnp/v3"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/experimental/sock"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"github.com/tetratelabs/wazero/sys"
 
+	"github.com/wetware/pkg/auth"
 	csp_server "github.com/wetware/pkg/cap/csp/server"
 	"github.com/wetware/pkg/rom"
 	"github.com/wetware/pkg/util/proto"
@@ -26,18 +26,18 @@ import (
 // Ww is the execution context for WebAssembly (WASM) bytecode,
 // allowing it to interact with (1) the local host and (2) the
 // cluster environment.
-type Ww[T ~capnp.ClientKind] struct {
+type Ww struct {
 	NS     string
 	Stdin  io.Reader
 	Stdout io.Writer
 	Stderr io.Writer
-	Client T
+	Root   auth.Session
 }
 
 // String returns the cluster namespace in which the wetware is
 // executing. If ww.NS has been assigned a non-empty string, it
 // returns the string unchanged.  Else, it defaults to "ww".
-func (ww *Ww[T]) String() string {
+func (ww *Ww) String() string {
 	if ww.NS != "" {
 		return ww.NS
 	}
@@ -48,7 +48,7 @@ func (ww *Ww[T]) String() string {
 // Exec compiles and runs the ww instance's ROM in a WASM runtime.
 // It returns any error produced by the compilation or execution of
 // the ROM.
-func (ww Ww[T]) Exec(ctx context.Context, rom rom.ROM) error {
+func (ww Ww) Exec(ctx context.Context, rom rom.ROM) error {
 	// Spawn a new runtime.
 	r := wazero.NewRuntimeWithConfig(ctx, wazero.
 		NewRuntimeConfigCompiler().
@@ -99,13 +99,13 @@ func (ww Ww[T]) Exec(ctx context.Context, rom rom.ROM) error {
 	if err != nil {
 		return err
 	}
-	go csp_server.ServeModule(addr, ww.Client)
+	go csp_server.ServeModule(addr, ww.Root)
 	defer mod.Close(ctx)
 
 	return ww.run(ctx, mod)
 }
 
-func (ww Ww[T]) run(ctx context.Context, mod api.Module) error {
+func (ww Ww) run(ctx context.Context, mod api.Module) error {
 	// Grab the the main() function and call it with the system context.
 	fn := mod.ExportedFunction("_start")
 	if fn == nil {
