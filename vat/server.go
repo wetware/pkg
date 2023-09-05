@@ -2,306 +2,154 @@ package vat
 
 import (
 	"context"
+	"crypto/rand"
+	"errors"
 	"fmt"
-	"log/slog"
+	"sync"
 	"time"
 
 	"capnproto.org/go/capnp/v3"
-	"capnproto.org/go/capnp/v3/rpc"
-	gossipsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/libp2p/go-libp2p/core/discovery"
+	"golang.org/x/exp/slog"
+
 	local "github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/protocol"
-	"github.com/pkg/errors"
-
+	"github.com/libp2p/go-libp2p/core/record"
+	api "github.com/wetware/pkg/api/cluster"
 	"github.com/wetware/pkg/auth"
-	"github.com/wetware/pkg/boot"
-	"github.com/wetware/pkg/cap/host"
-	"github.com/wetware/pkg/cluster"
-	"github.com/wetware/pkg/cluster/pulse"
-	"github.com/wetware/pkg/cluster/routing"
-	"github.com/wetware/pkg/system"
-	"github.com/wetware/pkg/util/proto"
+	"github.com/wetware/pkg/cap/anchor"
+	"github.com/wetware/pkg/cap/capstore"
+	"github.com/wetware/pkg/cap/csp"
+	"github.com/wetware/pkg/cap/pubsub"
+	service "github.com/wetware/pkg/cap/registry"
+	"github.com/wetware/pkg/cap/view"
 )
 
-var _ rpc.Network = (*server)(nil)
-
-type Config struct {
-	NS                 string
-	Host               local.Host
-	Bootstrap, Ambient discovery.Discovery
-	Meta               pulse.Preparer
-	Auth               auth.Policy
-	OnJoin             func(auth.Session)
+type ViewProvider interface {
+	View() view.View
 }
 
-func (conf Config) Serve(ctx context.Context) error {
-	return server{
-		Config: conf,
-		ch:     make(chan network.Stream),
-	}.Serve(ctx)
+type PubSubProvider interface {
+	PubSub() pubsub.Router
 }
 
-func (conf Config) String() string {
-	return fmt.Sprintf("%s:%s", conf.NS, conf.Host.ID())
+type AnchorProvider interface {
+	Anchor() anchor.Anchor
 }
 
-func (conf Config) Logger() *slog.Logger {
-	return slog.Default().With(
-		"ns", conf.NS,
-		"peer", conf.Host.ID())
+type RegistryProvider interface {
+	Registry() service.Registry
 }
 
-type server struct {
-	Config
-	ch chan network.Stream
+type ExecutorProvider interface {
+	Executor() csp.Executor
 }
 
-func (svr server) Serve(ctx context.Context) error {
-	svr.ch = make(chan network.Stream)
-	defer close(svr.ch)
+type CapStoreProvider interface {
+	CapStore() capstore.CapStore
+}
 
-	ctx, cancel := context.WithCancel(ctx)
+// Server provides the Host capability.
+type Server struct {
+	NS           string
+	Host         local.Host
+	Auth         auth.Policy
+	ViewProvider ViewProvider
+
+	once sync.Once
+	ch   chan network.Stream
+}
+
+func (svr *Server) setup() {
+	svr.once.Do(func() {
+		svr.ch = make(chan network.Stream)
+	})
+}
+
+// Close the vat.Network implementation.  Note that Close()
+// does not affect ongoing requests, nor does it release any
+// capabilities.
+func (svr *Server) Close() error {
+	svr.setup()
+	close(svr.ch)
+
+	return nil
+}
+
+func (svr *Server) Export() capnp.Client {
+	return capnp.NewClient(api.Terminal_NewServer(svr))
+}
+
+func (svr *Server) Login(ctx context.Context, call api.Terminal_login) error {
+	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
 
-	ps, err := svr.NewPubSub(ctx)
+	res, err := call.AllocResults()
 	if err != nil {
 		return err
 	}
 
-	rt := routing.New(time.Now())
-
-	err = ps.RegisterTopicValidator(
-		svr.NS,
-		pulse.NewValidator(rt))
+	account, err := svr.Negotiate(ctx, call.Args().Account())
 	if err != nil {
-		return err
-	}
-	defer ps.UnregisterTopicValidator(svr.NS)
-
-	t, err := ps.Join(svr.NS)
-	if err != nil {
-		return err
+		return fmt.Errorf("auth: %w", err)
 	}
 
-	r := &cluster.Router{
-		Topic:        t,
-		Meta:         svr.Meta,
-		RoutingTable: rt,
-	}
-	defer r.Close()
+	return svr.Auth(ctx, svr, account, res)
+}
 
-	server := &host.Server{
-		Auth:         svr.Auth,
-		ViewProvider: r,
-		// PubSubProvider: &pubsub.Server{TopicJoiner: ps},
-		// RuntimeConfig: wazero.NewRuntimeConfig().
-		// 	WithCloseOnContextDone(true),
+func (svr *Server) Negotiate(ctx context.Context, account api.Signer) (peer.ID, error) {
+	var n auth.Nonce
+	if _, err := rand.Read(n[:]); err != nil {
+		panic(err) // unreachable
 	}
 
-	release, err := svr.Join(ctx, r, server)
-	if err != nil {
-		return err
-	}
+	f, release := account.Sign(ctx, nonce(n))
 	defer release()
 
-	logger := system.ErrorReporter{
-		Logger: svr.Logger().With("id", r.ID()),
-	}
-
-	logger.Info("wetware started")
-	defer logger.Warn("wetware started")
-
-	for {
-		opts := &rpc.Options{
-			BootstrapClient: server.Export(),
-			ErrorReporter:   logger,
-		}
-
-		conn, err := svr.Accept(ctx, opts)
-		if err != nil {
-			return err
-		}
-
-		remote := conn.RemotePeerID().Value.(peer.AddrInfo)
-		logger.Info("accepted peer connection",
-			"remote", remote.ID)
-	}
-}
-
-func (svr server) NewPubSub(ctx context.Context) (*gossipsub.PubSub, error) {
-	d := &boot.Namespace{
-		Name:      svr.NS,
-		Bootstrap: svr.Bootstrap,
-		Ambient:   svr.Ambient,
-	}
-
-	return gossipsub.NewGossipSub(ctx, svr.Host,
-		gossipsub.WithPeerExchange(true),
-		// ps.WithRawTracer(svr.tracer()),
-		gossipsub.WithDiscovery(d),
-		gossipsub.WithProtocolMatchFn(protoMatchFunc(svr.NS)),
-		gossipsub.WithGossipSubProtocols(subProtos(svr.NS)),
-		gossipsub.WithPeerOutboundQueueSize(1024),
-		gossipsub.WithValidateQueueSize(1024))
-}
-
-func (svr server) Join(ctx context.Context, r *cluster.Router, server *host.Server) (capnp.ReleaseFunc, error) {
-	release := svr.bind(ctx) // registers stream handlers
-
-	if err := r.Bootstrap(ctx); err != nil {
-		defer release()
-		return nil, err
-	}
-
-	return release, nil
-}
-
-func (svr server) bind(ctx context.Context) capnp.ReleaseFunc {
-	for _, id := range proto.Namespace(svr.NS) {
-		svr.Host.SetStreamHandler(id, svr.handler(ctx))
-	}
-
-	return func() {
-		for _, id := range proto.Namespace(svr.NS) {
-			svr.Host.RemoveStreamHandler(id)
-		}
-	}
-}
-
-func (svr server) handler(ctx context.Context) network.StreamHandler {
-	return func(s network.Stream) {
-		select {
-		case svr.ch <- s:
-		case <-ctx.Done():
-		}
-	}
-}
-
-// Return the identifier for caller on this network.
-func (svr server) LocalID() rpc.PeerID {
-	return rpc.PeerID{
-		Value: svr.Host.ID(),
-	}
-}
-
-// Connect to another peer by ID. The supplied Options are used
-// for the connection, with the values for RemotePeerID and Network
-// overridden by the Network.
-func (svr server) Dial(pid rpc.PeerID, opt *rpc.Options) (*rpc.Conn, error) {
-	ctx := context.TODO()
-
-	opt.RemotePeerID = pid
-	opt.Network = svr
-
-	peer := pid.Value.(peer.AddrInfo)
-	protos := proto.Namespace(svr.NS)
-
-	s, err := svr.Host.NewStream(ctx, peer.ID, protos...)
+	res, err := f.Struct()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	conn := rpc.NewConn(transport(s), opt)
-	return conn, nil
-}
-
-// Accept the next incoming connection on the network, using the
-// supplied Options for the connection. Generally, callers will
-// want to invoke this in a loop when launching a server.
-func (svr server) Accept(ctx context.Context, opt *rpc.Options) (*rpc.Conn, error) {
-	select {
-	case s, ok := <-svr.ch:
-		if !ok {
-			return nil, errors.New("server closed")
-		}
-
-		opt.RemotePeerID.Value = peer.AddrInfo{
-			ID:    s.Conn().RemotePeer(),
-			Addrs: svr.Host.Peerstore().Addrs(s.Conn().RemotePeer()),
-		}
-		opt.Network = svr
-
-		conn := rpc.NewConn(transport(s), opt)
-		return conn, nil
-
-	case <-ctx.Done():
-		return nil, ctx.Err()
+	b, err := res.Signed()
+	if err != nil {
+		return "", err
 	}
+
+	var u auth.Nonce
+	e, err := record.ConsumeTypedEnvelope(b, &u)
+	if err != nil {
+		return "", err
+	}
+
+	// Derive the peer.ID from the signed nonce.  This gives us the
+	// identity of the account that is trying to log in.
+	id, err := peer.IDFromPublicKey(e.PublicKey)
+	if err != nil {
+		return "", err
+	}
+
+	// Make sure the record is for the nonce we sent.  If it isn't,
+	// we should assume it'svr an attack.
+	if u != n {
+		slog.Warn("login failed",
+			"error", "nonce mismatch",
+			"want", n,
+			"got", u)
+
+		return "", errors.New("nonce mismatch")
+	}
+
+	return id, nil
 }
 
-// Introduce the two connections, in preparation for a third party
-// handoff. Afterwards, a Provide messsage should be sent to
-// provider, and a ThirdPartyCapId should be sent to recipient.
-func (svr server) Introduce(provider, recipient *rpc.Conn) (rpc.IntroductionInfo, error) {
-	return rpc.IntroductionInfo{}, errors.New("NOT IMPLEMENTED")
-}
-
-// Given a ThirdPartyCapID, received from introducedBy, connect
-// to the third party. The caller should then send an Accept
-// message over the returned Connection.
-func (svr server) DialIntroduced(capID rpc.ThirdPartyCapID, introducedBy *rpc.Conn) (*rpc.Conn, rpc.ProvisionID, error) {
-	return nil, rpc.ProvisionID{}, errors.New("NOT IMPLEMENTED")
-}
-
-// Given a RecipientID received in a Provide message via
-// introducedBy, wait for the recipient to connect, and
-// return the connection formed. If there is already an
-// established connection to the relevant Peer, this
-// SHOULD return the existing connection immediately.
-func (svr server) AcceptIntroduced(recipientID rpc.RecipientID, introducedBy *rpc.Conn) (*rpc.Conn, error) {
-	return nil, errors.New("NOT IMPLEMENTED")
-}
-
-func protoMatchFunc(ns string) gossipsub.ProtocolMatchFn {
-	match := matcher(ns)
-
-	return func(local protocol.ID) func(protocol.ID) bool {
-		if match.Match(local) {
-			return match.Match
-		}
-
-		panic(fmt.Sprintf("match failed for local protocol %s", local))
+func nonce(n auth.Nonce) func(svr api.Signer_sign_Params) error {
+	return func(call api.Signer_sign_Params) error {
+		return call.SetChallenge(n[:])
 	}
 }
 
-func matcher(ns string) proto.MatchFunc {
-	base, version := proto.Split(gossipsub.GossipSubID_v11)
-	return proto.Match(
-		proto.NewMatcher(ns),
-		proto.Exactly(string(base)),
-		proto.SemVer(string(version)))
-}
-
-func subProtos(ns string) ([]protocol.ID, func(gossipsub.GossipSubFeature, protocol.ID) bool) {
-	return []protocol.ID{protoID(ns)}, features(ns)
-}
-
-// /ww/<version>/<ns>/meshsub/1.1.0
-func protoID(ns string) protocol.ID {
-	return proto.Join(
-		proto.Root(ns),
-		gossipsub.GossipSubID_v11)
-}
-
-func features(ns string) func(gossipsub.GossipSubFeature, protocol.ID) bool {
-	supportGossip := matcher(ns)
-
-	_, version := proto.Split(protoID(ns))
-	supportsPX := proto.Suffix(version)
-
-	return func(feat gossipsub.GossipSubFeature, proto protocol.ID) bool {
-		switch feat {
-		case gossipsub.GossipSubFeatureMesh:
-			return supportGossip.Match(proto)
-
-		case gossipsub.GossipSubFeaturePX:
-			return supportsPX.Match(proto)
-
-		default:
-			return false
-		}
-	}
+func (svr *Server) BindView(sess api.Session) error {
+	view := svr.ViewProvider.View()
+	return sess.SetView(api.View(view))
 }

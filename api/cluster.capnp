@@ -21,45 +21,6 @@ interface Terminal {
 }
 
 
-interface Host {
-    # Host represents a physical or virtual machine instance
-    # participating in the cluster.
-
-    view @0 () -> (view :View);
-    # View returns the host's partial view of the cluster. A
-    # view represents a pointin-time snapshot of the cluster,
-    # and makes no guarantee of consistency.
-    #
-    # The returned :Capability SHALL be a CASM :View type.
-
-    pubSub @1 () -> (pubSub :import "pubsub.capnp".Router);
-    # PubSub returns an interface to the host's pubsub overlay.
-    # Callers can use this to connect to arbitrary topics.
-    #
-    # Note that the PubSub capability confers the ability to join
-    # any topic that can be designated by name. Attempts to limit
-    # access to topics based on name amounts to ambient authority,
-    # and therefore strongly discouraged. A better approach is to
-    # wrap PubSub in a capability that resolves sturdy references
-    # to Topic capabilities.
-
-    root @2 () -> (root :import "anchor.capnp".Anchor);
-    # Root returns the host's root Anchor, which confers access to
-    # all shared memory on the host.
-
-    registry @3 () -> (registry :import "registry.capnp".Registry);
-    # Registry returns a Service Registry capability, which is used for 
-    # discovering and providing service. This way, applications can find each other.
-
-    executor @4 () -> (executor :import "process.capnp".Executor);
-    # Executor provides a way of spawning and running WASM-based
-    # processes.
-
-    capStore @5 () -> (capStore :import "capstore.capnp".CapStore);
-    # CapStore returns a Capability Storage.
-}
-
-
 struct Heartbeat {
     # Heartbeat messages are used to implement an unstructured p2p
     # clustering service.  Hosts periodically emit heartbeats on a
