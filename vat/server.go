@@ -34,7 +34,7 @@ type Config struct {
 	Bootstrap, Ambient discovery.Discovery
 	Meta               pulse.Preparer
 	Auth               auth.Policy
-	OnJoin             func(host.Host)
+	OnJoin             func(auth.Session)
 }
 
 func (conf Config) Serve(ctx context.Context) error {
