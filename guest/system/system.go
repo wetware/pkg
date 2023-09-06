@@ -2,11 +2,9 @@ package system
 
 import (
 	"context"
-	"io"
 	"log/slog"
 	"net"
 	"os"
-	"runtime"
 	"syscall"
 
 	"capnproto.org/go/capnp/v3/rpc"
@@ -29,9 +27,9 @@ func (s FDSockDialer) DialRPC(context.Context) (*rpc.Conn, error) {
 	}
 
 	// Make sure we eventually release the file descriptor.
-	runtime.SetFinalizer(f, func(c io.Closer) error {
-		return c.Close()
-	})
+	// runtime.SetFinalizer(f, func(c io.Closer) error {
+	// 	return c.Close()
+	// })
 
 	l, err := net.FileListener(f)
 	if err != nil {

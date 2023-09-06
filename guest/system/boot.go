@@ -2,8 +2,6 @@ package system
 
 import (
 	"context"
-	"io"
-	"runtime"
 
 	local "github.com/libp2p/go-libp2p/core/host"
 
@@ -23,9 +21,9 @@ func Bootstrap(ctx context.Context) (auth.Session, error) {
 	if err != nil {
 		return auth.Session{}, err
 	}
-	runtime.SetFinalizer(conn, func(c io.Closer) error {
-		return c.Close()
-	})
+	// runtime.SetFinalizer(conn, func(c io.Closer) error {
+	// 	return c.Close()
+	// })
 
 	client := conn.Bootstrap(ctx)
 	if err := client.Resolve(ctx); err != nil {
