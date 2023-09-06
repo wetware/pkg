@@ -11,7 +11,6 @@ import (
 
 type SessionCreator interface {
 	NewSession() (api.Session, error)
-	SetSession(api.Session) error
 }
 
 type SessionBinder interface {
@@ -40,7 +39,7 @@ func AllowAll(_ context.Context, root SessionBinder, _ peer.ID, call SessionCrea
 		return fmt.Errorf("capstore: %w", err)
 	}
 
-	return call.SetSession(sess)
+	return nil
 }
 
 func Deny(reason string, args ...any) Policy {

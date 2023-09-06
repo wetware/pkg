@@ -44,5 +44,5 @@ func (sess Session) Login(ctx context.Context, call api.Terminal_login) error {
 		return err
 	}
 
-	return res.SetSession(out)
+	return nil
 }
