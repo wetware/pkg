@@ -8,6 +8,8 @@ $Go.import("github.com/wetware/pkg/api/cluster");
 
 struct Session {
     view @0 :View;
+    exec @1 :import "process.capnp".Executor;
+    capStore @2 :import "capstore.capnp".CapStore;
 }
 
 

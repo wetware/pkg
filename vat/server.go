@@ -15,7 +15,9 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/record"
+	capstore_api "github.com/wetware/pkg/api/capstore"
 	api "github.com/wetware/pkg/api/cluster"
+	proc_api "github.com/wetware/pkg/api/process"
 	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/cap/anchor"
 	"github.com/wetware/pkg/cap/capstore"
@@ -51,10 +53,12 @@ type CapStoreProvider interface {
 
 // Server provides the Host capability.
 type Server struct {
-	NS           string
-	Host         local.Host
-	Auth         auth.Policy
-	ViewProvider ViewProvider
+	NS               string
+	Host             local.Host
+	Auth             auth.Policy
+	ViewProvider     ViewProvider
+	ExecutorProvider ExecutorProvider
+	CapStoreProvider CapStoreProvider
 
 	once sync.Once
 	ch   chan network.Stream
@@ -152,4 +156,14 @@ func nonce(n auth.Nonce) func(svr api.Signer_sign_Params) error {
 func (svr *Server) BindView(sess api.Session) error {
 	view := svr.ViewProvider.View()
 	return sess.SetView(api.View(view))
+}
+
+func (svr *Server) BindExec(sess api.Session) error {
+	exec := svr.ExecutorProvider.Executor()
+	return sess.SetExec(proc_api.Executor(exec))
+}
+
+func (svr *Server) BindCapStore(sess api.Session) error {
+	store := svr.CapStoreProvider.CapStore()
+	return sess.SetCapStore(capstore_api.CapStore(store))
 }

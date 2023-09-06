@@ -1,123 +1,84 @@
 package cluster
 
-// import (
-// 	"log/slog"
-// 	"path"
-// 	"runtime"
-// 	"time"
+import (
+	"fmt"
 
-// 	"github.com/libp2p/go-libp2p"
-// 	local "github.com/libp2p/go-libp2p/core/host"
-// 	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
-// 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
-// 	"github.com/urfave/cli/v2"
+	local "github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
+	ma "github.com/multiformats/go-multiaddr"
+	"github.com/urfave/cli/v2"
 
-// 	"github.com/wetware/pkg/cap/host"
-// 	"github.com/wetware/pkg/client"
-// 	"github.com/wetware/pkg/system"
-// )
+	"github.com/wetware/pkg/auth"
+	"github.com/wetware/pkg/boot"
+	"github.com/wetware/pkg/vat"
+)
 
-// var (
-// 	h        host.Host
-// 	releases *[]func()
-// 	closes   *[]func() error
-// )
+var (
+	session auth.Session
+	// releases *[]func()
+	// closes   *[]func() error
+)
 
-// var flags = []cli.Flag{
-// 	&cli.StringSliceFlag{
-// 		Name:    "addr",
-// 		Aliases: []string{"a"},
-// 		Usage:   "static bootstrap `ADDR`",
-// 		EnvVars: []string{"WW_ADDR"},
-// 	},
-// 	&cli.StringFlag{
-// 		Name:    "discover",
-// 		Aliases: []string{"d"},
-// 		Usage:   "bootstrap discovery `ADDR`",
-// 		Value:   bootstrapAddr(),
-// 		EnvVars: []string{"WW_DISCOVER"},
-// 	},
-// 	&cli.StringFlag{
-// 		Name:    "ns",
-// 		Usage:   "cluster namespace",
-// 		Value:   "ww",
-// 		EnvVars: []string{"WW_NS"},
-// 	},
-// 	&cli.DurationFlag{
-// 		Name:    "timeout",
-// 		Usage:   "dial timeout",
-// 		Value:   time.Second * 15,
-// 		EnvVars: []string{"WW_CLIENT_TIMEOUT"},
-// 	},
-// }
+func Command() *cli.Command {
+	return &cli.Command{
+		Name:    "cluster",
+		Usage:   "cli client for wetware clusters",
+		Aliases: []string{"client"}, // TODO(soon):  deprecate
+		Subcommands: []*cli.Command{
+			run(),
+		},
+	}
+}
 
-// func Command() *cli.Command {
-// 	return &cli.Command{
-// 		Name:    "cluster",
-// 		Usage:   "cli client for wetware clusters",
-// 		Aliases: []string{"client"}, // TODO(soon):  deprecate
-// 		Flags:   flags,
-// 		Subcommands: []*cli.Command{
-// 			run(),
-// 		},
-// 	}
-// }
+func setup() cli.BeforeFunc {
+	return func(c *cli.Context) (err error) {
+		h, err := vat.DialP2P()
+		if err != nil {
+			return err
+		}
+		defer h.Close()
 
-// func setup() cli.BeforeFunc {
-// 	return func(c *cli.Context) (err error) {
-// 		*releases = make([]func(), 0)
-// 		*closes = make([]func() error, 0)
+		bootstrap, err := newBootstrap(c, h)
+		if err != nil {
+			return fmt.Errorf("discovery: %w", err)
+		}
+		defer bootstrap.Close()
 
-// 		h, err := clientHost(c)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		*closes = append(*closes, h.Close)
+		session, err = vat.Dialer{
+			Host:    h,
+			Account: auth.SignerFromHost(h),
+		}.DialDiscover(c.Context, bootstrap, c.String("ns"))
+		return err
+	}
+}
 
-// 		host, err := system.Bootstrap[host.Host](c.Context, h, client.Config{
-// 			Logger:   slog.Default(),
-// 			NS:       c.String("ns"),
-// 			Peers:    c.StringSlice("peer"),
-// 			Discover: c.String("discover"),
-// 		})
-// 		if err != nil {
-// 			return err
-// 		}
-// 		*releases = append(*releases, host.Release)
+func teardown() cli.AfterFunc {
+	return func(c *cli.Context) (err error) {
+		// for _, close := range *closes {
+		// 	defer close()
+		// }
+		// for _, release := range *releases {
+		// 	defer release()
+		// }
+		return nil
+	}
+}
 
-// 		return nil
-// 	}
-// }
+func newBootstrap(c *cli.Context, h local.Host) (_ boot.Service, err error) {
+	// use discovery service?
+	if len(c.StringSlice("peer")) == 0 {
+		serviceAddr := c.String("discover")
+		return boot.DialString(h, serviceAddr)
+	}
 
-// func teardown() cli.AfterFunc {
-// 	return func(c *cli.Context) (err error) {
-// 		for _, close := range *closes {
-// 			defer close()
-// 		}
-// 		for _, release := range *releases {
-// 			defer release()
-// 		}
-// 		return nil
-// 	}
-// }
+	// fast path; direct dial a peer
+	maddrs := make([]ma.Multiaddr, len(c.StringSlice("peer")))
+	for i, s := range c.StringSlice("peer") {
+		if maddrs[i], err = ma.NewMultiaddr(s); err != nil {
+			return
+		}
+	}
 
-// func clientHost(c *cli.Context) (local.Host, error) {
-// 	return libp2p.New(
-// 		libp2p.NoTransports,
-// 		libp2p.NoListenAddrs,
-// 		libp2p.Transport(tcp.NewTCPTransport),
-// 		libp2p.Transport(quic.NewTransport))
-// }
-
-// func bootstrapAddr() string {
-// 	return path.Join("/ip4/228.8.8.8/udp/8822/multicast", loopback())
-// }
-
-// func loopback() string {
-// 	switch runtime.GOOS {
-// 	case "darwin":
-// 		return "lo0"
-// 	default:
-// 		return "lo"
-// 	}
-// }
+	infos, err := peer.AddrInfosFromP2pAddrs(maddrs...)
+	return boot.StaticAddrs(infos), err
+}

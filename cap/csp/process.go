@@ -50,6 +50,15 @@ func (p Proc) Wait(ctx context.Context) error {
 	f, release := api.Process(p).Wait(ctx, nil)
 	defer release()
 
+	select {
+	case <-f.Done():
+	case <-ctx.Done():
+	}
+
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
 	res, err := f.Struct()
 	if err != nil {
 		return err

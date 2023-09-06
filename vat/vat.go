@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"capnproto.org/go/capnp/v3"
@@ -15,9 +16,13 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/pkg/errors"
+	"github.com/tetratelabs/wazero"
+	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 
 	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/boot"
+	capstore_server "github.com/wetware/pkg/cap/capstore/server"
+	csp_server "github.com/wetware/pkg/cap/csp/server"
 	"github.com/wetware/pkg/cluster"
 	"github.com/wetware/pkg/cluster/pulse"
 	"github.com/wetware/pkg/cluster/routing"
@@ -34,6 +39,7 @@ type Config struct {
 	Meta               pulse.Preparer
 	Auth               auth.Policy
 	OnJoin             func(auth.Session)
+	RuntimeConfig      wazero.RuntimeConfig
 }
 
 func (conf Config) Serve(ctx context.Context) error {
@@ -67,13 +73,19 @@ func (conf Config) Serve(ctx context.Context) error {
 	}
 	defer r.Close()
 
+	e, err := conf.NewExecutor(ctx)
+	if err != nil {
+		return err
+	}
+
 	server := &Server{
-		NS:           conf.NS,
-		Host:         conf.Host,
-		Auth:         conf.Auth,
-		ViewProvider: r,
+		NS:               conf.NS,
+		Host:             conf.Host,
+		Auth:             conf.Auth,
+		ViewProvider:     r,
+		ExecutorProvider: e,
+		CapStoreProvider: &capstore_server.CapStore{Map: &sync.Map{}},
 		// PubSubProvider: &pubsub.Server{TopicJoiner: ps},
-		// RuntimeConfig: wazero.NewRuntimeConfig().
 		// 	WithCloseOnContextDone(true),
 	}
 	defer server.Close()
@@ -106,6 +118,27 @@ func (conf Config) Serve(ctx context.Context) error {
 		logger.Info("accepted peer connection",
 			"remote", remote.ID)
 	}
+}
+
+func (conf Config) NewExecutor(ctx context.Context) (csp_server.Runtime, error) {
+	if conf.RuntimeConfig == nil {
+		conf.RuntimeConfig = wazero.
+			NewRuntimeConfigCompiler().
+			WithCompilationCache(wazero.NewCompilationCache()).
+			WithCloseOnContextDone(true)
+	}
+
+	r := wazero.NewRuntimeWithConfig(ctx, conf.RuntimeConfig)
+	_, err := wasi_snapshot_preview1.Instantiate(ctx, r)
+	if err != nil {
+		return csp_server.Runtime{}, err
+	}
+
+	return csp_server.Runtime{
+		Runtime: r,
+		Cache:   make(csp_server.BytecodeCache),
+		Tree:    csp_server.NewProcTree(ctx),
+	}, nil
 }
 
 func (conf Config) String() string {

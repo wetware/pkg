@@ -12,7 +12,7 @@ import (
 
 type CapStore struct {
 	// TODO limit map size
-	sync.Map
+	*sync.Map
 }
 
 func (c *CapStore) CapStore() capstore.CapStore {

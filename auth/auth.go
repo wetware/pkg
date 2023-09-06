@@ -15,6 +15,8 @@ type SessionCreator interface {
 
 type SessionBinder interface {
 	BindView(api.Session) error
+	BindExec(api.Session) error
+	BindCapStore(api.Session) error
 }
 
 type Policy func(context.Context, SessionBinder, peer.ID, SessionCreator) error
@@ -25,8 +27,19 @@ func AllowAll(_ context.Context, root SessionBinder, _ peer.ID, call SessionCrea
 		return err
 	}
 
-	// TODO:  bind other things too...
-	return root.BindView(sess)
+	if err = root.BindView(sess); err != nil {
+		return fmt.Errorf("view: %w", err)
+	}
+
+	if err = root.BindExec(sess); err != nil {
+		return fmt.Errorf("exec: %w", err)
+	}
+
+	if err = root.BindCapStore(sess); err != nil {
+		return fmt.Errorf("capstore: %w", err)
+	}
+
+	return nil
 }
 
 func Deny(reason string, args ...any) Policy {
