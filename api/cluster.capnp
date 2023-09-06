@@ -6,13 +6,27 @@ $Go.package("cluster");
 $Go.import("github.com/wetware/pkg/api/cluster");
 
 
+# Session is a capability-set that was granted to a particular
+# user.  It is the application wide ambient-authority boundary.
 struct Session {
-    view @0 :View;
-    exec @1 :import "process.capnp".Executor;
-    capStore @2 :import "capstore.capnp".CapStore;
+    local         :group{
+        peer   @0 :Text;    # peer.ID
+        server @1 :UInt64;  # routing.ID
+        host   @2 :Text;    # hostname
+    }
+
+    # Access-controlled capabilities.  These will be set to null
+    # unless permission has been granted to use the object.
+    view       @3 :View;
+    exec       @4 :import "process.capnp".Executor;
+    capStore   @5 :import "capstore.capnp".CapStore;
 }
 
 
+# Signer identifies an accound.  It is a capability that can be
+# used to sign arbitrary nonces.
+#
+# The signature domain is "ww.auth"
 interface Signer {
     sign @0 (challenge :Data) -> (signed :Data);
 }

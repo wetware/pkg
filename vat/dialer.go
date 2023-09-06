@@ -16,9 +16,6 @@ import (
 	api "github.com/wetware/pkg/api/cluster"
 	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/boot"
-	"github.com/wetware/pkg/cap/capstore"
-	"github.com/wetware/pkg/cap/csp"
-	"github.com/wetware/pkg/cap/view"
 	"github.com/wetware/pkg/system"
 	"github.com/wetware/pkg/util/proto"
 )
@@ -75,11 +72,7 @@ func (d Dialer) Dial(ctx context.Context, addr peer.AddrInfo, protos ...protocol
 		return auth.Session{}, err
 	}
 
-	return auth.Session{
-		View:     view.View(sess.View()).AddRef(),
-		Exec:     csp.Executor(sess.Exec()).AddRef(),
-		CapStore: capstore.CapStore(sess.CapStore()).AddRef(),
-	}, nil
+	return auth.Session(sess).AddRef(), nil
 }
 
 func (d Dialer) DialRPC(ctx context.Context, addr peer.AddrInfo, protos ...protocol.ID) (*rpc.Conn, error) {

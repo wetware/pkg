@@ -9,7 +9,6 @@ import (
 
 	api "github.com/wetware/pkg/api/cluster"
 	"github.com/wetware/pkg/auth"
-	"github.com/wetware/pkg/cap/view"
 
 	"capnproto.org/go/capnp/v3/rpc"
 )
@@ -46,7 +45,5 @@ func Bootstrap(ctx context.Context) (auth.Session, error) {
 		return auth.Session{}, err
 	}
 
-	return auth.Session{
-		View: view.View(sess.View()).AddRef(),
-	}, nil
+	return auth.Session(sess).AddRef(), nil
 }

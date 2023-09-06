@@ -27,8 +27,6 @@ func run() *cli.Command {
 
 func runAction() cli.ActionFunc {
 	return func(c *cli.Context) error {
-		ctx := c.Context
-
 		// Load the name of the entry function and the WASM file containing the module to run
 		src, err := bytecode(c)
 		if err != nil {
@@ -60,22 +58,22 @@ func runAction() cli.ActionFunc {
 
 		bCtx, err := csp.NewBootContext().
 			WithArgs(c.Args().Slice()...).
-			WithCaps(capnp.Client(session.CapStore))
+			WithCaps(capnp.Client(session.CapStore()))
 		if err != nil {
 			return err
 		}
 
-		proc, release := session.Exec.Exec(ctx, src, 0, bCtx.Cap())
+		proc, release := session.Exec().Exec(c.Context, src, 0, bCtx.Cap())
 		defer release()
 
 		waitChan := make(chan error, 1)
 		go func() {
-			waitChan <- proc.Wait(ctx)
+			waitChan <- proc.Wait(c.Context)
 		}()
 		select {
 		case err = <-waitChan:
 			return err
-		case <-ctx.Done():
+		case <-c.Context.Done():
 			killChan := make(chan error, 1)
 			go func() { killChan <- proc.Kill(context.Background()) }()
 			select {

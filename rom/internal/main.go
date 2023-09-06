@@ -19,7 +19,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	it, release := sess.View.Iter(ctx, query())
+	it, release := sess.View().Iter(ctx, query())
 	defer release()
 
 	for r := it.Next(); r != nil; r = it.Next() {

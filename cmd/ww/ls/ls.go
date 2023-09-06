@@ -43,7 +43,7 @@ func list(c *cli.Context) error {
 		return err
 	}
 
-	it, release := sess.View.Iter(c.Context, query(c))
+	it, release := sess.View().Iter(c.Context, query(c))
 	defer release()
 
 	for r := it.Next(); r != nil; r = it.Next() {
