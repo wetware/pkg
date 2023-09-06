@@ -2,13 +2,16 @@ package cluster
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"time"
 
 	capnp "capnproto.org/go/capnp/v3"
 	"github.com/urfave/cli/v2"
+	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/cap/csp"
+	"github.com/wetware/pkg/vat"
 )
 
 const killTimeout = 30 * time.Second
@@ -18,8 +21,6 @@ func run() *cli.Command {
 		Name:      "run",
 		Usage:     "run a WASM module on a cluster node",
 		ArgsUsage: "<path> (defaults to stdin)",
-		Before:    setup(),
-		After:     teardown(),
 		Action:    runAction(),
 	}
 }
@@ -34,11 +35,32 @@ func runAction() cli.ActionFunc {
 			return err
 		}
 
+		// Set up the wetware client and dial into the cluster
+		h, err := vat.DialP2P()
+		if err != nil {
+			return err
+		}
+		defer h.Close()
+
+		bootstrap, err := newBootstrap(c, h)
+		if err != nil {
+			return fmt.Errorf("discovery: %w", err)
+		}
+		defer bootstrap.Close()
+
+		session, err = vat.Dialer{
+			Host:    h,
+			Account: auth.SignerFromHost(h),
+		}.DialDiscover(c.Context, bootstrap, c.String("ns"))
+		if err != nil {
+			return err
+		}
+
 		// Obtain an executor and spawn a process
 
 		bCtx, err := csp.NewBootContext().
 			WithArgs(c.Args().Slice()...).
-			WithCaps(capnp.Client(session.CapStore)) // TODO(mikel):  AddRef() ?
+			WithCaps(capnp.Client(session.CapStore))
 		if err != nil {
 			return err
 		}

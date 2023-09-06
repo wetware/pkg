@@ -4,9 +4,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"time"
 
-	ww "github.com/wetware/pkg/guest/system"
+	"github.com/wetware/pkg/guest/system"
 )
 
 func main() {
@@ -23,20 +22,19 @@ func main() {
 	// 	}
 	// }()
 	// }
-	s, err := ww.Bootstrap(ctx)
-
+	sess, err := system.Bootstrap(ctx)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(s)
+	fmt.Println(sess)
 
-	for {
-		select {
-		case <-ctx.Done():
-			fmt.Println(ctx.Err())
-			return
-		case <-time.After(1 * time.Second):
-			continue
-		}
-	}
+	// for {
+	// 	select {
+	// 	case <-ctx.Done():
+	// 		fmt.Println(ctx.Err())
+	// 		return
+	// 	case <-time.After(1 * time.Second):
+	// 		continue
+	// 	}
+	// }
 }
