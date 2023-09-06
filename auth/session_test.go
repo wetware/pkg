@@ -61,7 +61,7 @@ func TestSessionCopy(t *testing.T) {
 	})
 
 	t.Run("TestMessageSeparation", func(t *testing.T) {
-		want.Terminate()
+		want.Release()
 		assert.NotPanics(t, func() {
 			_ = api.Session(got).Local().Server()
 		}, "should exist in separate messages")

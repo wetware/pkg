@@ -34,9 +34,9 @@ func (sess Session) AddRef() Session {
 	return Session(raw)
 }
 
-// Terminate the session by releasing the message, which releases
+// Release the session by releasing the message, which releases
 // each entry in the cap table.
-func (sess Session) Terminate() {
+func (sess Session) Release() {
 	api.Session(sess).Message().Release()
 }
 
