@@ -186,7 +186,8 @@ func (r Runtime) mkmod(ctx context.Context, args procArgs) (wasm.Module, error) 
 		WithEnv("ns", name).
 		WithStdin(os.Stdin).
 		WithStdout(os.Stdout).
-		WithStderr(os.Stderr)
+		WithStderr(os.Stderr).
+		WithArgs("foo", "bar", "baz")
 
 	l.Close()
 	mod, err := r.Runtime.InstantiateModule(sockCtx, compiled, modCfg)
