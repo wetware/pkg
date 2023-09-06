@@ -64,6 +64,7 @@ func runAction() cli.ActionFunc {
 		if err != nil {
 			return err
 		}
+
 		proc, release := session.Exec.Exec(ctx, src, 0, bCtx.Cap())
 		defer release()
 
