@@ -9,6 +9,14 @@ import (
 
 type CapStore api.CapStore
 
+func (c CapStore) AddRef() CapStore {
+	return CapStore(api.CapStore(c).AddRef())
+}
+
+func (c CapStore) Release() {
+	api.CapStore(c).Release()
+}
+
 func (c CapStore) Set(ctx context.Context, id string, cap capnp.Client) error {
 	f, release := api.CapStore(c).Set(ctx, func(cs api.CapStore_set_Params) error {
 		if err := cs.SetId(id); err != nil {
