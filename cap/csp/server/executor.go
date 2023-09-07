@@ -235,7 +235,7 @@ func ServeModule(addr *net.TCPAddr, sess auth.Session) {
 	defer tcpConn.Close()
 
 	conn := rpc.NewConn(rpc.NewStreamTransport(tcpConn), &rpc.Options{
-		BootstrapClient: capnp.NewClient(core_api.Terminal_NewServer(sess)),
+		BootstrapClient: capnp.NewClient(core_api.Terminal_NewServer(sess.AddRef())),
 		ErrorReporter: system.ErrorReporter{
 			Logger: slog.Default(),
 		},
