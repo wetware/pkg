@@ -1,5 +1,9 @@
-# Wetware binary file
+# Wetware
+cmd/scratch/*
+.envrc
 ww
+*.wasm
+!rom/internal/main.wasm
 
 # Binaries for programs and plugins
 *.exe
@@ -16,10 +20,6 @@ ww
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
-
-# Wetware
-cmd/scratch/*
-.envrc
 
 # VSCode
 .vscode/**
