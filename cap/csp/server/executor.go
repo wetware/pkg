@@ -109,6 +109,7 @@ func (r Runtime) exec(ctx context.Context, id cid.Cid, bc []byte, ea execArgs, e
 	args := csp.Args{
 		Ppid: r.Tree.PpidOrInit(ea.Ppid()),
 		Cid:  id,
+		Pid:  r.Tree.NextPid(),
 	}
 
 	c := components{
@@ -126,8 +127,6 @@ func (r Runtime) exec(ctx context.Context, id cid.Cid, bc []byte, ea execArgs, e
 }
 
 func (r Runtime) mkproc(ctx context.Context, c components) (*process, error) {
-	pid := r.Tree.NextPid()
-
 	mod, err := r.mkmod(ctx, c)
 	if err != nil {
 		return nil, err
@@ -138,11 +137,7 @@ func (r Runtime) mkproc(ctx context.Context, c components) (*process, error) {
 		return nil, errors.New("ww: missing export: _start")
 	}
 
-	proc := r.spawn(fn, pid)
-
-	// Register new process.
-	r.Tree.Insert(proc.pid, c.args.Ppid)
-	r.Tree.AddToMap(proc.pid, proc)
+	proc := r.spawn(fn, c.args.Pid, c.args.Ppid)
 
 	return proc, nil
 }
@@ -195,7 +190,7 @@ func (r Runtime) mkmod(ctx context.Context, c components) (wasm.Module, error) {
 	return mod, nil
 }
 
-func (r Runtime) spawn(fn wasm.Function, pid uint32) *process {
+func (r Runtime) spawn(fn wasm.Function, pid uint32, ppid uint32) *process {
 	done := make(chan execResult, 1)
 
 	// NOTE:  we use context.Background instead of the context obtained from the
@@ -210,6 +205,10 @@ func (r Runtime) spawn(fn wasm.Function, pid uint32) *process {
 		done:     done,
 		cancel:   cancel,
 	}
+
+	// Register new process.
+	r.Tree.Insert(pid, ppid)
+	r.Tree.AddToMap(pid, proc)
 
 	go func() {
 		defer close(done)
