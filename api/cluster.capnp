@@ -20,6 +20,12 @@ struct Session {
     view       @3 :View;
     exec       @4 :import "process.capnp".Executor;
     capStore   @5 :import "capstore.capnp".CapStore;
+    extra      @6 :List(Extra);
+
+    struct Extra {
+        name   @0 :Text;
+        client @1 :Capability;
+    }
 }
 
 
