@@ -14,6 +14,7 @@ import (
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/ipfs/go-cid"
+	"github.com/multiformats/go-multibase"
 	"github.com/stealthrocket/wazergo"
 	"github.com/tetratelabs/wazero"
 	wasm "github.com/tetratelabs/wazero/api"
@@ -25,6 +26,7 @@ import (
 	"github.com/wetware/pkg/cap/csp"
 	"github.com/wetware/pkg/cap/csp/proc"
 	"github.com/wetware/pkg/system"
+	"github.com/wetware/pkg/util/log"
 )
 
 // components the Runtime requires to build a process.
@@ -32,6 +34,9 @@ type components struct {
 	args     csp.Args
 	bytecode []byte
 	session  core_api.Session
+
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 type execArgs interface {
@@ -75,6 +80,7 @@ func (r Runtime) Exec(ctx context.Context, call core_api.Executor_exec) error {
 	// Cache new bytecodes every time they are received.
 	cid := r.Cache.put(bc)
 	r.Log.Info("cached bytecode",
+		"cid", cid.Encode(multibase.MustNewEncoder(multibase.Base58BTC)))
 
 	return r.exec(ctx, cid, bc, call.Args(), res)
 }
@@ -118,10 +124,17 @@ func (r Runtime) exec(ctx context.Context, id cid.Cid, bc []byte, ea execArgs, e
 		"ppid", args.Ppid,
 		"cid", id.Encode(multibase.MustNewEncoder(multibase.Base58BTC)))
 
+	// NOTE:  we use context.Background instead of the context obtained from the
+	//        rpc handler. This ensures that a process can continue to run after
+	//        the rpc handler has returned. Note also that this context is bound
+	//        to the application lifetime, so processes cannot block a shutdown.
+	cctx, ccancel := context.WithCancel(context.Background())
 	c := components{
 		args:     args,
 		bytecode: bc,
 		session:  sess,
+		ctx:      cctx,
+		cancel:   ccancel,
 	}
 
 	p, err := r.mkproc(ctx, c)
@@ -143,7 +156,7 @@ func (r Runtime) mkproc(ctx context.Context, c components) (*process, error) {
 		return nil, errors.New("ww: missing export: _start")
 	}
 
-	proc := r.spawn(fn, c.args.Pid, c.args.Ppid)
+	proc := r.spawn(fn, c)
 
 	return proc, nil
 }
@@ -192,35 +205,31 @@ func (r Runtime) mkmod(ctx context.Context, c components) (wasm.Module, error) {
 	}
 
 	r.Log.Debug("serve module", "pid", c.args.Pid, "cid", c.args.Cid.String())
+	go ServeModule(c.ctx, addr, auth.Session(c.session))
 
 	return mod, nil
 }
 
-func (r Runtime) spawn(fn wasm.Function, pid uint32, ppid uint32) *process {
+func (r Runtime) spawn(fn wasm.Function, c components) *process {
 	done := make(chan execResult, 1)
 
-	// NOTE:  we use context.Background instead of the context obtained from the
-	//        rpc handler. This ensures that a process can continue to run after
-	//        the rpc handler has returned. Note also that this context is bound
-	//        to the application lifetime, so processes cannot block a shutdown.
-	ctx, cancel := context.WithCancel(context.Background())
 	killFunc := r.Tree.Kill
 	proc := &process{
-		pid:      pid,
+		pid:      c.args.Pid,
 		killFunc: killFunc,
 		done:     done,
-		cancel:   cancel,
+		cancel:   c.cancel,
 	}
 
 	// Register new process.
-	r.Tree.Insert(pid, ppid)
-	r.Tree.AddToMap(pid, proc)
+	r.Tree.Insert(c.args.Pid, c.args.Ppid)
+	r.Tree.AddToMap(c.args.Pid, proc)
 
 	go func() {
 		defer close(done)
-		defer proc.killFunc(proc.pid)
-
-		vs, err := fn.Call(ctx)
+		defer c.cancel()                // stop the rpc provider
+		defer proc.killFunc(c.args.Pid) // terminate the process
+		vs, err := fn.Call(c.ctx)
 
 		done <- execResult{
 			Values: vs,
@@ -233,8 +242,17 @@ func (r Runtime) spawn(fn wasm.Function, pid uint32, ppid uint32) *process {
 
 // ServeModule ensures the host side of the TCP connection with addr=addr
 // used for CAPNP RPCs is provided by client.
-func ServeModule(addr *net.TCPAddr, sess auth.Session) {
-	tcpConn, err := DialWithRetries(addr)
+func ServeModule(ctx context.Context, addr *net.TCPAddr, sess auth.Session) {
+	// defer func() {
+	// 	if r := recover(); r != nil {
+	// TODO @mikelsr @lthibault this is were modules non-bootstrapping
+	// modules fail. Recovering is not an option, I think we'd
+	// much rather find the cause and fix it. Still, leaving this here
+	// for reference.
+	// 	}
+	// }()
+
+	tcpConn, err := DialLoop(ctx, addr, 0)
 	if err != nil {
 		panic(err)
 	}
@@ -249,27 +267,35 @@ func ServeModule(addr *net.TCPAddr, sess auth.Session) {
 	defer conn.Close()
 
 	select {
+	case <-ctx.Done(): // close conn if the program is exiting
+		conn.Close()
 	case <-conn.Done(): // conn is closed by authenticate if auth fails
-		// case <-ctx.Done(): // close conn if the program is exiting
-		// TODO ctx.Done is called prematurely when using cluster run
-		// we should use a new context that cancels when subproc ends
 	}
 }
 
-// DialWithRetries dials addr in waitTime intervals until it either succeeds or
-// exceeds maxRetries retries.
-func DialWithRetries(addr *net.TCPAddr) (net.Conn, error) {
-	maxRetries := 20
+// DialLoop dials addr in waitTime intervals until it either succeeds or
+// the context is cancelled. Set retries to 0 for infinite loop.
+func DialLoop(ctx context.Context, addr *net.TCPAddr, retries int) (net.Conn, error) {
 	waitTime := 10 * time.Millisecond
 	var err error
 	var conn net.Conn
 
-	for retries := 0; retries < maxRetries; retries++ {
+	i := 0
+	for {
 		conn, err = net.Dial("tcp", addr.String())
 		if err == nil {
 			break
 		}
-		time.Sleep(waitTime)
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(waitTime):
+			waitTime *= 2
+		}
+
+		if retries != 0 && i >= retries {
+			return nil, errors.New("retries exceeded")
+		}
 	}
 
 	return conn, err
