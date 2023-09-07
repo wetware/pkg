@@ -7,11 +7,10 @@ import (
 	"os"
 	"time"
 
-	"capnproto.org/go/capnp/v3"
 	"github.com/urfave/cli/v2"
 
+	api "github.com/wetware/pkg/api/core"
 	"github.com/wetware/pkg/auth"
-	"github.com/wetware/pkg/cap/csp"
 	"github.com/wetware/pkg/vat"
 )
 
@@ -55,16 +54,7 @@ func runAction() cli.ActionFunc {
 			return err
 		}
 
-		// Obtain an executor and load a process from a ROM image.
-
-		bCtx, err := csp.NewBootContext().
-			WithArgs(c.Args().Slice()...).
-			WithCaps(capnp.Client(sess.CapStore()))
-		if err != nil {
-			return err
-		}
-
-		proc, release := sess.Exec().Exec(c.Context, rom, 0, bCtx.Cap())
+		proc, release := sess.Exec().Exec(c.Context, api.Session(sess), rom, 0)
 		defer release()
 
 		waitChan := make(chan error, 1)

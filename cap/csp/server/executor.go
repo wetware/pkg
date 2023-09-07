@@ -27,6 +27,23 @@ import (
 	"github.com/wetware/pkg/system"
 )
 
+// components the Runtime requires to build a process.
+type components struct {
+	args     csp.Args
+	bytecode []byte
+	session  core_api.Session
+}
+
+type execArgs interface {
+	Args() (capnp.TextList, error)
+	Ppid() uint32
+	Session() (core_api.Session, error)
+}
+
+type execRes interface {
+	SetProcess(v proc_api.Process) error
+}
+
 // Runtime is the main Executor implementation.  It spawns WebAssembly-
 // based processes.  The zero-value Runtime panics.
 type Runtime struct {
@@ -57,29 +74,7 @@ func (r Runtime) Exec(ctx context.Context, call core_api.Executor_exec) error {
 	// Cache new bytecodes every time they are received.
 	cid := r.Cache.put(bc)
 
-	var bCtx proc_api.BootContext
-	if call.Args().HasBctx() {
-		bCtx = call.Args().Bctx()
-	} else {
-		bCtx = csp.NewBootContext().Cap()
-	}
-	if err = csp.BootCtx(bCtx).SetCid(ctx, cid); err != nil {
-		return err
-	}
-
-	ppid := r.Tree.PpidOrInit(call.Args().Ppid())
-	pArgs := procArgs{
-		bc:   bc,
-		ppid: ppid,
-		bCtx: bCtx,
-	}
-
-	p, err := r.mkproc(ctx, pArgs)
-	if err != nil {
-		return err
-	}
-
-	return res.SetProcess(proc_api.Process_ServerToClient(p))
+	return r.exec(ctx, cid, bc, call.Args(), res)
 }
 
 func (r Runtime) ExecCached(ctx context.Context, call core_api.Executor_execCached) error {
@@ -102,38 +97,38 @@ func (r Runtime) ExecCached(ctx context.Context, call core_api.Executor_execCach
 		return fmt.Errorf("bytecode for cid %s not found", cid)
 	}
 
-	var bCtx proc_api.BootContext
-	if call.Args().HasBctx() {
-		bCtx = call.Args().Bctx()
-	} else {
-		bCtx = csp.NewBootContext().Cap()
-	}
-	if err = csp.BootCtx(bCtx).SetCid(ctx, cid); err != nil {
-		return err
-	}
+	return r.exec(ctx, cid, bc, call.Args(), res)
+}
 
-	ppid := r.Tree.PpidOrInit(call.Args().Ppid())
-	pArgs := procArgs{
-		bc:   bc,
-		ppid: ppid,
-		bCtx: bCtx,
-	}
-
-	p, err := r.mkproc(ctx, pArgs)
+func (r Runtime) exec(ctx context.Context, id cid.Cid, bc []byte, ea execArgs, er execRes) error {
+	sess, err := ea.Session()
 	if err != nil {
 		return err
 	}
 
-	return res.SetProcess(proc_api.Process_ServerToClient(p))
-}
-
-func (r Runtime) mkproc(ctx context.Context, args procArgs) (*process, error) {
-	pid := r.Tree.NextPid()
-	if err := csp.BootCtx(args.bCtx).SetPid(ctx, pid); err != nil {
-		return nil, err
+	args := csp.Args{
+		Ppid: r.Tree.PpidOrInit(ea.Ppid()),
+		Cid:  id,
 	}
 
-	mod, err := r.mkmod(ctx, args)
+	c := components{
+		args:     args,
+		bytecode: bc,
+		session:  sess,
+	}
+
+	p, err := r.mkproc(ctx, c)
+	if err != nil {
+		return err
+	}
+
+	return er.SetProcess(proc_api.Process_ServerToClient(p))
+}
+
+func (r Runtime) mkproc(ctx context.Context, c components) (*process, error) {
+	pid := r.Tree.NextPid()
+
+	mod, err := r.mkmod(ctx, c)
 	if err != nil {
 		return nil, err
 	}
@@ -146,18 +141,18 @@ func (r Runtime) mkproc(ctx context.Context, args procArgs) (*process, error) {
 	proc := r.spawn(fn, pid)
 
 	// Register new process.
-	r.Tree.Insert(proc.pid, args.ppid)
+	r.Tree.Insert(proc.pid, c.args.Ppid)
 	r.Tree.AddToMap(proc.pid, proc)
 
 	return proc, nil
 }
 
-func (r Runtime) mkmod(ctx context.Context, args procArgs) (wasm.Module, error) {
-	name := csp.ByteCode(args.bc).String()
+func (r Runtime) mkmod(ctx context.Context, c components) (wasm.Module, error) {
+	name := csp.ByteCode(c.bytecode).String()
 
 	// TODO(perf):  cache compiled modules so that we can instantiate module
 	//              instances for concurrent use.
-	compiled, err := r.Runtime.CompileModule(ctx, args.bc)
+	compiled, err := r.Runtime.CompileModule(ctx, c.bytecode)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +182,7 @@ func (r Runtime) mkmod(ctx context.Context, args procArgs) (wasm.Module, error) 
 		WithStdin(os.Stdin).
 		WithStdout(os.Stdout).
 		WithStderr(os.Stderr).
-		WithArgs("foo", "bar", "baz")
+		WithArgs(c.args.Encode()...)
 
 	l.Close()
 	mod, err := r.Runtime.InstantiateModule(sockCtx, compiled, modCfg)
@@ -195,7 +190,7 @@ func (r Runtime) mkmod(ctx context.Context, args procArgs) (wasm.Module, error) 
 		return nil, err
 	}
 
-	// go ServeModule(addr, args.bCtx) // XXX
+	go ServeModule(addr, auth.Session(c.session))
 
 	return mod, nil
 }
@@ -229,12 +224,6 @@ func (r Runtime) spawn(fn wasm.Function, pid uint32) *process {
 	}()
 
 	return proc
-}
-
-type procArgs struct {
-	bc   []byte
-	ppid uint32
-	bCtx proc_api.BootContext
 }
 
 // ServeModule ensures the host side of the TCP connection with addr=addr

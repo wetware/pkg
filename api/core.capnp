@@ -39,13 +39,11 @@ struct Session {
 interface Executor {
     # Executor has the ability to create and run WASM processes given the
     # WASM bytecode.
-    exec @0 (bytecode :Data, ppid :UInt32, bctx :Process.BootContext) -> (process :Process.Process);
-    # Exec creates an runs a process from the provided bytecode. Optionally, a
-    # capability can be passed through the `cap` parameter. This capability will
-    # be available at the process bootContext.
+    exec @0 (session :Session, bytecode :Data, ppid :UInt32, args :List(Text)) -> (process :Process.Process);
+    # Exec creates an runs a process from the provided bytecode.
     #
     # The Process capability is associated to the created process.
-    execCached @1 (cid :Data, ppid :UInt32, bctx :Process.BootContext) -> (process :Process.Process);
+    execCached @1 (session :Session, cid :Data, ppid :UInt32, args :List(Text)) -> (process :Process.Process);
     # Same as Exec, but the bytecode is directly from the BytecodeRegistry.
     # Provides a significant performance improvement for medium to large
     # WASM streams.

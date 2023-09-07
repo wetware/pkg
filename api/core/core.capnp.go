@@ -690,7 +690,7 @@ func (c Executor) Exec(ctx context.Context, params func(Executor_exec_Params) er
 		},
 	}
 	if params != nil {
-		s.ArgsSize = capnp.ObjectSize{DataSize: 8, PointerCount: 2}
+		s.ArgsSize = capnp.ObjectSize{DataSize: 8, PointerCount: 3}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Executor_exec_Params(s)) }
 	}
 
@@ -710,7 +710,7 @@ func (c Executor) ExecCached(ctx context.Context, params func(Executor_execCache
 		},
 	}
 	if params != nil {
-		s.ArgsSize = capnp.ObjectSize{DataSize: 8, PointerCount: 2}
+		s.ArgsSize = capnp.ObjectSize{DataSize: 8, PointerCount: 3}
 		s.PlaceArgs = func(s capnp.Struct) error { return params(Executor_execCached_Params(s)) }
 	}
 
@@ -892,12 +892,12 @@ type Executor_exec_Params capnp.Struct
 const Executor_exec_Params_TypeID = 0x969e88e97ed79d94
 
 func NewExecutor_exec_Params(s *capnp.Segment) (Executor_exec_Params, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2})
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 3})
 	return Executor_exec_Params(st), err
 }
 
 func NewRootExecutor_exec_Params(s *capnp.Segment) (Executor_exec_Params, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2})
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 3})
 	return Executor_exec_Params(st), err
 }
 
@@ -933,17 +933,41 @@ func (s Executor_exec_Params) Message() *capnp.Message {
 func (s Executor_exec_Params) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s Executor_exec_Params) Bytecode() ([]byte, error) {
+func (s Executor_exec_Params) Session() (Session, error) {
 	p, err := capnp.Struct(s).Ptr(0)
+	return Session(p.Struct()), err
+}
+
+func (s Executor_exec_Params) HasSession() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Executor_exec_Params) SetSession(v Session) error {
+	return capnp.Struct(s).SetPtr(0, capnp.Struct(v).ToPtr())
+}
+
+// NewSession sets the session field to a newly
+// allocated Session struct, preferring placement in s's segment.
+func (s Executor_exec_Params) NewSession() (Session, error) {
+	ss, err := NewSession(capnp.Struct(s).Segment())
+	if err != nil {
+		return Session{}, err
+	}
+	err = capnp.Struct(s).SetPtr(0, capnp.Struct(ss).ToPtr())
+	return ss, err
+}
+
+func (s Executor_exec_Params) Bytecode() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(1)
 	return []byte(p.Data()), err
 }
 
 func (s Executor_exec_Params) HasBytecode() bool {
-	return capnp.Struct(s).HasPtr(0)
+	return capnp.Struct(s).HasPtr(1)
 }
 
 func (s Executor_exec_Params) SetBytecode(v []byte) error {
-	return capnp.Struct(s).SetData(0, v)
+	return capnp.Struct(s).SetData(1, v)
 }
 
 func (s Executor_exec_Params) Ppid() uint32 {
@@ -954,22 +978,28 @@ func (s Executor_exec_Params) SetPpid(v uint32) {
 	capnp.Struct(s).SetUint32(0, v)
 }
 
-func (s Executor_exec_Params) Bctx() process.BootContext {
-	p, _ := capnp.Struct(s).Ptr(1)
-	return process.BootContext(p.Interface().Client())
+func (s Executor_exec_Params) Args() (capnp.TextList, error) {
+	p, err := capnp.Struct(s).Ptr(2)
+	return capnp.TextList(p.List()), err
 }
 
-func (s Executor_exec_Params) HasBctx() bool {
-	return capnp.Struct(s).HasPtr(1)
+func (s Executor_exec_Params) HasArgs() bool {
+	return capnp.Struct(s).HasPtr(2)
 }
 
-func (s Executor_exec_Params) SetBctx(v process.BootContext) error {
-	if !v.IsValid() {
-		return capnp.Struct(s).SetPtr(1, capnp.Ptr{})
+func (s Executor_exec_Params) SetArgs(v capnp.TextList) error {
+	return capnp.Struct(s).SetPtr(2, v.ToPtr())
+}
+
+// NewArgs sets the args field to a newly
+// allocated capnp.TextList, preferring placement in s's segment.
+func (s Executor_exec_Params) NewArgs(n int32) (capnp.TextList, error) {
+	l, err := capnp.NewTextList(capnp.Struct(s).Segment(), n)
+	if err != nil {
+		return capnp.TextList{}, err
 	}
-	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
-	return capnp.Struct(s).SetPtr(1, in.ToPtr())
+	err = capnp.Struct(s).SetPtr(2, l.ToPtr())
+	return l, err
 }
 
 // Executor_exec_Params_List is a list of Executor_exec_Params.
@@ -977,7 +1007,7 @@ type Executor_exec_Params_List = capnp.StructList[Executor_exec_Params]
 
 // NewExecutor_exec_Params creates a new list of Executor_exec_Params.
 func NewExecutor_exec_Params_List(s *capnp.Segment, sz int32) (Executor_exec_Params_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2}, sz)
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 3}, sz)
 	return capnp.StructList[Executor_exec_Params](l), err
 }
 
@@ -988,8 +1018,8 @@ func (f Executor_exec_Params_Future) Struct() (Executor_exec_Params, error) {
 	p, err := f.Future.Ptr()
 	return Executor_exec_Params(p.Struct()), err
 }
-func (p Executor_exec_Params_Future) Bctx() process.BootContext {
-	return process.BootContext(p.Future.Field(1, nil).Client())
+func (p Executor_exec_Params_Future) Session() Session_Future {
+	return Session_Future{Future: p.Future.Field(0, nil)}
 }
 
 type Executor_exec_Results capnp.Struct
@@ -1083,12 +1113,12 @@ type Executor_execCached_Params capnp.Struct
 const Executor_execCached_Params_TypeID = 0xb52aad0122df1319
 
 func NewExecutor_execCached_Params(s *capnp.Segment) (Executor_execCached_Params, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2})
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 3})
 	return Executor_execCached_Params(st), err
 }
 
 func NewRootExecutor_execCached_Params(s *capnp.Segment) (Executor_execCached_Params, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2})
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 3})
 	return Executor_execCached_Params(st), err
 }
 
@@ -1124,17 +1154,41 @@ func (s Executor_execCached_Params) Message() *capnp.Message {
 func (s Executor_execCached_Params) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s Executor_execCached_Params) Cid() ([]byte, error) {
+func (s Executor_execCached_Params) Session() (Session, error) {
 	p, err := capnp.Struct(s).Ptr(0)
+	return Session(p.Struct()), err
+}
+
+func (s Executor_execCached_Params) HasSession() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Executor_execCached_Params) SetSession(v Session) error {
+	return capnp.Struct(s).SetPtr(0, capnp.Struct(v).ToPtr())
+}
+
+// NewSession sets the session field to a newly
+// allocated Session struct, preferring placement in s's segment.
+func (s Executor_execCached_Params) NewSession() (Session, error) {
+	ss, err := NewSession(capnp.Struct(s).Segment())
+	if err != nil {
+		return Session{}, err
+	}
+	err = capnp.Struct(s).SetPtr(0, capnp.Struct(ss).ToPtr())
+	return ss, err
+}
+
+func (s Executor_execCached_Params) Cid() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(1)
 	return []byte(p.Data()), err
 }
 
 func (s Executor_execCached_Params) HasCid() bool {
-	return capnp.Struct(s).HasPtr(0)
+	return capnp.Struct(s).HasPtr(1)
 }
 
 func (s Executor_execCached_Params) SetCid(v []byte) error {
-	return capnp.Struct(s).SetData(0, v)
+	return capnp.Struct(s).SetData(1, v)
 }
 
 func (s Executor_execCached_Params) Ppid() uint32 {
@@ -1145,22 +1199,28 @@ func (s Executor_execCached_Params) SetPpid(v uint32) {
 	capnp.Struct(s).SetUint32(0, v)
 }
 
-func (s Executor_execCached_Params) Bctx() process.BootContext {
-	p, _ := capnp.Struct(s).Ptr(1)
-	return process.BootContext(p.Interface().Client())
+func (s Executor_execCached_Params) Args() (capnp.TextList, error) {
+	p, err := capnp.Struct(s).Ptr(2)
+	return capnp.TextList(p.List()), err
 }
 
-func (s Executor_execCached_Params) HasBctx() bool {
-	return capnp.Struct(s).HasPtr(1)
+func (s Executor_execCached_Params) HasArgs() bool {
+	return capnp.Struct(s).HasPtr(2)
 }
 
-func (s Executor_execCached_Params) SetBctx(v process.BootContext) error {
-	if !v.IsValid() {
-		return capnp.Struct(s).SetPtr(1, capnp.Ptr{})
+func (s Executor_execCached_Params) SetArgs(v capnp.TextList) error {
+	return capnp.Struct(s).SetPtr(2, v.ToPtr())
+}
+
+// NewArgs sets the args field to a newly
+// allocated capnp.TextList, preferring placement in s's segment.
+func (s Executor_execCached_Params) NewArgs(n int32) (capnp.TextList, error) {
+	l, err := capnp.NewTextList(capnp.Struct(s).Segment(), n)
+	if err != nil {
+		return capnp.TextList{}, err
 	}
-	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
-	return capnp.Struct(s).SetPtr(1, in.ToPtr())
+	err = capnp.Struct(s).SetPtr(2, l.ToPtr())
+	return l, err
 }
 
 // Executor_execCached_Params_List is a list of Executor_execCached_Params.
@@ -1168,7 +1228,7 @@ type Executor_execCached_Params_List = capnp.StructList[Executor_execCached_Para
 
 // NewExecutor_execCached_Params creates a new list of Executor_execCached_Params.
 func NewExecutor_execCached_Params_List(s *capnp.Segment, sz int32) (Executor_execCached_Params_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2}, sz)
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 3}, sz)
 	return capnp.StructList[Executor_execCached_Params](l), err
 }
 
@@ -1179,8 +1239,8 @@ func (f Executor_execCached_Params_Future) Struct() (Executor_execCached_Params,
 	p, err := f.Future.Ptr()
 	return Executor_execCached_Params(p.Struct()), err
 }
-func (p Executor_execCached_Params_Future) Bctx() process.BootContext {
-	return process.BootContext(p.Future.Field(1, nil).Client())
+func (p Executor_execCached_Params_Future) Session() Session_Future {
+	return Session_Future{Future: p.Future.Field(0, nil)}
 }
 
 type Executor_execCached_Results capnp.Struct
@@ -1268,67 +1328,68 @@ func (p Executor_execCached_Results_Future) Process() process.Process {
 	return process.Process(p.Future.Field(0, nil).Client())
 }
 
-const schema_e82706a772b0927b = "x\xda\xa4\x94]h\x1c\xd5\x1b\xc6\xdf\xe7\x9c\xd9\x9d4" +
-	"\xfb\x95\x93\xd9\xf0\xa7\x17\x7f\x97\xb6\x09\xb5\x11c\x9b\x08" +
-	"B@\x134\xa1VZ\xdc\xd3T\xb0\xb9r2{H" +
-	"\x1763\xeb\xcc\xa4M\x11\xbfn\xaa\x14\x8bT\x8c\xd4" +
-	"\x16\x05+~\xf4\xc2TA\x0b\x95\x16\xccE{Q\xd0" +
-	"\x1bAE(\xb6\xf6\xc6\x16\xa4M\xb5x\x938r&" +
-	"\x99\xecF\x9b\x16\xf4j\x973\x0f\xcf{~\xef{\x9e" +
-	"w\xf3Vc\xd0\xd8\x92;\xd9AL\xce\xa7\xd2\xd1o" +
-	"\xaf\x8f\x17\x86\xae<\xf9\x12\x89\x0c\x8f\x9e{\xe3S\xff" +
-	"\xa3\xf4\xc6_\x88`\x9dm=n\x9dk5\x89\xac\xd9" +
-	"\xd6W\xac\x8e\x8cI\x14\xb9\x8f|xbf\xc7\xe1\x97" +
-	"I\x14A\x94\x82I\xd4\xb7\xd0\xda\x0f\x82\x95\xca\x0c\x10" +
-	"\xa27\xdf\xf9\xfe\x85\xab\xaf\xbe\xfb\x16\xc9\"\xb4\x82i" +
-	"EW\x86i\xc5\xa6\xccIB\xb4n\xff\xad\xe9\xd1\x99" +
-	"\x99c\xcd\x16\xe72\xedZ\xf0ul\xb1\xd6\xfai=" +
-	">\xe9\xfeb\x85\xc5\xaf\x99^\xad\xb8\x15[\\|\xe0" +
-	"\xdaF\xfcp\xed\x14\x09\x0b\xd1\xeeK\xa7\x0e\xcc\xad{" +
-	"\xea\xfc\xa2\xd0:\x94\xbd`\xbd\x9d\xd5\xff\xa6\xb3\xfb\x08" +
-	"\x11\xab]\xfc|w\xdf\x953$-4\x89;\xd2&" +
-	"\x88\xac\xb9\xec\x05\xed\x9a\xd5\xae\x0bg\xbf\\\x98{\x7f" +
-	"\xf6\xab\x7f4\xe2P\xee\xb85\x9d\xd3\x96\x87s[\xad" +
-	"\xd3\xfa_\xc3Hf\x80\x86:\x95\xd6\xb2\xf7rG\xad" +
-	"\x13\xb9\xff\x11\xf5}\x96+\x81\x10\x99\xc7\xb6y\xcf\xce" +
-	"\x1f\xf9\xae\x99\xf9t\xbeU\x13\xcd\xe65s\xfe\xa1\xc1" +
-	"\xf1\xdf\xef\x19\xf9\xa3YpyQp5?@\x11E" +
-	"\xf4p\xe4x\xbe\xeaq\xec:\xdcz\xff\xf0\x94r&" +
-	"\xcd\xd0\xf3\xcb\x80l\xe1)\xa2\xe5\xd6#\xa9&\xb6t" +
-	"\x13\x13]&\x1a=E2@\xb1v\x94\x98\x10fA" +
-	"M)g\x10\x91\xfey\xccv\xf6\x10W\x95A\x94\x81" +
-	"\xe5j<\xa9\x16z~O\"S\x95\xce\x9d\x03*\x98" +
-	"\xac\x85\x814\xb8Ad\x80H\xe4\x1e%\x92-\x1c\xb2" +
-	"\xc8\xf0b\xdd\xf7\x1c\x15\x04\x10Q_\xba\xeb\xe3oo" +
-	"l\xf8\x91\x08\x10t\x07\xe7\xce\xb2\xed\xdb\x13\x01\xc9\xec" +
-	"\xb2\xe5\xf0\x13Dr\x88C\x96\x19\x80\xf8A\x88\x1d\xdd" +
-	"D\xf2q\x0e\xb9\x8bA0\x14\xc1\x88\x84\xd4\x87\xdb9" +
-	"\xe4\xd3\x0c\xd1\xd8\xfeP9^E\x11\x11r\xc4\x90#" +
-	"\x14\xea\xf5j\x05-\xc4\xd0B(\x8c9\xe1\x14D\x94" +
-	"?r\xe9\xcf\x0d\xf7\x8d]\xbf\xdd\xcdv)\x7f\xa2\xea" +
-	"\xda\xb5\x9e\x9a7^u;w\xc6\xb4X\x157PA" +
-	"P\xf5\\\xb45\x9e\x06\x01mt\xf7F\x96K1u" +
-	"3\xf4z\"9\xc8!\xb77\xa0\xb7u7\x1a\xb1\x0c" +
-	"\xdd\xdc\x09\xd3\xa9V\xfe\x15,s\xeb\xfd#\x8b\xb7\xef" +
-	"\x19\x9e\x0a}\x9bh\xf1Q%\xd7\xd9\xa4\xabtr\xc8" +
-	"\xcd\x0c\"\xb9\xcf\xfd\xfdD\xf2^\x0e\xf9 C\xc1\xb5" +
-	"'\x14\xb2\xc4\x90%\x0c8\xb5\xaarC\xb4\x1b\x9c\x80" +
-	"\xf6U\x0a\xd5<\xc7\xae\xd1\x8aIw\xdf\x06\xba\xff." +
-	"\xd0\x85\xbaR\xfer\xe5@\xf9{\x95\x8f5\xc4\xb0\x86" +
-	"P\xd8\xe3\x05a\xf2mEx\xe2\xd1\x9a\xae]\xd3\x9c" +
-	"F\x1c\x9e$\x80H\xd6\x93\x10\xbd\xc4D\xca,\xc5\xe3" +
-	"_\x19\x09$ \xdcs\xa5\x81\xe6\x85\x84\xdeR\xdcC" +
-	"Y\xd4`h\xda?\xe2ym\x08V\x04'\x12JC" +
-	"<\xc3!k\x9a\x8c\x17a\x10\x89\xaa>\xacp\xc8:" +
-	"\x83\xe0F\x11)\"1\xa1\x13P\xe3\x90S\x0c\xc2H" +
-	"\x15\x91&\x12\x93\xbdD\xb2\xce!_c(\xc5\xbd," +
-	"\xec\xad\xaa}\x10\xd1\xd1\xce\xf9\xd1\xbe\x1b\xff?\xb84" +
-	"\xe58\xdf\x10\x8d-\x9f\x0c\xdf\xae\x8f\x84\x9e\x1f'D" +
-	"D\xe7\x87\xaf\x1f<\x90\xf9\xe0\xe7\xa5\xaf%\xa5\x11\x90" +
-	"'\x949\xd0\xd6\xc0#\xe8\xc3;\x04x1%\x01\xd1" +
-	"\x7f\xdb\x0a\x7f\xcb\xde\xd2ZX\xd5\xd4v\x1co\xd2\x0d" +
-	"!\xa237g\xbf\x19\xba|sn\xc9\xf4\xaf\x00\x00" +
-	"\x00\xff\xffX\xa8\xc4\x87"
+const schema_e82706a772b0927b = "x\xda\xa4UOh\x1c\xe5\x1b~\x9f\xef\xdb?\x93\xec" +
+	"n7_f\xc3\x8f\x1e\xfa[ZS\xaa\x01c\x9b\x08" +
+	"\x85\x80&h\x82\xb6\x18\xdc\xaf\xa9\x87\x06\x0f\x8e\xb3\x1f" +
+	"\xc9\xc2ff:3iSDkAk-\x82(*" +
+	"\xd2\xa2\x87\x8a\xff\x0eF\x0f\xda\x83T0\x97\xa2=x" +
+	"\x11\xffB\xfc\xd7\x83\xa6Pl\xaa\xc5K\xc3\xc87\xd9" +
+	"\xd9\xdd\x18\xd2\"\x9e\xf2\x91yx\x9e\xf7}\xde\xf7y" +
+	"w\xe7\x0f|$\xb5\xab\xb0[\x10\x93\x9f\xa53\xd1\x1f" +
+	"\xcfO\x15G/>\xf8$\x89\x1c\x8f\x1e{\xf1\x03\xff" +
+	"\xed\xcc\x8e\xdf\x88`\x1e3\xce\x98\xcf\x1aY\"\xf3i" +
+	"\xe3\x19\xf3;\xfd\x8a\x9c\xbb\xdfzw~\xfc\x85c$" +
+	"J J#K4\xb8`\x0c\x81`~n\x0c\x13\xa2" +
+	"\x97^\xfb\xe6\x89\xa5\x13\xaf\xbfB\xb2\x04\x8d\xe0\x1a\xb1" +
+	"d0\x8d\xb8l\xfcJ\x88\xb6\x1e\xb9\xf6\xf2\xe4\xfc\xfc" +
+	"\xe9v\x8a\xaf:\xba5`\xb1CSl6\x7f\xdc\x86" +
+	"\xf7\xfa>ZC\xb1\xd21\xa0\x11\xe9NM\xb1x\xc7" +
+	"\xa5\x1d\xf8\xf6\xd2Y\x12&\xa2\x03?\x9d=\xbe\xbc\xf5" +
+	"\xa1\xf3\x94f\xba\xd6\xa5\xce\x0b\xe6\xb5N\xfdZ\xee<" +
+	"L\x88X}\xf1\xc3\x03\x83\x17\xcf\x914\xd1\x06\xee\xc9" +
+	"dAd\x8e\xe7.\x10L\x99{\x9f\x10\xad|\xf2\xf1" +
+	"\xca\xf2\x1b\x0b\x9f\xae3b)w\xc6\\\xcei\xca\xcb" +
+	"\xb9\xfb\xcc\x9e\xbc6\xa2I$s@\x0b\x9d\xceh\xd8" +
+	"J\xee\x94\x99\xce\xff\x8fh\xb0\x90/\x83\x10eO\xef" +
+	"q\x0f^\x7f\xf5\xeb\xf6\x9e{\x0a\x9d\xba\xa3-\x05\xdd" +
+	"\xf3\xa6\xdd#S\x7f\xfe\x7f\xe2\xafv\xc0]\xab\x80\xb1" +
+	"\xc20E4\x1f\xd9\xae\xaf\xfam\xcb\x83\xe3\x0d\x8d\xcd" +
+	"){6\x1b\xba~\x05\x90\x06O\x135\x8dG\xa2%" +
+	"v\xf5\x11\x13\xdb\xb3h9\x8ad|b\xf3$1!" +
+	"\xb2E5\xa7\xec\x11D\xfa\xcf\xbd\x96=M\\UG" +
+	"P\x01\x9aj<Q\x0b]\xbf?\x81\xa9j\xef\xbea" +
+	"\x15\xcc\xd6\xc3@\xa6x\x8a(\x05\"Q\xb8\x87H\x1a" +
+	"\x1c\xb2\xc4p\xd4\xf3][\x05\x01D4\x98\xd9\xfe\xce" +
+	"\x97Wn\xf9\x9e\x08\x10t\x03\xe6\xde\x8a\xe5[3\x01" +
+	"\xc9\xae&\xa5\xa5)\x1f\xe6\x90\xd3\x0c\x02\x88\xf7A\xa8" +
+	"\xbdD\xb2\xca!=\x06\xb0\x12\x18\x91\x98\xe9#\x92\xd3" +
+	"\x1c2d\x10\x9c\x95\xc0\x89\xc4A\xfd\xcf:\x87<\xc1" +
+	"p4PAPs\x1dt\xb5FG@\x17!z\xf4" +
+	"H\xa8l\xb7\xaa\x88\x08\x05b(\x10\x8a\x9eW\xab\xc2" +
+	" \x06\x83P\xb4\xfc\xa9\x00\x9b\x08\x15\x0e\xe4\x89\xe9\xe7" +
+	"\x9a.\xf6+\x7f\xa6\xe6X\xf5\xfe\xba;Usz\xf7" +
+	"\xc5\xce`Ck6\xae\xe4f\xa6W\xca\xb1C75" +
+	"h\x1b\x91|\x84C\xd6[\x06\xd5\xfaZ\xa65\x0dj" +
+	"\xba\xf6\xd4\x8d\xca\xca\xda\xb5\xea\xbf7\x869\xde\xd0\xc4" +
+	"*e\xff\xd8\\\xe8[D\xab\xcb\x9a\x94~\x9b\x16\xef" +
+	"\xe5\x90;\xdbJ\xbf}\x88H\xde\xca!\xefd(:" +
+	"\xd6\x8c\x8ay\xf3\x84a\xbb^SN\x88\xee\x14'\xa0" +
+	"{\x03\xa1\xbak[u\"\x99o\xaa\x8ci\x95\x11\x0e" +
+	"\xf9\x00C\"\xb2G\x8b\x8cr\xc8\x0a\x83`X5h" +
+	"\\\x03\xef\xe7\x90\xfb\x19\x8a\x9eR~S9P\xfe!" +
+	"\xe5\xa3\x83\x18:\x08\xc5i7\x08\x93okB\x19\xaf" +
+	"A\xd6\xb1\xea\xba\xcfT\x1c\xca$\xd6H\x8e\x9e\x10\x03" +
+	"\xc4D:[\x8eWem\xd4\x904\xc2]G\xa6\xd0" +
+	"~\xe60P\x8e=\x94%\xdd\x18\xda\xae\x9ax\\\x13" +
+	"\xa21P\xd5\xd7\x9a\xbc`\xbc\x84\xd4\xba\xd1\xa7JH" +
+	"\xeb\xd1\xefmdc\x8eA\xa4\xd2%d\x88\xc4\xec\x00" +
+	"\x91\xf48\xe4s\x0c\xe5\xd8\xcb\xe2\xa1\x9a:\x0c\x11\x9d" +
+	"\xea\xbd>9xe\xcb\xc9F\x88\xe3\xbb\x01\xd1\xfa\xed" +
+	"H\xb2my\x13\xa1\xeb\xc7Q\x12\xd1\xf9\xb1\xdfO\x1e" +
+	"\xcf\xbd\xf9K\xe3kY\xe9\x16\x92}\xe9j\xb5GX" +
+	"\x17\xa9\xb5\x87a5Q\x01\xd1\x7f\xbb6\xff\xc8i\xe3" +
+	"\xdclHj\xd9\xb6;\xeb\x84\x10\xd1\xb9\xab\x0b_\x8c" +
+	"\xfe|u\xb9A\xfaw\x00\x00\x00\xff\xff6m\xd2C"
 
 func RegisterSchema(reg *schemas.Registry) {
 	reg.Register(&schemas.Schema{
