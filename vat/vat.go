@@ -138,6 +138,7 @@ func (conf Config) NewExecutor(ctx context.Context) (csp_server.Runtime, error) 
 		Runtime: r,
 		Cache:   make(csp_server.BytecodeCache),
 		Tree:    csp_server.NewProcTree(ctx),
+		Log:     slog.Default(),
 	}, nil
 }
 

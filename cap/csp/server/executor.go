@@ -50,6 +50,7 @@ type Runtime struct {
 	Runtime wazero.Runtime
 	Cache   BytecodeCache
 	Tree    ProcTree
+	Log     log.Logger
 
 	// HostModule is unused for now.
 	HostModule *wazergo.ModuleInstance[*proc.Module]
@@ -73,6 +74,7 @@ func (r Runtime) Exec(ctx context.Context, call core_api.Executor_exec) error {
 
 	// Cache new bytecodes every time they are received.
 	cid := r.Cache.put(bc)
+	r.Log.Info("cached bytecode",
 
 	return r.exec(ctx, cid, bc, call.Args(), res)
 }
@@ -111,6 +113,10 @@ func (r Runtime) exec(ctx context.Context, id cid.Cid, bc []byte, ea execArgs, e
 		Cid:  id,
 		Pid:  r.Tree.NextPid(),
 	}
+	r.Log.Info("exec",
+		"pid", args.Pid,
+		"ppid", args.Ppid,
+		"cid", id.Encode(multibase.MustNewEncoder(multibase.Base58BTC)))
 
 	c := components{
 		args:     args,
@@ -185,7 +191,7 @@ func (r Runtime) mkmod(ctx context.Context, c components) (wasm.Module, error) {
 		return nil, err
 	}
 
-	go ServeModule(addr, auth.Session(c.session))
+	r.Log.Debug("serve module", "pid", c.args.Pid, "cid", c.args.Cid.String())
 
 	return mod, nil
 }
