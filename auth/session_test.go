@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	api "github.com/wetware/pkg/api/cluster"
+	api "github.com/wetware/pkg/api/core"
 	"github.com/wetware/pkg/auth"
 )
 

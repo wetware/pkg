@@ -19,7 +19,7 @@ import (
 	wasm "github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/experimental/sock"
 
-	api "github.com/wetware/pkg/api/cluster"
+	core_api "github.com/wetware/pkg/api/core"
 	proc_api "github.com/wetware/pkg/api/process"
 	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/cap/csp"
@@ -40,10 +40,10 @@ type Runtime struct {
 
 // Executor provides the Executor capability.
 func (r Runtime) Executor() csp.Executor {
-	return csp.Executor(proc_api.Executor_ServerToClient(r))
+	return csp.Executor(core_api.Executor_ServerToClient(r))
 }
 
-func (r Runtime) Exec(ctx context.Context, call proc_api.Executor_exec) error {
+func (r Runtime) Exec(ctx context.Context, call core_api.Executor_exec) error {
 	res, err := call.AllocResults()
 	if err != nil {
 		return err
@@ -82,7 +82,7 @@ func (r Runtime) Exec(ctx context.Context, call proc_api.Executor_exec) error {
 	return res.SetProcess(proc_api.Process_ServerToClient(p))
 }
 
-func (r Runtime) ExecCached(ctx context.Context, call proc_api.Executor_execCached) error {
+func (r Runtime) ExecCached(ctx context.Context, call core_api.Executor_execCached) error {
 	res, err := call.AllocResults()
 	if err != nil {
 		return err
@@ -247,7 +247,7 @@ func ServeModule(addr *net.TCPAddr, sess auth.Session) {
 	defer tcpConn.Close()
 
 	conn := rpc.NewConn(rpc.NewStreamTransport(tcpConn), &rpc.Options{
-		BootstrapClient: capnp.NewClient(api.Terminal_NewServer(sess)),
+		BootstrapClient: capnp.NewClient(core_api.Terminal_NewServer(sess)),
 		ErrorReporter: system.ErrorReporter{
 			Logger: slog.Default(),
 		},

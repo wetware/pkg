@@ -8,7 +8,8 @@ import (
 	"lukechampine.com/blake3"
 
 	"github.com/ipfs/go-cid"
-	api "github.com/wetware/pkg/api/process"
+	core_api "github.com/wetware/pkg/api/core"
+	proc_api "github.com/wetware/pkg/api/process"
 )
 
 // ByteCode is a representation of arbitrary executable data.
@@ -26,7 +27,7 @@ func (b ByteCode) Hash() [32]byte {
 }
 
 // Executor is a capability that can spawn processes.
-type Executor api.Executor
+type Executor core_api.Executor
 
 func (ex Executor) AddRef() Executor {
 	return Executor(capnp.Client(ex).AddRef())
@@ -39,9 +40,9 @@ func (ex Executor) Release() {
 // Exec spawns a new process from WASM bytecode bc. If the caller is a WASM process
 // spawned in this same executor, it should use its PID as ppid to mark the
 // new process as a subprocess.
-func (ex Executor) Exec(ctx context.Context, bc []byte, ppid uint32, bCtx api.BootContext) (Proc, capnp.ReleaseFunc) {
-	f, release := api.Executor(ex).Exec(ctx,
-		func(ps api.Executor_exec_Params) error {
+func (ex Executor) Exec(ctx context.Context, bc []byte, ppid uint32, bCtx proc_api.BootContext) (Proc, capnp.ReleaseFunc) {
+	f, release := core_api.Executor(ex).Exec(ctx,
+		func(ps core_api.Executor_exec_Params) error {
 			if err := ps.SetBytecode(bc); err != nil {
 				return err
 			}
@@ -54,9 +55,9 @@ func (ex Executor) Exec(ctx context.Context, bc []byte, ppid uint32, bCtx api.Bo
 
 // ExecFromCache behaves the same way as Exec, but expects the bytecode to be already
 // cached at the executor.
-func (ex Executor) ExecFromCache(ctx context.Context, cid cid.Cid, ppid uint32, bCtx api.BootContext) (Proc, capnp.ReleaseFunc) {
-	f, release := api.Executor(ex).ExecCached(ctx,
-		func(ps api.Executor_execCached_Params) error {
+func (ex Executor) ExecFromCache(ctx context.Context, cid cid.Cid, ppid uint32, bCtx proc_api.BootContext) (Proc, capnp.ReleaseFunc) {
+	f, release := core_api.Executor(ex).ExecCached(ctx,
+		func(ps core_api.Executor_execCached_Params) error {
 			if err := ps.SetCid(cid.Bytes()); err != nil {
 				return err
 			}
