@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"capnproto.org/go/capnp/v3"
+	"go.uber.org/multierr"
 	"golang.org/x/exp/slog"
 
 	local "github.com/libp2p/go-libp2p/core/host"
@@ -25,9 +26,11 @@ import (
 	"github.com/wetware/pkg/cap/pubsub"
 	service "github.com/wetware/pkg/cap/registry"
 	"github.com/wetware/pkg/cap/view"
+	"github.com/wetware/pkg/cluster/routing"
 )
 
 type ViewProvider interface {
+	ID() routing.ID
 	View() view.View
 }
 
@@ -84,13 +87,44 @@ func (svr *Server) Export() capnp.Client {
 	return capnp.NewClient(api.Terminal_NewServer(svr))
 }
 
+func (svr *Server) NewRootSession() (api.Session, error) {
+	_, seg := capnp.NewSingleSegmentMessage(nil)
+	sess, err := api.NewRootSession(seg) // TODO(optimization):  non-root?
+	if err != nil {
+		return api.Session{}, err
+	}
+
+	routingID := svr.ViewProvider.ID()
+	sess.Local().SetServer(uint64(routingID))
+
+	hostname, err := sess.Local().Host()
+	if err != nil {
+		return api.Session{}, err
+	}
+
+	// Write session data
+	err = multierr.Combine(
+		// Local data
+		// TODO(soon):  sess.Local().SetNamespace(svr.NS),
+		sess.Local().SetHost(hostname),
+		sess.Local().SetPeer(string(svr.Host.ID())),
+
+		// Capabilities
+		svr.BindView(sess),
+		svr.BindExec(sess),
+		svr.BindCapStore(sess),
+	)
+
+	return sess, err
+}
+
 func (svr *Server) Login(ctx context.Context, call api.Terminal_login) error {
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
 
 	res, err := call.AllocResults()
 	if err != nil {
-		return err
+		return fmt.Errorf("alloc results: %w", err)
 	}
 
 	account, err := svr.Negotiate(ctx, call.Args().Account())
@@ -98,7 +132,12 @@ func (svr *Server) Login(ctx context.Context, call api.Terminal_login) error {
 		return fmt.Errorf("auth: %w", err)
 	}
 
-	return svr.Auth(ctx, svr, account, res)
+	root, err := svr.NewRootSession()
+	if err != nil {
+		return err
+	}
+
+	return svr.Auth(ctx, res, auth.Session(root), account)
 }
 
 func (svr *Server) Negotiate(ctx context.Context, account api.Signer) (peer.ID, error) {
