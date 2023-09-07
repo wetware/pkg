@@ -62,6 +62,7 @@ type Server struct {
 	ViewProvider     ViewProvider
 	ExecutorProvider ExecutorProvider
 	CapStoreProvider CapStoreProvider
+	Extra            map[string]capnp.Client
 
 	once sync.Once
 	ch   chan network.Stream
@@ -79,6 +80,10 @@ func (svr *Server) setup() {
 func (svr *Server) Close() error {
 	svr.setup()
 	close(svr.ch)
+
+	for _, c := range svr.Extra {
+		c.Release()
+	}
 
 	return nil
 }
@@ -113,6 +118,7 @@ func (svr *Server) NewRootSession() (api.Session, error) {
 		svr.BindView(sess),
 		svr.BindExec(sess),
 		svr.BindCapStore(sess),
+		svr.BindExtra(sess),
 	)
 
 	return sess, err
@@ -205,4 +211,27 @@ func (svr *Server) BindExec(sess api.Session) error {
 func (svr *Server) BindCapStore(sess api.Session) error {
 	store := svr.CapStoreProvider.CapStore()
 	return sess.SetCapStore(capstore_api.CapStore(store))
+}
+
+func (svr *Server) BindExtra(sess api.Session) error {
+	size := len(svr.Extra)
+	extra, err := sess.NewExtra(int32(size))
+	if err != nil {
+		return err
+	}
+
+	i := 0
+	for name, c := range svr.Extra {
+		if err = extra.At(i).SetName(name); err != nil {
+			break
+		}
+
+		if err = extra.At(i).SetClient(c); err != nil {
+			break
+		}
+
+		i++
+	}
+
+	return err
 }

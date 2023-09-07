@@ -10,6 +10,10 @@ import (
 	api "github.com/wetware/pkg/api/process"
 )
 
+type Importer interface {
+	Import(name string) (capnp.Client, error)
+}
+
 // BootContext implements api.BootContext.
 type BootContext struct {
 	pid  uint32
@@ -112,6 +116,13 @@ func (b *BootContext) WithRawArgs(args capnp.TextList) *BootContext {
 	return b
 }
 
+func (b *BootContext) WithImporter(env Importer) *BootContext {
+	// TODO(mikelsr):  this is your new cap store.  It's read-only.  If you need
+	// a read-write store, let me know.
+
+	return b
+}
+
 func (b *BootContext) WithCaps(caps ...capnp.Client) (*BootContext, error) {
 	// The caps need to be copied because the original capabilities might be
 	// released before the contents are used.
@@ -132,10 +143,10 @@ func (b *BootContext) WithCaps(caps ...capnp.Client) (*BootContext, error) {
 	return b, nil
 }
 
-func (b *BootContext) WithRawCaps(caps capnp.PointerList) *BootContext {
-	b.caps = caps
-	return b
-}
+// func (b *BootContext) WithRawCaps(caps capnp.PointerList) *BootContext {
+// 	b.caps = caps
+// 	return b
+// }
 
 func (b *BootContext) Cap() api.BootContext {
 	return api.BootContext_ServerToClient(b)

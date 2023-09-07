@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	session auth.Session
+	sess auth.Session
 	// releases *[]func()
 	// closes   *[]func() error
 )

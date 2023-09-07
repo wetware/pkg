@@ -7,8 +7,9 @@ import (
 	"os"
 	"time"
 
-	capnp "capnproto.org/go/capnp/v3"
+	"capnproto.org/go/capnp/v3"
 	"github.com/urfave/cli/v2"
+
 	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/cap/csp"
 	"github.com/wetware/pkg/vat"
@@ -28,7 +29,7 @@ func run() *cli.Command {
 func runAction() cli.ActionFunc {
 	return func(c *cli.Context) error {
 		// Load the name of the entry function and the WASM file containing the module to run
-		src, err := bytecode(c)
+		rom, err := bytecode(c)
 		if err != nil {
 			return err
 		}
@@ -46,7 +47,7 @@ func runAction() cli.ActionFunc {
 		}
 		defer bootstrap.Close()
 
-		session, err = vat.Dialer{
+		sess, err = vat.Dialer{
 			Host:    h,
 			Account: auth.SignerFromHost(h),
 		}.DialDiscover(c.Context, bootstrap, c.String("ns"))
@@ -54,16 +55,16 @@ func runAction() cli.ActionFunc {
 			return err
 		}
 
-		// Obtain an executor and spawn a process
+		// Obtain an executor and load a process from a ROM image.
 
 		bCtx, err := csp.NewBootContext().
 			WithArgs(c.Args().Slice()...).
-			WithCaps(capnp.Client(session.CapStore()))
+			WithCaps(capnp.Client(sess.CapStore()))
 		if err != nil {
 			return err
 		}
 
-		proc, release := session.Exec().Exec(c.Context, src, 0, bCtx.Cap())
+		proc, release := sess.Exec().Exec(c.Context, rom, 0, bCtx.Cap())
 		defer release()
 
 		waitChan := make(chan error, 1)

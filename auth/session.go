@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"capnproto.org/go/capnp/v3"
-	"github.com/wetware/pkg/api/capstore"
 	api "github.com/wetware/pkg/api/cluster"
+	"github.com/wetware/pkg/cap/capstore"
 	"github.com/wetware/pkg/cap/csp"
 	"github.com/wetware/pkg/cap/view"
 )
@@ -30,6 +30,13 @@ func (sess Session) AddRef() Session {
 	raw.SetView(api.Session(sess).View().AddRef())
 	raw.SetExec(api.Session(sess).Exec().AddRef())
 	raw.SetCapStore(api.Session(sess).CapStore().AddRef())
+	extra, err := api.Session(sess).Extra()
+	if err == nil && extra.Len() > 0 {
+		err := api.Session(sess).SetExtra(extra)
+		if err != nil {
+			panic(err)
+		}
+	}
 
 	return Session(raw)
 }
@@ -65,6 +72,41 @@ func (sess Session) CapStore() capstore.CapStore {
 	client := api.Session(sess).CapStore()
 	return capstore.CapStore(client)
 }
+
+// func (sess Session) Imports() (map[string]capnp.Client, capnp.ReleaseFunc) {
+// 	extra, err := api.Session(sess).Extra()
+// 	if err != nil || extra.Len() == 0 {
+// 		return nil, func() {}
+// 	}
+
+// 	imports := make(map[string]capnp.Client, extra.Len())
+// 	for i := 0; i < extra.Len(); i++ {
+// 		name, err := extra.At(i).Name()
+// 		if err == nil {
+// 			imports[name] = extra.At(i).Client().AddRef()
+// 		}
+// 	}
+
+// 	return imports, func() {
+// 		for _, c := range imports {
+// 			c.Release()
+// 		}
+// 	}
+// }
+
+// func (sess Session) Import(name string) (capnp.Client, error) {
+// 	extra, err := api.Session(sess).Extra()
+
+// 	for i := 0; i < extra.Len(); i++ {
+// 		key, err := extra.At(i).Name()
+// 		if key == name || err != nil {
+// 			client := extra.At(i).Client()
+// 			return client.AddRef(), err
+// 		}
+// 	}
+
+// 	return capnp.Client{}, err
+// }
 
 // mkRawSession allocates a new api.Session.  Error is always nil.
 func mkRawSession() (api.Session, error) {
