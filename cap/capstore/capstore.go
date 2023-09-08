@@ -22,7 +22,7 @@ func (c CapStore) Set(ctx context.Context, id string, cap capnp.Client) error {
 		if err := cs.SetId(id); err != nil {
 			return err
 		}
-		return cs.SetCap(cap)
+		return cs.SetCap(cap.AddRef())
 	})
 	defer release()
 
@@ -43,5 +43,5 @@ func (c CapStore) Get(ctx context.Context, id string) (capnp.Client, error) {
 		return capnp.Client{}, err
 	}
 
-	return res.Cap(), nil
+	return res.Cap().AddRef(), nil
 }

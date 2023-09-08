@@ -30,7 +30,7 @@ func (c *CapStore) Set(ctx context.Context, call api.CapStore_set) error {
 	cap := call.Args().Cap()
 	c.Logger.Info("set capability", "id", id)
 
-	c.Map.Store(id, cap)
+	c.Map.Store(id, cap.AddRef())
 	return nil
 }
 
@@ -56,5 +56,5 @@ func (c *CapStore) Get(ctx context.Context, call api.CapStore_get) error {
 		return err
 	}
 
-	return res.SetCap(cap)
+	return res.SetCap(cap.AddRef())
 }
