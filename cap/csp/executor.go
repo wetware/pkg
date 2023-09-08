@@ -64,9 +64,9 @@ func (ex Executor) Exec(
 	return Proc(f.Process()), release
 }
 
-// ExecFromCache behaves the same way as Exec, but expects the bytecode to be already
+// ExecCached behaves the same way as Exec, but expects the bytecode to be already
 // cached at the executor.
-func (ex Executor) ExecFromCache(
+func (ex Executor) ExecCached(
 	ctx context.Context,
 	sess core_api.Session,
 	cid cid.Cid,
