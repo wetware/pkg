@@ -205,7 +205,7 @@ func (r Runtime) mkmod(ctx context.Context, c components) (wasm.Module, error) {
 	}
 
 	r.Log.Debug("serve module", "pid", c.args.Pid, "cid", c.args.Cid.String())
-	go ServeModule(c.ctx, addr, auth.Session(c.session))
+	go ServeModule(c.ctx, addr, auth.Session(c.session).AddRef())
 
 	return mod, nil
 }
