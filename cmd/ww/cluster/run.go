@@ -27,25 +27,28 @@ func run() *cli.Command {
 
 func runAction() cli.ActionFunc {
 	return func(c *cli.Context) error {
-		// Load the name of the entry function and the WASM file containing the module to run
+		// Load the name of the entry function and the WASM file containing
+		// the module to run.
 		rom, err := bytecode(c)
 		if err != nil {
 			return err
 		}
 
-		// Set up the wetware client and dial into the cluster
+		// Set up the wetware client and dial into the cluster.
 		h, err := vat.DialP2P()
 		if err != nil {
 			return err
 		}
 		defer h.Close()
 
+		// Connect to peers.
 		bootstrap, err := newBootstrap(c, h)
 		if err != nil {
 			return fmt.Errorf("discovery: %w", err)
 		}
 		defer bootstrap.Close()
 
+		// Login into the wetware cluster.
 		sess, err = vat.Dialer{
 			Host:    h,
 			Account: auth.SignerFromHost(h),
@@ -54,9 +57,17 @@ func runAction() cli.ActionFunc {
 			return err
 		}
 
-		proc, release := sess.Exec().Exec(c.Context, api.Session(sess), rom, 0)
+		// Prepare argv for the process.
+		args := []string{}
+		if c.Args().Len() > 1 {
+			args = append(args, c.Args().Slice()[1:]...)
+		}
+
+		// Run remote process.
+		proc, release := sess.Exec().Exec(c.Context, api.Session(sess), rom, 0, args...)
 		defer release()
 
+		// Wait for remote process to end.
 		waitChan := make(chan error, 1)
 		go func() {
 			waitChan <- proc.Wait(c.Context)

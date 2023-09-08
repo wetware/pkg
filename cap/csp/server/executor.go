@@ -114,10 +114,20 @@ func (r Runtime) exec(ctx context.Context, id cid.Cid, bc []byte, ea execArgs, e
 		return err
 	}
 
+	argl, err := ea.Args()
+	if err != nil {
+		return err
+	}
+	argv, err := csp.DecodeTextList(argl)
+	if err != nil {
+		return err
+	}
+
 	args := csp.Args{
 		Ppid: r.Tree.PpidOrInit(ea.Ppid()),
 		Cid:  id,
 		Pid:  r.Tree.NextPid(),
+		Cmd:  argv,
 	}
 	r.Log.Info("exec",
 		"pid", args.Pid,
