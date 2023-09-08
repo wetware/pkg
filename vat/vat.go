@@ -84,7 +84,10 @@ func (conf Config) Serve(ctx context.Context) error {
 		Auth:             conf.Auth,
 		ViewProvider:     r,
 		ExecutorProvider: e,
-		CapStoreProvider: &capstore_server.CapStore{Map: &sync.Map{}},
+		CapStoreProvider: &capstore_server.CapStore{
+			Map:    &sync.Map{},
+			Logger: slog.Default(),
+		},
 		// PubSubProvider: &pubsub.Server{TopicJoiner: ps},
 		// 	WithCloseOnContextDone(true),
 	}
