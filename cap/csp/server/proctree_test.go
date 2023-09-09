@@ -75,9 +75,9 @@ func testProcTree() csp.ProcTree {
 		},
 	}
 
-	procMap := make(map[uint32]api.Process_Server)
+	procMap := &sync.Map{}
 	for pid := uint32(0); pid <= 11; pid++ {
-		procMap[pid] = &testProc{pid: pid, alive: true}
+		procMap.Store(pid, &testProc{pid: pid, alive: true})
 	}
 
 	return csp.ProcTree{
@@ -192,7 +192,7 @@ func TestProcTree_Kill(t *testing.T) {
 	pt := testProcTree()
 
 	mapCopy := make(map[uint32]api.Process_Server)
-	for k, v := range pt.Map {
+	for k, v := range pt.MapSnapshot() {
 		mapCopy[k] = v
 	}
 
@@ -204,7 +204,7 @@ func TestProcTree_Kill(t *testing.T) {
 	aliveProcs := []uint32{10, 11}
 
 	for _, pid := range killedProcs {
-		if _, found := pt.Map[pid]; found {
+		if _, found := pt.Load(pid); found {
 			t.Fatalf("found process %d in map but it should have been deleted", pid)
 		}
 		p := mapCopy[pid]
@@ -214,7 +214,7 @@ func TestProcTree_Kill(t *testing.T) {
 	}
 
 	for _, pid := range aliveProcs {
-		if _, found := pt.Map[pid]; !found {
+		if _, found := pt.Load(pid); !found {
 			t.Fatalf("failed to find process %d in map", pid)
 		}
 		p := mapCopy[pid]
@@ -234,14 +234,14 @@ func TestProcTree_Trim(t *testing.T) {
 	pt.Trim(context.TODO())
 
 	mapCopy := make(map[uint32]api.Process_Server)
-	for k, v := range pt.Map {
+	for k, v := range pt.MapSnapshot() {
 		mapCopy[k] = v
 	}
 
 	killedProcs := []uint32{1, 2, 3, 4, 5, 6, 7, 8, 9}
 	aliveProcs := []uint32{10, 11}
 	for _, pid := range aliveProcs {
-		if _, found := pt.Map[pid]; !found {
+		if _, found := pt.Load(pid); !found {
 			t.Fatalf("failed to find process %d in map", pid)
 		}
 		p := mapCopy[pid]
