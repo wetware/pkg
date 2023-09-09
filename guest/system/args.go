@@ -34,7 +34,7 @@ func Args() []string {
 
 // Pid of the process.
 func Pid() uint32 {
-	if cachedCid == nil {
+	if cachedPid == nil {
 		u, err := strconv.ParseUint(os.Args[ipid], 10, 32)
 		if err != nil {
 			panic(err)
