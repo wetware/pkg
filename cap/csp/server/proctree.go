@@ -3,6 +3,7 @@ package csp_server
 import (
 	"context"
 	"fmt"
+	"sync"
 	"sync/atomic"
 
 	api "github.com/wetware/pkg/api/process"
@@ -26,6 +27,8 @@ type ProcTree struct {
 	Root *ProcNode
 	// Map of processes associated to their PIDs. MUST be initialized.
 	Map map[uint32]api.Process_Server
+	// Mutex to ensure thread safety.
+	Mut *sync.RWMutex
 }
 
 // NewProcTree is the default constuctor for ProcTree, but it may
@@ -37,6 +40,7 @@ func NewProcTree(ctx context.Context) ProcTree {
 		TPC:  NewAtomicCounter(1),
 		Root: &ProcNode{Pid: INIT_PID},
 		Map:  make(map[uint32]api.Process_Server),
+		Mut:  &sync.RWMutex{},
 	}
 }
 
@@ -68,12 +72,14 @@ func (pt *ProcTree) NextPid() uint32 {
 
 // Kill recursively kills a process and it's children
 func (pt *ProcTree) Kill(pid uint32) {
+	pt.Mut.Lock()
+	defer pt.Mut.Unlock()
 	// Can't kill root process.
 	if pid == pt.Root.Pid {
 		return
 	}
 
-	n := pt.Pop(pid)
+	n := pop(pt.Root, pid)
 	p, ok := pt.Map[pid]
 	if ok && p != nil {
 		pt.TPC.Dec()
@@ -119,17 +125,23 @@ func stop(ctx context.Context, p api.Process_Server) {
 // Pop removes the node with PID=pid and replaces it with a sibling
 // in the process tree.
 func (pt ProcTree) Pop(pid uint32) *ProcNode {
+	pt.Mut.Lock()
+	defer pt.Mut.Unlock()
+	return pop(pt.Root, pid)
+}
+
+func pop(n *ProcNode, pid uint32) *ProcNode {
 	// Root proc.
-	if pid == pt.Root.Pid {
+	if pid == n.Pid {
 		return nil
 	}
 
 	// Find the parent.
-	parent := pt.FindParent(pid)
+	parent, _ := findParent(n, pid)
 
 	// Orphaned node.
 	if parent == nil {
-		return pt.Find(pid)
+		return find(n, pid)
 	}
 
 	child := parent.Left
@@ -161,18 +173,24 @@ func (pt ProcTree) Pop(pid uint32) *ProcNode {
 
 // Find returns a node in the process tree with PID=pid. nil if not found.
 func (pt ProcTree) Find(pid uint32) *ProcNode {
+	pt.Mut.RLock()
+	defer pt.Mut.RUnlock()
 	return find(pt.Root, pid)
 }
 
 // FindParent returns the parent of the process with PID=pid. nil if not found.
 func (pt ProcTree) FindParent(pid uint32) *ProcNode {
+	pt.Mut.RLock()
+	defer pt.Mut.RUnlock()
 	n, _ := findParent(pt.Root, pid)
 	return n
 }
 
 // Insert creates a node with PID=pid as a child of PID=ppid.
 func (pt ProcTree) Insert(pid, ppid uint32) error {
+	pt.Mut.Lock()
 	err := insert(pt.Root, pid, ppid)
+	pt.Mut.Unlock()
 	if err == nil {
 		pt.TPC.Inc()
 	}

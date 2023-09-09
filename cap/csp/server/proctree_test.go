@@ -3,6 +3,7 @@ package csp_server_test
 import (
 	"context"
 	"math"
+	"sync"
 	"testing"
 
 	api "github.com/wetware/pkg/api/process"
@@ -85,6 +86,7 @@ func testProcTree() csp.ProcTree {
 		TPC:  csp.NewAtomicCounter(10),
 		Root: root,
 		Map:  procMap,
+		Mut:  &sync.RWMutex{},
 	}
 }
 
