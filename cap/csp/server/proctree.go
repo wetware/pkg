@@ -15,7 +15,6 @@ const INIT_PID = 1
 // It is represented a binary tree, in which the left branch of a node
 // represents a child process, while the right branch represents a
 // sibling process (shares the same parent).
-// TODO: thread safety.
 type ProcTree struct {
 	// TODO move context out of tree
 	Ctx context.Context
