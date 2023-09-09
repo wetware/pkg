@@ -13,6 +13,7 @@ import (
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
+	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multibase"
 	"github.com/stealthrocket/wazergo"
@@ -132,7 +133,8 @@ func (r Runtime) exec(ctx context.Context, id cid.Cid, bc []byte, ea execArgs, e
 	r.Log.Info("exec",
 		"pid", args.Pid,
 		"ppid", args.Ppid,
-		"cid", id.Encode(multibase.MustNewEncoder(multibase.Base58BTC)))
+		"cid", id.Encode(multibase.MustNewEncoder(multibase.Base58BTC)),
+		"args", argv)
 
 	// NOTE:  we use context.Background instead of the context obtained from the
 	//        rpc handler. This ensures that a process can continue to run after
@@ -172,7 +174,7 @@ func (r Runtime) mkproc(ctx context.Context, c components) (*process, error) {
 }
 
 func (r Runtime) mkmod(ctx context.Context, c components) (wasm.Module, error) {
-	name := csp.ByteCode(c.bytecode).String()
+	name := csp.ByteCode(c.bytecode).String() + uuid.NewString()
 
 	// TODO(perf):  cache compiled modules so that we can instantiate module
 	//              instances for concurrent use.
@@ -190,6 +192,7 @@ func (r Runtime) mkmod(ctx context.Context, c components) (wasm.Module, error) {
 	}
 	addr := l.Addr().(*net.TCPAddr)
 
+	r.Log.Info("instantiate module", "name", name, "port", addr.Port)
 	// Enables the creation of non-blocking TCP connections
 	// inside the WASM module. The host will pre-open the TCP
 	// port and pass it to the guest through a file descriptor.
@@ -214,7 +217,7 @@ func (r Runtime) mkmod(ctx context.Context, c components) (wasm.Module, error) {
 		return nil, err
 	}
 
-	r.Log.Debug("serve module", "pid", c.args.Pid, "cid", c.args.Cid.String())
+	r.Log.Info("serve module", "pid", c.args.Pid, "cid", c.args.Cid.String())
 	go ServeModule(c.ctx, addr, auth.Session(c.session).AddRef())
 
 	return mod, nil
