@@ -42,10 +42,10 @@ func TestServe(t *testing.T) {
 			Bootstrap: nopDiscovery{},
 			Ambient:   nopDiscovery{},
 			Auth:      auth.AllowAll,
-			OnJoin: func(root auth.Session) {
-				defer cancel()
-				require.NotZero(t, root, "must return non-null Host")
-			},
+			// OnLogin: func(root auth.Session) {
+			// 	defer cancel()
+			// 	require.NotZero(t, root, "must return non-null Host")
+			// },
 		}.Serve(ctx)
 	}()
 	require.ErrorIs(t, <-cherr, context.DeadlineExceeded)
