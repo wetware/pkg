@@ -2,6 +2,7 @@ package vat_test
 
 import (
 	"context"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -20,7 +21,7 @@ func TestServe(t *testing.T) {
 	t.Parallel()
 	t.Helper()
 
-	var addr = make(announcer, 1)
+	var addr beacon
 
 	t.Run("serverThread", func(t *testing.T) {
 		t.Parallel()
@@ -37,8 +38,7 @@ func TestServe(t *testing.T) {
 		require.NoError(t, err)
 		defer h.Close()
 
-		addr <- *host.InfoFromHost(h) // announce to client
-		close(addr)
+		addr.Store(host.InfoFromHost(h)) // announce to client
 
 		dht, err := vat.NewDHT(ctx, h, "test")
 		require.NoError(t, err)
@@ -50,10 +50,6 @@ func TestServe(t *testing.T) {
 			Bootstrap: nopDiscovery{},
 			Ambient:   nopDiscovery{},
 			Auth:      auth.AllowAll,
-			// OnLogin: func(root auth.Session) {
-			// 	defer cancel()
-			// 	require.NotZero(t, root, "must return non-null Host")
-			// },
 		}.Serve(ctx)
 		require.ErrorIs(t, err, context.DeadlineExceeded)
 	})
@@ -81,11 +77,35 @@ func TestServe(t *testing.T) {
 		sess, err := vat.Dialer{
 			Host:    h,
 			Account: auth.SignerFromHost(h),
-		}.DialDiscover(ctx, addr, "test")
+		}.DialDiscover(ctx, &addr, "test")
 		defer sess.Release()
 		require.NoError(t, err)
 		require.NotZero(t, sess)
 	})
+}
+
+type beacon struct {
+	atomic.Pointer[peer.AddrInfo]
+}
+
+func (*beacon) Advertise(context.Context, string, ...discovery.Option) (time.Duration, error) {
+	return nopDiscovery{}.Advertise(context.TODO(), "")
+}
+
+func (b *beacon) FindPeers(ctx context.Context, ns string, opt ...discovery.Option) (<-chan peer.AddrInfo, error) {
+	a := make(announcer, 1)
+
+	for { // spin until the sever stores its *peer.AddrInfo
+		if b.Load() == nil {
+			continue
+		}
+
+		a <- *b.Load()
+		close(a)
+		break
+	}
+
+	return a.FindPeers(ctx, ns, opt...)
 }
 
 type announcer chan peer.AddrInfo
