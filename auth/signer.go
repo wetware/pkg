@@ -48,17 +48,6 @@ func SignerFromPrivKey(privKey crypto.PrivKey) Signer {
 	}
 }
 
-func AccountFromPrivKey[T ~capnp.ClientKind](pk crypto.PrivKey) Signer {
-	return func(n *Nonce) (*record.Envelope, error) {
-		return record.Seal(n, pk)
-	}
-}
-
-func AccountFromHost[T ~capnp.ClientKind](h local.Host) Signer {
-	privKey := h.Peerstore().PrivKey(h.ID())
-	return AccountFromPrivKey[T](privKey)
-}
-
 // Sign([]byte) (*record.Envelope, error)
 func (sign Signer) Client() capnp.Client {
 	if sign == nil {
