@@ -12,6 +12,7 @@ import (
 	ww "github.com/wetware/pkg"
 	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/boot"
+	"github.com/wetware/pkg/cap/csp"
 	"github.com/wetware/pkg/rom"
 	"github.com/wetware/pkg/vat"
 )
@@ -75,7 +76,20 @@ func run(c *cli.Context) error {
 		return err
 	}
 
-	return wetware.Exec(c.Context, rom)
+	// Prepare argv for the process.
+	args := []string{}
+	if c.Args().Len() > 1 {
+		fmt.Println("ARSGSG")
+		args = append(args, c.Args().Slice()[1:]...)
+		fmt.Println(args)
+	}
+
+	return wetware.Exec(c.Context, rom, csp.Args{
+		Pid:  0,
+		Ppid: 0,
+		Cid:  rom.CID(),
+		Cmd:  args,
+	}.Encode()...)
 }
 
 func bytecode(c *cli.Context) (rom.ROM, error) {
