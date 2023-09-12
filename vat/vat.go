@@ -112,14 +112,14 @@ func (conf Config) Serve(ctx context.Context) error {
 			ErrorReporter:   logger,
 		}
 
-		conn, err := server.Accept(ctx, opts)
+		_, err := server.Accept(ctx, opts)
 		if err != nil {
 			return err
 		}
 
-		remote := conn.RemotePeerID().Value.(peer.AddrInfo)
-		logger.Info("accepted peer connection",
-			"remote", remote.ID)
+		// remote := conn.RemotePeerID().Value.(peer.AddrInfo)
+		// logger.Info("accepted peer connection",
+		// 	"remote", remote.ID)
 	}
 }
 
@@ -218,8 +218,8 @@ func (svr *Server) Dial(pid rpc.PeerID, opt *rpc.Options) (*rpc.Conn, error) {
 	svr.setup()
 	ctx := context.TODO()
 
-	opt.RemotePeerID = pid
-	opt.Network = svr
+	// opt.RemotePeerID = pid
+	// opt.Network = svr
 
 	peer := pid.Value.(peer.AddrInfo)
 	protos := proto.Namespace(svr.NS)
@@ -245,11 +245,11 @@ func (svr *Server) Accept(ctx context.Context, opt *rpc.Options) (*rpc.Conn, err
 			return nil, errors.New("server closed")
 		}
 
-		opt.RemotePeerID.Value = peer.AddrInfo{
-			ID:    s.Conn().RemotePeer(),
-			Addrs: svr.Host.Peerstore().Addrs(s.Conn().RemotePeer()),
-		}
-		opt.Network = svr
+		// opt.RemotePeerID.Value = peer.AddrInfo{
+		// 	ID:    s.Conn().RemotePeer(),
+		// 	Addrs: svr.Host.Peerstore().Addrs(s.Conn().RemotePeer()),
+		// }
+		// opt.Network = svr
 
 		conn := rpc.NewConn(transport(s), opt)
 		return conn, nil
