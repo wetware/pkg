@@ -15,10 +15,11 @@ import (
 	"github.com/wetware/pkg/vat"
 )
 
-func TestServer(t *testing.T) {
+func TestServe(t *testing.T) {
 	t.Parallel()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	const d = time.Millisecond * 10
+	ctx, cancel := context.WithTimeout(context.Background(), d)
 	defer cancel()
 
 	h, err := libp2p.New(
@@ -33,18 +34,21 @@ func TestServer(t *testing.T) {
 	require.NoError(t, err)
 	defer dht.Close()
 
-	err = vat.Config{
-		NS:        "test",
-		Host:      h,
-		Bootstrap: nopDiscovery{},
-		Ambient:   nopDiscovery{},
-		Auth:      auth.AllowAll,
-		OnJoin: func(root auth.Session) {
-			defer cancel()
-			require.NotZero(t, root, "must return non-null Host")
-		},
-	}.Serve(ctx)
-	require.ErrorIs(t, err, context.Canceled)
+	cherr := make(chan error, 1)
+	go func() {
+		cherr <- vat.Config{
+			NS:        "test",
+			Host:      h,
+			Bootstrap: nopDiscovery{},
+			Ambient:   nopDiscovery{},
+			Auth:      auth.AllowAll,
+			OnJoin: func(root auth.Session) {
+				defer cancel()
+				require.NotZero(t, root, "must return non-null Host")
+			},
+		}.Serve(ctx)
+	}()
+	require.ErrorIs(t, <-cherr, context.DeadlineExceeded)
 }
 
 type nopDiscovery struct{}
