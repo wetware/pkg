@@ -79,7 +79,6 @@ func run(c *cli.Context) error {
 	// Prepare argv for the process.
 	args := []string{}
 	if c.Args().Len() > 1 {
-		fmt.Println("ARSGSG")
 		args = append(args, c.Args().Slice()[1:]...)
 		fmt.Println(args)
 	}
