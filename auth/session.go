@@ -44,7 +44,9 @@ func (sess Session) AddRef() Session {
 // Release the session by releasing the message, which releases
 // each entry in the cap table.
 func (sess Session) Release() {
-	api.Session(sess).Message().Release()
+	if sess != (Session{}) {
+		api.Session(sess).Message().Release()
+	}
 }
 
 // Login allows the session to be served as a Terminal.  It provides full

@@ -12,6 +12,13 @@ import (
 	"github.com/wetware/pkg/auth"
 )
 
+func TestReleaseZeroValueSession(t *testing.T) {
+	t.Parallel()
+
+	require.NotPanics(t, auth.Session{}.Release,
+		"should be nop")
+}
+
 func TestSessionCopy(t *testing.T) {
 	t.Parallel()
 	t.Helper()
