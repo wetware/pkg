@@ -2,12 +2,13 @@ package vat_test
 
 import (
 	"context"
-	"sync/atomic"
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/discovery"
+	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
@@ -21,12 +22,12 @@ func TestServe(t *testing.T) {
 	t.Parallel()
 	t.Helper()
 
-	var addr beacon
+	var addr = make(chan beacon, 1)
 
 	t.Run("serverThread", func(t *testing.T) {
 		t.Parallel()
 
-		const d = time.Millisecond * 1000 * 1
+		const d = time.Millisecond * 100
 		ctx, cancel := context.WithTimeout(context.Background(), d)
 		defer cancel()
 
@@ -38,7 +39,10 @@ func TestServe(t *testing.T) {
 		require.NoError(t, err)
 		defer h.Close()
 
-		addr.Store(host.InfoFromHost(h)) // announce to client
+		addr <- beacon{
+			AddrInfo: host.InfoFromHost(h),
+			Bus:      h.EventBus(),
+		}
 
 		dht, err := vat.NewDHT(ctx, h, "test")
 		require.NoError(t, err)
@@ -77,7 +81,7 @@ func TestServe(t *testing.T) {
 		sess, err := vat.Dialer{
 			Host:    h,
 			Account: auth.SignerFromHost(h),
-		}.DialDiscover(ctx, &addr, "test")
+		}.DialDiscover(ctx, <-addr, "test")
 		defer sess.Release()
 		require.NoError(t, err)
 		require.NotZero(t, sess)
@@ -85,27 +89,39 @@ func TestServe(t *testing.T) {
 }
 
 type beacon struct {
-	atomic.Pointer[peer.AddrInfo]
+	*peer.AddrInfo
+	event.Bus
 }
 
-func (*beacon) Advertise(context.Context, string, ...discovery.Option) (time.Duration, error) {
+func (beacon) Advertise(context.Context, string, ...discovery.Option) (time.Duration, error) {
 	return nopDiscovery{}.Advertise(context.TODO(), "")
 }
 
-func (b *beacon) FindPeers(ctx context.Context, ns string, opt ...discovery.Option) (<-chan peer.AddrInfo, error) {
+func (b beacon) FindPeers(ctx context.Context, ns string, opt ...discovery.Option) (<-chan peer.AddrInfo, error) {
 	a := make(announcer, 1)
+	defer close(a)
 
-	for { // spin until the sever stores its *peer.AddrInfo
-		if b.Load() == nil {
-			continue
-		}
+	a <- *b.AddrInfo
 
-		a <- *b.Load()
-		close(a)
-		break
+	// Subscribe to the server's event bus, so that we know when it's up.
+	sub, err := b.Bus.Subscribe(new(auth.Session))
+	if err != nil {
+		return nil, err
 	}
+	defer sub.Close()
 
-	return a.FindPeers(ctx, ns, opt...)
+	// Wait for the server to become ready, then let the client know about
+	// it.
+	select {
+	case _, ok := <-sub.Out():
+		if ok {
+			return a.FindPeers(ctx, ns, opt...)
+		}
+		return nil, errors.New("event.Bus closed")
+
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }
 
 type announcer chan peer.AddrInfo

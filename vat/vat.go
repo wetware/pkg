@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"sync"
 	"time"
 
 	"capnproto.org/go/capnp/v3"
@@ -15,13 +14,16 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
+	"github.com/libp2p/go-libp2p/p2p/host/eventbus"
 	"github.com/pkg/errors"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
+	"go.uber.org/multierr"
+	"zenhack.net/go/util/rc"
 
+	core_api "github.com/wetware/pkg/api/core"
 	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/boot"
-	capstore_server "github.com/wetware/pkg/cap/capstore/server"
 	csp_server "github.com/wetware/pkg/cap/csp/server"
 	"github.com/wetware/pkg/cluster"
 	"github.com/wetware/pkg/cluster/pulse"
@@ -38,13 +40,30 @@ type Config struct {
 	Bootstrap, Ambient discovery.Discovery
 	Meta               pulse.Preparer
 	Auth               auth.Policy
-	// OnLogin            func(auth.Session)
-	RuntimeConfig wazero.RuntimeConfig
+	RuntimeConfig      wazero.RuntimeConfig
 }
 
 func (conf Config) Serve(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
+	// We will use the libp2p Host's event bus to signal asynchronously
+	// to other threads in the same process.  Applications wishing to
+	// embed a wetware server can use this interface to respond to events
+	// in the local vat.
+	bus := conf.Host.EventBus()
+
+	// We will signal changes to the server's root state.  One such signal
+	// is produced for each call to Config.Serve().  The idea is that this
+	// can later be wrapped in a supervision tree may call Serve repeatedly.
+	// Applications should model this behavior as a stream of auth.Session
+	// instances.
+	state, err := bus.Emitter(new(auth.Session),
+		eventbus.Stateful)
+	if err != nil {
+		return err
+	}
+	defer state.Close()
 
 	ps, err := conf.NewPubSub(ctx)
 	if err != nil {
@@ -73,21 +92,29 @@ func (conf Config) Serve(ctx context.Context) error {
 	}
 	defer r.Close()
 
-	e, err := conf.NewExecutor(ctx)
+	root, err := conf.NewRootSession(r)
 	if err != nil {
 		return err
 	}
+	defer root.Release()
+
+	// e, err := conf.NewExecutor(ctx)
+	// if err != nil {
+	// 	return err
+	// }
 
 	server := &Server{
-		NS:               conf.NS,
-		Host:             conf.Host,
-		Auth:             conf.Auth,
-		ViewProvider:     r,
-		ExecutorProvider: e,
-		CapStoreProvider: &capstore_server.CapStore{
-			Map:    &sync.Map{},
-			Logger: slog.Default(),
-		},
+		NS:     conf.NS,
+		Host:   conf.Host,
+		Auth:   conf.Auth,
+		Root:   root,
+		OnJoin: state,
+		// ViewProvider:     r,
+		// ExecutorProvider: e,
+		// CapStoreProvider: &capstore_server.CapStore{
+		// 	Map:    &sync.Map{},
+		// 	Logger: slog.Default(),
+		// },
 		// PubSubProvider: &pubsub.Server{TopicJoiner: ps},
 		// 	WithCloseOnContextDone(true),
 	}
@@ -104,7 +131,7 @@ func (conf Config) Serve(ctx context.Context) error {
 	}
 
 	logger.Info("wetware started")
-	defer logger.Warn("wetware started")
+	defer logger.Warn("wetware stopped")
 
 	for {
 		opts := &rpc.Options{
@@ -121,6 +148,39 @@ func (conf Config) Serve(ctx context.Context) error {
 		logger.Info("accepted peer connection",
 			"remote", remote.ID)
 	}
+}
+
+func (conf Config) NewRootSession(r *cluster.Router) (auth.Session, error) {
+	_, seg := capnp.NewSingleSegmentMessage(nil)
+
+	sess, err := core_api.NewRootSession(seg) // TODO(optimization):  non-root?
+	if err != nil {
+		return auth.Session{}, err
+	}
+
+	routingID := uint64(r.ID())
+	sess.Local().SetServer(routingID)
+
+	hostname, err := sess.Local().Host()
+	if err != nil {
+		return auth.Session{}, err
+	}
+
+	// Write session data
+	err = multierr.Combine(
+		// Local data
+		// TODO(soon):  sess.Local().SetNamespace(svr.NS),
+		sess.Local().SetHost(hostname),
+		sess.Local().SetPeer(string(conf.Host.ID())),
+
+		// // Capabilities
+		// svr.BindView(sess),
+		// svr.BindExec(sess),
+		// svr.BindCapStore(sess),
+		// svr.BindExtra(sess),
+	)
+
+	return auth.Session(sess), err
 }
 
 func (conf Config) NewExecutor(ctx context.Context) (csp_server.Runtime, error) {
@@ -173,26 +233,36 @@ func (conf Config) NewPubSub(ctx context.Context) (*gossipsub.PubSub, error) {
 }
 
 func (svr *Server) Join(ctx context.Context, r *cluster.Router, server *Server) (capnp.ReleaseFunc, error) {
-	release := svr.bind(ctx) // registers stream handlers
+	ref := svr.bind(ctx) // registers stream handlers
+	defer ref.Release()
 
+	// Send our first heartbeat to the cluster topic, and kick off
+	// background tasks.
 	if err := r.Bootstrap(ctx); err != nil {
-		defer release()
 		return nil, err
 	}
 
+	// Signal to the local process that we're ready
+	if err := svr.OnJoin.Emit(svr.Root); err != nil {
+		return nil, err
+	}
+
+	// Increment the refcount and return the new function's releaser.
+	// Releasing the ref will cause libp2p stream handlers to be removed.
+	release := ref.AddRef().Release
 	return release, nil
 }
 
-func (svr *Server) bind(ctx context.Context) capnp.ReleaseFunc {
+func (svr *Server) bind(ctx context.Context) *rc.Ref[any] {
 	for _, id := range proto.Namespace(svr.NS) {
 		svr.Host.SetStreamHandler(id, svr.handler(ctx))
 	}
 
-	return func() {
+	return rc.NewRef(any(nil), func() {
 		for _, id := range proto.Namespace(svr.NS) {
 			svr.Host.RemoveStreamHandler(id)
 		}
-	}
+	})
 }
 
 func (svr *Server) handler(ctx context.Context) network.StreamHandler {
@@ -252,6 +322,14 @@ func (svr *Server) Accept(ctx context.Context, opt *rpc.Options) (*rpc.Conn, err
 		opt.Network = svr
 
 		conn := rpc.NewConn(transport(s), opt)
+		go func() {
+			select {
+			case <-conn.Done():
+			case <-ctx.Done():
+				conn.Close()
+			}
+		}()
+
 		return conn, nil
 
 	case <-ctx.Done():

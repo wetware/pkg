@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"capnproto.org/go/capnp/v3"
-	"go.uber.org/multierr"
 	"golang.org/x/exp/slog"
 
 	local "github.com/libp2p/go-libp2p/core/host"
@@ -56,13 +55,19 @@ type CapStoreProvider interface {
 
 // Server provides the Host capability.
 type Server struct {
-	NS               string
-	Host             local.Host
-	Auth             auth.Policy
+	NS     string
+	Host   local.Host
+	Auth   auth.Policy
+	OnJoin interface {
+		Emit(any) error
+	}
+
 	ViewProvider     ViewProvider
 	ExecutorProvider ExecutorProvider
 	CapStoreProvider CapStoreProvider
 	Extra            map[string]capnp.Client
+
+	Root auth.Session
 
 	once sync.Once
 	ch   chan network.Stream
@@ -92,38 +97,6 @@ func (svr *Server) Export() capnp.Client {
 	return capnp.NewClient(core_api.Terminal_NewServer(svr))
 }
 
-func (svr *Server) NewRootSession() (core_api.Session, error) {
-	_, seg := capnp.NewSingleSegmentMessage(nil)
-	sess, err := core_api.NewRootSession(seg) // TODO(optimization):  non-root?
-	if err != nil {
-		return core_api.Session{}, err
-	}
-
-	routingID := svr.ViewProvider.ID()
-	sess.Local().SetServer(uint64(routingID))
-
-	hostname, err := sess.Local().Host()
-	if err != nil {
-		return core_api.Session{}, err
-	}
-
-	// Write session data
-	err = multierr.Combine(
-		// Local data
-		// TODO(soon):  sess.Local().SetNamespace(svr.NS),
-		sess.Local().SetHost(hostname),
-		sess.Local().SetPeer(string(svr.Host.ID())),
-
-		// Capabilities
-		svr.BindView(sess),
-		svr.BindExec(sess),
-		svr.BindCapStore(sess),
-		svr.BindExtra(sess),
-	)
-
-	return sess, err
-}
-
 func (svr *Server) Login(ctx context.Context, call core_api.Terminal_login) error {
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
@@ -138,12 +111,7 @@ func (svr *Server) Login(ctx context.Context, call core_api.Terminal_login) erro
 		return fmt.Errorf("auth: %w", err)
 	}
 
-	root, err := svr.NewRootSession()
-	if err != nil {
-		return err
-	}
-
-	return svr.Auth(ctx, res, auth.Session(root), account)
+	return svr.Auth(ctx, res, svr.Root, account)
 }
 
 func (svr *Server) Negotiate(ctx context.Context, account cluster_api.Signer) (peer.ID, error) {
