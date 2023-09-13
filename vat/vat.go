@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"capnproto.org/go/capnp/v3"
@@ -24,6 +25,7 @@ import (
 	core_api "github.com/wetware/pkg/api/core"
 	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/boot"
+	capstore_server "github.com/wetware/pkg/cap/capstore/server"
 	csp_server "github.com/wetware/pkg/cap/csp/server"
 	"github.com/wetware/pkg/cluster"
 	"github.com/wetware/pkg/cluster/pulse"
@@ -98,25 +100,27 @@ func (conf Config) Serve(ctx context.Context) error {
 	}
 	defer root.Release()
 
-	// e, err := conf.NewExecutor(ctx)
-	// if err != nil {
-	// 	return err
-	// }
+	e, err := conf.NewExecutor(ctx)
+	if err != nil {
+		return err
+	}
 
 	server := &Server{
-		NS:     conf.NS,
-		Host:   conf.Host,
-		Auth:   conf.Auth,
-		Root:   root,
-		OnJoin: state,
-		// ViewProvider:     r,
-		// ExecutorProvider: e,
-		// CapStoreProvider: &capstore_server.CapStore{
-		// 	Map:    &sync.Map{},
-		// 	Logger: slog.Default(),
-		// },
-		// PubSubProvider: &pubsub.Server{TopicJoiner: ps},
-		// 	WithCloseOnContextDone(true),
+		NS:   conf.NS,
+		Host: conf.Host,
+		Auth: conf.Auth,
+		Root: root,
+		Binder: binder{
+			Emitter:          state,
+			ViewProvider:     r,
+			ExecutorProvider: e,
+			CapStoreProvider: &capstore_server.CapStore{
+				Map:    &sync.Map{},
+				Logger: slog.Default(),
+			},
+			// PubSubProvider: &pubsub.Server{TopicJoiner: ps},
+			// 	WithCloseOnContextDone(true),
+		},
 	}
 	defer server.Close()
 
@@ -172,12 +176,6 @@ func (conf Config) NewRootSession(r *cluster.Router) (auth.Session, error) {
 		// TODO(soon):  sess.Local().SetNamespace(svr.NS),
 		sess.Local().SetHost(hostname),
 		sess.Local().SetPeer(string(conf.Host.ID())),
-
-		// // Capabilities
-		// svr.BindView(sess),
-		// svr.BindExec(sess),
-		// svr.BindCapStore(sess),
-		// svr.BindExtra(sess),
 	)
 
 	return auth.Session(sess), err
@@ -242,8 +240,9 @@ func (svr *Server) Join(ctx context.Context, r *cluster.Router, server *Server) 
 		return nil, err
 	}
 
-	// Signal to the local process that we're ready
-	if err := svr.OnJoin.Emit(svr.Root); err != nil {
+	// Bind capabilities to the root session.  This has the side effect
+	// of triggering an auth.Session event on svr.Host's event bus.
+	if err := svr.Binder.Bind(svr.Root); err != nil {
 		return nil, err
 	}
 
