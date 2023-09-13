@@ -58,9 +58,6 @@ func TestServe(t *testing.T) {
 		require.ErrorIs(t, err, context.DeadlineExceeded)
 	})
 
-	// wait for the server to come online
-	time.Sleep(time.Millisecond * 10)
-
 	t.Run("clientThread", func(t *testing.T) {
 		t.Parallel()
 
