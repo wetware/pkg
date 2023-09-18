@@ -9,8 +9,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/crypto"
 	local "github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/record"
-	cluster_api "github.com/wetware/pkg/api/cluster"
-	core_api "github.com/wetware/pkg/api/core"
+	"github.com/wetware/pkg/api/core"
 )
 
 type Nonce [16]byte
@@ -54,17 +53,17 @@ func (sign Signer) Client() capnp.Client {
 		return capnp.Client{}
 	}
 
-	client := cluster_api.Signer_ServerToClient(&signOnce{sign: sign})
+	client := core.Signer_ServerToClient(&signOnce{sign: sign})
 	return capnp.Client(client)
 }
 
-func (sign Signer) Account() cluster_api.Signer {
-	return cluster_api.Signer(sign.Client())
+func (sign Signer) Account() core.Signer {
+	return core.Signer(sign.Client())
 }
 
-func (sign Signer) Bind(ctx context.Context) func(core_api.Terminal_login_Params) error {
-	return func(call core_api.Terminal_login_Params) error {
-		return call.SetAccount(cluster_api.Signer(sign.Client()))
+func (sign Signer) Bind(ctx context.Context) func(core.Terminal_login_Params) error {
+	return func(call core.Terminal_login_Params) error {
+		return call.SetAccount(core.Signer(sign.Client()))
 	}
 }
 
@@ -73,7 +72,7 @@ type signOnce struct {
 	sign   Signer
 }
 
-func (once *signOnce) Sign(ctx context.Context, call cluster_api.Signer_sign) error {
+func (once *signOnce) Sign(ctx context.Context, call core.Signer_sign) error {
 	if once.called {
 		return errors.New("signer already used")
 	}

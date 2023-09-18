@@ -29,7 +29,7 @@ func TestSessionCopy(t *testing.T) {
 		  1. the dst Session struct exists in a separate arena
 		     from the src.
 		  2. a dst Session struct holds *new* references to the
-		      capabilities in src.
+		     capabilities in src.
 
 		NOTE:  we do not directly test #2.  Rather, we infer that
 		it is correct if our method for copying sessions is able
@@ -73,6 +73,7 @@ func TestSessionCopy(t *testing.T) {
 			_ = api.Session(got).Local().Server()
 		}, "should exist in separate messages")
 	})
+
 }
 
 func newSession() auth.Session {

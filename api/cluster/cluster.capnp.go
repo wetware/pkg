@@ -13,321 +13,6 @@ import (
 	strconv "strconv"
 )
 
-type Signer capnp.Client
-
-// Signer_TypeID is the unique identifier for the type Signer.
-const Signer_TypeID = 0xf1f2e144cec1f2bc
-
-func (c Signer) Sign(ctx context.Context, params func(Signer_sign_Params) error) (Signer_sign_Results_Future, capnp.ReleaseFunc) {
-
-	s := capnp.Send{
-		Method: capnp.Method{
-			InterfaceID:   0xf1f2e144cec1f2bc,
-			MethodID:      0,
-			InterfaceName: "cluster.capnp:Signer",
-			MethodName:    "sign",
-		},
-	}
-	if params != nil {
-		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
-		s.PlaceArgs = func(s capnp.Struct) error { return params(Signer_sign_Params(s)) }
-	}
-
-	ans, release := capnp.Client(c).SendCall(ctx, s)
-	return Signer_sign_Results_Future{Future: ans.Future()}, release
-
-}
-
-func (c Signer) WaitStreaming() error {
-	return capnp.Client(c).WaitStreaming()
-}
-
-// String returns a string that identifies this capability for debugging
-// purposes.  Its format should not be depended on: in particular, it
-// should not be used to compare clients.  Use IsSame to compare clients
-// for equality.
-func (c Signer) String() string {
-	return "Signer(" + capnp.Client(c).String() + ")"
-}
-
-// AddRef creates a new Client that refers to the same capability as c.
-// If c is nil or has resolved to null, then AddRef returns nil.
-func (c Signer) AddRef() Signer {
-	return Signer(capnp.Client(c).AddRef())
-}
-
-// Release releases a capability reference.  If this is the last
-// reference to the capability, then the underlying resources associated
-// with the capability will be released.
-//
-// Release will panic if c has already been released, but not if c is
-// nil or resolved to null.
-func (c Signer) Release() {
-	capnp.Client(c).Release()
-}
-
-// Resolve blocks until the capability is fully resolved or the Context
-// expires.
-func (c Signer) Resolve(ctx context.Context) error {
-	return capnp.Client(c).Resolve(ctx)
-}
-
-func (c Signer) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
-	return capnp.Client(c).EncodeAsPtr(seg)
-}
-
-func (Signer) DecodeFromPtr(p capnp.Ptr) Signer {
-	return Signer(capnp.Client{}.DecodeFromPtr(p))
-}
-
-// IsValid reports whether c is a valid reference to a capability.
-// A reference is invalid if it is nil, has resolved to null, or has
-// been released.
-func (c Signer) IsValid() bool {
-	return capnp.Client(c).IsValid()
-}
-
-// IsSame reports whether c and other refer to a capability created by the
-// same call to NewClient.  This can return false negatives if c or other
-// are not fully resolved: use Resolve if this is an issue.  If either
-// c or other are released, then IsSame panics.
-func (c Signer) IsSame(other Signer) bool {
-	return capnp.Client(c).IsSame(capnp.Client(other))
-}
-
-// Update the flowcontrol.FlowLimiter used to manage flow control for
-// this client. This affects all future calls, but not calls already
-// waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
-// which is also the default.
-func (c Signer) SetFlowLimiter(lim fc.FlowLimiter) {
-	capnp.Client(c).SetFlowLimiter(lim)
-}
-
-// Get the current flowcontrol.FlowLimiter used to manage flow control
-// for this client.
-func (c Signer) GetFlowLimiter() fc.FlowLimiter {
-	return capnp.Client(c).GetFlowLimiter()
-}
-
-// A Signer_Server is a Signer with a local implementation.
-type Signer_Server interface {
-	Sign(context.Context, Signer_sign) error
-}
-
-// Signer_NewServer creates a new Server from an implementation of Signer_Server.
-func Signer_NewServer(s Signer_Server) *server.Server {
-	c, _ := s.(server.Shutdowner)
-	return server.New(Signer_Methods(nil, s), s, c)
-}
-
-// Signer_ServerToClient creates a new Client from an implementation of Signer_Server.
-// The caller is responsible for calling Release on the returned Client.
-func Signer_ServerToClient(s Signer_Server) Signer {
-	return Signer(capnp.NewClient(Signer_NewServer(s)))
-}
-
-// Signer_Methods appends Methods to a slice that invoke the methods on s.
-// This can be used to create a more complicated Server.
-func Signer_Methods(methods []server.Method, s Signer_Server) []server.Method {
-	if cap(methods) == 0 {
-		methods = make([]server.Method, 0, 1)
-	}
-
-	methods = append(methods, server.Method{
-		Method: capnp.Method{
-			InterfaceID:   0xf1f2e144cec1f2bc,
-			MethodID:      0,
-			InterfaceName: "cluster.capnp:Signer",
-			MethodName:    "sign",
-		},
-		Impl: func(ctx context.Context, call *server.Call) error {
-			return s.Sign(ctx, Signer_sign{call})
-		},
-	})
-
-	return methods
-}
-
-// Signer_sign holds the state for a server call to Signer.sign.
-// See server.Call for documentation.
-type Signer_sign struct {
-	*server.Call
-}
-
-// Args returns the call's arguments.
-func (c Signer_sign) Args() Signer_sign_Params {
-	return Signer_sign_Params(c.Call.Args())
-}
-
-// AllocResults allocates the results struct.
-func (c Signer_sign) AllocResults() (Signer_sign_Results, error) {
-	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Signer_sign_Results(r), err
-}
-
-// Signer_List is a list of Signer.
-type Signer_List = capnp.CapList[Signer]
-
-// NewSigner creates a new list of Signer.
-func NewSigner_List(s *capnp.Segment, sz int32) (Signer_List, error) {
-	l, err := capnp.NewPointerList(s, sz)
-	return capnp.CapList[Signer](l), err
-}
-
-type Signer_sign_Params capnp.Struct
-
-// Signer_sign_Params_TypeID is the unique identifier for the type Signer_sign_Params.
-const Signer_sign_Params_TypeID = 0xb2250c16d3064727
-
-func NewSigner_sign_Params(s *capnp.Segment) (Signer_sign_Params, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Signer_sign_Params(st), err
-}
-
-func NewRootSigner_sign_Params(s *capnp.Segment) (Signer_sign_Params, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Signer_sign_Params(st), err
-}
-
-func ReadRootSigner_sign_Params(msg *capnp.Message) (Signer_sign_Params, error) {
-	root, err := msg.Root()
-	return Signer_sign_Params(root.Struct()), err
-}
-
-func (s Signer_sign_Params) String() string {
-	str, _ := text.Marshal(0xb2250c16d3064727, capnp.Struct(s))
-	return str
-}
-
-func (s Signer_sign_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
-	return capnp.Struct(s).EncodeAsPtr(seg)
-}
-
-func (Signer_sign_Params) DecodeFromPtr(p capnp.Ptr) Signer_sign_Params {
-	return Signer_sign_Params(capnp.Struct{}.DecodeFromPtr(p))
-}
-
-func (s Signer_sign_Params) ToPtr() capnp.Ptr {
-	return capnp.Struct(s).ToPtr()
-}
-func (s Signer_sign_Params) IsValid() bool {
-	return capnp.Struct(s).IsValid()
-}
-
-func (s Signer_sign_Params) Message() *capnp.Message {
-	return capnp.Struct(s).Message()
-}
-
-func (s Signer_sign_Params) Segment() *capnp.Segment {
-	return capnp.Struct(s).Segment()
-}
-func (s Signer_sign_Params) Challenge() ([]byte, error) {
-	p, err := capnp.Struct(s).Ptr(0)
-	return []byte(p.Data()), err
-}
-
-func (s Signer_sign_Params) HasChallenge() bool {
-	return capnp.Struct(s).HasPtr(0)
-}
-
-func (s Signer_sign_Params) SetChallenge(v []byte) error {
-	return capnp.Struct(s).SetData(0, v)
-}
-
-// Signer_sign_Params_List is a list of Signer_sign_Params.
-type Signer_sign_Params_List = capnp.StructList[Signer_sign_Params]
-
-// NewSigner_sign_Params creates a new list of Signer_sign_Params.
-func NewSigner_sign_Params_List(s *capnp.Segment, sz int32) (Signer_sign_Params_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Signer_sign_Params](l), err
-}
-
-// Signer_sign_Params_Future is a wrapper for a Signer_sign_Params promised by a client call.
-type Signer_sign_Params_Future struct{ *capnp.Future }
-
-func (f Signer_sign_Params_Future) Struct() (Signer_sign_Params, error) {
-	p, err := f.Future.Ptr()
-	return Signer_sign_Params(p.Struct()), err
-}
-
-type Signer_sign_Results capnp.Struct
-
-// Signer_sign_Results_TypeID is the unique identifier for the type Signer_sign_Results.
-const Signer_sign_Results_TypeID = 0xf00b0072c6dcfae7
-
-func NewSigner_sign_Results(s *capnp.Segment) (Signer_sign_Results, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Signer_sign_Results(st), err
-}
-
-func NewRootSigner_sign_Results(s *capnp.Segment) (Signer_sign_Results, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
-	return Signer_sign_Results(st), err
-}
-
-func ReadRootSigner_sign_Results(msg *capnp.Message) (Signer_sign_Results, error) {
-	root, err := msg.Root()
-	return Signer_sign_Results(root.Struct()), err
-}
-
-func (s Signer_sign_Results) String() string {
-	str, _ := text.Marshal(0xf00b0072c6dcfae7, capnp.Struct(s))
-	return str
-}
-
-func (s Signer_sign_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
-	return capnp.Struct(s).EncodeAsPtr(seg)
-}
-
-func (Signer_sign_Results) DecodeFromPtr(p capnp.Ptr) Signer_sign_Results {
-	return Signer_sign_Results(capnp.Struct{}.DecodeFromPtr(p))
-}
-
-func (s Signer_sign_Results) ToPtr() capnp.Ptr {
-	return capnp.Struct(s).ToPtr()
-}
-func (s Signer_sign_Results) IsValid() bool {
-	return capnp.Struct(s).IsValid()
-}
-
-func (s Signer_sign_Results) Message() *capnp.Message {
-	return capnp.Struct(s).Message()
-}
-
-func (s Signer_sign_Results) Segment() *capnp.Segment {
-	return capnp.Struct(s).Segment()
-}
-func (s Signer_sign_Results) Signed() ([]byte, error) {
-	p, err := capnp.Struct(s).Ptr(0)
-	return []byte(p.Data()), err
-}
-
-func (s Signer_sign_Results) HasSigned() bool {
-	return capnp.Struct(s).HasPtr(0)
-}
-
-func (s Signer_sign_Results) SetSigned(v []byte) error {
-	return capnp.Struct(s).SetData(0, v)
-}
-
-// Signer_sign_Results_List is a list of Signer_sign_Results.
-type Signer_sign_Results_List = capnp.StructList[Signer_sign_Results]
-
-// NewSigner_sign_Results creates a new list of Signer_sign_Results.
-func NewSigner_sign_Results_List(s *capnp.Segment, sz int32) (Signer_sign_Results_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
-	return capnp.StructList[Signer_sign_Results](l), err
-}
-
-// Signer_sign_Results_Future is a wrapper for a Signer_sign_Results promised by a client call.
-type Signer_sign_Results_Future struct{ *capnp.Future }
-
-func (f Signer_sign_Results_Future) Struct() (Signer_sign_Results, error) {
-	p, err := f.Future.Ptr()
-	return Signer_sign_Results(p.Struct()), err
-}
-
 type Heartbeat capnp.Struct
 
 // Heartbeat_TypeID is the unique identifier for the type Heartbeat.
@@ -2264,95 +1949,87 @@ func (p View_reverse_Results_Future) View() View {
 	return View(p.Future.Field(0, nil).Client())
 }
 
-const schema_fcf6ac08e448a6ac = "x\xda\xacV]h\x1cU\x14>\xe7\xde\xd9\x9d\xcdv" +
-	"7\x9b\x9bI\xa5\xad\x84\xb45\xd1&\x92\xd06E0" +
-	"(IcC~0\x90\x9b\xb4B\x8b\xa0\x93\xcdmv" +
-	"uv7\x9d\x99\xfc\x08\xc6X\xac\xd0V+\x8a\x16j" +
-	"\x1f\x14\xc5V\xab\x85b\xc0J\xa1\x8a\x0a*JZ\xf1" +
-	"\x07\xa5\"TE\xed\x9b\xb6AZ\xa91#wfg" +
-	"g\x93l\xe3\x8bo\x93\xd9\x93s\xbes\xce\xf7}g" +
-	"6\xbeN\xdb\x94M\xf1k\x11 <\x15\x0a;Gk" +
-	"\xe7v5_\xae>\x08\xac\x9c:'\x8fw\xfd\x129" +
-	"yu\x0e\x005]9\xaa\xa5\x95a\x00\xed\x8c\xf2\xa9" +
-	"\xb6)\xa4\x028\x8d]\x17\xaf<q\xa1\xe6)`\x1a" +
-	"\x02(*@\xf3\xeaP%\x82\xe2\xbc\xf7\xd2\x89\xd3\xe7" +
-	"3g\x9e\x01v3\x02\x84P\xfe\x84\xa1\x16\x04\xd4\xca" +
-	"B\xad\x80\xce\xdakw\x1cQ\xf7\xd8'\x80\x97#\x09" +
-	"\x0a\x85\x88\x0a\xa0\xd5\x87>\xf2*h\x8d\xa1K\x80\xce" +
-	"\xc0\xcc\xd5\xc1\xb5wko\x01\xd7\x90\x04\x10;P%" +
-	"\xa8h,<\xabU\x87e\xf4\xea\xf08\xa0s\xf0\xcb" +
-	"\xcaw\xaf\xbdL\xa6e4.\x88\xa6\x00\xdah\xf8g" +
-	"m\xaf\x1b=\x19>\x05\xe8\xdc\xd6\x19\xfe\xfa\xa6X\xdd" +
-	"4\xb0\x95\x05\xa4+\xd5\xa8DZ\xadJ\xa4\xc7\xae~" +
-	"s\xeb\x8c\xd28\xb34\x9d\x82\xa8mU?\xd7zU" +
-	"\xf9O\xddj\x0d\x02:\xc6\xb9\x0d\xef\xfc=\xff\xd8\x8c" +
-	"7\x13/\xdf\xce\xc8\x1a\x99O\x8f\xb8\x9dO\x0eL\xbf" +
-	"\xdf\xfe\xc5\xb9E\xcdx\x9d\xef\x8d|\xa5\x1d\x8a\xc8\xa7" +
-	"\x03\x11\xd9\xb9rK\xf9\xd9#\xb3\xaf}\xbb\xb48\x01" +
-	"\xd0\xf4\xb2\xebZ\xa6LF\xa7\xcbd\xe7\xc6\x86\xdb\xff" +
-	"\xda\xfec\xfd\x85|m\x99\xb1\xf9\xe32\xb7\x97sn" +
-	"\xc0\x1f\xdf\xd5\x9c\xde6\xd3\xf3k\xd1\xc2\xb6F\x89\\" +
-	"\x986\xf7Fg\xa5~\xf1\xb7b\xd8u\xd1J\xf9\xaf" +
-	"\x8dQ\x09\x9b\xde\xf5\xeat\xf2\xf8\xf3\xbf\x03\xd3h\x00" +
-	"\x04P\xeb\x8d~\xaf\xed\x8cJ\x10;\xa2\x9d\xda\xa4|" +
-	"\xbax\xe9\xfa\x0f\x9f\x98+.\x17\x8dTx\xb92n" +
-	"\xae\xb3\xb3\x1f\x9e\xdf\xf6\xd3\xec\x95%$;\x14}S" +
-	";\xec\xe6z.\xda\xa9\x9d\x91O\xf3m[>\xdbq" +
-	"\xec\xf0\x9f\x1e.*\x7f{%z\x1dP;\x16=\x05" +
-	";\x9d\xa41j\xd9\xc2l\xc2\xa4>\x92\x1di\xb9/" +
-	"M\xc58_\x85\xc5x\xeb\xdb\x03J\xb0\xba\x9e\x80M" +
-	"\xacnW\xb0]V\xb79X\x0d[\xd7\x12\x8c\x9eU" +
-	"\x0fNu\xe9\xd9!C\x98\xce\x800D\xd2\xce\x99\x00" +
-	"\xe0\xdc\x93\xcbZ\xb6\xa9\xa7\x81f\xed\x9a\xee\xec\x90\x98" +
-	"h\xed\x17\xc9\x9c9\xe4\xf4\xea\x8f\x0c\x8a~\x91\x045" +
-	"g\x0e\xf1\x18\x0d\x01\x14v\x83\xfe\xa4\x19o\x01\xc2:" +
-	"TD\xbf\xc5\xa2\xf5\xdc\xd9\x00\x845\xaaH\x0a\x1aC" +
-	"\x9fXl];\x10\xb6Rm5r\xb9\x87GG\xda" +
-	"0\x91\xb6\x85\xd9\x86S\xa6\x18\x13\xa6%\xda\xb0\x0f\xb1" +
-	"0\x17\xea\xcfE\x8c7\xe5\x03j\xfbtS\xcf\xa0U" +
-	"2&\xdfh\x93)\x92c\xb5\xadn\xa4\xc5\x15\xaa\x00" +
-	"(\x08\xc0\xe2-\x00<B\x91W\x11l5\xddn\xb1" +
-	"\"\x98\x1b V@P\x9cx\x89\xbb\x84n\xda\x83B" +
-	"\xb7\xa1\x0f\x91W\x14\x92\xe9\xeb\x01\xf8\xfd\x14y\x8a " +
-	"C\xacB\xf9R\xc8\x0a\x0fR\xe4\x06A$UH\x00" +
-	"X\xba\x01\x80\x0fQ\xe4#\x04\x19\xc5*\xa4\x00,#" +
-	"_\xa6(\xf2}\x04U\xdb60\x02\x04#\x80\xad\x96" +
-	"0\xc7\x84\x89e@\xb0\x0c0\x91\xcaY6\xc6\x80`" +
-	"\x0c0\x91\x11\xb6\x8e\xe5\x80}\x14\xddw\xe5K\xd1\xba" +
-	"cpw[c\xea\xe9\xac-1G\xa8\x12s\x1c\x17" +
-	"t\xfdf\x00^K\x91o$\x18\xc7y\xc7C\xdd\xb8" +
-	"\x06\x80o\xa0\xc8\xb7\x10\xac1\xd2\x99\xb4\xed\xd7\xa7v" +
-	"\x0e+\x02\x9a\x95\x9e\x90[\xd3\xe5\x96j\xe7LY1" +
-	"\x16T\xec\x90cj\xa3\xc8\xef-\xae\xd8-ql\xa3" +
-	"\xc8\xfb\x08\xc6\xc9?\x8e7\xa9^9\x94.\x8a|;" +
-	"AU7\x0c\x08\xd7dt;\x99Z\x0a!\xb1\xdb\xcc" +
-	"e\x96A\x96'\xc5@z8+\xcc&+=\x9c\xf5" +
-	"xc\x01\x14\xf3\xa1\x1f\x80\xc7(\xf2U\x04\x9ddJ" +
-	"7\x0c\x91\x1d\x06\x14\x18\x07\x82\xf1\x1b4\xeaj\x05\\" +
-	"2T\x152M\xca\xbdOx\xeb\x8c\xa3\x93\xefr\xaf" +
-	"\xec\xe7Q\x8a|\xbf\xecr>\xdf\xe5\x932\xf6q\x8a" +
-	"\xfci\x82q*{\x97\x848 c\xf7Q\xe4\xcf\x12" +
-	"\x8c+sN\x15*\x00\xec\x90|\xbb\x9f\"\x7f\x81`" +
-	"\xeb\x88)v\xa7'\x10\x81 \x02&F\x840}j" +
-	"\xf8\xb4\xc9\x03/A\x9b\xfc\x1f\xcbJ\xab_X\xa3\x06" +
-	"\xb5\x17H\xa6!\x90Lb,-\xc6\x91\x15\xfb'\xb2" +
-	"\x1bL\xc9\xf5\x12\x1cZ$\x99\x86@2\xa5\x14\xc3\x08" +
-	"\xe6%\xb3\xbe\x94d\xe4\xb6\x0c\x8a|\x82\x94n>\xcf" +
-	"Y\xd5\x12{\xfcg'\x95W/\xa0-\xa5\xee\xdf\xed" +
-	"e\x88\xec\xda_\xde\x0b\x17\xab\xa7\xbd\xa4z\x1a\x02\xf5" +
-	"Lesv*\x9d\x1d\x86p\xe2\xa1Q\xcb^\xc6]" +
-	"\x8a\xe7\xefya\xc0\xd0Hab\xf5=A\xee\x82\xc9" +
-	"l\x1a\x04\xe0\x1b=I9V\xe0\xe9X\x11\x9c\x0a\xbf" +
-	"\x9a\xef\xf2j\xd6\xb6|\xeb\xa8\x08\x8e\x08\xe0\x02\x13Q" +
-	"\x8b@I_\xf6\x18a[\xe0\x07,\x05\xedE\xe02" +
-	"6\xeb\xfe^\x11\\\xa4ef\xef\xfa7\x15\xae\x87(" +
-	"\xee\xe1\xf1?\xc50\xfb\xf6\x07\xe3\xcdG\x1fx\x911" +
-	"y\\BjBz|\xc9kQ,\xfa\xffB'\x83" +
-	"\xc4\xd0\x12\xbd\xa3\x9f)!S\x05h\xfc\xcf-t?" +
-	"\x11`\xc5\xe5\x02\x1a\x99h!\x1a\xb2x\x96\xfe=\x8a" +
-	"\x15\xa0t\xb4\x07\xdeX\xd8nwO`\x82\x8c\xe4o" +
-	"\x08\x97+\xef\xf3T2\x95\xf2\xae\x1c\xb2\xe03!\xaf" +
-	"\xc4\xff\x83\x0c\xff\x06\x00\x00\xff\xff\xe7\x07\x05\xf0"
+const schema_fcf6ac08e448a6ac = "x\xda\xacV\x7fh\x1c\xd5\x1a\xfd\xce\xbd\xb3\x99\xddG" +
+	"6\x9b\xc9\xa4\xf0\xe8\xa3\xa4\xedK\x1fM\x1e)mS" +
+	"\x05\x83\x92\x10\x1b\x9aF\x0b\xb9i\x15,\x05\x9dln" +
+	"\xbb\xab\xfb#\x9d\x99\xfc\x10\x8cQl\xa1V+\x16-" +
+	"\xb4\x85*\x88-\x06+\xa5\x85V\x0aV\xc4\x7fDI" +
+	"\x95\x8a(\x15JE\xac\xfegm\x91Vk\x9a\x91;" +
+	"\xb3\xb3\xb3I\xd6\xe0\x1f\xfe7\x99\xf9r\xbf\xf3\x9ds" +
+	"\xbesw\xedC\xbcK[\x97\xbc\xae\x13\x13;b5" +
+	"\xde\xd1\xe6\x99\xed\xed\xbf,\xdbOF\x1d\xf7N\x9e\xe8" +
+	"\xfd!~\xf2\xd6\x0c\x11\xcc+\xfc\xa8y\x8d\xef\"2" +
+	"\xef\xd1>1\xdf\xd3t\"\xaf\xad\xf7\xea\x8d\x17.7" +
+	"\xbdD\x86\x09\"\xf5\xaa\xfd\x90\xd6\x00\xd2\xbc\x0boL" +
+	"\x9d\xfb<\x7f\xfe\x152\xfe\x03\xa2\x18\xd4\xa7\x09\xad\x03" +
+	"\x04s\xaf\xd6I\xf0\x96\xdf\xbe\xf7\xb0\xbe\xdb\x9d\"Q" +
+	"\x07\x165\x8a1\x9d\xc8<\xae}\x1ct0\xa7\xb4\x9f" +
+	"\x08\xde\xd6\xe9[\x83\xcb\x1f0\xdf%a\x82E\x10{" +
+	"\xa03h\xe6\x81\xd8M\xf3HLU\x1f\x8a\x8d\x11\xbc" +
+	"\xfd\x97\x1a\xde\xbf\xfd&;\xa3\xaa1\xa7\x9a\x13\x997" +
+	"b\xdf\x9bw\xfd\xea\xdfc\xa7\x08\xde\xf1[_\xfdo" +
+	"Zk\x9b^X\xad\x01\xe6\xc1\x9a\xcf\xccc5\x0a\xfd" +
+	"\x91\x9a&\x10\xbc\xdc\xc5\xd5g\xff\x98}v:\x189" +
+	"\x18lJ_\xaa\x06;\xad\xfb\x83Ml=\xf3a\xf7" +
+	"\x17\x17\xe7a\x0d\x06\xbb\xa4\x7fi^\xd1\xd5\xd3e]" +
+	"\x0d\xa6\xfd\xb7\xee\x83\xc37\xdf\xfezasFd\x9e" +
+	"\x8e\xdf1/\xc4U\xf5\xf9\xb8\x1a,\xb7\xfa\xff\xbfm" +
+	"\xfb\xae\xe5r\xa9\xb7:\xb1}I\xe2_\xaa\xf7\xb2\x84" +
+	"*\xb8\xfeM\xd3\xb9\x8d\xd3}\xd7*\xf48\x98`J" +
+	"\x0fs\xe6\x9dM\x0d\xd6\xd5\x1f+a\x8f$\x1a\xd4\xbf" +
+	"N$\x14l~\xff[g\xd2'^\xfb\x99\x0c\x93G" +
+	"@\x08\xe6\xb1\xc4\xb7\xe6T\xc2W%\xb1\xc9\xbc\xa8\x9e" +
+	"f\xbb6|\xfa\xc8\xf1C\xbf\x06gq\xf5\xedl\xe2" +
+	"\x0e\xc1<\x9f8E\x8fy\xe9\xdc\x88\xe3J{\x0d\xd2" +
+	"\xd6pa\xb8\xe3\xd1,\x97c\xe2\xdf\xa8\xec\xd1\xd2\x1d" +
+	"\xa9d\xac\xea\x8b\x046Vm\x8f\x141V\xad\x8f\xe8" +
+	"4VtDt\x19\xcb\x06'{\xad\xc2PN\xda\xde" +
+	"V\x99\x93i\xb7h\x13\x91\xf7`\xb1\xe0\xb8\xb6\x95%" +
+	"^p\x9b6\x17\x86\xe4x\xe7\x80L\x17\xed!o\x8b" +
+	"\xf5\xf4\xa0\x1c\x90i\xd2\x8b\xf6\x90\xa8\xe51\xa22\x9f" +
+	"\x08\xd91D\x071\xa3G\x07\xc2\x11+(\xbd\xaf\x95" +
+	"\x98\xd1\xa6\x83\x95m\x8f\xd0\x0c\xc6\x8anb\xc6\x12\xbd" +
+	"3W,>52\xdc\x85T\xd6\x95v\x17&m9" +
+	"*mGv\xa1\x1f(\xf3\xc2C^\xe4\xd8\x9aRA" +
+	"s\xbfe[y8UkJ\x83\xae\xb1ez\xb4\xb9" +
+	"\xd3\xaft\x84\xc65\"\x0dDF\xb2\x83H\xc49D" +
+	"#C\xa7\xedO\x8b\xfa\x887\x02\xea)j\xce\x82\x83" +
+	"{\xa5e\xbb\x83\xd2r\xa9\x1f\x10\xf5\xe5\xc3\xac\x95D" +
+	"b\x07\x87\xc80\x18@#\xd4K\xa9:<\xc1!r" +
+	"\x0c`\x8d`DF\xb6\x95H\x0cq\x88a\x06\x83\xa3" +
+	"\x11\x9c\xc8\xc8\xab\x97\x19\x0e\xb1\x87Aw\xdd\x1c\xe2\xc4" +
+	"\x10't:\xd2\x1e\x956\x12\xc4\x90 \xa42E\xc7" +
+	"E-1\xd4\x12Ry\xe9Z\xa8#\xf4s\xf8\xef\xea" +
+	"\x16\xa2\xf5i\xf0\xb5m\xb2\xadl\xc1U\x98\xe3\\\xab" +
+	"\xf5<\x1ft\xcbz\"\xd1\xcc!\xd62$1\xeb\x05" +
+	"\xa8\xdb\x96\x12\x89\xd5\x1cb\x03CS.\x9b\xcf\xbaa" +
+	"\x7f\xee\x16Q\x1f\xd9\xac:C~O\xdf[\xba[\xb4" +
+	"U\xc7\xda\xa8c\x8f\xa2\xa9\x8bC<\\\xd9q\xb3\xc2" +
+	"\xb1\x91C\xf43$\xd9]/`j\x8b\"\xa5\x97C" +
+	"lc\xd0\xad\\\x8ej\x9a\xf2\x96\x9b\xce,\x84\x90\xda" +
+	"i\x17\xf3\x7f\x13\x99on\xf2\xd5k,\xab7\xa1\x84" +
+	"\x1a\x0f\xf8O\xc2+\xc1z^\x01x\x86C\xecS\xb0" +
+	"fK\xb0\xf6\xaa\xda\xe78\xc4\xcb\x0cI\xae\xc0*\x05" +
+	"_T\xb5{8\xc4\xab\x0cIm\xc6k\x84Fd\x1c" +
+	"Po\xf7q\x88\xd7\x19:\x87m\xb93;\x0e\x10\x03" +
+	"\x08\xa9a)\xedP\xcbP\xe7$1$\xab\xea\\\xfa" +
+	"c\xd1]\x18\x90\xceH\x8e\xbbs<\xde\x1ay<5" +
+	"\x9a\x95c0*C\x0a\xc6_\xb0\xe4/?\x86\xe6y" +
+	"\xbc5\xf2x5\x8b\x1b\x0c%\x8f\xaf\xac\xe6\xf1\x01\"" +
+	"\x91\xe3\x10\xe3\xac\xfa\xf0%\x93\xe9\x8e\xdc\x1d>{\x99" +
+	"\xd2\xba\x11\\\xb5\x9b\xe1\xdd\xb7\x88\xbe~^\x95\xc2k" +
+	"\xbe\xdd\xbb\xab\xda\xbd5\xb2\xfbd\xa1\xe8f\xb2\x85]" +
+	"T\x93zr\xc4q\x17\x89\x83J\xfe\x83\xf0\x0a\xa2\xc8" +
+	"\xf1\xf9\x0e\x19k\xe9\x8b\xce.\xa7\xc2\xbaA\"\xb16" +
+	"\xd8\x01\xcf\x89B\x18\xf5Q\xb6\x87\xdd\xc2X\xd6\x0b\xae" +
+	"\x13\xeez}\x94\xfa\x849[\xafW\x80RA\x1a8" +
+	"\xc2u(,X\x08:\xa8\xc0\"\xb9\xe8\x7f\xaf\x8f\xae" +
+	"\x90E\xb8\xf7\x03\x97K\x7f\xe95\xff\xa6\x08\x7f\xce\xa0" +
+	"p\xfa\xa3\xb1\xf6\xa3\x8f\x1f1\x0cu\x1b\xc4\xf4\x94\x0a" +
+	"\xe5\xb9\xf1\xce\xe6\xa3\x0f#\xbb\xb6\x0c\xad\xa7;\x8a\x8f" +
+	"2\x9f\x9b\xfb\xa2\x9c0X)f\x85\"\xb9?\xf0\xe5" +
+	"d&\xb8\x08`D7i\xc9\xfb\xff\x04\xfd\x7f\x06\x00" +
+	"\x00\xff\xff[\xe1\xb8\xd5"
 
 func RegisterSchema(reg *schemas.Registry) {
 	reg.Register(&schemas.Schema{
@@ -2364,7 +2041,6 @@ func RegisterSchema(reg *schemas.Registry) {
 			0xa97471079836f720,
 			0xab133d2062f6cc53,
 			0xb2029ff7b712d18a,
-			0xb2250c16d3064727,
 			0xcc2d04cc26d4f6a5,
 			0xcc7efefbb528cd6c,
 			0xcdcf42beb2537d20,
@@ -2373,8 +2049,6 @@ func RegisterSchema(reg *schemas.Registry) {
 			0xe54acc44b61fd7ef,
 			0xe6df611247a8fc13,
 			0xee93a663b2a23c03,
-			0xf00b0072c6dcfae7,
-			0xf1f2e144cec1f2bc,
 			0xf495a555c9344000,
 		},
 		Compressed: true,

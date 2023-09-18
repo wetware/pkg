@@ -5,38 +5,38 @@ import (
 
 	"capnproto.org/go/capnp/v3"
 	api "github.com/wetware/pkg/api/core"
-	"github.com/wetware/pkg/cap/capstore"
-	"github.com/wetware/pkg/cap/csp"
 	"github.com/wetware/pkg/cap/view"
 )
 
 type Session api.Session
 
-func (sess Session) AddRef() Session {
-	raw, err := mkRawSession()
+func must(err error) {
 	if err != nil {
-		panic(err) // single-segment arena should never fail to allocate
+		panic(err)
 	}
+}
 
-	peerID, _ := api.Session(sess).Local().Peer()
-	_ = raw.Local().SetPeer(peerID)
+func (sess Session) AddRef() Session {
+	// We start by allocating a single-segment arena.
+	// This will never fail to allocate, so any errors
+	// are due to undefined behavior. We use must(err)
+	// to panic if an error is non-nil.
+	raw, err := mkRawSession()
+	must(err)
+
+	peerID, err := api.Session(sess).Local().Peer()
+	must(err)
+	must(raw.Local().SetPeer(peerID))
 
 	raw.Local().SetServer(api.Session(sess).Local().Server())
 
-	hostname, _ := api.Session(sess).Local().Host()
-	_ = raw.Local().SetHost(hostname)
+	hostname, err := api.Session(sess).Local().Host()
+	must(err)
+	must(raw.Local().SetHost(hostname))
 
-	// copy capabilities; we MUST increment the refcount.
-	raw.SetView(api.Session(sess).View().AddRef())
-	raw.SetExec(api.Session(sess).Exec().AddRef())
-	raw.SetCapStore(api.Session(sess).CapStore().AddRef())
-	extra, err := api.Session(sess).Extra()
-	if err == nil && extra.Len() > 0 {
-		err := api.Session(sess).SetExtra(extra)
-		if err != nil {
-			panic(err)
-		}
-	}
+	// Copy bootstrap capability.  Note how we increment the refcount.
+	boot := api.Session(sess).View().AddRef()
+	must(raw.SetView(boot))
 
 	return Session(raw)
 }
@@ -63,16 +63,6 @@ func (sess Session) Login(ctx context.Context, call api.Terminal_login) error {
 func (sess Session) View() view.View {
 	client := api.Session(sess).View()
 	return view.View(client)
-}
-
-func (sess Session) Exec() csp.Executor {
-	client := api.Session(sess).Exec()
-	return csp.Executor(client)
-}
-
-func (sess Session) CapStore() capstore.CapStore {
-	client := api.Session(sess).CapStore()
-	return capstore.CapStore(client)
 }
 
 // func (sess Session) Imports() (map[string]capnp.Client, capnp.ReleaseFunc) {

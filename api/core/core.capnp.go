@@ -9,10 +9,324 @@ import (
 	schemas "capnproto.org/go/capnp/v3/schemas"
 	server "capnproto.org/go/capnp/v3/server"
 	context "context"
-	capstore "github.com/wetware/pkg/api/capstore"
 	cluster "github.com/wetware/pkg/api/cluster"
 	process "github.com/wetware/pkg/api/process"
 )
+
+type Signer capnp.Client
+
+// Signer_TypeID is the unique identifier for the type Signer.
+const Signer_TypeID = 0xfdfb2b517fd7915f
+
+func (c Signer) Sign(ctx context.Context, params func(Signer_sign_Params) error) (Signer_sign_Results_Future, capnp.ReleaseFunc) {
+
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0xfdfb2b517fd7915f,
+			MethodID:      0,
+			InterfaceName: "core.capnp:Signer",
+			MethodName:    "sign",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Signer_sign_Params(s)) }
+	}
+
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return Signer_sign_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c Signer) WaitStreaming() error {
+	return capnp.Client(c).WaitStreaming()
+}
+
+// String returns a string that identifies this capability for debugging
+// purposes.  Its format should not be depended on: in particular, it
+// should not be used to compare clients.  Use IsSame to compare clients
+// for equality.
+func (c Signer) String() string {
+	return "Signer(" + capnp.Client(c).String() + ")"
+}
+
+// AddRef creates a new Client that refers to the same capability as c.
+// If c is nil or has resolved to null, then AddRef returns nil.
+func (c Signer) AddRef() Signer {
+	return Signer(capnp.Client(c).AddRef())
+}
+
+// Release releases a capability reference.  If this is the last
+// reference to the capability, then the underlying resources associated
+// with the capability will be released.
+//
+// Release will panic if c has already been released, but not if c is
+// nil or resolved to null.
+func (c Signer) Release() {
+	capnp.Client(c).Release()
+}
+
+// Resolve blocks until the capability is fully resolved or the Context
+// expires.
+func (c Signer) Resolve(ctx context.Context) error {
+	return capnp.Client(c).Resolve(ctx)
+}
+
+func (c Signer) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Client(c).EncodeAsPtr(seg)
+}
+
+func (Signer) DecodeFromPtr(p capnp.Ptr) Signer {
+	return Signer(capnp.Client{}.DecodeFromPtr(p))
+}
+
+// IsValid reports whether c is a valid reference to a capability.
+// A reference is invalid if it is nil, has resolved to null, or has
+// been released.
+func (c Signer) IsValid() bool {
+	return capnp.Client(c).IsValid()
+}
+
+// IsSame reports whether c and other refer to a capability created by the
+// same call to NewClient.  This can return false negatives if c or other
+// are not fully resolved: use Resolve if this is an issue.  If either
+// c or other are released, then IsSame panics.
+func (c Signer) IsSame(other Signer) bool {
+	return capnp.Client(c).IsSame(capnp.Client(other))
+}
+
+// Update the flowcontrol.FlowLimiter used to manage flow control for
+// this client. This affects all future calls, but not calls already
+// waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
+// which is also the default.
+func (c Signer) SetFlowLimiter(lim fc.FlowLimiter) {
+	capnp.Client(c).SetFlowLimiter(lim)
+}
+
+// Get the current flowcontrol.FlowLimiter used to manage flow control
+// for this client.
+func (c Signer) GetFlowLimiter() fc.FlowLimiter {
+	return capnp.Client(c).GetFlowLimiter()
+}
+
+// A Signer_Server is a Signer with a local implementation.
+type Signer_Server interface {
+	Sign(context.Context, Signer_sign) error
+}
+
+// Signer_NewServer creates a new Server from an implementation of Signer_Server.
+func Signer_NewServer(s Signer_Server) *server.Server {
+	c, _ := s.(server.Shutdowner)
+	return server.New(Signer_Methods(nil, s), s, c)
+}
+
+// Signer_ServerToClient creates a new Client from an implementation of Signer_Server.
+// The caller is responsible for calling Release on the returned Client.
+func Signer_ServerToClient(s Signer_Server) Signer {
+	return Signer(capnp.NewClient(Signer_NewServer(s)))
+}
+
+// Signer_Methods appends Methods to a slice that invoke the methods on s.
+// This can be used to create a more complicated Server.
+func Signer_Methods(methods []server.Method, s Signer_Server) []server.Method {
+	if cap(methods) == 0 {
+		methods = make([]server.Method, 0, 1)
+	}
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xfdfb2b517fd7915f,
+			MethodID:      0,
+			InterfaceName: "core.capnp:Signer",
+			MethodName:    "sign",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Sign(ctx, Signer_sign{call})
+		},
+	})
+
+	return methods
+}
+
+// Signer_sign holds the state for a server call to Signer.sign.
+// See server.Call for documentation.
+type Signer_sign struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c Signer_sign) Args() Signer_sign_Params {
+	return Signer_sign_Params(c.Call.Args())
+}
+
+// AllocResults allocates the results struct.
+func (c Signer_sign) AllocResults() (Signer_sign_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Signer_sign_Results(r), err
+}
+
+// Signer_List is a list of Signer.
+type Signer_List = capnp.CapList[Signer]
+
+// NewSigner creates a new list of Signer.
+func NewSigner_List(s *capnp.Segment, sz int32) (Signer_List, error) {
+	l, err := capnp.NewPointerList(s, sz)
+	return capnp.CapList[Signer](l), err
+}
+
+type Signer_sign_Params capnp.Struct
+
+// Signer_sign_Params_TypeID is the unique identifier for the type Signer_sign_Params.
+const Signer_sign_Params_TypeID = 0x935e427d5cc4f53e
+
+func NewSigner_sign_Params(s *capnp.Segment) (Signer_sign_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Signer_sign_Params(st), err
+}
+
+func NewRootSigner_sign_Params(s *capnp.Segment) (Signer_sign_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Signer_sign_Params(st), err
+}
+
+func ReadRootSigner_sign_Params(msg *capnp.Message) (Signer_sign_Params, error) {
+	root, err := msg.Root()
+	return Signer_sign_Params(root.Struct()), err
+}
+
+func (s Signer_sign_Params) String() string {
+	str, _ := text.Marshal(0x935e427d5cc4f53e, capnp.Struct(s))
+	return str
+}
+
+func (s Signer_sign_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Signer_sign_Params) DecodeFromPtr(p capnp.Ptr) Signer_sign_Params {
+	return Signer_sign_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Signer_sign_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Signer_sign_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Signer_sign_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Signer_sign_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Signer_sign_Params) Challenge() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return []byte(p.Data()), err
+}
+
+func (s Signer_sign_Params) HasChallenge() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Signer_sign_Params) SetChallenge(v []byte) error {
+	return capnp.Struct(s).SetData(0, v)
+}
+
+// Signer_sign_Params_List is a list of Signer_sign_Params.
+type Signer_sign_Params_List = capnp.StructList[Signer_sign_Params]
+
+// NewSigner_sign_Params creates a new list of Signer_sign_Params.
+func NewSigner_sign_Params_List(s *capnp.Segment, sz int32) (Signer_sign_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[Signer_sign_Params](l), err
+}
+
+// Signer_sign_Params_Future is a wrapper for a Signer_sign_Params promised by a client call.
+type Signer_sign_Params_Future struct{ *capnp.Future }
+
+func (f Signer_sign_Params_Future) Struct() (Signer_sign_Params, error) {
+	p, err := f.Future.Ptr()
+	return Signer_sign_Params(p.Struct()), err
+}
+
+type Signer_sign_Results capnp.Struct
+
+// Signer_sign_Results_TypeID is the unique identifier for the type Signer_sign_Results.
+const Signer_sign_Results_TypeID = 0xec51981217dfdc10
+
+func NewSigner_sign_Results(s *capnp.Segment) (Signer_sign_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Signer_sign_Results(st), err
+}
+
+func NewRootSigner_sign_Results(s *capnp.Segment) (Signer_sign_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Signer_sign_Results(st), err
+}
+
+func ReadRootSigner_sign_Results(msg *capnp.Message) (Signer_sign_Results, error) {
+	root, err := msg.Root()
+	return Signer_sign_Results(root.Struct()), err
+}
+
+func (s Signer_sign_Results) String() string {
+	str, _ := text.Marshal(0xec51981217dfdc10, capnp.Struct(s))
+	return str
+}
+
+func (s Signer_sign_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Signer_sign_Results) DecodeFromPtr(p capnp.Ptr) Signer_sign_Results {
+	return Signer_sign_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Signer_sign_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Signer_sign_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Signer_sign_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Signer_sign_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Signer_sign_Results) Signed() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return []byte(p.Data()), err
+}
+
+func (s Signer_sign_Results) HasSigned() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Signer_sign_Results) SetSigned(v []byte) error {
+	return capnp.Struct(s).SetData(0, v)
+}
+
+// Signer_sign_Results_List is a list of Signer_sign_Results.
+type Signer_sign_Results_List = capnp.StructList[Signer_sign_Results]
+
+// NewSigner_sign_Results creates a new list of Signer_sign_Results.
+func NewSigner_sign_Results_List(s *capnp.Segment, sz int32) (Signer_sign_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[Signer_sign_Results](l), err
+}
+
+// Signer_sign_Results_Future is a wrapper for a Signer_sign_Results promised by a client call.
+type Signer_sign_Results_Future struct{ *capnp.Future }
+
+func (f Signer_sign_Results_Future) Struct() (Signer_sign_Results, error) {
+	p, err := f.Future.Ptr()
+	return Signer_sign_Results(p.Struct()), err
+}
 
 type Terminal capnp.Client
 
@@ -222,16 +536,16 @@ func (s Terminal_login_Params) Message() *capnp.Message {
 func (s Terminal_login_Params) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
-func (s Terminal_login_Params) Account() cluster.Signer {
+func (s Terminal_login_Params) Account() Signer {
 	p, _ := capnp.Struct(s).Ptr(0)
-	return cluster.Signer(p.Interface().Client())
+	return Signer(p.Interface().Client())
 }
 
 func (s Terminal_login_Params) HasAccount() bool {
 	return capnp.Struct(s).HasPtr(0)
 }
 
-func (s Terminal_login_Params) SetAccount(v cluster.Signer) error {
+func (s Terminal_login_Params) SetAccount(v Signer) error {
 	if !v.IsValid() {
 		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
 	}
@@ -256,8 +570,8 @@ func (f Terminal_login_Params_Future) Struct() (Terminal_login_Params, error) {
 	p, err := f.Future.Ptr()
 	return Terminal_login_Params(p.Struct()), err
 }
-func (p Terminal_login_Params_Future) Account() cluster.Signer {
-	return cluster.Signer(p.Future.Field(0, nil).Client())
+func (p Terminal_login_Params_Future) Account() Signer {
+	return Signer(p.Future.Field(0, nil).Client())
 }
 
 type Terminal_login_Results capnp.Struct
@@ -358,12 +672,12 @@ type Session_local Session
 const Session_TypeID = 0xc65521f186b6e059
 
 func NewSession(s *capnp.Segment) (Session, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 6})
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 3})
 	return Session(st), err
 }
 
 func NewRootSession(s *capnp.Segment) (Session, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 6})
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 3})
 	return Session(st), err
 }
 
@@ -399,6 +713,24 @@ func (s Session) Message() *capnp.Message {
 func (s Session) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
+func (s Session) View() cluster.View {
+	p, _ := capnp.Struct(s).Ptr(0)
+	return cluster.View(p.Interface().Client())
+}
+
+func (s Session) HasView() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Session) SetView(v cluster.View) error {
+	if !v.IsValid() {
+		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
+	}
+	seg := s.Segment()
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
+	return capnp.Struct(s).SetPtr(0, in.ToPtr())
+}
+
 func (s Session) Local() Session_local { return Session_local(s) }
 
 func (s Session_local) IsValid() bool {
@@ -413,21 +745,21 @@ func (s Session_local) Segment() *capnp.Segment {
 	return capnp.Struct(s).Segment()
 }
 func (s Session_local) Peer() (string, error) {
-	p, err := capnp.Struct(s).Ptr(0)
+	p, err := capnp.Struct(s).Ptr(1)
 	return p.Text(), err
 }
 
 func (s Session_local) HasPeer() bool {
-	return capnp.Struct(s).HasPtr(0)
+	return capnp.Struct(s).HasPtr(1)
 }
 
 func (s Session_local) PeerBytes() ([]byte, error) {
-	p, err := capnp.Struct(s).Ptr(0)
+	p, err := capnp.Struct(s).Ptr(1)
 	return p.TextBytes(), err
 }
 
 func (s Session_local) SetPeer(v string) error {
-	return capnp.Struct(s).SetText(0, v)
+	return capnp.Struct(s).SetText(1, v)
 }
 
 func (s Session_local) Server() uint64 {
@@ -439,99 +771,21 @@ func (s Session_local) SetServer(v uint64) {
 }
 
 func (s Session_local) Host() (string, error) {
-	p, err := capnp.Struct(s).Ptr(1)
+	p, err := capnp.Struct(s).Ptr(2)
 	return p.Text(), err
 }
 
 func (s Session_local) HasHost() bool {
-	return capnp.Struct(s).HasPtr(1)
+	return capnp.Struct(s).HasPtr(2)
 }
 
 func (s Session_local) HostBytes() ([]byte, error) {
-	p, err := capnp.Struct(s).Ptr(1)
+	p, err := capnp.Struct(s).Ptr(2)
 	return p.TextBytes(), err
 }
 
 func (s Session_local) SetHost(v string) error {
-	return capnp.Struct(s).SetText(1, v)
-}
-
-func (s Session) View() cluster.View {
-	p, _ := capnp.Struct(s).Ptr(2)
-	return cluster.View(p.Interface().Client())
-}
-
-func (s Session) HasView() bool {
-	return capnp.Struct(s).HasPtr(2)
-}
-
-func (s Session) SetView(v cluster.View) error {
-	if !v.IsValid() {
-		return capnp.Struct(s).SetPtr(2, capnp.Ptr{})
-	}
-	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
-	return capnp.Struct(s).SetPtr(2, in.ToPtr())
-}
-
-func (s Session) Exec() Executor {
-	p, _ := capnp.Struct(s).Ptr(3)
-	return Executor(p.Interface().Client())
-}
-
-func (s Session) HasExec() bool {
-	return capnp.Struct(s).HasPtr(3)
-}
-
-func (s Session) SetExec(v Executor) error {
-	if !v.IsValid() {
-		return capnp.Struct(s).SetPtr(3, capnp.Ptr{})
-	}
-	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
-	return capnp.Struct(s).SetPtr(3, in.ToPtr())
-}
-
-func (s Session) CapStore() capstore.CapStore {
-	p, _ := capnp.Struct(s).Ptr(4)
-	return capstore.CapStore(p.Interface().Client())
-}
-
-func (s Session) HasCapStore() bool {
-	return capnp.Struct(s).HasPtr(4)
-}
-
-func (s Session) SetCapStore(v capstore.CapStore) error {
-	if !v.IsValid() {
-		return capnp.Struct(s).SetPtr(4, capnp.Ptr{})
-	}
-	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
-	return capnp.Struct(s).SetPtr(4, in.ToPtr())
-}
-
-func (s Session) Extra() (Session_Extra_List, error) {
-	p, err := capnp.Struct(s).Ptr(5)
-	return Session_Extra_List(p.List()), err
-}
-
-func (s Session) HasExtra() bool {
-	return capnp.Struct(s).HasPtr(5)
-}
-
-func (s Session) SetExtra(v Session_Extra_List) error {
-	return capnp.Struct(s).SetPtr(5, v.ToPtr())
-}
-
-// NewExtra sets the extra field to a newly
-// allocated Session_Extra_List, preferring placement in s's segment.
-func (s Session) NewExtra(n int32) (Session_Extra_List, error) {
-	l, err := NewSession_Extra_List(capnp.Struct(s).Segment(), n)
-	if err != nil {
-		return Session_Extra_List{}, err
-	}
-	err = capnp.Struct(s).SetPtr(5, l.ToPtr())
-	return l, err
+	return capnp.Struct(s).SetText(2, v)
 }
 
 // Session_List is a list of Session.
@@ -539,7 +793,7 @@ type Session_List = capnp.StructList[Session]
 
 // NewSession creates a new list of Session.
 func NewSession_List(s *capnp.Segment, sz int32) (Session_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 6}, sz)
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 3}, sz)
 	return capnp.StructList[Session](l), err
 }
 
@@ -550,6 +804,10 @@ func (f Session_Future) Struct() (Session, error) {
 	p, err := f.Future.Ptr()
 	return Session(p.Struct()), err
 }
+func (p Session_Future) View() cluster.View {
+	return cluster.View(p.Future.Field(0, nil).Client())
+}
+
 func (p Session_Future) Local() Session_local_Future { return Session_local_Future{p.Future} }
 
 // Session_local_Future is a wrapper for a Session_local promised by a client call.
@@ -558,120 +816,6 @@ type Session_local_Future struct{ *capnp.Future }
 func (f Session_local_Future) Struct() (Session_local, error) {
 	p, err := f.Future.Ptr()
 	return Session_local(p.Struct()), err
-}
-func (p Session_Future) View() cluster.View {
-	return cluster.View(p.Future.Field(2, nil).Client())
-}
-
-func (p Session_Future) Exec() Executor {
-	return Executor(p.Future.Field(3, nil).Client())
-}
-
-func (p Session_Future) CapStore() capstore.CapStore {
-	return capstore.CapStore(p.Future.Field(4, nil).Client())
-}
-
-type Session_Extra capnp.Struct
-
-// Session_Extra_TypeID is the unique identifier for the type Session_Extra.
-const Session_Extra_TypeID = 0xb6ead80127ea2fdd
-
-func NewSession_Extra(s *capnp.Segment) (Session_Extra, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
-	return Session_Extra(st), err
-}
-
-func NewRootSession_Extra(s *capnp.Segment) (Session_Extra, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
-	return Session_Extra(st), err
-}
-
-func ReadRootSession_Extra(msg *capnp.Message) (Session_Extra, error) {
-	root, err := msg.Root()
-	return Session_Extra(root.Struct()), err
-}
-
-func (s Session_Extra) String() string {
-	str, _ := text.Marshal(0xb6ead80127ea2fdd, capnp.Struct(s))
-	return str
-}
-
-func (s Session_Extra) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
-	return capnp.Struct(s).EncodeAsPtr(seg)
-}
-
-func (Session_Extra) DecodeFromPtr(p capnp.Ptr) Session_Extra {
-	return Session_Extra(capnp.Struct{}.DecodeFromPtr(p))
-}
-
-func (s Session_Extra) ToPtr() capnp.Ptr {
-	return capnp.Struct(s).ToPtr()
-}
-func (s Session_Extra) IsValid() bool {
-	return capnp.Struct(s).IsValid()
-}
-
-func (s Session_Extra) Message() *capnp.Message {
-	return capnp.Struct(s).Message()
-}
-
-func (s Session_Extra) Segment() *capnp.Segment {
-	return capnp.Struct(s).Segment()
-}
-func (s Session_Extra) Name() (string, error) {
-	p, err := capnp.Struct(s).Ptr(0)
-	return p.Text(), err
-}
-
-func (s Session_Extra) HasName() bool {
-	return capnp.Struct(s).HasPtr(0)
-}
-
-func (s Session_Extra) NameBytes() ([]byte, error) {
-	p, err := capnp.Struct(s).Ptr(0)
-	return p.TextBytes(), err
-}
-
-func (s Session_Extra) SetName(v string) error {
-	return capnp.Struct(s).SetText(0, v)
-}
-
-func (s Session_Extra) Client() capnp.Client {
-	p, _ := capnp.Struct(s).Ptr(1)
-	return p.Interface().Client()
-}
-
-func (s Session_Extra) HasClient() bool {
-	return capnp.Struct(s).HasPtr(1)
-}
-
-func (s Session_Extra) SetClient(c capnp.Client) error {
-	if !c.IsValid() {
-		return capnp.Struct(s).SetPtr(1, capnp.Ptr{})
-	}
-	seg := s.Segment()
-	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(c))
-	return capnp.Struct(s).SetPtr(1, in.ToPtr())
-}
-
-// Session_Extra_List is a list of Session_Extra.
-type Session_Extra_List = capnp.StructList[Session_Extra]
-
-// NewSession_Extra creates a new list of Session_Extra.
-func NewSession_Extra_List(s *capnp.Segment, sz int32) (Session_Extra_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2}, sz)
-	return capnp.StructList[Session_Extra](l), err
-}
-
-// Session_Extra_Future is a wrapper for a Session_Extra promised by a client call.
-type Session_Extra_Future struct{ *capnp.Future }
-
-func (f Session_Extra_Future) Struct() (Session_Extra, error) {
-	p, err := f.Future.Ptr()
-	return Session_Extra(p.Struct()), err
-}
-func (p Session_Extra_Future) Client() capnp.Client {
-	return p.Future.Field(1, nil).Client()
 }
 
 type Executor capnp.Client
@@ -1328,68 +1472,67 @@ func (p Executor_execCached_Results_Future) Process() process.Process {
 	return process.Process(p.Future.Field(0, nil).Client())
 }
 
-const schema_e82706a772b0927b = "x\xda\xa4UOh\x1c\xe5\x1b~\x9f\xef\xdb?\x93\xec" +
-	"n7_f\xc3\x8f\x1e\xfa[ZS\xaa\x01c\x9b\x08" +
-	"\x85\x80&h\x82\xb6\x18\xdc\xaf\xa9\x87\x06\x0f\x8e\xb3\x1f" +
-	"\xc9\xc2ff:3iSDkAk-\x82(*" +
-	"\xd2\xa2\x87\x8a\xff\x0eF\x0f\xda\x83T0\x97\xa2=x" +
-	"\x11\xffB\xfc\xd7\x83\xa6Pl\xaa\xc5K\xc3\xc87\xd9" +
-	"\xd9\xdd\x18\xd2\"\x9e\xf2\x91yx\x9e\xf7}\xde\xf7y" +
-	"w\xe7\x0f|$\xb5\xab\xb0[\x10\x93\x9f\xa53\xd1\x1f" +
-	"\xcfO\x15G/>\xf8$\x89\x1c\x8f\x1e{\xf1\x03\xff" +
-	"\xed\xcc\x8e\xdf\x88`\x1e3\xce\x98\xcf\x1aY\"\xf3i" +
-	"\xe3\x19\xf3;\xfd\x8a\x9c\xbb\xdfzw~\xfc\x85c$" +
-	"J J#K4\xb8`\x0c\x81`~n\x0c\x13\xa2" +
-	"\x97^\xfb\xe6\x89\xa5\x13\xaf\xbfB\xb2\x04\x8d\xe0\x1a\xb1" +
-	"d0\x8d\xb8l\xfcJ\x88\xb6\x1e\xb9\xf6\xf2\xe4\xfc\xfc" +
-	"\xe9v\x8a\xaf:\xba5`\xb1CSl6\x7f\xdc\x86" +
-	"\xf7\xfa>ZC\xb1\xd21\xa0\x11\xe9NM\xb1x\xc7" +
-	"\xa5\x1d\xf8\xf6\xd2Y\x12&\xa2\x03?\x9d=\xbe\xbc\xf5" +
-	"\xa1\xf3\x94f\xba\xd6\xa5\xce\x0b\xe6\xb5N\xfdZ\xee<" +
-	"L\x88X}\xf1\xc3\x03\x83\x17\xcf\x914\xd1\x06\xee\xc9" +
-	"dAd\x8e\xe7.\x10L\x99{\x9f\x10\xad|\xf2\xf1" +
-	"\xca\xf2\x1b\x0b\x9f\xae3b)w\xc6\\\xcei\xca\xcb" +
-	"\xb9\xfb\xcc\x9e\xbc6\xa2I$s@\x0b\x9d\xceh\xd8" +
-	"J\xee\x94\x99\xce\xff\x8fh\xb0\x90/\x83\x10eO\xef" +
-	"q\x0f^\x7f\xf5\xeb\xf6\x9e{\x0a\x9d\xba\xa3-\x05\xdd" +
-	"\xf3\xa6\xdd#S\x7f\xfe\x7f\xe2\xafv\xc0]\xab\x80\xb1" +
-	"\xc20E4\x1f\xd9\xae\xaf\xfam\xcb\x83\xe3\x0d\x8d\xcd" +
-	"){6\x1b\xba~\x05\x90\x06O\x135\x8dG\xa2%" +
-	"v\xf5\x11\x13\xdb\xb3h9\x8ad|b\xf3$1!" +
-	"\xb2E5\xa7\xec\x11D\xfa\xcf\xbd\x96=M\\UG" +
-	"P\x01\x9aj<Q\x0b]\xbf?\x81\xa9j\xef\xbea" +
-	"\x15\xcc\xd6\xc3@\xa6x\x8a(\x05\"Q\xb8\x87H\x1a" +
-	"\x1c\xb2\xc4p\xd4\xf3][\x05\x01D4\x98\xd9\xfe\xce" +
-	"\x97Wn\xf9\x9e\x08\x10t\x03\xe6\xde\x8a\xe5[3\x01" +
-	"\xc9\xae&\xa5\xa5)\x1f\xe6\x90\xd3\x0c\x02\x88\xf7A\xa8" +
-	"\xbdD\xb2\xca!=\x06\xb0\x12\x18\x91\x98\xe9#\x92\xd3" +
-	"\x1c2d\x10\x9c\x95\xc0\x89\xc4A\xfd\xcf:\x87<\xc1" +
-	"p4PAPs\x1dt\xb5FG@\x17!z\xf4" +
-	"H\xa8l\xb7\xaa\x88\x08\x05b(\x10\x8a\x9eW\xab\xc2" +
-	" \x06\x83P\xb4\xfc\xa9\x00\x9b\x08\x15\x0e\xe4\x89\xe9\xe7" +
-	"\x9a.\xf6+\x7f\xa6\xe6X\xf5\xfe\xba;Usz\xf7" +
-	"\xc5\xce`Ck6\xae\xe4f\xa6W\xca\xb1C75" +
-	"h\x1b\x91|\x84C\xd6[\x06\xd5\xfaZ\xa65\x0dj" +
-	"\xba\xf6\xd4\x8d\xca\xca\xda\xb5\xea\xbf7\x869\xde\xd0\xc4" +
-	"*e\xff\xd8\\\xe8[D\xab\xcb\x9a\x94~\x9b\x16\xef" +
-	"\xe5\x90;\xdbJ\xbf}\x88H\xde\xca!\xefd(:" +
-	"\xd6\x8c\x8ay\xf3\x84a\xbb^SN\x88\xee\x14'\xa0" +
-	"{\x03\xa1\xbak[u\"\x99o\xaa\x8ci\x95\x11\x0e" +
-	"\xf9\x00C\"\xb2G\x8b\x8cr\xc8\x0a\x83`X5h" +
-	"\\\x03\xef\xe7\x90\xfb\x19\x8a\x9eR~S9P\xfe!" +
-	"\xe5\xa3\x83\x18:\x08\xc5i7\x08\x93okB\x19\xaf" +
-	"A\xd6\xb1\xea\xba\xcfT\x1c\xca$\xd6H\x8e\x9e\x10\x03" +
-	"\xc4D:[\x8eWem\xd4\x904\xc2]G\xa6\xd0" +
-	"~\xe60P\x8e=\x94%\xdd\x18\xda\xae\x9ax\\\x13" +
-	"\xa21P\xd5\xd7\x9a\xbc`\xbc\x84\xd4\xba\xd1\xa7JH" +
-	"\xeb\xd1\xefmdc\x8eA\xa4\xd2%d\x88\xc4\xec\x00" +
-	"\x91\xf48\xe4s\x0c\xe5\xd8\xcb\xe2\xa1\x9a:\x0c\x11\x9d" +
-	"\xea\xbd>9xe\xcb\xc9F\x88\xe3\xbb\x01\xd1\xfa\xed" +
-	"H\xb2my\x13\xa1\xeb\xc7Q\x12\xd1\xf9\xb1\xdfO\x1e" +
-	"\xcf\xbd\xf9K\xe3kY\xe9\x16\x92}\xe9j\xb5GX" +
-	"\x17\xa9\xb5\x87a5Q\x01\xd1\x7f\xbb6\xff\xc8i\xe3" +
-	"\xdclHj\xd9\xb6;\xeb\x84\x10\xd1\xb9\xab\x0b_\x8c" +
-	"\xfe|u\xb9A\xfaw\x00\x00\x00\xff\xff6m\xd2C"
+const schema_e82706a772b0927b = "x\xda\xacUQh\x1cU\x14\xbd\xe7\xbdMg\xb3\x9b" +
+	"d\xf32+\xda\x8f\x1aZ7\xa8\x11C\x9b|\x08\xf9" +
+	"hBm\xa8)\x06\xf7\xa5\xed\x87\xa1\xa8\xe3\xecc\xb3" +
+	"0\x99\xd9\xccl\xda\x06\xa9\xb1 Z\x84 \xa9Fj" +
+	"\x8b~T\xaa\x154\xfaSAA\xb0P\x04\xfd\x91\"" +
+	"X\x14\xa5\x8a\x1f*\xf8\xd1\xa8A\xd4\x86\x917\xc9d" +
+	"v\xdb&E\xf0k\x1f\xfb\xee\x9e{\xee9\xf7\xbc\xdd" +
+	">\xc9\x07S;Z\xbfh#&\xdfi\xda\x14\xfe\xfe" +
+	"b9\xb7\xfb\xc7G\x9e!\x91\xe5\xe1S'\xde\xf7\xdf" +
+	"\xdat\xf7\xcfD0G\x8c3\xe6\x01\xc3 2\xa5\xf1" +
+	"\xbcyV\x9fBw\xe7\x9bo/\x8c\xcc\x1d#\x91\x07" +
+	"Q\x13\x0c\xa2\xbeY\xa3\x1f\x04s\xde\x18 \x84;\x97" +
+	".\x1e<\xba\xeb\xb1\x97Ht\xc4\x05\xe6y\xe37\x82" +
+	"\xf9at\xff\xf2k\x97\x9f\xfe\xe5\xf8\xeb\xaf\x90\xccC" +
+	"\x17p\x8d\xf0\x9d\xc14\xc2\x0f\xc6O\x84p\xeb\xf4\xd2" +
+	"\xfc\xd8\xc2\xc2\xe9\xfa\x16\x9f\xa5;t\xc1\xa5\xb4\x86\xb8" +
+	"pq\xf8\xd5{\xf2\xd9s$M |\xf4\xfb\x0f\x9e" +
+	"[\xdcz\xe0S\xba\x8d\x1b 2\x17\xd3\x9f\x13\xcc\xa5" +
+	"\xf4{\x84p\xb3ye\x1b\xde\xed>\xdf\xd0l\xb6\xb9" +
+	"7\xa2\xdb\xac\x9b-\x7f\xfc\xd1\xf2\xe2\x1b\x17>\xb9a" +
+	"\xf8\xe9\xcc\x19\xf3XF\xb3?\x9a\xd9c\x9e\xd5\xa7\xa4" +
+	"\x95\xcc\x02Iu\x04k\xcefN\x99\xf3\xd1\x0f\xe62" +
+	"\x87\x09\xa1qz\xd8\x9b\xbcv\xf2\xab\xfa1.e2" +
+	"\xba\xf5\xd7\x19=F\xfb\xb7Wn\xef8)\x7f\xadW" +
+	"\xea\xaf\xcc\xdf\x04s9\xbao{`\xb0\xfc\xc7\x9d\xfb" +
+	"\xfe\xac\x07\xd8\x92\x8d\x00\xba\xb2\xba\xe0\xf1\xb9\xcb3\xf2" +
+	"\xbe\x7f\x96o\xe0>\x94=a\x8ed5\xdepv\x8f" +
+	"9\x995(\xa4\xbd\xa1\xed\xf9\xaa\xc7\xb6\xaap\xab\xfd" +
+	"CG\x94=e\xd4<\xbf\x08\xc84o\"Z3\x06" +
+	"1q\xb1\xa3\x9b\x98\xe82\x90\xe8\x88\xd8~\xb1y\x8c" +
+	"\x98\x10FN\x1dQ\xf6 B\xfd\xf1\xa0e\x8f\x13W" +
+	"\xa5A\x14\x81\xb5n<\xeeV\xf3\xfc\x9e\xb8L\x95\x0a" +
+	"\xa3\x03*\x98rj\x81L\xf1\x14Q\x0aD\xa2u\x17" +
+	"\x91Ls\xc8<\xc3L\xd5\xf7l\x15\x04\x10a\xdf\xa6" +
+	"\xaes_^\xbd\xeb\x1b\"@P\x82\xcc\xdcj\xff\xbe" +
+	"J\xd9U~OP)\xbb\x85b\xa7\xe5[\x13\x0d\x80" +
+	"\xa3D\xb2\x85C\xde\xc1\x10\xda\xe3\x96\xe3(\xb7LP" +
+	"h%\x86V\xda\x80d\xa1\x18a\x91l_\x03\xb34" +
+	"\xbb\x83\x1cr\x9cA\x00\xd1B\x09\xb5\x97H\x968d" +
+	"\x95\x01,\x0fF$&\xba\x89\xe48\x87\xac1\x08\xce" +
+	"\xf2\xe0DbR\x7f\xe9p\xc8\xe3\x0c3\x81\x0a\x82\x8a" +
+	"\xe7\xa2=\xd9(\x02\xda\x09\xe1\x93\xd35e{%E" +
+	"D1\xc9\\\xb5Z)!M\x0ciB\xce\xf2\xcb\x01" +
+	"\xda\x08E\x0e\xb4\x10\xd3\xc7\x86)\xf6+\x7f\xa2\xe2Z" +
+	"N\x8f\xe3\x95+na4\x12\x19\xeb\xaa\xbc>\x93\x06" +
+	"\x95W\xaaz\x1c\xcf\xb6\x9cH\xd2T\xfb\xaa\x00Cz" +
+	"\xaeA\x0e\xf90\x83\x16E\x0b0\xdcO$ws\xc8" +
+	"\"\x83`\xab\x02\x8c\xe8\xc2\x878\xe4~\x86\\U)" +
+	"?\xa2\xdfB\x18\x08\x94\x7fH\xf9h&\x86fBn" +
+	"\xdc\x0bj\xf1\xdd-\xb7(\xf6\xfcV6m#\x92O" +
+	"pH'\xb1\xa9\xd2\x9dX\xb7f\xd3\x9aw\xcfn$" +
+	"\x8eaWJ\xff\xdd\x1e\xc4\xf6\x18\xae\xe5\xe8\xdc\xa5\xa2" +
+	"\xdc\xc51G\xfc\xee\x09\xd1KL4\x19\x9d\x91\x85\x8d" +
+	"iB\xec\x06\xf7\xdc\x95\xe8\xc6s\xdf\xab\x99\x178\xe4" +
+	"vm\x04\xea^Iq\x7f/\xb1\xdc\xa1\x8a:\x0c\x11" +
+	"\x9e*\\\x1b\xeb\xbb\xba\xe5\x85\xd50uF\x96n\x90" +
+	"\x83\x95\x05\x0a\x88\xfe\xbf\x9c\xde,\xf9\xfd\x09\xe2\x80." +
+	"R\xa5\x9bf\xf4\xba\xed^\x0d\xe9\xba\xdc,\xdb\xf6\xa6" +
+	"\xdc\x1aD\xf2T^\xc7\x0d17\xf8\x89#\xf1_\x18" +
+	"\xe2\x17Z\x88\xee\xc8\x91\x9c\xa6\x16\x19\xf2o\x00\x00\x00" +
+	"\xff\xff=\x0f\xd8\xce"
 
 func RegisterSchema(reg *schemas.Registry) {
 	reg.Register(&schemas.Schema{
@@ -1397,15 +1540,17 @@ func RegisterSchema(reg *schemas.Registry) {
 		Nodes: []uint64{
 			0x804fe3440f678ff3,
 			0x81914daea9a63e6e,
+			0x935e427d5cc4f53e,
 			0x969e88e97ed79d94,
 			0x9baeae5a95f57921,
+			0xa80b14289949c4c1,
 			0xb52aad0122df1319,
-			0xb6ead80127ea2fdd,
-			0xbce33359b4dd6c02,
 			0xc0c1a3f1fdbabdfd,
 			0xc65521f186b6e059,
 			0xd698fc716f499b07,
+			0xec51981217dfdc10,
 			0xf7531ef46740370e,
+			0xfdfb2b517fd7915f,
 		},
 		Compressed: true,
 	})

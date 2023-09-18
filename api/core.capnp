@@ -6,39 +6,37 @@ $Go.package("core");
 $Go.import("github.com/wetware/pkg/api/core");
 
 using CapStore = import "capstore.capnp";
-using Cluster = import "cluster.capnp";
 using Process = import "process.capnp";
 
 
+# Signer identifies an accound.  It is a capability that can be
+# used to sign arbitrary nonces.
+#
+# The signature domain is "ww.auth"
+interface Signer {
+    sign @0 (challenge :Data) -> (signed :Data);
+}
+
+
 interface Terminal {
-    login @0 (account :Cluster.Signer) -> (session :Session);
+    login @0 (account :Signer) -> (session :Session);
 }
 
 # Session is a capability-set that was granted to a particular
 # user.  It is the application wide ambient-authority boundary.
 struct Session {
-    local         :group{
-        peer   @0 :Text;    # peer.ID
-        server @1 :UInt64;  # routing.ID
-        host   @2 :Text;    # hostname
-    }
-
-    # Access-controlled capabilities.  These will be set to null
-    # unless permission has been granted to use the object.
-    view       @3 :Cluster.View;
-    exec       @4 :Executor;
-    capStore   @5 :CapStore.CapStore;
-    extra      @6 :List(Extra);
-
-    struct Extra {
-        name   @0 :Text;
-        client @1 :Capability;
+    view        @0 :import "cluster.capnp".View;
+    local          :group{
+        peer    @1 :Text;    # peer.ID
+        server  @2 :UInt64;  # routing.ID
+        host    @3 :Text;    # hostname
     }
 }
 
+
 interface Executor {
-    # Executor has the ability to create and run WASM processes given the
-    # WASM bytecode.
+    # Executor has the ability to create and run WASM processes
+    # given the WASM bytecode.
     exec @0 (session :Session, bytecode :Data, ppid :UInt32, args :List(Text)) -> (process :Process.Process);
     # Exec creates an runs a process from the provided bytecode.
     #

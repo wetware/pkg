@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"sync"
 	"time"
 
 	"capnproto.org/go/capnp/v3"
@@ -22,10 +21,10 @@ import (
 	"go.uber.org/multierr"
 	"zenhack.net/go/util/rc"
 
-	core_api "github.com/wetware/pkg/api/core"
+	api "github.com/wetware/pkg/api/cluster"
+	"github.com/wetware/pkg/api/core"
 	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/boot"
-	capstore_server "github.com/wetware/pkg/cap/capstore/server"
 	csp_server "github.com/wetware/pkg/cap/csp/server"
 	"github.com/wetware/pkg/cluster"
 	"github.com/wetware/pkg/cluster/pulse"
@@ -100,50 +99,39 @@ func (conf Config) Serve(ctx context.Context) error {
 	}
 	defer root.Release()
 
-	e, err := conf.NewExecutor(ctx)
-	if err != nil {
-		return err
-	}
+	// e, err := conf.NewExecutor(ctx)
+	// if err != nil {
+	// 	return err
+	// }
 
 	server := &Server{
-		NS:   conf.NS,
-		Host: conf.Host,
-		Auth: conf.Auth,
-		Root: root,
-		Binder: binder{
-			Emitter:          state,
-			ViewProvider:     r,
-			ExecutorProvider: e,
-			CapStoreProvider: &capstore_server.CapStore{
-				Map:    &sync.Map{},
-				Logger: slog.Default(),
-			},
-			// PubSubProvider: &pubsub.Server{TopicJoiner: ps},
-			// 	WithCloseOnContextDone(true),
-		},
+		NS:      conf.NS,
+		Host:    conf.Host,
+		Auth:    conf.Auth,
+		Root:    root,
+		Cluster: r,
+		OnJoin:  state,
 	}
 	defer server.Close()
 
-	release, err := server.Join(ctx, r, server)
+	release, err := server.Join(ctx, r)
 	if err != nil {
 		return err
 	}
 	defer release()
 
-	logger := system.ErrorReporter{
-		Logger: conf.Logger().With("id", r.ID()),
-	}
+	logger := conf.Logger().With("id", r.ID())
 
 	logger.Info("wetware started")
 	defer logger.Warn("wetware stopped")
 
 	for {
-		opts := &rpc.Options{
+		opt := &rpc.Options{
 			BootstrapClient: server.Export(),
-			ErrorReporter:   logger,
+			ErrorReporter:   system.ErrorReporter{Logger: logger},
 		}
 
-		conn, err := server.Accept(ctx, opts)
+		conn, err := server.Accept(ctx, opt)
 		if err != nil {
 			return err
 		}
@@ -157,7 +145,7 @@ func (conf Config) Serve(ctx context.Context) error {
 func (conf Config) NewRootSession(r *cluster.Router) (auth.Session, error) {
 	_, seg := capnp.NewSingleSegmentMessage(nil)
 
-	sess, err := core_api.NewRootSession(seg) // TODO(optimization):  non-root?
+	sess, err := core.NewRootSession(seg) // TODO(optimization):  non-root?
 	if err != nil {
 		return auth.Session{}, err
 	}
@@ -172,10 +160,9 @@ func (conf Config) NewRootSession(r *cluster.Router) (auth.Session, error) {
 
 	// Write session data
 	err = multierr.Combine(
-		// Local data
-		// TODO(soon):  sess.Local().SetNamespace(svr.NS),
 		sess.Local().SetHost(hostname),
 		sess.Local().SetPeer(string(conf.Host.ID())),
+		sess.SetView(api.View(r.View())),
 	)
 
 	return auth.Session(sess), err
@@ -230,19 +217,15 @@ func (conf Config) NewPubSub(ctx context.Context) (*gossipsub.PubSub, error) {
 		gossipsub.WithValidateQueueSize(1024))
 }
 
-func (svr *Server) Join(ctx context.Context, r *cluster.Router, server *Server) (capnp.ReleaseFunc, error) {
-	ref := svr.bind(ctx) // registers stream handlers
+func (svr *Server) Join(ctx context.Context, r *cluster.Router) (capnp.ReleaseFunc, error) {
+	ref := svr.bindHandlers(ctx) // registers stream handlers
 	defer ref.Release()
 
-	// Send our first heartbeat to the cluster topic, and kick off
-	// background tasks.
-	if err := r.Bootstrap(ctx); err != nil {
+	// Send our first heartbeat to the cluster
+	// topic, and kick off background tasks.
+	if err := svr.OnJoin.Emit(svr.Root); err != nil {
 		return nil, err
-	}
-
-	// Bind capabilities to the root session.  This has the side effect
-	// of triggering an auth.Session event on svr.Host's event bus.
-	if err := svr.Binder.Bind(svr.Root); err != nil {
+	} else if err = r.Bootstrap(ctx); err != nil {
 		return nil, err
 	}
 
@@ -252,7 +235,7 @@ func (svr *Server) Join(ctx context.Context, r *cluster.Router, server *Server) 
 	return release, nil
 }
 
-func (svr *Server) bind(ctx context.Context) *rc.Ref[any] {
+func (svr *Server) bindHandlers(ctx context.Context) *rc.Ref[any] {
 	for _, id := range proto.Namespace(svr.NS) {
 		svr.Host.SetStreamHandler(id, svr.handler(ctx))
 	}

@@ -15,9 +15,9 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/record"
-	cluster_api "github.com/wetware/pkg/api/cluster"
-	core_api "github.com/wetware/pkg/api/core"
+	"github.com/wetware/pkg/api/core"
 	"github.com/wetware/pkg/auth"
+	"github.com/wetware/pkg/cap/view"
 )
 
 // Server provides the Host capability.
@@ -25,12 +25,14 @@ type Server struct {
 	NS     string
 	Host   local.Host
 	Auth   auth.Policy
-	Binder interface {
-		Bind(auth.Session) error
+	OnJoin interface {
+		Emit(any) error
 	}
 
-	Root  auth.Session
-	Extra map[string]capnp.Client
+	Root    auth.Session
+	Cluster interface {
+		View() view.View
+	}
 
 	once sync.Once
 	ch   chan network.Stream
@@ -48,19 +50,14 @@ func (svr *Server) setup() {
 func (svr *Server) Close() error {
 	svr.setup()
 	close(svr.ch)
-
-	for _, c := range svr.Extra {
-		c.Release()
-	}
-
 	return nil
 }
 
 func (svr *Server) Export() capnp.Client {
-	return capnp.NewClient(core_api.Terminal_NewServer(svr))
+	return capnp.NewClient(core.Terminal_NewServer(svr))
 }
 
-func (svr *Server) Login(ctx context.Context, call core_api.Terminal_login) error {
+func (svr *Server) Login(ctx context.Context, call core.Terminal_login) error {
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
 
@@ -74,10 +71,12 @@ func (svr *Server) Login(ctx context.Context, call core_api.Terminal_login) erro
 		return fmt.Errorf("auth: %w", err)
 	}
 
+	// svr.Auth is responsible for incrementing the refcount on the
+	// root session.
 	return svr.Auth(ctx, res, svr.Root, account)
 }
 
-func (svr *Server) Negotiate(ctx context.Context, account cluster_api.Signer) (peer.ID, error) {
+func (svr *Server) Negotiate(ctx context.Context, account core.Signer) (peer.ID, error) {
 	var n auth.Nonce
 	if _, err := rand.Read(n[:]); err != nil {
 		panic(err) // unreachable
@@ -123,8 +122,8 @@ func (svr *Server) Negotiate(ctx context.Context, account cluster_api.Signer) (p
 	return id, nil
 }
 
-func nonce(n auth.Nonce) func(svr cluster_api.Signer_sign_Params) error {
-	return func(call cluster_api.Signer_sign_Params) error {
+func nonce(n auth.Nonce) func(svr core.Signer_sign_Params) error {
+	return func(call core.Signer_sign_Params) error {
 		return call.SetChallenge(n[:])
 	}
 }

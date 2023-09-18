@@ -6,15 +6,6 @@ $Go.package("cluster");
 $Go.import("github.com/wetware/pkg/api/cluster");
 
 
-# Signer identifies an accound.  It is a capability that can be
-# used to sign arbitrary nonces.
-#
-# The signature domain is "ww.auth"
-interface Signer {
-    sign @0 (challenge :Data) -> (signed :Data);
-}
-
-
 struct Heartbeat {
     # Heartbeat messages are used to implement an unstructured p2p
     # clustering service.  Hosts periodically emit heartbeats on a
@@ -102,5 +93,3 @@ interface View {
 
     using PeerID = Text;
 }
-
-
