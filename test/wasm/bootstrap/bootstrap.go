@@ -11,7 +11,7 @@ import (
 func main() {
 	ctx := context.Background()
 
-	sess, err := system.Bootstrap(ctx)
+	sess, err := system.Login(ctx)
 	if err != nil {
 		panic(err)
 	}

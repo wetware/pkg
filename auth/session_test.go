@@ -15,7 +15,7 @@ import (
 func TestReleaseZeroValueSession(t *testing.T) {
 	t.Parallel()
 
-	require.NotPanics(t, auth.Session{}.Release,
+	require.NotPanics(t, auth.Session{}.Logout,
 		"should be nop")
 }
 
@@ -68,7 +68,7 @@ func TestSessionCopy(t *testing.T) {
 	})
 
 	t.Run("TestMessageSeparation", func(t *testing.T) {
-		want.Release()
+		want.Logout()
 		assert.NotPanics(t, func() {
 			_ = api.Session(got).Local().Server()
 		}, "should exist in separate messages")

@@ -37,6 +37,8 @@ type Module interface {
 var module wazergo.HostModule[*Socket] = functions{
 	// TODO(soon):  socket exports
 	"__sock_close": wazergo.F0((*Socket).close),
+	"__sock_send":  wazergo.F1((*Socket).Send),
+	"__sock_recv":  wazergo.F1((*Socket).Recv),
 	// "foo": ,
 	// "bar": F1((*NetSock).Bar),
 }

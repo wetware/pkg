@@ -20,7 +20,7 @@ type Dialer interface {
 	DialRPC(context.Context, local.Host) (*rpc.Conn, error)
 }
 
-func Bootstrap(ctx context.Context) (auth.Session, error) {
+func Login(ctx context.Context) (auth.Session, error) {
 	// conn, err := FDSockDialer{}.DialRPC(ctx)
 	// if err != nil {
 	// 	return auth.Session{}, err

@@ -2,6 +2,8 @@ package system
 
 import (
 	"context"
+	"errors"
+	"log/slog"
 	"net"
 
 	"capnproto.org/go/capnp/v3"
@@ -22,7 +24,7 @@ type Socket struct {
 }
 
 func (sock *Socket) Close(context.Context) error {
-	sock.Session.Release()
+	sock.Session.Logout()
 
 	return sock.conn.Close()
 }
@@ -47,4 +49,14 @@ func (sock *Socket) dial(ctx context.Context) error {
 	})
 
 	return nil
+}
+
+func (sock *Socket) Send(ctx context.Context, b types.Bytes) types.Error {
+	slog.Warn("STUB CALL TO Socket.Send()")
+	return types.Fail(errors.New("NOT IMPLEMENTED"))
+}
+
+func (sock *Socket) Recv(ctx context.Context, b types.Bytes) types.Error {
+	slog.Warn("STUB CALL TO Socket.Recv()")
+	return types.Fail(errors.New("NOT IMPLEMENTED"))
 }

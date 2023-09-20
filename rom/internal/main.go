@@ -14,11 +14,11 @@ import (
 var ctx = context.Background()
 
 func main() {
-	sess, err := system.Bootstrap(ctx)
+	sess, err := system.Login(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer sess.Release()
+	defer sess.Logout()
 
 	// cluster, leave := system.Join(ctx, sess)
 	// defer leave()

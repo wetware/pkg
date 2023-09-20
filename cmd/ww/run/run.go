@@ -58,7 +58,7 @@ func run(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	// defer sess.Terminate()
+	defer sess.Logout()
 
 	// set up the local wetware environment.
 	wetware := ww.Ww{

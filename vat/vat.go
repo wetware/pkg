@@ -97,7 +97,7 @@ func (conf Config) Serve(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer root.Release()
+	defer root.Logout()
 
 	// e, err := conf.NewExecutor(ctx)
 	// if err != nil {

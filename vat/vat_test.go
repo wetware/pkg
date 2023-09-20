@@ -79,7 +79,7 @@ func TestServe(t *testing.T) {
 			Host:    h,
 			Account: auth.SignerFromHost(h),
 		}.DialDiscover(ctx, <-addr, "test")
-		defer sess.Release()
+		defer sess.Logout()
 		require.NoError(t, err)
 		require.NotZero(t, sess)
 	})
