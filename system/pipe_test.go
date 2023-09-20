@@ -19,6 +19,7 @@ func TestPipe(t *testing.T) {
 		t.Parallel()
 
 		pipe := system.NewPipe()
+		defer pipe.Close()
 
 		want := new(rc.Ref[rpccp.Message])
 		defer want.Release()
@@ -39,6 +40,7 @@ func TestPipe(t *testing.T) {
 		t.Parallel()
 
 		pipe := system.NewPipe()
+		defer pipe.Close()
 
 		want := new(rc.Ref[rpccp.Message])
 		defer want.Release()
@@ -55,6 +57,7 @@ func TestPipe(t *testing.T) {
 		t.Parallel()
 
 		pipe := system.NewPipe()
+		defer pipe.Close()
 
 		err := pipe.Close()
 		require.NoError(t, err, "should close successfully")
