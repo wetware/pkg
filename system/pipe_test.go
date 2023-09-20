@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	rpccp "capnproto.org/go/capnp/v3/std/capnp/rpc"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/wetware/pkg/system"
 	"zenhack.net/go/util/rc"
@@ -22,10 +23,14 @@ func TestPipe(t *testing.T) {
 		want := new(rc.Ref[rpccp.Message])
 		defer want.Release()
 
-		err := pipe.Push(context.TODO(), want)
+		got, err := pipe.Pop(context.TODO())
+		require.ErrorIs(t, err, context.DeadlineExceeded, "should signal empty queue")
+		assert.Nil(t, got, "should return nil reference")
+
+		err = pipe.Push(context.TODO(), want)
 		require.NoError(t, err, "push should succeed")
 
-		got, err := pipe.Pop(context.TODO())
+		got, err = pipe.Pop(context.TODO())
 		require.NoError(t, err, "pop should succeed")
 		require.Equal(t, want, got, "should get expected item from the queue")
 	})
