@@ -22,6 +22,12 @@ type Pipe struct {
 
 func (p *Pipe) Push(ctx context.Context, ref *rc.Ref[rpccp.Message]) error {
 	select {
+	case <-p.closed:
+		return errors.New("closed")
+	default:
+	}
+
+	select {
 	case p.buffer <- ref:
 		// fast path; we have a message waiting in the buffer
 		return nil
