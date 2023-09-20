@@ -20,7 +20,7 @@ type Pipe struct {
 	buffer chan *rc.Ref[rpccp.Message]
 }
 
-func (p *Pipe) Push(ref *rc.Ref[rpccp.Message]) error {
+func (p *Pipe) Push(ctx context.Context, ref *rc.Ref[rpccp.Message]) error {
 	select {
 	case p.buffer <- ref:
 		// fast path; we have a message waiting in the buffer
@@ -28,6 +28,9 @@ func (p *Pipe) Push(ref *rc.Ref[rpccp.Message]) error {
 
 	case <-p.closed:
 		return errors.New("closed")
+
+	case <-ctx.Done():
+		return ctx.Err()
 
 	default:
 		return context.DeadlineExceeded // means "please back off"

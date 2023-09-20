@@ -22,7 +22,7 @@ func TestPipe(t *testing.T) {
 		want := new(rc.Ref[rpccp.Message])
 		defer want.Release()
 
-		err := pipe.Push(want)
+		err := pipe.Push(context.TODO(), want)
 		require.NoError(t, err, "push should succeed")
 
 		got, err := pipe.Pop(context.TODO())
@@ -38,10 +38,10 @@ func TestPipe(t *testing.T) {
 		want := new(rc.Ref[rpccp.Message])
 		defer want.Release()
 
-		err := pipe.Push(want)
+		err := pipe.Push(context.TODO(), want)
 		require.NoError(t, err, "push should succeed")
 
-		err = pipe.Push(want)
+		err = pipe.Push(context.TODO(), want)
 		require.ErrorIs(t, err, context.DeadlineExceeded,
 			"should signal that buffer is full")
 	})
@@ -54,7 +54,7 @@ func TestPipe(t *testing.T) {
 		err := pipe.Close()
 		require.NoError(t, err, "should close successfully")
 
-		err = pipe.Push(nil)
+		err = pipe.Push(context.TODO(), nil)
 		require.EqualError(t, err, "closed", "pipe should be closed")
 
 		ref, err := pipe.Pop(context.TODO())

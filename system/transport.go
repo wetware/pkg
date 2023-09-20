@@ -43,7 +43,7 @@ func (t hostTransport) NewMessage() (transport.OutgoingMessage, error) {
 	return &messageRef{
 		body: ref,
 		send: func() error {
-			return t.Sock.Guest.Push(ref.AddRef())
+			return t.Sock.Guest.Push(t.background, ref.AddRef())
 		},
 	}, nil
 }

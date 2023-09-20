@@ -75,7 +75,7 @@ func (sock *Socket) Send(ctx context.Context, buf types.Pointer[types.Bytes]) ty
 
 	ref := rc.NewRef(message, msg.Release)
 
-	if err = sock.Host.Push(ref); err != nil {
+	if err = sock.Host.Push(ctx, ref); err != nil {
 		return types.Fail(err)
 	}
 
