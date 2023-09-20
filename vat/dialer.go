@@ -81,17 +81,18 @@ func (d Dialer) DialRPC(ctx context.Context, addr peer.AddrInfo, protos ...proto
 		return nil, err
 	}
 
-	conn := rpc.NewConn(transport(s), &rpc.Options{
+	options := &rpc.Options{
 		BootstrapClient: d.Account.Client(),
 		ErrorReporter: system.ErrorReporter{
 			Logger: slog.Default().With(
 				"stream", s.ID(),
-				"remote", addr.ID,
+				"local", s.Conn().LocalPeer(),
+				"remote", s.Conn().RemotePeer(),
 				"proto", s.Protocol()),
 		},
-	})
+	}
 
-	return conn, nil
+	return rpc.NewConn(transport(s), options), nil
 }
 
 func (d Dialer) DialP2P(ctx context.Context, addr peer.AddrInfo, protos ...protocol.ID) (network.Stream, error) {

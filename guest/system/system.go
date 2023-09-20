@@ -2,53 +2,69 @@ package system
 
 import (
 	"context"
+	"errors"
 	"io"
-	"log/slog"
-	"net"
-	"os"
 	"runtime"
-	"syscall"
+
+	local "github.com/libp2p/go-libp2p/core/host"
+	"golang.org/x/exp/slog"
+
+	api "github.com/wetware/pkg/api/core"
+	"github.com/wetware/pkg/auth"
 
 	"capnproto.org/go/capnp/v3/rpc"
-	"github.com/wetware/pkg/system"
 )
 
-const (
-	// file descriptor for first pre-openned file descriptor.
-	PREOPENED_FD = 3
-)
+type Dialer interface {
+	DialRPC(context.Context, local.Host) (*rpc.Conn, error)
+}
 
-// FDSockDialer binds to a pre-opened file descriptor (usually a TCP socket),
-// and provides an *rcp.Conn to the host.
-type FDSockDialer struct{}
-
-func (s FDSockDialer) DialRPC(context.Context) (*rpc.Conn, error) {
-	f := os.NewFile(uintptr(PREOPENED_FD), "")
-	if err := syscall.SetNonblock(PREOPENED_FD, false); err != nil {
-		return nil, err
-	}
-
-	// Make sure we eventually release the file descriptor.
-	runtime.SetFinalizer(f, func(c io.Closer) error {
+func Bootstrap(ctx context.Context) (auth.Session, error) {
+	// conn, err := FDSockDialer{}.DialRPC(ctx)
+	// if err != nil {
+	// 	return auth.Session{}, err
+	// }
+	// runtime.SetFinalizer(conn, func(c io.Closer) error {
+	// 	return c.Close()
+	// })
+	conn := rpc.NewConn(rpc.NewStreamTransport(socket{ctx}), nil)
+	runtime.SetFinalizer(conn, func(c io.Closer) error {
+		defer slog.Debug("called finalizer")
 		return c.Close()
 	})
 
-	l, err := net.FileListener(f)
-	if err != nil {
-		return nil, err
+	client := conn.Bootstrap(ctx)
+	if err := client.Resolve(ctx); err != nil {
+		return auth.Session{}, err
 	}
-	defer l.Close()
+	term := api.Terminal(client)
 
-	raw, err := l.Accept()
+	f, release := term.Login(ctx, nil)
+	defer release()
+
+	res, err := f.Struct()
 	if err != nil {
-		return nil, err
+		return auth.Session{}, err
 	}
 
-	conn := rpc.NewConn(rpc.NewStreamTransport(raw), &rpc.Options{
-		ErrorReporter: system.ErrorReporter{
-			Logger: slog.Default().WithGroup("guest"),
-		},
-	})
+	sess, err := res.Session()
+	if err != nil {
+		return auth.Session{}, err
+	}
 
-	return conn, nil
+	return auth.Session(sess).AddRef(), nil
+}
+
+type socket struct{ context.Context }
+
+func (socket) Read(b []byte) (int, error) {
+	return 0, errors.New("NOT IMPLEMENTED")
+}
+
+func (socket) Write(b []byte) (int, error) {
+	return 0, errors.New("NOT IMPLEMENTED")
+}
+
+func (socket) Close() error {
+	return errors.New("NOT IMPLEMENTED")
 }

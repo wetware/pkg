@@ -13,8 +13,8 @@ import (
 
 // NetSock is a system socket that uses the host's IP stack.
 type NetSock struct {
-	Addr    net.Addr
 	Logger  log.Logger
+	Conn    net.Conn
 	Session auth.Session
 
 	conn *rpc.Conn
@@ -27,25 +27,15 @@ func (sock *NetSock) Close(context.Context) error {
 }
 
 func (sock *NetSock) dial(ctx context.Context) error {
-	raw, err := dial(ctx, sock.Addr)
-	if err != nil {
-		return err
-	}
-
 	// NOTE:  no auth is actually performed here.  The client doesn't
 	// even need to pass a valid signer; the login call always succeeds.
 	server := core.Terminal_NewServer(sock.Session)
 	client := capnp.NewClient(server)
 
-	sock.conn = rpc.NewConn(rpc.NewStreamTransport(raw), &rpc.Options{
+	sock.conn = rpc.NewConn(rpc.NewStreamTransport(sock.Conn), &rpc.Options{
 		ErrorReporter:   ErrorReporter{Logger: sock.Logger},
 		BootstrapClient: client,
 	})
 
 	return nil
-}
-
-func dial(ctx context.Context, addr net.Addr) (net.Conn, error) {
-	dialer := net.Dialer{}
-	return dialer.DialContext(ctx, addr.Network(), addr.String())
 }

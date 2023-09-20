@@ -2,7 +2,6 @@ package system
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"net"
 	"time"
@@ -13,7 +12,6 @@ import (
 	"github.com/stealthrocket/wazergo"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
-	"github.com/tetratelabs/wazero/experimental/sock"
 	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/util/log"
 )
@@ -46,29 +44,31 @@ var module wazergo.HostModule[*NetSock] = functions{
 // returned context is expired, and the ctx.Err() method returns the
 // offending error.
 func Instantiate(ctx context.Context, r wazero.Runtime, sess auth.Session) (*wazergo.ModuleInstance[*NetSock], context.Context, error) {
-	l, err := net.Listen("tcp", ":0") // TODO:  localhost?
-	if err != nil {
-		return nil, ctx, fmt.Errorf("net: listen: %w", err)
-	}
-	defer l.Close()
+	// l, err := net.Listen("tcp", ":0") // TODO:  localhost?
+	// if err != nil {
+	// 	return nil, ctx, fmt.Errorf("net: listen: %w", err)
+	// }
+	// defer l.Close()
 
-	addr := l.Addr().(*net.TCPAddr)
+	// addr := l.Addr().(*net.TCPAddr)
+	host, guest := net.Pipe()
+	ctx = context.WithValue(ctx, keyHostPipe{}, host)
 
 	// Instantiate the host module and bind it to the context.
 	instance, err := wazergo.Instantiate(ctx, r, module,
 		withLogger(slog.Default()),
-		withTransport(addr),
+		withNetConn(guest),
 		withSession(sess))
 	if err == nil {
 		// Bind the module instance to the context, so that the caller can
 		// access it.
 		ctx = wazergo.WithModuleInstance(ctx, instance)
 
-		// The system socket enables the creation of non-blocking TCP conns
-		// inside of the WASM module.  The host will pre-open the TCP port
-		// and pass it to the guest through a file descriptor.
-		ctx = sock.WithConfig(ctx, sock.NewConfig().
-			WithTCPListener("", addr.Port))
+		// // The system socket enables the creation of non-blocking TCP conns
+		// // inside of the WASM module.  The host will pre-open the TCP port
+		// // and pass it to the guest through a file descriptor.
+		// ctx = sock.WithConfig(ctx, sock.NewConfig().
+		// 	WithTCPListener("", addr.Port))
 	}
 
 	return instance, ctx, err
@@ -83,9 +83,9 @@ func withLogger(log log.Logger) Option {
 	})
 }
 
-func withTransport(addr net.Addr) Option {
+func withNetConn(conn net.Conn) Option {
 	return wazergo.OptionFunc(func(h *NetSock) {
-		h.Addr = addr
+		h.Conn = conn
 	})
 }
 
@@ -138,3 +138,5 @@ func (f functions) Instantiate(ctx context.Context, opts ...Option) (out *NetSoc
 
 	return
 }
+
+type keyHostPipe struct{}
