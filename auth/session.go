@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"log/slog"
 
 	"capnproto.org/go/capnp/v3"
 	api "github.com/wetware/pkg/api/core"
@@ -44,8 +45,12 @@ func (sess Session) AddRef() Session {
 // Logout the session by releasing the message, which releases
 // each entry in the cap table.
 func (sess Session) Logout() {
-	if sess != (Session{}) {
-		api.Session(sess).Message().Release()
+	message := api.Session(sess).Message()
+	if message != nil {
+		message.Release()
+	} else {
+		slog.Debug("noop",
+			"reason", "null message")
 	}
 }
 

@@ -6,6 +6,20 @@ $Go.package("anchor");
 $Go.import("github.com/wetware/pkg/api/anchor");
 
 
+struct Value {
+    union {
+        cluster @0 :import "cluster.capnp".View;
+        # Cluster is a global, inconsistent view of the cluster. It
+        # provides a snapshot-based interface for synchronizing ops
+        # in a distributed environment.
+
+        host    @1 :import "core.capnp".Session;
+
+        anchor  @2 :Anchor;
+    }
+}
+
+
 interface Anchor {
     # Anchor is a shared memory register, accessible over the network.
     # Anchors form a tree structure similar to a filesystem, with one

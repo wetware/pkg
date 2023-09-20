@@ -9,7 +9,191 @@ import (
 	schemas "capnproto.org/go/capnp/v3/schemas"
 	server "capnproto.org/go/capnp/v3/server"
 	context "context"
+	cluster "github.com/wetware/pkg/api/cluster"
+	core "github.com/wetware/pkg/api/core"
+	strconv "strconv"
 )
+
+type Value capnp.Struct
+type Value_Which uint16
+
+const (
+	Value_Which_cluster Value_Which = 0
+	Value_Which_host    Value_Which = 1
+	Value_Which_anchor  Value_Which = 2
+)
+
+func (w Value_Which) String() string {
+	const s = "clusterhostanchor"
+	switch w {
+	case Value_Which_cluster:
+		return s[0:7]
+	case Value_Which_host:
+		return s[7:11]
+	case Value_Which_anchor:
+		return s[11:17]
+
+	}
+	return "Value_Which(" + strconv.FormatUint(uint64(w), 10) + ")"
+}
+
+// Value_TypeID is the unique identifier for the type Value.
+const Value_TypeID = 0xcfaebe761f647d07
+
+func NewValue(s *capnp.Segment) (Value, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
+	return Value(st), err
+}
+
+func NewRootValue(s *capnp.Segment) (Value, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
+	return Value(st), err
+}
+
+func ReadRootValue(msg *capnp.Message) (Value, error) {
+	root, err := msg.Root()
+	return Value(root.Struct()), err
+}
+
+func (s Value) String() string {
+	str, _ := text.Marshal(0xcfaebe761f647d07, capnp.Struct(s))
+	return str
+}
+
+func (s Value) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Value) DecodeFromPtr(p capnp.Ptr) Value {
+	return Value(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Value) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+
+func (s Value) Which() Value_Which {
+	return Value_Which(capnp.Struct(s).Uint16(0))
+}
+func (s Value) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Value) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Value) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Value) Cluster() cluster.View {
+	if capnp.Struct(s).Uint16(0) != 0 {
+		panic("Which() != cluster")
+	}
+	p, _ := capnp.Struct(s).Ptr(0)
+	return cluster.View(p.Interface().Client())
+}
+
+func (s Value) HasCluster() bool {
+	if capnp.Struct(s).Uint16(0) != 0 {
+		return false
+	}
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Value) SetCluster(v cluster.View) error {
+	capnp.Struct(s).SetUint16(0, 0)
+	if !v.IsValid() {
+		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
+	}
+	seg := s.Segment()
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
+	return capnp.Struct(s).SetPtr(0, in.ToPtr())
+}
+
+func (s Value) Host() (core.Session, error) {
+	if capnp.Struct(s).Uint16(0) != 1 {
+		panic("Which() != host")
+	}
+	p, err := capnp.Struct(s).Ptr(0)
+	return core.Session(p.Struct()), err
+}
+
+func (s Value) HasHost() bool {
+	if capnp.Struct(s).Uint16(0) != 1 {
+		return false
+	}
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Value) SetHost(v core.Session) error {
+	capnp.Struct(s).SetUint16(0, 1)
+	return capnp.Struct(s).SetPtr(0, capnp.Struct(v).ToPtr())
+}
+
+// NewHost sets the host field to a newly
+// allocated core.Session struct, preferring placement in s's segment.
+func (s Value) NewHost() (core.Session, error) {
+	capnp.Struct(s).SetUint16(0, 1)
+	ss, err := core.NewSession(capnp.Struct(s).Segment())
+	if err != nil {
+		return core.Session{}, err
+	}
+	err = capnp.Struct(s).SetPtr(0, capnp.Struct(ss).ToPtr())
+	return ss, err
+}
+
+func (s Value) Anchor() Anchor {
+	if capnp.Struct(s).Uint16(0) != 2 {
+		panic("Which() != anchor")
+	}
+	p, _ := capnp.Struct(s).Ptr(0)
+	return Anchor(p.Interface().Client())
+}
+
+func (s Value) HasAnchor() bool {
+	if capnp.Struct(s).Uint16(0) != 2 {
+		return false
+	}
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Value) SetAnchor(v Anchor) error {
+	capnp.Struct(s).SetUint16(0, 2)
+	if !v.IsValid() {
+		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
+	}
+	seg := s.Segment()
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(capnp.Client(v)))
+	return capnp.Struct(s).SetPtr(0, in.ToPtr())
+}
+
+// Value_List is a list of Value.
+type Value_List = capnp.StructList[Value]
+
+// NewValue creates a new list of Value.
+func NewValue_List(s *capnp.Segment, sz int32) (Value_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1}, sz)
+	return capnp.StructList[Value](l), err
+}
+
+// Value_Future is a wrapper for a Value promised by a client call.
+type Value_Future struct{ *capnp.Future }
+
+func (f Value_Future) Struct() (Value, error) {
+	p, err := f.Future.Ptr()
+	return Value(p.Struct()), err
+}
+func (p Value_Future) Cluster() cluster.View {
+	return cluster.View(p.Future.Field(0, nil).Client())
+}
+
+func (p Value_Future) Host() core.Session_Future {
+	return core.Session_Future{Future: p.Future.Field(0, nil)}
+}
+func (p Value_Future) Anchor() Anchor {
+	return Anchor(p.Future.Field(0, nil).Client())
+}
 
 type Anchor capnp.Client
 
@@ -1493,60 +1677,69 @@ func (p Anchor_cell_Results_Future) Storer() Anchor_Storer {
 	return Anchor_Storer(p.Future.Field(1, nil).Client())
 }
 
-const schema_efb5a91f96d44de3 = "x\xda\x84T]h#U\x14>\xe7\xde;\x9b\x8d$" +
-	"\xc6\x9b\x89\xb2\xbaJX\xa9l\x0dniS\xa5\x1a\x90" +
-	"\x89\x8a\xae,\xae\xe6Fd[\xd4\x87!\x19Ht6" +
-	"\xa9\x93d#\x88\x14\x84>(V|P\xf1\xaf\x0f\x15" +
-	"|\x10\xd1\xaa E\xc1\x87\x8aR\x1fK\xa9\xa8\x85>" +
-	"h\xab\xd0\x87\"\x0a\x82\x16d\xe4\xde\xc9\xfc\xa4i\xea" +
-	"[2\xe7\xdc\xef~\xdfw\xce\xfd\xc6))\xb2\x89\xe4" +
-	"\xd4\x09 \xe2A\xed\x84\xbb:\xba\xfe\xcb\xdaS\x93/" +
-	"\x01\xcfP\xf7\xe6\x9f^\x89\xefN\xa5w\x01PG\xba" +
-	"\xa5'i\x0c@\x8f\xd3\xf3\xfa\x84\xfc\xe5\xeei\x9f\xbe" +
-	"\xfd\xc0\xcb\xcf-\x01\xcf \x80Fb\x00\x93\xd7\xd3\xab" +
-	"\x10P?C\xbb\x80\xee\xd9\xc5\x997\xb3\xf1\x85\x0f\x07" +
-	"\xd0\x9e\xa7[\xfa\x8b\x0am\x9e\x9e\xd7?Rh\xf6w" +
-	"\xefv\xa7o\xfa\xfa\xe3\x1e\x1aJ\xb4\xd7=\xb4Ej" +
-	"\x00\xba\xef?|\xf1\x0fwy{\x05\xf8\xe9\xa0\xe1+" +
-	"z\xafl\xf8V5<#\xa6\xcd\xb3\x07\xa9/\xa2\x08" +
-	"\xbfR\"\x1b\xf6T\xc3\xcf\xfcRk~][\xf5\x1a" +
-	"\x98R\xc3\xfe\x04\xe6\xbe5\xf1\xd8g7>{jM" +
-	"\x16B\xa2J\x91\xbeO7\xf4\x7f\x14\xd7\xbf\x94\xa8\x99" +
-	"O\xf6\xe6\x7f\xa4Ol\x84 \x93\x82\x11\x04\xe6\xcel" +
-	"f\xbeY\x9f\xfba\x0b\xc4i\x0c\x08\xdc\xc1\x14\xc3\xbb" +
-	"\x99<;\xddM\xcf\xbd\xb6|\xcbN\x84\xa1\xbe\xc8\x0e" +
-	"\x00\xf5%&\x09\x06W\xf3$uw.n\xbe\x91\xfd" +
-	"\xe0\xf3\xdf\xa5a\xdf\xb3\xf7\xf4m6\x05\xa0\xff\xcb\xd6" +
-	"\xf4\x8e&\x0d\xbb\xb4Rx\xe7\x85\xfd\xcd\xdfz\xd7)" +
-	"&Oj\x17\xe4muM\xa2=~\xdd\x97\x8f\xbc\x9a" +
-	"+\xfe\xed\x19\xa6\xea\x0bZ\x01a\xdc5\x1b\x95Z\xd3" +
-	"\x19\xab\x10s\xb61[\xb8\xc7\xfb\xf7P\xd3\xacR\xcb" +
-	")!\x0aF5\x80\xe0<\xfa\xces\x9e\x03\xc2\xb5X" +
-	"\xcan\x9a\xd5\"\x96\x10\x03$\x1aE\xaaX\xb6=R" +
-	"\xb6Z\x1d\xbb\xdd\x02\x10')\x03`\x08\xc0o-\x00" +
-	"\x88\x11\x8ab\x9c G\xccH\xde\xfc\x9c\xfc8JQ" +
-	"\xdcN\xd0\x90\xc8\x96\x83<\xdcD@\xe4\x80F\xab\xdd" +
-	"tT!X*\xafp\xb4\x96G\xdbM\xa7O\x8b?" +
-	"\x1b\xf4]\xe3<\xaf\xb4d\x15\xf01b\xba\xa6\xfdt" +
-	"D\x0c\x0b\xc4$\x0bJ\x1b\x8a\x0cA\xc3;\x8a<\xba" +
-	"\xe6}\xf4\xd8a\xab-gL\x8a\x0d\xa0\xa3\xc8\xf9\x10" +
-	"9{\xc5\xb4;\x16\xa6\x81`\x1a\x8e\xa3X2\x1d\xf3" +
-	"r?L.\x84I\xcd\x9a\xed\x1a&\x80`b\x98g" +
-	"vk\xa4\x94U G\xd7\xef\xab\xd5m\xacJK\xff" +
-	"o\xa0\xb9\xc8@\x87\x19\x93j\x98\x97\xad\x01B'\x07" +
-	"\xd6\xa8'\xcbo8<d\xcb\x19S\x03\x0c\xe4G\xb8" +
-	"\xe5Cn\x01\xb52\x80\xb8\x8d\xa2\xb8s\xc0\xd9\xe6\x15" +
-	"\xcb\xe9:\xf56\xa0\x85\x08\x04\xf1\x18\x9f\xca\x867\xb4" +
-	"\xa8\xd9\x17\x00D\x82\xa2\x18%\xe8Vju\xbb\xeaX" +
-	"\x0d\x00\xc0\xab\x01K\x14\xf1\x9a0d\x00\xe5\xc7\x00\x1c" +
-	"}\xf0X\xad\xe9\x88\x04b$\x8ex>\x12\xc9\xc9B" +
-	"$Q\xe3\x85\xac\x1cH\xd5\xf0v\xc9\xf0\xcc\x10\x09\xb5" +
-	"\xed~\xd0\xa1\x1f8\\\xdc\x00\x84\xdf\x1f\xc30%\xd1" +
-	"\x0f\\~\x97|\xd5\xe7bH\x82lC?\xda\xf9\x19" +
-	"Y\xbb6F\xedV\x11Sr\xcf\x8a\x98\x92s\xe9\x7f" +
-	"0l\xe8X\x8e|8\xe5\x9eU\xa7\x08\xba\xadN\xa5" +
-	"bYU\x0b\xb0:`;\x1d\xf6f\x0co\xda\xff\x05" +
-	"\x00\x00\xff\xff \xb3\xd4a"
+const schema_efb5a91f96d44de3 = "x\xda\x8cU]h\x1cU\x14>\xe7\xdeYg&\xec" +
+	"vs3[i\xade\x89\xa44\x0d&4\x89P\xbb" +
+	" \xbb\xa9\xc6\xda\xd2\xe8\xdehm\xd6\x9f\x87aw`" +
+	"\xa3\xd3\xddtv7\xab\x88\x04\x84\xfa *\x0a\"6" +
+	"\xda\x07\x85\x82EhT\xa8\xa5\x82BE\x8c/b(" +
+	"\x015PP[\x85>\x88\xc6'-\xea\x95{';" +
+	"3\xc9&\xd1\xb7\xd9{\xcf~\xe7|\xdfw\xce\xb9{" +
+	"\xef\xa29m0\xd1\xdc\x02\x84\xbf\x1b\xbbI\\\xea]" +
+	"\xf8q\xfe\x89\xe1\x17\x80\xa5\xa8\xb8\xed\xbb\x97\xcdk\xfb" +
+	"\xba\xae\x01\xa0\xd5\xad/Y\xfd\xba\x0e`\xed\xd1\x0fZ" +
+	"\\~\x89\xeb\xb1\x0ff\xef}\xf1\x99\xb7\x81\xa5\x10 " +
+	"Ft\x80\xe1\xfdz\x07\x02Z#z\x13P\xec>]" +
+	"x#m\xbe\xf4^\x1b\xdai}\xc9:\xab\xd0\xce\xe8" +
+	"\x07\xad\xaf\x14\x9a\xfb\xe5[\xcd\x89\x9d\x9f\x9d[AC" +
+	"\x89v\xdeG\xfbD\xcf\x02\x8a3\xf7\x8f-\x8b\xb9+" +
+	"\x17\x80\xed\x08\x02\xae\xe8\x07d\xc0O*\xe0\x04\x9f\xb0" +
+	"w\xdfH^\x8c\"\xc4\x0c\"\x03LC\x06\xfc\xc0\x8e" +
+	"\xd5N.\xc4.\xf9\x01\x9abc\xfc\x0e\x9a85x" +
+	"\xf4\xc3[\x9f\xda6//\xc2B\x15#+a\\\xb6" +
+	"\xb6\x1b\xf2k\xab!I\xe9\xcf\x96\xd2\xd3\x9f\x9e\xfb\x1a" +
+	"x\x02Q\\\x1d[|=}\xf6\xfc\xaf0\x8a:\x05" +
+	"\xb0N\x18\xb3\xd6\xd3*\xbaa\xcc\x01\x8a\xc2\xfb\xd7O" +
+	"~K\x1f\xbb\x1c\xa6\x1cN\x98\x04A\x13\x85\xc5\xd4\xe7" +
+	"\x0b3\xdf,\x01\xdf\x81A\xb9\xcb\x86\xe2\xf3\xa7\xca4" +
+	"\xd1\xec\x9aymn\xd7\xd5\x08\x1f\xab`\xde\x00\xb4\x1e" +
+	"7%\x9d\xa0P\x96\xa0a!\x80\xd6\xab\xe6;\xd6)" +
+	"s\x1f\x80u\xd1\x9c\xb7\x06;\xa4\xbc\xc7.d\xde|" +
+	"\xee\x97\xc5\x9fW\xd2\xa9J\xb6w\x1c\x96\xd9vuH" +
+	"\xb4Go\xfe\xf8\x81W\xfar\x7f\xf8\xf2\xaa\xfbC\x1d" +
+	"\x19\x04\x01\xfd\xc2\xae\x14\xcbUo\xa0H\xec\xa9\xcaT" +
+	"f\xc4\xffu\xa4j\x97\xa8\xe3\xe5\x11\xb9Fc\x00\x01" +
+	"\x02\xb6\x9cb\xac\x0f\x08\x8b\xe9I\xb7j\x97r\x98G" +
+	"\x0c\x90h\x14\xa9\xe8\xb8n\xcf\xb8Sk\xb8\xf5\x1a\x00" +
+	"7\xa8\x06\xa0!\x00\xdb\x93\x01\xe0=\x14\xf9^\x82\x0c" +
+	"1%+g\xfd\xf2\xb0\x97\"\xbf\x83`V\";\x1e" +
+	"\xb2\xb0s\x01\x91\x01fk\xf5\xaa\xa7.\x82&\xf4/" +
+	"\xd6\xe7\xf2`\xbd\xea\xad\xe2\xd2r\x07[\xba16\xa4" +
+	"\xb8\xa4\x15\xf0&d\x9a\xb6\xfbd\x84\x8c\x16\x90Id" +
+	"\x147\xe4)\x82Y\xff\xaf\xc8\xa2c\xb1\xaa<m\xad" +
+	"\xd4\x8e7 \xc9\x06\xd0Q\xe4\xa1\x109=m\xbb\x0d" +
+	"\x07\xbb\x80`\x17lVb\xde\xf6\xec\xe3\xaba\xfaB" +
+	"\x98\xe4\x94]/c\x1c\x08\xc67\xd2\xcc\xad\xf5\xe4\xd3" +
+	"\x0ad\xfd\xfb\xbb\xcb\x93.\x96\xa4\xa4\xffeh_\xc4" +
+	"\xd0\x8d\x84IV\xec\xe3N[A\xa8\x12>l\xbb\xb4" +
+	"\xe1\xc8Lq\xaa\xc5\x85P\xa9F\x0f\x00\xf0\x1cE~" +
+	"\x84`\x02\xff\x11~\xaeC2\xd7=\x14y\x9e`\x82" +
+	"\xfc-RH\x00\xd8\x98,\xeb>\x8a\xfc!\x823E" +
+	"\xb7Q\xab\xab\xd6\x99\xed\xf9\xeb\x91\xe1\xdfv\xb6z*" +
+	"Y\xae\xd6\xea\xd8)\x0a\xdf\x7f\xf4\xfcr\xf7\xd1/\xe4" +
+	"q'\xfc\x0f/\x8d\xb6f_\x11\xbf\x15\xb0\xb6\x15\x1d" +
+	"o@\xb5Y`RD\xc1\xa1P\xc1@\xc0q\x00~" +
+	";E~g\x9b\xff\xd5i\xc7kz\x93u@\x07\x11" +
+	"\x08\xe2&n\x8eg\xfd\xd6\x8a\xb6\xc4a\x00\x1e\xa7\xc8" +
+	"{\x09\x8aby\xd2-yN\x05\x00p\x0b`\x9e\"" +
+	"v\x86\xab\x13P\x1e\xaeqf\xa4R\xd4\xcbU\x8f\xc7" +
+	"\x11#K\x96\x0dE\x1e\x9aD&\xf2N\x98\x99\xb4l" +
+	"\x9bR\xd6\xef\xf8\xac/\x06\x8f\xab\x99l\xadol-" +
+	"F\xc6o\x01\xc2Fu\x0cw?\xb6\x9e\x11\xb6_\xee" +
+	"\x9e~\x1dI\xb0\x83\xb1\xf5`\xb1ny\xb7U\xa7n" +
+	"-\x87I9\x0d9LJ_V\x8f\xb5\xb6\xa1-\xeb" +
+	"\x8e\xf7\xf8\x8aT\xdb\x08\x8aZ\xa3Xt\x9c\x92\x03X" +
+	"j\x93\x9dn4\xd9Y\xdf\xed\x7f\x03\x00\x00\xff\xff\xbb" +
+	"\x7f\x0d\x9b"
 
 func RegisterSchema(reg *schemas.Registry) {
 	reg.Register(&schemas.Schema{
@@ -1560,6 +1753,7 @@ func RegisterSchema(reg *schemas.Registry) {
 			0xb90ffa2761585171,
 			0xc105d085735711e1,
 			0xc718781cb2553199,
+			0xcfaebe761f647d07,
 			0xd25c03d885e9b059,
 			0xdad77fd0c414d459,
 			0xe325af947f127758,
