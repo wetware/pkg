@@ -10,11 +10,25 @@ import (
 )
 
 type hostTransport struct {
-	Sock *Socket
+	background context.Context
+	cancel     context.CancelFunc
+	Sock       *Socket
+}
+
+func newHostTransport(ctx context.Context, sock *Socket) *hostTransport {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	return &hostTransport{
+		background: ctx,
+		cancel:     cancel,
+		Sock:       sock,
+	}
 }
 
 func (t hostTransport) Close() error {
-	return t.Sock.Close(context.TODO())
+	t.cancel()
+	return t.Sock.Close(t.background)
 }
 
 func (t hostTransport) NewMessage() (transport.OutgoingMessage, error) {
@@ -35,7 +49,7 @@ func (t hostTransport) NewMessage() (transport.OutgoingMessage, error) {
 }
 
 func (t hostTransport) RecvMessage() (transport.IncomingMessage, error) {
-	ref, err := t.Sock.Host.Pop()
+	ref, err := t.Sock.Host.Pop(t.background)
 	if err != nil {
 		return nil, err
 	}

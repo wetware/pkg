@@ -25,7 +25,7 @@ func TestPipe(t *testing.T) {
 		err := pipe.Push(want)
 		require.NoError(t, err, "push should succeed")
 
-		got, err := pipe.Pop()
+		got, err := pipe.Pop(context.TODO())
 		require.NoError(t, err, "pop should succeed")
 		require.Equal(t, want, got, "should get expected item from the queue")
 	})
@@ -57,7 +57,7 @@ func TestPipe(t *testing.T) {
 		err = pipe.Push(nil)
 		require.EqualError(t, err, "closed", "pipe should be closed")
 
-		ref, err := pipe.Pop()
+		ref, err := pipe.Pop(context.TODO())
 		require.EqualError(t, err, "closed", "pipe should be closed")
 		require.Nil(t, ref, "should not return ref")
 	})

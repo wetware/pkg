@@ -3,9 +3,7 @@ package system
 import (
 	"context"
 	"log/slog"
-	"time"
 
-	"github.com/jpillora/backoff"
 	"go.uber.org/multierr"
 
 	"github.com/stealthrocket/wazergo"
@@ -39,7 +37,6 @@ func Instantiate(ctx context.Context, r wazero.Runtime, sess auth.Session) (*waz
 	// Instantiate the host module and bind it to the context.
 	instance, err := wazergo.Instantiate(ctx, r, module,
 		withLogger(slog.Default()),
-		withPipe(NewPipe(), NewPipe()),
 		withSession(sess))
 	if err == nil {
 		// Bind the module instance to the context, so that the caller can
@@ -65,13 +62,6 @@ func withLogger(log log.Logger) Option {
 	})
 }
 
-func withPipe(host, guest *Pipe) Option {
-	return wazergo.OptionFunc(func(h *Socket) {
-		h.Host = host
-		h.Guest = guest
-	})
-}
-
 func withSession(sess auth.Session) Option {
 	return wazergo.OptionFunc(func(h *Socket) {
 		h.Session = sess
@@ -92,32 +82,12 @@ func (f functions) Functions() wazergo.Functions[*Socket] {
 }
 
 func (f functions) Instantiate(ctx context.Context, opts ...Option) (out *Socket, err error) {
-	wazergo.Configure(new(Socket), append(opts, wazergo.OptionFunc(func(h *Socket) {
-		var b = backoff.Backoff{
-			Min:    time.Millisecond * 1,
-			Max:    time.Minute,
-			Jitter: true,
-		}
+	sock := &Socket{
+		Host:  NewPipe(),
+		Guest: NewPipe(),
+	}
 
-		// retry in a loop until context is canceled; back-off exponentially.
-		for err = h.dial(ctx); err != nil; err = h.dial(ctx) {
-			h.Logger.Debug("failed to dial host socket",
-				"error", err,
-				"attempt", b.Attempt(),
-				"backoff", b.ForAttempt(b.Attempt()))
-
-			select {
-			case <-time.After(b.Duration()):
-				h.Logger.Debug("resuming",
-					"attempt", b.Attempt())
-
-			case <-ctx.Done():
-				err = ctx.Err()
-			}
-		}
-
-		out = h // pass up the call stack
-	}))...)
-
+	wazergo.Configure(sock, opts...)
+	sock.bind(ctx)
 	return
 }

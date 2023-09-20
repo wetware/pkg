@@ -34,13 +34,16 @@ func (p *Pipe) Push(ref *rc.Ref[rpccp.Message]) error {
 	}
 }
 
-func (p *Pipe) Pop() (*rc.Ref[rpccp.Message], error) {
+func (p *Pipe) Pop(ctx context.Context) (*rc.Ref[rpccp.Message], error) {
 	select {
 	case ref := <-p.buffer:
 		return ref, nil
 
 	case <-p.closed:
 		return nil, errors.New("closed")
+
+	case <-ctx.Done():
+		return nil, ctx.Err()
 
 	default:
 		return nil, context.DeadlineExceeded

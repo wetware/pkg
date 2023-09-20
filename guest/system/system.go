@@ -2,15 +2,16 @@ package system
 
 import (
 	"context"
-	"errors"
 	"io"
 	"runtime"
+	"time"
+	"unsafe"
 
 	local "github.com/libp2p/go-libp2p/core/host"
 	"github.com/stealthrocket/wazergo/types"
 	"golang.org/x/exp/slog"
 
-	api "github.com/wetware/pkg/api/core"
+	"github.com/wetware/pkg/api/core"
 	"github.com/wetware/pkg/auth"
 
 	"capnproto.org/go/capnp/v3/rpc"
@@ -38,7 +39,7 @@ func Login(ctx context.Context) (auth.Session, error) {
 	if err := client.Resolve(ctx); err != nil {
 		return auth.Session{}, err
 	}
-	term := api.Terminal(client)
+	term := core.Terminal(client)
 
 	f, release := term.Login(ctx, nil)
 	defer release()
@@ -58,12 +59,34 @@ func Login(ctx context.Context) (auth.Session, error) {
 
 type socket struct{ context.Context }
 
-func (socket) Read(b []byte) (int, error) {
-	return 0, errors.New("NOT IMPLEMENTED")
+func (sock socket) Read(b []byte) (int, error) {
+	deadline, _ := sock.Deadline()
+	timeout := time.Until(deadline)
+
+	offset := bytesToPointer(b)
+	length := len(b)
+
+	errno := sockRead(offset, uint32(length), int64(timeout))
+	if errno != 0 {
+		return 0, types.Errno(errno)
+	}
+
+	return length, nil
 }
 
-func (socket) Write(b []byte) (int, error) {
-	return 0, errors.New("NOT IMPLEMENTED")
+func (sock socket) Write(b []byte) (int, error) {
+	deadline, _ := sock.Deadline()
+	timeout := time.Until(deadline)
+
+	offset := bytesToPointer(b)
+	length := len(b)
+
+	errno := sockWrite(offset, uint32(length), int64(timeout))
+	if errno != 0 {
+		return 0, types.Errno(errno)
+	}
+
+	return length, nil
 }
 
 func (socket) Close() error {
@@ -73,3 +96,13 @@ func (socket) Close() error {
 
 	return nil
 }
+
+//go:inline
+func bytesToPointer(b []byte) uint32 {
+	return (*(*uint32)(unsafe.Pointer(unsafe.SliceData(b))))
+}
+
+// //go:inline
+// func stringToPointer(s string) uint32 {
+// 	return (*(*uint32)(unsafe.Pointer(unsafe.StringData(s))))
+// }

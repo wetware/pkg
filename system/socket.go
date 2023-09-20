@@ -46,13 +46,13 @@ func (sock *Socket) close(ctx context.Context) types.Error {
 	return types.OK
 }
 
-func (sock *Socket) dial(ctx context.Context) error {
+func (sock *Socket) bind(ctx context.Context) {
 	// NOTE:  no auth is actually performed here.  The client doesn't
 	// even need to pass a valid signer; the login call always succeeds.
 	server := core.Terminal_NewServer(sock.Session)
 	client := capnp.NewClient(server)
 
-	transport := hostTransport{sock}
+	transport := newHostTransport(context.TODO(), sock)
 
 	options := &rpc.Options{
 		ErrorReporter:   ErrorReporter{Logger: sock.Logger},
@@ -60,7 +60,6 @@ func (sock *Socket) dial(ctx context.Context) error {
 	}
 
 	sock.conn = rpc.NewConn(transport, options)
-	return nil
 }
 
 func (sock *Socket) Send(ctx context.Context, buf types.Pointer[types.Bytes]) types.Error {
@@ -84,7 +83,7 @@ func (sock *Socket) Send(ctx context.Context, buf types.Pointer[types.Bytes]) ty
 }
 
 func (sock *Socket) Recv(ctx context.Context, buf types.Pointer[types.Bytes]) types.Error {
-	ref, err := sock.Guest.Pop()
+	ref, err := sock.Guest.Pop(ctx)
 	if err != nil {
 		return types.Fail(err)
 	}
