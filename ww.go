@@ -20,6 +20,7 @@ import (
 	"github.com/wetware/pkg/auth"
 	csp_server "github.com/wetware/pkg/cap/csp/server"
 	"github.com/wetware/pkg/rom"
+	"github.com/wetware/pkg/system"
 	"github.com/wetware/pkg/util/proto"
 )
 
@@ -57,6 +58,13 @@ func (ww Ww) Exec(ctx context.Context, rom rom.ROM) error {
 
 	// Instantiate WASI.
 	c, err := wasi_snapshot_preview1.Instantiate(ctx, r)
+	if err != nil {
+		return err
+	}
+	defer c.Close(ctx)
+
+	// Instantiate wetware system
+	c, ctx, err = system.Instantiate(ctx, r, ww.Root)
 	if err != nil {
 		return err
 	}

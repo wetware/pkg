@@ -18,11 +18,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer sess.Release()
 
-	view := sess.View()
-	defer view.Release()
+	// cluster, leave := system.Join(ctx, sess)
+	// defer leave()
 
-	it, release := view.Iter(ctx, query())
+	it, release := sess.View().Iter(ctx, query())
 	defer release()
 
 	for r := it.Next(); r != nil; r = it.Next() {

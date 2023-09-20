@@ -7,7 +7,6 @@ import (
 	"net"
 	"time"
 
-	"capnproto.org/go/capnp/v3"
 	"github.com/jpillora/backoff"
 	"go.uber.org/multierr"
 
@@ -15,7 +14,7 @@ import (
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/experimental/sock"
-	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
+	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/util/log"
 )
 
@@ -32,47 +31,8 @@ func (c Closer) Close(ctx context.Context) (err error) {
 	return err
 }
 
-type Module[T ~capnp.ClientKind] interface {
-	Instantiate(ctx context.Context, r wazero.Runtime, t T) (api.Closer, context.Context, error)
-}
-
-func Init[T ~capnp.ClientKind](ctx context.Context, r wazero.Runtime, t T) (c Closer, out context.Context, err error) {
-	for name, module := range map[string]Module[T]{
-		"wasi": wasi[T]{},
-		"ww":   wetware[T]{},
-		// "view": view.HostModule[T]{},
-	} {
-		if c.Closer, ctx, err = module.Instantiate(ctx, r, t); err != nil {
-			err = Error{Module: name, Cause: err}
-		}
-
-		slog.Debug("instantiated",
-			"module", name,
-			"error", err)
-		c = Closer{
-			Closer: nil, // available
-			Next: &Closer{
-				Closer: c.Closer,
-				Next:   c.Next,
-			},
-		}
-	}
-
-	out = ctx
-	return
-}
-
-type wasi[T ~capnp.ClientKind] struct{}
-
-func (wasi[T]) Instantiate(ctx context.Context, r wazero.Runtime, t T) (api.Closer, context.Context, error) {
-	c, err := wasi_snapshot_preview1.Instantiate(ctx, r)
-	return c, ctx, err
-}
-
-type wetware[T ~capnp.ClientKind] struct{}
-
-func (wetware[T]) Instantiate(ctx context.Context, r wazero.Runtime, t T) (api.Closer, context.Context, error) {
-	return Instantiate[T](ctx, r, t)
+type Module interface {
+	Instantiate(ctx context.Context, r wazero.Runtime, sess auth.Session) (api.Closer, context.Context, error)
 }
 
 // module for wetware Host
@@ -85,7 +45,7 @@ var module wazergo.HostModule[*NetSock] = functions{
 // Instantiate the system host module.  If instantiation fails, the
 // returned context is expired, and the ctx.Err() method returns the
 // offending error.
-func Instantiate[T ~capnp.ClientKind](ctx context.Context, r wazero.Runtime, t T) (*wazergo.ModuleInstance[*NetSock], context.Context, error) {
+func Instantiate(ctx context.Context, r wazero.Runtime, sess auth.Session) (*wazergo.ModuleInstance[*NetSock], context.Context, error) {
 	l, err := net.Listen("tcp", ":0") // TODO:  localhost?
 	if err != nil {
 		return nil, ctx, fmt.Errorf("net: listen: %w", err)
@@ -96,9 +56,9 @@ func Instantiate[T ~capnp.ClientKind](ctx context.Context, r wazero.Runtime, t T
 
 	// Instantiate the host module and bind it to the context.
 	instance, err := wazergo.Instantiate(ctx, r, module,
-		logger(slog.Default()),
-		transport(addr),
-		bootstrap(t))
+		withLogger(slog.Default()),
+		withTransport(addr),
+		withSession(sess))
 	if err == nil {
 		// Bind the module instance to the context, so that the caller can
 		// access it.
@@ -117,21 +77,21 @@ func Instantiate[T ~capnp.ClientKind](ctx context.Context, r wazero.Runtime, t T
 
 type Option = wazergo.Option[*NetSock]
 
-func logger(log log.Logger) Option {
+func withLogger(log log.Logger) Option {
 	return wazergo.OptionFunc(func(h *NetSock) {
 		h.Logger = log
 	})
 }
 
-func transport(addr net.Addr) Option {
+func withTransport(addr net.Addr) Option {
 	return wazergo.OptionFunc(func(h *NetSock) {
 		h.Addr = addr
 	})
 }
 
-func bootstrap[T ~capnp.ClientKind](t T) Option {
+func withSession(sess auth.Session) Option {
 	return wazergo.OptionFunc(func(h *NetSock) {
-		h.BootstrapClient = capnp.Client(t)
+		h.Session = sess
 	})
 }
 
