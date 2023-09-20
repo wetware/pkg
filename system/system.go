@@ -36,7 +36,8 @@ type Module interface {
 // module for wetware Host
 var module wazergo.HostModule[*NetSock] = functions{
 	// TODO(soon):  socket exports
-	// "foo": F0((*NetSock).Foo),
+	"__sock_close": wazergo.F0((*NetSock).close),
+	// "foo": ,
 	// "bar": F1((*NetSock).Bar),
 }
 

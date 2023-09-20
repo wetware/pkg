@@ -7,6 +7,7 @@ import (
 	"runtime"
 
 	local "github.com/libp2p/go-libp2p/core/host"
+	"github.com/stealthrocket/wazergo/types"
 	"golang.org/x/exp/slog"
 
 	api "github.com/wetware/pkg/api/core"
@@ -66,5 +67,9 @@ func (socket) Write(b []byte) (int, error) {
 }
 
 func (socket) Close() error {
-	return errors.New("NOT IMPLEMENTED")
+	if errno := sockClose(); errno != 0 {
+		return types.Errno(errno)
+	}
+
+	return nil
 }

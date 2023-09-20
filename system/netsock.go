@@ -6,6 +6,7 @@ import (
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
+	"github.com/stealthrocket/wazergo/types"
 	"github.com/wetware/pkg/api/core"
 	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/util/log"
@@ -24,6 +25,14 @@ func (sock *NetSock) Close(context.Context) error {
 	sock.Session.Release()
 
 	return sock.conn.Close()
+}
+
+func (sock *NetSock) close(ctx context.Context) types.Error {
+	if err := sock.Close(ctx); err != nil {
+		types.Fail(err)
+	}
+
+	return types.OK
 }
 
 func (sock *NetSock) dial(ctx context.Context) error {
