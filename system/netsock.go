@@ -12,8 +12,8 @@ import (
 	"github.com/wetware/pkg/util/log"
 )
 
-// NetSock is a system socket that uses the host's IP stack.
-type NetSock struct {
+// Socket is a system socket that uses the host's IP stack.
+type Socket struct {
 	Logger  log.Logger
 	Conn    net.Conn
 	Session auth.Session
@@ -21,13 +21,13 @@ type NetSock struct {
 	conn *rpc.Conn
 }
 
-func (sock *NetSock) Close(context.Context) error {
+func (sock *Socket) Close(context.Context) error {
 	sock.Session.Release()
 
 	return sock.conn.Close()
 }
 
-func (sock *NetSock) close(ctx context.Context) types.Error {
+func (sock *Socket) close(ctx context.Context) types.Error {
 	if err := sock.Close(ctx); err != nil {
 		types.Fail(err)
 	}
@@ -35,7 +35,7 @@ func (sock *NetSock) close(ctx context.Context) types.Error {
 	return types.OK
 }
 
-func (sock *NetSock) dial(ctx context.Context) error {
+func (sock *Socket) dial(ctx context.Context) error {
 	// NOTE:  no auth is actually performed here.  The client doesn't
 	// even need to pass a valid signer; the login call always succeeds.
 	server := core.Terminal_NewServer(sock.Session)

@@ -34,9 +34,9 @@ type Module interface {
 }
 
 // module for wetware Host
-var module wazergo.HostModule[*NetSock] = functions{
+var module wazergo.HostModule[*Socket] = functions{
 	// TODO(soon):  socket exports
-	"__sock_close": wazergo.F0((*NetSock).close),
+	"__sock_close": wazergo.F0((*Socket).close),
 	// "foo": ,
 	// "bar": F1((*NetSock).Bar),
 }
@@ -44,7 +44,7 @@ var module wazergo.HostModule[*NetSock] = functions{
 // Instantiate the system host module.  If instantiation fails, the
 // returned context is expired, and the ctx.Err() method returns the
 // offending error.
-func Instantiate(ctx context.Context, r wazero.Runtime, sess auth.Session) (*wazergo.ModuleInstance[*NetSock], context.Context, error) {
+func Instantiate(ctx context.Context, r wazero.Runtime, sess auth.Session) (*wazergo.ModuleInstance[*Socket], context.Context, error) {
 	// l, err := net.Listen("tcp", ":0") // TODO:  localhost?
 	// if err != nil {
 	// 	return nil, ctx, fmt.Errorf("net: listen: %w", err)
@@ -76,22 +76,22 @@ func Instantiate(ctx context.Context, r wazero.Runtime, sess auth.Session) (*waz
 
 }
 
-type Option = wazergo.Option[*NetSock]
+type Option = wazergo.Option[*Socket]
 
 func withLogger(log log.Logger) Option {
-	return wazergo.OptionFunc(func(h *NetSock) {
+	return wazergo.OptionFunc(func(h *Socket) {
 		h.Logger = log
 	})
 }
 
 func withNetConn(conn net.Conn) Option {
-	return wazergo.OptionFunc(func(h *NetSock) {
+	return wazergo.OptionFunc(func(h *Socket) {
 		h.Conn = conn
 	})
 }
 
 func withSession(sess auth.Session) Option {
-	return wazergo.OptionFunc(func(h *NetSock) {
+	return wazergo.OptionFunc(func(h *Socket) {
 		h.Session = sess
 	})
 }
@@ -99,18 +99,18 @@ func withSession(sess auth.Session) Option {
 // The `functions` type impements `Module[*Module]`, providing the
 // module name, map of exported functions, and the ability to create
 // instances of the module type
-type functions wazergo.Functions[*NetSock]
+type functions wazergo.Functions[*Socket]
 
 func (f functions) Name() string {
 	return "ww"
 }
 
-func (f functions) Functions() wazergo.Functions[*NetSock] {
-	return (wazergo.Functions[*NetSock])(f)
+func (f functions) Functions() wazergo.Functions[*Socket] {
+	return (wazergo.Functions[*Socket])(f)
 }
 
-func (f functions) Instantiate(ctx context.Context, opts ...Option) (out *NetSock, err error) {
-	wazergo.Configure(new(NetSock), append(opts, wazergo.OptionFunc(func(h *NetSock) {
+func (f functions) Instantiate(ctx context.Context, opts ...Option) (out *Socket, err error) {
+	wazergo.Configure(new(Socket), append(opts, wazergo.OptionFunc(func(h *Socket) {
 		var b = backoff.Backoff{
 			Min:    time.Millisecond * 1,
 			Max:    time.Minute,
