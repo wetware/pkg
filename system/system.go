@@ -3,7 +3,6 @@ package system
 import (
 	"context"
 	"log/slog"
-	"net"
 	"time"
 
 	"github.com/jpillora/backoff"
@@ -33,34 +32,14 @@ type Module interface {
 	Instantiate(ctx context.Context, r wazero.Runtime, sess auth.Session) (api.Closer, context.Context, error)
 }
 
-// module for wetware Host
-var module wazergo.HostModule[*Socket] = functions{
-	// TODO(soon):  socket exports
-	"__sock_close": wazergo.F0((*Socket).close),
-	"__sock_send":  wazergo.F1((*Socket).Send),
-	"__sock_recv":  wazergo.F1((*Socket).Recv),
-	// "foo": ,
-	// "bar": F1((*NetSock).Bar),
-}
-
 // Instantiate the system host module.  If instantiation fails, the
 // returned context is expired, and the ctx.Err() method returns the
 // offending error.
 func Instantiate(ctx context.Context, r wazero.Runtime, sess auth.Session) (*wazergo.ModuleInstance[*Socket], context.Context, error) {
-	// l, err := net.Listen("tcp", ":0") // TODO:  localhost?
-	// if err != nil {
-	// 	return nil, ctx, fmt.Errorf("net: listen: %w", err)
-	// }
-	// defer l.Close()
-
-	// addr := l.Addr().(*net.TCPAddr)
-	host, guest := net.Pipe()
-	ctx = context.WithValue(ctx, keyHostPipe{}, host)
-
 	// Instantiate the host module and bind it to the context.
 	instance, err := wazergo.Instantiate(ctx, r, module,
 		withLogger(slog.Default()),
-		withNetConn(guest),
+		withPipe(NewPipe(), NewPipe()),
 		withSession(sess))
 	if err == nil {
 		// Bind the module instance to the context, so that the caller can
@@ -86,9 +65,10 @@ func withLogger(log log.Logger) Option {
 	})
 }
 
-func withNetConn(conn net.Conn) Option {
+func withPipe(host, guest *Pipe) Option {
 	return wazergo.OptionFunc(func(h *Socket) {
-		h.Conn = conn
+		h.Host = host
+		h.Guest = guest
 	})
 }
 
@@ -141,5 +121,3 @@ func (f functions) Instantiate(ctx context.Context, opts ...Option) (out *Socket
 
 	return
 }
-
-type keyHostPipe struct{}
