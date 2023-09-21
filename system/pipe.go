@@ -8,16 +8,18 @@ import (
 	"zenhack.net/go/util/rc"
 )
 
+var ErrNotReady = errors.New("not ready")
+
+type Pipe struct {
+	closed chan struct{}
+	buffer chan *rc.Ref[rpccp.Message]
+}
+
 func NewPipe() *Pipe {
 	return &Pipe{
 		closed: make(chan struct{}),
 		buffer: make(chan *rc.Ref[rpccp.Message], 1),
 	}
-}
-
-type Pipe struct {
-	closed chan struct{}
-	buffer chan *rc.Ref[rpccp.Message]
 }
 
 func (p *Pipe) Push(ctx context.Context, ref *rc.Ref[rpccp.Message]) error {
@@ -39,7 +41,7 @@ func (p *Pipe) Push(ctx context.Context, ref *rc.Ref[rpccp.Message]) error {
 		return ctx.Err()
 
 	default:
-		return context.DeadlineExceeded // means "please back off"
+		return ErrNotReady
 	}
 }
 
@@ -55,7 +57,7 @@ func (p *Pipe) Pop(ctx context.Context) (*rc.Ref[rpccp.Message], error) {
 		return nil, ctx.Err()
 
 	default:
-		return nil, context.DeadlineExceeded
+		return nil, ErrNotReady
 	}
 }
 
