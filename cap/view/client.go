@@ -40,6 +40,13 @@ func (v View) Lookup(ctx context.Context, query Query) (FutureRecord, capnp.Rele
 // finished with the iterator.  Callers MUST NOT call methods
 // on the iterator after calling the ReleaseFunc.
 func (v View) Iter(ctx context.Context, query Query) (Iterator, capnp.ReleaseFunc) {
+	if v == (View{}) {
+		return Iterator{
+			Future: context.Background(),
+			Seq:    exhausted{},
+		}, func() {}
+	}
+
 	ctx, cancel := context.WithCancel(ctx)
 
 	var (
@@ -54,6 +61,12 @@ func (v View) Iter(ctx context.Context, query Query) (Iterator, capnp.ReleaseFun
 			cancel()
 			release()
 		}
+}
+
+type exhausted struct{}
+
+func (exhausted) Next() (routing.Record, bool) {
+	return nil, false
 }
 
 // Iterator is a stateful object that enumerates routing records.

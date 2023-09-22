@@ -2,24 +2,42 @@ package system
 
 import (
 	"context"
+	"errors"
 	"io"
 	"runtime"
 	"time"
 	"unsafe"
 
-	local "github.com/libp2p/go-libp2p/core/host"
 	"github.com/stealthrocket/wazergo/types"
 	"golang.org/x/exp/slog"
 
 	"github.com/wetware/pkg/api/core"
 	"github.com/wetware/pkg/auth"
 
+	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
+	"capnproto.org/go/capnp/v3/rpc/transport"
+	rpccp "capnproto.org/go/capnp/v3/std/capnp/rpc"
 )
 
-type Dialer interface {
-	DialRPC(context.Context, local.Host) (*rpc.Conn, error)
+var (
+	incoming = make(chan segment, 1)
+	exports  = make(map[segment][]byte)
+)
+
+type segment struct {
+	offset, length uint32
 }
+
+//go:inline
+func bytesToPointer(b []byte) uint32 {
+	return (*(*uint32)(unsafe.Pointer(unsafe.SliceData(b))))
+}
+
+// //go:inline
+// func stringToPointer(s string) uint32 {
+// 	return (*(*uint32)(unsafe.Pointer(unsafe.StringData(s))))
+// }
 
 func Login(ctx context.Context) (auth.Session, error) {
 	// conn, err := FDSockDialer{}.DialRPC(ctx)
@@ -29,7 +47,7 @@ func Login(ctx context.Context) (auth.Session, error) {
 	// runtime.SetFinalizer(conn, func(c io.Closer) error {
 	// 	return c.Close()
 	// })
-	conn := rpc.NewConn(rpc.NewStreamTransport(socket{ctx}), nil)
+	conn := rpc.NewConn(make(guestTransport), nil)
 	runtime.SetFinalizer(conn, func(c io.Closer) error {
 		defer slog.Debug("called finalizer")
 		return c.Close()
@@ -57,52 +75,81 @@ func Login(ctx context.Context) (auth.Session, error) {
 	return auth.Session(sess).AddRef(), nil
 }
 
-type socket struct{ context.Context }
+type guestTransport chan struct{}
 
-func (sock socket) Read(b []byte) (int, error) {
-	deadline, _ := sock.Deadline()
-	timeout := time.Until(deadline)
-
-	offset := bytesToPointer(b)
-	length := len(b)
-
-	errno := sockRead(offset, uint32(length), int64(timeout))
-	if errno != 0 {
-		return 0, types.Errno(errno)
+func (guestTransport) NewMessage() (transport.OutgoingMessage, error) {
+	msg, seg := capnp.NewMultiSegmentMessage(nil)
+	body, err := rpccp.NewRootMessage(seg)
+	if err != nil {
+		return nil, err
 	}
 
-	return length, nil
+	return &message{
+		body: body,
+		send: func() error {
+			b, err := msg.Marshal()
+			if err != nil {
+				return err
+			}
+
+			errno := sockSend(bytesToPointer(b), uint32(len(b)))
+			if errno == 0 {
+				return nil
+			}
+
+			return types.Errno(errno)
+		},
+	}, nil
 }
 
-func (sock socket) Write(b []byte) (int, error) {
-	deadline, _ := sock.Deadline()
-	timeout := time.Until(deadline)
+func (closed guestTransport) RecvMessage() (transport.IncomingMessage, error) {
+	select {
+	case <-closed:
+		return nil, errors.New("closed")
 
-	offset := bytesToPointer(b)
-	length := len(b)
+	case seg := <-incoming:
+		defer delete(exports, seg) // unexport
 
-	errno := sockWrite(offset, uint32(length), int64(timeout))
-	if errno != 0 {
-		return 0, types.Errno(errno)
+		msg, err := capnp.Unmarshal(exports[seg])
+		if err != nil {
+			return nil, err
+		}
+
+		body, err := rpccp.ReadRootMessage(msg)
+		if err != nil {
+			return nil, err
+		}
+
+		return &message{body: body}, nil
 	}
-
-	return length, nil
 }
 
-func (socket) Close() error {
-	if errno := sockClose(); errno != 0 {
-		return types.Errno(errno)
-	}
-
+func (closed guestTransport) Close() error {
+	close(closed)
+	sockClose()
 	return nil
 }
 
-//go:inline
-func bytesToPointer(b []byte) uint32 {
-	return (*(*uint32)(unsafe.Pointer(unsafe.SliceData(b))))
+type message struct {
+	body rpccp.Message
+	send func() error
 }
 
-// //go:inline
-// func stringToPointer(s string) uint32 {
-// 	return (*(*uint32)(unsafe.Pointer(unsafe.StringData(s))))
-// }
+func (m *message) Send() (err error) {
+	// busy-loop until we're able to send
+	// TODO:  lots of room for improvement here.
+	for err = m.send(); err != nil; err = m.send() {
+		time.Sleep(time.Millisecond)
+	}
+
+	m.send = nil
+	return err
+}
+
+func (m message) Release() {
+	m.body.Release()
+}
+
+func (m message) Message() rpccp.Message {
+	return m.body
+}

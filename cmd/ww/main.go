@@ -65,11 +65,22 @@ var flags = []cli.Flag{
 	},
 }
 
-var commands = []*cli.Command{
-	ls.Command(),
-	run.Command(),
-	start.Command(),
-	cluster.Command(),
+var app = cli.App{
+	Name:                 "wetware",
+	Version:              proto.Version,
+	HelpName:             "ww",
+	Usage:                "simple, secure clusters",
+	UsageText:            "ww [global options] command [command options] [arguments...]",
+	Copyright:            "2020 The Wetware Project",
+	EnableBashCompletion: true,
+	Flags:                flags,
+	Before:               setup,
+	Commands: []*cli.Command{
+		ls.Command(),
+		run.Command(),
+		start.Command(),
+		cluster.Command(),
+	},
 }
 
 func main() {
@@ -80,20 +91,8 @@ func main() {
 		syscall.SIGKILL)
 	defer cancel()
 
-	app := &cli.App{
-		Name:                 "wetware",
-		Version:              proto.Version,
-		HelpName:             "ww",
-		Usage:                "simple, secure clusters",
-		UsageText:            "ww [global options] command [command options] [arguments...]",
-		Copyright:            "2020 The Wetware Project",
-		EnableBashCompletion: true,
-		Flags:                flags,
-		Before:               setup,
-		Commands:             commands,
-	}
-
-	die(app.RunContext(ctx, os.Args))
+	err := app.RunContext(ctx, os.Args)
+	die(err)
 }
 
 func setup(c *cli.Context) error {

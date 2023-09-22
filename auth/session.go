@@ -5,11 +5,13 @@ import (
 	"log/slog"
 
 	"capnproto.org/go/capnp/v3"
-	api "github.com/wetware/pkg/api/core"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/wetware/pkg/api/core"
 	"github.com/wetware/pkg/cap/view"
+	"github.com/wetware/pkg/cluster/routing"
 )
 
-type Session api.Session
+type Session core.Session
 
 func must(err error) {
 	if err != nil {
@@ -25,18 +27,18 @@ func (sess Session) AddRef() Session {
 	raw, err := mkRawSession()
 	must(err)
 
-	peerID, err := api.Session(sess).Local().Peer()
+	peerID, err := core.Session(sess).Local().Peer()
 	must(err)
 	must(raw.Local().SetPeer(peerID))
 
-	raw.Local().SetServer(api.Session(sess).Local().Server())
+	raw.Local().SetServer(core.Session(sess).Local().Server())
 
-	hostname, err := api.Session(sess).Local().Host()
+	hostname, err := core.Session(sess).Local().Host()
 	must(err)
 	must(raw.Local().SetHost(hostname))
 
 	// Copy bootstrap capability.  Note how we increment the refcount.
-	boot := api.Session(sess).View().AddRef()
+	boot := core.Session(sess).View().AddRef()
 	must(raw.SetView(boot))
 
 	return Session(raw)
@@ -45,7 +47,7 @@ func (sess Session) AddRef() Session {
 // Logout the session by releasing the message, which releases
 // each entry in the cap table.
 func (sess Session) Logout() {
-	message := api.Session(sess).Message()
+	message := core.Session(sess).Message()
 	if message != nil {
 		message.Release()
 	} else {
@@ -56,22 +58,61 @@ func (sess Session) Logout() {
 
 // Login allows the session to be served as a Terminal.  It provides full
 // access to the Session object.  Use carefully.
-func (sess Session) Login(ctx context.Context, call api.Terminal_login) error {
+func (sess Session) Login(ctx context.Context, call core.Terminal_login) error {
 	res, err := call.AllocResults()
 	if err != nil {
 		return err
 	}
 
-	return res.SetSession(api.Session(sess))
+	if err := res.SetSession(core.Session(sess)); err != nil {
+		return err
+	}
+
+	slog.Info("user logged in", // TODO:  who?
+		"vat", sess.Vat(),
+		"peer", sess.Peer(),
+		"hostname", sess.Hostname(),
+		"view", capnp.Client(sess.View()))
+
+	return nil
 }
 
 func (sess Session) View() view.View {
-	client := api.Session(sess).View()
+	client := core.Session(sess).View()
 	return view.View(client)
 }
 
+func (sess Session) Vat() routing.ID {
+	local := core.Session(sess).Local()
+	return routing.ID(local.Server())
+}
+
+func (sess Session) Peer() peer.ID {
+	local := core.Session(sess).Local()
+
+	s, err := local.Peer()
+	if err != nil {
+		slog.Debug("failed to access field",
+			"reason", err)
+	}
+
+	return peer.ID(s)
+}
+
+func (sess Session) Hostname() string {
+	local := core.Session(sess).Local()
+
+	s, err := local.Host()
+	if err != nil {
+		slog.Debug("failed to access field",
+			"reason", err)
+	}
+
+	return s
+}
+
 // func (sess Session) Imports() (map[string]capnp.Client, capnp.ReleaseFunc) {
-// 	extra, err := api.Session(sess).Extra()
+// 	extra, err := core.Session(sess).Extra()
 // 	if err != nil || extra.Len() == 0 {
 // 		return nil, func() {}
 // 	}
@@ -92,7 +133,7 @@ func (sess Session) View() view.View {
 // }
 
 // func (sess Session) Import(name string) (capnp.Client, error) {
-// 	extra, err := api.Session(sess).Extra()
+// 	extra, err := core.Session(sess).Extra()
 
 // 	for i := 0; i < extra.Len(); i++ {
 // 		key, err := extra.At(i).Name()
@@ -105,8 +146,8 @@ func (sess Session) View() view.View {
 // 	return capnp.Client{}, err
 // }
 
-// mkRawSession allocates a new api.Session.  Error is always nil.
-func mkRawSession() (api.Session, error) {
+// mkRawSession allocates a new core.Session.  Error is always nil.
+func mkRawSession() (core.Session, error) {
 	_, seg := capnp.NewSingleSegmentMessage(nil)
-	return api.NewRootSession(seg) // TODO(performance):  non-root message
+	return core.NewRootSession(seg) // TODO(performance):  non-root message
 }
