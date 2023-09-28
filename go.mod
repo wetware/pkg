@@ -1,6 +1,6 @@
 module github.com/wetware/pkg
 
-go 1.21
+go 1.21.1
 
 require (
 	capnproto.org/go/capnp/v3 v3.0.0-alpha.28
@@ -36,6 +36,7 @@ require (
 	github.com/libp2p/go-buffer-pool v0.1.0
 	github.com/lmittmann/tint v1.0.0
 	github.com/lthibault/go-libp2p-inproc-transport v0.4.0
+	github.com/lthibault/iopipes v0.0.0-20230928001330-c0ac2acbc102
 	github.com/lthibault/jitterbug/v2 v2.2.2
 	github.com/lthibault/util v0.0.12
 	github.com/mattn/go-isatty v0.0.19
@@ -51,10 +52,10 @@ require (
 	golang.org/x/sync v0.3.0
 	golang.org/x/time v0.3.0
 	lukechampine.com/blake3 v1.2.1
+	zenhack.net/go/util v0.0.0-20230607025951-8b02fee814ae
 )
 
 require (
-	github.com/acomagu/bufpipe v1.0.4 // indirect
 	github.com/benbjohnson/clock v1.3.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
@@ -122,7 +123,6 @@ require (
 	github.com/polydawn/refmt v0.89.0 // indirect
 	github.com/prometheus/client_golang v1.16.0 // indirect
 	github.com/prometheus/client_model v0.4.0 // indirect
-	github.com/puellanivis/breton v0.2.16 // indirect
 	github.com/quic-go/qpack v0.4.0 // indirect
 	github.com/quic-go/qtls-go1-20 v0.3.2 // indirect
 	github.com/quic-go/quic-go v0.37.6 // indirect
@@ -130,7 +130,6 @@ require (
 	github.com/raulk/go-watchdog v1.3.0 // indirect
 	github.com/rogpeppe/go-internal v1.11.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/smartystreets-prototypes/go-disruptor v0.0.0-20200316140655-c96477fd7a6a // indirect
 	github.com/smartystreets/assertions v1.13.0 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 // indirect
@@ -145,5 +144,4 @@ require (
 	golang.org/x/tools v0.12.1-0.20230815132531-74c255bcf846 // indirect
 	gonum.org/v1/gonum v0.13.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	zenhack.net/go/util v0.0.0-20230607025951-8b02fee814ae // indirect
 )

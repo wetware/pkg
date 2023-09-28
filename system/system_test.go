@@ -2,9 +2,7 @@ package system_test
 
 import (
 	"context"
-	"io"
 	"testing"
-	"time"
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
@@ -29,7 +27,7 @@ func TestSystem(t *testing.T) {
 
 	host, guest := system.Pipe()
 
-	hostConn := rpc.NewConn(transport(host), &rpc.Options{
+	hostConn := rpc.NewConn(rpc.NewStreamTransport(host), &rpc.Options{
 		BootstrapClient: capnp.NewClient(core.Terminal_NewServer(want)),
 		ErrorReporter: system.ErrorReporter{
 			Logger: slog.Default().WithGroup("server"),
@@ -37,7 +35,7 @@ func TestSystem(t *testing.T) {
 	})
 	defer hostConn.Close()
 
-	guestConn := rpc.NewConn(transport(guest), &rpc.Options{
+	guestConn := rpc.NewConn(rpc.NewStreamTransport(guest), &rpc.Options{
 		ErrorReporter: system.ErrorReporter{
 			Logger: slog.Default().WithGroup("client"),
 		},
@@ -95,40 +93,4 @@ func mkRawSession() core.Session {
 	sess.Local().SetHost("test")
 	sess.Local().SetPeer("test")
 	return sess
-}
-
-func transport(pipe io.ReadWriteCloser) rpc.Transport {
-	return rpc.NewStreamTransport(waiter{pipe})
-}
-
-type waiter struct{ io.ReadWriteCloser }
-
-func (s waiter) Read(b []byte) (n int, err error) {
-	var x int
-	for {
-		x, err = s.ReadWriteCloser.Read(b)
-		n += x
-		b = b[x:]
-
-		if err != system.ErrUnderflow {
-			return
-		}
-
-		time.Sleep(time.Microsecond * 200)
-	}
-}
-
-func (s waiter) Write(b []byte) (n int, err error) {
-	var x int
-	for {
-		x, err = s.ReadWriteCloser.Write(b)
-		n += x
-		b = b[x:]
-
-		if err != system.ErrOverflow {
-			return
-		}
-
-		time.Sleep(time.Microsecond * 100)
-	}
 }

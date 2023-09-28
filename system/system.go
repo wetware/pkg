@@ -5,7 +5,6 @@ import (
 	"context"
 	"io"
 	"log/slog"
-	"time"
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
@@ -71,9 +70,8 @@ func (f functions) Functions() wazergo.Functions[*Socket] {
 
 func (f functions) Instantiate(ctx context.Context, opts ...Option) (out *Socket, err error) {
 	host, guest := Pipe()
-
 	sock := &Socket{
-		Host:  synchronized(ctx, host),
+		Host:  host,
 		Guest: guest,
 	}
 
@@ -135,67 +133,4 @@ func (sock *Socket) Read(ctx context.Context, b types.Bytes, size types.Pointer[
 	}
 
 	return types.Fail(err)
-}
-
-type waiter struct {
-	Ctx context.Context
-	io.ReadWriteCloser
-	WaitStrategy interface {
-		Wait(context.Context) error
-	}
-}
-
-func synchronized(ctx context.Context, rwc io.ReadWriteCloser) waiter {
-	return waiter{
-		Ctx:             ctx,
-		ReadWriteCloser: rwc,
-		WaitStrategy:    Retry(time.Microsecond * 100),
-	}
-}
-
-func (s waiter) Read(b []byte) (n int, err error) {
-	var x int
-	for {
-		x, err = s.ReadWriteCloser.Read(b)
-		n += x
-		b = b[x:]
-
-		if err != ErrUnderflow {
-			return
-		}
-
-		if err = s.WaitStrategy.Wait(s.Ctx); err != nil {
-			return
-		}
-	}
-}
-
-func (s waiter) Write(b []byte) (n int, err error) {
-	var x int
-	for {
-		x, err = s.ReadWriteCloser.Write(b)
-		n += x
-		b = b[x:]
-
-		if err != ErrOverflow {
-			return
-		}
-
-		if err = s.WaitStrategy.Wait(s.Ctx); err != nil {
-			return
-		}
-	}
-}
-
-type Retry time.Duration
-
-func (r Retry) Wait(ctx context.Context) error {
-	ctx, cancel := context.WithTimeout(ctx, time.Duration(r))
-	defer cancel()
-
-	if err := ctx.Err(); err != context.DeadlineExceeded {
-		return err
-	}
-
-	return nil
 }
