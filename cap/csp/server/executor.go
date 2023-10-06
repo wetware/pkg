@@ -218,7 +218,7 @@ func (r Runtime) mkmod(ctx context.Context, c components) (wasm.Module, error) {
 	}
 
 	r.Log.Info("serve module", "pid", c.args.Pid, "cid", c.args.Cid.String())
-	go ServeModule(c.ctx, addr, auth.Session(c.session).AddRef())
+	go ServeModule(c.ctx, addr, auth.Session(c.session).Clone())
 
 	return mod, nil
 }
@@ -272,7 +272,7 @@ func ServeModule(ctx context.Context, addr *net.TCPAddr, sess auth.Session) {
 	defer tcpConn.Close()
 
 	conn := rpc.NewConn(rpc.NewStreamTransport(tcpConn), &rpc.Options{
-		BootstrapClient: capnp.NewClient(core_api.Terminal_NewServer(sess.AddRef())),
+		BootstrapClient: capnp.NewClient(core_api.Terminal_NewServer(sess.Clone())),
 		ErrorReporter: system.ErrorReporter{
 			Logger: slog.Default(),
 		},

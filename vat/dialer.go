@@ -72,7 +72,7 @@ func (d Dialer) Dial(ctx context.Context, addr peer.AddrInfo, protos ...protocol
 		return auth.Session{}, err
 	}
 
-	return auth.Session(sess).AddRef(), nil
+	return auth.Session(sess).Clone(), nil
 }
 
 func (d Dialer) DialRPC(ctx context.Context, addr peer.AddrInfo, protos ...protocol.ID) (*rpc.Conn, error) {

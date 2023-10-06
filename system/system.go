@@ -1,62 +1,46 @@
 package system
 
 import (
-	"bytes"
 	"context"
 	"errors"
-	"io"
 	"log/slog"
 	"net"
 	"os"
 	"time"
 
-	"capnproto.org/go/capnp/v3"
-	"capnproto.org/go/capnp/v3/exp/bufferpool"
+	"github.com/davecgh/go-spew/spew"
+	local "github.com/libp2p/go-libp2p/core/host"
+
 	"capnproto.org/go/capnp/v3/rpc"
 
 	"github.com/stealthrocket/wazergo"
 	"github.com/stealthrocket/wazergo/types"
-	"github.com/tetratelabs/wazero"
+	"github.com/wetware/pkg/api/cluster"
 	"github.com/wetware/pkg/api/core"
-	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/util/log"
 )
 
-// module for wetware Host
-var module wazergo.HostModule[*Socket] = functions{
+var SocketModule wazergo.HostModule[*Socket] = functions{
 	"_sysread":  wazergo.F2((*Socket).Read),
 	"_syswrite": wazergo.F2((*Socket).Write),
 	"_sysclose": wazergo.F0((*Socket).close),
 }
 
-// Instantiate the system host module.  If instantiation fails, the
-// returned context is expired, and the ctx.Err() method returns the
-// offending error.
-func Instantiate(ctx context.Context, r wazero.Runtime, sess auth.Session) (*wazergo.ModuleInstance[*Socket], context.Context, error) {
-	// Instantiate the host module and bind it to the context.
-	instance, err := wazergo.Instantiate(ctx, r, module,
-		withLogger(slog.Default()),
-		withSession(sess))
-	if err == nil {
-		// Bind the module instance to the context, so that the caller can
-		// access it.
-		ctx = wazergo.WithModuleInstance(ctx, instance)
-	}
-
-	return instance, ctx, err
-}
-
 type Option = wazergo.Option[*Socket]
 
-func withLogger(log log.Logger) Option {
-	return wazergo.OptionFunc(func(h *Socket) {
-		h.Logger = log
+func WithLogger(log log.Logger) Option {
+	return wazergo.OptionFunc(func(sock *Socket) {
+		sock.Logger = log
 	})
 }
 
-func withSession(sess auth.Session) Option {
-	return wazergo.OptionFunc(func(h *Socket) {
-		h.Session = sess
+type Bindable interface {
+	Bind(*Socket) *rpc.Conn
+}
+
+func Bind(b Bindable) Option {
+	return wazergo.OptionFunc(func(sock *Socket) {
+		sock.conn = b.Bind(sock)
 	})
 }
 
@@ -81,21 +65,52 @@ func (f functions) Instantiate(ctx context.Context, opts ...Option) (out *Socket
 	}
 
 	wazergo.Configure(sock, opts...)
-	sock.Bind(ctx)
 	return
 }
 
 // Socket is a system socket that uses the host's IP stack.
 type Socket struct {
 	Logger      log.Logger
+	Net         local.Host
+	Name        string
+	View        cluster.View
 	Host, Guest net.Conn
-	Session     auth.Session
 	conn        *rpc.Conn
 }
 
-func (sock *Socket) Close(context.Context) error {
-	sock.Session.Logout()
-	return sock.conn.Close()
+func (sock *Socket) Login(ctx context.Context, call core.Terminal_login) error {
+	res, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	sess, err := res.NewSession()
+	if err != nil {
+		return err
+	}
+
+	_ = sess.Local().SetHost(sock.Name)
+	_ = sess.Local().SetPeer(string(sock.Net.ID()))
+
+	return sess.SetView(sock.View)
+}
+
+func (sock *Socket) Shutdown() {
+	if sock.conn != nil {
+		if err := sock.conn.Close(); err != nil {
+			// Our in-process net.Conn MUST successfully close.   This allows us to
+			// guarantee that no access to the object exists after Shutdown returns.
+			panic(err)
+		}
+	}
+}
+
+func (sock *Socket) Close(context.Context) (err error) {
+	if sock != nil && sock.conn != nil {
+		err = sock.conn.Close()
+	}
+
+	return
 }
 
 func (sock *Socket) close(ctx context.Context) types.Error {
@@ -106,32 +121,18 @@ func (sock *Socket) close(ctx context.Context) types.Error {
 	return types.OK
 }
 
-// Bind MUST be called before Read, Write or Close.
-func (sock *Socket) Bind(ctx context.Context) {
-	// NOTE:  no auth is actually performed here.  The client doesn't
-	// even need to pass a valid signer; the login call always succeeds.
-	server := core.Terminal_NewServer(sock.Session)
-	client := capnp.NewClient(server)
-
-	options := &rpc.Options{
-		ErrorReporter:   ErrorReporter{Logger: sock.Logger},
-		BootstrapClient: client,
-	}
-
-	sock.conn = rpc.NewConn(rpc.NewStreamTransport(sock.Host), options)
-}
-
 // Send is called by the GUEST to send data to the host.
 func (sock *Socket) Write(ctx context.Context, b types.Bytes, consumed types.Pointer[types.Uint32]) types.Error {
+	spew.Dump(sock)
+
 	deadline := time.Now().Add(time.Millisecond)
 	if err := sock.Guest.SetWriteDeadline(deadline); err != nil {
 		return types.Fail(err)
 	}
 
-	buf := bufferpool.Default.Get(1024)
-	defer bufferpool.Default.Put(buf)
+	slog.Warn("system.Socket.Write()") // XXX: DEBUG
 
-	n, err := io.CopyBuffer(sock.Guest, bytes.NewReader(b), buf)
+	n, err := sock.Guest.Write(b)
 	consumed.Store(types.Uint32(n))
 	if err == nil {
 		return types.OK
@@ -149,6 +150,8 @@ func (sock *Socket) Write(ctx context.Context, b types.Bytes, consumed types.Poi
 
 // Recv is called by the GUEST to receive data to the host.
 func (sock *Socket) Read(ctx context.Context, b types.Bytes, size types.Pointer[types.Uint32]) types.Error {
+	spew.Dump(sock)
+
 	deadline := time.Now().Add(time.Millisecond)
 	if err := sock.Guest.SetReadDeadline(deadline); err != nil {
 		return types.Fail(err)

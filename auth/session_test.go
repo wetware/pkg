@@ -42,7 +42,7 @@ func TestSessionCopy(t *testing.T) {
 	_ = api.Session(want).Local().SetPeer("peer.ID")
 	api.Session(want).Local().SetServer(9001) // routing.ID
 	_ = api.Session(want).Local().SetHost("hostname")
-	got := want.AddRef()
+	got := want.Clone()
 
 	t.Run("TestDataCopied", func(t *testing.T) {
 		peerID, err := api.Session(got).Local().Peer()

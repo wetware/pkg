@@ -78,7 +78,7 @@ func TestSystem(t *testing.T) {
 	assert.Equal(t, "test", hostname,
 		"should assign the correct hostname to the session")
 
-	it, release := sess.View().Iter(ctx, view.NewQuery(view.All()))
+	it, release := view.View(sess.View()).Iter(ctx, view.NewQuery(view.All()))
 	defer release()
 
 	for r := it.Next(); r != nil; r = it.Next() {

@@ -3,36 +3,14 @@
 
 package system
 
-import "capnproto.org/go/capnp/v3/exp/bufferpool"
-
-//go:wasmimport ww __sock_close
+//go:wasmimport ww _sysclose
 //go:noescape
-func sockClose() uint32
+func sysclose() uint32
 
-//go:wasmimport ww __sock_send
+//go:wasmimport ww _sysread
 //go:noescape
-func sockSend(offset, length uint32) uint32
+func sysread(offset, length, size uint32) uint32
 
-//go:wasm-module ww
-//go:export __sock_alloc
-func sockAlloc(size uint32) uint32 {
-	seg := alloc(size)
-	return seg.offset
-}
-
-func alloc(size uint32) segment {
-	buf := bufferpool.Default.Get(int(size))
-	seg := segment{
-		offset: bytesToPointer(buf),
-		length: size,
-	}
-	exports[seg] = buf
-	return seg
-}
-
-//go:wasm-module ww
-//go:export __sock_notify
-func sockNotify(offset, size uint32) {
-	seg := segment{offset, size}
-	incoming <- seg // TODO:  timeout
-}
+//go:wasmimport ww _syswrite
+//go:noescape
+func syswrite(offset, length, consumed uint32) uint32

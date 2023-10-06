@@ -51,6 +51,7 @@ func run(c *cli.Context) error {
 		return fmt.Errorf("discovery: %w", err)
 	}
 
+	// Dial into a remote peer.
 	sess, err := vat.Dialer{
 		Host:    h,
 		Account: auth.SignerFromHost(h),
@@ -66,7 +67,9 @@ func run(c *cli.Context) error {
 		Stdin:  c.App.Reader,
 		Stdout: c.App.Writer,
 		Stderr: c.App.ErrWriter,
-		Root:   sess,
+		// Root:   sess,
+		Host:     h,
+		Viewport: sess,
 	}
 
 	// fetch the ROM and run it

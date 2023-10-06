@@ -17,7 +17,7 @@ type SessionSetter interface {
 type Policy func(context.Context, SessionSetter, Session, peer.ID) error
 
 func AllowAll(ctx context.Context, res SessionSetter, root Session, account peer.ID) error {
-	sess := api.Session(root.AddRef())
+	sess := api.Session(root.Clone())
 	return res.SetSession(sess)
 }
 

@@ -3,10 +3,14 @@
 
 package system
 
-func sockClose() int32 {
+func sysclose() int32 {
 	return 0
 }
 
-func sockSend(offset, length uint32) uint32 {
+func sysread(offset, length, consumed uint32) uint32 {
+	return 0
+}
+
+func syswrite(offset, length, consumed uint32) uint32 {
 	return 0
 }

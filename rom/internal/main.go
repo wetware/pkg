@@ -20,17 +20,16 @@ func main() {
 	}
 	defer sess.Logout()
 
-	// cluster, leave := system.Join(ctx, sess)
-	// defer leave()
+	fmt.Println("Hello, Wetware!")
 
-	it, release := sess.View().Iter(ctx, query())
-	defer release()
+	// it, release := sess.View().Iter(ctx, query())
+	// defer release()
 
-	for r := it.Next(); r != nil; r = it.Next() {
-		render(r)
-	}
+	// for r := it.Next(); r != nil; r = it.Next() {
+	// 	render(r)
+	// }
 
-	die(it.Err())
+	// die(it.Err())
 }
 
 func die(err error) {

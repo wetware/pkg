@@ -19,7 +19,7 @@ func must(err error) {
 	}
 }
 
-func (sess Session) AddRef() Session {
+func (sess Session) Clone() Session {
 	// We start by allocating a single-segment arena.
 	// This will never fail to allocate, so any errors
 	// are due to undefined behavior. We use must(err)
@@ -44,7 +44,7 @@ func (sess Session) AddRef() Session {
 	return Session(raw)
 }
 
-// Logout the session by releasing the message, which releases
+// Logout of the session by releasing the message, which releases
 // each entry in the cap table.
 func (sess Session) Logout() {
 	message := core.Session(sess).Message()
