@@ -2,6 +2,7 @@ package system_test
 
 import (
 	"context"
+	"net"
 	"testing"
 
 	"capnproto.org/go/capnp/v3"
@@ -25,7 +26,7 @@ func TestSystem(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	host, guest := system.Pipe()
+	host, guest := net.Pipe()
 
 	hostConn := rpc.NewConn(rpc.NewStreamTransport(host), &rpc.Options{
 		BootstrapClient: capnp.NewClient(core.Terminal_NewServer(want)),

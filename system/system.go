@@ -3,10 +3,15 @@ package system
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"log/slog"
+	"net"
+	"os"
+	"time"
 
 	"capnproto.org/go/capnp/v3"
+	"capnproto.org/go/capnp/v3/exp/bufferpool"
 	"capnproto.org/go/capnp/v3/rpc"
 
 	"github.com/stealthrocket/wazergo"
@@ -19,9 +24,9 @@ import (
 
 // module for wetware Host
 var module wazergo.HostModule[*Socket] = functions{
-	"__sock_read":  wazergo.F2((*Socket).Read),
-	"__sock_write": wazergo.F2((*Socket).Write),
-	"__sock_close": wazergo.F0((*Socket).close),
+	"_sysread":  wazergo.F2((*Socket).Read),
+	"_syswrite": wazergo.F2((*Socket).Write),
+	"_sysclose": wazergo.F0((*Socket).close),
 }
 
 // Instantiate the system host module.  If instantiation fails, the
@@ -69,7 +74,7 @@ func (f functions) Functions() wazergo.Functions[*Socket] {
 }
 
 func (f functions) Instantiate(ctx context.Context, opts ...Option) (out *Socket, err error) {
-	host, guest := Pipe()
+	host, guest := net.Pipe()
 	sock := &Socket{
 		Host:  host,
 		Guest: guest,
@@ -83,15 +88,13 @@ func (f functions) Instantiate(ctx context.Context, opts ...Option) (out *Socket
 // Socket is a system socket that uses the host's IP stack.
 type Socket struct {
 	Logger      log.Logger
-	Host, Guest io.ReadWriteCloser
-	Waiter      interface{ Wait(context.Context) error }
+	Host, Guest net.Conn
 	Session     auth.Session
 	conn        *rpc.Conn
 }
 
 func (sock *Socket) Close(context.Context) error {
 	sock.Session.Logout()
-
 	return sock.conn.Close()
 }
 
@@ -103,6 +106,7 @@ func (sock *Socket) close(ctx context.Context) types.Error {
 	return types.OK
 }
 
+// Bind MUST be called before Read, Write or Close.
 func (sock *Socket) Bind(ctx context.Context) {
 	// NOTE:  no auth is actually performed here.  The client doesn't
 	// even need to pass a valid signer; the login call always succeeds.
@@ -118,19 +122,62 @@ func (sock *Socket) Bind(ctx context.Context) {
 }
 
 // Send is called by the GUEST to send data to the host.
-func (sock *Socket) Write(ctx context.Context, b types.Bytes, size types.Pointer[types.Uint32]) types.Errno {
-	n, err := io.Copy(sock.Guest, bytes.NewReader(b))
-	size.Store(types.Uint32(n))
-	return types.AsErrno(err)
+func (sock *Socket) Write(ctx context.Context, b types.Bytes, consumed types.Pointer[types.Uint32]) types.Error {
+	deadline := time.Now().Add(time.Millisecond)
+	if err := sock.Guest.SetWriteDeadline(deadline); err != nil {
+		return types.Fail(err)
+	}
+
+	buf := bufferpool.Default.Get(1024)
+	defer bufferpool.Default.Put(buf)
+
+	n, err := io.CopyBuffer(sock.Guest, bytes.NewReader(b), buf)
+	consumed.Store(types.Uint32(n))
+	if err == nil {
+		return types.OK
+	}
+
+	// If the read timed out, return a special error code that
+	// tells the caller to back-off and try later. It is up to
+	// the caller to specify the retry strategy.
+	if errors.Is(err, os.ErrDeadlineExceeded) {
+		return interrupt
+	}
+
+	return types.Fail(err)
 }
 
 // Recv is called by the GUEST to receive data to the host.
 func (sock *Socket) Read(ctx context.Context, b types.Bytes, size types.Pointer[types.Uint32]) types.Error {
+	deadline := time.Now().Add(time.Millisecond)
+	if err := sock.Guest.SetReadDeadline(deadline); err != nil {
+		return types.Fail(err)
+	}
+
 	n, err := sock.Guest.Read(b)
 	size.Store(types.Uint32(n))
 	if err == nil {
 		return types.OK
 	}
 
+	// If the read timed out, return a special error code that
+	// tells the caller to back-off and try later. It is up to
+	// the caller to specify the retry strategy.
+	if errors.Is(err, os.ErrDeadlineExceeded) {
+		return interrupt
+	}
+
 	return types.Fail(err)
+}
+
+var interrupt = types.Fail(errno(1))
+
+type errno int32
+
+func (errno) Error() string {
+	return os.ErrDeadlineExceeded.Error()
+}
+
+func (e errno) Errno() int32 {
+	return int32(e)
 }
