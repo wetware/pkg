@@ -26,6 +26,7 @@ import (
 	"github.com/wetware/pkg/cluster/routing"
 	"github.com/wetware/pkg/rom"
 	"github.com/wetware/pkg/system"
+	"github.com/wetware/pkg/util/pipe"
 	"github.com/wetware/pkg/util/proto"
 )
 
@@ -77,7 +78,7 @@ func (ww Ww) Logger() *slog.Logger {
 // Bind a system socket to Cap'n Proto RPC.  This method satisfies
 // the system.Bindable interface.
 func (ww *Ww) Bind(ctx context.Context) io.ReadWriteCloser {
-	host, guest := system.Pipe()
+	host, guest := pipe.New()
 	go func() {
 		conn := ww.Upgrade(host)
 		defer conn.Close()
