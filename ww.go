@@ -77,7 +77,7 @@ func (ww Ww) Logger() *slog.Logger {
 
 // Bind a system socket to Cap'n Proto RPC.  This method satisfies
 // the system.Bindable interface.
-func (ww *Ww) Bind(ctx context.Context) io.ReadWriteCloser {
+func (ww *Ww) BindSocket(ctx context.Context) io.ReadWriteCloser {
 	host, guest := pipe.New()
 	go func() {
 		conn := ww.Upgrade(host)
@@ -161,7 +161,7 @@ func (ww *Ww) Exec(ctx context.Context, rom rom.ROM) error {
 	// Instantiate wetware system socket.
 	sock, err := wazergo.Instantiate(ctx, r, system.SocketModule,
 		system.WithLogger(ww.Logger()),
-		system.Bind(ctx, ww.Bind))
+		system.Bind(ctx, ww))
 	if err != nil {
 		return err
 	}

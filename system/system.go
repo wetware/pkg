@@ -19,11 +19,13 @@ var SocketModule wazergo.HostModule[*Socket] = functions{
 	"_sysclose": wazergo.F0((*Socket).close),
 }
 
-func Instantiate(ctx context.Context, r wazero.Runtime, f BindFunc) (*wazergo.ModuleInstance[*Socket], error) {
-	return wazergo.Instantiate(ctx, r, SocketModule, Bind(ctx, f))
+type SocketBinder interface {
+	BindSocket(ctx context.Context) io.ReadWriteCloser
 }
 
-type BindFunc func(context.Context) io.ReadWriteCloser
+func Instantiate(ctx context.Context, r wazero.Runtime, b SocketBinder) (*wazergo.ModuleInstance[*Socket], error) {
+	return wazergo.Instantiate(ctx, r, SocketModule, Bind(ctx, b))
+}
 
 type Option = wazergo.Option[*Socket]
 
@@ -33,9 +35,9 @@ func WithLogger(log log.Logger) Option {
 	})
 }
 
-func Bind(ctx context.Context, f BindFunc) Option {
+func Bind(ctx context.Context, p SocketBinder) Option {
 	return wazergo.OptionFunc(func(sock *Socket) {
-		sock.Conn = f(ctx)
+		sock.Pipe = p.BindSocket(ctx)
 	})
 }
 
@@ -61,11 +63,11 @@ func (f functions) Instantiate(ctx context.Context, opts ...Option) (sock *Socke
 // Socket is a system socket that uses the host's IP stack.
 type Socket struct {
 	Logger log.Logger
-	Conn   io.ReadWriteCloser
+	Pipe   io.ReadWriteCloser
 }
 
 func (sock *Socket) Shutdown() {
-	if err := sock.Conn.Close(); err != nil {
+	if err := sock.Pipe.Close(); err != nil {
 		// Our in-process net.Conn MUST successfully close.   This allows us to
 		// guarantee that no access to the object exists after Shutdown returns.
 		panic(err)
@@ -73,7 +75,7 @@ func (sock *Socket) Shutdown() {
 }
 
 func (sock *Socket) Close(context.Context) error {
-	return sock.Conn.Close()
+	return sock.Pipe.Close()
 }
 
 func (sock *Socket) close(ctx context.Context) types.Error {
@@ -86,7 +88,7 @@ func (sock *Socket) close(ctx context.Context) types.Error {
 
 // Send is called by the GUEST to send data to the host.
 func (sock *Socket) Write(ctx context.Context, b types.Bytes, consumed types.Pointer[types.Uint32]) types.Error {
-	n, err := sock.Conn.Write(b)
+	n, err := sock.Pipe.Write(b)
 	consumed.Store(types.Uint32(n))
 	if err == nil {
 		return types.OK
@@ -104,7 +106,7 @@ func (sock *Socket) Write(ctx context.Context, b types.Bytes, consumed types.Poi
 
 // Recv is called by the GUEST to receive data to the host.
 func (sock *Socket) Read(ctx context.Context, b types.Bytes, size types.Pointer[types.Uint32]) types.Error {
-	n, err := sock.Conn.Read(b)
+	n, err := sock.Pipe.Read(b)
 	size.Store(types.Uint32(n))
 	if err == nil {
 		return types.OK

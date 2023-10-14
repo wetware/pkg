@@ -34,9 +34,9 @@ func TestSocket(t *testing.T) {
 
 	// Instantiate wetware system socket.
 	host, guest := pipe.New()
-	binder := func(ctx context.Context) io.ReadWriteCloser {
+	binder := sockFunc(func(ctx context.Context) io.ReadWriteCloser {
 		return guest
-	}
+	})
 	defer host.Close()
 
 	sock, err := system.Instantiate(ctx, r, binder)
@@ -65,6 +65,12 @@ func TestSocket(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, "hello from guest!", buf.String())
+}
+
+type sockFunc func(context.Context) io.ReadWriteCloser
+
+func (bind sockFunc) BindSocket(ctx context.Context) io.ReadWriteCloser {
+	return bind(ctx)
 }
 
 // func TestSystem(t *testing.T) {
