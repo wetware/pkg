@@ -76,22 +76,68 @@ func (ww Ww) Logger() *slog.Logger {
 
 // Bind a system socket to Cap'n Proto RPC.  This method satisfies
 // the system.Bindable interface.
-func (ww *Ww) Bind(sock *system.Socket) *rpc.Conn {
-	sock.Name = ww.Name + "." + ww.NS // subdomain, e.g. foo.ww
-	sock.Net = ww.Host
-	sock.View = cluster.View(ww.Viewport.View())
+func (ww *Ww) Bind(ctx context.Context) io.ReadWriteCloser {
+	host, guest := system.Pipe()
+	go func() {
+		conn := ww.Upgrade(host)
+		defer conn.Close()
 
+		select {
+		case <-conn.Done():
+		case <-ctx.Done():
+		}
+	}()
+
+	return guest
+
+	// sock.Name = ww.Name + "." + ww.NS // subdomain, e.g. foo.ww
+	// sock.Net = ww.Host
+	// sock.View = cluster.View(ww.Viewport.View())
+
+	// // NOTE:  no auth is actually performed here.  The client doesn't
+	// // even need to pass a valid signer; the login call always succeeds.
+	// server := core.Terminal_NewServer(sock)
+	// client := capnp.NewClient(server)
+
+	// options := &rpc.Options{
+	// 	ErrorReporter:   system.ErrorReporter{Logger: sock.Logger},
+	// 	BootstrapClient: client,
+	// }
+
+	// return rpc.NewConn(rpc.NewStreamTransport(sock.Host), options)
+}
+
+func (ww *Ww) Upgrade(conn io.ReadWriteCloser) *rpc.Conn {
 	// NOTE:  no auth is actually performed here.  The client doesn't
 	// even need to pass a valid signer; the login call always succeeds.
-	server := core.Terminal_NewServer(sock)
+	server := core.Terminal_NewServer(ww)
 	client := capnp.NewClient(server)
 
 	options := &rpc.Options{
-		ErrorReporter:   system.ErrorReporter{Logger: sock.Logger},
+		ErrorReporter:   system.ErrorReporter{Logger: slog.Default()},
 		BootstrapClient: client,
 	}
 
-	return rpc.NewConn(rpc.NewStreamTransport(sock.Host), options)
+	return rpc.NewConn(rpc.NewStreamTransport(conn), options)
+}
+
+func (ww *Ww) Login(ctx context.Context, call core.Terminal_login) error {
+	res, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	sess, err := res.NewSession()
+	if err != nil {
+		return err
+	}
+
+	sess.Local().SetServer(uint64(ww.ID))
+	_ = sess.Local().SetHost(ww.Name)
+	_ = sess.Local().SetPeer(string(ww.Host.ID()))
+
+	view := cluster.View(ww.Viewport.View())
+	return sess.SetView(view)
 }
 
 // Exec compiles and runs the ww instance's ROM in a WASM runtime.
@@ -114,7 +160,7 @@ func (ww *Ww) Exec(ctx context.Context, rom rom.ROM) error {
 	// Instantiate wetware system socket.
 	sock, err := wazergo.Instantiate(ctx, r, system.SocketModule,
 		system.WithLogger(ww.Logger()),
-		system.Bind(ww))
+		system.Bind(ctx, ww.Bind))
 	if err != nil {
 		return err
 	}

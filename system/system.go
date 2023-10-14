@@ -3,20 +3,13 @@ package system
 import (
 	"context"
 	"errors"
-	"log/slog"
-	"net"
+	"io"
 	"os"
-	"time"
 
-	"github.com/davecgh/go-spew/spew"
-	local "github.com/libp2p/go-libp2p/core/host"
-
-	"capnproto.org/go/capnp/v3/rpc"
+	"github.com/tetratelabs/wazero"
 
 	"github.com/stealthrocket/wazergo"
 	"github.com/stealthrocket/wazergo/types"
-	"github.com/wetware/pkg/api/cluster"
-	"github.com/wetware/pkg/api/core"
 	"github.com/wetware/pkg/util/log"
 )
 
@@ -26,6 +19,12 @@ var SocketModule wazergo.HostModule[*Socket] = functions{
 	"_sysclose": wazergo.F0((*Socket).close),
 }
 
+func Instantiate(ctx context.Context, r wazero.Runtime, f BindFunc) (*wazergo.ModuleInstance[*Socket], error) {
+	return wazergo.Instantiate(ctx, r, SocketModule, Bind(ctx, f))
+}
+
+type BindFunc func(context.Context) io.ReadWriteCloser
+
 type Option = wazergo.Option[*Socket]
 
 func WithLogger(log log.Logger) Option {
@@ -34,13 +33,9 @@ func WithLogger(log log.Logger) Option {
 	})
 }
 
-type Bindable interface {
-	Bind(*Socket) *rpc.Conn
-}
-
-func Bind(b Bindable) Option {
+func Bind(ctx context.Context, f BindFunc) Option {
 	return wazergo.OptionFunc(func(sock *Socket) {
-		sock.conn = b.Bind(sock)
+		sock.Conn = f(ctx)
 	})
 }
 
@@ -57,60 +52,28 @@ func (f functions) Functions() wazergo.Functions[*Socket] {
 	return (wazergo.Functions[*Socket])(f)
 }
 
-func (f functions) Instantiate(ctx context.Context, opts ...Option) (out *Socket, err error) {
-	host, guest := net.Pipe()
-	sock := &Socket{
-		Host:  host,
-		Guest: guest,
-	}
-
+func (f functions) Instantiate(ctx context.Context, opts ...Option) (sock *Socket, err error) {
+	sock = &Socket{}
 	wazergo.Configure(sock, opts...)
 	return
 }
 
 // Socket is a system socket that uses the host's IP stack.
 type Socket struct {
-	Logger      log.Logger
-	Net         local.Host
-	Name        string
-	View        cluster.View
-	Host, Guest net.Conn
-	conn        *rpc.Conn
-}
-
-func (sock *Socket) Login(ctx context.Context, call core.Terminal_login) error {
-	res, err := call.AllocResults()
-	if err != nil {
-		return err
-	}
-
-	sess, err := res.NewSession()
-	if err != nil {
-		return err
-	}
-
-	_ = sess.Local().SetHost(sock.Name)
-	_ = sess.Local().SetPeer(string(sock.Net.ID()))
-
-	return sess.SetView(sock.View)
+	Logger log.Logger
+	Conn   io.ReadWriteCloser
 }
 
 func (sock *Socket) Shutdown() {
-	if sock.conn != nil {
-		if err := sock.conn.Close(); err != nil {
-			// Our in-process net.Conn MUST successfully close.   This allows us to
-			// guarantee that no access to the object exists after Shutdown returns.
-			panic(err)
-		}
+	if err := sock.Conn.Close(); err != nil {
+		// Our in-process net.Conn MUST successfully close.   This allows us to
+		// guarantee that no access to the object exists after Shutdown returns.
+		panic(err)
 	}
 }
 
-func (sock *Socket) Close(context.Context) (err error) {
-	if sock != nil && sock.conn != nil {
-		err = sock.conn.Close()
-	}
-
-	return
+func (sock *Socket) Close(context.Context) error {
+	return sock.Conn.Close()
 }
 
 func (sock *Socket) close(ctx context.Context) types.Error {
@@ -123,16 +86,7 @@ func (sock *Socket) close(ctx context.Context) types.Error {
 
 // Send is called by the GUEST to send data to the host.
 func (sock *Socket) Write(ctx context.Context, b types.Bytes, consumed types.Pointer[types.Uint32]) types.Error {
-	spew.Dump(sock)
-
-	deadline := time.Now().Add(time.Millisecond)
-	if err := sock.Guest.SetWriteDeadline(deadline); err != nil {
-		return types.Fail(err)
-	}
-
-	slog.Warn("system.Socket.Write()") // XXX: DEBUG
-
-	n, err := sock.Guest.Write(b)
+	n, err := sock.Conn.Write(b)
 	consumed.Store(types.Uint32(n))
 	if err == nil {
 		return types.OK
@@ -150,14 +104,7 @@ func (sock *Socket) Write(ctx context.Context, b types.Bytes, consumed types.Poi
 
 // Recv is called by the GUEST to receive data to the host.
 func (sock *Socket) Read(ctx context.Context, b types.Bytes, size types.Pointer[types.Uint32]) types.Error {
-	spew.Dump(sock)
-
-	deadline := time.Now().Add(time.Millisecond)
-	if err := sock.Guest.SetReadDeadline(deadline); err != nil {
-		return types.Fail(err)
-	}
-
-	n, err := sock.Guest.Read(b)
+	n, err := sock.Conn.Read(b)
 	size.Store(types.Uint32(n))
 	if err == nil {
 		return types.OK
@@ -174,13 +121,3 @@ func (sock *Socket) Read(ctx context.Context, b types.Bytes, size types.Pointer[
 }
 
 var interrupt = types.Fail(errno(1))
-
-type errno int32
-
-func (errno) Error() string {
-	return os.ErrDeadlineExceeded.Error()
-}
-
-func (e errno) Errno() int32 {
-	return int32(e)
-}

@@ -7,9 +7,14 @@ import (
 	"unsafe"
 
 	"github.com/stealthrocket/wazergo/types"
+	"github.com/wetware/pkg/system"
 )
 
 type socket struct{}
+
+func Socket() io.ReadWriteCloser {
+	return socket{}
+}
 
 func (socket) Read(b []byte) (n int, err error) {
 	var u uint32
@@ -26,10 +31,10 @@ func (socket) Read(b []byte) (n int, err error) {
 			"status", eno)
 
 		switch eno {
-		case 0:
+		case system.SockEOF:
 			err = io.EOF // all data was read; we're done!
 
-		case 1: // wait for the writer to have written data
+		case system.SockINT: // wait for the writer to have written data
 			time.Sleep(time.Millisecond)
 			continue
 
@@ -57,10 +62,10 @@ func (socket) Write(b []byte) (n int, err error) {
 			"status", eno)
 
 		switch eno {
-		case 0:
-			// all data was written; we're done!
+		case system.SockEOF:
+			err = io.EOF
 
-		case 1: // os.ErrDeadlineExceeded
+		case system.SockINT:
 			time.Sleep(time.Millisecond)
 			continue
 
