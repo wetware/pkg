@@ -13,7 +13,6 @@ import (
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
 	local "github.com/libp2p/go-libp2p/core/host"
-	"github.com/stealthrocket/wazergo"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
@@ -26,7 +25,6 @@ import (
 	"github.com/wetware/pkg/cluster/routing"
 	"github.com/wetware/pkg/rom"
 	"github.com/wetware/pkg/system"
-	"github.com/wetware/pkg/util/pipe"
 	"github.com/wetware/pkg/util/proto"
 )
 
@@ -77,8 +75,8 @@ func (ww Ww) Logger() *slog.Logger {
 
 // Bind a system socket to Cap'n Proto RPC.  This method satisfies
 // the system.Bindable interface.
-func (ww *Ww) BindSocket(ctx context.Context) io.ReadWriteCloser {
-	host, guest := pipe.New()
+func (ww *Ww) Bind(ctx context.Context) system.Socket {
+	host, guest := system.Pipe()
 	go func() {
 		conn := ww.Upgrade(host)
 		defer conn.Close()
@@ -159,14 +157,11 @@ func (ww *Ww) Exec(ctx context.Context, rom rom.ROM) error {
 	defer c.Close(ctx)
 
 	// Instantiate wetware system socket.
-	sock, err := wazergo.Instantiate(ctx, r, system.SocketModule,
-		system.WithLogger(ww.Logger()),
-		system.Bind(ctx, ww))
+	sys, err := system.Instantiate(ctx, r, ww.Bind(ctx))
 	if err != nil {
 		return err
 	}
-	ctx = wazergo.WithModuleInstance(ctx, sock) // bind sock to context
-	defer sock.Close(ctx)
+	defer sys.Close(ctx)
 
 	// Compile guest module.
 	compiled, err := r.CompileModule(ctx, rom.Bytecode)

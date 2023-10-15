@@ -1,152 +1,130 @@
-package system_test
+package system
 
 import (
 	"bytes"
 	"context"
-	_ "embed"
-	"io"
-	"strings"
+	"errors"
+	"net"
 	"testing"
+	"time"
 
-	"github.com/stealthrocket/wazergo"
-	"github.com/tetratelabs/wazero"
-	wasi "github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
-	"github.com/wetware/pkg/system"
-	"github.com/wetware/pkg/util/pipe"
-	"golang.org/x/sync/errgroup"
-
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tetratelabs/wazero/api"
+	"github.com/tetratelabs/wazero/experimental/wazerotest"
 )
 
-//go:embed testdata/main.wasm
-var src []byte
-
-func TestSocket(t *testing.T) {
+func TestSegment(t *testing.T) {
 	t.Parallel()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	seg := segment(18 << 32) // offset=18
+	seg |= 12                // size=12
+	assert.Equal(t, uint32(18), seg.Offset(), "offset should be 18")
+	assert.Equal(t, uint32(12), seg.Size(), "size should be 12")
+}
 
-	r := wazero.NewRuntimeWithConfig(ctx, wazero.NewRuntimeConfig().
-		WithCloseOnContextDone(true))
-	defer r.Close(ctx)
-	wasi.MustInstantiate(ctx, r)
+func TestRead(t *testing.T) {
+	t.Parallel()
 
-	// Instantiate wetware system socket.
-	host, guest := pipe.New()
-	binder := sockFunc(func(ctx context.Context) io.ReadWriteCloser {
-		return guest
+	seg := segment(18 << 32) // offset=18
+	seg |= 12                // size=12
+
+	method := wazerotest.NewFunction(func(ctx context.Context, mod api.Module, sg uint64, d uint64) uint64 {
+		offset := segment(sg).Offset()
+		size := segment(sg).Size()
+		require.Equal(t, seg.Offset(), offset, "offsets should match")
+		require.Equal(t, seg.Size(), size, "sizes should match")
+
+		return uint64(size) << 32
 	})
-	defer host.Close()
 
-	sock, err := system.Instantiate(ctx, r, binder)
-	require.NoError(t, err)
-	ctx = wazergo.WithModuleInstance(ctx, sock) // bind sock to context
-	defer sock.Close(ctx)
+	mem := wazerotest.NewFixedMemory(512)
+	mod := wazerotest.NewModule(mem, method)
 
-	cm, err := r.CompileModule(ctx, src)
-	require.NoError(t, err)
-	defer cm.Close(ctx)
+	stack := []uint64{
+		uint64(seg),              // segment[offset=18, size=12]
+		uint64(time.Millisecond), // timeout
+	}
 
-	mod, err := r.InstantiateModule(ctx, cm, wazero.NewModuleConfig().
-		WithStartFunctions())
-	require.NoError(t, err)
-	defer mod.Close(ctx)
+	buf := bytes.NewBufferString("hello, wasm!")
+	sockRead{conn{buf}}.Call(context.Background(), mod, stack)
+	e := effect(stack[0])
+	require.NoError(t, e.Err(), "effect should not return error")
+	require.Equal(t, seg.Size(), e.Bytes(),
+		"should consume exactly %d bytes", seg.Size())
+}
 
-	var g errgroup.Group
-	g.Go(func() error {
-		_, err := io.Copy(host, strings.NewReader("hello from host!"))
-		return err
+func TestWrite(t *testing.T) {
+	t.Parallel()
+
+	seg := segment(18 << 32) // offset=18
+	seg |= 12                // size=12
+
+	method := wazerotest.NewFunction(func(ctx context.Context, mod api.Module, sg uint64, d uint64) uint64 {
+		offset := segment(sg).Offset()
+		size := segment(sg).Size()
+		require.Equal(t, seg.Offset(), offset, "offsets should match")
+		require.Equal(t, seg.Size(), size, "sizes should match")
+
+		return uint64(size) << 32
 	})
+
+	mem := wazerotest.NewFixedMemory(512)
+	mod := wazerotest.NewModule(mem, method)
+
+	stack := []uint64{
+		uint64(seg),              // segment[offset=18, size=12]
+		uint64(time.Millisecond), // timeout
+	}
+
 	buf := new(bytes.Buffer)
-	g.Go(func() error {
-		_, err := io.Copy(buf, host)
-		return err
-	})
-	require.NoError(t, err)
-	require.Equal(t, "hello from guest!", buf.String())
+	sockWrite{conn{buf}}.Call(context.Background(), mod, stack)
+	e := effect(stack[0])
+	require.NoError(t, e.Err(), "effect should not return error")
+	require.Equal(t, seg.Size(), e.Bytes(),
+		"should consume exactly %d bytes", seg.Size())
 }
 
-type sockFunc func(context.Context) io.ReadWriteCloser
+func TestClose(t *testing.T) {
+	t.Parallel()
 
-func (bind sockFunc) BindSocket(ctx context.Context) io.ReadWriteCloser {
-	return bind(ctx)
+	c := new(mockCloser)
+	sockClose{c}.Call(context.Background(), nil, nil)
+	assert.True(t, c.closed)
 }
 
-// func TestSystem(t *testing.T) {
+type mockCloser struct {
+	net.Conn
+	closed bool
+}
+
+func (c *mockCloser) Close() error {
+	if c.closed {
+		return errors.New("already called")
+	}
+	c.closed = true
+	return nil
+}
+
+type conn struct{ *bytes.Buffer }
+
+func (conn) Close() error                       { return nil }
+func (conn) LocalAddr() net.Addr                { return nil }
+func (conn) RemoteAddr() net.Addr               { return nil }
+func (conn) SetDeadline(t time.Time) error      { return nil }
+func (conn) SetReadDeadline(t time.Time) error  { return nil }
+func (conn) SetWriteDeadline(t time.Time) error { return nil }
+
+// func TestReadable(t *testing.T) {
 // 	t.Parallel()
 
-// 	want := auth.Session(mkRawSession())
+// 	ctx := context.Background()
 
-// 	ctx, cancel := context.WithCancel(context.Background())
-// 	defer cancel()
+// 	mem := wazerotest.NewFixedMemory(1024)
+// 	mod := wazerotest.NewModule(mem)
+// 	defer mod.Close(ctx)
 
-// 	host, guest := net.Pipe()
+// 	seg := segment(18 << 32) // offset=18
+// 	seg |= 12                // size=12
 
-// 	hostConn := rpc.NewConn(rpc.NewStreamTransport(host), &rpc.Options{
-// 		BootstrapClient: capnp.NewClient(core.Terminal_NewServer(want)),
-// 		ErrorReporter: system.ErrorReporter{
-// 			Logger: slog.Default().WithGroup("server"),
-// 		},
-// 	})
-// 	defer hostConn.Close()
-
-// 	guestConn := rpc.NewConn(rpc.NewStreamTransport(guest), &rpc.Options{
-// 		ErrorReporter: system.ErrorReporter{
-// 			Logger: slog.Default().WithGroup("client"),
-// 		},
-// 	})
-// 	defer guestConn.Close()
-
-// 	client := guestConn.Bootstrap(ctx)
-// 	require.NoError(t, client.Resolve(ctx), "bootstrap client should resolve")
-
-// 	term := core.Terminal(client)
-// 	defer term.Release()
-
-// 	f, release := term.Login(ctx, func(call core.Terminal_login_Params) error {
-// 		anonymous := core.Signer{}
-// 		return call.SetAccount(anonymous)
-// 	})
-// 	defer release()
-
-// 	res, err := f.Struct()
-// 	require.NoError(t, err, "login should succeed")
-
-// 	raw, err := res.Session()
-// 	require.NoError(t, err, "session should be well-formed")
-// 	require.NotZero(t, raw, "session should be populated")
-// 	sess := auth.Session(raw)
-// 	defer sess.Logout()
-
-// 	local := raw.Local()
-// 	assert.Equal(t, uint64(42), local.Server(),
-// 		"should assign the correct routing.ID to the session")
-
-// 	peerID, err := local.Peer()
-// 	require.NoError(t, err, "peer.ID should be well-formed")
-// 	assert.Equal(t, "test", peerID,
-// 		"should assign the correct peer.ID to the session")
-
-// 	hostname, err := local.Host()
-// 	require.NoError(t, err, "hostname should be well-formed")
-// 	assert.Equal(t, "test", hostname,
-// 		"should assign the correct hostname to the session")
-
-// 	it, release := view.View(sess.View()).Iter(ctx, view.NewQuery(view.All()))
-// 	defer release()
-
-// 	for r := it.Next(); r != nil; r = it.Next() {
-// 		// ...
-// 	}
-// 	assert.NoError(t, it.Err(), "iterator should not fail")
-// }
-
-// func mkRawSession() core.Session {
-// 	_, seg := capnp.NewSingleSegmentMessage(nil)
-// 	sess, _ := core.NewRootSession(seg)
-// 	sess.Local().SetServer(42)
-// 	sess.Local().SetHost("test")
-// 	sess.Local().SetPeer("test")
-// 	return sess
 // }

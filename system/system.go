@@ -4,122 +4,254 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log/slog"
+	"math"
 	"os"
+	"time"
 
 	"github.com/tetratelabs/wazero"
-
-	"github.com/stealthrocket/wazergo"
-	"github.com/stealthrocket/wazergo/types"
-	"github.com/wetware/pkg/util/log"
+	"github.com/tetratelabs/wazero/api"
+	"github.com/tetratelabs/wazero/sys"
 )
 
-var SocketModule wazergo.HostModule[*Socket] = functions{
-	"_sysread":  wazergo.F2((*Socket).Read),
-	"_syswrite": wazergo.F2((*Socket).Write),
-	"_sysclose": wazergo.F0((*Socket).close),
+type Socket interface {
+	io.ReadWriteCloser
+	SetReadDeadline(time.Time) error
+	SetWriteDeadline(time.Time) error
 }
 
-type SocketBinder interface {
-	BindSocket(ctx context.Context) io.ReadWriteCloser
+func Instantiate(ctx context.Context, r wazero.Runtime, sock Socket) (wazero.CompiledModule, error) {
+	return bind(ctx, r.NewHostModuleBuilder("ww"), sock)
 }
 
-func Instantiate(ctx context.Context, r wazero.Runtime, b SocketBinder) (*wazergo.ModuleInstance[*Socket], error) {
-	return wazergo.Instantiate(ctx, r, SocketModule, Bind(ctx, b))
+func bind(ctx context.Context, b wazero.HostModuleBuilder, sock Socket) (wazero.CompiledModule, error) {
+	return module(b,
+		sockRead{sock},
+		sockWrite{sock},
+		sockClose{sock},
+	).Compile(ctx)
 }
 
-type Option = wazergo.Option[*Socket]
-
-func WithLogger(log log.Logger) Option {
-	return wazergo.OptionFunc(func(sock *Socket) {
-		sock.Logger = log
-	})
+type export interface {
+	api.GoModuleFunction
+	String() string
+	Params() []api.ValueType
+	Results() []api.ValueType
+	ParamNames() []string
+	ResultNames() []string
 }
 
-func Bind(ctx context.Context, p SocketBinder) Option {
-	return wazergo.OptionFunc(func(sock *Socket) {
-		sock.Pipe = p.BindSocket(ctx)
-	})
+func module(b wazero.HostModuleBuilder, exports ...export) wazero.HostModuleBuilder {
+	for _, e := range exports {
+		b = b.NewFunctionBuilder().
+			WithGoModuleFunction(e, e.Params(), e.Results()).
+			WithParameterNames(e.ParamNames()...).
+			WithResultNames(e.ResultNames()...).
+			WithName(e.String()).
+			Export(e.String())
+	}
+	return b
 }
 
-// The `functions` type impements `Module[*Module]`, providing the
-// module name, map of exported functions, and the ability to create
-// instances of the module type
-type functions wazergo.Functions[*Socket]
+type sockRead struct{ Socket }
 
-func (f functions) Name() string {
-	return "ww"
+func (sockRead) String() string {
+	return "_sock_read"
 }
 
-func (f functions) Functions() wazergo.Functions[*Socket] {
-	return (wazergo.Functions[*Socket])(f)
+func (sockRead) Params() []api.ValueType {
+	return []api.ValueType{
+		api.ValueTypeI64, // u64 masked as (u32, u32) pair
+		api.ValueTypeI64} // deadline as time.Duration
 }
 
-func (f functions) Instantiate(ctx context.Context, opts ...Option) (sock *Socket, err error) {
-	sock = &Socket{}
-	wazergo.Configure(sock, opts...)
-	return
+func (sockRead) ParamNames() []string {
+	return []string{
+		"segment",
+		"timeout"}
 }
 
-// Socket is a system socket that uses the host's IP stack.
-type Socket struct {
-	Logger log.Logger
-	Pipe   io.ReadWriteCloser
+func (sockRead) Results() []api.ValueType {
+	return []api.ValueType{
+		api.ValueTypeI64} // u64 masked as (n::u32, err:u32) pair
 }
 
-func (sock *Socket) Shutdown() {
-	if err := sock.Pipe.Close(); err != nil {
-		// Our in-process net.Conn MUST successfully close.   This allows us to
-		// guarantee that no access to the object exists after Shutdown returns.
-		panic(err)
+func (sockRead) ResultNames() []string {
+	return []string{"effect"}
+}
+
+func (r sockRead) Call(ctx context.Context, mod api.Module, stack []uint64) {
+	seg := segment(stack[0])
+	off := seg.Offset()
+	size := seg.Size()
+
+	// Set deadline
+	d := time.Duration(stack[1])
+	if err := r.SetReadDeadline(time.Now().Add(d)); err != nil {
+		stack[0] = perform(fail(err), nil)
+		return
+	}
+
+	// Call read
+	if view, ok := mod.Memory().Read(off, size); ok {
+		stack[0] = perform(r.Read, view)
+	} else {
+		slog.Warn("process referenced out-of-bounds segment",
+			"method", r.String(),
+			"offset", off,
+			"size", size)
+		stack[0] = perform(fail(errors.New("segment out of bounds")), nil)
 	}
 }
 
-func (sock *Socket) Close(context.Context) error {
-	return sock.Pipe.Close()
+func perform(effect func([]byte) (int, error), input []byte) uint64 {
+	n, err := effect(input)
+	return uint64(n)<<32 | status(err)
+	// return an 'effect' with the number of bytes set to 'n' and the error
+	// set with some appropriate value.
 }
 
-func (sock *Socket) close(ctx context.Context) types.Error {
-	if err := sock.Close(ctx); err != nil {
-		types.Fail(err)
-	}
-
-	return types.OK
-}
-
-// Send is called by the GUEST to send data to the host.
-func (sock *Socket) Write(ctx context.Context, b types.Bytes, consumed types.Pointer[types.Uint32]) types.Error {
-	n, err := sock.Pipe.Write(b)
-	consumed.Store(types.Uint32(n))
+func status(err error) uint64 {
 	if err == nil {
-		return types.OK
+		return 0
 	}
 
-	// If the read timed out, return a special error code that
-	// tells the caller to back-off and try later. It is up to
-	// the caller to specify the retry strategy.
-	if errors.Is(err, os.ErrDeadlineExceeded) {
-		return interrupt
-	}
+	switch e := err.(type) {
+	case *sys.ExitError:
+		if errors.Is(e, context.Canceled) {
+			return uint64(sys.ExitCodeContextCanceled)
+		}
+		if errors.Is(e, context.DeadlineExceeded) {
+			return uint64(sys.ExitCodeDeadlineExceeded)
+		}
+		if errors.Is(e, os.ErrDeadlineExceeded) {
+			return uint64(sys.ExitCodeDeadlineExceeded)
+		}
 
-	return types.Fail(err)
+		return uint64(e.ExitCode())
+
+	case interface{ Errno() uint32 }:
+		return uint64(e.Errno())
+
+	default:
+		return math.MaxUint32
+	}
 }
 
-// Recv is called by the GUEST to receive data to the host.
-func (sock *Socket) Read(ctx context.Context, b types.Bytes, size types.Pointer[types.Uint32]) types.Error {
-	n, err := sock.Pipe.Read(b)
-	size.Store(types.Uint32(n))
-	if err == nil {
-		return types.OK
+func fail(err error) func(b []byte) (int, error) {
+	return func(b []byte) (int, error) {
+		return len(b), err
 	}
-
-	// If the read timed out, return a special error code that
-	// tells the caller to back-off and try later. It is up to
-	// the caller to specify the retry strategy.
-	if errors.Is(err, os.ErrDeadlineExceeded) {
-		return interrupt
-	}
-
-	return types.Fail(err)
 }
 
-var interrupt = types.Fail(errno(1))
+type sockWrite struct{ Socket }
+
+func (sockWrite) String() string {
+	return "_sock_read"
+}
+
+func (sockWrite) Params() []api.ValueType {
+	return []api.ValueType{
+		api.ValueTypeI64, // u64 masked as (u32, u32) pair
+		api.ValueTypeI64} // deadline as time.Duration
+}
+
+func (sockWrite) ParamNames() []string {
+	return []string{
+		"segment",
+		"timeout"}
+}
+
+func (sockWrite) Results() []api.ValueType {
+	return []api.ValueType{
+		api.ValueTypeI64} // u64 masked as (n::u32, err:u32) pair
+}
+
+func (sockWrite) ResultNames() []string {
+	return []string{"effect"}
+}
+
+func (w sockWrite) Call(ctx context.Context, mod api.Module, stack []uint64) {
+	seg := segment(stack[0])
+	off := seg.Offset()
+	size := seg.Size()
+
+	// Set deadline
+	d := time.Duration(stack[1])
+	if err := w.SetWriteDeadline(time.Now().Add(d)); err != nil {
+		stack[0] = perform(fail(err), nil)
+		return
+	}
+
+	// Call write
+	if view, ok := mod.Memory().Read(off, size); ok {
+		stack[0] = perform(w.Write, view)
+	} else {
+		slog.Warn("process referenced out-of-bounds segment",
+			"method", w.String(),
+			"offset", off,
+			"size", size)
+		stack[0] = perform(fail(errors.New("segment out of bounds")), nil)
+	}
+}
+
+type sockClose struct{ Socket }
+
+func (sockClose) String() string {
+	return "_sock_close"
+}
+
+func (sockClose) Params() []api.ValueType {
+	return nil
+}
+
+func (sockClose) ParamNames() []string {
+	return nil
+}
+
+func (sockClose) Results() []api.ValueType {
+	return nil
+}
+
+func (sockClose) ResultNames() []string {
+	return nil
+}
+
+func (c sockClose) Call(ctx context.Context, _ api.Module, stack []uint64) {
+	if err := c.Close(); err != nil {
+		slog.Error("failed to close system socket",
+			"reason", err)
+	}
+}
+
+// type errno interface {
+// 	Errno() uint32
+// }
+
+type segment uint64
+
+func (s segment) Offset() uint32 {
+	return uint32(s >> 32)
+}
+
+func (s segment) Size() uint32 {
+	return uint32(s)
+}
+
+type effect uint64
+
+func (s effect) Err() error {
+	if eno := s.Errno(); eno != 0 {
+		return sys.NewExitError(eno)
+	}
+
+	return nil
+}
+
+func (s effect) Bytes() uint32 {
+	return uint32(s >> 32)
+}
+
+func (s effect) Errno() uint32 {
+	return uint32(s)
+}

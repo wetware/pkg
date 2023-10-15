@@ -36,6 +36,7 @@ require (
 	github.com/libp2p/go-buffer-pool v0.1.0
 	github.com/lmittmann/tint v1.0.0
 	github.com/lthibault/go-libp2p-inproc-transport v0.4.0
+	github.com/lthibault/iopipes v0.0.0-20230928001330-c0ac2acbc102
 	github.com/lthibault/jitterbug/v2 v2.2.2
 	github.com/lthibault/util v0.0.12
 	github.com/mattn/go-isatty v0.0.19
