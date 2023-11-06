@@ -2,11 +2,14 @@ package run
 
 import (
 	"fmt"
+	"io"
+	"log/slog"
 	"os"
 
 	local "github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
+	"github.com/tetratelabs/wazero"
 	"github.com/urfave/cli/v2"
 
 	ww "github.com/wetware/pkg"
@@ -23,10 +26,19 @@ var flags = []cli.Flag{
 		EnvVars: []string{"WW_DIAL"},
 	},
 	&cli.BoolFlag{
-		Name:     "stdin",
-		Aliases:  []string{"s"},
-		Usage:    "load system image from stdin",
-		Category: "ROM",
+		Name:    "stdin",
+		Aliases: []string{"s"},
+		Usage:   "load system image from stdin",
+	},
+	&cli.StringSliceFlag{
+		Name:    "arg",
+		Aliases: []string{"a"},
+		Usage:   "add argument for guest process",
+	},
+	&cli.StringSliceFlag{
+		Name:    "env",
+		Aliases: []string{"e"},
+		Usage:   "set `KEY`=`VALUE` pair in the guest environment",
 	},
 }
 
@@ -63,13 +75,14 @@ func run(c *cli.Context) error {
 
 	// set up the local wetware environment.
 	wetware := ww.Ww{
-		NS:     c.String("ns"),
-		Stdin:  c.App.Reader,
-		Stdout: c.App.Writer,
-		Stderr: c.App.ErrWriter,
-		// Root:   sess,
-		Host:     h,
-		Viewport: sess,
+		NS:       c.String("ns"),
+		Sess:     sess,
+		Env:      c.StringSlice("env"),
+		Args:     c.StringSlice("arg"),
+		Stdout:   c.App.Writer.(io.WriteCloser),
+		Stderr:   c.App.ErrWriter.(io.WriteCloser),
+		LogLevel: slog.LevelDebug,
+		Cache:    wazero.NewCompilationCache(),
 	}
 
 	// fetch the ROM and run it

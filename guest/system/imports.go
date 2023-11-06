@@ -3,14 +3,11 @@
 
 package system
 
-func sysclose() int32 {
+// func vatID() uint64        { return 0 }
+func sockClose() int32 {
 	return 0
 }
 
-func sysread(offset, length, consumed uint32) uint32 {
-	return 0
-}
-
-func syswrite(offset, length, consumed uint32) uint32 {
+func sockSend(offset, length uint32) int32 {
 	return 0
 }

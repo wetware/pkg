@@ -1,257 +1,222 @@
 package system
 
 import (
+	"bytes"
 	"context"
-	"errors"
 	"io"
-	"log/slog"
-	"math"
-	"os"
-	"time"
+	"sync"
 
+	"capnproto.org/go/capnp/v3/exp/bufferpool"
+	"github.com/stealthrocket/wazergo"
+	"github.com/stealthrocket/wazergo/types"
 	"github.com/tetratelabs/wazero"
-	"github.com/tetratelabs/wazero/api"
-	"github.com/tetratelabs/wazero/sys"
 )
 
-type Socket interface {
-	io.ReadWriteCloser
-	SetReadDeadline(time.Time) error
-	SetWriteDeadline(time.Time) error
+// Declare the host module from a set of exported functions.
+var HostModule wazergo.HostModule[*Host] = functions{
+	"sock_close": wazergo.F0((*Host).SockClose),
+	"sock_send":  wazergo.F1((*Host).SockSend),
 }
 
-func Instantiate(ctx context.Context, r wazero.Runtime, sock Socket) (wazero.CompiledModule, error) {
-	return bind(ctx, r.NewHostModuleBuilder("ww"), sock)
+func Instantiate(ctx context.Context, r wazero.Runtime, vat io.WriteCloser) (*wazergo.ModuleInstance[*Host], error) {
+	return wazergo.Instantiate(ctx, r, HostModule,
+		WithWriter(vat))
 }
 
-func bind(ctx context.Context, b wazero.HostModuleBuilder, sock Socket) (wazero.CompiledModule, error) {
-	return module(b,
-		sockRead{sock},
-		sockWrite{sock},
-		sockClose{sock},
-	).Compile(ctx)
+// The `functions` type impements `HostModule[*Module]`, providing the
+// module name, map of exported functions, and the ability to create instances
+// of the module type.
+type functions wazergo.Functions[*Host]
+
+func (f functions) Name() string {
+	return "ww"
 }
 
-type export interface {
-	api.GoModuleFunction
-	String() string
-	Params() []api.ValueType
-	Results() []api.ValueType
-	ParamNames() []string
-	ResultNames() []string
+func (f functions) Functions() wazergo.Functions[*Host] {
+	return (wazergo.Functions[*Host])(f)
 }
 
-func module(b wazero.HostModuleBuilder, exports ...export) wazero.HostModuleBuilder {
-	for _, e := range exports {
-		b = b.NewFunctionBuilder().
-			WithGoModuleFunction(e, e.Params(), e.Results()).
-			WithParameterNames(e.ParamNames()...).
-			WithResultNames(e.ResultNames()...).
-			WithName(e.String()).
-			Export(e.String())
-	}
-	return b
+func (f functions) Instantiate(ctx context.Context, opts ...Option) (*Host, error) {
+	mod := &Host{}
+	wazergo.Configure(mod, opts...)
+	return mod, nil
 }
 
-type sockRead struct{ Socket }
+type Option = wazergo.Option[*Host]
 
-func (sockRead) String() string {
-	return "_sock_read"
+func WithWriter(w io.WriteCloser) Option {
+	return wazergo.OptionFunc(func(h *Host) {
+		h.Writer = w
+	})
 }
 
-func (sockRead) Params() []api.ValueType {
-	return []api.ValueType{
-		api.ValueTypeI64, // u64 masked as (u32, u32) pair
-		api.ValueTypeI64} // deadline as time.Duration
+// Host will be the Go type we use to maintain the state of our module
+// instances.
+type Host struct {
+	Writer io.WriteCloser
 }
 
-func (sockRead) ParamNames() []string {
-	return []string{
-		"segment",
-		"timeout"}
+func (m *Host) Close(context.Context) error {
+	return m.Writer.Close()
 }
 
-func (sockRead) Results() []api.ValueType {
-	return []api.ValueType{
-		api.ValueTypeI64} // u64 masked as (n::u32, err:u32) pair
-}
-
-func (sockRead) ResultNames() []string {
-	return []string{"effect"}
-}
-
-func (r sockRead) Call(ctx context.Context, mod api.Module, stack []uint64) {
-	seg := segment(stack[0])
-	off := seg.Offset()
-	size := seg.Size()
-
-	// Set deadline
-	d := time.Duration(stack[1])
-	if err := r.SetReadDeadline(time.Now().Add(d)); err != nil {
-		stack[0] = perform(fail(err), nil)
-		return
+func (m *Host) SockClose(context.Context) types.Error {
+	if err := m.Writer.Close(); err != nil {
+		return types.Fail(err)
 	}
 
-	// Call read
-	if view, ok := mod.Memory().Read(off, size); ok {
-		stack[0] = perform(r.Read, view)
-	} else {
-		slog.Warn("process referenced out-of-bounds segment",
-			"method", r.String(),
-			"offset", off,
-			"size", size)
-		stack[0] = perform(fail(errors.New("segment out of bounds")), nil)
-	}
+	return types.OK
 }
 
-func perform(effect func([]byte) (int, error), input []byte) uint64 {
-	n, err := effect(input)
-	return uint64(n)<<32 | status(err)
-	// return an 'effect' with the number of bytes set to 'n' and the error
-	// set with some appropriate value.
-}
-
-func status(err error) uint64 {
-	if err == nil {
-		return 0
+func (m *Host) SockSend(_ context.Context, b types.Bytes) types.Error {
+	if err := writeTo(m.Writer, b); err != nil {
+		return types.Fail(err)
 	}
 
-	switch e := err.(type) {
-	case *sys.ExitError:
-		if errors.Is(e, context.Canceled) {
-			return uint64(sys.ExitCodeContextCanceled)
-		}
-		if errors.Is(e, context.DeadlineExceeded) {
-			return uint64(sys.ExitCodeDeadlineExceeded)
-		}
-		if errors.Is(e, os.ErrDeadlineExceeded) {
-			return uint64(sys.ExitCodeDeadlineExceeded)
-		}
-
-		return uint64(e.ExitCode())
-
-	case interface{ Errno() uint32 }:
-		return uint64(e.Errno())
-
-	default:
-		return math.MaxUint32
-	}
+	return types.OK
 }
 
-func fail(err error) func(b []byte) (int, error) {
-	return func(b []byte) (int, error) {
-		return len(b), err
-	}
+func writeTo(w io.Writer, b []byte) error {
+	rd := readerFor(b)
+	defer rd.Release()
+
+	buf := bufferpool.Default.Get(1024)
+	defer bufferpool.Default.Put(buf)
+
+	_, err := io.CopyBuffer(w, bytes.NewReader(b), buf)
+	return err
 }
 
-type sockWrite struct{ Socket }
+type reader struct{ bytes.Reader }
 
-func (sockWrite) String() string {
-	return "_sock_read"
+func readerFor(b []byte) *reader {
+	rd := pool.Get().(*reader)
+	rd.Reset(b)
+	return rd
 }
 
-func (sockWrite) Params() []api.ValueType {
-	return []api.ValueType{
-		api.ValueTypeI64, // u64 masked as (u32, u32) pair
-		api.ValueTypeI64} // deadline as time.Duration
+func (r *reader) Release() {
+	r.Reader.Reset(nil)
+	pool.Put(r)
 }
 
-func (sockWrite) ParamNames() []string {
-	return []string{
-		"segment",
-		"timeout"}
+var pool = sync.Pool{
+	New: func() any {
+		return new(reader)
+	},
 }
 
-func (sockWrite) Results() []api.ValueType {
-	return []api.ValueType{
-		api.ValueTypeI64} // u64 masked as (n::u32, err:u32) pair
-}
-
-func (sockWrite) ResultNames() []string {
-	return []string{"effect"}
-}
-
-func (w sockWrite) Call(ctx context.Context, mod api.Module, stack []uint64) {
-	seg := segment(stack[0])
-	off := seg.Offset()
-	size := seg.Size()
-
-	// Set deadline
-	d := time.Duration(stack[1])
-	if err := w.SetWriteDeadline(time.Now().Add(d)); err != nil {
-		stack[0] = perform(fail(err), nil)
-		return
-	}
-
-	// Call write
-	if view, ok := mod.Memory().Read(off, size); ok {
-		stack[0] = perform(w.Write, view)
-	} else {
-		slog.Warn("process referenced out-of-bounds segment",
-			"method", w.String(),
-			"offset", off,
-			"size", size)
-		stack[0] = perform(fail(errors.New("segment out of bounds")), nil)
-	}
-}
-
-type sockClose struct{ Socket }
-
-func (sockClose) String() string {
-	return "_sock_close"
-}
-
-func (sockClose) Params() []api.ValueType {
-	return nil
-}
-
-func (sockClose) ParamNames() []string {
-	return nil
-}
-
-func (sockClose) Results() []api.ValueType {
-	return nil
-}
-
-func (sockClose) ResultNames() []string {
-	return nil
-}
-
-func (c sockClose) Call(ctx context.Context, _ api.Module, stack []uint64) {
-	if err := c.Close(); err != nil {
-		slog.Error("failed to close system socket",
-			"reason", err)
-	}
-}
-
-// type errno interface {
-// 	Errno() uint32
+// type Module struct {
+// 	api.Module
+// 	Transport io.Closer
 // }
 
-type segment uint64
+// func (m Module) Close(ctx context.Context) error {
+// 	return multierr.Combine(
+// 		m.Module.Close(ctx),
+// 		m.Transport.Close())
+// }
 
-func (s segment) Offset() uint32 {
-	return uint32(s >> 32)
-}
+// func Instantiate(ctx context.Context, r wazero.Runtime, vat io.WriteCloser) (*Module, error) {
+// 	mod, err := bind(ctx, r.NewHostModuleBuilder("ww"), vat)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-func (s segment) Size() uint32 {
-	return uint32(s)
-}
+// 	return &Module{
+// 		Module:    mod,
+// 		Transport: vat,
+// 	}, nil
+// }
 
-type effect uint64
+// func bind(ctx context.Context, b wazero.HostModuleBuilder, vat Vat) (api.Module, error) {
+// 	return module(b,
+// 		&sockCloser{vat},
+// 		&sockWriter{vat},
+// 	).Instantiate(ctx)
+// }
 
-func (s effect) Err() error {
-	if eno := s.Errno(); eno != 0 {
-		return sys.NewExitError(eno)
-	}
+// func module(b wazero.HostModuleBuilder, exports ...export) wazero.HostModuleBuilder {
+// 	for _, e := range exports {
+// 		b = b.NewFunctionBuilder().
+// 			WithGoModuleFunction(e, e.Params(), e.Results()).
+// 			WithParameterNames(e.ParamNames()...).
+// 			WithResultNames(e.ResultNames()...).
+// 			WithName(e.String()).
+// 			Export(e.String())
+// 	}
+// 	return b
+// }
 
-	return nil
-}
+// type export interface {
+// 	api.GoModuleFunction
+// 	String() string
+// 	Params() []api.ValueType
+// 	Results() []api.ValueType
+// 	ParamNames() []string
+// 	ResultNames() []string
+// }
 
-func (s effect) Bytes() uint32 {
-	return uint32(s >> 32)
-}
+// type sockCloser struct{ io.Closer }
 
-func (s effect) Errno() uint32 {
-	return uint32(s)
-}
+// func (sockCloser) String() string {
+// 	return "sock_close"
+// }
+
+// func (sockCloser) Params() []api.ValueType  { return nil }
+// func (sockCloser) ParamNames() []string     { return nil }
+// func (sockCloser) Results() []api.ValueType { return nil }
+// func (sockCloser) ResultNames() []string    { return nil }
+
+// func (c sockCloser) Call(ctx context.Context, mod api.Module, stack []uint64) {
+// 	if err := c.Close(); err != nil {
+// 		slog.ErrorContext(ctx, err.Error())
+// 	}
+// }
+
+// type sockWriter struct{ io.Writer }
+
+// func (sockWriter) String() string {
+// 	return "sock_write"
+// }
+
+// func (sockWriter) Params() []api.ValueType {
+// 	return []api.ValueType{
+// 		api.ValueTypeI64}
+// }
+
+// func (sockWriter) ParamNames() []string {
+// 	return []string{
+// 		"segment"} // [u32][u32]
+// }
+
+// func (sockWriter) Results() []api.ValueType { return nil }
+// func (sockWriter) ResultNames() []string    { return nil }
+
+// func (w sockWriter) Call(ctx context.Context, mod api.Module, stack []uint64) {
+// 	offset := api.DecodeU32(stack[0])
+// 	length := api.DecodeU32(stack[0] >> 32)
+
+// 	w.Send(ctx, mod.Memory(), offset, length)
+// }
+
+// func (w sockWriter) Send(ctx context.Context, mem api.Memory, offset, length uint32) {
+// 	b, ok := mem.Read(offset, length)
+// 	if !ok {
+// 		slog.ErrorContext(ctx, "segment out-of-bounds",
+// 			"off", offset,
+// 			"len", length)
+// 		return
+// 	}
+
+// 	n, err := io.Copy(w, bytes.NewReader(b))
+// 	if err != nil {
+// 		slog.ErrorContext(ctx, "failed to send message to host",
+// 			"reason", err,
+// 			"n", n)
+// 		return
+// 	}
+
+// 	slog.DebugContext(ctx, "delivered message to host",
+// 		"size", n)
+// }

@@ -13,9 +13,10 @@ import (
 
 type Session core.Session
 
-func must(err error) {
-	if err != nil {
-		panic(err)
+func (sess Session) WithPolicy(p Policy) TerminalServer {
+	return TerminalServer{
+		Sess: sess,
+		Auth: p,
 	}
 }
 
@@ -111,40 +112,11 @@ func (sess Session) Hostname() string {
 	return s
 }
 
-// func (sess Session) Imports() (map[string]capnp.Client, capnp.ReleaseFunc) {
-// 	extra, err := core.Session(sess).Extra()
-// 	if err != nil || extra.Len() == 0 {
-// 		return nil, func() {}
-// 	}
-
-// 	imports := make(map[string]capnp.Client, extra.Len())
-// 	for i := 0; i < extra.Len(); i++ {
-// 		name, err := extra.At(i).Name()
-// 		if err == nil {
-// 			imports[name] = extra.At(i).Client().AddRef()
-// 		}
-// 	}
-
-// 	return imports, func() {
-// 		for _, c := range imports {
-// 			c.Release()
-// 		}
-// 	}
-// }
-
-// func (sess Session) Import(name string) (capnp.Client, error) {
-// 	extra, err := core.Session(sess).Extra()
-
-// 	for i := 0; i < extra.Len(); i++ {
-// 		key, err := extra.At(i).Name()
-// 		if key == name || err != nil {
-// 			client := extra.At(i).Client()
-// 			return client.AddRef(), err
-// 		}
-// 	}
-
-// 	return capnp.Client{}, err
-// }
+func must(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
 
 // mkRawSession allocates a new core.Session.  Error is always nil.
 func mkRawSession() (core.Session, error) {

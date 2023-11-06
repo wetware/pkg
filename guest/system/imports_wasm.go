@@ -3,14 +3,14 @@
 
 package system
 
-//go:wasmimport ww _sysclose
-//go:noescape
-func sysclose() uint32
+// //go:wasmimport ww vat_id
+// //go:noescape
+// func vatID() uint64
 
-//go:wasmimport ww _sysread
+//go:wasmimport ww sock_close
 //go:noescape
-func sysread(offset, length, size uint32) uint32
+func sockClose() int32
 
-//go:wasmimport ww _syswrite
+//go:wasmimport ww sock_send
 //go:noescape
-func syswrite(offset, length, consumed uint32) uint32
+func sockSend(offset, length uint32) int32

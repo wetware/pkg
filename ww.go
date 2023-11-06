@@ -5,27 +5,24 @@ import (
 	"crypto/rand"
 	_ "embed"
 	"errors"
+	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"runtime"
-	"time"
+	"strings"
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
-	local "github.com/libp2p/go-libp2p/core/host"
+	"github.com/stealthrocket/wazergo"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
-	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
-	"github.com/tetratelabs/wazero/sys"
-	"golang.org/x/exp/slog"
+	wasi "github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 
-	"github.com/wetware/pkg/api/cluster"
 	"github.com/wetware/pkg/api/core"
-	"github.com/wetware/pkg/cap/view"
-	"github.com/wetware/pkg/cluster/routing"
+	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/rom"
 	"github.com/wetware/pkg/system"
-	"github.com/wetware/pkg/util/proto"
 )
 
 type SystemError interface {
@@ -33,23 +30,16 @@ type SystemError interface {
 	ExitCode() uint32
 }
 
-type Viewport interface {
-	View() view.View
-}
-
 // Ww is the execution context for WebAssembly (WASM) bytecode,
 // allowing it to interact with (1) the local host and (2) the
 // cluster environment.
 type Ww struct {
-	NS, Name string
-
-	ID       routing.ID
-	Host     local.Host
-	Viewport Viewport
-
-	Stdin  io.Reader
-	Stdout io.Writer
-	Stderr io.Writer
+	NS             string
+	Env, Args      []string
+	Stdout, Stderr io.WriteCloser
+	Sess           auth.Session
+	Cache          wazero.CompilationCache
+	LogLevel       slog.Level
 }
 
 // String returns the cluster namespace in which the wetware is
@@ -67,101 +57,45 @@ func (ww *Ww) String() string {
 
 func (ww Ww) Logger() *slog.Logger {
 	return slog.Default().With(
-		"ns", ww.NS,
-		"id", ww.ID,
-		"peer", ww.Host.ID(),
-		"hostname", ww.Name)
+		"ns", ww.NS)
 }
 
-// Bind a system socket to Cap'n Proto RPC.  This method satisfies
-// the system.Bindable interface.
-func (ww *Ww) Bind(ctx context.Context) system.Socket {
-	host, guest := system.Pipe()
-	go func() {
-		conn := ww.Upgrade(host)
-		defer conn.Close()
-
-		select {
-		case <-conn.Done():
-		case <-ctx.Done():
-		}
-	}()
-
-	return guest
-
-	// sock.Name = ww.Name + "." + ww.NS // subdomain, e.g. foo.ww
-	// sock.Net = ww.Host
-	// sock.View = cluster.View(ww.Viewport.View())
-
-	// // NOTE:  no auth is actually performed here.  The client doesn't
-	// // even need to pass a valid signer; the login call always succeeds.
-	// server := core.Terminal_NewServer(sock)
-	// client := capnp.NewClient(server)
-
-	// options := &rpc.Options{
-	// 	ErrorReporter:   system.ErrorReporter{Logger: sock.Logger},
-	// 	BootstrapClient: client,
-	// }
-
-	// return rpc.NewConn(rpc.NewStreamTransport(sock.Host), options)
-}
-
-func (ww *Ww) Upgrade(conn io.ReadWriteCloser) *rpc.Conn {
-	// NOTE:  no auth is actually performed here.  The client doesn't
-	// even need to pass a valid signer; the login call always succeeds.
-	server := core.Terminal_NewServer(ww)
-	client := capnp.NewClient(server)
-
-	options := &rpc.Options{
-		ErrorReporter:   system.ErrorReporter{Logger: slog.Default()},
-		BootstrapClient: client,
+func (ww Ww) NewRuntime(ctx context.Context) wazero.Runtime {
+	if ww.Cache == nil {
+		ww.Cache = wazero.NewCompilationCache()
 	}
 
-	return rpc.NewConn(rpc.NewStreamTransport(conn), options)
-}
-
-func (ww *Ww) Login(ctx context.Context, call core.Terminal_login) error {
-	res, err := call.AllocResults()
-	if err != nil {
-		return err
-	}
-
-	sess, err := res.NewSession()
-	if err != nil {
-		return err
-	}
-
-	sess.Local().SetServer(uint64(ww.ID))
-	_ = sess.Local().SetHost(ww.Name)
-	_ = sess.Local().SetPeer(string(ww.Host.ID()))
-
-	view := cluster.View(ww.Viewport.View())
-	return sess.SetView(view)
+	return wazero.NewRuntimeWithConfig(ctx, wazero.
+		NewRuntimeConfigCompiler().
+		WithCompilationCache(ww.Cache).
+		WithCloseOnContextDone(true))
 }
 
 // Exec compiles and runs the ww instance's ROM in a WASM runtime.
 // It returns any error produced by the compilation or execution of
 // the ROM.
-func (ww *Ww) Exec(ctx context.Context, rom rom.ROM) error {
+func (ww Ww) Exec(ctx context.Context, rom rom.ROM) error {
 	// Spawn a new runtime.
-	r := wazero.NewRuntimeWithConfig(ctx, wazero.
-		NewRuntimeConfigCompiler().
-		WithCloseOnContextDone(true))
+	r := ww.NewRuntime(ctx)
 	defer r.Close(ctx)
 
-	// Instantiate WASI.
-	c, err := wasi_snapshot_preview1.Instantiate(ctx, r)
+	c, err := wasi.Instantiate(ctx, r)
 	if err != nil {
 		return err
 	}
 	defer c.Close(ctx)
 
 	// Instantiate wetware system socket.
-	sys, err := system.Instantiate(ctx, r, ww.Bind(ctx))
+	host, guest := net.Pipe()
+	defer host.Close()
+
+	// Instantiate the system host module.
+	sys, err := system.Instantiate(ctx, r, guest)
 	if err != nil {
 		return err
 	}
 	defer sys.Close(ctx)
+	ctx = wazergo.WithModuleInstance(ctx, sys)
 
 	// Compile guest module.
 	compiled, err := r.CompileModule(ctx, rom.Bytecode)
@@ -170,27 +104,79 @@ func (ww *Ww) Exec(ctx context.Context, rom rom.ROM) error {
 	}
 	defer compiled.Close(ctx)
 
-	// Instantiate the guest module, and configure host exports.
-	mod, err := r.InstantiateModule(ctx, compiled, wazero.NewModuleConfig().
-		WithOsyield(runtime.Gosched).
-		WithRandSource(rand.Reader).
-		WithStartFunctions(). // don't automatically call _start while instanitating.
-		WithSysNanosleep().
-		WithSysNanotime().
-		WithSysWalltime().
-		WithArgs(rom.String()). // TODO(soon):  use content id
-		WithEnv("ns", ww.String()).
-		WithEnv("WW_DEBUG", "true").
-		WithName(rom.String()).
-		WithStdin(ww.Stdin). // notice:  we connect stdio to host process' stdio
-		WithStdout(ww.Stdout).
-		WithStderr(ww.Stderr))
+	// Bind the Wetware environment to the wazero.ModuleConfig.
+	mc, err := ww.BindConfig(rom, guest)
+	if err != nil {
+		return err
+	}
+	defer ww.BindSocket(host).Close()
+
+	// Instantiate the guest module.
+	mod, err := r.InstantiateModule(ctx, compiled, mc)
 	if err != nil {
 		return err
 	}
 	defer mod.Close(ctx)
 
 	return ww.run(ctx, mod)
+}
+
+func (ww Ww) BindSocket(sock io.ReadWriteCloser) *rpc.Conn {
+	server := core.Terminal_NewServer(ww.Sess)
+	logger := ww.Logger().With(
+		"host", ww.Sess.Peer(),
+		"peer", ww.Sess.Peer(),
+		"vat", ww.Sess.Vat())
+
+	return rpc.NewConn(rpc.NewStreamTransport(sock), &rpc.Options{
+		BootstrapClient: capnp.NewClient(server),
+		ErrorReporter:   system.ErrorReporter{Logger: logger},
+	})
+}
+
+func (ww Ww) BindConfig(rom rom.ROM, r io.Reader) (wazero.ModuleConfig, error) {
+	args := append([]string{rom.String()}, ww.Args...)
+
+	return ww.BindEnv(wazero.NewModuleConfig().
+		WithOsyield(runtime.Gosched).
+		WithRandSource(rand.Reader).
+		WithStartFunctions(). // don't automatically call _start while instanitating.
+		WithSysNanosleep().
+		WithSysNanotime().
+		WithSysWalltime().
+		WithArgs(args...).
+		WithName(rom.String()).
+		WithStdout(ww.Stdout).
+		WithStderr(ww.Stderr).
+		WithStdin(r))
+}
+
+func (ww Ww) BindEnv(mc wazero.ModuleConfig) (wazero.ModuleConfig, error) {
+	return bindEnv(mc.
+		WithEnv("ns", ww.String()).
+		WithEnv("WW_LOGLVL", ww.LogLevel.String()),
+		ww.Env)
+}
+
+func bindEnv(mc wazero.ModuleConfig, vars []string) (wazero.ModuleConfig, error) {
+	for _, s := range vars {
+		if ss, ok := parseEnvVar(s); ok {
+			mc = mc.WithEnv(ss[0], ss[1])
+		} else {
+			return nil, fmt.Errorf("invalid env var: %s", ss)
+		}
+	}
+
+	return mc, nil
+}
+
+func parseEnvVar(s string) (ss [2]string, ok bool) {
+	if kv := strings.SplitN(s, "=", 1); len(kv) == 2 {
+		ss[0], ss[1] = kv[0], kv[1]
+		ok = true
+	}
+
+	return
 }
 
 func (ww Ww) run(ctx context.Context, mod api.Module) error {
@@ -200,43 +186,5 @@ func (ww Ww) run(ctx context.Context, mod api.Module) error {
 		return errors.New("missing export: _start")
 	}
 
-	for {
-		// TODO(performance):  fn.CallWithStack(ctx, nil)
-		_, err := fn.Call(ctx)
-		switch e := err.(type) {
-		case net.Error:
-			if e.Timeout() {
-				sleep(ctx)
-				continue
-			}
-
-		case SystemError:
-			switch e.ExitCode() {
-			case 0:
-				return nil
-
-			case sys.ExitCodeContextCanceled:
-				return context.Canceled
-
-			case sys.ExitCodeDeadlineExceeded:
-				return context.DeadlineExceeded
-
-			default:
-				slog.Default().Debug(err.Error(),
-					"version", proto.Version,
-					"ns", ww.String(),
-					"rom", mod.Name())
-			}
-
-		}
-
-		return err
-	}
-}
-
-func sleep(ctx context.Context) {
-	select {
-	case <-time.After(time.Millisecond):
-	case <-ctx.Done():
-	}
+	return fn.CallWithStack(ctx, nil)
 }
