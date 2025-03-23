@@ -14,11 +14,11 @@ func TestWeakClient(t *testing.T) {
 	t.Parallel()
 
 	client := capnp.ErrorClient(errors.New("test")) // non-null client
-	wc := (*weakClient)(client.WeakRef())
+	wc := (weakClient)(client.WeakRef())
 	assert.True(t, client.IsSame(wc.AddRef()),
 		"should return strong reference to underlying *WeakClient")
 
-	wc = (*weakClient)(capnp.Client{}.WeakRef())
+	wc = (weakClient)(capnp.Client{}.WeakRef())
 	assert.Panics(t, func() { wc.AddRef() },
 		"should panic when creating reference to null *WeakClient")
 }

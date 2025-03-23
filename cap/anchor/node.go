@@ -74,8 +74,7 @@ func (n *Node) Anchor() Anchor {
 	// Node is guaranteed to have r > 1 refs.  This means we
 	// can release the refchain after client.AddRef returns.
 	if n.client != nil {
-		client := n.client.AddRef()
-		return Anchor(client)
+		return Anchor(n.client.AddRef())
 	}
 
 	// Slow path; spin up a new server, assign the weak client,
@@ -92,32 +91,35 @@ func (n *Node) Anchor() Anchor {
 		ClientHook: api.Anchor_NewServer(server),
 	})
 
+	// Handle null client case
+	if client == (capnp.Client{}) {
+		return Anchor(client)
+	}
+
 	// Set the weak reference; subsequent calls to Anchor() will
 	// derive clients from the weakref, incrementing the refcount.
-	n.client = (*weakClient)(client.WeakRef())
+	weak := client.WeakRef()
+	n.client = (*weakClient)(&weak)
 
 	// Return first reference to caller;  The RPC connection will
 	// take ownership of it and release it when done.  When the
-	// client refcount reaches zero, the server will terminate,
-	// calling n.Shutdown(), and the weakref will be cleared.
-	//
-	// Note that this will not necessarily remove n from its
-	// parent's children map.  This is handled by the n's rc.Ref
-	// field, and only occurs when the node *also* has no children
-	// and holds no value.
+	// last reference is released, the client will be shut down.
 	return Anchor(client)
 }
 
+// weakClient is a type alias for capnp.WeakClient that provides
+// panic-on-null semantics for AddRef().
 type weakClient capnp.WeakClient
 
 func (wc *weakClient) AddRef() capnp.Client {
-	c, ok := (*capnp.WeakClient)(wc).AddRef()
+	if wc == nil {
+		return capnp.Client{}
+	}
 
-	// Shutdown() ensures this never happens.
+	c, ok := (*capnp.WeakClient)(wc).AddRef()
 	if !ok || c == (capnp.Client{}) {
 		panic("nil or released WeakClient")
 	}
-
 	return c
 }
 

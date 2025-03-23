@@ -9,6 +9,7 @@ import (
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
+	"capnproto.org/go/capnp/v3/util/rc"
 	gossipsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/discovery"
 	local "github.com/libp2p/go-libp2p/core/host"
@@ -20,7 +21,6 @@ import (
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"go.uber.org/multierr"
-	"zenhack.net/go/util/rc"
 
 	api "github.com/wetware/pkg/api/cluster"
 	"github.com/wetware/pkg/api/core"
@@ -30,7 +30,6 @@ import (
 	"github.com/wetware/pkg/cluster"
 	"github.com/wetware/pkg/cluster/pulse"
 	"github.com/wetware/pkg/cluster/routing"
-	"github.com/wetware/pkg/system"
 	"github.com/wetware/pkg/util/proto"
 )
 
@@ -129,7 +128,6 @@ func (conf Config) Serve(ctx context.Context) error {
 	for {
 		opt := &rpc.Options{
 			BootstrapClient: server.Export(),
-			ErrorReporter:   system.ErrorReporter{Logger: logger},
 		}
 
 		conn, err := server.Accept(ctx, opt)
@@ -271,15 +269,10 @@ func (svr *Server) LocalID() rpc.PeerID {
 	}
 }
 
-// Connect to another peer by ID. The supplied Options are used
-// for the connection, with the values for RemotePeerID and Network
-// overridden by the Network.
-func (svr *Server) Dial(pid rpc.PeerID, opt *rpc.Options) (*rpc.Conn, error) {
+// Dial implements rpc.Network
+func (svr *Server) Dial(pid rpc.PeerID) (*rpc.Conn, error) {
 	svr.setup()
 	ctx := context.TODO()
-
-	opt.RemotePeerID = pid
-	opt.Network = svr
 
 	peer := pid.Value.(peer.AddrInfo)
 	protos := proto.Namespace(svr.NS)
@@ -289,13 +282,17 @@ func (svr *Server) Dial(pid rpc.PeerID, opt *rpc.Options) (*rpc.Conn, error) {
 		return nil, err
 	}
 
+	opt := &rpc.Options{
+		BootstrapClient: svr.Export(),
+		RemotePeerID:    pid,
+		Network:         svr,
+	}
+
 	conn := rpc.NewConn(transport(s), opt)
 	return conn, nil
 }
 
-// Accept the next incoming connection on the network, using the
-// supplied Options for the connection. Generally, callers will
-// want to invoke this in a loop when launching a server.
+// Accept implements rpc.Network
 func (svr *Server) Accept(ctx context.Context, opt *rpc.Options) (*rpc.Conn, error) {
 	svr.setup()
 
@@ -327,26 +324,18 @@ func (svr *Server) Accept(ctx context.Context, opt *rpc.Options) (*rpc.Conn, err
 	}
 }
 
-// Introduce the two connections, in preparation for a third party
-// handoff. Afterwards, a Provide messsage should be sent to
-// provider, and a ThirdPartyCapId should be sent to recipient.
+// Introduce implements rpc.Network
 func (svr *Server) Introduce(provider, recipient *rpc.Conn) (rpc.IntroductionInfo, error) {
 	return rpc.IntroductionInfo{}, errors.New("NOT IMPLEMENTED")
 }
 
-// Given a ThirdPartyCapID, received from introducedBy, connect
-// to the third party. The caller should then send an Accept
-// message over the returned Connection.
-func (svr *Server) DialIntroduced(capID rpc.ThirdPartyCapID, introducedBy *rpc.Conn) (*rpc.Conn, rpc.ProvisionID, error) {
-	return nil, rpc.ProvisionID{}, errors.New("NOT IMPLEMENTED")
+// DialIntroduced implements rpc.Network
+func (svr *Server) DialIntroduced(capID string, introducedBy *rpc.Conn) (*rpc.Conn, string, error) {
+	return nil, "", errors.New("NOT IMPLEMENTED")
 }
 
-// Given a RecipientID received in a Provide message via
-// introducedBy, wait for the recipient to connect, and
-// return the connection formed. If there is already an
-// established connection to the relevant Peer, this
-// SHOULD return the existing connection immediately.
-func (svr *Server) AcceptIntroduced(recipientID rpc.RecipientID, introducedBy *rpc.Conn) (*rpc.Conn, error) {
+// AcceptIntroduced implements rpc.Network
+func (svr *Server) AcceptIntroduced(recipientID string, introducedBy *rpc.Conn) (*rpc.Conn, error) {
 	return nil, errors.New("NOT IMPLEMENTED")
 }
 
@@ -399,4 +388,10 @@ func features(ns string) func(gossipsub.GossipSubFeature, protocol.ID) bool {
 			return false
 		}
 	}
+}
+
+// Serve implements rpc.Network
+func (svr *Server) Serve(ctx context.Context) error {
+	<-ctx.Done()
+	return ctx.Err()
 }
