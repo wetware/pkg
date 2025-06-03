@@ -25,6 +25,10 @@ func (c BytecodeCache) put(bc []byte) cid.Cid {
 	return cid
 }
 
+func (c BytecodeCache) ExposedPut(bc []byte) cid.Cid {
+	return c.put(bc)
+}
+
 func (c BytecodeCache) Put(ctx context.Context, call api.BytecodeCache_put) error {
 	res, err := call.AllocResults()
 	if err != nil {

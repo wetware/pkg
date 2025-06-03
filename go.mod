@@ -144,3 +144,5 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	zenhack.net/go/util v0.0.0-20230607025951-8b02fee814ae // indirect
 )
+
+replace github.com/wetware/pkg => /home/mikel/Code/github.com/mikelsr/pkg

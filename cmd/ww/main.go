@@ -22,8 +22,10 @@ import (
 	"github.com/tetratelabs/wazero/sys"
 	"github.com/urfave/cli/v2"
 
+	"github.com/wetware/pkg/cmd/ww/benchmark"
 	"github.com/wetware/pkg/cmd/ww/cluster"
 	"github.com/wetware/pkg/cmd/ww/ls"
+	"github.com/wetware/pkg/cmd/ww/ps"
 	"github.com/wetware/pkg/cmd/ww/run"
 	"github.com/wetware/pkg/cmd/ww/start"
 	"github.com/wetware/pkg/util/proto"
@@ -67,9 +69,11 @@ var flags = []cli.Flag{
 
 var commands = []*cli.Command{
 	ls.Command(),
+	ps.Command(),
 	run.Command(),
 	start.Command(),
 	cluster.Command(),
+	benchmark.Command(),
 }
 
 func main() {
@@ -146,7 +150,28 @@ func colorDisabled() bool {
 }
 
 func bootstrapAddr() string {
-	return path.Join("/ip4/228.8.8.8/udp/8822/multicast", loopback())
+	return path.Join("/ip4/228.8.8.8/udp/8822/multicast", eth())
+}
+
+//	func bootstrapAddr() string {
+//		return path.Join("/ip4/228.8.8.8/udp/8822/multicast", loopback())
+//	}
+func eth() string {
+	switch runtime.GOOS {
+	case "darwin":
+		return "lo0"
+	default:
+		if runtime.GOARCH == "amd64" {
+			hostname, err := os.Hostname()
+			if err != nil || hostname != "labtop" {
+				return "enp7s0"
+			} else {
+				return "enp58s0f1"
+			}
+		} else {
+			return "enxb827eb6d6e99"
+		}
+	}
 }
 
 func loopback() string {

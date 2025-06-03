@@ -13,7 +13,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 
-	api "github.com/wetware/pkg/api/cluster"
+	api "github.com/wetware/pkg/api/core"
 	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/boot"
 	"github.com/wetware/pkg/system"
@@ -81,7 +81,7 @@ func (d Dialer) DialRPC(ctx context.Context, addr peer.AddrInfo, protos ...proto
 		return nil, err
 	}
 
-	conn := rpc.NewConn(transport(s), &rpc.Options{
+	conn := rpc.NewConn(Transport(s), &rpc.Options{
 		BootstrapClient: d.Account.Client(),
 		ErrorReporter: system.ErrorReporter{
 			Logger: slog.Default().With(
@@ -102,4 +102,31 @@ func (d Dialer) DialP2P(ctx context.Context, addr peer.AddrInfo, protos ...proto
 	}
 
 	return d.Host.NewStream(ctx, addr.ID, protos...)
+}
+
+func (d Dialer) DialConn(ctx context.Context, conn *rpc.Conn) (auth.Session, error) {
+	client := conn.Bootstrap(ctx)
+	if err := client.Resolve(ctx); err != nil {
+		return auth.Session{}, fmt.Errorf("bootstrap: %w", err)
+	}
+
+	term := api.Terminal(client)
+	defer term.Release()
+
+	f, release := term.Login(ctx, func(call api.Terminal_login_Params) error {
+		return call.SetAccount(d.Account.Account())
+	})
+	defer release()
+
+	res, err := f.Struct()
+	if err != nil {
+		return auth.Session{}, err
+	}
+
+	sess, err := res.Session()
+	if err != nil {
+		return auth.Session{}, err
+	}
+
+	return auth.Session(sess).AddRef(), nil
 }

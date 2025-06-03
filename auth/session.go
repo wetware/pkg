@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"capnproto.org/go/capnp/v3"
-	api "github.com/wetware/pkg/api/cluster"
+	api "github.com/wetware/pkg/api/core"
 	"github.com/wetware/pkg/cap/capstore"
 	"github.com/wetware/pkg/cap/csp"
 	"github.com/wetware/pkg/cap/view"

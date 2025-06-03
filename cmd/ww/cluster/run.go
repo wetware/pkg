@@ -1,17 +1,13 @@
 package cluster
 
 import (
-	"context"
-	"fmt"
 	"io"
 	"os"
 	"time"
 
-	"capnproto.org/go/capnp/v3"
 	"github.com/urfave/cli/v2"
 
-	"github.com/wetware/pkg/auth"
-	"github.com/wetware/pkg/cap/csp"
+	api "github.com/wetware/pkg/api/core"
 	"github.com/wetware/pkg/vat"
 )
 
@@ -28,62 +24,33 @@ func run() *cli.Command {
 
 func runAction() cli.ActionFunc {
 	return func(c *cli.Context) error {
-		// Load the name of the entry function and the WASM file containing the module to run
+		// Load the name of the entry function and the WASM file containing
+		// the module to run.
 		rom, err := bytecode(c)
 		if err != nil {
 			return err
 		}
 
-		// Set up the wetware client and dial into the cluster
+		// Prepare argv for the process.
+		args := []string{}
+		if c.Args().Len() > 1 {
+			args = append(args, c.Args().Slice()[1:]...)
+		}
+
+		// Get a session.
 		h, err := vat.DialP2P()
 		if err != nil {
 			return err
 		}
-		defer h.Close()
-
-		bootstrap, err := newBootstrap(c, h)
-		if err != nil {
-			return fmt.Errorf("discovery: %w", err)
-		}
-		defer bootstrap.Close()
-
-		sess, err = vat.Dialer{
-			Host:    h,
-			Account: auth.SignerFromHost(h),
-		}.DialDiscover(c.Context, bootstrap, c.String("ns"))
+		sess, close, err := BootstrapSession(c, h)
+		defer close()
 		if err != nil {
 			return err
 		}
 
-		// Obtain an executor and load a process from a ROM image.
-
-		bCtx, err := csp.NewBootContext().
-			WithArgs(c.Args().Slice()...).
-			WithCaps(capnp.Client(sess.CapStore()))
-		if err != nil {
-			return err
-		}
-
-		proc, release := sess.Exec().Exec(c.Context, rom, 0, bCtx.Cap())
+		p, release := sess.Exec().Exec(c.Context, api.Session(sess), rom, 0, args...)
 		defer release()
-
-		waitChan := make(chan error, 1)
-		go func() {
-			waitChan <- proc.Wait(c.Context)
-		}()
-		select {
-		case err = <-waitChan:
-			return err
-		case <-c.Context.Done():
-			killChan := make(chan error, 1)
-			go func() { killChan <- proc.Kill(context.Background()) }()
-			select {
-			case err = <-killChan:
-				return err
-			case <-time.After(killTimeout):
-				return err
-			}
-		}
+		return p.Wait(c.Context)
 	}
 }
 

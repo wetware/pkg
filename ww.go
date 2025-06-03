@@ -99,7 +99,10 @@ func (ww Ww) Exec(ctx context.Context, rom rom.ROM) error {
 	if err != nil {
 		return err
 	}
-	go csp_server.ServeModule(addr, ww.Root)
+	_, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	go csp_server.ServeModule(ctx, addr, ww.Root)
 	defer mod.Close(ctx)
 
 	return ww.run(ctx, mod)

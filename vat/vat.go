@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"runtime"
 	"sync"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 
+	core_api "github.com/wetware/pkg/api/core"
 	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/boot"
 	capstore_server "github.com/wetware/pkg/cap/capstore/server"
@@ -42,7 +44,7 @@ type Config struct {
 	RuntimeConfig      wazero.RuntimeConfig
 }
 
-func (conf Config) Serve(ctx context.Context) error {
+func (conf Config) Serve(ctx context.Context, ec chan csp_server.Runtime, sc chan core_api.Session, h local.Host) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -73,7 +75,7 @@ func (conf Config) Serve(ctx context.Context) error {
 	}
 	defer r.Close()
 
-	e, err := conf.NewExecutor(ctx)
+	e, err := conf.NewExecutor(ctx, h)
 	if err != nil {
 		return err
 	}
@@ -84,7 +86,10 @@ func (conf Config) Serve(ctx context.Context) error {
 		Auth:             conf.Auth,
 		ViewProvider:     r,
 		ExecutorProvider: e,
-		CapStoreProvider: &capstore_server.CapStore{Map: &sync.Map{}},
+		CapStoreProvider: &capstore_server.CapStore{
+			Map:    &sync.Map{},
+			Logger: slog.Default(),
+		},
 		// PubSubProvider: &pubsub.Server{TopicJoiner: ps},
 		// 	WithCloseOnContextDone(true),
 	}
@@ -95,6 +100,10 @@ func (conf Config) Serve(ctx context.Context) error {
 		return err
 	}
 	defer release()
+	s, err := server.NewRootSession()
+	if err != nil {
+		panic(err)
+	}
 
 	logger := system.ErrorReporter{
 		Logger: conf.Logger().With("id", r.ID()),
@@ -103,6 +112,8 @@ func (conf Config) Serve(ctx context.Context) error {
 	logger.Info("wetware started")
 	defer logger.Warn("wetware started")
 
+	sc <- s
+	ec <- e
 	for {
 		opts := &rpc.Options{
 			BootstrapClient: server.Export(),
@@ -120,12 +131,19 @@ func (conf Config) Serve(ctx context.Context) error {
 	}
 }
 
-func (conf Config) NewExecutor(ctx context.Context) (csp_server.Runtime, error) {
+func (conf Config) NewExecutor(ctx context.Context, h local.Host) (csp_server.Runtime, error) {
 	if conf.RuntimeConfig == nil {
-		conf.RuntimeConfig = wazero.
-			NewRuntimeConfigCompiler().
-			WithCompilationCache(wazero.NewCompilationCache()).
-			WithCloseOnContextDone(true)
+		if runtime.GOARCH == "amd64" || runtime.GOARCH == "arm64" {
+			conf.RuntimeConfig = wazero.
+				NewRuntimeConfigCompiler().
+				WithCompilationCache(wazero.NewCompilationCache()).
+				WithCloseOnContextDone(true)
+		} else {
+			conf.RuntimeConfig = wazero.
+				NewRuntimeConfigInterpreter().
+				WithCompilationCache(wazero.NewCompilationCache()).
+				WithCloseOnContextDone(true)
+		}
 	}
 
 	r := wazero.NewRuntimeWithConfig(ctx, conf.RuntimeConfig)
@@ -138,6 +156,40 @@ func (conf Config) NewExecutor(ctx context.Context) (csp_server.Runtime, error) 
 		Runtime: r,
 		Cache:   make(csp_server.BytecodeCache),
 		Tree:    csp_server.NewProcTree(ctx),
+		Log:     slog.Default(),
+		PeerDial: func(ctx context.Context, call core_api.Executor_dialPeer) error {
+			res, err := call.AllocResults()
+			if err != nil {
+				return err
+			}
+
+			p, err := call.Args().PeerId()
+			if err != nil {
+				return err
+			}
+			var id peer.ID
+			err = id.UnmarshalBinary(p)
+			if err != nil {
+				return err
+			}
+			if id == h.ID() {
+				res.SetSelf(true)
+				return nil
+			}
+			d := Dialer{
+				Host:    h,
+				Account: auth.SignerFromHost(h),
+			}
+			sess, err := d.Dial(
+				ctx,
+				h.Peerstore().PeerInfo(id),
+				proto.Namespace("ww")...)
+			if err != nil {
+				return err
+			}
+			res.SetSelf(false)
+			return res.SetSession(core_api.Session(sess))
+		},
 	}, nil
 }
 
@@ -225,7 +277,7 @@ func (svr *Server) Dial(pid rpc.PeerID, opt *rpc.Options) (*rpc.Conn, error) {
 		return nil, err
 	}
 
-	conn := rpc.NewConn(transport(s), opt)
+	conn := rpc.NewConn(Transport(s), opt)
 	return conn, nil
 }
 
@@ -247,7 +299,7 @@ func (svr *Server) Accept(ctx context.Context, opt *rpc.Options) (*rpc.Conn, err
 		}
 		opt.Network = svr
 
-		conn := rpc.NewConn(transport(s), opt)
+		conn := rpc.NewConn(Transport(s), opt)
 		return conn, nil
 
 	case <-ctx.Done():

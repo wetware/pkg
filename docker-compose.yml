@@ -1,0 +1,13 @@
+version: "2"
+services:
+  ww:
+    build: .
+    image: ww-bench:latest
+    network_mode: "host"
+    stdin_open: true
+    tty: true
+    privileged: true
+    volumes:
+      - ./:/pkg
+    working_dir: /pkg
+

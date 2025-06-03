@@ -3,6 +3,7 @@ package csp_server
 import (
 	"context"
 	"fmt"
+	"sync"
 	"sync/atomic"
 
 	api "github.com/wetware/pkg/api/process"
@@ -14,7 +15,6 @@ const INIT_PID = 1
 // It is represented a binary tree, in which the left branch of a node
 // represents a child process, while the right branch represents a
 // sibling process (shares the same parent).
-// TODO: thread safety.
 type ProcTree struct {
 	// TODO move context out of tree
 	Ctx context.Context
@@ -25,7 +25,10 @@ type ProcTree struct {
 	// Root of the process tree.
 	Root *ProcNode
 	// Map of processes associated to their PIDs. MUST be initialized.
-	Map map[uint32]api.Process_Server
+	// Map map[uint32]api.Process_Server
+	Map *sync.Map
+	// Mutex to ensure thread safety.
+	Mut *sync.RWMutex
 }
 
 // NewProcTree is the default constuctor for ProcTree, but it may
@@ -36,7 +39,8 @@ func NewProcTree(ctx context.Context) ProcTree {
 		PIDC: NewAtomicCounter(INIT_PID),
 		TPC:  NewAtomicCounter(1),
 		Root: &ProcNode{Pid: INIT_PID},
-		Map:  make(map[uint32]api.Process_Server),
+		Map:  &sync.Map{},
+		Mut:  &sync.RWMutex{},
 	}
 }
 
@@ -47,7 +51,7 @@ func (pt *ProcTree) PpidOrInit(ppid uint32) uint32 {
 		return INIT_PID
 	} else {
 		// Default INIT_PID as a parent.
-		if _, ok := pt.Map[ppid]; !ok {
+		if _, ok := pt.Load(ppid); !ok {
 			return INIT_PID
 		}
 	}
@@ -58,27 +62,29 @@ func (pt *ProcTree) PpidOrInit(ppid uint32) uint32 {
 // with any existing processes.
 func (pt *ProcTree) NextPid() uint32 {
 	pid := pt.PIDC.Inc()
-	_, col := pt.Map[pid]
+	_, col := pt.Load(pid)
 	for col {
 		pid := pt.PIDC.Inc()
-		_, col = pt.Map[pid]
+		_, col = pt.Load(pid)
 	}
 	return pid
 }
 
 // Kill recursively kills a process and it's children
 func (pt *ProcTree) Kill(pid uint32) {
+	pt.Mut.Lock()
+	defer pt.Mut.Unlock()
 	// Can't kill root process.
 	if pid == pt.Root.Pid {
 		return
 	}
 
-	n := pt.Pop(pid)
-	p, ok := pt.Map[pid]
+	n := pop(pt.Root, pid)
+	p, ok := pt.Load(pid)
 	if ok && p != nil {
 		pt.TPC.Dec()
 		stop(pt.Ctx, p)
-		delete(pt.Map, pid)
+		pt.Delete(pid)
 	}
 
 	// Kill all subprocesses.
@@ -92,11 +98,11 @@ func (pt *ProcTree) kill(n *ProcNode) {
 	if n == nil {
 		return
 	}
-	p, ok := pt.Map[n.Pid]
+	p, ok := pt.Load(n.Pid)
 	if ok && p != nil {
 		pt.TPC.Dec()
 		stop(pt.Ctx, p)
-		delete(pt.Map, n.Pid)
+		pt.Delete(n.Pid)
 	}
 	pt.kill(n.Left)
 	pt.kill(n.Right)
@@ -108,7 +114,7 @@ func stop(ctx context.Context, p api.Process_Server) {
 	// thus we must avoid infinite recursivity. The process is
 	// killed with p.cancel() instead.
 	if ps, ok := p.(*process); ok {
-		fmt.Printf("killing process %d\n", p.(*process).pid)
+		fmt.Printf("killing process %d\n", p.(*process).Pid)
 		ps.cancel()
 	} else {
 		// Generic implementation.
@@ -119,17 +125,23 @@ func stop(ctx context.Context, p api.Process_Server) {
 // Pop removes the node with PID=pid and replaces it with a sibling
 // in the process tree.
 func (pt ProcTree) Pop(pid uint32) *ProcNode {
+	pt.Mut.Lock()
+	defer pt.Mut.Unlock()
+	return pop(pt.Root, pid)
+}
+
+func pop(n *ProcNode, pid uint32) *ProcNode {
 	// Root proc.
-	if pid == pt.Root.Pid {
+	if pid == n.Pid {
 		return nil
 	}
 
 	// Find the parent.
-	parent := pt.FindParent(pid)
+	parent, _ := findParent(n, pid)
 
 	// Orphaned node.
 	if parent == nil {
-		return pt.Find(pid)
+		return find(n, pid)
 	}
 
 	child := parent.Left
@@ -161,18 +173,24 @@ func (pt ProcTree) Pop(pid uint32) *ProcNode {
 
 // Find returns a node in the process tree with PID=pid. nil if not found.
 func (pt ProcTree) Find(pid uint32) *ProcNode {
+	pt.Mut.RLock()
+	defer pt.Mut.RUnlock()
 	return find(pt.Root, pid)
 }
 
 // FindParent returns the parent of the process with PID=pid. nil if not found.
 func (pt ProcTree) FindParent(pid uint32) *ProcNode {
+	pt.Mut.RLock()
+	defer pt.Mut.RUnlock()
 	n, _ := findParent(pt.Root, pid)
 	return n
 }
 
 // Insert creates a node with PID=pid as a child of PID=ppid.
 func (pt ProcTree) Insert(pid, ppid uint32) error {
+	pt.Mut.Lock()
 	err := insert(pt.Root, pid, ppid)
+	pt.Mut.Unlock()
 	if err == nil {
 		pt.TPC.Inc()
 	}
@@ -253,17 +271,46 @@ func insert(root *ProcNode, pid, ppid uint32) error {
 	return nil
 }
 
-func (pt ProcTree) AddToMap(pid uint32, p api.Process_Server) {
-	pt.Map[pid] = p
-}
-
 // Trim all orphaned branches.
 func (pt ProcTree) Trim(ctx context.Context) {
-	for pid := range pt.Map {
+	for pid := range pt.MapSnapshot() {
 		if pt.Find(pid) == nil {
 			pt.Kill(pid)
 		}
 	}
+}
+
+func (pt ProcTree) AddToMap(pid uint32, p api.Process_Server) {
+	pt.Store(pid, p)
+}
+
+// Load a process from the map.
+func (pt ProcTree) Load(pid uint32) (api.Process_Server, bool) {
+	v, ok := pt.Map.Load(pid)
+	if !ok {
+		return nil, ok
+	}
+	return v.(api.Process_Server), ok
+}
+
+// Store a process on the map.
+func (pt ProcTree) Store(pid uint32, p api.Process_Server) {
+	pt.Map.Store(pid, p)
+}
+
+// Delete a process from the map.
+func (pt ProcTree) Delete(pid uint32) {
+	pt.Map.Delete(pid)
+}
+
+// MapSnapshots returns a snapshot of Map as a native map.
+func (pt ProcTree) MapSnapshot() map[uint32]api.Process_Server {
+	snapshot := make(map[uint32]api.Process_Server)
+	pt.Map.Range(func(key, value any) bool {
+		snapshot[key.(uint32)] = value.(api.Process_Server)
+		return true
+	})
+	return snapshot
 }
 
 // ProcNode represents a process in the process tree.

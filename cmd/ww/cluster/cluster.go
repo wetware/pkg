@@ -1,6 +1,8 @@
 package cluster
 
 import (
+	"fmt"
+
 	local "github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
@@ -8,13 +10,10 @@ import (
 
 	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/boot"
+	"github.com/wetware/pkg/vat"
 )
 
-var (
-	sess auth.Session
-	// releases *[]func()
-	// closes   *[]func() error
-)
+type CloseFunc func() error
 
 func Command() *cli.Command {
 	return &cli.Command{
@@ -25,6 +24,31 @@ func Command() *cli.Command {
 			run(),
 		},
 	}
+}
+
+// Login in into the cluster and get an auth.Session capability.
+func BootstrapSession(c *cli.Context, h local.Host) (s auth.Session, r CloseFunc, err error) {
+	// Connect to peers.
+	bootstrap, err := newBootstrap(c, h)
+	if err != nil {
+		err = fmt.Errorf("discovery: %w", err)
+		return
+	}
+	r = func() error {
+		defer h.Close()
+		defer bootstrap.Close()
+		return nil
+	}
+
+	// Login into the wetware cluster.
+	s, err = vat.Dialer{
+		Host:    h,
+		Account: auth.SignerFromHost(h),
+	}.DialDiscover(c.Context, bootstrap, c.String("ns"))
+	if err != nil {
+		return
+	}
+	return
 }
 
 func newBootstrap(c *cli.Context, h local.Host) (_ boot.Service, err error) {

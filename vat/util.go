@@ -60,7 +60,7 @@ func wanOpt(ns string) []dht.Option {
 		dht.ProtocolExtension("/wan")}
 }
 
-func transport(s network.Stream) rpc.Transport {
+func Transport(s network.Stream) rpc.Transport {
 	if strings.HasSuffix(string(s.Protocol()), "/packed") {
 		return rpc.NewPackedStreamTransport(s)
 	}

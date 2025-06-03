@@ -7,7 +7,7 @@ import (
 
 	local "github.com/libp2p/go-libp2p/core/host"
 
-	api "github.com/wetware/pkg/api/cluster"
+	api "github.com/wetware/pkg/api/core"
 	"github.com/wetware/pkg/auth"
 
 	"capnproto.org/go/capnp/v3/rpc"

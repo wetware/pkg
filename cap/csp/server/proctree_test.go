@@ -3,6 +3,7 @@ package csp_server_test
 import (
 	"context"
 	"math"
+	"sync"
 	"testing"
 
 	api "github.com/wetware/pkg/api/process"
@@ -20,6 +21,37 @@ func (p *testProc) Kill(context.Context, api.Process_kill) error {
 }
 
 func (p *testProc) Wait(ctx context.Context, call api.Process_wait) error {
+	return nil
+}
+
+func (p *testProc) Link(ctx context.Context, call api.Process_link) error {
+	return nil
+}
+
+func (p *testProc) LinkLocal(ctx context.Context, call api.Process_linkLocal) error {
+	return nil
+}
+
+func (p *testProc) Unlink(ctx context.Context, call api.Process_unlink) error {
+	return nil
+}
+
+func (p *testProc) UnlinkLocal(ctx context.Context, call api.Process_unlinkLocal) error {
+	return nil
+}
+
+func (p *testProc) Monitor(ctx context.Context, call api.Process_monitor) error {
+	return nil
+}
+func (p *testProc) Pause(ctx context.Context, call api.Process_pause) error {
+	return nil
+}
+
+func (p *testProc) Resume(ctx context.Context, call api.Process_resume) error {
+	return nil
+}
+
+func (p *testProc) Id(ctx context.Context, call api.Process_id) error {
 	return nil
 }
 
@@ -74,9 +106,9 @@ func testProcTree() csp.ProcTree {
 		},
 	}
 
-	procMap := make(map[uint32]api.Process_Server)
+	procMap := &sync.Map{}
 	for pid := uint32(0); pid <= 11; pid++ {
-		procMap[pid] = &testProc{pid: pid, alive: true}
+		procMap.Store(pid, &testProc{pid: pid, alive: true})
 	}
 
 	return csp.ProcTree{
@@ -85,6 +117,7 @@ func testProcTree() csp.ProcTree {
 		TPC:  csp.NewAtomicCounter(10),
 		Root: root,
 		Map:  procMap,
+		Mut:  &sync.RWMutex{},
 	}
 }
 
@@ -190,7 +223,7 @@ func TestProcTree_Kill(t *testing.T) {
 	pt := testProcTree()
 
 	mapCopy := make(map[uint32]api.Process_Server)
-	for k, v := range pt.Map {
+	for k, v := range pt.MapSnapshot() {
 		mapCopy[k] = v
 	}
 
@@ -202,7 +235,7 @@ func TestProcTree_Kill(t *testing.T) {
 	aliveProcs := []uint32{10, 11}
 
 	for _, pid := range killedProcs {
-		if _, found := pt.Map[pid]; found {
+		if _, found := pt.Load(pid); found {
 			t.Fatalf("found process %d in map but it should have been deleted", pid)
 		}
 		p := mapCopy[pid]
@@ -212,7 +245,7 @@ func TestProcTree_Kill(t *testing.T) {
 	}
 
 	for _, pid := range aliveProcs {
-		if _, found := pt.Map[pid]; !found {
+		if _, found := pt.Load(pid); !found {
 			t.Fatalf("failed to find process %d in map", pid)
 		}
 		p := mapCopy[pid]
@@ -232,14 +265,14 @@ func TestProcTree_Trim(t *testing.T) {
 	pt.Trim(context.TODO())
 
 	mapCopy := make(map[uint32]api.Process_Server)
-	for k, v := range pt.Map {
+	for k, v := range pt.MapSnapshot() {
 		mapCopy[k] = v
 	}
 
 	killedProcs := []uint32{1, 2, 3, 4, 5, 6, 7, 8, 9}
 	aliveProcs := []uint32{10, 11}
 	for _, pid := range aliveProcs {
-		if _, found := pt.Map[pid]; !found {
+		if _, found := pt.Load(pid); !found {
 			t.Fatalf("failed to find process %d in map", pid)
 		}
 		p := mapCopy[pid]
@@ -250,5 +283,79 @@ func TestProcTree_Trim(t *testing.T) {
 	c, e := pt.TPC.Get(), uint32(10-len(killedProcs))
 	if c != e {
 		t.Fatalf("expected a process count of %d, got %d", e, c)
+	}
+}
+
+func BenchmarkTree_InsertSibling(b *testing.B) {
+	t := csp.ProcTree{
+		Ctx:  context.Background(),
+		PIDC: csp.NewAtomicCounter(10),
+		TPC:  csp.NewAtomicCounter(10),
+		Root: &csp.ProcNode{Pid: 0},
+		Map:  &sync.Map{},
+		Mut:  &sync.RWMutex{},
+	}
+	offset := uint32(1)
+	total := uint32(10000)
+	b.ResetTimer()
+	for i := offset; i < total+offset; i++ {
+		t.Insert(i, 0)
+	}
+}
+
+func BenchmarkTree_InsertChild(b *testing.B) {
+	t := csp.ProcTree{
+		Ctx:  context.Background(),
+		PIDC: csp.NewAtomicCounter(10),
+		TPC:  csp.NewAtomicCounter(10),
+		Root: &csp.ProcNode{Pid: 0},
+		Map:  &sync.Map{},
+		Mut:  &sync.RWMutex{},
+	}
+	offset := uint32(1)
+	total := uint32(10000)
+	b.ResetTimer()
+	for i := offset; i < total+offset; i++ {
+		t.Insert(i, i-1)
+	}
+}
+
+func BenchmarkTree_DeleteDesc(b *testing.B) {
+	t := csp.ProcTree{
+		Ctx:  context.Background(),
+		PIDC: csp.NewAtomicCounter(10),
+		TPC:  csp.NewAtomicCounter(10),
+		Root: &csp.ProcNode{Pid: 0},
+		Map:  &sync.Map{},
+		Mut:  &sync.RWMutex{},
+	}
+	offset := uint32(1)
+	total := uint32(10000)
+	for i := offset; i < total+offset; i++ {
+		t.Insert(i, 0)
+	}
+	b.ResetTimer()
+	for i := total + offset - 1; i >= offset; i-- {
+		t.Pop(i)
+	}
+}
+
+func BenchmarkTree_DeleteAsc(b *testing.B) {
+	t := csp.ProcTree{
+		Ctx:  context.Background(),
+		PIDC: csp.NewAtomicCounter(10),
+		TPC:  csp.NewAtomicCounter(10),
+		Root: &csp.ProcNode{Pid: 0},
+		Map:  &sync.Map{},
+		Mut:  &sync.RWMutex{},
+	}
+	offset := uint32(1)
+	total := uint32(10000)
+	for i := offset; i < total+offset; i++ {
+		t.Insert(i, 0)
+	}
+	b.ResetTimer()
+	for i := offset; i < total+offset; i++ {
+		t.Pop(i)
 	}
 }

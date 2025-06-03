@@ -5,30 +5,17 @@ using Go = import "/go.capnp";
 $Go.package("process");
 $Go.import("github.com/wetware/pkg/api/process");
 
-
-interface Executor {
-    # Executor has the ability to create and run WASM processes given the
-    # WASM bytecode.
-    exec @0 (bytecode :Data, ppid :UInt32, bctx :BootContext) -> (process :Process);
-    # Exec creates an runs a process from the provided bytecode. Optionally, a
-    # capability can be passed through the `cap` parameter. This capability will
-    # be available at the process bootContext.
-    #
-    # The Process capability is associated to the created process.
-    execCached @1 (cid :Data, ppid :UInt32, bctx :BootContext) -> (process :Process);
-    # Same as Exec, but the bytecode is directly from the BytecodeRegistry.
-    # Provides a significant performance improvement for medium to large
-    # WASM streams.
-}
+using Cid = Data;
+using Pid = UInt32;
 
 interface BytecodeCache {
     # BytecodeCache is used to store WASM byte code. May be implemented with
     # anchors or any other means.
     put @0 (bytecode :Data) -> (cid :Data);
     # Put stores the bytecode and returns the cid of the submitted bytecode.
-    get @1 (cid :Data) -> (bytecode :Data);
+    get @1 (cid :Cid) -> (bytecode :Data);
     # Get returns the bytecode matching a cid if there's a match, null otherwise.
-    has @2 (cid :Data) -> (has :Bool);
+    has @2 (cid :Cid) -> (has :Bool);
     # Has returns true if a bytecode identified by the cid has been previously stored.
 }
 
@@ -38,20 +25,34 @@ interface Process {
     # Wait until a process finishes running.
     kill   @1 () -> ();
     # Kill the process.
+    link   @2 (other :Process, roundtrip :Bool) -> ();
+    # Link a process.
+    unlink @3 (other :Process, roundtrip :Bool) -> ();
+    # Unlink a process.
+    linkLocal   @4 (other :Pid) -> ();
+    # Link a local process.
+    unlinkLocal @5 (other :Pid) -> ();
+    # Unlink a local process.
+    monitor @6 () -> (event :Text);
+    # Monitor a process.
+    pause  @7 () -> ();
+    # Pause a process.
+    resume @8 () -> ();
+    # Resume a paused process.
+    id @9 () -> (id :Int64);
 }
 
-interface BootContext {
-    # Every process is given a BootContext containing the arguments and capabilitis
-    # passed by the parent process.
-    pid  @0 () -> (pid :UInt32);
-    # PID of the process.
-    cid  @1 () -> (cid :Data);
-    # CID of the process bytecode.
-    args @2 () -> (args :List(Text));
-    # CLI arguments.
-    caps @3 () -> (caps :List(Capability));
-    # Capabilities.
+struct Info {
+    pid  @0 :Pid;
+    ppid @1 :Pid;
+    cid  @2 :Cid;
+    argv @3 :List(Text);
+    time @4 :Int64;
+}
 
-    setPid @4 (pid :UInt32) -> ();
-    setCid @5 (cid :Data) -> ();
+interface Events {
+    # Events are sent to the WASM process. It's the process' responsiblity to
+    # handle events.
+    pause  @0 () -> ();
+    resume @1 () -> ();
 }

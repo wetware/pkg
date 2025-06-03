@@ -11,7 +11,9 @@ import (
 	"github.com/libp2p/go-libp2p/core/peerstore"
 	inproc "github.com/lthibault/go-libp2p-inproc-transport"
 	"github.com/stretchr/testify/require"
+	core_api "github.com/wetware/pkg/api/core"
 	"github.com/wetware/pkg/auth"
+	csp_server "github.com/wetware/pkg/cap/csp/server"
 	"github.com/wetware/pkg/vat"
 )
 
@@ -33,6 +35,8 @@ func TestServer(t *testing.T) {
 	require.NoError(t, err)
 	defer dht.Close()
 
+	ec := make(chan csp_server.Runtime, 1)
+	sc := make(chan core_api.Session, 1)
 	err = vat.Config{
 		NS:        "test",
 		Host:      h,
@@ -43,7 +47,9 @@ func TestServer(t *testing.T) {
 			defer cancel()
 			require.NotZero(t, root, "must return non-null Host")
 		},
-	}.Serve(ctx)
+	}.Serve(ctx, ec, sc, h)
+	<-sc
+	<-ec
 	require.ErrorIs(t, err, context.Canceled)
 }
 

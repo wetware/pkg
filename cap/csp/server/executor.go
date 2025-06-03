@@ -5,45 +5,66 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	mrand "math/rand"
 	"net"
 	"os"
+	"sync"
 	"time"
 
 	"log/slog"
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
+	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
-	"github.com/stealthrocket/wazergo"
+	"github.com/multiformats/go-multibase"
 	"github.com/tetratelabs/wazero"
 	wasm "github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/experimental/sock"
 
-	api "github.com/wetware/pkg/api/cluster"
+	core_api "github.com/wetware/pkg/api/core"
 	proc_api "github.com/wetware/pkg/api/process"
 	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/cap/csp"
-	"github.com/wetware/pkg/cap/csp/proc"
+	"github.com/wetware/pkg/rom"
 	"github.com/wetware/pkg/system"
+	"github.com/wetware/pkg/util/log"
 )
+
+var nilCid, _ = cid.V1Builder{}.Sum([]byte{})
+
+// components the Runtime requires to build a process.
+type components struct {
+	args     csp.Args
+	bytecode []byte
+	session  core_api.Session
+
+	ctx    context.Context
+	cancel context.CancelFunc
+}
+
+type execArgs interface {
+	Args() (capnp.TextList, error)
+	Ppid() uint32
+	Session() (core_api.Session, error)
+}
 
 // Runtime is the main Executor implementation.  It spawns WebAssembly-
 // based processes.  The zero-value Runtime panics.
 type Runtime struct {
-	Runtime wazero.Runtime
-	Cache   BytecodeCache
-	Tree    ProcTree
-
-	// HostModule is unused for now.
-	HostModule *wazergo.ModuleInstance[*proc.Module]
+	Runtime  wazero.Runtime
+	Cache    BytecodeCache
+	Tree     ProcTree
+	Log      log.Logger
+	PeerDial func(context.Context, core_api.Executor_dialPeer) error
 }
 
 // Executor provides the Executor capability.
 func (r Runtime) Executor() csp.Executor {
-	return csp.Executor(proc_api.Executor_ServerToClient(r))
+	return csp.Executor(core_api.Executor_ServerToClient(r))
 }
 
-func (r Runtime) Exec(ctx context.Context, call proc_api.Executor_exec) error {
+func (r Runtime) Exec(ctx context.Context, call core_api.Executor_exec) error {
 	res, err := call.AllocResults()
 	if err != nil {
 		return err
@@ -54,35 +75,17 @@ func (r Runtime) Exec(ctx context.Context, call proc_api.Executor_exec) error {
 		return err
 	}
 
-	// Cache new bytecodes every time they are received.
 	cid := r.Cache.put(bc)
 
-	var bCtx proc_api.BootContext
-	if call.Args().HasBctx() {
-		bCtx = call.Args().Bctx()
-	} else {
-		bCtx = csp.NewBootContext().Cap()
-	}
-	if err = csp.BootCtx(bCtx).SetCid(ctx, cid); err != nil {
-		return err
-	}
-
-	ppid := r.Tree.PpidOrInit(call.Args().Ppid())
-	pArgs := procArgs{
-		bc:   bc,
-		ppid: ppid,
-		bCtx: bCtx,
-	}
-
-	p, err := r.mkproc(ctx, pArgs)
+	p, err := r.exec(ctx, cid, bc, call.Args())
 	if err != nil {
 		return err
 	}
 
-	return res.SetProcess(proc_api.Process_ServerToClient(p))
+	return res.SetProcess(p)
 }
 
-func (r Runtime) ExecCached(ctx context.Context, call proc_api.Executor_execCached) error {
+func (r Runtime) ExecCached(ctx context.Context, call core_api.Executor_execCached) error {
 	res, err := call.AllocResults()
 	if err != nil {
 		return err
@@ -102,38 +105,75 @@ func (r Runtime) ExecCached(ctx context.Context, call proc_api.Executor_execCach
 		return fmt.Errorf("bytecode for cid %s not found", cid)
 	}
 
-	var bCtx proc_api.BootContext
-	if call.Args().HasBctx() {
-		bCtx = call.Args().Bctx()
-	} else {
-		bCtx = csp.NewBootContext().Cap()
-	}
-	if err = csp.BootCtx(bCtx).SetCid(ctx, cid); err != nil {
-		return err
-	}
+	p, err := r.exec(ctx, cid, bc, call.Args())
 
-	ppid := r.Tree.PpidOrInit(call.Args().Ppid())
-	pArgs := procArgs{
-		bc:   bc,
-		ppid: ppid,
-		bCtx: bCtx,
-	}
-
-	p, err := r.mkproc(ctx, pArgs)
 	if err != nil {
 		return err
 	}
 
-	return res.SetProcess(proc_api.Process_ServerToClient(p))
+	return res.SetProcess(p)
 }
 
-func (r Runtime) mkproc(ctx context.Context, args procArgs) (*process, error) {
-	pid := r.Tree.NextPid()
-	if err := csp.BootCtx(args.bCtx).SetPid(ctx, pid); err != nil {
-		return nil, err
+func (r Runtime) ExposedExec(ctx context.Context, id cid.Cid, bc []byte, ea execArgs) (proc_api.Process, error) {
+	return r.exec(ctx, id, bc, ea)
+}
+
+func (r Runtime) exec(ctx context.Context, id cid.Cid, bc []byte, ea execArgs) (proc_api.Process, error) {
+
+	if id == nilCid {
+		ro := rom.ROM{Bytecode: bc}
+		id = ro.CID()
 	}
 
-	mod, err := r.mkmod(ctx, args)
+	sess, err := ea.Session()
+	if err != nil {
+		return proc_api.Process{}, err
+	}
+
+	argl, err := ea.Args()
+	if err != nil {
+		return proc_api.Process{}, err
+	}
+	argv, err := csp.DecodeTextList(argl)
+	if err != nil {
+		return proc_api.Process{}, err
+	}
+
+	args := csp.Args{
+		Ppid: r.Tree.PpidOrInit(ea.Ppid()),
+		Cid:  id,
+		Pid:  r.Tree.NextPid(),
+		Cmd:  argv,
+	}
+	r.Log.Info("exec",
+		"pid", args.Pid,
+		"ppid", args.Ppid,
+		"cid", id.Encode(multibase.MustNewEncoder(multibase.Base58BTC)),
+		"args", argv)
+
+	// NOTE:  we use context.Background instead of the context obtained from the
+	//        rpc handler. This ensures that a process can continue to run after
+	//        the rpc handler has returned. Note also that this context is bound
+	//        to the application lifetime, so processes cannot block a shutdown.
+	cctx, ccancel := context.WithCancel(context.Background())
+	c := components{
+		args:     args,
+		bytecode: bc,
+		session:  sess,
+		ctx:      cctx,
+		cancel:   ccancel,
+	}
+
+	p, err := r.mkproc(ctx, c)
+	if err != nil {
+		return proc_api.Process{}, err
+	}
+
+	return proc_api.Process_ServerToClient(p), nil
+}
+
+func (r Runtime) mkproc(ctx context.Context, c components) (*process, error) {
+	mod, err := r.mkmod(ctx, c)
 	if err != nil {
 		return nil, err
 	}
@@ -143,21 +183,17 @@ func (r Runtime) mkproc(ctx context.Context, args procArgs) (*process, error) {
 		return nil, errors.New("ww: missing export: _start")
 	}
 
-	proc := r.spawn(fn, pid)
-
-	// Register new process.
-	r.Tree.Insert(proc.pid, args.ppid)
-	r.Tree.AddToMap(proc.pid, proc)
+	proc := r.spawn(fn, c)
 
 	return proc, nil
 }
 
-func (r Runtime) mkmod(ctx context.Context, args procArgs) (wasm.Module, error) {
-	name := csp.ByteCode(args.bc).String()
+func (r Runtime) mkmod(ctx context.Context, c components) (wasm.Module, error) {
+	name := csp.ByteCode(c.bytecode).String() + uuid.NewString()
 
 	// TODO(perf):  cache compiled modules so that we can instantiate module
 	//              instances for concurrent use.
-	compiled, err := r.Runtime.CompileModule(ctx, args.bc)
+	compiled, err := r.Runtime.CompileModule(ctx, c.bytecode)
 	if err != nil {
 		return nil, err
 	}
@@ -171,6 +207,7 @@ func (r Runtime) mkmod(ctx context.Context, args procArgs) (wasm.Module, error) 
 	}
 	addr := l.Addr().(*net.TCPAddr)
 
+	r.Log.Info("instantiate module", "name", name, "port", addr.Port)
 	// Enables the creation of non-blocking TCP connections
 	// inside the WASM module. The host will pre-open the TCP
 	// port and pass it to the guest through a file descriptor.
@@ -187,7 +224,7 @@ func (r Runtime) mkmod(ctx context.Context, args procArgs) (wasm.Module, error) 
 		WithStdin(os.Stdin).
 		WithStdout(os.Stdout).
 		WithStderr(os.Stderr).
-		WithArgs("foo", "bar", "baz")
+		WithArgs(c.args.Encode()...)
 
 	l.Close()
 	mod, err := r.Runtime.InstantiateModule(sockCtx, compiled, modCfg)
@@ -195,32 +232,40 @@ func (r Runtime) mkmod(ctx context.Context, args procArgs) (wasm.Module, error) 
 		return nil, err
 	}
 
-	// go ServeModule(addr, args.bCtx) // XXX
+	r.Log.Info("serve module", "pid", c.args.Pid, "cid", c.args.Cid.String())
+	go ServeModule(c.ctx, addr, auth.Session(c.session).AddRef())
 
 	return mod, nil
 }
 
-func (r Runtime) spawn(fn wasm.Function, pid uint32) *process {
+func (r Runtime) spawn(fn wasm.Function, c components) *process {
 	done := make(chan execResult, 1)
 
-	// NOTE:  we use context.Background instead of the context obtained from the
-	//        rpc handler. This ensures that a process can continue to run after
-	//        the rpc handler has returned. Note also that this context is bound
-	//        to the application lifetime, so processes cannot block a shutdown.
-	ctx, cancel := context.WithCancel(context.Background())
 	killFunc := r.Tree.Kill
 	proc := &process{
-		pid:      pid,
-		killFunc: killFunc,
-		done:     done,
-		cancel:   cancel,
+		Args:      c.args,
+		time:      time.Now().UnixMilli(),
+		killFunc:  killFunc,
+		done:      done,
+		cancel:    c.cancel,
+		procFetch: r.fetchLocalProc,
+
+		id:         mrand.Int63(),
+		links:      &sync.Map{},
+		localLinks: &sync.Map{},
+		monitors:   make(chan proc_api.Process_monitor),
+		events:     nilEvents,
 	}
+
+	// Register new process.
+	r.Tree.Insert(c.args.Pid, c.args.Ppid)
+	r.Tree.AddToMap(c.args.Pid, proc)
 
 	go func() {
 		defer close(done)
-		defer proc.killFunc(proc.pid)
-
-		vs, err := fn.Call(ctx)
+		defer c.cancel()       // stop the rpc provider
+		defer proc.kill(c.ctx) // terminate the process
+		vs, err := fn.Call(c.ctx)
 
 		done <- execResult{
 			Values: vs,
@@ -231,52 +276,110 @@ func (r Runtime) spawn(fn wasm.Function, pid uint32) *process {
 	return proc
 }
 
-type procArgs struct {
-	bc   []byte
-	ppid uint32
-	bCtx proc_api.BootContext
-}
-
 // ServeModule ensures the host side of the TCP connection with addr=addr
 // used for CAPNP RPCs is provided by client.
-func ServeModule(addr *net.TCPAddr, sess auth.Session) {
-	tcpConn, err := DialWithRetries(addr)
+func ServeModule(ctx context.Context, addr *net.TCPAddr, sess auth.Session) {
+	// defer func() {
+	// 	if r := recover(); r != nil {
+	// TODO @mikelsr @lthibault this is were modules non-bootstrapping
+	// modules fail. Recovering is not an option, I think we'd
+	// much rather find the cause and fix it. Still, leaving this here
+	// for reference.
+	// 	}
+	// }()
+
+	tcpConn, err := DialLoop(ctx, addr, 0)
 	if err != nil {
 		panic(err)
 	}
 	defer tcpConn.Close()
-
 	conn := rpc.NewConn(rpc.NewStreamTransport(tcpConn), &rpc.Options{
-		BootstrapClient: capnp.NewClient(api.Terminal_NewServer(sess)),
+		BootstrapClient: capnp.NewClient(core_api.Terminal_NewServer(sess.AddRef())),
 		ErrorReporter: system.ErrorReporter{
 			Logger: slog.Default(),
 		},
 	})
 	defer conn.Close()
-
 	select {
+	case <-ctx.Done(): // close conn if the program is exiting
+		conn.Close()
 	case <-conn.Done(): // conn is closed by authenticate if auth fails
-		// case <-ctx.Done(): // close conn if the program is exiting
-		// TODO ctx.Done is called prematurely when using cluster run
-		// we should use a new context that cancels when subproc ends
 	}
 }
 
-// DialWithRetries dials addr in waitTime intervals until it either succeeds or
-// exceeds maxRetries retries.
-func DialWithRetries(addr *net.TCPAddr) (net.Conn, error) {
-	maxRetries := 20
+// DialLoop dials addr in waitTime intervals until it either succeeds or
+// the context is cancelled. Set retries to 0 for infinite loop.
+func DialLoop(ctx context.Context, addr *net.TCPAddr, retries int) (net.Conn, error) {
 	waitTime := 10 * time.Millisecond
 	var err error
 	var conn net.Conn
 
-	for retries := 0; retries < maxRetries; retries++ {
+	i := 0
+	for {
 		conn, err = net.Dial("tcp", addr.String())
 		if err == nil {
 			break
 		}
-		time.Sleep(waitTime)
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(waitTime):
+			waitTime *= 2
+		}
+
+		if retries != 0 && i >= retries {
+			return nil, errors.New("retries exceeded")
+		}
 	}
 
 	return conn, err
+}
+
+// Ps returns the info of every running processes.
+func (r Runtime) Ps(ctx context.Context, call core_api.Executor_ps) error {
+	res, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	snap := r.Tree.MapSnapshot()
+	_, seg := capnp.NewSingleSegmentMessage(nil)
+	pl, err := proc_api.NewInfo_List(seg, int32(len(snap)))
+	if err != nil {
+		return err
+	}
+
+	i := 0
+	for _, v := range snap {
+		info, err := v.(*process).info()
+		if err != nil {
+			return err
+		}
+		if err = pl.Set(i, info); err != nil {
+			return err
+		}
+		i++
+	}
+	return res.SetProcs(pl)
+}
+
+func (r Runtime) BytecodeCache(ctx context.Context, call core_api.Executor_bytecodeCache) error {
+	res, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+	return res.SetCache(proc_api.BytecodeCache_ServerToClient(r.Cache))
+}
+
+func (r Runtime) fetchLocalProc(pid uint32) (*process, bool) {
+	p, ok := r.Tree.Map.Load(pid)
+	if !ok {
+		return nil, ok
+	}
+	return p.(*process), ok
+}
+
+func (r Runtime) DialPeer(ctx context.Context, call core_api.Executor_dialPeer) error {
+	call.Go()
+	return r.PeerDial(ctx, call)
 }

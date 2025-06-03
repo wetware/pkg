@@ -6,7 +6,7 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/peer"
 
-	api "github.com/wetware/pkg/api/cluster"
+	api "github.com/wetware/pkg/api/core"
 )
 
 type SessionSetter interface {

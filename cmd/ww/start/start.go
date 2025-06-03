@@ -14,8 +14,10 @@ import (
 
 	"github.com/urfave/cli/v2"
 
+	core_api "github.com/wetware/pkg/api/core"
 	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/boot"
+	csp_server "github.com/wetware/pkg/cap/csp/server"
 	"github.com/wetware/pkg/cluster/pulse"
 	"github.com/wetware/pkg/cluster/routing"
 	"github.com/wetware/pkg/vat"
@@ -87,6 +89,8 @@ func serve(c *cli.Context) error {
 	}
 	defer bootstrap.Close()
 
+	ec := make(chan csp_server.Runtime, 1)
+	sc := make(chan core_api.Session, 1)
 	return vat.Config{
 		NS:        c.String("ns"),
 		Host:      routedhost.Wrap(h, dht),
@@ -94,7 +98,7 @@ func serve(c *cli.Context) error {
 		Ambient:   ambient(dht),
 		Meta:      meta,
 		Auth:      auth.AllowAll,
-	}.Serve(c.Context)
+	}.Serve(c.Context, ec, sc, h)
 }
 
 func newBootstrap(c *cli.Context, h local.Host) (_ boot.Service, err error) {

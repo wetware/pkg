@@ -1,0 +1,10 @@
+diff a/go.mod b/go.mod	(rejected hunks)
+@@ -131,6 +131,6 @@ require (
+ )
+ 
+ replace (
+-	github.com/mikelsr/raft-capnp => /home/mikel/Code/github.com/mikelsr/raft-capnp
+-	github.com/wetware/pkg => /home/mikel/Code/github.com/wetware/pkg
++	github.com/mikelsr/raft-capnp => /Users/mikel/Code/github.com/mikelsr/raft-capnp
++	github.com/wetware/pkg => /Users/mikel/Code/github.com/mikelsr/pkg
+ )
