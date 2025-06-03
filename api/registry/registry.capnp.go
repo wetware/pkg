@@ -220,7 +220,7 @@ func (c Registry_findProviders) AllocResults() (Registry_findProviders_Results, 
 // Registry_List is a list of Registry.
 type Registry_List = capnp.CapList[Registry]
 
-// NewRegistry creates a new list of Registry.
+// NewRegistry_List creates a new list of Registry.
 func NewRegistry_List(s *capnp.Segment, sz int32) (Registry_List, error) {
 	l, err := capnp.NewPointerList(s, sz)
 	return capnp.CapList[Registry](l), err

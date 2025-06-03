@@ -268,7 +268,7 @@ func (c BytecodeCache_has) AllocResults() (BytecodeCache_has_Results, error) {
 // BytecodeCache_List is a list of BytecodeCache.
 type BytecodeCache_List = capnp.CapList[BytecodeCache]
 
-// NewBytecodeCache creates a new list of BytecodeCache.
+// NewBytecodeCache_List creates a new list of BytecodeCache.
 func NewBytecodeCache_List(s *capnp.Segment, sz int32) (BytecodeCache_List, error) {
 	l, err := capnp.NewPointerList(s, sz)
 	return capnp.CapList[BytecodeCache](l), err
@@ -1345,7 +1345,7 @@ func (c Process_id) AllocResults() (Process_id_Results, error) {
 // Process_List is a list of Process.
 type Process_List = capnp.CapList[Process]
 
-// NewProcess creates a new list of Process.
+// NewProcess_List creates a new list of Process.
 func NewProcess_List(s *capnp.Segment, sz int32) (Process_List, error) {
 	l, err := capnp.NewPointerList(s, sz)
 	return capnp.CapList[Process](l), err
@@ -3082,7 +3082,7 @@ func (c Events_resume) AllocResults() (Events_resume_Results, error) {
 // Events_List is a list of Events.
 type Events_List = capnp.CapList[Events]
 
-// NewEvents creates a new list of Events.
+// NewEvents_List creates a new list of Events.
 func NewEvents_List(s *capnp.Segment, sz int32) (Events_List, error) {
 	l, err := capnp.NewPointerList(s, sz)
 	return capnp.CapList[Events](l), err

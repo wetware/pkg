@@ -217,7 +217,7 @@ func (c CapStore_get) AllocResults() (CapStore_get_Results, error) {
 // CapStore_List is a list of CapStore.
 type CapStore_List = capnp.CapList[CapStore]
 
-// NewCapStore creates a new list of CapStore.
+// NewCapStore_List creates a new list of CapStore.
 func NewCapStore_List(s *capnp.Segment, sz int32) (CapStore_List, error) {
 	l, err := capnp.NewPointerList(s, sz)
 	return capnp.CapList[CapStore](l), err

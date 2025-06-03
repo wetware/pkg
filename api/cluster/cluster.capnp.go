@@ -168,7 +168,7 @@ func (c Signer_sign) AllocResults() (Signer_sign_Results, error) {
 // Signer_List is a list of Signer.
 type Signer_List = capnp.CapList[Signer]
 
-// NewSigner creates a new list of Signer.
+// NewSigner_List creates a new list of Signer.
 func NewSigner_List(s *capnp.Segment, sz int32) (Signer_List, error) {
 	l, err := capnp.NewPointerList(s, sz)
 	return capnp.CapList[Signer](l), err
@@ -707,7 +707,7 @@ func (c View_reverse) AllocResults() (View_reverse_Results, error) {
 // View_List is a list of View.
 type View_List = capnp.CapList[View]
 
-// NewView creates a new list of View.
+// NewView_List creates a new list of View.
 func NewView_List(s *capnp.Segment, sz int32) (View_List, error) {
 	l, err := capnp.NewPointerList(s, sz)
 	return capnp.CapList[View](l), err
@@ -866,7 +866,7 @@ func (c View_Handler_recv) AllocResults() (stream.StreamResult, error) {
 // View_Handler_List is a list of View_Handler.
 type View_Handler_List = capnp.CapList[View_Handler]
 
-// NewView_Handler creates a new list of View_Handler.
+// NewView_Handler_List creates a new list of View_Handler.
 func NewView_Handler_List(s *capnp.Segment, sz int32) (View_Handler_List, error) {
 	l, err := capnp.NewPointerList(s, sz)
 	return capnp.CapList[View_Handler](l), err

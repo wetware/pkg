@@ -166,7 +166,7 @@ func (c Closer_close) AllocResults() (Closer_close_Results, error) {
 // Closer_List is a list of Closer.
 type Closer_List = capnp.CapList[Closer]
 
-// NewCloser creates a new list of Closer.
+// NewCloser_List creates a new list of Closer.
 func NewCloser_List(s *capnp.Segment, sz int32) (Closer_List, error) {
 	l, err := capnp.NewPointerList(s, sz)
 	return capnp.CapList[Closer](l), err
@@ -457,7 +457,7 @@ func (c Sender_send) AllocResults() (Sender_send_Results, error) {
 // Sender_List is a list of Sender.
 type Sender_List = capnp.CapList[Sender]
 
-// NewSender creates a new list of Sender.
+// NewSender_List creates a new list of Sender.
 func NewSender_List(s *capnp.Segment, sz int32) (Sender_List, error) {
 	l, err := capnp.NewPointerList(s, sz)
 	return capnp.CapList[Sender](l), err
@@ -762,7 +762,7 @@ func (c Recver_recv) AllocResults() (Recver_recv_Results, error) {
 // Recver_List is a list of Recver.
 type Recver_List = capnp.CapList[Recver]
 
-// NewRecver creates a new list of Recver.
+// NewRecver_List creates a new list of Recver.
 func NewRecver_List(s *capnp.Segment, sz int32) (Recver_List, error) {
 	l, err := capnp.NewPointerList(s, sz)
 	return capnp.CapList[Recver](l), err
@@ -1186,7 +1186,7 @@ func (c SendCloser_newCloser) AllocResults() (SendCloser_newCloser_Results, erro
 // SendCloser_List is a list of SendCloser.
 type SendCloser_List = capnp.CapList[SendCloser]
 
-// NewSendCloser creates a new list of SendCloser.
+// NewSendCloser_List creates a new list of SendCloser.
 func NewSendCloser_List(s *capnp.Segment, sz int32) (SendCloser_List, error) {
 	l, err := capnp.NewPointerList(s, sz)
 	return capnp.CapList[SendCloser](l), err
@@ -1868,7 +1868,7 @@ func (c Chan_newRecver) AllocResults() (Chan_newRecver_Results, error) {
 // Chan_List is a list of Chan.
 type Chan_List = capnp.CapList[Chan]
 
-// NewChan creates a new list of Chan.
+// NewChan_List creates a new list of Chan.
 func NewChan_List(s *capnp.Segment, sz int32) (Chan_List, error) {
 	l, err := capnp.NewPointerList(s, sz)
 	return capnp.CapList[Chan](l), err

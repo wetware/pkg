@@ -267,7 +267,7 @@ func (c Topic_name) AllocResults() (Topic_name_Results, error) {
 // Topic_List is a list of Topic.
 type Topic_List = capnp.CapList[Topic]
 
-// NewTopic creates a new list of Topic.
+// NewTopic_List creates a new list of Topic.
 func NewTopic_List(s *capnp.Segment, sz int32) (Topic_List, error) {
 	l, err := capnp.NewPointerList(s, sz)
 	return capnp.CapList[Topic](l), err
@@ -426,7 +426,7 @@ func (c Topic_Consumer_consume) AllocResults() (stream.StreamResult, error) {
 // Topic_Consumer_List is a list of Topic_Consumer.
 type Topic_Consumer_List = capnp.CapList[Topic_Consumer]
 
-// NewTopic_Consumer creates a new list of Topic_Consumer.
+// NewTopic_Consumer_List creates a new list of Topic_Consumer.
 func NewTopic_Consumer_List(s *capnp.Segment, sz int32) (Topic_Consumer_List, error) {
 	l, err := capnp.NewPointerList(s, sz)
 	return capnp.CapList[Topic_Consumer](l), err
@@ -1046,7 +1046,7 @@ func (c Router_join) AllocResults() (Router_join_Results, error) {
 // Router_List is a list of Router.
 type Router_List = capnp.CapList[Router]
 
-// NewRouter creates a new list of Router.
+// NewRouter_List creates a new list of Router.
 func NewRouter_List(s *capnp.Segment, sz int32) (Router_List, error) {
 	l, err := capnp.NewPointerList(s, sz)
 	return capnp.CapList[Router](l), err

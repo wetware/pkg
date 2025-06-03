@@ -166,7 +166,7 @@ func (c BitSwap_getBlock) AllocResults() (BitSwap_getBlock_Results, error) {
 // BitSwap_List is a list of BitSwap.
 type BitSwap_List = capnp.CapList[BitSwap]
 
-// NewBitSwap creates a new list of BitSwap.
+// NewBitSwap_List creates a new list of BitSwap.
 func NewBitSwap_List(s *capnp.Segment, sz int32) (BitSwap_List, error) {
 	l, err := capnp.NewPointerList(s, sz)
 	return capnp.CapList[BitSwap](l), err

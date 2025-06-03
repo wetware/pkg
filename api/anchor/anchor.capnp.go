@@ -268,7 +268,7 @@ func (c Anchor_cell) AllocResults() (Anchor_cell_Results, error) {
 // Anchor_List is a list of Anchor.
 type Anchor_List = capnp.CapList[Anchor]
 
-// NewAnchor creates a new list of Anchor.
+// NewAnchor_List creates a new list of Anchor.
 func NewAnchor_List(s *capnp.Segment, sz int32) (Anchor_List, error) {
 	l, err := capnp.NewPointerList(s, sz)
 	return capnp.CapList[Anchor](l), err
@@ -532,7 +532,7 @@ func (c Anchor_Loader_load) AllocResults() (Anchor_Loader_load_Results, error) {
 // Anchor_Loader_List is a list of Anchor_Loader.
 type Anchor_Loader_List = capnp.CapList[Anchor_Loader]
 
-// NewAnchor_Loader creates a new list of Anchor_Loader.
+// NewAnchor_Loader_List creates a new list of Anchor_Loader.
 func NewAnchor_Loader_List(s *capnp.Segment, sz int32) (Anchor_Loader_List, error) {
 	l, err := capnp.NewPointerList(s, sz)
 	return capnp.CapList[Anchor_Loader](l), err
@@ -837,7 +837,7 @@ func (c Anchor_Storer_store) AllocResults() (Anchor_Storer_store_Results, error)
 // Anchor_Storer_List is a list of Anchor_Storer.
 type Anchor_Storer_List = capnp.CapList[Anchor_Storer]
 
-// NewAnchor_Storer creates a new list of Anchor_Storer.
+// NewAnchor_Storer_List creates a new list of Anchor_Storer.
 func NewAnchor_Storer_List(s *capnp.Segment, sz int32) (Anchor_Storer_List, error) {
 	l, err := capnp.NewPointerList(s, sz)
 	return capnp.CapList[Anchor_Storer](l), err
