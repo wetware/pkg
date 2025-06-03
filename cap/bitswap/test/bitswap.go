@@ -13,8 +13,8 @@ import (
 	context "context"
 	reflect "reflect"
 
-	go_block_format "github.com/ipfs/go-block-format"
-	go_cid "github.com/ipfs/go-cid"
+	blocks "github.com/ipfs/go-block-format"
+	cid "github.com/ipfs/go-cid"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -43,10 +43,10 @@ func (m *MockExchange) EXPECT() *MockExchangeMockRecorder {
 }
 
 // GetBlock mocks base method.
-func (m *MockExchange) GetBlock(arg0 context.Context, arg1 go_cid.Cid) (go_block_format.Block, error) {
+func (m *MockExchange) GetBlock(arg0 context.Context, arg1 cid.Cid) (blocks.Block, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetBlock", arg0, arg1)
-	ret0, _ := ret[0].(go_block_format.Block)
+	ret0, _ := ret[0].(blocks.Block)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

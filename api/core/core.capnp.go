@@ -169,7 +169,7 @@ func (c Terminal_login) AllocResults() (Terminal_login_Results, error) {
 // Terminal_List is a list of Terminal.
 type Terminal_List = capnp.CapList[Terminal]
 
-// NewTerminal creates a new list of Terminal.
+// NewTerminal_List creates a new list of Terminal.
 func NewTerminal_List(s *capnp.Segment, sz int32) (Terminal_List, error) {
 	l, err := capnp.NewPointerList(s, sz)
 	return capnp.CapList[Terminal](l), err
@@ -506,7 +506,7 @@ func (c PeerLister_peers) AllocResults() (PeerLister_peers_Results, error) {
 // PeerLister_List is a list of PeerLister.
 type PeerLister_List = capnp.CapList[PeerLister]
 
-// NewPeerLister creates a new list of PeerLister.
+// NewPeerLister_List creates a new list of PeerLister.
 func NewPeerLister_List(s *capnp.Segment, sz int32) (PeerLister_List, error) {
 	l, err := capnp.NewPointerList(s, sz)
 	return capnp.CapList[PeerLister](l), err
@@ -1350,7 +1350,7 @@ func (c Executor_dialPeer) AllocResults() (Executor_dialPeer_Results, error) {
 // Executor_List is a list of Executor.
 type Executor_List = capnp.CapList[Executor]
 
-// NewExecutor creates a new list of Executor.
+// NewExecutor_List creates a new list of Executor.
 func NewExecutor_List(s *capnp.Segment, sz int32) (Executor_List, error) {
 	l, err := capnp.NewPointerList(s, sz)
 	return capnp.CapList[Executor](l), err
@@ -2483,7 +2483,7 @@ func (c ProcessInit_events) AllocResults() (ProcessInit_events_Results, error) {
 // ProcessInit_List is a list of ProcessInit.
 type ProcessInit_List = capnp.CapList[ProcessInit]
 
-// NewProcessInit creates a new list of ProcessInit.
+// NewProcessInit_List creates a new list of ProcessInit.
 func NewProcessInit_List(s *capnp.Segment, sz int32) (ProcessInit_List, error) {
 	l, err := capnp.NewPointerList(s, sz)
 	return capnp.CapList[ProcessInit](l), err

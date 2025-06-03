@@ -14,7 +14,7 @@ import (
 	reflect "reflect"
 	time "time"
 
-	go_libp2p_pubsub "github.com/libp2p/go-libp2p-pubsub"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	routing "github.com/wetware/pkg/cluster/routing"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -44,7 +44,7 @@ func (m *MockTopic) EXPECT() *MockTopicMockRecorder {
 }
 
 // Publish mocks base method.
-func (m *MockTopic) Publish(arg0 context.Context, arg1 []byte, arg2 ...go_libp2p_pubsub.PubOpt) error {
+func (m *MockTopic) Publish(arg0 context.Context, arg1 []byte, arg2 ...pubsub.PubOpt) error {
 	m.ctrl.T.Helper()
 	varargs := []any{arg0, arg1}
 	for _, a := range arg2 {
@@ -63,10 +63,10 @@ func (mr *MockTopicMockRecorder) Publish(arg0, arg1 any, arg2 ...any) *gomock.Ca
 }
 
 // Relay mocks base method.
-func (m *MockTopic) Relay() (go_libp2p_pubsub.RelayCancelFunc, error) {
+func (m *MockTopic) Relay() (pubsub.RelayCancelFunc, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Relay")
-	ret0, _ := ret[0].(go_libp2p_pubsub.RelayCancelFunc)
+	ret0, _ := ret[0].(pubsub.RelayCancelFunc)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
