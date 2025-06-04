@@ -159,18 +159,9 @@ func bootstrapAddr() string {
 func eth() string {
 	switch runtime.GOOS {
 	case "darwin":
-		return "lo0"
+		return "en0"
 	default:
-		if runtime.GOARCH == "amd64" {
-			hostname, err := os.Hostname()
-			if err != nil || hostname != "labtop" {
-				return "enp7s0"
-			} else {
-				return "enp58s0f1"
-			}
-		} else {
-			return "enxb827eb6d6e99"
-		}
+		return "eth0"
 	}
 }
 
