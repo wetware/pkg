@@ -61,7 +61,8 @@ func (tm *topicManager) asCapability(log log.Logger, t *pubsub.Topic) api.Topic 
 	}
 
 	topic := tm.newClient(log, t)
-	tm.topics[t.String()] = capnp.Client(topic).WeakRef()
+	weak := capnp.Client(topic).WeakRef()
+	tm.topics[t.String()] = &weak
 
 	return topic
 }

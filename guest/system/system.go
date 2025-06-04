@@ -45,7 +45,7 @@ func (s FDSockDialer) DialRPC(context.Context) (*rpc.Conn, error) {
 	}
 
 	conn := rpc.NewConn(rpc.NewStreamTransport(raw), &rpc.Options{
-		ErrorReporter: system.ErrorReporter{
+		Logger: system.ErrorReporter{
 			Logger: slog.Default().WithGroup("guest"),
 		},
 	})

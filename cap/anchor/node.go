@@ -94,7 +94,8 @@ func (n *Node) Anchor() Anchor {
 
 	// Set the weak reference; subsequent calls to Anchor() will
 	// derive clients from the weakref, incrementing the refcount.
-	n.client = (*weakClient)(client.WeakRef())
+	weak := client.WeakRef()
+	n.client = (*weakClient)(&weak)
 
 	// Return first reference to caller;  The RPC connection will
 	// take ownership of it and release it when done.  When the

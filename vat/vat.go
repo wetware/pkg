@@ -117,7 +117,7 @@ func (conf Config) Serve(ctx context.Context, ec chan csp_server.Runtime, sc cha
 	for {
 		opts := &rpc.Options{
 			BootstrapClient: server.Export(),
-			ErrorReporter:   logger,
+			Logger:          logger,
 		}
 
 		conn, err := server.Accept(ctx, opts)
@@ -262,12 +262,15 @@ func (svr *Server) LocalID() rpc.PeerID {
 // Connect to another peer by ID. The supplied Options are used
 // for the connection, with the values for RemotePeerID and Network
 // overridden by the Network.
-func (svr *Server) Dial(pid rpc.PeerID, opt *rpc.Options) (*rpc.Conn, error) {
+func (svr *Server) Dial(pid rpc.PeerID) (*rpc.Conn, error) {
 	svr.setup()
 	ctx := context.TODO()
 
-	opt.RemotePeerID = pid
-	opt.Network = svr
+	opt := &rpc.Options{
+		BootstrapClient: svr.Export(),
+		RemotePeerID:    pid,
+		Network:         svr,
+	}
 
 	peer := pid.Value.(peer.AddrInfo)
 	protos := proto.Namespace(svr.NS)
@@ -314,19 +317,13 @@ func (svr *Server) Introduce(provider, recipient *rpc.Conn) (rpc.IntroductionInf
 	return rpc.IntroductionInfo{}, errors.New("NOT IMPLEMENTED")
 }
 
-// Given a ThirdPartyCapID, received from introducedBy, connect
-// to the third party. The caller should then send an Accept
-// message over the returned Connection.
-func (svr *Server) DialIntroduced(capID rpc.ThirdPartyCapID, introducedBy *rpc.Conn) (*rpc.Conn, rpc.ProvisionID, error) {
-	return nil, rpc.ProvisionID{}, errors.New("NOT IMPLEMENTED")
+// Accept implements rpc.Network
+func (svr *Server) DialIntroduced(capID string, introducedBy *rpc.Conn) (*rpc.Conn, string, error) {
+	return nil, "", errors.New("NOT IMPLEMENTED")
 }
 
-// Given a RecipientID received in a Provide message via
-// introducedBy, wait for the recipient to connect, and
-// return the connection formed. If there is already an
-// established connection to the relevant Peer, this
-// SHOULD return the existing connection immediately.
-func (svr *Server) AcceptIntroduced(recipientID rpc.RecipientID, introducedBy *rpc.Conn) (*rpc.Conn, error) {
+// AcceptIntroduced implements rpc.Network
+func (svr *Server) AcceptIntroduced(recipientID string, introducedBy *rpc.Conn) (*rpc.Conn, error) {
 	return nil, errors.New("NOT IMPLEMENTED")
 }
 
@@ -379,4 +376,10 @@ func features(ns string) func(gossipsub.GossipSubFeature, protocol.ID) bool {
 			return false
 		}
 	}
+}
+
+// Serve implements rpc.Network
+func (svr *Server) Serve(ctx context.Context) error {
+	<-ctx.Done()
+	return ctx.Err()
 }

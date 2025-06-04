@@ -83,7 +83,7 @@ func (d Dialer) DialRPC(ctx context.Context, addr peer.AddrInfo, protos ...proto
 
 	conn := rpc.NewConn(Transport(s), &rpc.Options{
 		BootstrapClient: d.Account.Client(),
-		ErrorReporter: system.ErrorReporter{
+		Logger: system.ErrorReporter{
 			Logger: slog.Default().With(
 				"stream", s.ID(),
 				"remote", addr.ID,

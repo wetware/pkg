@@ -91,7 +91,8 @@ func (r *Router) View() view.View {
 	}
 
 	client := view.Server{RoutingTable: r.RoutingTable}.Client()
-	r.wc = client.WeakRef()
+	weak := client.WeakRef()
+	r.wc = &weak
 	return view.View(client)
 }
 

@@ -5,7 +5,7 @@ go 1.23
 toolchain go1.24.3
 
 require (
-	capnproto.org/go/capnp/v3 v3.0.0-alpha.28
+	capnproto.org/go/capnp/v3 v3.1.0-alpha.1
 	github.com/davidlazar/go-crypto v0.0.0-20200604182044-b73af7476f6c // indirect
 	github.com/google/uuid v1.3.0
 	github.com/huin/goupnp v1.2.0 // indirect
@@ -50,7 +50,7 @@ require (
 	github.com/tetratelabs/wazero v1.3.1
 	go.uber.org/mock v0.5.2
 	go.uber.org/multierr v1.11.0
-	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63
+	golang.org/x/exp v0.0.0-20240604190554-fc45aab8b7f8
 	golang.org/x/sync v0.7.0
 	golang.org/x/time v0.3.0
 	lukechampine.com/blake3 v1.2.1
@@ -60,6 +60,7 @@ require (
 	github.com/benbjohnson/clock v1.3.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
+	github.com/colega/zeropool v0.0.0-20230505084239-6fb4a4f75381 // indirect
 	github.com/containerd/cgroups v1.1.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
@@ -145,5 +146,4 @@ require (
 	golang.org/x/tools v0.22.0 // indirect
 	gonum.org/v1/gonum v0.13.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	zenhack.net/go/util v0.0.0-20230607025951-8b02fee814ae // indirect
 )

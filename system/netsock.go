@@ -31,7 +31,7 @@ func (sock *NetSock) dial(ctx context.Context) error {
 	}
 
 	sock.conn = rpc.NewConn(rpc.NewStreamTransport(raw), &rpc.Options{
-		ErrorReporter:   ErrorReporter{Logger: sock.Logger},
+		Logger:          ErrorReporter{Logger: sock.Logger},
 		BootstrapClient: sock.BootstrapClient,
 	})
 
