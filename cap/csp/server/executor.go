@@ -15,6 +15,7 @@ import (
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
+	capnp_server "capnproto.org/go/capnp/v3/server"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multibase"
@@ -24,7 +25,6 @@ import (
 
 	core_api "github.com/wetware/pkg/api/core"
 	proc_api "github.com/wetware/pkg/api/process"
-	"github.com/wetware/pkg/auth"
 	"github.com/wetware/pkg/cap/csp"
 	"github.com/wetware/pkg/rom"
 	"github.com/wetware/pkg/system"
@@ -35,18 +35,20 @@ var nilCid, _ = cid.V1Builder{}.Sum([]byte{})
 
 // components the Runtime requires to build a process.
 type components struct {
-	args     csp.Args
-	bytecode []byte
-	session  core_api.Session
+	args      csp.Args
+	bootstrap *capnp_server.Server
+	bytecode  []byte
 
 	ctx    context.Context
 	cancel context.CancelFunc
 }
 
-type execArgs interface {
-	Args() (capnp.TextList, error)
-	Ppid() uint32
-	Session() (core_api.Session, error)
+type ExecArgs struct {
+	Argv      []string
+	Bootstrap *capnp_server.Server
+	Bytecode  []byte
+	Cid       cid.Cid
+	Ppid      uint32
 }
 
 // Runtime is the main Executor implementation.  It spawns WebAssembly-
@@ -74,10 +76,32 @@ func (r Runtime) Exec(ctx context.Context, call core_api.Executor_exec) error {
 	if err != nil {
 		return err
 	}
-
 	cid := r.Cache.put(bc)
 
-	p, err := r.exec(ctx, cid, bc, call.Args())
+	encodedArgs, err := call.Args().Args()
+	if err != nil {
+		return err
+	}
+
+	argv, err := csp.DecodeTextList(encodedArgs)
+	if err != nil {
+		return nil
+	}
+
+	bootstrap, err := cloneBootstrap(ctx, call.Args().Bootstrap())
+	if err != nil {
+		return err
+	}
+
+	ea := ExecArgs{
+		Argv:      argv,
+		Bootstrap: bootstrap,
+		Bytecode:  bc,
+		Cid:       cid,
+		Ppid:      call.Args().Ppid(),
+	}
+
+	p, err := r.exec(ctx, ea)
 	if err != nil {
 		return err
 	}
@@ -105,7 +129,30 @@ func (r Runtime) ExecCached(ctx context.Context, call core_api.Executor_execCach
 		return fmt.Errorf("bytecode for cid %s not found", cid)
 	}
 
-	p, err := r.exec(ctx, cid, bc, call.Args())
+	encodedArgs, err := call.Args().Args()
+	if err != nil {
+		return err
+	}
+
+	argv, err := csp.DecodeTextList(encodedArgs)
+	if err != nil {
+		return nil
+	}
+
+	bootstrap, err := cloneBootstrap(ctx, call.Args().Bootstrap())
+	if err != nil {
+		return err
+	}
+
+	ea := ExecArgs{
+		Argv:      argv,
+		Bootstrap: bootstrap,
+		Bytecode:  bc,
+		Cid:       cid,
+		Ppid:      call.Args().Ppid(),
+	}
+
+	p, err := r.exec(ctx, ea)
 
 	if err != nil {
 		return err
@@ -114,42 +161,29 @@ func (r Runtime) ExecCached(ctx context.Context, call core_api.Executor_execCach
 	return res.SetProcess(p)
 }
 
-func (r Runtime) ExposedExec(ctx context.Context, id cid.Cid, bc []byte, ea execArgs) (proc_api.Process, error) {
-	return r.exec(ctx, id, bc, ea)
+func (r Runtime) ExposedExec(ctx context.Context, ea ExecArgs) (proc_api.Process, error) {
+	return r.exec(ctx, ea)
 }
 
-func (r Runtime) exec(ctx context.Context, id cid.Cid, bc []byte, ea execArgs) (proc_api.Process, error) {
+// TODO mikel: graceful process shutdown. Currently an expected EOF error appears.
+func (r Runtime) exec(ctx context.Context, ea ExecArgs) (proc_api.Process, error) {
 
-	if id == nilCid {
-		ro := rom.ROM{Bytecode: bc}
-		id = ro.CID()
-	}
-
-	sess, err := ea.Session()
-	if err != nil {
-		return proc_api.Process{}, err
-	}
-
-	argl, err := ea.Args()
-	if err != nil {
-		return proc_api.Process{}, err
-	}
-	argv, err := csp.DecodeTextList(argl)
-	if err != nil {
-		return proc_api.Process{}, err
+	cid := ea.Cid
+	if cid == nilCid {
+		cid = rom.ROM{Bytecode: ea.Bytecode}.CID()
 	}
 
 	args := csp.Args{
-		Ppid: r.Tree.PpidOrInit(ea.Ppid()),
-		Cid:  id,
+		Ppid: r.Tree.PpidOrInit(ea.Ppid),
+		Cid:  cid,
 		Pid:  r.Tree.NextPid(),
-		Cmd:  argv,
+		Cmd:  ea.Argv,
 	}
 	r.Log.Info("exec",
 		"pid", args.Pid,
 		"ppid", args.Ppid,
-		"cid", id.Encode(multibase.MustNewEncoder(multibase.Base58BTC)),
-		"args", argv)
+		"cid", cid.Encode(multibase.MustNewEncoder(multibase.Base58BTC)),
+		"args", ea.Argv)
 
 	// NOTE:  we use context.Background instead of the context obtained from the
 	//        rpc handler. This ensures that a process can continue to run after
@@ -157,11 +191,11 @@ func (r Runtime) exec(ctx context.Context, id cid.Cid, bc []byte, ea execArgs) (
 	//        to the application lifetime, so processes cannot block a shutdown.
 	cctx, ccancel := context.WithCancel(context.Background())
 	c := components{
-		args:     args,
-		bytecode: bc,
-		session:  sess,
-		ctx:      cctx,
-		cancel:   ccancel,
+		args:      args,
+		bytecode:  ea.Bytecode,
+		bootstrap: ea.Bootstrap,
+		ctx:       cctx,
+		cancel:    ccancel,
 	}
 
 	p, err := r.mkproc(ctx, c)
@@ -233,7 +267,7 @@ func (r Runtime) mkmod(ctx context.Context, c components) (wasm.Module, error) {
 	}
 
 	r.Log.Info("serve module", "pid", c.args.Pid, "cid", c.args.Cid.String())
-	go ServeModule(c.ctx, addr, auth.Session(c.session).AddRef())
+	go ServeModule(c.ctx, addr, c.bootstrap)
 
 	return mod, nil
 }
@@ -276,9 +310,32 @@ func (r Runtime) spawn(fn wasm.Function, c components) *process {
 	return proc
 }
 
+func cloneBootstrap(ctx context.Context, bs proc_api.Bootstrap) (*capnp_server.Server, error) {
+	// Clone the Bootstrap capability into a server to make it provideable
+	// to the client. This is required because the client VAT doesn't
+	// expose a public/bootstrap interface.
+	bootstrap := csp.ProcessBootstrap(bs)
+	clone := NewProcessBootstrap()
+
+	for {
+		cap, release, hasNext, err := bootstrap.Get(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		if !hasNext {
+			break
+		}
+		clone.add(cap.AddRef())
+		PendingReleases = append(PendingReleases, release)
+	}
+
+	return proc_api.Bootstrap_NewServer(clone), nil
+}
+
 // ServeModule ensures the host side of the TCP connection with addr=addr
 // used for CAPNP RPCs is provided by client.
-func ServeModule(ctx context.Context, addr *net.TCPAddr, sess auth.Session) {
+func ServeModule(ctx context.Context, addr *net.TCPAddr, bootstrap *capnp_server.Server) {
 	// defer func() {
 	// 	if r := recover(); r != nil {
 	// TODO @mikelsr @lthibault this is were modules non-bootstrapping
@@ -294,7 +351,7 @@ func ServeModule(ctx context.Context, addr *net.TCPAddr, sess auth.Session) {
 	}
 	defer tcpConn.Close()
 	conn := rpc.NewConn(rpc.NewStreamTransport(tcpConn), &rpc.Options{
-		BootstrapClient: capnp.NewClient(core_api.Terminal_NewServer(sess.AddRef())),
+		BootstrapClient: capnp.NewClient(bootstrap),
 		Logger: system.ErrorReporter{
 			Logger: slog.Default(),
 		},

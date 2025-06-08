@@ -42,7 +42,7 @@ func (ex Executor) Release() {
 // new process as a subprocess.
 func (ex Executor) Exec(
 	ctx context.Context,
-	sess core_api.Session,
+	bootstrap proc_api.Bootstrap,
 	bc []byte,
 	ppid uint32,
 	argv ...string,
@@ -60,7 +60,8 @@ func (ex Executor) Exec(
 			}
 
 			ps.SetPpid(ppid)
-			return ps.SetSession(core_api.Session(sess))
+
+			return ps.SetBootstrap(proc_api.Bootstrap(bootstrap))
 		})
 	return Proc(f.Process()), release
 }
@@ -69,7 +70,7 @@ func (ex Executor) Exec(
 // cached at the executor.
 func (ex Executor) ExecCached(
 	ctx context.Context,
-	sess core_api.Session,
+	bootstrap proc_api.Bootstrap,
 	cid cid.Cid,
 	ppid uint32,
 	argv ...string,
@@ -87,7 +88,7 @@ func (ex Executor) ExecCached(
 			}
 
 			ps.SetPpid(ppid)
-			return ps.SetSession(core_api.Session(sess))
+			return ps.SetBootstrap(bootstrap)
 		})
 	return Proc(f.Process()), release
 }

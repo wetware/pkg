@@ -17,6 +17,7 @@ import (
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"github.com/tetratelabs/wazero/sys"
 
+	core_api "github.com/wetware/pkg/api/core"
 	"github.com/wetware/pkg/auth"
 	csp_server "github.com/wetware/pkg/cap/csp/server"
 	"github.com/wetware/pkg/rom"
@@ -102,7 +103,7 @@ func (ww Ww) Exec(ctx context.Context, rom rom.ROM) error {
 	_, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	go csp_server.ServeModule(ctx, addr, ww.Root)
+	go csp_server.ServeModule(ctx, addr, core_api.Terminal_NewServer(ww.Root))
 	defer mod.Close(ctx)
 
 	return ww.run(ctx, mod)

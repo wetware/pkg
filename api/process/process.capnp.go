@@ -2752,6 +2752,518 @@ func (f Process_id_Results_Future) Struct() (Process_id_Results, error) {
 	return Process_id_Results(p.Struct()), err
 }
 
+type Bootstrap capnp.Client
+
+// Bootstrap_TypeID is the unique identifier for the type Bootstrap.
+const Bootstrap_TypeID = 0x8b94e7ba84caddf8
+
+func (c Bootstrap) Add(ctx context.Context, params func(Bootstrap_add_Params) error) (Bootstrap_add_Results_Future, capnp.ReleaseFunc) {
+
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0x8b94e7ba84caddf8,
+			MethodID:      0,
+			InterfaceName: "process.capnp:Bootstrap",
+			MethodName:    "add",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Bootstrap_add_Params(s)) }
+	}
+
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return Bootstrap_add_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c Bootstrap) Get(ctx context.Context, params func(Bootstrap_get_Params) error) (Bootstrap_get_Results_Future, capnp.ReleaseFunc) {
+
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0x8b94e7ba84caddf8,
+			MethodID:      1,
+			InterfaceName: "process.capnp:Bootstrap",
+			MethodName:    "get",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(Bootstrap_get_Params(s)) }
+	}
+
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return Bootstrap_get_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c Bootstrap) WaitStreaming() error {
+	return capnp.Client(c).WaitStreaming()
+}
+
+// String returns a string that identifies this capability for debugging
+// purposes.  Its format should not be depended on: in particular, it
+// should not be used to compare clients.  Use IsSame to compare clients
+// for equality.
+func (c Bootstrap) String() string {
+	return "Bootstrap(" + capnp.Client(c).String() + ")"
+}
+
+// AddRef creates a new Client that refers to the same capability as c.
+// If c is nil or has resolved to null, then AddRef returns nil.
+func (c Bootstrap) AddRef() Bootstrap {
+	return Bootstrap(capnp.Client(c).AddRef())
+}
+
+// Release releases a capability reference.  If this is the last
+// reference to the capability, then the underlying resources associated
+// with the capability will be released.
+//
+// Release will panic if c has already been released, but not if c is
+// nil or resolved to null.
+func (c Bootstrap) Release() {
+	capnp.Client(c).Release()
+}
+
+// Resolve blocks until the capability is fully resolved or the Context
+// expires.
+func (c Bootstrap) Resolve(ctx context.Context) error {
+	return capnp.Client(c).Resolve(ctx)
+}
+
+func (c Bootstrap) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Client(c).EncodeAsPtr(seg)
+}
+
+func (Bootstrap) DecodeFromPtr(p capnp.Ptr) Bootstrap {
+	return Bootstrap(capnp.Client{}.DecodeFromPtr(p))
+}
+
+// IsValid reports whether c is a valid reference to a capability.
+// A reference is invalid if it is nil, has resolved to null, or has
+// been released.
+func (c Bootstrap) IsValid() bool {
+	return capnp.Client(c).IsValid()
+}
+
+// IsSame reports whether c and other refer to a capability created by the
+// same call to NewClient.  This can return false negatives if c or other
+// are not fully resolved: use Resolve if this is an issue.  If either
+// c or other are released, then IsSame panics.
+func (c Bootstrap) IsSame(other Bootstrap) bool {
+	return capnp.Client(c).IsSame(capnp.Client(other))
+}
+
+// Update the flowcontrol.FlowLimiter used to manage flow control for
+// this client. This affects all future calls, but not calls already
+// waiting to send. Passing nil sets the value to flowcontrol.NopLimiter,
+// which is also the default.
+func (c Bootstrap) SetFlowLimiter(lim fc.FlowLimiter) {
+	capnp.Client(c).SetFlowLimiter(lim)
+}
+
+// Get the current flowcontrol.FlowLimiter used to manage flow control
+// for this client.
+func (c Bootstrap) GetFlowLimiter() fc.FlowLimiter {
+	return capnp.Client(c).GetFlowLimiter()
+}
+
+// A Bootstrap_Server is a Bootstrap with a local implementation.
+type Bootstrap_Server interface {
+	Add(context.Context, Bootstrap_add) error
+
+	Get(context.Context, Bootstrap_get) error
+}
+
+// Bootstrap_NewServer creates a new Server from an implementation of Bootstrap_Server.
+func Bootstrap_NewServer(s Bootstrap_Server) *server.Server {
+	c, _ := s.(server.Shutdowner)
+	return server.New(Bootstrap_Methods(nil, s), s, c)
+}
+
+// Bootstrap_ServerToClient creates a new Client from an implementation of Bootstrap_Server.
+// The caller is responsible for calling Release on the returned Client.
+func Bootstrap_ServerToClient(s Bootstrap_Server) Bootstrap {
+	return Bootstrap(capnp.NewClient(Bootstrap_NewServer(s)))
+}
+
+// Bootstrap_Methods appends Methods to a slice that invoke the methods on s.
+// This can be used to create a more complicated Server.
+func Bootstrap_Methods(methods []server.Method, s Bootstrap_Server) []server.Method {
+	if cap(methods) == 0 {
+		methods = make([]server.Method, 0, 2)
+	}
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0x8b94e7ba84caddf8,
+			MethodID:      0,
+			InterfaceName: "process.capnp:Bootstrap",
+			MethodName:    "add",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Add(ctx, Bootstrap_add{call})
+		},
+	})
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0x8b94e7ba84caddf8,
+			MethodID:      1,
+			InterfaceName: "process.capnp:Bootstrap",
+			MethodName:    "get",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Get(ctx, Bootstrap_get{call})
+		},
+	})
+
+	return methods
+}
+
+// Bootstrap_add holds the state for a server call to Bootstrap.add.
+// See server.Call for documentation.
+type Bootstrap_add struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c Bootstrap_add) Args() Bootstrap_add_Params {
+	return Bootstrap_add_Params(c.Call.Args())
+}
+
+// AllocResults allocates the results struct.
+func (c Bootstrap_add) AllocResults() (Bootstrap_add_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Bootstrap_add_Results(r), err
+}
+
+// Bootstrap_get holds the state for a server call to Bootstrap.get.
+// See server.Call for documentation.
+type Bootstrap_get struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c Bootstrap_get) Args() Bootstrap_get_Params {
+	return Bootstrap_get_Params(c.Call.Args())
+}
+
+// AllocResults allocates the results struct.
+func (c Bootstrap_get) AllocResults() (Bootstrap_get_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Bootstrap_get_Results(r), err
+}
+
+// Bootstrap_List is a list of Bootstrap.
+type Bootstrap_List = capnp.CapList[Bootstrap]
+
+// NewBootstrap_List creates a new list of Bootstrap.
+func NewBootstrap_List(s *capnp.Segment, sz int32) (Bootstrap_List, error) {
+	l, err := capnp.NewPointerList(s, sz)
+	return capnp.CapList[Bootstrap](l), err
+}
+
+type Bootstrap_add_Params capnp.Struct
+
+// Bootstrap_add_Params_TypeID is the unique identifier for the type Bootstrap_add_Params.
+const Bootstrap_add_Params_TypeID = 0x954f843569b43f86
+
+func NewBootstrap_add_Params(s *capnp.Segment) (Bootstrap_add_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Bootstrap_add_Params(st), err
+}
+
+func NewRootBootstrap_add_Params(s *capnp.Segment) (Bootstrap_add_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Bootstrap_add_Params(st), err
+}
+
+func ReadRootBootstrap_add_Params(msg *capnp.Message) (Bootstrap_add_Params, error) {
+	root, err := msg.Root()
+	return Bootstrap_add_Params(root.Struct()), err
+}
+
+func (s Bootstrap_add_Params) String() string {
+	str, _ := text.Marshal(0x954f843569b43f86, capnp.Struct(s))
+	return str
+}
+
+func (s Bootstrap_add_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Bootstrap_add_Params) DecodeFromPtr(p capnp.Ptr) Bootstrap_add_Params {
+	return Bootstrap_add_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Bootstrap_add_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Bootstrap_add_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Bootstrap_add_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Bootstrap_add_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Bootstrap_add_Params) Capability() capnp.Client {
+	p, _ := capnp.Struct(s).Ptr(0)
+	return p.Interface().Client()
+}
+
+func (s Bootstrap_add_Params) HasCapability() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Bootstrap_add_Params) SetCapability(c capnp.Client) error {
+	if !c.IsValid() {
+		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
+	}
+	seg := s.Segment()
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(c))
+	return capnp.Struct(s).SetPtr(0, in.ToPtr())
+}
+
+// Bootstrap_add_Params_List is a list of Bootstrap_add_Params.
+type Bootstrap_add_Params_List = capnp.StructList[Bootstrap_add_Params]
+
+// NewBootstrap_add_Params creates a new list of Bootstrap_add_Params.
+func NewBootstrap_add_Params_List(s *capnp.Segment, sz int32) (Bootstrap_add_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[Bootstrap_add_Params](l), err
+}
+
+// Bootstrap_add_Params_Future is a wrapper for a Bootstrap_add_Params promised by a client call.
+type Bootstrap_add_Params_Future struct{ *capnp.Future }
+
+func (f Bootstrap_add_Params_Future) Struct() (Bootstrap_add_Params, error) {
+	p, err := f.Future.Ptr()
+	return Bootstrap_add_Params(p.Struct()), err
+}
+func (p Bootstrap_add_Params_Future) Capability() capnp.Client {
+	return p.Future.Field(0, nil).Client()
+}
+
+type Bootstrap_add_Results capnp.Struct
+
+// Bootstrap_add_Results_TypeID is the unique identifier for the type Bootstrap_add_Results.
+const Bootstrap_add_Results_TypeID = 0xdc8563365798a16d
+
+func NewBootstrap_add_Results(s *capnp.Segment) (Bootstrap_add_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Bootstrap_add_Results(st), err
+}
+
+func NewRootBootstrap_add_Results(s *capnp.Segment) (Bootstrap_add_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Bootstrap_add_Results(st), err
+}
+
+func ReadRootBootstrap_add_Results(msg *capnp.Message) (Bootstrap_add_Results, error) {
+	root, err := msg.Root()
+	return Bootstrap_add_Results(root.Struct()), err
+}
+
+func (s Bootstrap_add_Results) String() string {
+	str, _ := text.Marshal(0xdc8563365798a16d, capnp.Struct(s))
+	return str
+}
+
+func (s Bootstrap_add_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Bootstrap_add_Results) DecodeFromPtr(p capnp.Ptr) Bootstrap_add_Results {
+	return Bootstrap_add_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Bootstrap_add_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Bootstrap_add_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Bootstrap_add_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Bootstrap_add_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+
+// Bootstrap_add_Results_List is a list of Bootstrap_add_Results.
+type Bootstrap_add_Results_List = capnp.StructList[Bootstrap_add_Results]
+
+// NewBootstrap_add_Results creates a new list of Bootstrap_add_Results.
+func NewBootstrap_add_Results_List(s *capnp.Segment, sz int32) (Bootstrap_add_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	return capnp.StructList[Bootstrap_add_Results](l), err
+}
+
+// Bootstrap_add_Results_Future is a wrapper for a Bootstrap_add_Results promised by a client call.
+type Bootstrap_add_Results_Future struct{ *capnp.Future }
+
+func (f Bootstrap_add_Results_Future) Struct() (Bootstrap_add_Results, error) {
+	p, err := f.Future.Ptr()
+	return Bootstrap_add_Results(p.Struct()), err
+}
+
+type Bootstrap_get_Params capnp.Struct
+
+// Bootstrap_get_Params_TypeID is the unique identifier for the type Bootstrap_get_Params.
+const Bootstrap_get_Params_TypeID = 0xeb035b7662285a59
+
+func NewBootstrap_get_Params(s *capnp.Segment) (Bootstrap_get_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Bootstrap_get_Params(st), err
+}
+
+func NewRootBootstrap_get_Params(s *capnp.Segment) (Bootstrap_get_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return Bootstrap_get_Params(st), err
+}
+
+func ReadRootBootstrap_get_Params(msg *capnp.Message) (Bootstrap_get_Params, error) {
+	root, err := msg.Root()
+	return Bootstrap_get_Params(root.Struct()), err
+}
+
+func (s Bootstrap_get_Params) String() string {
+	str, _ := text.Marshal(0xeb035b7662285a59, capnp.Struct(s))
+	return str
+}
+
+func (s Bootstrap_get_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Bootstrap_get_Params) DecodeFromPtr(p capnp.Ptr) Bootstrap_get_Params {
+	return Bootstrap_get_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Bootstrap_get_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Bootstrap_get_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Bootstrap_get_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Bootstrap_get_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+
+// Bootstrap_get_Params_List is a list of Bootstrap_get_Params.
+type Bootstrap_get_Params_List = capnp.StructList[Bootstrap_get_Params]
+
+// NewBootstrap_get_Params creates a new list of Bootstrap_get_Params.
+func NewBootstrap_get_Params_List(s *capnp.Segment, sz int32) (Bootstrap_get_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	return capnp.StructList[Bootstrap_get_Params](l), err
+}
+
+// Bootstrap_get_Params_Future is a wrapper for a Bootstrap_get_Params promised by a client call.
+type Bootstrap_get_Params_Future struct{ *capnp.Future }
+
+func (f Bootstrap_get_Params_Future) Struct() (Bootstrap_get_Params, error) {
+	p, err := f.Future.Ptr()
+	return Bootstrap_get_Params(p.Struct()), err
+}
+
+type Bootstrap_get_Results capnp.Struct
+
+// Bootstrap_get_Results_TypeID is the unique identifier for the type Bootstrap_get_Results.
+const Bootstrap_get_Results_TypeID = 0xf95a02317fe09d61
+
+func NewBootstrap_get_Results(s *capnp.Segment) (Bootstrap_get_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Bootstrap_get_Results(st), err
+}
+
+func NewRootBootstrap_get_Results(s *capnp.Segment) (Bootstrap_get_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return Bootstrap_get_Results(st), err
+}
+
+func ReadRootBootstrap_get_Results(msg *capnp.Message) (Bootstrap_get_Results, error) {
+	root, err := msg.Root()
+	return Bootstrap_get_Results(root.Struct()), err
+}
+
+func (s Bootstrap_get_Results) String() string {
+	str, _ := text.Marshal(0xf95a02317fe09d61, capnp.Struct(s))
+	return str
+}
+
+func (s Bootstrap_get_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Bootstrap_get_Results) DecodeFromPtr(p capnp.Ptr) Bootstrap_get_Results {
+	return Bootstrap_get_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Bootstrap_get_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Bootstrap_get_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Bootstrap_get_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Bootstrap_get_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Bootstrap_get_Results) Capability() capnp.Client {
+	p, _ := capnp.Struct(s).Ptr(0)
+	return p.Interface().Client()
+}
+
+func (s Bootstrap_get_Results) HasCapability() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Bootstrap_get_Results) SetCapability(c capnp.Client) error {
+	if !c.IsValid() {
+		return capnp.Struct(s).SetPtr(0, capnp.Ptr{})
+	}
+	seg := s.Segment()
+	in := capnp.NewInterface(seg, seg.Message().CapTable().Add(c))
+	return capnp.Struct(s).SetPtr(0, in.ToPtr())
+}
+
+// Bootstrap_get_Results_List is a list of Bootstrap_get_Results.
+type Bootstrap_get_Results_List = capnp.StructList[Bootstrap_get_Results]
+
+// NewBootstrap_get_Results creates a new list of Bootstrap_get_Results.
+func NewBootstrap_get_Results_List(s *capnp.Segment, sz int32) (Bootstrap_get_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[Bootstrap_get_Results](l), err
+}
+
+// Bootstrap_get_Results_Future is a wrapper for a Bootstrap_get_Results promised by a client call.
+type Bootstrap_get_Results_Future struct{ *capnp.Future }
+
+func (f Bootstrap_get_Results_Future) Struct() (Bootstrap_get_Results, error) {
+	p, err := f.Future.Ptr()
+	return Bootstrap_get_Results(p.Struct()), err
+}
+func (p Bootstrap_get_Results_Future) Capability() capnp.Client {
+	return p.Future.Field(0, nil).Client()
+}
+
 type Info capnp.Struct
 
 // Info_TypeID is the unique identifier for the type Info.
@@ -3348,105 +3860,117 @@ func (f Events_resume_Results_Future) Struct() (Events_resume_Results, error) {
 	return Events_resume_Results(p.Struct()), err
 }
 
-const schema_9a51e53177277763 = "x\xda\xbcV\x7fh\x14w\x16\x7fof\xb33Y\xb2" +
-	"\xd9\xfbf\x92x\x09z9s\xc9\xa99\xf3K9\xee" +
-	"N\xf4\xb2FD\x94\x1c\xec,\x84\xe3<Z2\xd9\x8c" +
-	"\xee\xe2&\xbb\xee\xce\x1a\xad\x86\xdab\xfcE\x8b\x15\xda" +
-	"j\xc5h\x02\x8d\xd5\xb6\x966\xd5Zi-\x8db5" +
-	"H\xa1j\x8b\xa6j\x8bQ\x8bQ\x14\x85F\x1bj\xbb" +
-	"\xe5;\xb3\xdf\xc9lv\xd7H)\xfdga\xf6\xfb\xde" +
-	"\xe7}\xde\xefWSks\xdbj\x9d\x93\x9c\xc0\xc9;" +
-	"\xb3\xec\xf1\xd0\x95\xcb\x97\x9e\xe9z\xf8<\x90\x02\x04\xb0" +
-	"\x09\x00\xb3W\xda\x8b\x11l\xf1\x15\xeec\xc5\xce\xf9\xd7" +
-	"6\x82\\\x88\x08\x90\x85\xf4\xed\x7f\xf6R\x04\x94\x14{" +
-	";`\xfc\x93\x7fWU\xb8\xf2>\xd8\x0ed\xb2)\xd0" +
-	"o\x9fC\x05\x06\xecu\x80\xf1\xbf5u\xef]\xa85" +
-	"u\x01)d\xe0w\x0c\xf0\x92\x1b[\x1a\x85\xbcu\xbd" +
-	"\x96\x97\xaf\xec\x15\xf4\xa5\xea\xa2\xefv\xf5P\xf5>\x0b" +
-	"\xa1c\xf6<\xfa\xf2=\xaf\xfd\xff\xe4\xfd\xcf\xfa\xac\xe6" +
-	"z\xed\xf5\xd4\xdcA\xdd\\\xd3\xd6N\xcf\xe0\xfc\xf2#" +
-	"\x09\xc6\xba\xeeY\x83\xcf\xa0.p\xd1{\xc6\x99[\xec" +
-	"\xfd\xd0\x82=j\xf0Yyf\xcf\xfc\xf0\x0f{>2" +
-	"\xf8\x18\xd8W\xed\xb3\xa8\xea\xb0\xae\xba\xe1\xe6\xe8\xc6\xe6" +
-	"I{?\xb5\x10\xce\x16J\xa9j\xe3\xcf\xbb\x17\xef\x9f" +
-	"\xb4\xf4\xb8\x95\xd6}\xc3\xea\xa8\xae\xfa\xd7\xad\xf3zz" +
-	"\xeb\x0aN\x80\x9c\x8b\\\xdc\xd7>\xad\xbd\xf6\x86\xbc\x0b" +
-	"\xb28\x01@*\x12vIS\x05\xaa3E(A\xc0" +
-	"\xf8\xdd\x1d_F\xfb\xfc\xb5'-\x86\xe6\x89:\xc7\xf6" +
-	"\xbe\x86\xb5?\xfd\xf7\xda)\xcbK\xb9\xa8\xc7\xec\xe6\xa6" +
-	"~\xfb\xb7\xb1\xeasI\xa9r\x8ay\x94C\x81HS" +
-	"\xf5\xf6\xa2\x9a\xb2\xeeC\x15\x17\xac\xa1\x89QX\x94:" +
-	"DJ\xf2^\xe5\xa1\x9e\xe3\xfb\xfa\x93\x04zD\x07\x15" +
-	"8\xa0\x0b\xcc\x1dX\xdb\xdc\xbdk\xee\xa0\xc5\xfa\x80a" +
-	"}\xb6\xbd|\xff\xf9{\x7f\xf9\x1aH.?\xe6\x1e\xa0" +
-	"\xf4\x9e\xd8'\x1d\x15\xa9\xe4aq\x13'\xfd\xc7!\x00" +
-	"\xc4\x95\xc1\x9eG_L\x7f\xf5\xba\x05\xe7\xef\x0e\xdd?" +
-	"\x0d\xb3\x1f\xf0\xd7\x1b\xbeK\xc1\x99\xe2\x18\x92fPe" +
-	"\xa9\xdcqJ\xea\xd2a\x8e|\xbc\xf6\xd4\x1f.\xbd4" +
-	"lIe\xa7C\xcf\xc7\xb2\xe6\xa5j\xfd\xad\xc3\xc3)" +
-	"0\xad\x8e7\xa5\x98\x0e\xb3\xd2\xb1I\xea\xd7a\xe4\xd3" +
-	"\x81\x7f45\xfdx\xcb\xc2\xe6\x80\xc3Ka\x16=U" +
-	"\xfdn\xd1;o\xdc\xb5\xbc\xbc\xe2\xd0\xeb\xd0\x7f\xf4\xcf" +
-	"\x8f\xcew\xfci\xc4\x9a\xf0\x0e\x87^\x87\x9d\x0e\x1a\xaa" +
-	"m\xf3n\xf9\x0b/o\x19\xb1\xa8\xf6\xd2w[<\xdc" +
-	"\xf8M\xe5\xc1\x0b\xc7G\xacQ~\xd1\xb1\x84\xaa\xbe\xa6" +
-	"\xab\xae\xdb\x7f;\xb6;\xef\xe5\x07V\xec\xa3\x0e\xbd\x98" +
-	"\xfau\x81i\xde\xfa\xb7No.|h\xc1\xbe\xea\xe0" +
-	"(\xb6\xeb\xe9\x07'\xce\xcdl\x1a\x05y\xb2\x89}\xd2" +
-	"\xa0\xf5\xb9\xaez\xed\xfdK\xe2\xd0\x92\xc0\xa8\xb5\x1b\x0d" +
-	"\x8f\xd6\xef\x18\xdav\xf3\xce`\xdc\xda\x8d4\x985\xf1" +
-	"p$\xe4S\xa3\xd1*\xde\xa7\x84\xdb\xc2s\x16\xaeR" +
-	"\xdb\xb4hUX\x89E\xd52\xaf\x1a\x8d\x05y-:" +
-	"^\xc8\x93\xf8\x8c\xb5\x05\x03m+\xca<JDPZ" +
-	"\xa3\xb2\xc8\xdb\x00l\x08@f\xcc\x02\x90\xcbx\x94k" +
-	"8D\xcc\xa7lI\xa5\x17@\x9e\xc9\xa3\xfcO\x0eK" +
-	"B\x9a_\x8d \x19\xab,@$\x80\xf1H(\xd6\xd6" +
-	"\xa2E\x02\x80aD\xe0\x90\xf6\xcb8\xe3\xf5k4\xd5" +
-	"\x17jQ\x17(>\xbfZ\x15\x8eieu\x1e%B" +
-	"\xed\xdbL\xfb\xce%\x00r\x0e\x8f\xf2\x1f9\x8c7'" +
-	"\x14\x00\x00\x9d\xc0\xa13\x15\x939\xa4\xbb3\x91\xd7\x11" +
-	"5\x1ak\xd5\x83\xe3\x8a\x05S\xc5\x92\"\xa83\xc31" +
-	"\x19[:\x1f\x96\xab\x9aaT\x8b\xc2o\xe4DC\xc8" +
-	"\xa7\x04\xd3\x05\x86&F\xe4Q\xce7\x93 \x02\x87b" +
-	"*Z\xc2\x8d\x84\xb3\x14\x88o\xcd\x18\x92\xd6P[@" +
-	"\x0bE\xca\xbcj\x89\xeeF&\x8b*\x05\xc5\x1c\xe00" +
-	"'3\xff\xb1\xda\x13\xd2\x8479t~%\x9a\xce\xcb" +
-	"\xd21\x9b\x82/\xd0\x92\x1214\xb0\x16\xb7\xf1\xcbB" +
-	"\x1eD9\xdfT\xed\xa0\xaa\xaby\x947pHX\xe9" +
-	">W\x01 \xaf\xe3Q\xde\xcc!r\xf9\xc8\x01\x90N" +
-	"*\xb8\x9eG\xf9\x05\x0e\x09\x8f\xf9\xc8\x03\x90-Tp" +
-	"\x03\x8fr7\x87\xc4\x86\xf9h\x03 ]\xf4\xcf\x9d<" +
-	"\xca\xafs(\x84\x03-,\xe2\xae\xb0\xe5\xc3J\xd3\xa5" +
-	"D\x96\xaf\xc2\\@\x0f\x8fz\xb0r\x01]Z\xa0U" +
-	"\xc5,\xe00+s\xe4V\x04\x82\xc1\x09\xcb\x97\xe5\xca" +
-	"\xa3\xb8h\xd8\x1e\xdb\x0a\x89\xf2\xfd\x9d:\x9b\x99nW" +
-	"\x02\x9a\xe9F\xa6\x86PW\x07\xb4\x05\x89\x86\xc8P\xc2" +
-	"\x0c/\xd0b\xb6WR\x7f\x15\x8fU\x09\x1fh\x99(" +
-	"\xb8\x89a\x97\xd2\xf6\xc8\xc4J\xf4oZN\xd3\xf9," +
-	"\x00s\x1a#[\xcdR-V\x00'\x95\xa3\x80hn" +
-	"\x1fd\xe7\x80T\xa4\xbf:Q@\xce\xdc\xf7\xc8\x0e," +
-	"\x09\xe9+\x19\x11\x907\xef6d\x1b\x9b\x0c\xcf\x01\x8e" +
-	"\\\x11\xd0f^H\xc8V\x149\xeb\x05\x8e\x0c\x08\x98" +
-	"e\xee&d;\x91\x1ck\x06\x8e\x1c\x16\xd0n\x9e\x1e" +
-	"\xc8\xee$r\xa0\x1e8\xd2%\xa0`.td'\x12" +
-	"\xd9>\x0b8\xd2)\xa0h.\x16d\xf7\x1eYC\xb9" +
-	"\xb4\x0a\x98mn2d\xa7\x07Q\x8a\x81#\x8d\x82\x8b" +
-	"f\xd8\x8d.Z\xafnt\xd1\xb8\xba\xb1\xce\x08\xb0\x1b" +
-	"\xe3l\x80\x01\x06\xdd\x187\xfen\x08\x81\xe0S\x82n" +
-	"|6Q\xbfn,\xd1\x07\x85\x1b\xeb\x8c\x19\xe5\xa6I" +
-	"t\xa3\x07'\x18,\xe3G\x197~\xae\x08>\xbfJ" +
-	"\xb3\x98\xa3g\x91\x9d\xc0\xc8\x8e\x02\"\x97\x02G\x16\xd2" +
-	"\x1c\xb2]\x8e\xecp%\xff\xa2o\x954\x83\xechD" +
-	"\xb6\xb5\xc9T\xfaV \x08\xe1\x98\xe6Fa\xb9J\x7f" +
-	"\xfdJ4-\xe5\xe4\xe9\x9b2\x0b\x91I\xb9\xa8\x18%" +
-	"+\xead\xd9i\x8d\xec\xe8'\xb54S\xe5\x94,;" +
-	"\x8d\x91\x1dV\xa4\x88f\xca)\xa4\xc4\xd1\xca\xc7\x96\xae" +
-	"\x09\x8c\xedb\xf4\x14F\x1f;\x8d\x9eh\x01\xd2%\x9e" +
-	"n\x01N4\xc6\xb33->\x06\xc6\x043;a\xec" +
-	"\x8e\xe4\xb9\xf0\xc4;2u\x8d\xff\x8a]$\xa6\x0c\xab" +
-	"\x04\xa7d\xf2\xa9{o\xa2\x88\xf9\x95\xe8\x13M\xda\xf1" +
-	")J\x7f\xee$\x8e\xbc_\x02\x00\x00\xff\xffQ\x9e " +
-	"~"
+const schema_9a51e53177277763 = "x\xda\xb4W\x7fl\x1b\xd5\x1d\xff~\xdf\xd9}gl" +
+	"\xc7{\xb9\xa4\x90\x88-[\x96\x8c.#i]\xd4\xfd" +
+	"\xa8\xc8\xe2\x06U\xa8U\xd1|\x96\"D\x10S.\xf6" +
+	"Q\x9f\xea\xc4\x9e}n\xe8Z\x04LiK\xd9$V" +
+	"\x89\x0d\xa8\x084\xd2\xca\xca\x06\xd3\xd6\x95A\xb71-" +
+	"A\xacth\xda\x06C\x90\xb5\xddFJ\xb7\xa6U\x11" +
+	"\x95\x96B4\x98\xa7\xf7\xce\xefr\x8e\xed\xa5b\xda\x7f" +
+	"q\xde\xf7\xf7\xaf\xcf\xe7\xd6<\xef\x8b\xf9\xa2\xe1\xdf7" +
+	"\x00\xd1\x9f\xf6\xaf(eO\x9f:\xf9\xf5\x89\xf7\xbe\x01" +
+	"\xac\x19\x01|\x14\xe0\x86[h+\x82\xaf\xb4-\xf6B" +
+	"kx\xc3\x99=\xa0\xafD\x04\xf0#\x7f[G\xdb\x11" +
+	"P\xeb\xa5c\x80\xa5\xf7O\xffv\xfc\xe7\xffx\xe8\x9b" +
+	"\xc0\x1a\x94Rr\xec\xba\xb1\xe8Y\xfd\x00\x00j\x13t" +
+	"Z;D)\x806I\xf7j\x97\xf8_\xa5_}\xb9" +
+	"\xa7+\xd2\xf8\xb3\xfd\xc0\xaeu\xad\xcd\xd0\xf5\xdc\xda[" +
+	"\xb4\x0f\xb0\xb4\xa7\xef\xa8\xb5n\xfc+\xdf\x01v\x8d+" +
+	"\xe0W[\xb9@X\xe5\x02\x9f\x1b:\xf8\xc4F{h" +
+	"\x02\xd8J\x19jT\x15\xa1\xb6\x9d\xdd7@\x1bw\x1d" +
+	"\xf2\xbc\xb4\xa8]\xfc\xa5\xe7\xcd\xe4\x85\xd5\xb3\xab\x9f\xf4" +
+	"\xa4\x87j#\x7f\xf9\xa7b\xdf\xfe\xd2\xa5\xdf\x1c\xf1\xc6" +
+	"3G\xfb\xb9\xbbK\"\x9e\xa1\x07v\xc7g6t>" +
+	"W\xce_\xe86\xab\"\xe0\x8f\x8bx\xdeL\xbc\x12n" +
+	"hM<\xef\xb1\xdd\xeb\xc4\xf3\xb5W\x1e\xdf\x90{\xff" +
+	"\xf1_8\xf18\xb6;\xd5\xb5\\\xb5[\xa8\x8e\x9f[" +
+	"\xd83|\xf5\x13\xbf\xf6\x04|\x8b\xda\xceU\x07\xfe\xfd" +
+	"\xd8\xa6\xc3W\x0fN{\xc3Z\xe7x\xed\x15\xaa\x9fy" +
+	"\xa0w\xf2P_\xf3\x8b\xa07 Y\xac\xba\x9f\xf0r" +
+	"\xdf\xa1\x1e\xd0L\x95\xeb\x18j\x1b\x02\x96\xdey\xf8O" +
+	"\x85#\xe9\xe8K\x1eG\xf7\x05D\x8ccG\xb6\xec\xfc" +
+	"\xf0\xd63\xc7=/V@\xd4\xec\xdc\xde\xa9\x15\x7f-" +
+	"\xae~\xb5\xa2\xf1z\xa0\x91\xc7p[\x807\xfe\xe9\x9b" +
+	"\xd7t\x1c<\xda\xf5\x86\xb74\xc7\x02\xa2US\x01\x1e" +
+	"\xe4\xbb\xddG'\xa7\x9f\x9c\xaa\x108\x1b\xb8\x8a\x0b\\" +
+	"\x14\x027\x9e\xd89|\xf0\xc0\x8d3\x1e\xef\xe1\xab\x84" +
+	"\xf7\x1bVt\x1e~\xed\xddO\xff\xb9j\xa8\xe6\x03G" +
+	"\xb4\x0f\x03\\r!\xb0\x97h\xfb\x83|\xaaF&\x1f" +
+	"\xb9\xf5\xf3\xc9\xdd\xa7\x9c\xa1\x11vv\x04E!\x8d\x99" +
+	"\xc9\x0f\xfe\xb0\xea\xbbo{<\x18A\x91\xb9\x8d\x81\xcb" +
+	"\xca\xdb[\xfe^\xe5aSpV\x1b\xe0f5=x" +
+	"\\;!\x1c<\xf7\xcb\x9d\xc7?v\xf2\xdbs\x9e&" +
+	"\xff\xc4qp\xe7\xf0\xa0\xd9\x7f\xfe\xd9\xb9*3\x8f\x06" +
+	"\x7f\xa0M\x0a3\x13\xc1\xbd\xdaEaF\x7f\xd9\xfa\xc2" +
+	"\xd0\xd0\xbf\xce{\xa2y=\x98\xe0fn\x1b\\5\xbc" +
+	"\xfdv\xe5\x82'\x83)'\xce\x9b\xefX\xfd\xe3\x96\x1f" +
+	"}\xff\x1d\x8f\xceSA1\xbb\xe9c\x9f\xfc\xe0\xb5\xbb" +
+	"?1\xef\x1d\x92\xfdA1\xbb\x8f\x06yy\x1f\xec=" +
+	"\x9f^yj\xdf\xbcG\xf5\x18\x7f\xf7\x95r\x03\x7f\xe9" +
+	"~\xe6\x8d\xe9yog&\x83\x9b\xb9\xea3Bu\xd7" +
+	"\xe1\x0b\xc5\xc7\x1a\x1f\xba\xec\xb5\xfd\xbb\xa0\x18\xc0\xd7\x85" +
+	"\xc0u\x89\xfe\x1f\xbe|\xff\xca\xf7<\xb6\xe7\x83D\x94" +
+	"|\xe2o\xf7D\xc9\xe0\x82w\x83g\x82\xe2`\xbc%" +
+	"T#_\xbd\xfc\xe2\xab\xd7\x0f-\x80~\xad\xeb\xdc\x1f" +
+	"\x12q\x87C\\\xe0\xccOO\xaa\xb3\x9b\xad\x05\x8f\xed" +
+	"\xee\x90H\xf9\xde\x87g\x1f<wq\xa6\xe4yi\x0e" +
+	"\xb5#\xac)\xe5\xf2\xd9\xa4Y(\xf4(I#7\x9a" +
+	"[\xbfq\xbb9j\x17zrF\xb1`v$\xccB" +
+	"1\xa3\xd8\x85\xa5B\xf1\xf2\xcf\xe2h\xc6\x1a\xdd\xd6\x11" +
+	"7\xf2\xd4\x18)\xe8\xaa\xe2\x03\xf0!\x00\xfb\xecZ\x00" +
+	"\xbdCA}\x0dA\xc4&\x1e-\xebN\x00\xe8\xd7+" +
+	"\xa8\x7f\x91`[\xd6N\x9byd\x8b\xe3\x0a\x88\x0c\xb0" +
+	"\x94\xcf\x16GSv\xde\x02\xcc!\x02A\xbe\x84\xd29" +
+	"q\x9c\xf7g\xb3v\xc1\xce\x1b9\x88#\xea\xaa\xe2\x07" +
+	"p\x8f\x1f\xca\x81f\xd1v \xac\x93\"\xba\x13\x82\xb2" +
+	"\xbe\xac\x85\xbf\x85)5R\xa9\x18\xd2\xad\xa6\x1d\xc38" +
+	"\xe2\xd2$\xfbw\xd8f2\x9b2o2\x92i\xb3'" +
+	"W\xb4;\xfa\xe2F\x9e\xe7\xe9s\xf3\x0co\x06\xd0C" +
+	"\x0a\xea\xd7\x10,\x0d\x97\x15\x00\x00\xc3@0\x0c\xd56" +
+	"e\xec=F*\xc5\xebf(\x95\xf6\x06=\xf6\x92F" +
+	"\xce\x18\xb62\x16(\xf6\x0el\xf4)\x80\xd8XmR" +
+	"\xf6Btb\xb9\x86\xe5\xcdBqD\xf45R\xccT" +
+	"\x8bU4_$\x8b\x8b2\xbeZe\xd9j\xda\x8eS" +
+	"\xbb\x00\xffC]\xbcIl\xc9&\x8dL\xadZ\xf3\x99" +
+	"R\x15\xd4\x9b\xdc\xf9Q\x81\xa0Zm\xad\x9cF9\xd9" +
+	"r\x95\xeb\xb9\x1c\xc9\x8eZv6\xdf\x910\xdbD\x1a" +
+	"\xf5<\x9a\xdc(\x86\x80`\xa8~\xfc\x8bkCk\x94" +
+	"\xb7\xb2ti\xa3P+\xcb\xf6E\x9f4i\xa5\xaa*" +
+	"\x86\x8e\xadM\xa3\xca\x9dY\xbe\x00M\xae\xea\xdd\\\xf5" +
+	".\x05\xf5q\x82Ln\xdd}]\x00\xfa.\x05\xf5\xfb" +
+	"\x09\"iB\x02\xc0vs\xc1{\x15\xd4\xbfE\x90)" +
+	"\xd8\x84\x0a\x00\xdb\xc7\x05\xc7\x15\xd4\x0f\x12d>lB" +
+	"\x1f\x00\x9b\xe0\xff|DA\xfd{\x04i\xceJ\xc9\x8a" +
+	"Gr\x9e\x1f\xde0#F~\xebvl\x00\x8c+(" +
+	"\x8a\xd5\x00\x18\xb1\xad\x11\x13\xfd@\xd0_\xbfr\xdb\xac" +
+	"Lf\xd9\xf1\x95\xbd\x8a\x1b\x11^\xb6\xff\xba\x0a\xe5\xf1" +
+	"\xfd\x7f\x1f\xa5%\xae\xc7\x0c\xcbv\xd3\xa8\xb7\x10\xe6]" +
+	"\x96}Sy!\xea\x8c\xb0\xb4g\xa5\xdc\xf5\xaa\xd8\xaf" +
+	"\xd6\xc5)Q\xac\xd4r\xc5-\xdf\xe9\xaa\xb5G)\xd6" +
+	"&~\xf3qZ%\xee\xa9\x04\x12\x94TE\x8bb\x17" +
+	"\x10\xad\x13\xf9E\x95\xc8\x8a\x92\x1ei-\xe25\x8c\x14" +
+	"\x89\xcb\x7fP\x12N\x0d\xf9+\x9b\xa7\xa8\xb8\xac\x18%" +
+	"\x83as\xeb\x81\xb0\xd3\x14}.cD\x09\xbf\xec\x8f" +
+	"\x09 \xec\x04E\xbf\x8b\xbb(\x99\x00{a\x18\x08{" +
+	"\x96\xe2\x0a\x97\x8a\xa1\xe4\x8d\xec\xa9~ l\x82\"u" +
+	"i\x0cJ\xca\xc8\xf6\xaf\x05\xc2vST]LD\xc9" +
+	"\x7f\xd9\x0e\x1e\xcb\x08\xc5\x80\x8b\xd2(\xa9\x183Z\x81" +
+	"\xb0\x01\x1a\xe1\x1d\x8ea\x84\xcfk\x0c#\xbc\xae1\xec" +
+	"s\x0a\x1c\xc3\x92<`\x80\x99\x18\x96\x9c\x7fo\xc9\x02" +
+	"M\x1a\x99\x18\xdeS\x9e\xdf\x18\xb6\x89C\x11\xc3>\xe7" +
+	"F\xc5x\x13k\x83P\x05`\xd4;,\x95\xe7g\xe9" +
+	"\xc1#K\xaf\x0fM\xa6M\xde\xeb\x90\xe8\xb5\xfc\xb2@" +
+	"I\x8b\x98\xce\xf1q#\xef\xb4d3(\xe9>\xfb\x12" +
+	"\x7f\xeb\xe6}\x96T\x1b%-a\x9f\xe2o\xcd\x94\xe6" +
+	"\x8a\xb6\xc4U\x9a6\x0a5\x13\xab\xbc\xd1U\x89\xa1\x94" +
+	"\x8ap\xb1E\xa0\x97\x1f$(?\xbcXt\xad\x04z" +
+	"\xf9A\x81\x92t\xb2\x96\xf5\x02\xe8\xab\xaa\xed\x8d\xc7W" +
+	"kU\x1c\x0cr6\x0f\x0b\xf5\x9b\xc2\xe1o\x19|\x11" +
+	"\x87\xed\x8a\xb0\x94S\x8cZX\xba\x1c\"\x04\xeaa\xa8" +
+	"4&\x05\xebg\xea\xc0P\xe5\x89\xb9b\xb8\xadf\x04" +
+	"\x1f\x01\xd6h\xd5\xdd+\xc7T\x19|e\xe9\xe5\xd8|" +
+	"D\x06\xe5\xab\x07\xcb\xcbu!m\x14\xae\x08\x08\x96\xb6" +
+	"\xbd6\x1b+\xd3\xe7\xff\x04\x00\x00\xff\xff\xb4\xcf\xad\xf1"
 
 func RegisterSchema(reg *schemas.Registry) {
 	reg.Register(&schemas.Schema{
@@ -3454,7 +3978,9 @@ func RegisterSchema(reg *schemas.Registry) {
 		Nodes: []uint64{
 			0x82f79d7adbdcdd6f,
 			0x86e3410d1abd406b,
+			0x8b94e7ba84caddf8,
 			0x91b6120f2a2e3ebe,
+			0x954f843569b43f86,
 			0x9d6074459fa0602b,
 			0xa57c12075589e51f,
 			0xa62fe22feb63d82e,
@@ -3472,17 +3998,20 @@ func RegisterSchema(reg *schemas.Registry) {
 			0xd7c1a6c2a1b42df0,
 			0xd93c9aa0627bc93c,
 			0xda23f0d3a8250633,
+			0xdc8563365798a16d,
 			0xe49628d0fca1d961,
 			0xe64ce403f6090174,
 			0xe990db10c77bbcb7,
 			0xe9b5ea42655a6266,
 			0xeafb60603769c851,
+			0xeb035b7662285a59,
 			0xeea7ae19b02f5d47,
 			0xf51e7dd3fc20b968,
 			0xf589dc1668ea3d8f,
 			0xf5c2d7ad2dde5570,
 			0xf694129c75eba87c,
 			0xf71688c8ab425227,
+			0xf95a02317fe09d61,
 			0xf9602cd2c3f65e0f,
 			0xf9694ae208dbb3e3,
 			0xffd9ede88fe29780,

@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/wetware/pkg/guest/system"
 )
@@ -11,9 +12,20 @@ import (
 func main() {
 	ctx := context.Background()
 
-	sess, err := system.Bootstrap(ctx)
+	caps, err := system.Bootstrap(ctx)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("Successfully bootstrapped session %v\n", sess)
+
+	if len(caps) == 0 {
+		fmt.Println("No capabilities found in bootstrap")
+		os.Exit(1)
+	}
+
+	session, err := system.Login(ctx, caps[0])
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Successfully bootstrapped session %v\n", session)
 }

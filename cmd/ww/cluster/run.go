@@ -5,9 +5,13 @@ import (
 	"os"
 	"time"
 
+	"capnproto.org/go/capnp/v3"
 	"github.com/urfave/cli/v2"
 
-	api "github.com/wetware/pkg/api/core"
+	core_api "github.com/wetware/pkg/api/core"
+	proc_api "github.com/wetware/pkg/api/process"
+	csp "github.com/wetware/pkg/cap/csp"
+	csp_server "github.com/wetware/pkg/cap/csp/server"
 	"github.com/wetware/pkg/vat"
 )
 
@@ -48,7 +52,16 @@ func runAction() cli.ActionFunc {
 			return err
 		}
 
-		p, release := sess.Exec().Exec(c.Context, api.Session(sess), rom, 0, args...)
+		sessionCap := capnp.NewClient(core_api.Terminal_NewServer(sess.AddRef()))
+
+		bootstrap := csp_server.NewProcessBootstrap()
+		bs := proc_api.Bootstrap_ServerToClient(bootstrap)
+
+		if err = csp.ProcessBootstrap(bs).Add(c.Context, sessionCap); err != nil {
+			return err
+		}
+
+		p, release := sess.Exec().Exec(c.Context, bs, rom, 0, args...)
 		defer release()
 		return p.Wait(c.Context)
 	}

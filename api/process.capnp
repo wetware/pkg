@@ -42,6 +42,14 @@ interface Process {
     id @9 () -> (id :Int64);
 }
 
+# Bootstrap is a queue of capabilities that are passed to a process.
+interface Bootstrap {
+    # Add a capability into the queue.
+    add @0 (capability :Capability) -> ();
+    # Get a capability from the queue.
+    get @1 () -> (capability :Capability);
+}
+
 struct Info {
     pid  @0 :Pid;
     ppid @1 :Pid;
