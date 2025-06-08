@@ -71,6 +71,11 @@ func setup(c *cli.Context) error {
 }
 
 func serve(c *cli.Context) error {
+	defer func() {
+		for _, release := range csp_server.PendingReleases {
+			defer release()
+		}
+	}()
 	h, err := vat.ListenP2P(c.StringSlice("listen")...)
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
