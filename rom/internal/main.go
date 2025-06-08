@@ -3,30 +3,31 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+
+	// "log"
 	"os"
 
 	"github.com/wetware/pkg/cap/view"
 	"github.com/wetware/pkg/cluster/routing"
-	"github.com/wetware/pkg/guest/system"
+	// "github.com/wetware/pkg/guest/system"
 )
 
 var ctx = context.Background()
 
 func main() {
-	sess, err := system.Bootstrap(ctx)
-	if err != nil {
-		log.Fatal(err)
-	}
+	// sess, err := system.Login(ctx)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 
-	it, release := sess.View().Iter(ctx, query())
-	defer release()
+	// it, release := sess.View().Iter(ctx, query())
+	// defer release()
 
-	for r := it.Next(); r != nil; r = it.Next() {
-		render(r)
-	}
+	// for r := it.Next(); r != nil; r = it.Next() {
+	// 	render(r)
+	// }
 
-	die(it.Err())
+	// die(it.Err())
 }
 
 func die(err error) {
