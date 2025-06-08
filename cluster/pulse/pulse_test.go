@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/mock/gomock"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	pb "github.com/libp2p/go-libp2p-pubsub/pb"
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -15,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/wetware/pkg/cluster/pulse"
 	test_pulse "github.com/wetware/pkg/cluster/pulse/test"
+	"go.uber.org/mock/gomock"
 )
 
 var reader = rand.New(rand.NewSource(42))

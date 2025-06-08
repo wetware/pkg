@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	capnp "capnproto.org/go/capnp/v3"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	"github.com/wetware/pkg/cap/pubsub"
 	test_log "github.com/wetware/pkg/util/log/test"

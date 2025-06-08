@@ -8,10 +8,10 @@ import (
 
 	"log/slog"
 
-	"github.com/golang/mock/gomock"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/wetware/pkg/cluster"
 	test_cluster "github.com/wetware/pkg/cluster/test"
+	"go.uber.org/mock/gomock"
 
 	"github.com/stretchr/testify/assert"
 )

@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	capnp "capnproto.org/go/capnp/v3"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	api "github.com/wetware/pkg/api/pubsub"
 	"github.com/wetware/pkg/cap/pubsub"

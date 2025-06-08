@@ -4,12 +4,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 	"github.com/wetware/pkg/cap/bitswap"
 	test_bitswap "github.com/wetware/pkg/cap/bitswap/test"
+	"go.uber.org/mock/gomock"
 )
 
 var (

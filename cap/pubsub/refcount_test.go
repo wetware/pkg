@@ -7,7 +7,6 @@ import (
 	"log/slog"
 
 	capnp "capnproto.org/go/capnp/v3"
-	"github.com/golang/mock/gomock"
 	"github.com/libp2p/go-libp2p"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -16,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	api "github.com/wetware/pkg/api/pubsub"
 	test_log "github.com/wetware/pkg/util/log/test"
+	"go.uber.org/mock/gomock"
 )
 
 func TestTopicManager(t *testing.T) {

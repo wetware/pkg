@@ -73,7 +73,7 @@ var commands = []*cli.Command{
 	run.Command(),
 	start.Command(),
 	cluster.Command(),
-	benchmark.Command(),
+	// benchmark.Command(),
 }
 
 func main() {

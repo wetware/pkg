@@ -7,7 +7,7 @@ package survey_test
 // 	"time"
 
 // 	"capnproto.org/go/capnp/v3"
-// 	"github.com/golang/mock/gomock"
+// 	"go.uber.org/mock/gomock"
 // 	"github.com/libp2p/go-libp2p/core/discovery"
 // 	"github.com/libp2p/go-libp2p/core/event"
 // 	"github.com/libp2p/go-libp2p/core/host"
