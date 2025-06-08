@@ -50,6 +50,7 @@ struct Info {
     time @4 :Int64;
 }
 
+# DEPRECATED
 interface Events {
     # Events are sent to the WASM process. It's the process' responsiblity to
     # handle events.
