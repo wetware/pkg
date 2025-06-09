@@ -333,7 +333,7 @@ func cloneBootstrap(ctx context.Context, bs proc_api.Bootstrap) (*capnp_server.S
 		if !hasNext {
 			break
 		}
-		clone.add(cap.AddRef())
+		clone.AddDirect(cap.AddRef())
 		PendingReleases = append(PendingReleases, release)
 	}
 
