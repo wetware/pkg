@@ -133,3 +133,45 @@ func (ww Ww) run(ctx context.Context, mod api.Module) error {
 
 	return nil
 }
+
+func InitClient(ctx context.Context, namespace string, stdin io.Reader, stdout io.Writer, sterr io.Writer) (Ww, error) {
+	h, err := vat.DialP2P()
+	if err != nil {
+		return Ww{}, err
+	}
+	defer h.Close()
+
+	bootstrap, err := boot.DialString(h, bootstrapAddr())
+	if err != nil {
+		return Ww{}, fmt.Errorf("discovery: %w", err)
+	}
+
+	sess, err := vat.Dialer{
+		Host:    h,
+		Account: auth.SignerFromHost(h),
+	}.DialDiscover(ctx, bootstrap, namespace)
+	if err != nil {
+		return Ww{}, err
+	}
+
+	return Ww{
+		NS:     namespace,
+		Stdin:  stdin,
+		Stdout: stdout,
+		Stderr: sterr,
+		Root:   sess,
+	}, nil
+}
+
+func bootstrapAddr() string {
+	return path.Join("/ip4/228.8.8.8/udp/8822/multicast", eth())
+}
+
+func eth() string {
+	switch runtime.GOOS {
+	case "darwin":
+		return "en0"
+	default:
+		return "eth0"
+	}
+}
