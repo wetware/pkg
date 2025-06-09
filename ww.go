@@ -5,8 +5,10 @@ import (
 	"crypto/rand"
 	_ "embed"
 	"errors"
+	"fmt"
 	"io"
 	"net"
+	"path"
 	"runtime"
 
 	"log/slog"
@@ -19,9 +21,11 @@ import (
 
 	core_api "github.com/wetware/pkg/api/core"
 	"github.com/wetware/pkg/auth"
+	"github.com/wetware/pkg/boot"
 	csp_server "github.com/wetware/pkg/cap/csp/server"
 	"github.com/wetware/pkg/rom"
 	"github.com/wetware/pkg/util/proto"
+	"github.com/wetware/pkg/vat"
 )
 
 // Ww is the execution context for WebAssembly (WASM) bytecode,
