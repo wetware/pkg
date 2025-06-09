@@ -27,11 +27,11 @@ func (p *ProcessBootstrap) pop() (capnp.Client, bool) {
 }
 
 func (b *ProcessBootstrap) Add(ctx context.Context, call api.Bootstrap_add) error {
-	b.add(call.Args().Capability().AddRef())
+	b.AddDirect(call.Args().Capability().AddRef())
 	return nil
 }
 
-func (b *ProcessBootstrap) add(cap capnp.Client) {
+func (b *ProcessBootstrap) AddDirect(cap capnp.Client) {
 	b.caps = append(b.caps, cap)
 }
 
