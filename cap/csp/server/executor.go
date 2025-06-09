@@ -310,6 +310,13 @@ func (r Runtime) spawn(fn wasm.Function, c components) *process {
 	return proc
 }
 
+// @lthibault: When someone calls Executor.exec, to spawn a process, it sends a proc_api.Bootstrap
+// capability as a call argument. I've tried to use that capability directly in `ServeModule` to
+// make the original caller serve the `proc_api.Bootstrap` capability, but I  got a
+// `VAT does not expose a public/bootstrap interface` error. Creating a new in-process
+// `proc_api.Bootstrap` server with all the capabilities of the original, which is what
+// `cloneBootstrap` does, solved the issue. Still, it seems a bit redundant. Do you know what
+// would be causing the `VAT does not expose a public/bootstrap interface` error?
 func cloneBootstrap(ctx context.Context, bs proc_api.Bootstrap) (*capnp_server.Server, error) {
 	// Clone the Bootstrap capability into a server to make it provideable
 	// to the client. This is required because the client VAT doesn't
