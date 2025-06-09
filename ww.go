@@ -138,16 +138,15 @@ func (ww Ww) run(ctx context.Context, mod api.Module) error {
 	return nil
 }
 
-func InitClient(ctx context.Context, namespace string, stdin io.Reader, stdout io.Writer, sterr io.Writer) (Ww, error) {
+func InitClient(ctx context.Context, namespace string, stdin io.Reader, stdout io.Writer, sterr io.Writer) (Ww, io.Closer, error) {
 	h, err := vat.DialP2P()
 	if err != nil {
-		return Ww{}, err
+		return Ww{}, nil, err
 	}
-	defer h.Close()
 
 	bootstrap, err := boot.DialString(h, bootstrapAddr())
 	if err != nil {
-		return Ww{}, fmt.Errorf("discovery: %w", err)
+		return Ww{}, h, fmt.Errorf("discovery: %w", err)
 	}
 
 	sess, err := vat.Dialer{
@@ -155,7 +154,7 @@ func InitClient(ctx context.Context, namespace string, stdin io.Reader, stdout i
 		Account: auth.SignerFromHost(h),
 	}.DialDiscover(ctx, bootstrap, namespace)
 	if err != nil {
-		return Ww{}, err
+		return Ww{}, h, err
 	}
 
 	return Ww{
@@ -164,7 +163,7 @@ func InitClient(ctx context.Context, namespace string, stdin io.Reader, stdout i
 		Stdout: stdout,
 		Stderr: sterr,
 		Root:   sess,
-	}, nil
+	}, h, nil
 }
 
 func bootstrapAddr() string {
